@@ -18,6 +18,7 @@ import {
   SYSTEM_ACTOR,
 } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -101,22 +102,24 @@ export async function createActivity(
     owner_id,
   } = params;
 
-  const insertResult = await pool.query<{ id: string }>(
-    `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
+  const insertResult = await withRlsQuery((client) =>
+    client.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, notes, due_date, direction, outcome, contact_id, account_id, deal_id, owner_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
-    [
-      type,
-      subject,
-      notes ?? null,
-      due_date ?? null,
-      direction ?? null,
-      outcome ?? null,
-      contact_id ?? null,
-      account_id ?? null,
-      deal_id ?? null,
-      owner_id,
-    ],
+      [
+        type,
+        subject,
+        notes ?? null,
+        due_date ?? null,
+        direction ?? null,
+        outcome ?? null,
+        contact_id ?? null,
+        account_id ?? null,
+        deal_id ?? null,
+        owner_id,
+      ],
+    ),
   );
 
   const activity = (await findActivityById(insertResult.rows[0].id))!;
@@ -142,13 +145,15 @@ export async function createActivity(
  * @returns The activity row, or null if not found
  */
 export async function findActivityById(id: string): Promise<ActivityRow | null> {
-  const result = await pool.query<ActivityRow>(
-    `SELECT ${SELECT_COLS_WITH_OWNER}
+  const result = await withRlsQuery((client) =>
+    client.query<ActivityRow>(
+      `SELECT ${SELECT_COLS_WITH_OWNER}
      FROM activities a
      JOIN users u ON u.id = a.owner_id
      WHERE a.id = $1
      LIMIT 1`,
-    [id],
+      [id],
+    ),
   );
   return result.rows[0] ?? null;
 }
@@ -208,15 +213,22 @@ export async function listActivities(
   const offset = (page - 1) * limit;
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM activities a ${where}`, values),
-    pool.query<ActivityRow>(
-      `SELECT ${SELECT_COLS_WITH_OWNER}
+    withRlsQuery((client) =>
+      client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM activities a ${where}`,
+        values,
+      ),
+    ),
+    withRlsQuery((client) =>
+      client.query<ActivityRow>(
+        `SELECT ${SELECT_COLS_WITH_OWNER}
        FROM activities a
        JOIN users u ON u.id = a.owner_id
        ${where}
        ORDER BY a.created_at DESC
        LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, offset],
+        [...values, limit, offset],
+      ),
     ),
   ]);
 
@@ -260,6 +272,7 @@ export async function updateActivity(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const updateResult = await client.query<{ id: string }>(
       `UPDATE activities
@@ -391,8 +404,8 @@ export async function listMyTasks(
        AND type = 'Task'`;
 
   const [dataResult, countResult] = await Promise.all([
-    pool.query<MyTaskRow>(DATA_SQL, [ownerId, limit, offset]),
-    pool.query<{ count: string }>(COUNT_SQL, [ownerId]),
+    withRlsQuery((client) => client.query<MyTaskRow>(DATA_SQL, [ownerId, limit, offset])),
+    withRlsQuery((client) => client.query<{ count: string }>(COUNT_SQL, [ownerId])),
   ]);
 
   return {
@@ -415,9 +428,8 @@ export async function deleteActivity(
   const existing = await findActivityById(id);
   if (!existing) return null;
 
-  const deleteResult = await pool.query<{ id: string }>(
-    `DELETE FROM activities WHERE id = $1 RETURNING id`,
-    [id],
+  const deleteResult = await withRlsQuery((client) =>
+    client.query<{ id: string }>(`DELETE FROM activities WHERE id = $1 RETURNING id`, [id]),
   );
   if (!deleteResult.rows[0]) return null; // deleted by a concurrent request
 

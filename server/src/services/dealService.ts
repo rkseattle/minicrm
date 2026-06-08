@@ -13,6 +13,7 @@ import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.j
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultCurrency } from './settingsService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
+import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -121,6 +122,7 @@ export async function createDeal(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Insert the deal, then immediately re-query with the pipeline_stages JOIN so
     // effective_probability and probability_is_overridden are resolved correctly.
@@ -188,9 +190,8 @@ export async function createDeal(
  * @returns The deal row, or null if not found
  */
 export async function findDealById(id: string): Promise<DealRow | null> {
-  const result = await pool.query<DealRow>(
-    `SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1 LIMIT 1`,
-    [id],
+  const result = await withRlsQuery((client) =>
+    client.query<DealRow>(`SELECT ${DEAL_SELECT} FROM ${DEAL_FROM} WHERE d.id = $1 LIMIT 1`, [id]),
   );
   return result.rows[0] ?? null;
 }
@@ -275,10 +276,17 @@ export async function listDeals(
     ), '[]'::json) AS tags`;
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM ${DEAL_FROM} ${where}`, values),
-    pool.query<DealRow>(
-      `SELECT ${DEAL_SELECT}, ${dealTagsSubquery} FROM ${DEAL_FROM} ${where} ORDER BY d.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, offset],
+    withRlsQuery((client) =>
+      client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM ${DEAL_FROM} ${where}`,
+        values,
+      ),
+    ),
+    withRlsQuery((client) =>
+      client.query<DealRow>(
+        `SELECT ${DEAL_SELECT}, ${dealTagsSubquery} FROM ${DEAL_FROM} ${where} ORDER BY d.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
     ),
   ]);
 
@@ -326,6 +334,7 @@ export async function updateDeal(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const updateResult = await client.query<{ id: string }>(
       `UPDATE deals
@@ -479,8 +488,9 @@ export async function exportDealsForCsv(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const result = await pool.query<DealExportRow>(
-    `SELECT
+  const result = await withRlsQuery((client) =>
+    client.query<DealExportRow>(
+      `SELECT
        d.id,
        d.name,
        d.stage,
@@ -503,7 +513,8 @@ export async function exportDealsForCsv(
      JOIN users u ON d.owner_id = u.id
      ${whereClause}
      ORDER BY d.created_at ASC`,
-    values,
+      values,
+    ),
   );
 
   return result.rows;
@@ -528,6 +539,7 @@ export async function deleteDeal(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
     // DealRow consistent with every other query path. (MINCRM-179)
@@ -594,13 +606,15 @@ interface DealContactRow {
  * @returns Array of minimal contact rows
  */
 export async function listDealContacts(dealId: string): Promise<DealContactRow[]> {
-  const result = await pool.query<DealContactRow>(
-    `SELECT c.id, c.first_name, c.last_name, c.email, c.title
-     FROM contacts c
-     INNER JOIN deal_contacts dc ON dc.contact_id = c.id
-     WHERE dc.deal_id = $1
-     ORDER BY c.last_name ASC, c.first_name ASC`,
-    [dealId],
+  const result = await withRlsQuery((client) =>
+    client.query<DealContactRow>(
+      `SELECT c.id, c.first_name, c.last_name, c.email, c.title
+       FROM contacts c
+       INNER JOIN deal_contacts dc ON dc.contact_id = c.id
+       WHERE dc.deal_id = $1
+       ORDER BY c.last_name ASC, c.first_name ASC`,
+      [dealId],
+    ),
   );
   return result.rows;
 }
@@ -640,13 +654,15 @@ export async function unlinkContactFromDeal(dealId: string, contactId: string): 
  * @returns Array of deal rows ordered by created_at ascending
  */
 export async function listContactDeals(contactId: string): Promise<DealRow[]> {
-  const result = await pool.query<DealRow>(
-    `SELECT ${DEAL_SELECT}
+  const result = await withRlsQuery((client) =>
+    client.query<DealRow>(
+      `SELECT ${DEAL_SELECT}
      FROM ${DEAL_FROM}
      INNER JOIN deal_contacts dc ON dc.deal_id = d.id
      WHERE dc.contact_id = $1
      ORDER BY d.created_at ASC`,
-    [contactId],
+      [contactId],
+    ),
   );
   return result.rows;
 }

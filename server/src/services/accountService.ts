@@ -14,6 +14,7 @@ import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
+import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -181,6 +182,7 @@ export async function createAccount(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Validate no circular parent chain before inserting (MINCRM-184)
     if (parent_account_id) {
@@ -250,7 +252,9 @@ export async function createAccount(
  * @returns The account row, or null if not found
  */
 export async function findAccountById(id: string): Promise<AccountRow | null> {
-  const result = await pool.query<AccountRow>('SELECT * FROM accounts WHERE id = $1 LIMIT 1', [id]);
+  const result = await withRlsQuery((client) =>
+    client.query<AccountRow>('SELECT * FROM accounts WHERE id = $1 LIMIT 1', [id]),
+  );
 
   return result.rows[0] ?? null;
 }
@@ -317,10 +321,17 @@ export async function listAccounts(
     ), '[]'::json) AS tags`;
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM accounts ${whereClause}`, values),
-    pool.query<AccountRow>(
-      `SELECT *, ${tagsSubquery} FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, offset],
+    withRlsQuery((client) =>
+      client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM accounts ${whereClause}`,
+        values,
+      ),
+    ),
+    withRlsQuery((client) =>
+      client.query<AccountRow>(
+        `SELECT *, ${tagsSubquery} FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
     ),
   ]);
 
@@ -357,6 +368,7 @@ export async function updateAccount(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Validate no circular parent chain inside the transaction to avoid TOCTOU races (MINCRM-184)
     if (accountParams.parent_account_id) {
@@ -540,8 +552,9 @@ export async function exportAccountsForCsv(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const result = await pool.query<AccountExportRow>(
-    `SELECT
+  const result = await withRlsQuery((client) =>
+    client.query<AccountExportRow>(
+      `SELECT
        a.id,
        a.name,
        a.industry,
@@ -560,7 +573,8 @@ export async function exportAccountsForCsv(
      LEFT JOIN accounts p ON a.parent_account_id = p.id
      ${whereClause}
      ORDER BY a.name ASC`,
-    values,
+      values,
+    ),
   );
 
   return result.rows;
@@ -584,6 +598,7 @@ export async function deleteAccount(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Unlink contacts first (though the FK is SET NULL on delete, being explicit is clearer)
     await client.query('UPDATE contacts SET account_id = NULL WHERE account_id = $1', [id]);
@@ -656,13 +671,17 @@ export async function searchAccounts(
 ): Promise<AccountRow[]> {
   const pattern = `%${query}%`;
   const result = excludeId
-    ? await pool.query<AccountRow>(
-        'SELECT * FROM accounts WHERE name ILIKE $1 AND id != $2 ORDER BY name ASC LIMIT $3',
-        [pattern, excludeId, limit],
+    ? await withRlsQuery((client) =>
+        client.query<AccountRow>(
+          'SELECT * FROM accounts WHERE name ILIKE $1 AND id != $2 ORDER BY name ASC LIMIT $3',
+          [pattern, excludeId, limit],
+        ),
       )
-    : await pool.query<AccountRow>(
-        'SELECT * FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT $2',
-        [pattern, limit],
+    : await withRlsQuery((client) =>
+        client.query<AccountRow>(
+          'SELECT * FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT $2',
+          [pattern, limit],
+        ),
       );
   return result.rows;
 }

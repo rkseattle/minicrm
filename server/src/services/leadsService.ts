@@ -20,6 +20,7 @@ import {
 } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
+import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -121,6 +122,7 @@ export async function createLead(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const result = await client.query<LeadRow>(
       `INSERT INTO leads
@@ -178,16 +180,17 @@ export async function createLead(
  */
 export async function findLeadByEmail(email: string, excludeId?: string): Promise<LeadRow | null> {
   if (excludeId) {
-    const result = await pool.query<LeadRow>(
-      'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
-      [email, excludeId],
+    const result = await withRlsQuery((client) =>
+      client.query<LeadRow>(
+        'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
+        [email, excludeId],
+      ),
     );
     return result.rows[0] ?? null;
   }
 
-  const result = await pool.query<LeadRow>(
-    'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1',
-    [email],
+  const result = await withRlsQuery((client) =>
+    client.query<LeadRow>('SELECT * FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]),
   );
   return result.rows[0] ?? null;
 }
@@ -199,7 +202,9 @@ export async function findLeadByEmail(email: string, excludeId?: string): Promis
  * @returns The lead row, or null if not found
  */
 export async function findLeadById(id: string): Promise<LeadRow | null> {
-  const result = await pool.query<LeadRow>('SELECT * FROM leads WHERE id = $1 LIMIT 1', [id]);
+  const result = await withRlsQuery((client) =>
+    client.query<LeadRow>('SELECT * FROM leads WHERE id = $1 LIMIT 1', [id]),
+  );
   return result.rows[0] ?? null;
 }
 
@@ -253,10 +258,14 @@ export async function listLeads(
   const offset = (page - 1) * limit;
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*) AS count FROM leads ${whereClause}`, values),
-    pool.query<LeadRow>(
-      `SELECT * FROM leads ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, offset],
+    withRlsQuery((client) =>
+      client.query<{ count: string }>(`SELECT COUNT(*) AS count FROM leads ${whereClause}`, values),
+    ),
+    withRlsQuery((client) =>
+      client.query<LeadRow>(
+        `SELECT * FROM leads ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
     ),
   ]);
 
@@ -305,6 +314,7 @@ export async function updateLead(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const result = await client.query<LeadRow>(
       `UPDATE leads SET ${setClauses}, updated_at = now(), version = version + 1 WHERE id = $1 AND version = $${versionParam} RETURNING *`,
@@ -380,7 +390,9 @@ export async function deleteLead(
   id: string,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<LeadRow | null> {
-  const result = await pool.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]);
+  const result = await withRlsQuery((client) =>
+    client.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]),
+  );
   const deleted = result.rows[0] ?? null;
 
   if (deleted) {
@@ -440,6 +452,7 @@ export async function convertLead(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const defaultPipelineId = await getDefaultPipelineId(client);
 
@@ -559,9 +572,11 @@ export async function convertLead(
  * @returns The source lead row, or null
  */
 export async function findLeadByContactId(contactId: string): Promise<LeadRow | null> {
-  const result = await pool.query<LeadRow>(
-    'SELECT l.* FROM leads l JOIN contacts c ON c.source_lead_id = l.id WHERE c.id = $1 LIMIT 1',
-    [contactId],
+  const result = await withRlsQuery((client) =>
+    client.query<LeadRow>(
+      'SELECT l.* FROM leads l JOIN contacts c ON c.source_lead_id = l.id WHERE c.id = $1 LIMIT 1',
+      [contactId],
+    ),
   );
   return result.rows[0] ?? null;
 }
@@ -573,9 +588,11 @@ export async function findLeadByContactId(contactId: string): Promise<LeadRow | 
  * @returns The source lead row, or null
  */
 export async function findLeadByDealId(dealId: string): Promise<LeadRow | null> {
-  const result = await pool.query<LeadRow>(
-    'SELECT l.* FROM leads l JOIN deals d ON d.source_lead_id = l.id WHERE d.id = $1 LIMIT 1',
-    [dealId],
+  const result = await withRlsQuery((client) =>
+    client.query<LeadRow>(
+      'SELECT l.* FROM leads l JOIN deals d ON d.source_lead_id = l.id WHERE d.id = $1 LIMIT 1',
+      [dealId],
+    ),
   );
   return result.rows[0] ?? null;
 }
@@ -590,9 +607,11 @@ export async function findLeadByDealId(dealId: string): Promise<LeadRow | null> 
 export async function searchAccountsForConversion(
   query: string,
 ): Promise<Array<{ id: string; name: string }>> {
-  const result = await pool.query<{ id: string; name: string }>(
-    `SELECT id, name FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT 20`,
-    [`%${query}%`],
+  const result = await withRlsQuery((client) =>
+    client.query<{ id: string; name: string }>(
+      `SELECT id, name FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT 20`,
+      [`%${query}%`],
+    ),
   );
   return result.rows;
 }

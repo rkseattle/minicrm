@@ -239,33 +239,27 @@ describe('MINCRM-248: pool exhaustion returns 503', () => {
       name: 'Test',
     });
 
-    // findUserById (inside authenticate) uses pool.query which uses pool.connect.
-    // Mock pool.query to succeed for the auth lookup but throw for subsequent calls.
-    let queryCallCount = 0;
-    const querySpy = vi.spyOn(pool, 'query').mockImplementation((..._args: unknown[]) => {
-      queryCallCount++;
-      if (queryCallCount === 1) {
-        // First call is findUserById in authenticate — return a valid active user
-        return Promise.resolve({
-          rows: [
-            {
-              id: ownerId,
-              email: 'pool-test@example.com',
-              name: 'Test',
-              role: 'rep',
-              status: 'active',
-              must_change_password: false,
-              password_changed_at: null,
-            },
-          ],
-          rowCount: 1,
-        }) as unknown as ReturnType<typeof pool.query>;
-      }
-      // Subsequent calls simulate pool exhaustion
-      return Promise.reject(
-        new Error('timeout exceeded when trying to connect'),
-      ) as unknown as ReturnType<typeof pool.query>;
-    });
+    // findUserById (inside authenticate) uses pool.query — mock it to return a valid user.
+    // pool.connect is used by service layer functions (createContact, setRlsUserId, etc.) —
+    // mock it to throw a connection-timeout error, simulating pool exhaustion.
+    const querySpy = vi.spyOn(pool, 'query').mockResolvedValue({
+      rows: [
+        {
+          id: ownerId,
+          email: 'pool-test@example.com',
+          name: 'Test',
+          role: 'rep',
+          status: 'active',
+          must_change_password: false,
+          password_changed_at: null,
+        },
+      ],
+      rowCount: 1,
+    } as unknown as Awaited<ReturnType<typeof pool.query>>);
+
+    const connectSpy = vi
+      .spyOn(pool, 'connect')
+      .mockRejectedValue(new Error('timeout exceeded when trying to connect'));
 
     try {
       const res = await request(app)
@@ -277,6 +271,7 @@ describe('MINCRM-248: pool exhaustion returns 503', () => {
       expect(res.body.error.code).toBe('SERVICE_UNAVAILABLE');
     } finally {
       querySpy.mockRestore();
+      connectSpy.mockRestore();
     }
   });
 });
