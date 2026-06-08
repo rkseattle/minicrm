@@ -205,7 +205,30 @@ Both guards must run before the server binds to its port:
 
 - Reject weak `JWT_SECRET` (empty string, `changeme`, `secret`, `password`, or < 32 chars).
 - Reject absent or malformed `NODE_ENCRYPTION_KEY` (must be a 64-character hex string).
-  Required for file storage and SMTP secret encryption at rest.
+  Required for file storage, SMTP password, and AI API key encryption at rest.
+
+### Encryption key rotation (MINCRM-519)
+
+`cryptoService.ts` exposes a versioned keyring API (`encryptVersioned` / `decryptVersioned`).
+`ai_configuration.api_key_key_version` and `smtp_configuration.pass_key_version` record
+which key version encrypted each secret so the correct key is used on decrypt.
+
+**Keyring environment variables:**
+
+- `NODE_ENCRYPTION_KEY` — always key version 1 (backward-compatible name)
+- `ENCRYPTION_KEY_V2`, `ENCRYPTION_KEY_V3`, … — higher key versions (each 64-char hex)
+- `CURRENT_ENCRYPTION_KEY_VERSION` — controls which version is used for **new** encryptions; defaults to 1
+
+**To rotate keys:**
+
+1. Set `ENCRYPTION_KEY_V2` to a new 64-char hex key and `CURRENT_ENCRYPTION_KEY_VERSION=2`; redeploy.
+2. Run `npm run key-rotate` (see `docs/admin-guide.md`) to re-encrypt all existing secrets with V2
+   and update the `_key_version` columns in DB.
+3. Once all rows are on V2, the V1 key variable can be removed.
+
+The unversioned `encrypt` / `decrypt` functions in `cryptoService.ts` are kept for backward
+compatibility with `system_settings.file_storage_secret` (MINCRM-169); new secrets must use
+the versioned API.
 
 ### 3. Ownership on PATCH / DELETE
 
