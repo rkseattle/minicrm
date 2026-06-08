@@ -54,7 +54,7 @@ async function purgeWebhookDeliveryLogs(): Promise<number> {
 
 /**
  * Deletes completed or failed import_jobs older than the retention window.
- * In-progress jobs (status = 'pending' | 'processing') are never purged
+ * In-progress jobs (status = 'pending' | 'running') are never purged
  * regardless of age, to preserve active job state for polling clients.
  */
 async function purgeImportJobs(): Promise<number> {

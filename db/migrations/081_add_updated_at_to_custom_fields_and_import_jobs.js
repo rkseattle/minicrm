@@ -8,7 +8,7 @@
  * renamed or reordered with no record of when the last change occurred.
  *
  * import_jobs has created_at, started_at, and completed_at, but no general
- * updated_at for tracking intermediate status transitions (pending → processing).
+ * updated_at for tracking intermediate status transitions (pending → running).
  *
  * The set_updated_at() trigger function was created in migration 077. This
  * migration adds the two new tables to the trigger coverage set, following

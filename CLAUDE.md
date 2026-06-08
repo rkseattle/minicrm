@@ -658,7 +658,11 @@ Append-only log tables are purged daily at 02:00 by `runRetentionPurge()` in
 | `webhook_delivery_logs` | 30 days          | `delivered_at`   | all rows                                |
 | `import_jobs`           | 180 days         | `created_at`     | `status IN ('complete', 'failed')` only |
 
-In-progress import jobs (`status = 'pending'` or `'processing'`) are never purged regardless of age.
+In-progress import jobs (`status = 'pending'` or `'running'`) are never purged regardless of age.
+
+`sequence_enrollment_logs` receives a time-range index in migration 082 (`executed_at`) but has no
+retention purge — enrollment logs are retained indefinitely as they are sparse and bounded by
+enrollment lifetime. Revisit if table growth becomes a concern.
 
 ### Autovacuum tuning for burst-write tables
 
