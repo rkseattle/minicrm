@@ -10,11 +10,12 @@
  *  - deriveDpaStatus / deriveDataPosture: composite indicator logic
  *
  * Runs against the real minicrm_test PostgreSQL database.
- * (MINCRM-457)
+ * (MINCRM-457, MINCRM-502)
  */
 
 import 'dotenv/config';
 import pool from '../db.js';
+import { createUser } from '../services/userService.js';
 import {
   getAiConfig,
   setAiEnabled,
@@ -23,42 +24,52 @@ import {
   isAiEnabled,
 } from '../services/aiConfigService.js';
 
-const ACTOR = { id: 'aaaaaaaa-aaaa-aaaa-aaaa-000000000001', name: 'Test Admin' };
+// ACTOR must reference a real users row because dpa_acknowledged_by is a UUID FK.
+// We create the user in beforeAll and record its generated id at runtime.
+const ACTOR_EMAIL = 'ai-svc-test-admin@example.com';
+const ACTOR_NAME = 'Test Admin';
+let ACTOR: { id: string; name: string };
 
-const AI_KEYS = [
-  'ai_enabled',
-  'ai_enabled_updated_at',
-  'ai_provider',
-  'ai_model',
-  'ai_api_key',
-  'ai_deployment_mode',
-  'ai_base_url',
-  'ai_dpa_acknowledged',
-  'ai_dpa_acknowledged_by',
-  'ai_dpa_acknowledged_at',
-  'ai_dpa_acknowledged_for_provider',
-  'ai_custom_dpa_url',
-];
+beforeAll(async () => {
+  await pool.query('DELETE FROM users WHERE email = $1', [ACTOR_EMAIL]);
+  const user = await createUser({
+    email: ACTOR_EMAIL,
+    name: ACTOR_NAME,
+    role: 'admin',
+    passwordHash: '$2b$12$placeholder',
+    status: 'active',
+  });
+  ACTOR = { id: user.id, name: user.name };
+});
 
-async function clearAiSettings(): Promise<void> {
-  await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [AI_KEYS]);
-}
-
-async function upsert(key: string, value: string): Promise<void> {
-  await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [key, value],
-  );
+/** Reset the singleton row to safe defaults before each test. */
+async function resetAiConfig(): Promise<void> {
+  await pool.query(`
+    UPDATE ai_configuration SET
+      provider                       = 'anthropic',
+      model                          = 'claude-sonnet-4-20250514',
+      api_key_encrypted              = '',
+      deployment_mode                = 'cloud_api',
+      base_url                       = '',
+      enabled                        = false,
+      enabled_updated_at             = NULL,
+      dpa_acknowledged               = false,
+      dpa_acknowledged_by            = NULL,
+      dpa_acknowledged_at            = NULL,
+      dpa_acknowledged_for_provider  = '',
+      custom_dpa_url                 = '',
+      updated_at                     = now(),
+      updated_by                     = NULL
+  `);
 }
 
 beforeEach(async () => {
-  await clearAiSettings();
+  await resetAiConfig();
 });
 
 afterAll(async () => {
-  await clearAiSettings();
+  await resetAiConfig();
+  await pool.query('DELETE FROM users WHERE email = $1', [ACTOR_EMAIL]);
   // Do NOT call pool.end() — this file runs in the parallel Vitest project
   // and pool is a shared singleton. Calling end() here terminates it for all
   // other concurrent test files and causes "Cannot use a pool after calling end".
@@ -67,7 +78,7 @@ afterAll(async () => {
 // ── getAiConfig defaults ───────────────────────────────────────────────────────
 
 describe('getAiConfig', () => {
-  it('returns safe defaults when no rows are present', async () => {
+  it('returns safe defaults when row is reset to defaults', async () => {
     const config = await getAiConfig();
     expect(config.enabled).toBe(false);
     expect(config.provider).toBe('anthropic');
@@ -83,34 +94,40 @@ describe('getAiConfig', () => {
   });
 
   it('reflects stored values', async () => {
-    await upsert('ai_enabled', 'true');
-    await upsert('ai_model', 'claude-opus-4-8');
+    await pool.query(`UPDATE ai_configuration SET enabled = true, model = 'claude-opus-4-8'`);
     const config = await getAiConfig();
     expect(config.enabled).toBe(true);
     expect(config.model).toBe('claude-opus-4-8');
   });
 
   it('derives dpa_status = acknowledged when provider matches', async () => {
-    await upsert('ai_provider', 'anthropic');
-    await upsert('ai_dpa_acknowledged', 'true');
-    await upsert('ai_dpa_acknowledged_for_provider', 'anthropic');
+    await pool.query(`
+      UPDATE ai_configuration SET
+        provider = 'anthropic',
+        dpa_acknowledged = true,
+        dpa_acknowledged_for_provider = 'anthropic'
+    `);
     const config = await getAiConfig();
     expect(config.dpa_status).toBe('acknowledged');
     expect(config.data_posture).toBe('green');
   });
 
   it('derives dpa_status = provider_changed when provider differs from acknowledged provider', async () => {
-    await upsert('ai_provider', 'anthropic');
-    await upsert('ai_dpa_acknowledged', 'true');
-    await upsert('ai_dpa_acknowledged_for_provider', 'other_provider');
+    await pool.query(`
+      UPDATE ai_configuration SET
+        provider = 'anthropic',
+        dpa_acknowledged = true,
+        dpa_acknowledged_for_provider = 'other_provider'
+    `);
     const config = await getAiConfig();
     expect(config.dpa_status).toBe('provider_changed');
     expect(config.data_posture).toBe('red');
   });
 
   it('derives data_posture = green for self_hosted regardless of DPA', async () => {
-    await upsert('ai_deployment_mode', 'self_hosted');
-    await upsert('ai_dpa_acknowledged', 'false');
+    await pool.query(`
+      UPDATE ai_configuration SET deployment_mode = 'self_hosted', dpa_acknowledged = false
+    `);
     const config = await getAiConfig();
     expect(config.data_posture).toBe('green');
   });
@@ -119,17 +136,17 @@ describe('getAiConfig', () => {
 // ── isAiEnabled ────────────────────────────────────────────────────────────────
 
 describe('isAiEnabled', () => {
-  it('returns false when no row present', async () => {
+  it('returns false when enabled = false', async () => {
     await expect(isAiEnabled()).resolves.toBe(false);
   });
 
-  it('returns true when ai_enabled = true', async () => {
-    await upsert('ai_enabled', 'true');
+  it('returns true when enabled = true', async () => {
+    await pool.query(`UPDATE ai_configuration SET enabled = true`);
     await expect(isAiEnabled()).resolves.toBe(true);
   });
 
-  it('returns false when ai_enabled = false', async () => {
-    await upsert('ai_enabled', 'false');
+  it('returns false when enabled = false (explicit)', async () => {
+    await pool.query(`UPDATE ai_configuration SET enabled = false`);
     await expect(isAiEnabled()).resolves.toBe(false);
   });
 });
@@ -182,11 +199,11 @@ describe('setAiConfig', () => {
     expect(config.api_key_set).toBe(true);
 
     // Verify the raw stored value is NOT the plaintext.
-    const row = await pool.query<{ value: string }>(
-      "SELECT value FROM system_settings WHERE key = 'ai_api_key'",
+    const row = await pool.query<{ api_key_encrypted: string }>(
+      'SELECT api_key_encrypted FROM ai_configuration LIMIT 1',
     );
-    expect(row.rows[0].value).not.toBe('sk-ant-test-key-value');
-    expect(row.rows[0].value).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/); // iv:authTag:ciphertext
+    expect(row.rows[0].api_key_encrypted).not.toBe('sk-ant-test-key-value');
+    expect(row.rows[0].api_key_encrypted).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/); // iv:authTag:ciphertext
   });
 
   it('leaves the stored API key unchanged when api_key is omitted', async () => {
@@ -203,8 +220,8 @@ describe('setAiConfig', () => {
       ACTOR,
     );
 
-    const before = await pool.query<{ value: string }>(
-      "SELECT value FROM system_settings WHERE key = 'ai_api_key'",
+    const before = await pool.query<{ api_key_encrypted: string }>(
+      'SELECT api_key_encrypted FROM ai_configuration LIMIT 1',
     );
 
     // Update model without supplying api_key.
@@ -219,25 +236,27 @@ describe('setAiConfig', () => {
       ACTOR,
     );
 
-    const after = await pool.query<{ value: string }>(
-      "SELECT value FROM system_settings WHERE key = 'ai_api_key'",
+    const after = await pool.query<{ api_key_encrypted: string }>(
+      'SELECT api_key_encrypted FROM ai_configuration LIMIT 1',
     );
-    expect(after.rows[0].value).toBe(before.rows[0].value);
+    expect(after.rows[0].api_key_encrypted).toBe(before.rows[0].api_key_encrypted);
   });
 
   it('resets DPA acknowledgment when provider changes', async () => {
     // Pre-seed an acknowledged DPA for 'anthropic'.
-    await upsert('ai_provider', 'anthropic');
-    await upsert('ai_dpa_acknowledged', 'true');
-    await upsert('ai_dpa_acknowledged_by', 'Admin User');
-    await upsert('ai_dpa_acknowledged_at', new Date().toISOString());
-    await upsert('ai_dpa_acknowledged_for_provider', 'anthropic');
+    await pool.query(
+      `
+      UPDATE ai_configuration SET
+        provider = 'anthropic',
+        dpa_acknowledged = true,
+        dpa_acknowledged_by = $1,
+        dpa_acknowledged_at = now(),
+        dpa_acknowledged_for_provider = 'anthropic'
+    `,
+      [ACTOR.id],
+    );
 
-    // Changing provider should reset acknowledgment.
-    // Note: 'anthropic' is the only provider currently; we simulate the reset
-    // by testing that setAiConfig with a different provider (even if the enum
-    // only has one) triggers the reset path. We test with the same value to
-    // verify no reset occurs when provider is unchanged.
+    // Same provider — DPA should still be acknowledged.
     const unchanged = await setAiConfig(
       {
         provider: 'anthropic',
@@ -248,7 +267,6 @@ describe('setAiConfig', () => {
       },
       ACTOR,
     );
-    // Same provider — DPA should still be acknowledged.
     expect(unchanged.dpa_acknowledged).toBe(true);
   });
 
@@ -301,9 +319,10 @@ describe('setAiConfig', () => {
 
 describe('setAiDpaAcknowledgment', () => {
   it('records acknowledgment with actor name, timestamp, and current provider', async () => {
-    await upsert('ai_provider', 'anthropic');
+    await pool.query(`UPDATE ai_configuration SET provider = 'anthropic'`);
     const config = await setAiDpaAcknowledgment({ acknowledged: true, custom_dpa_url: '' }, ACTOR);
     expect(config.dpa_acknowledged).toBe(true);
+    // dpa_acknowledged_by is resolved from the UUID to the user's display name.
     expect(config.dpa_acknowledged_by).toBe(ACTOR.name);
     expect(config.dpa_acknowledged_at).not.toBeNull();
     expect(config.dpa_acknowledged_for_provider).toBe('anthropic');
@@ -311,10 +330,16 @@ describe('setAiDpaAcknowledgment', () => {
   });
 
   it('clears acknowledgment when acknowledged = false', async () => {
-    await upsert('ai_dpa_acknowledged', 'true');
-    await upsert('ai_dpa_acknowledged_by', 'Admin');
-    await upsert('ai_dpa_acknowledged_at', new Date().toISOString());
-    await upsert('ai_dpa_acknowledged_for_provider', 'anthropic');
+    await pool.query(
+      `
+      UPDATE ai_configuration SET
+        dpa_acknowledged = true,
+        dpa_acknowledged_by = $1,
+        dpa_acknowledged_at = now(),
+        dpa_acknowledged_for_provider = 'anthropic'
+    `,
+      [ACTOR.id],
+    );
 
     const config = await setAiDpaAcknowledgment({ acknowledged: false, custom_dpa_url: '' }, ACTOR);
     expect(config.dpa_acknowledged).toBe(false);

@@ -1,5 +1,5 @@
 /**
- * Integration tests for smtpSettingsService. (MINCRM-254)
+ * Integration tests for smtpSettingsService. (MINCRM-254, MINCRM-502)
  *
  * Verifies that SMTP config is read/written correctly, that the password is
  * encrypted at rest and never returned in the public view, and that omitting
@@ -14,26 +14,25 @@ import {
   setSmtpConfig,
 } from '../services/smtpSettingsService.js';
 
-const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass_encrypted', 'smtp_enabled'];
-
-async function resetSmtpSettings(): Promise<void> {
-  await pool.query(
-    `UPDATE system_settings SET value = CASE
-       WHEN key = 'smtp_port'    THEN '587'
-       WHEN key = 'smtp_enabled' THEN 'false'
-       ELSE ''
-     END, updated_at = now()
-     WHERE key = ANY($1)`,
-    [SMTP_KEYS],
-  );
+/** Reset the singleton row to safe defaults before each test. */
+async function resetSmtpConfig(): Promise<void> {
+  await pool.query(`
+    UPDATE smtp_configuration SET
+      host           = '',
+      port           = 587,
+      username       = '',
+      pass_encrypted = '',
+      enabled        = false,
+      updated_at     = now()
+  `);
 }
 
 beforeEach(async () => {
-  await resetSmtpSettings();
+  await resetSmtpConfig();
 });
 
 afterAll(async () => {
-  await resetSmtpSettings();
+  await resetSmtpConfig();
   await pool.end();
 });
 
@@ -81,10 +80,10 @@ describe('setSmtpConfig', () => {
       smtp_enabled: false,
     });
 
-    const row = await pool.query<{ value: string }>(
-      "SELECT value FROM system_settings WHERE key = 'smtp_pass_encrypted'",
+    const row = await pool.query<{ pass_encrypted: string }>(
+      'SELECT pass_encrypted FROM smtp_configuration LIMIT 1',
     );
-    const storedValue = row.rows[0]?.value ?? '';
+    const storedValue = row.rows[0]?.pass_encrypted ?? '';
     expect(storedValue).not.toBe('supersecret');
     // Encrypted format is iv:authTag:ciphertext (two colons minimum)
     expect(storedValue.split(':').length).toBeGreaterThanOrEqual(3);
