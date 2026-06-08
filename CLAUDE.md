@@ -173,6 +173,14 @@ contacts/accounts/deals/leads also have: version integer  (optimistic locking, m
 
 audit_log_after_insert trigger (migration 052) → pg_notify('audit_events', row JSON)
   Used by auditEventBus.ts to stream real-time events over gRPC ServerStream
+
+feature_flags.role_overrides (jsonb, nullable)
+  ⚠ Transitional column: stores per-role enable/disable overrides with keys constrained to
+    valid role names ('admin', 'rep') and boolean values. MINCRM-487 will introduce first-class
+    user-level override and rollout-rule tables that will supersede this column. Once that
+    epic ships, role_overrides will be dropped. See migration 089 and featureFlagSchema.ts.
+    The service-layer guard in featureFlagService.ts (assertValidRoleOverrides) enforces the
+    shape independently of Zod; do not bypass it. (MINCRM-511)
 ```
 
 **Migration rules:** Never modify an existing migration once it has been applied to any

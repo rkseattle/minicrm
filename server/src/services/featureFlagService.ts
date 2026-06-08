@@ -15,6 +15,7 @@ import type {
   RoleOverrides,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
+import { USER_ROLES } from '@minicrm/shared/schemas/userSchema.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,31 @@ export async function isFlagEnabledForRole(key: string, role: UserRole): Promise
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
+/** Allowed role keys in a role_overrides object. */
+const ALLOWED_ROLE_OVERRIDE_KEYS = new Set(USER_ROLES);
+
+/**
+ * Validates that a role_overrides value contains only known role keys with boolean values.
+ * Throws a typed domain error on invalid input so the controller can return 400.
+ * This guard runs independently of the Zod layer as defence-in-depth. (MINCRM-511)
+ */
+function assertValidRoleOverrides(overrides: RoleOverrides): void {
+  if (overrides == null) return;
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!ALLOWED_ROLE_OVERRIDE_KEYS.has(key as (typeof USER_ROLES)[number])) {
+      throw Object.assign(new Error(`role_overrides contains invalid role key: '${key}'`), {
+        code: 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE',
+      });
+    }
+    if (typeof value !== 'boolean') {
+      throw Object.assign(
+        new Error(`role_overrides['${key}'] must be a boolean, got ${typeof value}`),
+        { code: 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE' },
+      );
+    }
+  }
+}
+
 /**
  * Updates a feature flag's enabled state and optional role overrides.
  * Writes an audit entry in the same transaction, then invalidates the cache.
@@ -164,6 +190,10 @@ export async function updateFeatureFlag(
   actor: AuditActor,
   opts?: { onDisabled?: () => Promise<void> },
 ): Promise<FeatureFlagRow | null> {
+  if (patch.role_overrides !== undefined) {
+    assertValidRoleOverrides(patch.role_overrides);
+  }
+
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
