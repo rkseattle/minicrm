@@ -61,11 +61,15 @@ export async function ensureAuditLogPartitions(monthsAhead: number = 3): Promise
     const end = addMonths(start, 1);
     const name = auditPartitionName(start);
 
+    // DDL statements do not support bound parameters — CREATE TABLE cannot accept
+    // $1/$2 placeholders. The start/end values are derived from internal Date
+    // arithmetic (not user input), so interpolating them as ISO literals is safe.
+    const startLiteral = start.toISOString();
+    const endLiteral = end.toISOString();
     await pool.query(
       `CREATE TABLE IF NOT EXISTS ${name}
          PARTITION OF audit_log
-         FOR VALUES FROM ($1) TO ($2)`,
-      [start.toISOString(), end.toISOString()],
+         FOR VALUES FROM ('${startLiteral}') TO ('${endLiteral}')`,
     );
 
     created.push(name);
