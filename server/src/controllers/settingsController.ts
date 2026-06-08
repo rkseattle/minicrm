@@ -64,8 +64,9 @@ export async function setDefaultLanguageHandler(req: Request, res: Response): Pr
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previousLanguage = await getDefaultLanguage();
-  const language = await setDefaultLanguage(parsed.data.language);
+  const language = await setDefaultLanguage(parsed.data.language, actor);
   res.status(200).json({ language });
 
   // Audit: system settings updated (MINCRM-170)
@@ -114,8 +115,9 @@ export async function setNavLayoutHandler(req: Request, res: Response): Promise<
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previousLayout = await getNavLayout();
-  const layout = await setNavLayout(parsed.data.layout);
+  const layout = await setNavLayout(parsed.data.layout, actor);
   res.status(200).json({ layout });
 
   // Audit: system settings updated (MINCRM-170)
@@ -167,8 +169,9 @@ export async function setEmailNotificationsEnabledHandler(
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previousEnabled = await getEmailNotificationsEnabled();
-  const enabled = await setEmailNotificationsEnabled(req.body.enabled as boolean);
+  const enabled = await setEmailNotificationsEnabled(req.body.enabled as boolean, actor);
   res.status(200).json({ enabled });
 
   // Audit: system settings updated (MINCRM-170)
@@ -218,8 +221,9 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previousCurrency = await getDefaultCurrency();
-  const currency = await setDefaultCurrency(parsed.data.currency);
+  const currency = await setDefaultCurrency(parsed.data.currency, actor);
   res.status(200).json({ currency });
 
   void writeAuditEntryBestEffort({
@@ -265,8 +269,9 @@ export async function setTagsRestrictCreationHandler(req: Request, res: Response
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previousRestricted = await getTagsRestrictCreation();
-  const restricted = await setTagsRestrictCreation(req.body.restricted as boolean);
+  const restricted = await setTagsRestrictCreation(req.body.restricted as boolean, actor);
   res.status(200).json({ restricted });
 
   void writeAuditEntryBestEffort({
@@ -436,8 +441,9 @@ export async function setMfaRequiredHandler(req: Request, res: Response): Promis
     return;
   }
 
+  const actor = { id: req.user!.id, name: req.user!.name };
   const previous = await getMfaRequired();
-  const current = await setMfaRequired(req.body.mfa_required as boolean);
+  const current = await setMfaRequired(req.body.mfa_required as boolean, actor);
   res.status(200).json({ mfa_required: current });
 
   void writeAuditEntryBestEffort({

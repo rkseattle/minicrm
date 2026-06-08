@@ -265,7 +265,10 @@ export async function setStorageConfigHandler(req: Request, res: Response): Prom
     return;
   }
 
-  const saved = await setStorageConfig({ endpoint, bucket, accessKeyId, secretAccessKey });
+  const saved = await setStorageConfig(
+    { endpoint, bucket, accessKeyId, secretAccessKey },
+    { id: req.user!.id, name: req.user!.name },
+  );
   res.status(200).json({ configured: true, config: saved });
 }
 
