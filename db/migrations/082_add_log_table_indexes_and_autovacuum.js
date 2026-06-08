@@ -5,7 +5,10 @@
  * autovacuum for tables with burst write patterns. (MINCRM-522)
  *
  * Indexes added:
- *   automation_rule_logs_outcome_idx    — partial index (WHERE outcome = 'error') for filtering failed executions
+ *   automation_rule_logs_outcome_idx      — partial index (WHERE outcome = 'error') for filtering failed executions
+ *   automation_rule_logs_triggered_at_idx — standalone triggered_at index for the daily retention purge
+ *                                           (the existing (rule_id, triggered_at) composite from migration 012
+ *                                           cannot serve a range predicate on triggered_at alone)
  *   webhook_delivery_logs_delivered_at_idx — recent delivery history and purge queries
  *   sequence_enrollment_logs_executed_at_idx — time-range queries on step execution
  *   import_jobs_status_idx             — polling for pending/running jobs
@@ -33,6 +36,14 @@ exports.up = (pgm) => {
     CREATE INDEX automation_rule_logs_outcome_idx
       ON automation_rule_logs (outcome)
       WHERE outcome = 'error';
+  `);
+
+  // Standalone triggered_at index for the retention purge DELETE. The existing
+  // (rule_id, triggered_at) composite from migration 012 cannot serve a range
+  // predicate on triggered_at alone because rule_id is the leading column.
+  pgm.sql(`
+    CREATE INDEX automation_rule_logs_triggered_at_idx
+      ON automation_rule_logs (triggered_at);
   `);
 
   pgm.sql(`
@@ -89,5 +100,6 @@ exports.down = (pgm) => {
   pgm.sql('DROP INDEX IF EXISTS import_jobs_status_idx;');
   pgm.sql('DROP INDEX IF EXISTS sequence_enrollment_logs_executed_at_idx;');
   pgm.sql('DROP INDEX IF EXISTS webhook_delivery_logs_delivered_at_idx;');
+  pgm.sql('DROP INDEX IF EXISTS automation_rule_logs_triggered_at_idx;');
   pgm.sql('DROP INDEX IF EXISTS automation_rule_logs_outcome_idx;');
 };

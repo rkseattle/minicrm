@@ -25,14 +25,12 @@ const RETENTION_DAYS = {
 
 /**
  * Deletes rows from automation_rule_logs older than the retention window.
- * The triggered_at column is indexed (rule_id, triggered_at) from migration 012,
- * so the range scan is efficient.
+ * The standalone triggered_at index added in migration 082 covers this range scan.
  */
 async function purgeAutomationRuleLogs(): Promise<number> {
-  const result = await pool.query<{ id: string }>(
+  const result = await pool.query(
     `DELETE FROM automation_rule_logs
-      WHERE triggered_at < now() - ($1 || ' days')::interval
-      RETURNING id`,
+      WHERE triggered_at < now() - ($1 || ' days')::interval`,
     [RETENTION_DAYS.automation_rule_logs],
   );
   return result.rowCount ?? 0;
@@ -43,10 +41,9 @@ async function purgeAutomationRuleLogs(): Promise<number> {
  * The delivered_at column is indexed by migration 082.
  */
 async function purgeWebhookDeliveryLogs(): Promise<number> {
-  const result = await pool.query<{ id: string }>(
+  const result = await pool.query(
     `DELETE FROM webhook_delivery_logs
-      WHERE delivered_at < now() - ($1 || ' days')::interval
-      RETURNING id`,
+      WHERE delivered_at < now() - ($1 || ' days')::interval`,
     [RETENTION_DAYS.webhook_delivery_logs],
   );
   return result.rowCount ?? 0;
@@ -58,11 +55,10 @@ async function purgeWebhookDeliveryLogs(): Promise<number> {
  * regardless of age, to preserve active job state for polling clients.
  */
 async function purgeImportJobs(): Promise<number> {
-  const result = await pool.query<{ id: string }>(
+  const result = await pool.query(
     `DELETE FROM import_jobs
       WHERE created_at < now() - ($1 || ' days')::interval
-        AND status IN ('complete', 'failed')
-      RETURNING id`,
+        AND status IN ('complete', 'failed')`,
     [RETENTION_DAYS.import_jobs],
   );
   return result.rowCount ?? 0;
