@@ -29,14 +29,8 @@ export function auditPartitionName(date: Date): string {
 }
 
 /**
- * Returns the UTC start of the month containing the given date.
- */
-function monthStart(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-/**
  * Returns the UTC start of the month that is `offsetMonths` after `date`.
+ * Always returns day=1 at 00:00:00Z, so the result is always a month-start boundary.
  */
 function addMonths(date: Date, offsetMonths: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offsetMonths, 1));
@@ -54,10 +48,13 @@ function addMonths(date: Date, offsetMonths: number): Date {
  */
 export async function ensureAuditLogPartitions(monthsAhead: number = 3): Promise<void> {
   const now = new Date();
-  const created: string[] = [];
+  // All partition boundary arithmetic is UTC so that boundaries always align
+  // with calendar months in UTC, regardless of the server process timezone.
+  const checked: string[] = [];
 
   for (let i = 0; i <= monthsAhead; i++) {
-    const start = monthStart(addMonths(now, i));
+    // addMonths already returns UTC month-start (day=1, 00:00:00Z).
+    const start = addMonths(now, i);
     const end = addMonths(start, 1);
     const name = auditPartitionName(start);
 
@@ -72,8 +69,8 @@ export async function ensureAuditLogPartitions(monthsAhead: number = 3): Promise
          FOR VALUES FROM ('${startLiteral}') TO ('${endLiteral}')`,
     );
 
-    created.push(name);
+    checked.push(name);
   }
 
-  logger.info({ partitions: created }, 'auditPartitionService: partition check complete');
+  logger.info({ partitionsChecked: checked }, 'auditPartitionService: partition check complete');
 }

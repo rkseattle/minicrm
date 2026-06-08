@@ -188,14 +188,25 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGTERM', () => retentionCron.stop());
   process.once('SIGINT', () => retentionCron.stop());
 
-  // audit_log partition maintenance — runs at midnight on the 1st of each month (MINCRM-521).
+  // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,
   // ensuring no writes ever land on audit_log_default due to a missing partition.
-  const auditPartitionCron = cron.schedule('0 0 1 * *', () => {
-    logger.info('cron: running audit_log partition maintenance');
-    void ensureAuditLogPartitions();
-  });
-  logger.info('Audit log partition cron scheduled (monthly on the 1st at 00:00)');
+  // timezone: 'UTC' ensures the cron fires at 00:00 UTC regardless of server local time,
+  // keeping the fire time aligned with UTC-based partition boundaries.
+  const auditPartitionCron = cron.schedule(
+    '0 0 1 * *',
+    () => {
+      logger.info('cron: running audit_log partition maintenance');
+      ensureAuditLogPartitions().catch((err: unknown) => {
+        logger.error(
+          { err },
+          'cron: audit_log partition maintenance failed — rows may route to audit_log_default',
+        );
+      });
+    },
+    { timezone: 'UTC' },
+  );
+  logger.info('Audit log partition cron scheduled (monthly on the 1st at 00:00 UTC)');
 
   process.once('SIGTERM', () => auditPartitionCron.stop());
   process.once('SIGINT', () => auditPartitionCron.stop());
