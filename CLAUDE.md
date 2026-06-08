@@ -703,6 +703,40 @@ A column comment (migration 083) documents the valid values for DBA inspection.
 
 ---
 
+## Schema Conventions (MINCRM-512)
+
+### Constrained-string columns: `varchar + CHECK` over PostgreSQL ENUMs
+
+**Standard:** Use `varchar(N) + CHECK` for all new constrained-string columns going
+forward. Do **not** introduce new PostgreSQL ENUM types.
+
+**Rationale:**
+
+- `varchar + CHECK` is easier to evolve: adding a new valid value requires only a new
+  migration with an `ALTER TABLE ... DROP CONSTRAINT` / `ADD CONSTRAINT` pair. PostgreSQL
+  ENUMs require `ALTER TYPE ... ADD VALUE`, which cannot be rolled back within a
+  transaction and cannot be used inside a transaction on older PostgreSQL versions.
+- The vast majority of constrained-string columns in MiniCRM already use `varchar + CHECK`
+  (e.g. `leads.status`, `sequence_enrollments.status`, `custom_reports.visibility`,
+  `pipeline_stages.name`). Consistency reduces cognitive friction for migration authors.
+- CHECK constraints are visible inline on the column definition and in `\d+ <table>` output
+  without needing to query `pg_type`.
+
+**Grandfathered ENUM columns:** The three PostgreSQL ENUM types from the activities table
+(migrations 006 and 010) are left in place — converting them would require a non-trivial
+multi-step migration with no functional benefit:
+
+| Column                 | ENUM type            | Valid values                               |
+| ---------------------- | -------------------- | ------------------------------------------ |
+| `activities.type`      | `activity_type`      | `Note`, `Call`, `Email`, `Meeting`, `Task` |
+| `activities.status`    | `activity_status`    | `open`, `complete`                         |
+| `activities.direction` | `activity_direction` | `Inbound`, `Outbound`                      |
+
+Do not add new values to these ENUM types; handle any extension by adding a separate
+`varchar + CHECK` column instead.
+
+---
+
 ## Pre-PR Self-Review Checklist
 
 Real patterns from past findings on this repo:
