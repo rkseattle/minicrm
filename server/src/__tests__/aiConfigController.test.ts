@@ -26,20 +26,26 @@ const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
 let adminCookie: string;
 let repCookie: string;
 
-const AI_KEYS = [
-  'ai_enabled',
-  'ai_enabled_updated_at',
-  'ai_provider',
-  'ai_model',
-  'ai_api_key',
-  'ai_deployment_mode',
-  'ai_base_url',
-  'ai_dpa_acknowledged',
-  'ai_dpa_acknowledged_by',
-  'ai_dpa_acknowledged_at',
-  'ai_dpa_acknowledged_for_provider',
-  'ai_custom_dpa_url',
-];
+/** Reset ai_configuration singleton to safe defaults between tests. */
+async function resetAiConfig(): Promise<void> {
+  await pool.query(`
+    UPDATE ai_configuration SET
+      provider                       = 'anthropic',
+      model                          = 'claude-sonnet-4-20250514',
+      api_key_encrypted              = '',
+      deployment_mode                = 'cloud_api',
+      base_url                       = '',
+      enabled                        = false,
+      enabled_updated_at             = NULL,
+      dpa_acknowledged               = false,
+      dpa_acknowledged_by            = NULL,
+      dpa_acknowledged_at            = NULL,
+      dpa_acknowledged_for_provider  = '',
+      custom_dpa_url                 = '',
+      updated_at                     = now(),
+      updated_by                     = NULL
+  `);
+}
 
 beforeAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
@@ -69,11 +75,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [AI_KEYS]);
+  await resetAiConfig();
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM system_settings WHERE key = ANY($1)', [AI_KEYS]);
+  await resetAiConfig();
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Do NOT call pool.end() — this file runs in the parallel Vitest project
   // and pool is a shared singleton. Calling end() here terminates it for all
