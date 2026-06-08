@@ -242,21 +242,19 @@ describe('setAiConfig', () => {
     expect(after.rows[0].api_key_encrypted).toBe(before.rows[0].api_key_encrypted);
   });
 
-  it('resets DPA acknowledgment when provider changes', async () => {
+  it('preserves DPA acknowledgment when provider is unchanged', async () => {
     // Pre-seed an acknowledged DPA for 'anthropic'.
     await pool.query(
-      `
-      UPDATE ai_configuration SET
-        provider = 'anthropic',
-        dpa_acknowledged = true,
-        dpa_acknowledged_by = $1,
-        dpa_acknowledged_at = now(),
-        dpa_acknowledged_for_provider = 'anthropic'
-    `,
+      `UPDATE ai_configuration SET
+         provider = 'anthropic',
+         dpa_acknowledged = true,
+         dpa_acknowledged_by = $1,
+         dpa_acknowledged_at = now(),
+         dpa_acknowledged_for_provider = 'anthropic'`,
       [ACTOR.id],
     );
 
-    // Same provider — DPA should still be acknowledged.
+    // Same provider — DPA acknowledgment must be preserved.
     const unchanged = await setAiConfig(
       {
         provider: 'anthropic',

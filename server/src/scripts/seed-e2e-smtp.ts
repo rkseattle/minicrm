@@ -1,7 +1,7 @@
 /**
- * seed-e2e-smtp.ts — Write Mailhog SMTP config into system_settings for E2E.
+ * seed-e2e-smtp.ts — Write Mailhog SMTP config into smtp_configuration for E2E.
  *
- * Inserts (or overwrites) the smtp_* keys so the E2E server process sends
+ * Updates the smtp_configuration singleton row so the E2E server process sends
  * transactional email to Mailhog rather than a real SMTP server. Mailhog
  * captures messages and exposes them via HTTP API at port 8025.
  *
@@ -10,13 +10,12 @@
  *
  * Required environment variables:
  *   DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT
- *   NODE_ENCRYPTION_KEY   — 64-char hex string (32 bytes)
  *
  * Optional environment variables (defaults to Mailhog standard ports):
  *   E2E_SMTP_HOST         — default: localhost
  *   E2E_SMTP_PORT         — default: 1025
  *
- * MINCRM-306
+ * MINCRM-306, MINCRM-502
  */
 
 import pg from 'pg';
@@ -35,28 +34,27 @@ const pool = new Pool({
 
 async function main(): Promise<void> {
   const smtpHost = process.env.E2E_SMTP_HOST ?? 'localhost';
-  const smtpPort = process.env.E2E_SMTP_PORT ?? '1025';
-
-  const upserts: Array<[string, string]> = [
-    ['smtp_host', smtpHost],
-    ['smtp_port', smtpPort],
-    ['smtp_user', ''],
-    ['smtp_enabled', 'true'],
-    ['email_notifications_enabled', 'true'],
-  ];
+  const smtpPort = Number(process.env.E2E_SMTP_PORT ?? '1025');
 
   const client = await pool.connect();
   try {
-    for (const [key, value] of upserts) {
-      await client.query(
-        `INSERT INTO system_settings (key, value, updated_at)
-         VALUES ($1, $2, now())
-         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-        [key, value],
-      );
-    }
+    // Update the smtp_configuration singleton row (guaranteed to exist post-migration 087).
+    await client.query(
+      `UPDATE smtp_configuration SET
+         host = $1, port = $2, username = '', pass_encrypted = '',
+         enabled = true, updated_at = now()`,
+      [smtpHost, smtpPort],
+    );
+
+    // email_notifications_enabled remains in system_settings (not moved to smtp_configuration).
+    await client.query(
+      `INSERT INTO system_settings (key, value, updated_at)
+       VALUES ('email_notifications_enabled', 'true', now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    );
+
     console.log(
-      `[seed-e2e-smtp] SMTP config written: host=${smtpHost} port=${smtpPort} enabled=true`,
+      `[seed-e2e-smtp] SMTP config written to smtp_configuration: host=${smtpHost} port=${smtpPort} enabled=true`,
     );
   } finally {
     client.release();

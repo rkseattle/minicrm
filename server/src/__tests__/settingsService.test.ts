@@ -270,9 +270,8 @@ describe('getOnboardingStatus — admin caller', () => {
   });
 
   beforeEach(async () => {
-    await pool.query(
-      `DELETE FROM system_settings WHERE key IN ('pipeline_stages_reviewed','smtp_host')`,
-    );
+    await pool.query(`DELETE FROM system_settings WHERE key IN ('pipeline_stages_reviewed')`);
+    await pool.query(`UPDATE smtp_configuration SET host = '', updated_at = now()`);
     // Ensure admin's onboarding flag is false before each test
     await pool.query(`UPDATE users SET onboarding_completed = false WHERE id = $1`, [adminUserId]);
     // Remove any seeded contacts/deals from test isolation
@@ -367,16 +366,14 @@ describe('getOnboardingStatus — admin caller', () => {
     expect(task?.completed).toBe(false);
   });
 
-  it('task smtp_configured is false when smtp_host setting is absent', async () => {
+  it('task smtp_configured is false when smtp_configuration host is empty', async () => {
     const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'smtp_configured');
     expect(task?.completed).toBe(false);
   });
 
-  it('task smtp_configured is true when smtp_host setting is non-empty', async () => {
-    await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at) VALUES ('smtp_host', 'mail.example.com', now())`,
-    );
+  it('task smtp_configured is true when smtp_configuration host is non-empty', async () => {
+    await pool.query(`UPDATE smtp_configuration SET host = 'mail.example.com', updated_at = now()`);
     const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
     const task = status.tasks.find((t) => t.id === 'smtp_configured');
     expect(task?.completed).toBe(true);

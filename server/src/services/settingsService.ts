@@ -270,14 +270,15 @@ export interface OnboardingCaller {
  * @returns The admin's onboarding status.
  */
 async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingStatus> {
-  const [userResult, settingsResult, countsResult] = await Promise.all([
+  const [userResult, settingsResult, smtpResult, countsResult] = await Promise.all([
     pool.query<{ onboarding_completed: boolean }>(
       'SELECT onboarding_completed FROM users WHERE id = $1 LIMIT 1',
       [callerId],
     ),
     pool.query<SystemSettingRow>(`SELECT key, value FROM system_settings WHERE key = ANY($1)`, [
-      [PIPELINE_STAGES_REVIEWED_KEY, 'smtp_host'],
+      [PIPELINE_STAGES_REVIEWED_KEY],
     ]),
+    pool.query<{ host: string }>('SELECT host FROM smtp_configuration LIMIT 1'),
     pool.query<{
       non_admin_count: string;
       contact_count: string;
@@ -299,7 +300,7 @@ async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingSta
   const nonAdminCount = parseInt(row?.non_admin_count ?? '0', 10);
   const contactCount = parseInt(row?.contact_count ?? '0', 10);
   const dealCount = parseInt(row?.deal_count ?? '0', 10);
-  const smtpHost = settingsMap['smtp_host'] ?? '';
+  const smtpHost = smtpResult.rows[0]?.host ?? '';
 
   const tasks: OnboardingTask[] = [
     {
