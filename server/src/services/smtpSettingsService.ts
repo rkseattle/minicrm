@@ -1,21 +1,24 @@
 /**
- * SMTP settings service — read/write SMTP configuration stored in system_settings.
+ * SMTP settings service — read/write SMTP configuration stored in the
+ * smtp_configuration singleton table.
  * The password is stored encrypted via cryptoService; it is never returned in plaintext.
- * (MINCRM-254)
+ * (MINCRM-254, MINCRM-502)
  */
 
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { encrypt, decrypt } from './cryptoService.js';
 
-// ── system_settings keys ──────────────────────────────────────────────────────
+// ── Row type ──────────────────────────────────────────────────────────────────
 
-const SMTP_HOST_KEY = 'smtp_host';
-const SMTP_PORT_KEY = 'smtp_port';
-const SMTP_USER_KEY = 'smtp_user';
-/** Value stored as AES-256-GCM ciphertext produced by cryptoService. */
-const SMTP_PASS_ENCRYPTED_KEY = 'smtp_pass_encrypted';
-const SMTP_ENABLED_KEY = 'smtp_enabled';
+interface SmtpConfigRow {
+  host: string;
+  port: number;
+  username: string;
+  pass_encrypted: string;
+  enabled: boolean;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,19 +53,11 @@ export interface SmtpConfigInput {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Reads one or more system_settings rows by key and returns a map.
- */
-async function readSettings(keys: string[]): Promise<Record<string, string>> {
-  const result = await pool.query<{ key: string; value: string }>(
-    'SELECT key, value FROM system_settings WHERE key = ANY($1)',
-    [keys],
-  );
-  const map: Record<string, string> = {};
-  for (const row of result.rows) {
-    map[row.key] = row.value;
-  }
-  return map;
+/** Fetch the singleton smtp_configuration row. */
+async function fetchSmtpRow(client?: PoolClient): Promise<SmtpConfigRow | null> {
+  const q = 'SELECT host, port, username, pass_encrypted, enabled FROM smtp_configuration LIMIT 1';
+  const result = client ? await client.query<SmtpConfigRow>(q) : await pool.query<SmtpConfigRow>(q);
+  return result.rows[0] ?? null;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -72,20 +67,13 @@ async function readSettings(keys: string[]): Promise<Record<string, string>> {
  * The encrypted password is never included; smtp_pass_set indicates whether one is stored.
  */
 export async function getSmtpConfig(): Promise<SmtpConfigPublic> {
-  const map = await readSettings([
-    SMTP_HOST_KEY,
-    SMTP_PORT_KEY,
-    SMTP_USER_KEY,
-    SMTP_PASS_ENCRYPTED_KEY,
-    SMTP_ENABLED_KEY,
-  ]);
-
+  const row = await fetchSmtpRow();
   return {
-    smtp_host: map[SMTP_HOST_KEY] ?? '',
-    smtp_port: map[SMTP_PORT_KEY] ? parseInt(map[SMTP_PORT_KEY], 10) : 587,
-    smtp_user: map[SMTP_USER_KEY] ?? '',
-    smtp_pass_set: Boolean(map[SMTP_PASS_ENCRYPTED_KEY]),
-    smtp_enabled: map[SMTP_ENABLED_KEY] === 'true',
+    smtp_host: row?.host ?? '',
+    smtp_port: row?.port ?? 587,
+    smtp_user: row?.username ?? '',
+    smtp_pass_set: Boolean(row?.pass_encrypted),
+    smtp_enabled: row?.enabled ?? false,
   };
 }
 
@@ -94,30 +82,27 @@ export async function getSmtpConfig(): Promise<SmtpConfigPublic> {
  * Returns null for smtp_pass when no password has been stored or decryption fails.
  */
 export async function getSmtpConfigInternal(): Promise<SmtpConfigInternal> {
-  const map = await readSettings([
-    SMTP_HOST_KEY,
-    SMTP_PORT_KEY,
-    SMTP_USER_KEY,
-    SMTP_PASS_ENCRYPTED_KEY,
-    SMTP_ENABLED_KEY,
-  ]);
+  const row = await fetchSmtpRow();
 
   let smtp_pass: string | null = null;
-  const ciphertext = map[SMTP_PASS_ENCRYPTED_KEY];
+  const ciphertext = row?.pass_encrypted ?? '';
   if (ciphertext) {
     try {
       smtp_pass = decrypt(ciphertext);
     } catch (err) {
-      logger.error({ err }, 'smtpSettingsService: failed to decrypt smtp_pass — treating as unset');
+      logger.error(
+        { err },
+        'smtpSettingsService: failed to decrypt pass_encrypted — treating as unset',
+      );
     }
   }
 
   return {
-    smtp_host: map[SMTP_HOST_KEY] ?? '',
-    smtp_port: map[SMTP_PORT_KEY] ? parseInt(map[SMTP_PORT_KEY], 10) : 587,
-    smtp_user: map[SMTP_USER_KEY] ?? '',
+    smtp_host: row?.host ?? '',
+    smtp_port: row?.port ?? 587,
+    smtp_user: row?.username ?? '',
     smtp_pass,
-    smtp_enabled: map[SMTP_ENABLED_KEY] === 'true',
+    smtp_enabled: row?.enabled ?? false,
   };
 }
 
@@ -129,24 +114,26 @@ export async function getSmtpConfigInternal(): Promise<SmtpConfigInternal> {
  * @returns The public view of the saved configuration.
  */
 export async function setSmtpConfig(input: SmtpConfigInput): Promise<SmtpConfigPublic> {
-  const upsert = `
-    INSERT INTO system_settings (key, value, updated_at)
-    VALUES ($1, $2, now())
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
-  `;
-
-  const client = await pool.connect();
+  const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    await client.query(upsert, [SMTP_HOST_KEY, input.smtp_host]);
-    await client.query(upsert, [SMTP_PORT_KEY, String(input.smtp_port)]);
-    await client.query(upsert, [SMTP_USER_KEY, input.smtp_user]);
-    await client.query(upsert, [SMTP_ENABLED_KEY, String(input.smtp_enabled)]);
-
     if (input.smtp_pass !== undefined) {
       const encrypted = encrypt(input.smtp_pass);
-      await client.query(upsert, [SMTP_PASS_ENCRYPTED_KEY, encrypted]);
+      await client.query(
+        `UPDATE smtp_configuration SET
+           host = $1, port = $2, username = $3,
+           pass_encrypted = $4, enabled = $5,
+           updated_at = now()`,
+        [input.smtp_host, input.smtp_port, input.smtp_user, encrypted, input.smtp_enabled],
+      );
+    } else {
+      await client.query(
+        `UPDATE smtp_configuration SET
+           host = $1, port = $2, username = $3,
+           enabled = $4, updated_at = now()`,
+        [input.smtp_host, input.smtp_port, input.smtp_user, input.smtp_enabled],
+      );
     }
 
     await client.query('COMMIT');

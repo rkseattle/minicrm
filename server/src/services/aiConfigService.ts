@@ -1,8 +1,8 @@
 /**
  * AI configuration service — all reads and writes for AI provider/model settings.
- * Owns the full lifecycle: storage in system_settings, API key encryption,
+ * Owns the full lifecycle: storage in ai_configuration, API key encryption,
  * DPA acknowledgment, deployment mode, and derived status indicators.
- * (MINCRM-457)
+ * (MINCRM-457, MINCRM-502)
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -27,22 +27,25 @@ import type {
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { AI_PROVIDERS, AI_DEPLOYMENT_MODES } from '@minicrm/shared/schemas/settingsSchema.js';
 
-// ── System settings key constants ─────────────────────────────────────────────
+// ── Row type for ai_configuration ─────────────────────────────────────────────
 
-const KEY_AI_ENABLED = 'ai_enabled';
-const KEY_AI_ENABLED_UPDATED_AT = 'ai_enabled_updated_at';
-const KEY_AI_PROVIDER = 'ai_provider';
-const KEY_AI_MODEL = 'ai_model';
-const KEY_AI_API_KEY = 'ai_api_key';
-const KEY_AI_DEPLOYMENT_MODE = 'ai_deployment_mode';
-const KEY_AI_BASE_URL = 'ai_base_url';
-const KEY_AI_DPA_ACKNOWLEDGED = 'ai_dpa_acknowledged';
-const KEY_AI_DPA_ACKNOWLEDGED_BY = 'ai_dpa_acknowledged_by';
-const KEY_AI_DPA_ACKNOWLEDGED_AT = 'ai_dpa_acknowledged_at';
-const KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER = 'ai_dpa_acknowledged_for_provider';
-const KEY_AI_CUSTOM_DPA_URL = 'ai_custom_dpa_url';
+interface AiConfigRow {
+  provider: string;
+  model: string;
+  api_key_encrypted: string;
+  deployment_mode: string;
+  base_url: string;
+  enabled: boolean;
+  enabled_updated_at: Date | null;
+  dpa_acknowledged: boolean;
+  dpa_acknowledged_by: string | null; // uuid stored as string by pg driver
+  dpa_acknowledged_at: Date | null;
+  dpa_acknowledged_for_provider: string;
+  custom_dpa_url: string;
+  updated_by: string | null;
+}
 
-/** Default values matching the seeds in migration 069. */
+/** Default values applied when no row exists (should not occur post-migration). */
 const DEFAULTS = {
   enabled: false,
   provider: 'anthropic' as AiProvider,
@@ -50,8 +53,7 @@ const DEFAULTS = {
   deploymentMode: 'cloud_api' as AiDeploymentMode,
   baseUrl: '',
   dpaAcknowledged: false,
-  dpaAcknowledgedBy: '',
-  dpaAcknowledgedAt: null as string | null,
+  dpaAcknowledgedAt: null as Date | null,
   dpaAcknowledgedForProvider: '',
   customDpaUrl: '',
 };
@@ -80,49 +82,11 @@ const PROVIDER_DPA_URLS: Record<AiProvider, string> = {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-interface SystemSettingRow {
-  key: string;
-  value: string;
-}
-
-/** Fetch all AI-related system_settings rows in one query. */
-async function fetchAiRows(): Promise<Map<string, string>> {
-  const keys = [
-    KEY_AI_ENABLED,
-    KEY_AI_ENABLED_UPDATED_AT,
-    KEY_AI_PROVIDER,
-    KEY_AI_MODEL,
-    KEY_AI_API_KEY,
-    KEY_AI_DEPLOYMENT_MODE,
-    KEY_AI_BASE_URL,
-    KEY_AI_DPA_ACKNOWLEDGED,
-    KEY_AI_DPA_ACKNOWLEDGED_BY,
-    KEY_AI_DPA_ACKNOWLEDGED_AT,
-    KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER,
-    KEY_AI_CUSTOM_DPA_URL,
-  ];
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT key, value FROM system_settings WHERE key = ANY($1)',
-    [keys],
-  );
-  return new Map(result.rows.map((r) => [r.key, r.value]));
-}
-
-const UPSERT_SQL = `
-  INSERT INTO system_settings (key, value, updated_at)
-  VALUES ($1, $2, now())
-  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
-`;
-
-/** Upsert a single system_settings key inside an existing transaction. */
-async function upsertSettingTx(client: PoolClient, key: string, value: string): Promise<void> {
-  await client.query(UPSERT_SQL, [key, value]);
-}
-
-function parseBool(raw: string | undefined, fallback: boolean): boolean {
-  if (raw === 'true') return true;
-  if (raw === 'false') return false;
-  return fallback;
+/** Fetch the singleton ai_configuration row. Returns null if the table is empty. */
+async function fetchAiRow(client?: PoolClient): Promise<AiConfigRow | null> {
+  const q = 'SELECT * FROM ai_configuration LIMIT 1';
+  const result = client ? await client.query<AiConfigRow>(q) : await pool.query<AiConfigRow>(q);
+  return result.rows[0] ?? null;
 }
 
 function parseProvider(raw: string | undefined): AiProvider {
@@ -162,37 +126,56 @@ function deriveDataPosture(mode: AiDeploymentMode, dpaStatus: AiDpaStatus): AiDa
   return 'amber';
 }
 
-// ── Public service functions ───────────────────────────────────────────────────
+/**
+ * Resolves the display name of the user who acknowledged the DPA.
+ * The dpa_acknowledged_by column stores a UUID; we look up the name for the
+ * response shape which callers expect as a string.
+ * Returns an empty string when no acknowledgment exists or the user was deleted.
+ */
+async function resolveDpaAcknowledgedByName(
+  userId: string | null,
+  client?: PoolClient,
+): Promise<string> {
+  if (!userId) return '';
+  const q = 'SELECT name FROM users WHERE id = $1 LIMIT 1';
+  const result = client
+    ? await client.query<{ name: string }>(q, [userId])
+    : await pool.query<{ name: string }>(q, [userId]);
+  return result.rows[0]?.name ?? '';
+}
 
 /**
- * Returns the full AI configuration (public shape — API key never included).
+ * Builds the public AiConfigResponse from a raw row (or defaults when no row).
+ * Resolves the dpa_acknowledged_by UUID to a display name.
  */
-export async function getAiConfig(): Promise<AiConfigResponse> {
-  const rows = await fetchAiRows();
+async function buildResponse(row: AiConfigRow | null): Promise<AiConfigResponse> {
+  const provider = parseProvider(row?.provider);
+  const deploymentMode = parseDeploymentMode(row?.deployment_mode);
+  const apiKeySet = (row?.api_key_encrypted ?? '').trim() !== '';
 
-  const provider = parseProvider(rows.get(KEY_AI_PROVIDER));
-  const deploymentMode = parseDeploymentMode(rows.get(KEY_AI_DEPLOYMENT_MODE));
-  const rawApiKey = rows.get(KEY_AI_API_KEY) ?? '';
-  const apiKeySet = rawApiKey.trim() !== '';
-
-  const dpaAcknowledged = parseBool(rows.get(KEY_AI_DPA_ACKNOWLEDGED), false);
-  const dpaAcknowledgedForProvider = rows.get(KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER) ?? '';
+  const dpaAcknowledged = row?.dpa_acknowledged ?? DEFAULTS.dpaAcknowledged;
+  const dpaAcknowledgedForProvider =
+    row?.dpa_acknowledged_for_provider ?? DEFAULTS.dpaAcknowledgedForProvider;
   const dpaStatus = deriveDpaStatus(dpaAcknowledged, dpaAcknowledgedForProvider, provider);
   const dataPosture = deriveDataPosture(deploymentMode, dpaStatus);
 
+  const dpaAcknowledgedByName = await resolveDpaAcknowledgedByName(
+    row?.dpa_acknowledged_by ?? null,
+  );
+
   return {
-    enabled: parseBool(rows.get(KEY_AI_ENABLED), false),
-    enabled_updated_at: rows.get(KEY_AI_ENABLED_UPDATED_AT) || null,
+    enabled: row?.enabled ?? DEFAULTS.enabled,
+    enabled_updated_at: row?.enabled_updated_at?.toISOString() ?? null,
     provider,
-    model: rows.get(KEY_AI_MODEL) ?? DEFAULTS.model,
+    model: row?.model ?? DEFAULTS.model,
     api_key_set: apiKeySet,
     deployment_mode: deploymentMode,
-    base_url: rows.get(KEY_AI_BASE_URL) ?? '',
+    base_url: row?.base_url ?? DEFAULTS.baseUrl,
     dpa_acknowledged: dpaAcknowledged,
-    dpa_acknowledged_by: rows.get(KEY_AI_DPA_ACKNOWLEDGED_BY) ?? '',
-    dpa_acknowledged_at: rows.get(KEY_AI_DPA_ACKNOWLEDGED_AT) || null,
+    dpa_acknowledged_by: dpaAcknowledgedByName,
+    dpa_acknowledged_at: row?.dpa_acknowledged_at?.toISOString() ?? null,
     dpa_acknowledged_for_provider: dpaAcknowledgedForProvider,
-    custom_dpa_url: rows.get(KEY_AI_CUSTOM_DPA_URL) ?? '',
+    custom_dpa_url: row?.custom_dpa_url ?? DEFAULTS.customDpaUrl,
     dpa_status: dpaStatus,
     data_posture: dataPosture,
     available_models: AVAILABLE_MODELS.filter((m) => m.provider === provider),
@@ -200,16 +183,25 @@ export async function getAiConfig(): Promise<AiConfigResponse> {
   };
 }
 
+// ── Public service functions ───────────────────────────────────────────────────
+
+/**
+ * Returns the full AI configuration (public shape — API key never included).
+ */
+export async function getAiConfig(): Promise<AiConfigResponse> {
+  const row = await fetchAiRow();
+  return buildResponse(row);
+}
+
 /**
  * Lightweight check — reads only the master toggle.
  * Used by requireAiEnabled middleware on every /api/v1/ai/* request.
  */
 export async function isAiEnabled(): Promise<boolean> {
-  const result = await pool.query<SystemSettingRow>(
-    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-    [KEY_AI_ENABLED],
+  const result = await pool.query<{ enabled: boolean }>(
+    'SELECT enabled FROM ai_configuration LIMIT 1',
   );
-  return parseBool(result.rows[0]?.value, false);
+  return result.rows[0]?.enabled ?? false;
 }
 
 /**
@@ -230,10 +222,16 @@ export async function setAiConfig(
 
     if (params.provider !== before.provider) {
       // Provider changed — DPA acknowledgment is no longer valid for the new provider.
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'false');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, '');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, '');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
+      await client.query(
+        `UPDATE ai_configuration SET
+           dpa_acknowledged = false,
+           dpa_acknowledged_by = NULL,
+           dpa_acknowledged_at = NULL,
+           dpa_acknowledged_for_provider = '',
+           updated_at = now(),
+           updated_by = $1`,
+        [actor.id],
+      );
       await writeAuditEntry(client, {
         recordType: 'ai_settings',
         recordName: 'AI Configuration',
@@ -246,15 +244,42 @@ export async function setAiConfig(
       });
     }
 
-    await upsertSettingTx(client, KEY_AI_PROVIDER, params.provider);
-    await upsertSettingTx(client, KEY_AI_MODEL, params.model);
-    await upsertSettingTx(client, KEY_AI_DEPLOYMENT_MODE, params.deployment_mode);
-    await upsertSettingTx(client, KEY_AI_BASE_URL, params.base_url ?? '');
-    await upsertSettingTx(client, KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url ?? '');
+    // Build the SET clause for the main config fields.
+    const encryptedKey =
+      params.api_key !== undefined && params.api_key !== '' ? encrypt(params.api_key) : null;
 
-    if (params.api_key !== undefined && params.api_key !== '') {
-      const encrypted = encrypt(params.api_key);
-      await upsertSettingTx(client, KEY_AI_API_KEY, encrypted);
+    if (encryptedKey !== null) {
+      await client.query(
+        `UPDATE ai_configuration SET
+           provider = $1, model = $2, deployment_mode = $3,
+           base_url = $4, custom_dpa_url = $5,
+           api_key_encrypted = $6,
+           updated_at = now(), updated_by = $7`,
+        [
+          params.provider,
+          params.model,
+          params.deployment_mode,
+          params.base_url ?? '',
+          params.custom_dpa_url ?? '',
+          encryptedKey,
+          actor.id,
+        ],
+      );
+    } else {
+      await client.query(
+        `UPDATE ai_configuration SET
+           provider = $1, model = $2, deployment_mode = $3,
+           base_url = $4, custom_dpa_url = $5,
+           updated_at = now(), updated_by = $6`,
+        [
+          params.provider,
+          params.model,
+          params.deployment_mode,
+          params.base_url ?? '',
+          params.custom_dpa_url ?? '',
+          actor.id,
+        ],
+      );
     }
 
     const auditFields: Array<{ field: string; old: string; next: string }> = [
@@ -265,7 +290,7 @@ export async function setAiConfig(
       { field: 'custom_dpa_url', old: before.custom_dpa_url, next: params.custom_dpa_url ?? '' },
     ];
 
-    if (params.api_key !== undefined && params.api_key !== '') {
+    if (encryptedKey !== null) {
       // Never log API key values — record that a change occurred only.
       // Use distinct sentinel strings so the oldVal !== newVal guard fires.
       auditFields.push({ field: 'api_key', old: '[previous]', next: '[redacted]' });
@@ -310,14 +335,17 @@ export async function setAiEnabled(
   try {
     await client.query('BEGIN');
 
-    const rows = await client.query<SystemSettingRow>(
-      'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-      [KEY_AI_ENABLED],
-    );
-    const previousEnabled = parseBool(rows.rows[0]?.value, false);
+    const current = await fetchAiRow(client);
+    const previousEnabled = current?.enabled ?? false;
 
-    await upsertSettingTx(client, KEY_AI_ENABLED, String(params.enabled));
-    await upsertSettingTx(client, KEY_AI_ENABLED_UPDATED_AT, new Date().toISOString());
+    await client.query(
+      `UPDATE ai_configuration SET
+         enabled = $1,
+         enabled_updated_at = now(),
+         updated_at = now(),
+         updated_by = $2`,
+      [params.enabled, actor.id],
+    );
 
     await writeAuditEntry(client, {
       recordType: 'ai_settings',
@@ -343,7 +371,7 @@ export async function setAiEnabled(
 
 /**
  * Records or resets the DPA acknowledgment for the current provider.
- * When acknowledged=true, stores the actor's name, timestamp, and current provider.
+ * When acknowledged=true, stores the actor's UUID, timestamp, and current provider.
  * When acknowledged=false, clears all acknowledgment state.
  * All writes and the audit entry are committed in the same transaction.
  */
@@ -358,20 +386,34 @@ export async function setAiDpaAcknowledgment(
     await client.query('BEGIN');
 
     if (params.acknowledged) {
-      const now = new Date().toISOString();
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'true');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, actor.name);
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, now);
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, before.provider);
+      await client.query(
+        `UPDATE ai_configuration SET
+           dpa_acknowledged = true,
+           dpa_acknowledged_by = $1,
+           dpa_acknowledged_at = now(),
+           dpa_acknowledged_for_provider = provider,
+           updated_at = now(),
+           updated_by = $1`,
+        [actor.id],
+      );
     } else {
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED, 'false');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_BY, '');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_AT, '');
-      await upsertSettingTx(client, KEY_AI_DPA_ACKNOWLEDGED_FOR_PROVIDER, '');
+      await client.query(
+        `UPDATE ai_configuration SET
+           dpa_acknowledged = false,
+           dpa_acknowledged_by = NULL,
+           dpa_acknowledged_at = NULL,
+           dpa_acknowledged_for_provider = '',
+           updated_at = now(),
+           updated_by = $1`,
+        [actor.id],
+      );
     }
 
     if (params.custom_dpa_url !== undefined) {
-      await upsertSettingTx(client, KEY_AI_CUSTOM_DPA_URL, params.custom_dpa_url);
+      await client.query(
+        `UPDATE ai_configuration SET custom_dpa_url = $1, updated_at = now(), updated_by = $2`,
+        [params.custom_dpa_url, actor.id],
+      );
     }
 
     await writeAuditEntry(client, {
@@ -409,11 +451,10 @@ export async function testAiConnection(
   if (params.api_key && params.api_key.trim() !== '') {
     apiKey = params.api_key;
   } else {
-    const result = await pool.query<SystemSettingRow>(
-      'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
-      [KEY_AI_API_KEY],
+    const result = await pool.query<{ api_key_encrypted: string }>(
+      'SELECT api_key_encrypted FROM ai_configuration LIMIT 1',
     );
-    const stored = result.rows[0]?.value ?? '';
+    const stored = result.rows[0]?.api_key_encrypted ?? '';
     if (stored.trim() === '') {
       return { ok: false, message: 'No API key configured. Enter an API key to test.' };
     }
