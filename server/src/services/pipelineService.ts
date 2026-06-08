@@ -12,6 +12,7 @@ import type {
 } from '@minicrm/shared/schemas/pipelineSchema.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { withRlsQuery } from './rlsContextService.js';
 
 export const SYSTEM_ACTOR: AuditActor = {
   id: '00000000-0000-0000-0000-000000000000',
@@ -205,10 +206,11 @@ export async function deletePipeline(
     throw err;
   }
 
-  // Block deletion if any deals are still assigned to this pipeline
-  const dealCountResult = await pool.query<{ count: string }>(
-    'SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1',
-    [id],
+  // Block deletion if any deals are still assigned to this pipeline.
+  // Uses withRlsQuery so the deal count is accurate under RLS (avoids a
+  // false-zero that would let admins delete pipelines that still have deals).
+  const dealCountResult = await withRlsQuery<{ count: string }>((client) =>
+    client.query('SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1', [id]),
   );
   const dealCount = parseInt(dealCountResult.rows[0].count, 10);
   if (dealCount > 0) {

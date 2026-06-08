@@ -14,6 +14,7 @@ import { dispatchWebhookEvent } from './webhookService.js';
 import { findDealById } from './dealService.js';
 import { getStageNames } from './pipelineStageService.js';
 import type { AuditActor } from './auditService.js';
+import { setRlsUserId } from './rlsContextService.js';
 
 /** Valid bulk actions for contacts and accounts */
 const CONTACT_ACCOUNT_ACTIONS: ReadonlySet<string> = new Set(['reassign', 'delete']);
@@ -110,6 +111,7 @@ export async function bulkContacts(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const ownership = await verifyOwnership(client, 'contacts', ids, actor);
     if (ownership.forbidden) {
@@ -213,6 +215,7 @@ export async function bulkAccounts(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const ownership = await verifyOwnership(client, 'accounts', ids, actor);
     if (ownership.forbidden) {
@@ -323,6 +326,7 @@ export async function bulkDeals(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const ownership = await verifyOwnership(client, 'deals', ids, actor);
     if (ownership.forbidden) {

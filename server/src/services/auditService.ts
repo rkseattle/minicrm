@@ -27,6 +27,15 @@ export const SYSTEM_ACTOR: AuditActor = {
   name: 'System',
 };
 
+/**
+ * Returns the actor's UUID for use as system_settings.updated_by.
+ * SYSTEM_ACTOR writes are not attributable to a real user row, so NULL is stored
+ * rather than the synthetic all-zeros UUID (which would violate the FK constraint).
+ */
+export function actorIdOrNull(actor: AuditActor): string | null {
+  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
+}
+
 /** Record types that can appear in the audit log */
 export type AuditRecordType =
   | 'contact'

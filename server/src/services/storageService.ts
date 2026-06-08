@@ -12,11 +12,7 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { decrypt, encrypt } from './cryptoService.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR } from './auditService.js';
-
-function actorIdOrNull(actor: AuditActor): string | null {
-  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
-}
+import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
