@@ -128,10 +128,12 @@ automation_rule_logs
   rule_id → automation_rules ON DELETE CASCADE   triggered_at
   triggering_record_type   triggering_record_id   outcome(success|error)   error_message nullable
 
-system_settings  key (PK), value text, updated_at
+system_settings  key (PK), value text, updated_at, updated_by uuid → users ON DELETE SET NULL
   Keys: default_language, nav_layout, email_notifications_enabled,
         default_currency, file_storage_endpoint, file_storage_bucket, file_storage_key_id,
         file_storage_secret (AES-256-GCM encrypted with NODE_ENCRYPTION_KEY)
+  ⚠ All service functions that write system_settings MUST pass an AuditActor so updated_by is
+    recorded. Use SYSTEM_ACTOR (all-zeros UUID) only for seeding/migration writes. (MINCRM-520)
 
 overdue_task_notifications  activity_id, notified_date  ← dedup guard for email digests
 

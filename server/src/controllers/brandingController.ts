@@ -35,7 +35,7 @@ export async function putBrandingHandler(req: Request, res: Response): Promise<v
     return;
   }
 
-  const branding = await setBranding(parsed.data);
+  const branding = await setBranding(parsed.data, { id: req.user!.id, name: req.user!.name });
   res.status(200).json({ branding });
 
   void writeAuditEntryBestEffort({

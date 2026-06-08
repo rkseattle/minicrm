@@ -11,6 +11,12 @@ import type { Readable } from 'stream';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { decrypt, encrypt } from './cryptoService.js';
+import type { AuditActor } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+
+function actorIdOrNull(actor: AuditActor): string | null {
+  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
+}
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
@@ -102,6 +108,7 @@ export async function getStorageConfig(): Promise<StorageConfig | null> {
  */
 export async function setStorageConfig(
   config: (Omit<StorageConfig, 'secretAccessKey'> & { secretAccessKey: string }) | null,
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<StorageConfigPublic | null> {
   if (config === null) {
     await pool.query(
@@ -130,10 +137,10 @@ export async function setStorageConfig(
 
   for (const [key, value] of upserts) {
     await pool.query(
-      `INSERT INTO system_settings (key, value, updated_at)
-       VALUES ($1, $2, now())
-       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-      [key, value],
+      `INSERT INTO system_settings (key, value, updated_at, updated_by)
+       VALUES ($1, $2, now(), $3)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [key, value, actorIdOrNull(actor)],
     );
   }
 

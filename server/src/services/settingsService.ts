@@ -15,6 +15,17 @@ import type {
   NavLayout,
   SupportedCurrency,
 } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { AuditActor } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+
+/**
+ * Resolves an actor's id to a nullable UUID for use in system_settings.updated_by.
+ * SYSTEM_ACTOR writes are not attributable to a real user row, so NULL is stored
+ * rather than the synthetic all-zeros UUID (which would violate the FK constraint).
+ */
+function actorIdOrNull(actor: AuditActor): string | null {
+  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
+}
 
 /** A row from the system_settings table */
 interface SystemSettingRow {
@@ -70,12 +81,15 @@ export async function getDefaultLanguage(): Promise<SupportedLocale> {
  * @param language - One of the supported locale codes.
  * @returns The updated language code.
  */
-export async function setDefaultLanguage(language: SupportedLocale): Promise<SupportedLocale> {
+export async function setDefaultLanguage(
+  language: SupportedLocale,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<SupportedLocale> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [DEFAULT_LANGUAGE_KEY, language],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [DEFAULT_LANGUAGE_KEY, language, actorIdOrNull(actor)],
   );
   return language;
 }
@@ -109,12 +123,15 @@ export async function getNavLayout(): Promise<NavLayout> {
  * @param layout - One of the supported nav layout values.
  * @returns The updated layout value.
  */
-export async function setNavLayout(layout: NavLayout): Promise<NavLayout> {
+export async function setNavLayout(
+  layout: NavLayout,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<NavLayout> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [NAV_LAYOUT_KEY, layout],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [NAV_LAYOUT_KEY, layout, actorIdOrNull(actor)],
   );
   return layout;
 }
@@ -147,12 +164,15 @@ export async function getEmailNotificationsEnabled(): Promise<boolean> {
  * @param enabled - Whether to enable or disable email notifications globally.
  * @returns The persisted value.
  */
-export async function setEmailNotificationsEnabled(enabled: boolean): Promise<boolean> {
+export async function setEmailNotificationsEnabled(
+  enabled: boolean,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<boolean> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled)],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [EMAIL_NOTIFICATIONS_ENABLED_KEY, String(enabled), actorIdOrNull(actor)],
   );
   return enabled;
 }
@@ -187,12 +207,15 @@ export async function getDefaultCurrency(): Promise<SupportedCurrency> {
  * @param currency - One of the supported ISO 4217 currency codes.
  * @returns The updated currency code.
  */
-export async function setDefaultCurrency(currency: SupportedCurrency): Promise<SupportedCurrency> {
+export async function setDefaultCurrency(
+  currency: SupportedCurrency,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<SupportedCurrency> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [DEFAULT_CURRENCY_KEY, currency],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [DEFAULT_CURRENCY_KEY, currency, actorIdOrNull(actor)],
   );
   return currency;
 }
@@ -222,12 +245,15 @@ export async function getTagsRestrictCreation(): Promise<boolean> {
  * @param restricted - Whether to restrict inline tag creation to admins only.
  * @returns The persisted value.
  */
-export async function setTagsRestrictCreation(restricted: boolean): Promise<boolean> {
+export async function setTagsRestrictCreation(
+  restricted: boolean,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<boolean> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [TAGS_RESTRICT_CREATION_KEY, String(restricted)],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [TAGS_RESTRICT_CREATION_KEY, String(restricted), actorIdOrNull(actor)],
   );
   return restricted;
 }
@@ -423,12 +449,12 @@ export async function setOnboardingCompleted(
  * Marks the pipeline-stages-reviewed task as done in the setup checklist.
  * Called after the admin saves a pipeline stage change (MINCRM-379).
  */
-export async function markPipelineStagesReviewed(): Promise<void> {
+export async function markPipelineStagesReviewed(actor: AuditActor = SYSTEM_ACTOR): Promise<void> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, 'true', now())
-     ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now()`,
-    [PIPELINE_STAGES_REVIEWED_KEY],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, 'true', now(), $2)
+     ON CONFLICT (key) DO UPDATE SET value = 'true', updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [PIPELINE_STAGES_REVIEWED_KEY, actorIdOrNull(actor)],
   );
 }
 
@@ -456,12 +482,15 @@ export async function getMfaRequired(): Promise<boolean> {
  * @param required - Whether to require MFA for all users.
  * @returns The persisted value.
  */
-export async function setMfaRequired(required: boolean): Promise<boolean> {
+export async function setMfaRequired(
+  required: boolean,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<boolean> {
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [REQUIRE_MFA_KEY, String(required)],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [REQUIRE_MFA_KEY, String(required), actorIdOrNull(actor)],
   );
   return required;
 }

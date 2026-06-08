@@ -8,6 +8,12 @@ import logger from '../logger.js';
 import { encrypt, decrypt } from './cryptoService.js';
 import type { SsoProtocol, SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js';
 import { SSO_PROTOCOLS } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { AuditActor } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+
+function actorIdOrNull(actor: AuditActor): string | null {
+  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
+}
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 
@@ -145,10 +151,11 @@ export async function getSsoConfigInternal(): Promise<SsoConfigInternal> {
   };
 }
 
+// $3 = updated_by uuid (MINCRM-520)
 const UPSERT_SQL = `
-  INSERT INTO system_settings (key, value, updated_at)
-  VALUES ($1, $2, now())
-  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+  INSERT INTO system_settings (key, value, updated_at, updated_by)
+  VALUES ($1, $2, now(), $3)
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by
 `;
 
 /**
@@ -158,19 +165,30 @@ const UPSERT_SQL = `
  * @param input - Configuration to persist.
  * @returns The public view of the saved configuration.
  */
-export async function setSsoConfig(input: SsoConfigInput): Promise<SsoConfigPublic> {
+export async function setSsoConfig(
+  input: SsoConfigInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<SsoConfigPublic> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    await client.query(UPSERT_SQL, [SSO_ENABLED_KEY, 'true']);
-    await client.query(UPSERT_SQL, [SSO_PROTOCOL_KEY, input.protocol]);
-    await client.query(UPSERT_SQL, [SSO_IDP_METADATA_URL_KEY, input.idp_metadata_url]);
-    await client.query(UPSERT_SQL, [SSO_ENTITY_ID_KEY, input.entity_id]);
+    await client.query(UPSERT_SQL, [SSO_ENABLED_KEY, 'true', actorIdOrNull(actor)]);
+    await client.query(UPSERT_SQL, [SSO_PROTOCOL_KEY, input.protocol, actorIdOrNull(actor)]);
+    await client.query(UPSERT_SQL, [
+      SSO_IDP_METADATA_URL_KEY,
+      input.idp_metadata_url,
+      actorIdOrNull(actor),
+    ]);
+    await client.query(UPSERT_SQL, [SSO_ENTITY_ID_KEY, input.entity_id, actorIdOrNull(actor)]);
 
     if (input.idp_certificate !== undefined) {
       const encrypted = encrypt(input.idp_certificate);
-      await client.query(UPSERT_SQL, [SSO_IDP_CERTIFICATE_ENCRYPTED_KEY, encrypted]);
+      await client.query(UPSERT_SQL, [
+        SSO_IDP_CERTIFICATE_ENCRYPTED_KEY,
+        encrypted,
+        actorIdOrNull(actor),
+      ]);
     }
 
     await client.query('COMMIT');

@@ -51,7 +51,7 @@ export async function putSsoConfigHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  const saved = await setSsoConfig(parsed.data);
+  const saved = await setSsoConfig(parsed.data, { id: req.user!.id, name: req.user!.name });
   res.status(200).json({ sso: saved });
 
   void writeAuditEntryBestEffort({

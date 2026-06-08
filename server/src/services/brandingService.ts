@@ -10,6 +10,12 @@ import type {
   SetBrandingInput,
   SupportedFontId,
 } from '@minicrm/shared/schemas/brandingSchema.js';
+import type { AuditActor } from './auditService.js';
+import { SYSTEM_ACTOR } from './auditService.js';
+
+function actorIdOrNull(actor: AuditActor): string | null {
+  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
+}
 
 const BRANDING_KEY = 'branding';
 
@@ -88,7 +94,10 @@ export async function getBranding(): Promise<BrandingConfig | null> {
  * @param input - Validated branding fields to store.
  * @returns The complete updated BrandingConfig.
  */
-export async function setBranding(input: SetBrandingInput): Promise<BrandingConfig> {
+export async function setBranding(
+  input: SetBrandingInput,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<BrandingConfig> {
   const existing = await getBranding();
 
   const merged: BrandingConfig = {
@@ -115,10 +124,10 @@ export async function setBranding(input: SetBrandingInput): Promise<BrandingConf
   }
 
   await pool.query(
-    `INSERT INTO system_settings (key, value, updated_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [BRANDING_KEY, JSON.stringify(merged)],
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [BRANDING_KEY, JSON.stringify(merged), actorIdOrNull(actor)],
   );
 
   return merged;
