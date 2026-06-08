@@ -115,10 +115,16 @@ attachments
   record_type(contact|account|deal)   record_id
   filename   original_name   mime_type   size_bytes   storage_key   uploaded_by_id
 
-audit_log                              ← append-only; DB-enforced
+audit_log                              ← append-only; DB-enforced; **monthly range-partitioned on created_at** (MINCRM-521)
   record_type   record_id nullable   record_name nullable   event_type
   field_name nullable   old_value nullable   new_value nullable
   changed_by_id nullable   changed_by_name nullable
+  Partition naming: audit_log_y{YYYY}m{MM} (e.g. audit_log_y2026m06)
+  Default partition audit_log_default catches rows outside the managed range
+  PK is (id, created_at) — PG16 requires partition key in all unique constraints
+  ensureAuditLogPartitions() called at startup + monthly cron (0 0 1 * *) to pre-create 3 months ahead
+  Historical rows (pre-partition era) live in audit_log_default; this is intentional
+  Triggers (append-only, NOTIFY) are defined on the parent and cloned to all child partitions automatically
 
 automation_rules
   enabled bool   trigger_type   trigger_config jsonb   action_type   action_config jsonb
