@@ -21,7 +21,11 @@ export type AutomationTriggerType = (typeof AUTOMATION_TRIGGER_TYPES)[number];
 // ── Action types ───────────────────────────────────────────────────────────────
 
 /** All supported automation action types. */
-export const AUTOMATION_ACTION_TYPES = ['create_task', 'send_notification', 'send_webhook'] as const;
+export const AUTOMATION_ACTION_TYPES = [
+  'create_task',
+  'send_notification',
+  'send_webhook',
+] as const;
 
 export type AutomationActionType = (typeof AUTOMATION_ACTION_TYPES)[number];
 
@@ -139,7 +143,7 @@ export const automationRuleLogResponseSchema = z.object({
   rule_id: z.string().uuid(),
   rule_name: z.string(),
   triggered_at: z.string().or(z.date()),
-  triggering_record_type: z.string(),
+  triggering_record_type: z.enum(['deal', 'contact']),
   triggering_record_id: z.string().uuid(),
   outcome: z.enum(['success', 'error']),
   error_message: z.string().nullable(),
