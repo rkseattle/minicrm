@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-06T20:38:59.625Z",
+  "updatedAt": "2026-06-08T20:46:56.041Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -693,6 +693,123 @@
       "count": 1,
       "firstSeenAt": "2026-06-06T20:38:57.769Z",
       "lastSeenAt": "2026-06-06T20:38:57.769Z"
+    },
+    "ContactsPage::contactLinkLocator::testId::contact-link-f62060e8-9ec7-47a3-9dd1-73e6c19ee7cc": {
+      "pageObject": "ContactsPage",
+      "method": "contactLinkLocator",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-f62060e8-9ec7-47a3-9dd1-73e6c19ee7cc",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T19:13:32.223Z",
+      "lastSeenAt": "2026-06-08T19:13:32.223Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-8f7377bf-593d-4919-8577-0659926243d2": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-8f7377bf-593d-4919-8577-0659926243d2",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T19:47:11.757Z",
+      "lastSeenAt": "2026-06-08T19:47:11.757Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-8f7377bf-593d-4919-8577-0659926243d2": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-8f7377bf-593d-4919-8577-0659926243d2",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T19:47:13.795Z",
+      "lastSeenAt": "2026-06-08T19:47:13.795Z"
+    },
+    "ContactsPage::contactLinkLocator::testId::contact-link-677a3d28-cf32-49b0-a3b3-19059f6b3f52": {
+      "pageObject": "ContactsPage",
+      "method": "contactLinkLocator",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-677a3d28-cf32-49b0-a3b3-19059f6b3f52",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:05:44.479Z",
+      "lastSeenAt": "2026-06-08T20:05:44.479Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-d2aa7af8-8662-415d-af9b-a75ffdbf44ed": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-d2aa7af8-8662-415d-af9b-a75ffdbf44ed",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:19:40.165Z",
+      "lastSeenAt": "2026-06-08T20:19:40.165Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-b00cef32-84d1-4a90-9736-a15bb08426ea": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-b00cef32-84d1-4a90-9736-a15bb08426ea",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:19:42.168Z",
+      "lastSeenAt": "2026-06-08T20:19:42.168Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-db30a532-b7ce-4c12-a94b-e8dcbffa5cc2": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-db30a532-b7ce-4c12-a94b-e8dcbffa5cc2",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:19:44.170Z",
+      "lastSeenAt": "2026-06-08T20:19:44.170Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-83e4c480-d776-4672-b89c-9269fd4bfd93": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-83e4c480-d776-4672-b89c-9269fd4bfd93",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:27:34.366Z",
+      "lastSeenAt": "2026-06-08T20:27:34.366Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-306919c8-a03c-4fb8-b668-11d0804cf1f7": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-306919c8-a03c-4fb8-b668-11d0804cf1f7",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:27:36.368Z",
+      "lastSeenAt": "2026-06-08T20:27:36.368Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-a738d260-1856-4e78-9b8e-1bc49e6ddf6e": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-a738d260-1856-4e78-9b8e-1bc49e6ddf6e",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:45:09.869Z",
+      "lastSeenAt": "2026-06-08T20:45:09.869Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-a738d260-1856-4e78-9b8e-1bc49e6ddf6e": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-a738d260-1856-4e78-9b8e-1bc49e6ddf6e",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:45:11.902Z",
+      "lastSeenAt": "2026-06-08T20:45:11.902Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-49461790-6d61-4b14-9eab-20299f6a5cbe": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-49461790-6d61-4b14-9eab-20299f6a5cbe",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:46:53.459Z",
+      "lastSeenAt": "2026-06-08T20:46:53.459Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-49461790-6d61-4b14-9eab-20299f6a5cbe": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-49461790-6d61-4b14-9eab-20299f6a5cbe",
+      "count": 1,
+      "firstSeenAt": "2026-06-08T20:46:55.493Z",
+      "lastSeenAt": "2026-06-08T20:46:55.493Z"
     }
   }
 }

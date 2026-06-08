@@ -16,16 +16,8 @@ import type {
   SupportedCurrency,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR } from './auditService.js';
-
-/**
- * Resolves an actor's id to a nullable UUID for use in system_settings.updated_by.
- * SYSTEM_ACTOR writes are not attributable to a real user row, so NULL is stored
- * rather than the synthetic all-zeros UUID (which would violate the FK constraint).
- */
-function actorIdOrNull(actor: AuditActor): string | null {
-  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
-}
+import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
+import { withRlsQuery } from './rlsContextService.js';
 
 /** A row from the system_settings table */
 interface SystemSettingRow {
@@ -305,15 +297,17 @@ async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingSta
       [PIPELINE_STAGES_REVIEWED_KEY],
     ]),
     pool.query<{ host: string }>('SELECT host FROM smtp_configuration LIMIT 1'),
-    pool.query<{
+    withRlsQuery<{
       non_admin_count: string;
       contact_count: string;
       deal_count: string;
-    }>(
-      `SELECT
-         (SELECT COUNT(*) FROM users WHERE status = 'active' AND role != 'admin') AS non_admin_count,
-         (SELECT COUNT(*) FROM contacts WHERE is_demo = false) AS contact_count,
-         (SELECT COUNT(*) FROM deals WHERE is_demo = false) AS deal_count`,
+    }>((client) =>
+      client.query(
+        `SELECT
+           (SELECT COUNT(*) FROM users WHERE status = 'active' AND role != 'admin') AS non_admin_count,
+           (SELECT COUNT(*) FROM contacts WHERE is_demo = false) AS contact_count,
+           (SELECT COUNT(*) FROM deals WHERE is_demo = false) AS deal_count`,
+      ),
     ),
   ]);
 
@@ -371,21 +365,23 @@ async function getAdminOnboardingStatus(callerId: string): Promise<OnboardingSta
  * @returns The rep's onboarding status.
  */
 async function getRepOnboardingStatus(callerId: string): Promise<OnboardingStatus> {
-  const result = await pool.query<{
+  const result = await withRlsQuery<{
     onboarding_completed: boolean;
     contact_count: string;
     account_count: string;
     deal_count: string;
     activity_count: string;
-  }>(
-    `SELECT
-       u.onboarding_completed,
-       (SELECT COUNT(*) FROM contacts  WHERE owner_id = $1 AND is_demo = false) AS contact_count,
-       (SELECT COUNT(*) FROM accounts  WHERE owner_id = $1 AND is_demo = false) AS account_count,
-       (SELECT COUNT(*) FROM deals     WHERE owner_id = $1 AND is_demo = false) AS deal_count,
-       (SELECT COUNT(*) FROM activities WHERE owner_id = $1 AND is_demo = false) AS activity_count
-     FROM users u WHERE u.id = $1 LIMIT 1`,
-    [callerId],
+  }>((client) =>
+    client.query(
+      `SELECT
+         u.onboarding_completed,
+         (SELECT COUNT(*) FROM contacts  WHERE owner_id = $1 AND is_demo = false) AS contact_count,
+         (SELECT COUNT(*) FROM accounts  WHERE owner_id = $1 AND is_demo = false) AS account_count,
+         (SELECT COUNT(*) FROM deals     WHERE owner_id = $1 AND is_demo = false) AS deal_count,
+         (SELECT COUNT(*) FROM activities WHERE owner_id = $1 AND is_demo = false) AS activity_count
+       FROM users u WHERE u.id = $1 LIMIT 1`,
+      [callerId],
+    ),
   );
 
   const row = result.rows[0];

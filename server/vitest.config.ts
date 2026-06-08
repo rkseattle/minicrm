@@ -34,6 +34,8 @@ const SERIAL_FILES = [
   // smtpSettingsService writes smtp_host/smtp_enabled to system_settings; running
   // it in parallel with emailService or contactController causes those tests to
   // attempt a real SMTP connection to smtp.example.com and fail with ENOTFOUND.
+  // Also deletes the smtp_configuration singleton row in one test to exercise
+  // null-row defaults; any concurrent reader sees an empty table mid-delete. (MINCRM-502)
   'src/__tests__/smtpSettingsService.test.ts',
   // automationService creates enabled rules and fires global triggers that match
   // ALL enabled rules for the trigger type — parallel runs cause cross-file log
@@ -127,10 +129,11 @@ const SERIAL_FILES = [
   // (MINCRM-457)
   'src/__tests__/aiConfigService.test.ts',
   'src/__tests__/aiConfigController.test.ts',
-  // smtpSettingsService deletes the smtp_configuration singleton row in one test to
-  // exercise the null-row defaults branch; any concurrent reader sees an empty table
-  // during the DELETE → re-INSERT window. (MINCRM-502)
-  'src/__tests__/smtpSettingsService.test.ts',
+  // aiTokenBudgetService uses fire-and-forget recordTokenUsage() that writes via
+  // pool.query() without await. The 100ms settle wait is not sufficient under
+  // parallel load — connection-pool contention delays the second upsert past the
+  // assertion window.
+  'src/__tests__/aiTokenBudgetService.test.ts',
   // rlsEnforcement creates/tears down a `minicrm_app` connection pool and inserts
   // fixture rows into RLS-protected tables. Running it in serial prevents races
   // between its cleanup queries and concurrent tests that also create contacts/deals/etc.

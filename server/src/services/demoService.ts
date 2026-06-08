@@ -8,6 +8,7 @@
 import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import { encrypt } from './cryptoService.js';
+import { setRlsUserId } from './rlsContextService.js';
 import type pg from 'pg';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
@@ -2078,6 +2079,7 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
     // Idempotency check runs inside the transaction to prevent TOCTOU races
     // where two concurrent requests both pass the guard and double-insert.
     const already = await hasDemoData(client);
@@ -2107,6 +2109,7 @@ export async function removeDemo(): Promise<{ removed: boolean; reason?: string 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
     // Check runs inside the transaction so concurrent requests cannot both pass the guard.
     const active = await hasDemoData(client);
     if (!active) {
@@ -2134,6 +2137,7 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
     // getAdminUserId runs inside the transaction so any error triggers a clean ROLLBACK.
     const adminId = await getAdminUserId(client);
     await removeDemoData(client);

@@ -11,11 +11,7 @@ import type {
   SupportedFontId,
 } from '@minicrm/shared/schemas/brandingSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR } from './auditService.js';
-
-function actorIdOrNull(actor: AuditActor): string | null {
-  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
-}
+import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
 
 const BRANDING_KEY = 'branding';
 

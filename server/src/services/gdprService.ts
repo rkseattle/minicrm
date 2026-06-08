@@ -11,6 +11,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import { writeAuditEntry } from './auditService.js';
+import { setRlsUserId } from './rlsContextService.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
@@ -147,6 +148,7 @@ export async function eraseContact(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Step 1 — verify the contact exists
     const contactResult = await client.query<{ id: string }>(
@@ -284,6 +286,7 @@ export async function eraseLead(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Step 1 — verify the lead exists
     const leadResult = await client.query<{ id: string }>(

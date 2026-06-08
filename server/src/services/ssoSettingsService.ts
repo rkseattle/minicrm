@@ -9,11 +9,7 @@ import { encrypt, decrypt } from './cryptoService.js';
 import type { SsoProtocol, SsoConfigPublic } from '@minicrm/shared/schemas/settingsSchema.js';
 import { SSO_PROTOCOLS } from '@minicrm/shared/schemas/settingsSchema.js';
 import type { AuditActor } from './auditService.js';
-import { SYSTEM_ACTOR } from './auditService.js';
-
-function actorIdOrNull(actor: AuditActor): string | null {
-  return actor.id === SYSTEM_ACTOR.id ? null : actor.id;
-}
+import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
 
 // ── system_settings keys ──────────────────────────────────────────────────────
 

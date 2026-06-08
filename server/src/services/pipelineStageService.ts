@@ -13,6 +13,7 @@ import type {
   PipelineStageResponse,
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import { writeAuditEntry, writeAuditEntries, SYSTEM_ACTOR } from './auditService.js';
+import { withRlsQuery } from './rlsContextService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 
@@ -298,18 +299,23 @@ export async function deletePipelineStage(
   const terminalNames = terminalResult.rows.map((r) => r.name);
 
   // When a pipeline has no terminal stages, "NOT IN ()" is invalid SQL — omit the clause.
+  // Uses withRlsQuery so the count reflects all deals regardless of owner under RLS.
   const dealCountResult =
     terminalNames.length === 0
-      ? await pool.query<{ count: string }>(
-          `SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1 AND stage = $2`,
-          [existing.pipeline_id, existing.name],
+      ? await withRlsQuery<{ count: string }>((client) =>
+          client.query(
+            `SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1 AND stage = $2`,
+            [existing.pipeline_id, existing.name],
+          ),
         )
-      : await pool.query<{ count: string }>(
-          `SELECT COUNT(*) AS count FROM deals
-           WHERE pipeline_id = $1
-             AND stage = $2
-             AND stage NOT IN (${terminalNames.map((_, i) => `$${i + 3}`).join(', ')})`,
-          [existing.pipeline_id, existing.name, ...terminalNames],
+      : await withRlsQuery<{ count: string }>((client) =>
+          client.query(
+            `SELECT COUNT(*) AS count FROM deals
+             WHERE pipeline_id = $1
+               AND stage = $2
+               AND stage NOT IN (${terminalNames.map((_, i) => `$${i + 3}`).join(', ')})`,
+            [existing.pipeline_id, existing.name, ...terminalNames],
+          ),
         );
   const openDealCount = parseInt(dealCountResult.rows[0].count, 10);
 
