@@ -5,8 +5,8 @@
  * (MINCRM-518)
  *
  * Usage:
- *   - The `rlsContext` middleware (called after `authenticate`) runs
- *     `runWithRequestContext(userId, role, next)` to populate the store.
+ *   - The `authenticate` middleware calls `runWithRequestContext(user.id, user.role, next)`
+ *     immediately before `next()`, binding the context to the full async chain of the request.
  *   - Service helpers call `getRequestContext()` to read the current user.
  */
 
@@ -23,7 +23,7 @@ const storage = new AsyncLocalStorage<RequestContext>();
 
 /**
  * Runs `fn` with the given user context bound to the current async chain.
- * Called by `rlsContext` middleware after authentication succeeds.
+ * Called by `authenticate` middleware after the user record is confirmed active.
  */
 export function runWithRequestContext<T>(
   userId: string | null,

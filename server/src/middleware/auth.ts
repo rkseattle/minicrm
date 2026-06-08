@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import type { JwtTokenPayload } from '../types/express.js';
 import { findUserById } from '../services/userService.js';
+import { runWithRequestContext } from '../utils/requestContext.js';
 
 /** Name of the cookie that holds the JWT */
 export const AUTH_COOKIE_NAME = 'minicrm_token';
@@ -121,5 +122,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     iat: decoded.iat,
     exp: decoded.exp,
   };
-  next();
+
+  // Bind the authenticated user's ID and role to the AsyncLocalStorage context
+  // so service-layer helpers (setRlsUserId, withRlsQuery) can read it without
+  // threading req.user through every function call. The context propagates to all
+  // async work spawned from next() — controllers, services, and their awaited calls.
+  runWithRequestContext(user.id, user.role, next);
 }
