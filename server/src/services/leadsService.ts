@@ -179,18 +179,20 @@ export async function createLead(
  * @returns The matching lead row, or null if not found
  */
 export async function findLeadByEmail(email: string, excludeId?: string): Promise<LeadRow | null> {
+  // Uses pool.query (superuser, bypasses RLS) so duplicate-email detection is
+  // global across all users — two reps cannot independently create leads with
+  // the same email address.
   if (excludeId) {
-    const result = await withRlsQuery((client) =>
-      client.query<LeadRow>(
-        'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
-        [email, excludeId],
-      ),
+    const result = await pool.query<LeadRow>(
+      'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
+      [email, excludeId],
     );
     return result.rows[0] ?? null;
   }
 
-  const result = await withRlsQuery((client) =>
-    client.query<LeadRow>('SELECT * FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]),
+  const result = await pool.query<LeadRow>(
+    'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [email],
   );
   return result.rows[0] ?? null;
 }

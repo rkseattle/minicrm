@@ -240,22 +240,33 @@ describe('MINCRM-248: pool exhaustion returns 503', () => {
     });
 
     // findUserById (inside authenticate) uses pool.query — mock it to return a valid user.
+    // findContactByEmail also uses pool.query (superuser, bypasses RLS) — return empty rows
+    // so it does not short-circuit with a 409 before pool.connect is attempted.
     // pool.connect is used by service layer functions (createContact, setRlsUserId, etc.) —
     // mock it to throw a connection-timeout error, simulating pool exhaustion.
-    const querySpy = vi.spyOn(pool, 'query').mockResolvedValue({
-      rows: [
-        {
-          id: ownerId,
-          email: 'pool-test@example.com',
-          name: 'Test',
-          role: 'rep',
-          status: 'active',
-          must_change_password: false,
-          password_changed_at: null,
-        },
-      ],
-      rowCount: 1,
-    } as unknown as Awaited<ReturnType<typeof pool.query>>);
+    const querySpy = vi.spyOn(pool, 'query').mockImplementation((sql: unknown) => {
+      const sqlStr = typeof sql === 'string' ? sql : ((sql as { text?: string }).text ?? '');
+      if (sqlStr.includes('FROM users')) {
+        return Promise.resolve({
+          rows: [
+            {
+              id: ownerId,
+              email: 'pool-test@example.com',
+              name: 'Test',
+              role: 'rep',
+              status: 'active',
+              must_change_password: false,
+              password_changed_at: null,
+            },
+          ],
+          rowCount: 1,
+        } as unknown as Awaited<ReturnType<typeof pool.query>>);
+      }
+      return Promise.resolve({
+        rows: [],
+        rowCount: 0,
+      } as unknown as Awaited<ReturnType<typeof pool.query>>);
+    });
 
     const connectSpy = vi
       .spyOn(pool, 'connect')

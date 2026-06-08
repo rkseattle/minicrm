@@ -230,6 +230,12 @@ The unversioned `encrypt` / `decrypt` functions in `cryptoService.ts` are kept f
 compatibility with `system_settings.file_storage_secret` (MINCRM-169); new secrets must use
 the versioned API.
 
+**SSO IdP certificate key-rotation limitation:** `sso_idp_certificate_encrypted` is stored in
+`system_settings`, which has no `key_version` column. It uses the legacy unversioned `encrypt`/`decrypt`
+and therefore cannot be re-encrypted by `npm run key-rotate`. Before removing an old key version,
+manually re-configure SSO (which re-encrypts the certificate under the current key) or delete the
+`sso_idp_certificate_encrypted` row and re-enter the certificate after rotation.
+
 ### 3. Ownership on PATCH / DELETE
 
 ```ts
