@@ -47,8 +47,8 @@ export function toPipelineResponse(row: PipelineRow): PipelineResponse {
  * Returns the UUID of the default pipeline. Throws if none exists (should never
  * happen after migration 056 seeds it).
  */
-export async function getDefaultPipelineId(): Promise<string> {
-  const result = await pool.query<{ id: string }>(
+export async function getDefaultPipelineId(db: typeof pool | PoolClient = pool): Promise<string> {
+  const result = await db.query<{ id: string }>(
     'SELECT id FROM pipelines WHERE is_default = true LIMIT 1',
   );
   const row = result.rows[0];

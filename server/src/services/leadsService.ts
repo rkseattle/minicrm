@@ -437,10 +437,11 @@ export async function convertLead(
       code: 'DISQUALIFIED',
     });
 
-  const defaultPipelineId = await getDefaultPipelineId();
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    const defaultPipelineId = await getDefaultPipelineId(client);
 
     // ── Account ──────────────────────────────────────────────────────────────
     let accountId: string;

@@ -891,8 +891,9 @@ describe('set_updated_at trigger — deals', () => {
     );
     const updatedAtBefore = before.rows[0].updated_at;
 
-    // A small sleep ensures clock_timestamp() advances past the inserted value.
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    // Sleep long enough for clock_timestamp() to advance past the inserted value.
+    // 50 ms keeps the test fast while comfortably exceeding OS timer resolution.
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     await updateDeal(
       deal.id,
