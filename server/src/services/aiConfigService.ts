@@ -39,6 +39,7 @@ interface AiConfigRow {
   enabled_updated_at: Date | null;
   dpa_acknowledged: boolean;
   dpa_acknowledged_by: string | null; // uuid stored as string by pg driver
+  dpa_acknowledged_by_name: string | null; // resolved via LEFT JOIN on users
   dpa_acknowledged_at: Date | null;
   dpa_acknowledged_for_provider: string;
   custom_dpa_url: string;
@@ -82,9 +83,14 @@ const PROVIDER_DPA_URLS: Record<AiProvider, string> = {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-/** Fetch the singleton ai_configuration row. Returns null if the table is empty. */
+/** Fetch the singleton ai_configuration row, with the acknowledging user's name resolved. */
 async function fetchAiRow(client?: PoolClient): Promise<AiConfigRow | null> {
-  const q = 'SELECT * FROM ai_configuration LIMIT 1';
+  const q = `
+    SELECT a.*, u.name AS dpa_acknowledged_by_name
+    FROM ai_configuration a
+    LEFT JOIN users u ON u.id = a.dpa_acknowledged_by
+    LIMIT 1
+  `;
   const result = client ? await client.query<AiConfigRow>(q) : await pool.query<AiConfigRow>(q);
   return result.rows[0] ?? null;
 }
@@ -126,29 +132,8 @@ function deriveDataPosture(mode: AiDeploymentMode, dpaStatus: AiDpaStatus): AiDa
   return 'amber';
 }
 
-/**
- * Resolves the display name of the user who acknowledged the DPA.
- * The dpa_acknowledged_by column stores a UUID; we look up the name for the
- * response shape which callers expect as a string.
- * Returns an empty string when no acknowledgment exists or the user was deleted.
- */
-async function resolveDpaAcknowledgedByName(
-  userId: string | null,
-  client?: PoolClient,
-): Promise<string> {
-  if (!userId) return '';
-  const q = 'SELECT name FROM users WHERE id = $1 LIMIT 1';
-  const result = client
-    ? await client.query<{ name: string }>(q, [userId])
-    : await pool.query<{ name: string }>(q, [userId]);
-  return result.rows[0]?.name ?? '';
-}
-
-/**
- * Builds the public AiConfigResponse from a raw row (or defaults when no row).
- * Resolves the dpa_acknowledged_by UUID to a display name.
- */
-async function buildResponse(row: AiConfigRow | null): Promise<AiConfigResponse> {
+/** Builds the public AiConfigResponse from a raw row (or defaults when no row). */
+function buildResponse(row: AiConfigRow | null): AiConfigResponse {
   const provider = parseProvider(row?.provider);
   const deploymentMode = parseDeploymentMode(row?.deployment_mode);
   const apiKeySet = (row?.api_key_encrypted ?? '').trim() !== '';
@@ -159,10 +144,6 @@ async function buildResponse(row: AiConfigRow | null): Promise<AiConfigResponse>
   const dpaStatus = deriveDpaStatus(dpaAcknowledged, dpaAcknowledgedForProvider, provider);
   const dataPosture = deriveDataPosture(deploymentMode, dpaStatus);
 
-  const dpaAcknowledgedByName = await resolveDpaAcknowledgedByName(
-    row?.dpa_acknowledged_by ?? null,
-  );
-
   return {
     enabled: row?.enabled ?? DEFAULTS.enabled,
     enabled_updated_at: row?.enabled_updated_at?.toISOString() ?? null,
@@ -172,7 +153,7 @@ async function buildResponse(row: AiConfigRow | null): Promise<AiConfigResponse>
     deployment_mode: deploymentMode,
     base_url: row?.base_url ?? DEFAULTS.baseUrl,
     dpa_acknowledged: dpaAcknowledged,
-    dpa_acknowledged_by: dpaAcknowledgedByName,
+    dpa_acknowledged_by: row?.dpa_acknowledged_by_name ?? '',
     dpa_acknowledged_at: row?.dpa_acknowledged_at?.toISOString() ?? null,
     dpa_acknowledged_for_provider: dpaAcknowledgedForProvider,
     custom_dpa_url: row?.custom_dpa_url ?? DEFAULTS.customDpaUrl,
@@ -189,8 +170,7 @@ async function buildResponse(row: AiConfigRow | null): Promise<AiConfigResponse>
  * Returns the full AI configuration (public shape — API key never included).
  */
 export async function getAiConfig(): Promise<AiConfigResponse> {
-  const row = await fetchAiRow();
-  return buildResponse(row);
+  return buildResponse(await fetchAiRow());
 }
 
 /**
@@ -214,13 +194,18 @@ export async function setAiConfig(
   params: SetAiConfigInput,
   actor: AuditActor,
 ): Promise<AiConfigResponse> {
-  const before = await getAiConfig();
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    if (params.provider !== before.provider) {
+    // Read raw row inside the transaction for accurate before-state comparisons.
+    // Using fetchAiRow (raw provider string) instead of getAiConfig (parsed/normalized)
+    // so provider-change detection fires on any string change, not just known providers.
+    const beforeRow = await fetchAiRow(client);
+    const beforeProvider = beforeRow?.provider ?? DEFAULTS.provider;
+    const beforeDpaAcknowledged = beforeRow?.dpa_acknowledged ?? DEFAULTS.dpaAcknowledged;
+
+    if (params.provider !== beforeProvider) {
       // Provider changed — DPA acknowledgment is no longer valid for the new provider.
       await client.query(
         `UPDATE ai_configuration SET
@@ -237,7 +222,7 @@ export async function setAiConfig(
         recordName: 'AI Configuration',
         eventType: 'updated',
         fieldName: 'dpa_acknowledged',
-        oldValue: String(before.dpa_acknowledged),
+        oldValue: String(beforeDpaAcknowledged),
         newValue: 'false',
         changedById: actor.id,
         changedByName: actor.name,
@@ -283,11 +268,23 @@ export async function setAiConfig(
     }
 
     const auditFields: Array<{ field: string; old: string; next: string }> = [
-      { field: 'provider', old: before.provider, next: params.provider },
-      { field: 'model', old: before.model, next: params.model },
-      { field: 'deployment_mode', old: before.deployment_mode, next: params.deployment_mode },
-      { field: 'base_url', old: before.base_url, next: params.base_url ?? '' },
-      { field: 'custom_dpa_url', old: before.custom_dpa_url, next: params.custom_dpa_url ?? '' },
+      { field: 'provider', old: beforeProvider, next: params.provider },
+      { field: 'model', old: beforeRow?.model ?? DEFAULTS.model, next: params.model },
+      {
+        field: 'deployment_mode',
+        old: beforeRow?.deployment_mode ?? DEFAULTS.deploymentMode,
+        next: params.deployment_mode,
+      },
+      {
+        field: 'base_url',
+        old: beforeRow?.base_url ?? DEFAULTS.baseUrl,
+        next: params.base_url ?? '',
+      },
+      {
+        field: 'custom_dpa_url',
+        old: beforeRow?.custom_dpa_url ?? DEFAULTS.customDpaUrl,
+        next: params.custom_dpa_url ?? '',
+      },
     ];
 
     if (encryptedKey !== null) {
@@ -385,6 +382,8 @@ export async function setAiDpaAcknowledgment(
   try {
     await client.query('BEGIN');
 
+    const customDpaUrl = params.custom_dpa_url ?? null;
+
     if (params.acknowledged) {
       await client.query(
         `UPDATE ai_configuration SET
@@ -392,9 +391,10 @@ export async function setAiDpaAcknowledgment(
            dpa_acknowledged_by = $1,
            dpa_acknowledged_at = now(),
            dpa_acknowledged_for_provider = provider,
+           custom_dpa_url = COALESCE($2, custom_dpa_url),
            updated_at = now(),
            updated_by = $1`,
-        [actor.id],
+        [actor.id, customDpaUrl],
       );
     } else {
       await client.query(
@@ -403,16 +403,10 @@ export async function setAiDpaAcknowledgment(
            dpa_acknowledged_by = NULL,
            dpa_acknowledged_at = NULL,
            dpa_acknowledged_for_provider = '',
+           custom_dpa_url = COALESCE($2, custom_dpa_url),
            updated_at = now(),
            updated_by = $1`,
-        [actor.id],
-      );
-    }
-
-    if (params.custom_dpa_url !== undefined) {
-      await client.query(
-        `UPDATE ai_configuration SET custom_dpa_url = $1, updated_at = now(), updated_by = $2`,
-        [params.custom_dpa_url, actor.id],
+        [actor.id, customDpaUrl],
       );
     }
 

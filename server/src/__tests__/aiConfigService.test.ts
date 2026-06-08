@@ -93,6 +93,24 @@ describe('getAiConfig', () => {
     expect(config.provider_dpa_url).toContain('anthropic.com');
   });
 
+  it('returns safe defaults when the singleton row is absent (null-row path)', async () => {
+    await pool.query('DELETE FROM ai_configuration');
+    const config = await getAiConfig();
+    expect(config.enabled).toBe(false);
+    expect(config.provider).toBe('anthropic');
+    expect(config.model).toBe('claude-sonnet-4-20250514');
+    expect(config.base_url).toBe('');
+    expect(config.custom_dpa_url).toBe('');
+    expect(config.dpa_acknowledged).toBe(false);
+    expect(config.dpa_acknowledged_by).toBe('');
+    expect(config.dpa_acknowledged_at).toBeNull();
+    expect(config.enabled_updated_at).toBeNull();
+    // Restore the singleton row for subsequent tests.
+    await pool.query(
+      'INSERT INTO ai_configuration (singleton) VALUES (TRUE) ON CONFLICT ON CONSTRAINT ai_configuration_singleton_unique DO NOTHING',
+    );
+  });
+
   it('reflects stored values', async () => {
     await pool.query(`UPDATE ai_configuration SET enabled = true, model = 'claude-opus-4-8'`);
     const config = await getAiConfig();
@@ -266,6 +284,35 @@ describe('setAiConfig', () => {
       ACTOR,
     );
     expect(unchanged.dpa_acknowledged).toBe(true);
+  });
+
+  it('resets DPA acknowledgment when provider changes', async () => {
+    // Pre-seed acknowledged DPA for a hypothetical 'other_provider'.
+    await pool.query(
+      `UPDATE ai_configuration SET
+         provider = 'other_provider',
+         dpa_acknowledged = true,
+         dpa_acknowledged_by = $1,
+         dpa_acknowledged_at = now(),
+         dpa_acknowledged_for_provider = 'other_provider'`,
+      [ACTOR.id],
+    );
+
+    // Switch to 'anthropic' — DPA acknowledgment must be cleared.
+    const changed = await setAiConfig(
+      {
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-20250514',
+        deployment_mode: 'cloud_api',
+        base_url: '',
+        custom_dpa_url: '',
+      },
+      ACTOR,
+    );
+    expect(changed.dpa_acknowledged).toBe(false);
+    expect(changed.dpa_acknowledged_by).toBe('');
+    expect(changed.dpa_acknowledged_at).toBeNull();
+    expect(changed.dpa_status).toBe('not_acknowledged');
   });
 
   it('writes an audit entry when the API key is rotated', async () => {

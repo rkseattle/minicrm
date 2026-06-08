@@ -152,4 +152,25 @@ describe('getSmtpConfigInternal', () => {
     const internal = await getSmtpConfigInternal();
     expect(internal.smtp_pass).toBeNull();
   });
+
+  it('returns safe defaults when the singleton row is absent', async () => {
+    // Temporarily remove the singleton row to cover the null-row branch.
+    await pool.query('DELETE FROM smtp_configuration');
+    const config = await getSmtpConfig();
+    expect(config.smtp_host).toBe('');
+    expect(config.smtp_port).toBe(587);
+    expect(config.smtp_user).toBe('');
+    expect(config.smtp_pass_set).toBe(false);
+    expect(config.smtp_enabled).toBe(false);
+
+    const internal = await getSmtpConfigInternal();
+    expect(internal.smtp_host).toBe('');
+    expect(internal.smtp_port).toBe(587);
+    expect(internal.smtp_pass).toBeNull();
+
+    // Restore the singleton row so other tests are unaffected.
+    await pool.query(
+      'INSERT INTO smtp_configuration (singleton) VALUES (TRUE) ON CONFLICT ON CONSTRAINT smtp_configuration_singleton_unique DO NOTHING',
+    );
+  });
 });

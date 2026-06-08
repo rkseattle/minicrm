@@ -1048,7 +1048,7 @@ jobs:
     # MINCRM-293: run whenever any test suite ran, regardless of which paths changed.
     # always() is required: without it GitHub skips this job when e2e-framework-specs is
     # skipped (qa paths unchanged), before the if condition is even evaluated.
-    if: always() && (needs.server-tests.result == 'success' || needs.client-tests.result == 'success' || needs.e2e-framework-specs.result == 'success') && github.event_name == 'pull_request'
+    if: always() && (contains(fromJson('["success","failure"]'), needs.server-tests.result) || contains(fromJson('["success","failure"]'), needs.client-tests.result) || contains(fromJson('["success","failure"]'), needs.e2e-framework-specs.result)) && github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
