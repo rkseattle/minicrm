@@ -131,6 +131,11 @@ const SERIAL_FILES = [
   // exercise the null-row defaults branch; any concurrent reader sees an empty table
   // during the DELETE → re-INSERT window. (MINCRM-502)
   'src/__tests__/smtpSettingsService.test.ts',
+  // rlsEnforcement creates/tears down a `minicrm_app` connection pool and inserts
+  // fixture rows into RLS-protected tables. Running it in serial prevents races
+  // between its cleanup queries and concurrent tests that also create contacts/deals/etc.
+  // (MINCRM-518)
+  'src/__tests__/rlsEnforcement.test.ts',
 ];
 
 const sharedResolve = {

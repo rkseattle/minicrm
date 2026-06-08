@@ -14,6 +14,7 @@ import { fireAutomationTrigger } from './automationService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
+import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -142,6 +143,7 @@ export async function createContact(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const result = await client.query<ContactRow>(
       `INSERT INTO contacts (
@@ -225,16 +227,19 @@ export async function findContactByEmail(
   excludeId?: string,
 ): Promise<ContactRow | null> {
   if (excludeId) {
-    const result = await pool.query<ContactRow>(
-      'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
-      [email, excludeId],
+    const result = await withRlsQuery((client) =>
+      client.query<ContactRow>(
+        'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
+        [email, excludeId],
+      ),
     );
     return result.rows[0] ?? null;
   }
 
-  const result = await pool.query<ContactRow>(
-    'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) LIMIT 1',
-    [email],
+  const result = await withRlsQuery((client) =>
+    client.query<ContactRow>('SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) LIMIT 1', [
+      email,
+    ]),
   );
   return result.rows[0] ?? null;
 }
@@ -246,7 +251,9 @@ export async function findContactByEmail(
  * @returns The contact row, or null if not found
  */
 export async function findContactById(id: string): Promise<ContactRow | null> {
-  const result = await pool.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 LIMIT 1', [id]);
+  const result = await withRlsQuery((client) =>
+    client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 LIMIT 1', [id]),
+  );
 
   return result.rows[0] ?? null;
 }
@@ -325,13 +332,17 @@ export async function listContacts(
 
   // Run count and data queries in parallel (MINCRM-68)
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM contacts c ${needsAccountJoin ? 'LEFT JOIN accounts a ON c.account_id = a.id' : ''} ${whereClause}`,
-      values,
+    withRlsQuery((client) =>
+      client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM contacts c ${needsAccountJoin ? 'LEFT JOIN accounts a ON c.account_id = a.id' : ''} ${whereClause}`,
+        values,
+      ),
     ),
-    pool.query<ContactRow>(
-      `SELECT c.*, ${tagsSubquery} ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      [...values, limit, offset],
+    withRlsQuery((client) =>
+      client.query<ContactRow>(
+        `SELECT c.*, ${tagsSubquery} ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
     ),
   ]);
 
@@ -375,6 +386,7 @@ export async function updateContact(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const result = await client.query<ContactRow>(
       `UPDATE contacts
@@ -533,8 +545,9 @@ export async function exportContactsForCsv(
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const result = await pool.query<ContactExportRow>(
-    `SELECT
+  const result = await withRlsQuery((client) =>
+    client.query<ContactExportRow>(
+      `SELECT
        c.id,
        c.first_name,
        c.last_name,
@@ -560,7 +573,8 @@ export async function exportContactsForCsv(
      JOIN users u ON c.owner_id = u.id
      ${whereClause}
      ORDER BY c.last_name ASC, c.first_name ASC`,
-    values,
+      values,
+    ),
   );
 
   return result.rows;
@@ -582,6 +596,7 @@ export async function deleteContact(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',
@@ -709,6 +724,7 @@ export async function mergeContacts(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     // Fetch both contacts sequentially — a single pg client cannot run concurrent queries
     const winnerResult = await client.query<ContactRow>(
@@ -876,6 +892,7 @@ export async function addContactAddress(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     if (input.is_default) {
       await client.query(
@@ -929,6 +946,7 @@ export async function updateContactAddress(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     if (input.is_default) {
       await client.query(
@@ -992,6 +1010,7 @@ export async function setDefaultContactAddress(
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+    await setRlsUserId(client);
 
     await client.query(
       'UPDATE contact_addresses SET is_default = false, updated_at = now() WHERE contact_id = $1',

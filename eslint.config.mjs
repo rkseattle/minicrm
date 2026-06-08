@@ -127,6 +127,11 @@ const serverConfig = {
   plugins: {
     n: nodePlugin,
   },
+  settings: {
+    // AsyncLocalStorage graduated from experimental in Node 16.4.0.
+    // Declare the floor version so the n plugin does not incorrectly flag it.
+    n: { version: '>=18.0.0' },
+  },
   rules: {
     ...nodePlugin.configs['flat/recommended-module'].rules,
     // Allow TypeScript import extensions — tsx resolves them at runtime
