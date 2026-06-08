@@ -705,6 +705,11 @@ A column comment (migration 083) documents the valid values for DBA inspection.
 - **`BreakpointContext` is the single source of responsive state (MINCRM-238).** All
   components read breakpoints via `useBreakpoint()` — never call `window.matchMedia`
   directly in a component (creates duplicate subscriptions that break in jsdom).
+- **Custom fields (EAV) have a documented query ceiling (ADR-002, MINCRM-524).** Type-aware
+  filtering (`CAST(value AS numeric)`), cross-field queries (self-joins on
+  `custom_field_values`), and custom-field sorting cannot use B-tree indexes and are O(n)
+  at scale. Any code generating SQL on custom fields — especially the AI query layer
+  (MINCRM-419) — must read ADR-002 before implementation.
 
 ---
 
