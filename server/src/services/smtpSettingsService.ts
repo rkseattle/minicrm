@@ -8,7 +8,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
-import { encrypt, decrypt } from './cryptoService.js';
+import { encryptVersioned, decryptVersioned } from './cryptoService.js';
 
 // ── Row type ──────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,7 @@ interface SmtpConfigRow {
   port: number;
   username: string;
   pass_encrypted: string;
+  pass_key_version: number;
   enabled: boolean;
 }
 
@@ -55,7 +56,8 @@ export interface SmtpConfigInput {
 
 /** Fetch the singleton smtp_configuration row. */
 async function fetchSmtpRow(client?: PoolClient): Promise<SmtpConfigRow | null> {
-  const q = 'SELECT host, port, username, pass_encrypted, enabled FROM smtp_configuration LIMIT 1';
+  const q =
+    'SELECT host, port, username, pass_encrypted, pass_key_version, enabled FROM smtp_configuration LIMIT 1';
   const result = client ? await client.query<SmtpConfigRow>(q) : await pool.query<SmtpConfigRow>(q);
   return result.rows[0] ?? null;
 }
@@ -88,7 +90,7 @@ export async function getSmtpConfigInternal(): Promise<SmtpConfigInternal> {
   const ciphertext = row?.pass_encrypted ?? '';
   if (ciphertext) {
     try {
-      smtp_pass = decrypt(ciphertext);
+      smtp_pass = decryptVersioned(ciphertext, row?.pass_key_version ?? 1);
     } catch (err) {
       logger.error(
         { err },
@@ -119,13 +121,20 @@ export async function setSmtpConfig(input: SmtpConfigInput): Promise<SmtpConfigP
     await client.query('BEGIN');
 
     if (input.smtp_pass !== undefined) {
-      const encrypted = encrypt(input.smtp_pass);
+      const versionedPass = encryptVersioned(input.smtp_pass);
       await client.query(
         `UPDATE smtp_configuration SET
            host = $1, port = $2, username = $3,
-           pass_encrypted = $4, enabled = $5,
+           pass_encrypted = $4, pass_key_version = $5, enabled = $6,
            updated_at = now()`,
-        [input.smtp_host, input.smtp_port, input.smtp_user, encrypted, input.smtp_enabled],
+        [
+          input.smtp_host,
+          input.smtp_port,
+          input.smtp_user,
+          versionedPass.ciphertext,
+          versionedPass.keyVersion,
+          input.smtp_enabled,
+        ],
       );
     } else {
       await client.query(

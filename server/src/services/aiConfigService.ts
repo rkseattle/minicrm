@@ -9,7 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
-import { encrypt, decrypt } from './cryptoService.js';
+import { encryptVersioned, decryptVersioned } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import type {
@@ -33,6 +33,7 @@ interface AiConfigRow {
   provider: string;
   model: string;
   api_key_encrypted: string;
+  api_key_key_version: number;
   deployment_mode: string;
   base_url: string;
   enabled: boolean;
@@ -230,23 +231,26 @@ export async function setAiConfig(
     }
 
     // Build the SET clause for the main config fields.
-    const encryptedKey =
-      params.api_key !== undefined && params.api_key !== '' ? encrypt(params.api_key) : null;
+    const versionedKey =
+      params.api_key !== undefined && params.api_key !== ''
+        ? encryptVersioned(params.api_key)
+        : null;
 
-    if (encryptedKey !== null) {
+    if (versionedKey !== null) {
       await client.query(
         `UPDATE ai_configuration SET
            provider = $1, model = $2, deployment_mode = $3,
            base_url = $4, custom_dpa_url = $5,
-           api_key_encrypted = $6,
-           updated_at = now(), updated_by = $7`,
+           api_key_encrypted = $6, api_key_key_version = $7,
+           updated_at = now(), updated_by = $8`,
         [
           params.provider,
           params.model,
           params.deployment_mode,
           params.base_url ?? '',
           params.custom_dpa_url ?? '',
-          encryptedKey,
+          versionedKey.ciphertext,
+          versionedKey.keyVersion,
           actor.id,
         ],
       );
@@ -287,7 +291,7 @@ export async function setAiConfig(
       },
     ];
 
-    if (encryptedKey !== null) {
+    if (versionedKey !== null) {
       // Never log API key values — record that a change occurred only.
       // Use distinct sentinel strings so the oldVal !== newVal guard fires.
       auditFields.push({ field: 'api_key', old: '[previous]', next: '[redacted]' });
@@ -445,15 +449,16 @@ export async function testAiConnection(
   if (params.api_key && params.api_key.trim() !== '') {
     apiKey = params.api_key;
   } else {
-    const result = await pool.query<{ api_key_encrypted: string }>(
-      'SELECT api_key_encrypted FROM ai_configuration LIMIT 1',
-    );
+    const result = await pool.query<{
+      api_key_encrypted: string;
+      api_key_key_version: number;
+    }>('SELECT api_key_encrypted, api_key_key_version FROM ai_configuration LIMIT 1');
     const stored = result.rows[0]?.api_key_encrypted ?? '';
     if (stored.trim() === '') {
       return { ok: false, message: 'No API key configured. Enter an API key to test.' };
     }
     try {
-      apiKey = decrypt(stored);
+      apiKey = decryptVersioned(stored, result.rows[0].api_key_key_version ?? 1);
     } catch {
       return { ok: false, message: 'Stored API key is corrupted. Please re-enter it.' };
     }
