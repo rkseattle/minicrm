@@ -151,8 +151,15 @@ exports.up = (pgm) => {
   // from all RLS policies; this role allows tests to verify that policies actually
   // block cross-user access as intended.
   //
+  // The hardcoded password 'minicrm_app' is intentional and not a security concern:
+  // this role has no access to production systems — it exists solely so the test suite
+  // can connect to the test database as a non-superuser to verify RLS policy evaluation.
+  // It has no privileges beyond SELECT/INSERT/UPDATE/DELETE on the five RLS-protected
+  // tables in the test database. Do not use this role or its credential in production.
+  //
   // In production, the application could optionally connect as `minicrm_app` instead
-  // of `minicrm` to enforce the principle of least privilege.
+  // of `minicrm` to enforce the principle of least privilege (with a secret credential
+  // injected at deploy time, not from this migration).
   pgm.sql(`
     DO $$
     BEGIN

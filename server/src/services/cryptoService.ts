@@ -80,7 +80,7 @@ function getCurrentKeyVersion(): number {
   const raw = process.env.CURRENT_ENCRYPTION_KEY_VERSION;
   if (!raw) return 1;
   const version = parseInt(raw, 10);
-  if (!Number.isInteger(version) || version < 1) {
+  if (!Number.isInteger(version) || version < 1 || String(version) !== raw.trim()) {
     throw new Error(`CURRENT_ENCRYPTION_KEY_VERSION must be a positive integer, got '${raw}'`);
   }
   return version;

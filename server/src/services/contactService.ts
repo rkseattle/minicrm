@@ -226,20 +226,20 @@ export async function findContactByEmail(
   email: string,
   excludeId?: string,
 ): Promise<ContactRow | null> {
+  // Uses pool.query (superuser, bypasses RLS) so duplicate-email detection is
+  // global across all users — two reps cannot independently create contacts
+  // with the same email address.
   if (excludeId) {
-    const result = await withRlsQuery((client) =>
-      client.query<ContactRow>(
-        'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
-        [email, excludeId],
-      ),
+    const result = await pool.query<ContactRow>(
+      'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) AND id != $2 LIMIT 1',
+      [email, excludeId],
     );
     return result.rows[0] ?? null;
   }
 
-  const result = await withRlsQuery((client) =>
-    client.query<ContactRow>('SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) LIMIT 1', [
-      email,
-    ]),
+  const result = await pool.query<ContactRow>(
+    'SELECT * FROM contacts WHERE LOWER(email) = LOWER($1) LIMIT 1',
+    [email],
   );
   return result.rows[0] ?? null;
 }
