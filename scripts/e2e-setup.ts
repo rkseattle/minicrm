@@ -219,12 +219,12 @@ function seedStorageConfig(): void {
   console.log('[e2e:setup] Storage config seeded.');
 }
 
-// ── Step 6: Seed Mailhog SMTP config into system_settings ─────────────────────
+// ── Step 6: Seed Mailhog SMTP config into smtp_configuration ──────────────────
 // MINCRM-306: Configures the E2E server to send transactional email to Mailhog
 // on port 1025. E2E tests can then assert on delivery via the Mailhog HTTP API.
 
 function seedSmtpConfig(): void {
-  console.log('[e2e:setup] Seeding Mailhog SMTP config into system_settings...');
+  console.log('[e2e:setup] Seeding Mailhog SMTP config into smtp_configuration...');
 
   const dbUser = process.env.DB_USER ?? 'minicrm';
   const dbPassword = process.env.DB_PASSWORD ?? 'password';
