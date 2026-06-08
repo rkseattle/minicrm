@@ -30,12 +30,8 @@ const CONTACT_PII_FIELDS = [
   'phone',
   'title',
   'department',
-  'address_line1',
-  'address_line2',
-  'city',
-  'state_region',
-  'postal_code',
-  'country',
+  // Address rows are deleted from contact_addresses table (MINCRM-500)
+  'contact_addresses',
   'linkedin_url',
   'twitter_x_url',
   'other_url',
@@ -177,7 +173,7 @@ export async function eraseContact(
       [id, actor.id, CONTACT_PII_FIELDS as unknown as string[], notes ?? null],
     );
 
-    // Step 4 — overwrite PII fields on the contacts row
+    // Step 4 — overwrite PII fields on the contacts row.
     // Email is replaced with a synthetic address that is still a valid email shape
     // to avoid breaking NOT NULL or format constraints.
     await client.query(
@@ -188,12 +184,6 @@ export async function eraseContact(
          phone = NULL,
          title = NULL,
          department = NULL,
-         address_line1 = NULL,
-         address_line2 = NULL,
-         city = NULL,
-         state_region = NULL,
-         postal_code = NULL,
-         country = NULL,
          linkedin_url = NULL,
          twitter_x_url = NULL,
          other_url = NULL
@@ -201,20 +191,23 @@ export async function eraseContact(
       [id],
     );
 
-    // Step 5 — scrub subject and notes on linked activities
+    // Step 5 — delete all contact_addresses rows (address data is PII). (MINCRM-500)
+    await client.query(`DELETE FROM contact_addresses WHERE contact_id = $1`, [id]);
+
+    // Step 6 — scrub subject and notes on linked activities
     await client.query(
       `UPDATE activities SET subject = '[GDPR deleted]', notes = NULL WHERE contact_id = $1`,
       [id],
     );
 
-    // Step 6 — scrub linked notes (only non-deleted rows)
+    // Step 7 — scrub linked notes (only non-deleted rows)
     await client.query(
       `UPDATE notes SET title = NULL, body = '[GDPR deleted]', body_text = '[GDPR deleted]'
        WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NULL`,
       [id],
     );
 
-    // Step 7 — delete custom field values for this contact.
+    // Step 8 — delete custom field values for this contact.
     // custom_field_values has no record_type column; entity_type lives on the definition.
     // The JOIN ensures only contact-scoped values are removed.
     await client.query(
@@ -226,7 +219,7 @@ export async function eraseContact(
       [id],
     );
 
-    // Step 8 — mark the log row as completed
+    // Step 9 — mark the log row as completed
     const logResult = await client.query<GdprDeletionLogRow>(
       `UPDATE gdpr_deletion_log SET completed_at = now()
        WHERE record_type = 'contact' AND record_id = $1
@@ -235,7 +228,7 @@ export async function eraseContact(
     );
     const logRow = logResult.rows[0];
 
-    // Step 9 — audit entry in the same transaction
+    // Step 10 — audit entry in the same transaction
     await writeAuditEntry(client, {
       recordType: 'contact',
       recordId: id,

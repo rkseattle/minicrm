@@ -808,7 +808,7 @@ describe('exportContactsForCsv', () => {
 // ── createContact — address and social fields ───────────────────────────────────
 
 describe('createContact — address and social fields', () => {
-  it('stores address fields when provided', async () => {
+  it('creates a default contact_addresses row when address fields are provided', async () => {
     const contact = await createContact({
       ...makeContact(),
       owner_id: ownerId,
@@ -820,15 +820,19 @@ describe('createContact — address and social fields', () => {
       country: 'US',
     });
 
-    expect(contact.address_line1).toBe('100 Oak Ave');
-    expect(contact.address_line2).toBe('Suite 200');
-    expect(contact.city).toBe('Portland');
-    expect(contact.state_region).toBe('OR');
-    expect(contact.postal_code).toBe('97201');
-    expect(contact.country).toBe('US');
+    const addresses = await listContactAddresses(contact.id);
+    expect(addresses).toHaveLength(1);
+    const addr = addresses[0];
+    expect(addr.address_line1).toBe('100 Oak Ave');
+    expect(addr.address_line2).toBe('Suite 200');
+    expect(addr.city).toBe('Portland');
+    expect(addr.state_region).toBe('OR');
+    expect(addr.postal_code).toBe('97201');
+    expect(addr.country).toBe('US');
+    expect(addr.is_default).toBe(true);
   });
 
-  it('stores null for address fields when omitted', async () => {
+  it('creates no contact_addresses row when no address fields are provided', async () => {
     const contact = await createContact({
       first_name: 'No',
       last_name: 'Address',
@@ -836,9 +840,8 @@ describe('createContact — address and social fields', () => {
       owner_id: ownerId,
     });
 
-    expect(contact.address_line1).toBeNull();
-    expect(contact.city).toBeNull();
-    expect(contact.country).toBeNull();
+    const addresses = await listContactAddresses(contact.id);
+    expect(addresses).toHaveLength(0);
   });
 
   it('stores linkedin_url and twitter_x_url when provided', async () => {
@@ -868,17 +871,18 @@ describe('createContact — address and social fields', () => {
 // ── updateContact — address and social fields ───────────────────────────────────
 
 describe('updateContact — address and social fields', () => {
-  it('updates city and country', async () => {
+  it('does not accept address fields on contacts update (address goes through contact_addresses)', async () => {
+    // Address fields were removed from ALLOWED_UPDATE_FIELDS in MINCRM-500.
+    // Verify that passing them in an update payload does not blow up and that the
+    // contact row itself still lacks address columns.
     const contact = await createContact({ ...makeContact(), owner_id: ownerId });
     const updated = await updateContact(contact.id, {
-      city: 'Seattle',
-      country: 'US',
+      linkedin_url: 'https://linkedin.com/in/update-test',
       version: contact.version,
     });
-    expect(updated!.city).toBe('Seattle');
-    expect(updated!.country).toBe('US');
     // Other fields intact
     expect(updated!.first_name).toBe('Alice');
+    expect(updated!.linkedin_url).toBe('https://linkedin.com/in/update-test');
   });
 
   it('updates linkedin_url', async () => {
@@ -1060,35 +1064,51 @@ describe('mergeContacts', () => {
     await pool.query('DELETE FROM deals WHERE id = $1', [dealId]);
   });
 
-  it('uses loser address and social field values when fieldChoices specifies loser', async () => {
+  it('re-links loser contact_addresses to winner and respects social field choices', async () => {
+    // Address fields are no longer merged by field-choice — both contacts' address rows
+    // are re-linked to the winner. Social fields still support field-level choices. (MINCRM-500)
     const winner = await createContact({
       ...makeContact(),
       owner_id: ownerId,
-      address_line1: 'Winner Street 1',
-      city: 'Winner City',
       linkedin_url: 'https://linkedin.com/in/winner',
     });
     const loser = await createContact({
       ...makeContact(),
       owner_id: ownerId,
+      linkedin_url: 'https://linkedin.com/in/loser',
+    });
+
+    // Give winner and loser each a distinct address
+    await addContactAddress(winner.id, {
+      address_line1: 'Winner Street 1',
+      city: 'Winner City',
+      is_default: true,
+    });
+    await addContactAddress(loser.id, {
       address_line1: 'Loser Avenue 2',
       city: 'Loser City',
-      linkedin_url: 'https://linkedin.com/in/loser',
+      is_default: true,
     });
 
     await mergeContacts(
       {
         winnerId: winner.id,
         loserId: loser.id,
-        fieldChoices: { address_line1: 'loser', city: 'loser', linkedin_url: 'loser' },
+        fieldChoices: { linkedin_url: 'loser' },
       },
       getActor(),
     );
 
+    // Winner's linkedin_url comes from the loser per fieldChoices
     const updated = await findContactById(winner.id);
-    expect(updated!.address_line1).toBe('Loser Avenue 2');
-    expect(updated!.city).toBe('Loser City');
     expect(updated!.linkedin_url).toBe('https://linkedin.com/in/loser');
+
+    // Both address rows now belong to the winner; loser's row was demoted from is_default
+    const addresses = await listContactAddresses(winner.id);
+    expect(addresses).toHaveLength(2);
+    const defaultAddrs = addresses.filter((a) => a.is_default);
+    expect(defaultAddrs).toHaveLength(1);
+    expect(defaultAddrs[0].address_line1).toBe('Winner Street 1');
   });
 });
 

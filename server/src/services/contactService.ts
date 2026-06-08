@@ -28,13 +28,6 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateContactInput> = new Set([
   'department',
   'account_id',
   'owner_id',
-  // Address fields (MINCRM-182)
-  'address_line1',
-  'address_line2',
-  'city',
-  'state_region',
-  'postal_code',
-  'country',
   // Social profile URLs (MINCRM-190)
   'linkedin_url',
   'twitter_x_url',
@@ -58,13 +51,6 @@ export interface ContactRow {
   department: string | null;
   account_id: string | null;
   owner_id: string;
-  // Address fields (MINCRM-182)
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state_region: string | null;
-  postal_code: string | null;
-  country: string | null;
   // Social profile URLs (MINCRM-190)
   linkedin_url: string | null;
   twitter_x_url: string | null;
@@ -129,6 +115,7 @@ export async function createContact(
     department,
     account_id,
     owner_id,
+    // Address fields are written to contact_addresses, not contacts (MINCRM-500)
     address_line1,
     address_line2,
     city,
@@ -148,10 +135,9 @@ export async function createContact(
     const result = await client.query<ContactRow>(
       `INSERT INTO contacts (
          first_name, last_name, email, phone, title, department, account_id, owner_id,
-         address_line1, address_line2, city, state_region, postal_code, country,
          linkedin_url, twitter_x_url, other_url
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         first_name,
@@ -162,12 +148,6 @@ export async function createContact(
         department ?? null,
         account_id ?? null,
         owner_id,
-        address_line1 ?? null,
-        address_line2 ?? null,
-        city ?? null,
-        state_region ?? null,
-        postal_code ?? null,
-        country ?? null,
         linkedin_url ?? null,
         twitter_x_url ?? null,
         other_url ?? null,
@@ -175,6 +155,27 @@ export async function createContact(
     );
 
     const contact = result.rows[0];
+
+    // If any address field was supplied, create a default contact_addresses row
+    // in the same transaction. (MINCRM-500)
+    const hasAddress =
+      address_line1 || address_line2 || city || state_region || postal_code || country;
+    if (hasAddress) {
+      await client.query(
+        `INSERT INTO contact_addresses
+           (contact_id, label, address_line1, address_line2, city, state_region, postal_code, country, is_default)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, true)`,
+        [
+          contact.id,
+          address_line1 ?? null,
+          address_line2 ?? null,
+          city ?? null,
+          state_region ?? null,
+          postal_code ?? null,
+          country ?? null,
+        ],
+      );
+    }
 
     // Audit: record created (MINCRM-170)
     await writeAuditEntry(client, {
@@ -475,7 +476,7 @@ export interface ContactExportRow {
   phone: string | null;
   title: string | null;
   department: string | null;
-  // Address fields (MINCRM-182)
+  // Address fields sourced from the default contact_addresses row (MINCRM-500)
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -555,12 +556,12 @@ export async function exportContactsForCsv(
        c.phone,
        c.title,
        c.department,
-       c.address_line1,
-       c.address_line2,
-       c.city,
-       c.state_region,
-       c.postal_code,
-       c.country,
+       ca.address_line1,
+       ca.address_line2,
+       ca.city,
+       ca.state_region,
+       ca.postal_code,
+       ca.country,
        c.linkedin_url,
        c.twitter_x_url,
        c.other_url,
@@ -571,6 +572,7 @@ export async function exportContactsForCsv(
      FROM contacts c
      LEFT JOIN accounts a ON c.account_id = a.id
      JOIN users u ON c.owner_id = u.id
+     LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true
      ${whereClause}
      ORDER BY c.last_name ASC, c.first_name ASC`,
       values,
@@ -650,6 +652,8 @@ export interface MergeContactsInput {
   /**
    * Per-field winner source — 'winner' keeps the current winner value, 'loser' takes the loser value.
    * Fields omitted here default to keeping the winner's current value.
+   * Address fields are not merged by field-choice; the loser's contact_addresses rows are
+   * re-linked to the winner so both address histories are preserved. (MINCRM-500)
    */
   fieldChoices: Partial<
     Record<
@@ -660,12 +664,6 @@ export interface MergeContactsInput {
       | 'title'
       | 'department'
       | 'account_id'
-      | 'address_line1'
-      | 'address_line2'
-      | 'city'
-      | 'state_region'
-      | 'postal_code'
-      | 'country'
       | 'linkedin_url'
       | 'twitter_x_url'
       | 'other_url',
@@ -683,12 +681,6 @@ const MERGEABLE_FIELDS = [
   'title',
   'department',
   'account_id',
-  'address_line1',
-  'address_line2',
-  'city',
-  'state_region',
-  'postal_code',
-  'country',
   'linkedin_url',
   'twitter_x_url',
   'other_url',
@@ -786,6 +778,26 @@ export async function mergeContacts(
       [winnerId, loserId],
     );
     await client.query('DELETE FROM deal_contacts WHERE contact_id = $1', [loserId]);
+
+    // Re-link loser's contact_addresses to the winner (step 4a).
+    // If the loser's row is marked is_default and the winner already has a default,
+    // demote the loser's row so the unique partial index is not violated. (MINCRM-500)
+    const winnerHasDefault = await client.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM contact_addresses WHERE contact_id = $1 AND is_default = true
+       ) AS exists`,
+      [winnerId],
+    );
+    if (winnerHasDefault.rows[0].exists) {
+      await client.query(
+        `UPDATE contact_addresses SET is_default = false WHERE contact_id = $1 AND is_default = true`,
+        [loserId],
+      );
+    }
+    await client.query(`UPDATE contact_addresses SET contact_id = $1 WHERE contact_id = $2`, [
+      winnerId,
+      loserId,
+    ]);
 
     // Fetch the final winner state before deleting the loser
     const updatedWinnerResult = await client.query<ContactRow>(

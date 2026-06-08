@@ -546,18 +546,23 @@ describe('globalSearch — contacts expanded fields (MINCRM-207)', () => {
     expect(results.contacts.some((c) => c.id === contact.id)).toBe(true);
   });
 
-  it('does not duplicate a contact that matches in both inline city and contact_addresses city', async () => {
+  it('does not duplicate a contact that matches via multiple contact_addresses rows', async () => {
+    // Both address rows for the same contact match the query — DISTINCT ensures one result. (MINCRM-500)
     const contact = await createContact({
       first_name: 'NoDup',
       last_name: 'CityTest',
       email: 'nodupCity@example.com',
-      city: 'SharedCityValue',
       owner_id: adminId,
     });
 
     await pool.query(
       `INSERT INTO contact_addresses (contact_id, label, city, is_default)
-       VALUES ($1, 'Work', 'SharedCityValue', true)`,
+       VALUES ($1, 'Home', 'SharedCityValue', true)`,
+      [contact.id],
+    );
+    await pool.query(
+      `INSERT INTO contact_addresses (contact_id, label, city, is_default)
+       VALUES ($1, 'Work', 'SharedCityValue', false)`,
       [contact.id],
     );
 

@@ -27,7 +27,7 @@ export const createContactSchema = z.object({
   title: z.string().trim().optional(),
   department: z.string().trim().optional(),
   account_id: z.string().uuid('Account ID must be a valid UUID').nullable().optional(),
-  // Address fields (MINCRM-182)
+  // Address fields — accepted on create and forwarded to contact_addresses (MINCRM-500)
   address_line1: z.string().trim().optional(),
   address_line2: z.string().trim().optional(),
   city: z.string().trim().optional(),
@@ -85,6 +85,18 @@ export const updateContactSchema = createContactSchema
 /**
  * Schema for the safe contact response shape returned to API consumers.
  */
+/** Address shape embedded in contact responses (sourced from contact_addresses, MINCRM-500) */
+export const contactDefaultAddressSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().nullable(),
+  address_line1: z.string().nullable(),
+  address_line2: z.string().nullable(),
+  city: z.string().nullable(),
+  state_region: z.string().nullable(),
+  postal_code: z.string().nullable(),
+  country: z.string().nullable(),
+});
+
 export const contactResponseSchema = z.object({
   id: z.string().uuid(),
   first_name: z.string(),
@@ -97,13 +109,8 @@ export const contactResponseSchema = z.object({
   owner_id: z.string().uuid(),
   /** Set when the contact was created via lead conversion (MINCRM-175) */
   source_lead_id: z.string().uuid().nullable().optional(),
-  // Address fields (MINCRM-182)
-  address_line1: z.string().nullable(),
-  address_line2: z.string().nullable(),
-  city: z.string().nullable(),
-  state_region: z.string().nullable(),
-  postal_code: z.string().nullable(),
-  country: z.string().nullable(),
+  /** Default address from contact_addresses — null when no default row exists (MINCRM-500) */
+  default_address: contactDefaultAddressSchema.nullable().optional(),
   // Social profile URLs (MINCRM-190)
   linkedin_url: z.string().nullable(),
   twitter_x_url: z.string().nullable(),
@@ -125,3 +132,4 @@ export const contactResponseEnvelopeSchema = z.object({ contact: contactResponse
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type UpdateContactInput = z.infer<typeof updateContactSchema>;
 export type ContactResponse = z.infer<typeof contactResponseSchema>;
+export type ContactDefaultAddress = z.infer<typeof contactDefaultAddressSchema>;
