@@ -174,7 +174,11 @@ export interface MergeContactsParams {
   winnerId: string;
   /** UUID of the contact to merge from (will be deleted) */
   loserId: string;
-  /** For each field, which contact's value to keep */
+  /**
+   * For each field, which contact's value to keep.
+   * Address fields are not merged by field-choice — the loser's contact_addresses rows
+   * are re-linked to the winner so both address histories are preserved. (MINCRM-500)
+   */
   fieldChoices: Partial<
     Record<
       | 'first_name'
@@ -184,12 +188,6 @@ export interface MergeContactsParams {
       | 'title'
       | 'department'
       | 'account_id'
-      | 'address_line1'
-      | 'address_line2'
-      | 'city'
-      | 'state_region'
-      | 'postal_code'
-      | 'country'
       | 'linkedin_url'
       | 'twitter_x_url'
       | 'other_url',

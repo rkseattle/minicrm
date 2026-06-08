@@ -58,7 +58,7 @@ import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 /**
  * Single contact detail page with view/edit/delete.
  */
-/** Field names available for merge comparison */
+/** Field names available for merge comparison (address fields excluded — addresses are re-linked, MINCRM-500) */
 type MergeableField =
   | 'first_name'
   | 'last_name'
@@ -67,12 +67,6 @@ type MergeableField =
   | 'title'
   | 'department'
   | 'account_id'
-  | 'address_line1'
-  | 'address_line2'
-  | 'city'
-  | 'state_region'
-  | 'postal_code'
-  | 'country'
   | 'linkedin_url'
   | 'twitter_x_url'
   | 'other_url';
@@ -893,69 +887,6 @@ export default function ContactDetailPage() {
         {!isEditing && id && (
           <CustomFieldsSection entityType="contact" recordId={id} isEditing={false} />
         )}
-
-        {/* Address section — shown when at least one field is populated (MINCRM-182) */}
-        {!isEditing &&
-          (contact.address_line1 ||
-            contact.address_line2 ||
-            contact.city ||
-            contact.state_region ||
-            contact.postal_code ||
-            contact.country) && (
-            <div
-              className="mt-6 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
-              data-testid="contact-address-section"
-            >
-              <div className="px-6 py-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {t('contacts.addressSection')}
-                </p>
-              </div>
-              {contact.address_line1 && (
-                <DetailRow
-                  label={t('contacts.addressLine1Label')}
-                  value={contact.address_line1}
-                  testId="detail-address-line1"
-                />
-              )}
-              {contact.address_line2 && (
-                <DetailRow
-                  label={t('contacts.addressLine2Label')}
-                  value={contact.address_line2}
-                  testId="detail-address-line2"
-                />
-              )}
-              {contact.city && (
-                <DetailRow
-                  label={t('contacts.cityLabel')}
-                  value={contact.city}
-                  testId="detail-city"
-                />
-              )}
-              {contact.state_region && (
-                <DetailRow
-                  label={t('contacts.stateRegionLabel')}
-                  value={contact.state_region}
-                  testId="detail-state-region"
-                />
-              )}
-              {contact.postal_code && (
-                <DetailRow
-                  label={t('contacts.postalCodeLabel')}
-                  value={contact.postal_code}
-                  testId="detail-postal-code"
-                  nowrap
-                />
-              )}
-              {contact.country && (
-                <DetailRow
-                  label={t('contacts.countryLabel')}
-                  value={contact.country}
-                  testId="detail-country"
-                />
-              )}
-            </div>
-          )}
 
         {/* Social profile links — shown when at least one URL is set (MINCRM-190) */}
         {!isEditing && (contact.linkedin_url || contact.twitter_x_url || contact.other_url) && (
