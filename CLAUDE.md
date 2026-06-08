@@ -708,6 +708,20 @@ A column comment (migration 083) documents the valid values for DBA inspection.
 
 ---
 
+## Architectural Decisions (MINCRM-530)
+
+Significant, cross-cutting decisions are recorded as Architecture Decision Records (ADRs)
+in `docs/adr/`. Each ADR captures the context, the decision, and the accepted tradeoffs.
+Reference the relevant ADR in migration comments and PR descriptions when a decision
+directly influences the code being written.
+
+| ADR                                                    | Decision summary                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ADR-001](docs/adr/001-single-org-no-multi-tenancy.md) | MiniCRM is a single-org CRM. No `org_id` in the schema. `owner_id` provides intra-org isolation; `is_demo` flag handles demo data. Adding multi-tenancy would require schema changes to all 36 entity tables — estimated 1–2 sprint weeks. Revisit only if organizational data isolation is required. |
+| [ADR-002](docs/adr/002-custom-fields-eav-vs-jsonb.md)  | Custom fields use EAV (`custom_field_definitions` / `custom_field_values`). Type-aware filtering, cross-field queries, and custom-field sorting cannot use B-tree indexes. Migrate to JSONB when AI filtering on custom fields is actively implemented or query latency exceeds defined thresholds.   |
+
+---
+
 ## Schema Conventions (MINCRM-512)
 
 ### Constrained-string columns: `varchar + CHECK` over PostgreSQL ENUMs
