@@ -136,7 +136,8 @@ system_settings  key (PK), value text, updated_at
 overdue_task_notifications  activity_id, notified_date  ← dedup guard for email digests
 
 notes
-  body text   visibility(private|team|public)   author_id → users
+  body text (source content)   body_text text (denormalized plain-text for search)
+  visibility(private|team|public)   author_id → users
   entity_type varchar(16) NOT NULL   entity_id uuid NOT NULL  ← polymorphic discriminator pair
     entity_type ∈ {contact, account, deal, lead}; no FK constraint (see Polymorphic FK Pattern)
   deleted_at nullable  ← soft-delete; filter WHERE deleted_at IS NULL in application queries
