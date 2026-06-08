@@ -15,7 +15,7 @@
  * `setRlsUserId(client)` immediately after `await client.query('BEGIN')`.
  *
  * The user ID is read from the `AsyncLocalStorage` request context populated by the
- * `rlsContext` middleware. Outside a request (cron jobs, seeds, tests) the context is
+ * `authenticate` middleware. Outside a request (cron jobs, seeds, tests) the context is
  * null and `SET LOCAL app.current_user_id = ''` is used, which matches no rows under
  * the owner policy — admin policy is separate. Tests that need to read RLS-protected
  * tables must either use `runWithRequestContext` or connect as a superuser role.

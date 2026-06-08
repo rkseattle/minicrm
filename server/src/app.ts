@@ -46,7 +46,6 @@ import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
 import { asyncHandler } from './middleware/asyncHandler.js';
-import { rlsContext } from './middleware/rlsContext.js';
 
 const app = express();
 
@@ -110,13 +109,6 @@ app.use(express.json());
 // SAML POST binding sends assertions as application/x-www-form-urlencoded (MINCRM-399)
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-
-// ── RLS request context (MINCRM-518) ──────────────────────────────────────────
-// Binds the authenticated user's ID to the AsyncLocalStorage context so that
-// service-layer helpers can inject app.current_user_id into DB transactions for
-// PostgreSQL Row-Level Security. Runs before all routes; handles req.user = null
-// safely (unauthenticated requests get an empty context).
-app.use(rlsContext);
 
 // ── Routes (v1) ────────────────────────────────────────────────────────────────
 // All resource routes are mounted under /api/v1/. The /api/health endpoint is
