@@ -46,7 +46,7 @@ distinct organizational data namespaces.
 
 - Queries are simpler: no mandatory `WHERE org_id = $1` filter on every table scan.
 - Indexes are smaller: no need to include `org_id` as a leading column on every index.
-- Schema is smaller: 36 entity tables × no `org_id` column = less migration surface area.
+- Schema is smaller: 37 entity tables × no `org_id` column = less migration surface area.
 - Row-Level Security policies (if added in future) only need to model user/role, not org.
 - Onboarding new developers is faster: no multi-tenant query discipline to learn.
 
@@ -65,7 +65,7 @@ This is a near-complete schema rewrite. Estimated scope: **1–2 sprint weeks** 
 migration work, plus proportional application-layer changes. The steps are:
 
 1. Create an `organizations` table (id, name, created_at, settings).
-2. Add `org_id uuid NOT NULL REFERENCES organizations(id)` to all 36 entity tables via a
+2. Add `org_id uuid NOT NULL REFERENCES organizations(id)` to all 37 entity tables via a
    multi-step migration: add nullable, backfill a default org, apply NOT NULL.
 3. Update every index that needs org-level selectivity to include `org_id` as a leading
    column (most covering indexes on `owner_id`, `status`, `stage`, `created_at`).
