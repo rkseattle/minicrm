@@ -67,7 +67,23 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
           await removeDemo();
         }
       : undefined;
-  const updated = await updateFeatureFlag(key, parsed.data, actor, { onDisabled });
+  let updated: Awaited<ReturnType<typeof updateFeatureFlag>>;
+  try {
+    updated = await updateFeatureFlag(key, parsed.data, actor, { onDisabled });
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE') {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: err instanceof Error ? err.message : 'Invalid role_overrides',
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+
   if (!updated) {
     res.status(404).json({
       error: {
