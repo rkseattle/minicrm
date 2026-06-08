@@ -165,10 +165,17 @@ exports.up = (pgm) => {
     -- in audit_log_default; the ensureAuditLogPartitions() service will not
     -- retroactively create historical partitions, so historical rows legitimately
     -- live in the default partition.
+    --
+    -- Disable the NOTIFY trigger for the data copy. audit_log_after_insert fires
+    -- for every inserted row; without suppression, all historical rows generate
+    -- NOTIFY events that flush as a burst on COMMIT and flood every connected
+    -- listener. Re-enable immediately after the copy.
+    ALTER TABLE audit_log DISABLE TRIGGER audit_log_after_insert;
     INSERT INTO audit_log
       SELECT id, record_type, record_id, record_name, event_type, field_name,
              old_value, new_value, changed_by_id, changed_by_name, created_at
       FROM audit_log_legacy;
+    ALTER TABLE audit_log ENABLE TRIGGER audit_log_after_insert;
 
     -- ── Step 10: Drop the legacy heap table ───────────────────────────────────
     DROP TABLE audit_log_legacy;
