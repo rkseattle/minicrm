@@ -16,6 +16,7 @@ import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
 import { runRetentionPurge } from './services/retentionService.js';
+import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 
@@ -129,6 +130,10 @@ void (async () => {
     await runMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);
+    // Ensure audit_log partitions exist for the current month + 3 months ahead.
+    // Runs at startup so partitions are guaranteed before any writes occur,
+    // regardless of when the monthly cron last fired. (MINCRM-521)
+    await ensureAuditLogPartitions();
   } catch (err) {
     logger.error({ err }, 'Startup initialization failed');
     process.exit(1); // eslint-disable-line n/no-process-exit
@@ -182,4 +187,16 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => retentionCron.stop());
   process.once('SIGINT', () => retentionCron.stop());
+
+  // audit_log partition maintenance — runs at midnight on the 1st of each month (MINCRM-521).
+  // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,
+  // ensuring no writes ever land on audit_log_default due to a missing partition.
+  const auditPartitionCron = cron.schedule('0 0 1 * *', () => {
+    logger.info('cron: running audit_log partition maintenance');
+    void ensureAuditLogPartitions();
+  });
+  logger.info('Audit log partition cron scheduled (monthly on the 1st at 00:00)');
+
+  process.once('SIGTERM', () => auditPartitionCron.stop());
+  process.once('SIGINT', () => auditPartitionCron.stop());
 }
