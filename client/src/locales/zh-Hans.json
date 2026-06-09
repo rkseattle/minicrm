@@ -688,7 +688,12 @@
       "saveError": "保存失败，请重试。",
       "deleteSuccess": "阶段已删除。",
       "deleteError": "删除失败，请重试。",
-      "reorderError": "保存新顺序失败，请重试。"
+      "reorderError": "保存新顺序失败，请重试。",
+      "exitRequirementsLabel": "退出要求",
+      "exitRequirementsHint": "必填字段会阻止阶段转换。警告字段允许转换，但会标记缺失的数据。",
+      "exitRequiredFieldsLabel": "必填字段（阻止转换）",
+      "exitWarningFieldsLabel": "警告字段（允许转换）",
+      "exitFieldsPlaceholder": "例如 close_date, value"
     },
     "exchangeRates": {
       "sectionTitle": "汇率",

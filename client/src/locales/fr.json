@@ -688,7 +688,12 @@
       "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
       "deleteSuccess": "Étape supprimée.",
       "deleteError": "Échec de la suppression. Veuillez réessayer.",
-      "reorderError": "Échec de l'enregistrement du nouvel ordre. Veuillez réessayer."
+      "reorderError": "Échec de l'enregistrement du nouvel ordre. Veuillez réessayer.",
+      "exitRequirementsLabel": "Conditions de sortie",
+      "exitRequirementsHint": "Les champs obligatoires bloquent la transition. Les champs d'avertissement la permettent mais signalent les données manquantes.",
+      "exitRequiredFieldsLabel": "Champs obligatoires (bloque la transition)",
+      "exitWarningFieldsLabel": "Champs d'avertissement (permet la transition)",
+      "exitFieldsPlaceholder": "p. ex. close_date, value"
     },
     "exchangeRates": {
       "sectionTitle": "Taux de change",

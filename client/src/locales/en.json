@@ -688,7 +688,12 @@
       "saveError": "Failed to save. Please try again.",
       "deleteSuccess": "Stage deleted.",
       "deleteError": "Failed to delete. Please try again.",
-      "reorderError": "Failed to save new order. Please try again."
+      "reorderError": "Failed to save new order. Please try again.",
+      "exitRequirementsLabel": "Exit requirements",
+      "exitRequirementsHint": "Required fields block the transition. Warning fields allow it but flag missing data.",
+      "exitRequiredFieldsLabel": "Required fields (blocks transition)",
+      "exitWarningFieldsLabel": "Warning fields (allows transition)",
+      "exitFieldsPlaceholder": "e.g. close_date, value"
     },
     "exchangeRates": {
       "sectionTitle": "Exchange Rates",
