@@ -76,8 +76,16 @@ export async function updateCurrencies(
       await client.query('DELETE FROM currencies');
     }
 
-    // Step 3: Upsert each new non-home currency
+    // Step 3: Upsert each new non-home currency, snapshotting the previous rate first
     for (const currency of config.currencies) {
+      // Snapshot the existing rate into currency_rate_history before overwriting it.
+      // The INSERT is a no-op when the currency row does not yet exist. (MINCRM-526)
+      await client.query(
+        `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
+         SELECT code, rate_to_home, now() FROM currencies WHERE code = $1`,
+        [currency.code],
+      );
+
       await client.query(
         `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
          VALUES ($1, $2, $3, $4, false, now())
@@ -91,7 +99,14 @@ export async function updateCurrencies(
       );
     }
 
-    // Step 4: Upsert the home currency row (rate always 1.000000, is_home true)
+    // Step 4: Upsert the home currency row (rate always 1.000000, is_home true),
+    // snapshotting its previous rate first in case the home currency is being switched.
+    await client.query(
+      `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
+       SELECT code, rate_to_home, now() FROM currencies WHERE code = $1`,
+      [config.home_currency],
+    );
+
     await client.query(
       `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
        VALUES ($1, $2, $3, 1.000000, true, now())

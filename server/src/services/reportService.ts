@@ -135,10 +135,39 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   // ── Win/loss aggregates ────────────────────────────────────────────────────
   // Single query using conditional aggregation to count + sum Won and Lost separately.
   // Filters by close_date (not created_at) per acceptance criteria.
-  // LEFT JOIN currencies for exchange rate conversion. (MINCRM-253)
-  // Scalar subqueries for home currency code/symbol are used instead of a LATERAL
-  // join so that home_currency and home_symbol are always populated even when the deals
-  // table is empty (aggregate over zero rows would otherwise make LATERAL join columns null).
+  //
+  // Rate resolution strategy (MINCRM-526):
+  //   1. Look up the most recent currency_rate_history row whose effective_from is at or
+  //      before the deal's close_date — this gives the rate that was in effect at close.
+  //   2. Fall back to the current currencies row when no history exists (e.g. the rate was
+  //      never changed, or the history predates this feature).
+  //   3. Fall back to 1.0 for the home currency (which has no history row).
+  //
+  // The rate_at_close CTE uses DISTINCT ON (d.id) ordered by effective_from DESC so that
+  // PostgreSQL returns only the most recent snapshot that satisfies the time predicate.
+  //
+  // Scalar subqueries for home currency code/symbol are retained so that home_currency and
+  // home_symbol remain populated even when the deals table is empty (aggregate over zero rows
+  // would otherwise make LATERAL join columns null). (MINCRM-253)
+  const aggCte = `
+    WITH rate_at_close AS (
+      SELECT DISTINCT ON (d.id)
+        d.id                                                           AS deal_id,
+        COALESCE(rh.rate_to_home, c.rate_to_home)                     AS effective_rate,
+        CASE WHEN rh.code IS NOT NULL OR c.code IS NOT NULL THEN true
+             ELSE false END                                            AS has_rate,
+        c.updated_at                                                   AS currency_updated_at
+      FROM deals d
+      LEFT JOIN currency_rate_history rh
+        ON rh.code = d.currency
+       AND rh.effective_from <= d.close_date::timestamptz
+      LEFT JOIN currencies c
+        ON c.code = d.currency
+       AND c.is_home = false
+      WHERE d.stage IN ('Closed Won', 'Closed Lost')
+      ORDER BY d.id, rh.effective_from DESC NULLS LAST
+    )`;
+
   const aggBaseSelect = `
        COUNT(*) FILTER (WHERE d.stage = 'Closed Won')                                   AS won_count,
        COALESCE(SUM(d.value) FILTER (WHERE d.stage = 'Closed Won'), 0)::text            AS won_value,
@@ -149,35 +178,35 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
        SUM(
          CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Won'
                    AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
-                        OR c.code IS NOT NULL)
-              THEN d.value::numeric * COALESCE(c.rate_to_home, 1.0)
+                        OR rac.has_rate)
+              THEN d.value::numeric * COALESCE(rac.effective_rate, 1.0)
               ELSE NULL END
        )::text AS converted_won_value,
        SUM(
          CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Lost'
                    AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
-                        OR c.code IS NOT NULL)
-              THEN d.value::numeric * COALESCE(c.rate_to_home, 1.0)
+                        OR rac.has_rate)
+              THEN d.value::numeric * COALESCE(rac.effective_rate, 1.0)
               ELSE NULL END
        )::text AS converted_lost_value,
        (SELECT code   FROM currencies WHERE is_home = true LIMIT 1) AS home_currency,
        (SELECT symbol FROM currencies WHERE is_home = true LIMIT 1) AS home_symbol,
-       COUNT(*) FILTER (WHERE c.code IS NULL AND d.value IS NOT NULL
+       COUNT(*) FILTER (WHERE NOT rac.has_rate AND d.value IS NOT NULL
                           AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_count,
-       MAX(c.updated_at)::text AS rates_last_updated,
+       MAX(rac.currency_updated_at)::text AS rates_last_updated,
        (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
 
   const aggFrom = `
        FROM deals d
-       LEFT JOIN currencies c ON c.code = d.currency AND c.is_home = false`;
+       LEFT JOIN rate_at_close rac ON rac.deal_id = d.id`;
 
   const aggQuery = ownerFilter
-    ? `SELECT ${aggBaseSelect} ${aggFrom}
+    ? `${aggCte} SELECT ${aggBaseSelect} ${aggFrom}
        WHERE d.stage IN ('Closed Won', 'Closed Lost')
          AND d.close_date >= $1
          AND d.close_date <= $2
          AND d.owner_id = $3`
-    : `SELECT ${aggBaseSelect} ${aggFrom}
+    : `${aggCte} SELECT ${aggBaseSelect} ${aggFrom}
        WHERE d.stage IN ('Closed Won', 'Closed Lost')
          AND d.close_date >= $1
          AND d.close_date <= $2`;

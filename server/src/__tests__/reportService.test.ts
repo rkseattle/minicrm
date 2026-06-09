@@ -114,6 +114,10 @@ beforeEach(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
+  // Reset currency rate history so historical-rate tests start from a clean state
+  await pool.query('DELETE FROM currency_rate_history');
+  // Reset to USD-only configuration
+  await pool.query('DELETE FROM currencies WHERE is_home = false');
 });
 
 afterAll(async () => {
@@ -813,5 +817,95 @@ describe('getStageTrendReport — metadata', () => {
       const period = report.dataPoints[0].period;
       expect(period).toMatch(/^\d{4}-\d{2}-01$/);
     }
+  });
+});
+
+// ── Historical exchange rate conversion (MINCRM-526) ─────────────────────────
+//
+// Verifies that getWinLossReport uses the exchange rate that was in effect at
+// the deal's close_date, not the current rate. This is the core correctness
+// guarantee of the currency_rate_history feature.
+
+describe('getWinLossReport — historical exchange rate conversion', () => {
+  /** Looks up the pipeline_stage_id for a given stage name */
+  async function stageId(name: string): Promise<string> {
+    const result = await pool.query<{ id: string }>(
+      'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+      [name, defaultPipelineId],
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error(`Stage not found: ${name}`);
+    return row.id;
+  }
+
+  it('uses the historical rate at close_date, not the current rate', async () => {
+    // Set up EUR at 0.90 on 2024-01-01 (the "historical" rate)
+    await pool.query(
+      `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
+       VALUES ('EUR', 'Euro', '€', 0.90, false, now())
+       ON CONFLICT (code) DO UPDATE
+         SET rate_to_home = EXCLUDED.rate_to_home, updated_at = now()`,
+    );
+    // Snapshot the 0.90 rate as effective from 2024-01-01 (before the deal closed)
+    await pool.query(
+      `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
+       VALUES ('EUR', 0.90, '2024-01-01T00:00:00Z')`,
+    );
+    // Now "update" EUR to 1.10 as of 2025-06-01 (after the deal closed)
+    await pool.query(
+      `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
+       VALUES ('EUR', 1.10, '2025-06-01T00:00:00Z')`,
+    );
+    await pool.query(`UPDATE currencies SET rate_to_home = 1.10 WHERE code = 'EUR'`);
+
+    // Deal closed on 2025-01-15 (after the 0.90 snapshot, before the 1.10 update)
+    const wonStageId = await stageId('Closed Won');
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, currency, close_date, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('EUR Historical Deal', 'Closed Won', 100000, 'EUR', '2025-01-15', $1, $2, $3)`,
+      [repId, defaultPipelineId, wonStageId],
+    );
+
+    const report = await getWinLossReport({
+      startDate: '2025-01-01',
+      endDate: '2025-12-31',
+      ownerId: repId,
+    });
+
+    // At close_date 2025-01-15, the effective rate was 0.90 (effective_from 2024-01-01,
+    // which is the latest snapshot <= 2025-01-15). The 1.10 snapshot (2025-06-01) is after close.
+    // converted_won_value = 100000 * 0.90 = 90000
+    expect(report.convertedWonValue).not.toBeNull();
+    const converted = parseFloat(report.convertedWonValue!);
+    expect(converted).toBeCloseTo(90000, 0);
+  });
+
+  it('falls back to the current rate when no history predates the close_date', async () => {
+    // EUR exists at current rate 0.85 but has no history row before the deal's close_date
+    await pool.query(
+      `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
+       VALUES ('EUR', 'Euro', '€', 0.85, false, now())
+       ON CONFLICT (code) DO UPDATE
+         SET rate_to_home = EXCLUDED.rate_to_home, updated_at = now()`,
+    );
+
+    const wonStageId = await stageId('Closed Won');
+    await pool.query(
+      `INSERT INTO deals (name, stage, value, currency, close_date, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('EUR No-History Deal', 'Closed Won', 50000, 'EUR', '2025-03-01', $1, $2, $3)`,
+      [repId, defaultPipelineId, wonStageId],
+    );
+
+    const report = await getWinLossReport({
+      startDate: '2025-01-01',
+      endDate: '2025-12-31',
+      ownerId: repId,
+    });
+
+    // No history row predates 2025-03-01, so falls back to current rate 0.85
+    // converted_won_value = 50000 * 0.85 = 42500
+    expect(report.convertedWonValue).not.toBeNull();
+    const converted = parseFloat(report.convertedWonValue!);
+    expect(converted).toBeCloseTo(42500, 0);
   });
 });
