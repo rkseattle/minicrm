@@ -921,6 +921,8 @@ describe('updateContact — address-only PATCH', () => {
 
     expect(updated).not.toBeNull();
     expect(updated!.id).toBe(contact.id);
+    // version must be bumped so concurrent address-only PATCHes are rejected
+    expect(updated!.version).toBe(contact.version + 1);
 
     const addresses = await listContactAddresses(contact.id);
     expect(addresses).toHaveLength(1);
