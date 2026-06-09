@@ -390,19 +390,7 @@ export async function updateDeal(
         );
       }
 
-      if (missingWarning.length > 0) {
-        throw Object.assign(
-          new Error(
-            `Moving deal to "${params.stage}": the following fields are recommended but missing: ${missingWarning.join(', ')}`,
-          ),
-          {
-            code: 'STAGE_EXIT_REQUIREMENTS_NOT_MET',
-            missing_fields: [],
-            warning_fields: missingWarning,
-            severity: 'warning' as const,
-          },
-        );
-      }
+      // warning_fields do NOT block the transition — the move is allowed regardless.
     }
   } else if (params.stage !== undefined) {
     // Stage is in payload but unchanged — still need to resolve the UUID for the SET clause.

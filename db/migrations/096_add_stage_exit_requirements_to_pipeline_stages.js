@@ -23,7 +23,7 @@ exports.up = (pgm) => {
     stage_exit_requirements: {
       type: 'jsonb',
       notNull: true,
-      default: "'{}'",
+      default: pgm.func("'{}'::jsonb"),
     },
   });
 

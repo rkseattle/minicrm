@@ -137,6 +137,90 @@ describe('CustomisationSettings — pipeline stages reorder (MINCRM-381)', () =>
   });
 });
 
+// ── Stage exit requirements (MINCRM-527) ─────────────────────────────────────
+
+describe('CustomisationSettings — stage exit requirements (MINCRM-527)', () => {
+  const firstStage = PIPELINE_STAGES_FIXTURE[0]; // ps-1, no exit requirements
+
+  it('shows exit requirement inputs when edit button is clicked', async () => {
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`));
+
+    expect(screen.getByTestId(`pipeline-stage-exit-required-${firstStage.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`pipeline-stage-exit-warning-${firstStage.id}`)).toBeInTheDocument();
+  });
+
+  it('sends stage_exit_requirements to PATCH when saving the edit form', async () => {
+    const capturedBodies: unknown[] = [];
+    server.use(
+      http.patch(`/api/v1/settings/pipeline-stages/${firstStage.id}`, async ({ request }) => {
+        capturedBodies.push(await request.json());
+        return HttpResponse.json({ ...firstStage });
+      }),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`));
+
+    fireEvent.change(screen.getByTestId(`pipeline-stage-exit-required-${firstStage.id}`), {
+      target: { value: 'close_date, amount' },
+    });
+    fireEvent.change(screen.getByTestId(`pipeline-stage-exit-warning-${firstStage.id}`), {
+      target: { value: 'notes' },
+    });
+
+    fireEvent.click(screen.getByTestId(`pipeline-stage-save-${firstStage.id}`));
+
+    await waitFor(() => expect(capturedBodies).toHaveLength(1));
+
+    const body = capturedBodies[0] as {
+      stage_exit_requirements: { required_fields: string[]; warning_fields: string[] };
+    };
+    expect(body.stage_exit_requirements.required_fields).toEqual(['close_date', 'amount']);
+    expect(body.stage_exit_requirements.warning_fields).toEqual(['notes']);
+  });
+
+  it('strips empty entries from comma-separated field lists (parseFieldList)', async () => {
+    const capturedBodies: unknown[] = [];
+    server.use(
+      http.patch(`/api/v1/settings/pipeline-stages/${firstStage.id}`, async ({ request }) => {
+        capturedBodies.push(await request.json());
+        return HttpResponse.json({ ...firstStage });
+      }),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId(`pipeline-stage-edit-${firstStage.id}`));
+
+    // Trailing comma + extra spaces should be stripped
+    fireEvent.change(screen.getByTestId(`pipeline-stage-exit-required-${firstStage.id}`), {
+      target: { value: '  close_date ,  , ' },
+    });
+
+    fireEvent.click(screen.getByTestId(`pipeline-stage-save-${firstStage.id}`));
+
+    await waitFor(() => expect(capturedBodies).toHaveLength(1));
+
+    const body = capturedBodies[0] as {
+      stage_exit_requirements: { required_fields: string[]; warning_fields: string[] };
+    };
+    expect(body.stage_exit_requirements.required_fields).toEqual(['close_date']);
+    expect(body.stage_exit_requirements.warning_fields).toEqual([]);
+  });
+});
+
 // ── Custom fields section ─────────────────────────────────────────────────────
 
 function mockEmptyCustomFields() {

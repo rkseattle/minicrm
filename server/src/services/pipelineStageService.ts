@@ -487,15 +487,14 @@ export async function reorderPipelineStages(
  * Maps a PipelineStageRow to the API response shape.
  */
 export function toStageResponse(row: PipelineStageRow): PipelineStageResponse {
-  const normalised = normaliseRow(row);
   return {
-    id: normalised.id,
-    pipeline_id: normalised.pipeline_id,
-    name: normalised.name,
-    sort_order: normalised.sort_order,
-    probability: normalised.probability,
-    is_terminal: normalised.is_terminal,
-    is_fixed: normalised.is_fixed,
-    stage_exit_requirements: normalised.stage_exit_requirements,
+    id: row.id,
+    pipeline_id: row.pipeline_id,
+    name: row.name,
+    sort_order: row.sort_order,
+    probability: row.probability,
+    is_terminal: row.is_terminal,
+    is_fixed: row.is_fixed,
+    stage_exit_requirements: row.stage_exit_requirements,
   };
 }
