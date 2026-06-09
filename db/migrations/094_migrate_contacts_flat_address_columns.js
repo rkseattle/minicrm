@@ -85,6 +85,24 @@ exports.up = async (pgm) => {
 };
 
 exports.down = async (pgm) => {
+  // ⚠ DATA LOSS WARNING: The flat contacts columns hold only one address per contact.
+  // This rollback restores only the default contact_addresses row per contact.
+  // Any non-default address rows created after up() ran are irrecoverably lost.
+  //
+  // Pre-rollback data-safety audit — run to understand exposure before applying:
+  //
+  //   -- Contacts with non-default address rows that will be dropped on rollback
+  //   SELECT COUNT(DISTINCT contact_id)
+  //   FROM contact_addresses
+  //   WHERE is_default = false;
+  //
+  //   -- Full list of affected contacts
+  //   SELECT contact_id, COUNT(*) AS non_default_rows
+  //   FROM contact_addresses
+  //   WHERE is_default = false
+  //   GROUP BY contact_id
+  //   ORDER BY non_default_rows DESC;
+
   // Step 1: Restore the flat address columns (nullable).
   pgm.addColumns('contacts', {
     address_line1: { type: 'varchar(255)', notNull: false },
@@ -96,9 +114,8 @@ exports.down = async (pgm) => {
   });
 
   // Step 2: Backfill from the default contact_addresses row into flat columns.
-  // Rows migrated by the up() will be the sole default address for contacts that
-  // had no prior contact_addresses entry — safe to backfill unconditionally from
-  // the default row since the columns are empty at this point.
+  // Only the default row is restored; non-default rows are not representable in
+  // the flat schema and are permanently discarded (see warning above).
   await pgm.db.query(`
     UPDATE contacts c
     SET
