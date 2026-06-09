@@ -235,8 +235,8 @@ describe('updatePipelineStage', () => {
     const ownerId = userResult.rows[0].id;
 
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Test Deal', 'Proposal', $1, $2)`,
-      [ownerId, proposal.pipeline_id],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES ('Test Deal', 'Proposal', $1, $2, $3)`,
+      [ownerId, proposal.pipeline_id, proposal.id],
     );
 
     await updatePipelineStage(proposal.id, { name: 'Solution Review' });
@@ -442,8 +442,8 @@ describe('deletePipelineStage', () => {
     const ownerId = userResult.rows[0].id;
 
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Blocking Deal', 'Negotiation', $1, $2)`,
-      [ownerId, negotiation.pipeline_id],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES ('Blocking Deal', 'Negotiation', $1, $2, $3)`,
+      [ownerId, negotiation.pipeline_id, negotiation.id],
     );
 
     let thrownError: (Error & { code?: string; dealCount?: number }) | null = null;

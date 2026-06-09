@@ -83,9 +83,15 @@ beforeAll(async () => {
 
   defaultPipelineId = await getDefaultPipelineId();
 
+  const stageIdForActivity = (
+    await pool.query<{ id: string }>(
+      'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+      ['Prospecting', defaultPipelineId],
+    )
+  ).rows[0].id;
   const dealResult = await pool.query<{ id: string }>(
-    `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Test Deal', 'Prospecting', $1, $2) RETURNING id`,
-    [ownerId, defaultPipelineId],
+    `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES ('Test Deal', 'Prospecting', $1, $2, $3) RETURNING id`,
+    [ownerId, defaultPipelineId, stageIdForActivity],
   );
   dealId = dealResult.rows[0].id;
 });

@@ -1697,10 +1697,15 @@ async function insertDemoData(
       (deal as { pipeline?: string }).pipeline === 'enterprise'
         ? demoPipelineId
         : defaultPipelineId;
+    const demoStageRow = await client.query<{ id: string }>(
+      `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+      [deal.stage, pipelineId],
+    );
+    const demoPipelineStageId = demoStageRow.rows[0]?.id ?? null;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
-         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
        RETURNING id`,
       [
         deal.name,
@@ -1713,6 +1718,7 @@ async function insertDemoData(
         accountId,
         adminId,
         pipelineId,
+        demoPipelineStageId,
       ],
     );
     dealIds.push(result.rows[0].id);
@@ -1861,10 +1867,15 @@ async function insertDemoData(
       (deal as { pipeline?: string }).pipeline === 'enterprise'
         ? demoPipelineId
         : defaultPipelineId;
+    const repDemoStageRow = await client.query<{ id: string }>(
+      `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+      [deal.stage, pipelineId],
+    );
+    const repDemoPipelineStageId = repDemoStageRow.rows[0]?.id ?? null;
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
-         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, is_demo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+         (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
        RETURNING id`,
       [
         deal.name,
@@ -1877,6 +1888,7 @@ async function insertDemoData(
         accountId,
         repId,
         pipelineId,
+        repDemoPipelineStageId,
       ],
     );
     repDealIds.push(result.rows[0].id);

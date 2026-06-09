@@ -470,12 +470,15 @@ describe('getOnboardingStatus — rep caller (MINCRM-410)', () => {
   });
 
   it('first_deal_created is false when the rep only owns demo deals (is_demo filter)', async () => {
-    const stageRow = await pool.query<{ name: string }>(`SELECT name FROM pipeline_stages LIMIT 1`);
+    const stageRow = await pool.query<{ id: string; name: string }>(
+      `SELECT id, name FROM pipeline_stages LIMIT 1`,
+    );
     const stage = stageRow.rows[0].name;
+    const stageId = stageRow.rows[0].id;
     const defaultPipelineId = await getDefaultPipelineId();
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id) VALUES ('Demo Deal', $1, $2, true, $3)`,
-      [stage, repUserId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id, pipeline_stage_id) VALUES ('Demo Deal', $1, $2, true, $3, $4)`,
+      [stage, repUserId, defaultPipelineId, stageId],
     );
     const status = await getOnboardingStatus({ id: repUserId, role: 'rep' });
     const task = status.tasks.find((t) => t.id === 'first_deal_created');

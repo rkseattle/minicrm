@@ -346,7 +346,8 @@ export async function updateDeal(
   // The controller has already validated the stage name exists. (MINCRM-499, MINCRM-527)
   let resolvedStageId: string | undefined;
   if (params.stage !== undefined && params.stage !== before?.stage) {
-    const effectivePipelineId = params.pipeline_id ?? before?.pipeline_id;
+    const effectivePipelineId =
+      params.pipeline_id ?? before?.pipeline_id ?? (await findDealById(id))?.pipeline_id;
     if (!effectivePipelineId) {
       throw Object.assign(new Error('Cannot resolve stage: pipeline_id is unknown'), {
         code: 'STAGE_NOT_FOUND',
@@ -405,7 +406,8 @@ export async function updateDeal(
     }
   } else if (params.stage !== undefined) {
     // Stage is in payload but unchanged — still need to resolve the UUID for the SET clause.
-    const effectivePipelineId = params.pipeline_id ?? before?.pipeline_id;
+    const effectivePipelineId =
+      params.pipeline_id ?? before?.pipeline_id ?? (await findDealById(id))?.pipeline_id;
     if (effectivePipelineId) {
       const stageRow = await findPipelineStageByNameAndPipeline(params.stage, effectivePipelineId);
       if (stageRow) resolvedStageId = stageRow.id;

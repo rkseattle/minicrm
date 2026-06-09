@@ -498,9 +498,22 @@ describe('findLeadByDealId', () => {
       `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
       ['No Lead Corp', ownerId],
     );
+    const stageIdForNoLead = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     const dealResult = await pool.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      ['No Lead Deal', 'Prospecting', acctResult.rows[0].id, ownerId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id, pipeline_stage_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [
+        'No Lead Deal',
+        'Prospecting',
+        acctResult.rows[0].id,
+        ownerId,
+        defaultPipelineId,
+        stageIdForNoLead,
+      ],
     );
     const found = await findLeadByDealId(dealResult.rows[0].id);
     expect(found).toBeNull();

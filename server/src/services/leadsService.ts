@@ -505,9 +505,15 @@ export async function convertLead(
         ? input.deal.close_date
         : null;
 
+    const dealStageRow = await client.query<{ id: string }>(
+      `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+      [dealStage, defaultPipelineId],
+    );
+    const dealPipelineStageId = dealStageRow.rows[0]?.id ?? null;
+
     const dealResult = await client.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, source_lead_id, pipeline_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, source_lead_id, pipeline_id, pipeline_stage_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         dealName,
@@ -518,6 +524,7 @@ export async function convertLead(
         actor.id,
         leadId,
         defaultPipelineId,
+        dealPipelineStageId,
       ],
     );
     const dealId = dealResult.rows[0].id;
