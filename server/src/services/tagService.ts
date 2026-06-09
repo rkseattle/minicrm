@@ -4,6 +4,7 @@
  */
 
 import pool from '../db.js';
+import type { PoolClient } from 'pg';
 import type {
   CreateTagInput,
   UpdateTagInput,
@@ -22,13 +23,14 @@ export interface TagRow {
 }
 
 /** Valid entity types that support tagging */
-type TaggableEntity = 'contact' | 'account' | 'deal';
+export type TaggableEntity = 'contact' | 'account' | 'deal' | 'note';
 
 /** Maps taggable entity type to its AuditRecordType for audit log entries */
 const ENTITY_AUDIT_TYPE: Record<TaggableEntity, AuditRecordType> = {
   contact: 'contact',
   account: 'account',
   deal: 'deal',
+  note: 'contact', // notes are attached to an entity; use 'contact' as fallback audit type
 };
 
 /** Maps entity type to its junction table and FK column name */
@@ -36,6 +38,7 @@ const ENTITY_TABLE: Record<TaggableEntity, { table: string; fkCol: string }> = {
   contact: { table: 'contact_tags', fkCol: 'contact_id' },
   account: { table: 'account_tags', fkCol: 'account_id' },
   deal: { table: 'deal_tags', fkCol: 'deal_id' },
+  note: { table: 'note_tags', fkCol: 'note_id' },
 };
 
 /**
@@ -124,9 +127,63 @@ export async function deleteTag(id: string): Promise<boolean> {
 }
 
 /**
+ * Upserts a tag by name within an existing transaction client.
+ * Returns the tag ID. Intended for use inside service transactions.
+ *
+ * @param client - Pool client already inside a BEGIN block
+ * @param name - Tag name (should be pre-lowercased/trimmed)
+ */
+export async function upsertTagByName(client: PoolClient, name: string): Promise<string> {
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO tags (name)
+     VALUES ($1)
+     ON CONFLICT (name) DO UPDATE SET updated_at = now()
+     RETURNING id`,
+    [name],
+  );
+  return result.rows[0]!.id;
+}
+
+/**
+ * Replaces the full set of tags for an entity within an existing transaction.
+ * Deletes all current junction rows, then inserts new ones for each tag name.
+ * Tag rows in the tags table are upserted idempotently.
+ *
+ * Use this inside service transactions where you need atomic tag replacement
+ * (e.g. note create/update).
+ *
+ * @param client - Pool client already inside a BEGIN block
+ * @param entity - Entity type
+ * @param entityId - UUID of the record
+ * @param tagNames - New complete set of tag names (lowercased/trimmed by schema)
+ */
+export async function syncEntityTagsWithinTransaction(
+  client: PoolClient,
+  entity: TaggableEntity,
+  entityId: string,
+  tagNames: string[],
+): Promise<void> {
+  const { table, fkCol } = ENTITY_TABLE[entity];
+
+  // Remove all existing tag associations
+  await client.query(`DELETE FROM ${table} WHERE ${fkCol} = $1`, [entityId]);
+
+  // Upsert each tag and insert junction rows
+  for (const name of tagNames) {
+    const trimmed = name.toLowerCase().trim();
+    if (!trimmed) continue;
+    const tagId = await upsertTagByName(client, trimmed);
+    await client.query(
+      `INSERT INTO ${table} (${fkCol}, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [entityId, tagId],
+    );
+  }
+}
+
+/**
  * Returns all tags attached to a given record.
  *
- * @param entity - Entity type ('contact' | 'account' | 'deal')
+ * @param entity - Entity type ('contact' | 'account' | 'deal' | 'note')
  * @param entityId - UUID of the record
  */
 export async function listEntityTags(entity: TaggableEntity, entityId: string): Promise<TagRow[]> {

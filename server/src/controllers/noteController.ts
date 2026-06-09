@@ -19,6 +19,7 @@ import {
   updateNote,
   deleteNote,
 } from '../services/noteService.js';
+import { getTagsRestrictCreation } from '../services/settingsService.js';
 
 /** Validates that a string is a UUID */
 const uuidSchema = z.string().uuid();
@@ -94,6 +95,20 @@ export async function createNoteHandler(req: Request, res: Response): Promise<vo
       error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
     });
     return;
+  }
+
+  // When tags are supplied, enforce tags_restrict_creation for rep callers (MINCRM-506)
+  if (parsed.data.tags && parsed.data.tags.length > 0 && req.user!.role === 'rep') {
+    const restricted = await getTagsRestrictCreation();
+    if (restricted) {
+      res.status(403).json({
+        error: {
+          code: 'TAG_CREATION_RESTRICTED',
+          message: 'Tag creation is restricted to admins. Contact your admin to add new tags.',
+        },
+      });
+      return;
+    }
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
@@ -179,6 +194,20 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
+  // When tags are present in the update body, enforce tags_restrict_creation for rep callers (MINCRM-506)
+  if (parsed.data.tags !== undefined && req.user!.role === 'rep') {
+    const restricted = await getTagsRestrictCreation();
+    if (restricted) {
+      res.status(403).json({
+        error: {
+          code: 'TAG_CREATION_RESTRICTED',
+          message: 'Tag creation is restricted to admins. Contact your admin to add new tags.',
+        },
+      });
+      return;
+    }
+  }
+
   const actor = { id: req.user!.id, name: req.user!.name };
 
   try {
@@ -191,14 +220,12 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const typedErr = err as { code?: string };
     if (typedErr.code === 'FORBIDDEN') {
-      res
-        .status(403)
-        .json({
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Only the note creator or an admin can edit this note.',
-          },
-        });
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Only the note creator or an admin can edit this note.',
+        },
+      });
       return;
     }
     if (typedErr.code === 'VISIBILITY_CHANGE_FORBIDDEN') {
@@ -251,14 +278,12 @@ export async function deleteNoteHandler(req: Request, res: Response): Promise<vo
   } catch (err) {
     const typedErr = err as { code?: string };
     if (typedErr.code === 'FORBIDDEN') {
-      res
-        .status(403)
-        .json({
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Only the note creator or an admin can delete this note.',
-          },
-        });
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Only the note creator or an admin can delete this note.',
+        },
+      });
       return;
     }
     throw err;

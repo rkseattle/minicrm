@@ -18,6 +18,7 @@ import {
   softDeleteNotesByEntity,
   extractBodyText,
 } from '../services/noteService.js';
+import { listEntityTags } from '../services/tagService.js';
 
 const FILE_PREFIX = 'note-svc';
 
@@ -723,6 +724,95 @@ describe('deleteNote', () => {
       'admin',
     );
     expect(result).toBe(false);
+  });
+});
+
+// ── note_tags junction (MINCRM-506) ──────────────────────────────────────────
+
+describe('note tags via note_tags junction', () => {
+  it('stores tags in note_tags and returns them in NoteResponse', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('tagged note'), visibility: 'team', tags: ['crm', 'important'] },
+      adminActor,
+    );
+    expect(note.tags).toEqual(expect.arrayContaining(['crm', 'important']));
+    expect(note.tags).toHaveLength(2);
+
+    // Verify junction rows exist
+    const junctionTags = await listEntityTags('note', note.id);
+    expect(junctionTags.map((t) => t.name)).toEqual(expect.arrayContaining(['crm', 'important']));
+  });
+
+  it('replaces tags on update', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('update tags'), visibility: 'team', tags: ['alpha', 'beta'] },
+      adminActor,
+    );
+    const updated = await updateNote(
+      'contact',
+      contactId,
+      note.id,
+      { tags: ['gamma'] },
+      adminActor,
+      'admin',
+    );
+    expect(updated!.tags).toEqual(['gamma']);
+
+    const junctionTags = await listEntityTags('note', note.id);
+    expect(junctionTags.map((t) => t.name)).toEqual(['gamma']);
+  });
+
+  it('preserves existing tags when tags field is not sent in update', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('preserve tags'), visibility: 'team', tags: ['keep-me'] },
+      adminActor,
+    );
+    const updated = await updateNote(
+      'contact',
+      contactId,
+      note.id,
+      { title: 'new title' },
+      adminActor,
+      'admin',
+    );
+    expect(updated!.tags).toEqual(['keep-me']);
+  });
+
+  it('reuses an existing tag row when the same name is used', async () => {
+    const note1 = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('note-one'), visibility: 'team', tags: ['shared-tag'] },
+      adminActor,
+    );
+    const note2 = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('note-two'), visibility: 'team', tags: ['shared-tag'] },
+      adminActor,
+    );
+    const tags1 = await listEntityTags('note', note1.id);
+    const tags2 = await listEntityTags('note', note2.id);
+    // Same tag_id means the same underlying tags row was reused
+    expect(tags1[0]!.id).toBe(tags2[0]!.id);
+  });
+
+  it('returns empty tags array when note has no tags', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: makeDoc('no tags'), visibility: 'team', tags: [] },
+      adminActor,
+    );
+    expect(note.tags).toEqual([]);
+    const junctionTags = await listEntityTags('note', note.id);
+    expect(junctionTags).toHaveLength(0);
   });
 });
 
