@@ -1240,19 +1240,16 @@ jobs:
           PGSSLMODE: disable
         run: tbls doc --force
 
-      - name: Fail if ERD is stale
+      - name: Commit updated ERD if changed
         run: |
-          if git ls-files --error-unmatch docs/schema/ 2>/dev/null; then
-            # Exclude schema.json: it embeds postgres version strings and uuid-ossp
-            # function lists that vary across environments (version, installed extensions).
-            # The markdown files are the human-readable artifact that must stay in sync.
-            git diff --exit-code -- 'docs/schema/*.md' || {
-              echo "docs/schema/ markdown is out of date. Run 'npm run db:erd --workspace=minicrm-server' and commit the result."
-              exit 1
-            }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/schema/
+          if git diff --cached --quiet; then
+            echo "ERD is up to date — nothing to commit."
           else
-            echo "ERROR: docs/schema/ is not tracked in git. Commit it first."
-            exit 1
+            git commit -m "chore: regenerate ERD docs [skip ci]"
+            git push origin HEAD:${{ github.head_ref }}
           fi
 
   # MINCRM-324: Generate visual regression baselines on Linux and commit them
