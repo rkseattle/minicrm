@@ -327,7 +327,7 @@ test('@functional F12-V2: Converted lead does not appear in default list but app
   testData.register('lead', leadId, `/api/v1/leads/${leadId}`);
 
   const conversion = await convertLeadViaApi(restClient, leadId, {
-    contact: { first_name: 'F12V2', email: leadEmail },
+    contact: { first_name: 'F12V2', last_name: 'Lead', email: leadEmail },
     account: { mode: 'create', name: `F12V2 Corp ${suffix}` },
     deal: { name: `F12V2 Corp — Opportunity` },
   });

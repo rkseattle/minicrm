@@ -497,7 +497,7 @@ export async function convertLeadViaApi(
   restClient: RestClient,
   leadId: string,
   params: {
-    contact: { first_name: string; email: string; last_name?: string };
+    contact: { first_name: string; last_name: string; email: string };
     account: { mode: 'create'; name: string };
     deal: { name: string };
   },

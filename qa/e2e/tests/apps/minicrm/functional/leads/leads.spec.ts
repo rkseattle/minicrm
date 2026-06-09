@@ -278,7 +278,7 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
 
   // Convert via API directly
   const conversion = await convertLeadViaApi(restClient, leadId, {
-    contact: { first_name: 'F9V2', email },
+    contact: { first_name: 'F9V2', last_name: 'Lead', email },
     account: { mode: 'create', name: `F9V2 Corp ${uniqueSuffix}` },
     deal: { name: `F9V2 Corp — Opportunity` },
   });
