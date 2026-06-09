@@ -401,46 +401,71 @@ export async function updateContact(
         ) as Partial<Record<AddressUpdateField, string | null>>)
       : null;
 
-  // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
-  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
-  const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-  const versionParam = fields.length + 2;
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    const result = await client.query<ContactRow>(
-      `UPDATE contacts
-       SET ${setClauses}, updated_at = now(), version = version + 1
-       WHERE id = $1 AND version = $${versionParam}
-       RETURNING *`,
-      [id, ...fields.map((f) => normalized[f as keyof typeof normalized]), version],
-    );
+    let contact: ContactRow | null;
 
-    if (result.rowCount === 0) {
-      // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
-      const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
-        id,
-      ]);
-      if (check.rows.length === 0) {
-        await client.query('ROLLBACK');
-        return null;
-      }
-      throw Object.assign(
-        new Error(
-          'This record was modified by another user while you were editing it. Please reload to see the latest version.',
-        ),
-        {
-          code: 'OPTIMISTIC_LOCK_CONFLICT',
-          entity: 'contact',
-          recordId: id,
-        },
+    if (fields.length === 0) {
+      // Payload contains only address fields (+ version) — no scalar contact columns to update.
+      // Verify the record exists and the optimistic-lock version matches before touching
+      // contact_addresses, so we honour the same concurrency guarantees as a full update.
+      const check = await client.query<ContactRow>(
+        'SELECT * FROM contacts WHERE id = $1 AND version = $2',
+        [id, version],
       );
-    }
+      if (check.rows.length === 0) {
+        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        const exists = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
+          id,
+        ]);
+        if (exists.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return null;
+        }
+        throw Object.assign(
+          new Error(
+            'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+          ),
+          { code: 'OPTIMISTIC_LOCK_CONFLICT', entity: 'contact', recordId: id },
+        );
+      }
+      contact = check.rows[0] ?? null;
+    } else {
+      // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
+      // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
+      const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+      const versionParam = fields.length + 2;
 
-    const contact = result.rows[0] ?? null;
+      const result = await client.query<ContactRow>(
+        `UPDATE contacts
+         SET ${setClauses}, updated_at = now(), version = version + 1
+         WHERE id = $1 AND version = $${versionParam}
+         RETURNING *`,
+        [id, ...fields.map((f) => normalized[f as keyof typeof normalized]), version],
+      );
+
+      if (result.rowCount === 0) {
+        // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
+        const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
+          id,
+        ]);
+        if (check.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return null;
+        }
+        throw Object.assign(
+          new Error(
+            'This record was modified by another user while you were editing it. Please reload to see the latest version.',
+          ),
+          { code: 'OPTIMISTIC_LOCK_CONFLICT', entity: 'contact', recordId: id },
+        );
+      }
+
+      contact = result.rows[0] ?? null;
+    }
 
     // Forward address fields to the default contact_addresses row. (MINCRM-500)
     // Upserts the existing default row if one exists; inserts a new default row otherwise.
@@ -450,7 +475,7 @@ export async function updateContact(
       await client.query(
         `INSERT INTO contact_addresses (contact_id, is_default, ${addrCols.join(', ')})
          VALUES ($1, true, ${addrCols.map((_, i) => `$${i + 2}`).join(', ')})
-         ON CONFLICT ON CONSTRAINT contact_addresses_one_default_per_contact
+         ON CONFLICT (contact_id) WHERE is_default = true
          DO UPDATE SET ${setClauses}, updated_at = now()`,
         [id, ...addrCols.map((col) => addressUpdate[col])],
       );
