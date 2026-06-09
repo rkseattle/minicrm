@@ -408,6 +408,59 @@ describe('updateCurrencies() — currency_rate_history snapshots', () => {
     expect(history.rows).toHaveLength(0);
   });
 
+  it('does not write a history row when a currency rate is unchanged on re-save', async () => {
+    // Establish EUR at 0.92
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.92 }],
+      },
+      'US Dollar',
+      '$',
+    );
+    // Re-save with the same EUR rate — no new history row should be written
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.92 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    const history = await pool.query(`SELECT * FROM currency_rate_history WHERE code = 'EUR'`);
+    expect(history.rows).toHaveLength(0);
+  });
+
+  it('preserves history for a deleted currency after it is removed (no CASCADE)', async () => {
+    // Establish EUR at 0.92, then update to 0.88 to generate a history row
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.92 }],
+      },
+      'US Dollar',
+      '$',
+    );
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.88 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    // Now remove EUR entirely — its history row must survive the DELETE
+    await updateCurrencies({ home_currency: 'USD', currencies: [] }, 'US Dollar', '$');
+
+    const currencyRow = await pool.query(`SELECT * FROM currencies WHERE code = 'EUR'`);
+    expect(currencyRow.rows).toHaveLength(0); // currency deleted
+
+    const history = await pool.query(`SELECT * FROM currency_rate_history WHERE code = 'EUR'`);
+    expect(history.rows.length).toBeGreaterThanOrEqual(1); // history survives
+  });
+
   it('accumulates multiple history rows across successive rate changes', async () => {
     // Establish EUR at 0.90
     await updateCurrencies(

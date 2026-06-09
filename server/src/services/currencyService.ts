@@ -64,14 +64,33 @@ export async function updateCurrencies(
   try {
     await client.query('BEGIN');
 
-    // Step 1: Snapshot all current non-home rates BEFORE any deletes or updates.
-    // This must run first so that currencies removed in Step 2 still have their last
-    // known rate preserved in history. Home-currency rows (rate always 1.0) are
-    // excluded — their rate is a definitional constant, not a meaningful exchange rate.
+    // Step 1: Snapshot non-home currencies whose rate is actually changing, plus all
+    // currencies that will be deleted in Step 3 (which have no incoming rate to compare).
+    // This must run BEFORE any deletes so that removed currencies still have their
+    // last-known rate preserved in history (the FK was dropped in migration 101 so history
+    // rows outlive the parent currencies row). Home-currency rows are excluded — their rate
+    // is a definitional constant. No-op saves (same rate, same currencies) produce no rows.
     // (MINCRM-526)
+    //
+    // The incoming rates are passed as a JSON array and unnested into a temporary set so
+    // PostgreSQL can JOIN against them inside the INSERT … SELECT without a correlated
+    // subquery per row.
+    const incomingRates = config.currencies.map((c) => ({ code: c.code, rate: c.rate_to_home }));
     await client.query(
       `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
-       SELECT code, rate_to_home, now() FROM currencies WHERE is_home = false`,
+       SELECT c.code, c.rate_to_home, now()
+       FROM currencies c
+       LEFT JOIN (
+         SELECT (elem->>'code')::varchar(3)        AS code,
+                (elem->>'rate')::numeric            AS rate
+         FROM jsonb_array_elements($1::jsonb)       AS elem
+       ) incoming ON incoming.code = c.code
+       WHERE c.is_home = false
+         AND (
+           incoming.code IS NULL                          -- being deleted: always snapshot
+           OR c.rate_to_home::numeric <> incoming.rate   -- staying but rate changed
+         )`,
+      [JSON.stringify(incomingRates)],
     );
 
     // Step 2: Demote any existing home row (so we have no is_home constraint issues)
