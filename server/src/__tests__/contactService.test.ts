@@ -99,6 +99,11 @@ afterAll(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
+  // Notes may outlive their parent contacts (soft-deleted); clean them up before deleting the user
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
@@ -685,6 +690,35 @@ describe('deleteContact', () => {
   it('returns null for a non-existent contact', async () => {
     const result = await deleteContact('00000000-0000-0000-0000-000000000000');
     expect(result).toBeNull();
+  });
+
+  it('soft-deletes all notes for the contact before hard-deleting it (MINCRM-523)', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    // Create two active notes on the contact
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by)
+       VALUES ('contact', $1, '{"type":"doc"}', 'note one', $2),
+              ('contact', $1, '{"type":"doc"}', 'note two', $2)`,
+      [contact.id, ownerId],
+    );
+
+    await deleteContact(contact.id);
+
+    // Both notes should now be soft-deleted
+    const active = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NULL`,
+      [contact.id],
+    );
+    expect(parseInt(active.rows[0]!.count, 10)).toBe(0);
+
+    const softDeleted = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NOT NULL`,
+      [contact.id],
+    );
+    expect(parseInt(softDeleted.rows[0]!.count, 10)).toBe(2);
   });
 });
 

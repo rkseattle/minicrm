@@ -15,6 +15,7 @@ import {
   createNote,
   updateNote,
   deleteNote,
+  softDeleteNotesByEntity,
   extractBodyText,
 } from '../services/noteService.js';
 
@@ -722,5 +723,93 @@ describe('deleteNote', () => {
       'admin',
     );
     expect(result).toBe(false);
+  });
+});
+
+// ── softDeleteNotesByEntity (MINCRM-523) ──────────────────────────────────────
+
+describe('softDeleteNotesByEntity', () => {
+  it('sets deleted_at on all active notes for the entity', async () => {
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Orphan', 'Test', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-orphan-${Date.now()}@example.com`, adminId],
+    );
+    const orphanContactId = contactResult.rows[0]!.id;
+
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by)
+       VALUES ('contact', $1, '{"type":"doc"}', 'first note', $2),
+              ('contact', $1, '{"type":"doc"}', 'second note', $2)`,
+      [orphanContactId, adminId],
+    );
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await softDeleteNotesByEntity(client, 'contact', orphanContactId);
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const active = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NULL`,
+      [orphanContactId],
+    );
+    expect(parseInt(active.rows[0]!.count, 10)).toBe(0);
+
+    const softDeleted = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM notes
+       WHERE entity_type = 'contact' AND entity_id = $1 AND deleted_at IS NOT NULL`,
+      [orphanContactId],
+    );
+    expect(parseInt(softDeleted.rows[0]!.count, 10)).toBe(2);
+
+    // Cleanup
+    await pool.query('DELETE FROM notes WHERE entity_id = $1', [orphanContactId]);
+    await pool.query('DELETE FROM contacts WHERE id = $1', [orphanContactId]);
+  });
+
+  it('does not affect already-deleted notes', async () => {
+    const contactResult = await pool.query<{ id: string }>(
+      `INSERT INTO contacts (first_name, last_name, email, owner_id)
+       VALUES ('Orphan2', 'Test', $1, $2) RETURNING id`,
+      [`${FILE_PREFIX}-orphan2-${Date.now()}@example.com`, adminId],
+    );
+    const orphanContactId = contactResult.rows[0]!.id;
+
+    await pool.query(
+      `INSERT INTO notes (entity_type, entity_id, body, body_text, created_by, deleted_at)
+       VALUES ('contact', $1, '{"type":"doc"}', 'pre-deleted', $2, now())`,
+      [orphanContactId, adminId],
+    );
+
+    const before = await pool.query<{ deleted_at: Date }>(
+      `SELECT deleted_at FROM notes WHERE entity_id = $1`,
+      [orphanContactId],
+    );
+    const deletedAtBefore = before.rows[0]!.deleted_at;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await softDeleteNotesByEntity(client, 'contact', orphanContactId);
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const after = await pool.query<{ deleted_at: Date }>(
+      `SELECT deleted_at FROM notes WHERE entity_id = $1`,
+      [orphanContactId],
+    );
+    // deleted_at should be unchanged — the already-deleted note was not touched
+    expect(after.rows[0]!.deleted_at.getTime()).toBe(deletedAtBefore.getTime());
+
+    // Cleanup
+    await pool.query('DELETE FROM notes WHERE entity_id = $1', [orphanContactId]);
+    await pool.query('DELETE FROM contacts WHERE id = $1', [orphanContactId]);
   });
 });
