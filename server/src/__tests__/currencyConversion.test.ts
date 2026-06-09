@@ -92,9 +92,15 @@ async function insertOpenDeal(opts: {
   stage?: string;
 }): Promise<void> {
   const stage = opts.stage ?? 'Prospecting';
+  const stageIdForOpen = (
+    await pool.query<{ id: string }>(
+      'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+      [stage, defaultPipelineId],
+    )
+  ).rows[0].id;
   await pool.query(
-    `INSERT INTO deals (name, stage, value, currency, probability, close_date, owner_id, pipeline_id)
-     VALUES ($1, $2, $3, $4, $5, '2030-12-31', $6, $7)`,
+    `INSERT INTO deals (name, stage, value, currency, probability, close_date, owner_id, pipeline_id, pipeline_stage_id)
+     VALUES ($1, $2, $3, $4, $5, '2030-12-31', $6, $7, $8)`,
     [
       `Test Deal ${opts.currency}`,
       stage,
@@ -103,6 +109,7 @@ async function insertOpenDeal(opts: {
       opts.probability ?? null,
       repId,
       defaultPipelineId,
+      stageIdForOpen,
     ],
   );
 }
@@ -119,9 +126,15 @@ async function insertClosedDeal(opts: {
   lossReason?: string;
 }): Promise<void> {
   const closeDate = opts.closeDate ?? '2025-01-15';
+  const stageIdForClosed = (
+    await pool.query<{ id: string }>(
+      'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+      [opts.stage, defaultPipelineId],
+    )
+  ).rows[0].id;
   await pool.query(
-    `INSERT INTO deals (name, stage, value, currency, close_date, loss_reason, owner_id, pipeline_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    `INSERT INTO deals (name, stage, value, currency, close_date, loss_reason, owner_id, pipeline_id, pipeline_stage_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       `Closed ${opts.currency}`,
       opts.stage,
@@ -131,6 +144,7 @@ async function insertClosedDeal(opts: {
       opts.lossReason ?? null,
       repId,
       defaultPipelineId,
+      stageIdForClosed,
     ],
   );
 }

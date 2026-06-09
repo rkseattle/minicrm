@@ -464,10 +464,25 @@ export async function importDeals(
       : null;
 
     try {
+      const stageRow = await pool.query<{ id: string }>(
+        `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+        [stage, defaultPipelineId],
+      );
+      const importPipelineStageId = stageRow.rows[0]?.id ?? null;
       await pool.query(
-        `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id, pipeline_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [name, stage, dealValue, closeDate, lossReason, accountId, adminId, defaultPipelineId],
+        `INSERT INTO deals (name, stage, value, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          name,
+          stage,
+          dealValue,
+          closeDate,
+          lossReason,
+          accountId,
+          adminId,
+          defaultPipelineId,
+          importPipelineStageId,
+        ],
       );
       result.created++;
     } catch (err) {

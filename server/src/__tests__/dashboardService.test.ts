@@ -217,11 +217,23 @@ describe('getDashboardSummary — deal aggregates', () => {
   });
 
   it('counts open deals and sums their value', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdQualification = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Qualification', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Deal A', 'Prospecting', 25000, $1, $2),
-              ('Deal B', 'Qualification', 75000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Deal A', 'Prospecting', 25000, $1, $2, $3),
+              ('Deal B', 'Qualification', 75000, $1, $2, $4)`,
+      [repId, defaultPipelineId, stageIdProspecting, stageIdQualification],
     );
     const summary = await getDashboardSummary(repId);
     expect(summary.openDealCount).toBe(2);
@@ -229,12 +241,30 @@ describe('getDashboardSummary — deal aggregates', () => {
   });
 
   it('excludes Closed Won and Closed Lost deals from metrics', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdClosedWon = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Closed Won', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdClosedLost = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Closed Lost', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Open deal', 'Prospecting', 10000, $1, $2),
-              ('Won deal', 'Closed Won', 50000, $1, $2),
-              ('Lost deal', 'Closed Lost', 20000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Open deal', 'Prospecting', 10000, $1, $2, $3),
+              ('Won deal', 'Closed Won', 50000, $1, $2, $4),
+              ('Lost deal', 'Closed Lost', 20000, $1, $2, $5)`,
+      [repId, defaultPipelineId, stageIdProspecting, stageIdClosedWon, stageIdClosedLost],
     );
     const summary = await getDashboardSummary(repId);
     expect(summary.openDealCount).toBe(1);
@@ -242,22 +272,46 @@ describe('getDashboardSummary — deal aggregates', () => {
   });
 
   it('scopes deal counts to the given owner when ownerId is provided', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdQualification = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Qualification', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Rep deal', 'Prospecting', 10000, $1, $3),
-              ('Other deal', 'Qualification', 20000, $2, $3)`,
-      [repId, otherRepId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Rep deal', 'Prospecting', 10000, $1, $3, $4),
+              ('Other deal', 'Qualification', 20000, $2, $3, $5)`,
+      [repId, otherRepId, defaultPipelineId, stageIdProspecting, stageIdQualification],
     );
     const summary = await getDashboardSummary(repId);
     expect(summary.openDealCount).toBe(1);
   });
 
   it('returns team-wide deal counts when ownerId is null (admin)', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdQualification = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Qualification', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Rep deal', 'Prospecting', 10000, $1, $3),
-              ('Other deal', 'Qualification', 20000, $2, $3)`,
-      [repId, otherRepId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Rep deal', 'Prospecting', 10000, $1, $3, $4),
+              ('Other deal', 'Qualification', 20000, $2, $3, $5)`,
+      [repId, otherRepId, defaultPipelineId, stageIdProspecting, stageIdQualification],
     );
     const summary = await getDashboardSummary(null);
     expect(summary.openDealCount).toBe(2);
@@ -269,12 +323,24 @@ describe('getDashboardSummary — deal aggregates', () => {
 
 describe('getDashboardSummary — stage breakdown', () => {
   it('returns a breakdown row for each open stage', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
+    const stageIdQualification = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Qualification', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Deal 1', 'Prospecting', 10000, $1, $2),
-              ('Deal 2', 'Prospecting', 15000, $1, $2),
-              ('Deal 3', 'Qualification', 30000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Deal 1', 'Prospecting', 10000, $1, $2, $3),
+              ('Deal 2', 'Prospecting', 15000, $1, $2, $3),
+              ('Deal 3', 'Qualification', 30000, $1, $2, $4)`,
+      [repId, defaultPipelineId, stageIdProspecting, stageIdQualification],
     );
     const summary = await getDashboardSummary(repId);
     expect(summary.stageBreakdown).toHaveLength(2);
@@ -289,20 +355,32 @@ describe('getDashboardSummary — stage breakdown', () => {
   });
 
   it('does not include closed stages in the breakdown', async () => {
+    const stageIdClosedWon = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Closed Won', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Won deal', 'Closed Won', 50000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Won deal', 'Closed Won', 50000, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdClosedWon],
     );
     const summary = await getDashboardSummary(repId);
     expect(summary.stageBreakdown).toHaveLength(0);
   });
 
   it('handles deals with null value in stage breakdown', async () => {
+    const stageIdProposal = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Proposal', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('No value deal', 'Proposal', NULL, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('No value deal', 'Proposal', NULL, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdProposal],
     );
     const summary = await getDashboardSummary(repId);
     const proposal = summary.stageBreakdown.find((r) => r.stage === 'Proposal');
@@ -316,10 +394,16 @@ describe('getDashboardSummary — stage breakdown', () => {
 describe('getDashboardSummary — weighted pipeline value', () => {
   it('returns weightedPipelineValue using stage default probability', async () => {
     // Prospecting default = 10%; value = $100,000 → weighted = $10,000
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Weighted test', 'Prospecting', 100000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Weighted test', 'Prospecting', 100000, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdProspecting],
     );
     const summary = await getDashboardSummary(repId);
     expect(parseFloat(summary.weightedPipelineValue)).toBeCloseTo(10000, 0);
@@ -327,10 +411,16 @@ describe('getDashboardSummary — weighted pipeline value', () => {
 
   it('uses per-deal probability override for weighted calculation', async () => {
     // Deal value = $100,000 with manual probability = 60% → weighted = $60,000
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, probability, owner_id, pipeline_id)
-       VALUES ('Override deal', 'Prospecting', 100000, 60, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, probability, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Override deal', 'Prospecting', 100000, 60, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdProspecting],
     );
     const summary = await getDashboardSummary(repId);
     expect(parseFloat(summary.weightedPipelineValue)).toBeCloseTo(60000, 0);
@@ -342,10 +432,16 @@ describe('getDashboardSummary — weighted pipeline value', () => {
 
   it('includes weighted_value in per-stage breakdown', async () => {
     // Qualification default = 25%; value = $80,000 → weighted = $20,000
+    const stageIdQualification = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Qualification', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Stage weighted', 'Qualification', 80000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Stage weighted', 'Qualification', 80000, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdQualification],
     );
     const summary = await getDashboardSummary(repId);
     const qual = summary.stageBreakdown.find((r) => r.stage === 'Qualification');
@@ -354,20 +450,32 @@ describe('getDashboardSummary — weighted pipeline value', () => {
   });
 
   it('returns 0 weighted value when all deals have null value', async () => {
+    const stageIdProspecting = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('No value', 'Prospecting', NULL, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('No value', 'Prospecting', NULL, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdProspecting],
     );
     const summary = await getDashboardSummary(repId);
     expect(parseFloat(summary.weightedPipelineValue)).toBe(0);
   });
 
   it('excludes closed stages from weighted pipeline total', async () => {
+    const stageIdClosedWon = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Closed Won', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id)
-       VALUES ('Won deal', 'Closed Won', 100000, $1, $2)`,
-      [repId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, value, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Won deal', 'Closed Won', 100000, $1, $2, $3)`,
+      [repId, defaultPipelineId, stageIdClosedWon],
     );
     const summary = await getDashboardSummary(repId);
     // Closed Won is excluded; weighted total should remain 0

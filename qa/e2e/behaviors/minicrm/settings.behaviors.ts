@@ -1023,6 +1023,67 @@ export async function getPipelineStageDeleteButtonLocator(
 }
 
 // ---------------------------------------------------------------------------
+// Stage exit requirements UI behaviors (MINCRM-527)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the input for the required_fields of a pipeline stage's exit requirements.
+ * @param stageId - UUID of the pipeline stage.
+ */
+export async function getPipelineStageExitRequiredInputLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-exit-required-${stageId}` }])
+    .resolve();
+}
+
+/**
+ * Resolves the input for the warning_fields of a pipeline stage's exit requirements.
+ * @param stageId - UUID of the pipeline stage.
+ */
+export async function getPipelineStageExitWarningInputLocator(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  return context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-exit-warning-${stageId}` }])
+    .resolve();
+}
+
+/**
+ * Polls the pipeline-stages API until the given stage includes the specified field
+ * in its required_fields list. Used to confirm a save persisted before asserting.
+ * @param stageId - UUID of the pipeline stage.
+ * @param requiredField - Field name expected in required_fields.
+ */
+export async function waitForStageExitRequirementsUpdated(
+  stageId: string,
+  requiredField: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await context.page.waitForFunction(
+    ([id, field]: [string, string]) => {
+      return fetch('/api/v1/settings/pipeline-stages')
+        .then((res) => res.json())
+        .then((json: unknown) => {
+          const data = json as {
+            stages: { id: string; stage_exit_requirements: { required_fields: string[] } }[];
+          };
+          const stage = data.stages.find((s) => s.id === id);
+          return stage?.stage_exit_requirements.required_fields.includes(field) ?? false;
+        })
+        .catch(() => false);
+    },
+    [stageId, requiredField] as [string, string],
+    { timeout: 10_000 },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Feature flag UI behaviors (MINCRM-463)
 // ---------------------------------------------------------------------------
 

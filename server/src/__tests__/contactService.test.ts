@@ -1076,11 +1076,17 @@ describe('mergeContacts', () => {
     });
 
     // Create a deal linked to the loser
+    const stageIdForMerge = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     const dealResult = await pool.query<{ id: string }>(
-      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id)
-       VALUES ('Merge Deal', 'Prospecting', $1, $2, $3)
+      `INSERT INTO deals (name, stage, account_id, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Merge Deal', 'Prospecting', $1, $2, $3, $4)
        RETURNING id`,
-      [accountId, ownerId, defaultPipelineId],
+      [accountId, ownerId, defaultPipelineId, stageIdForMerge],
     );
     const dealId = dealResult.rows[0].id;
 

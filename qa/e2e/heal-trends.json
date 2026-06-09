@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-08T23:37:09.613Z",
+  "updatedAt": "2026-06-09T05:17:11.428Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -810,6 +810,51 @@
       "count": 4,
       "firstSeenAt": "2026-06-08T20:46:55.493Z",
       "lastSeenAt": "2026-06-08T20:46:55.493Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-e0a572c2-fa35-40b3-9d73-9393d1892871": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-e0a572c2-fa35-40b3-9d73-9393d1892871",
+      "count": 1,
+      "firstSeenAt": "2026-06-09T04:12:23.068Z",
+      "lastSeenAt": "2026-06-09T04:12:23.068Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-e0a572c2-fa35-40b3-9d73-9393d1892871": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-e0a572c2-fa35-40b3-9d73-9393d1892871",
+      "count": 1,
+      "firstSeenAt": "2026-06-09T04:12:25.138Z",
+      "lastSeenAt": "2026-06-09T04:12:25.138Z"
+    },
+    "GlobalSearchPage::emptyStateIsVisible::testId::search-empty-state": {
+      "pageObject": "GlobalSearchPage",
+      "method": "emptyStateIsVisible",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "search-empty-state",
+      "count": 3,
+      "firstSeenAt": "2026-06-09T04:44:32.523Z",
+      "lastSeenAt": "2026-06-09T04:44:32.523Z"
+    },
+    "UsersPage::openActionsMenu::testId::user-actions-721b0b10-bc2e-47aa-be1b-da921594ecbd": {
+      "pageObject": "UsersPage",
+      "method": "openActionsMenu",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "user-actions-721b0b10-bc2e-47aa-be1b-da921594ecbd",
+      "count": 1,
+      "firstSeenAt": "2026-06-09T05:17:07.642Z",
+      "lastSeenAt": "2026-06-09T05:17:07.642Z"
+    },
+    "UsersPage::clickResetOnboarding::testId::reset-onboarding-721b0b10-bc2e-47aa-be1b-da921594ecbd": {
+      "pageObject": "UsersPage",
+      "method": "clickResetOnboarding",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "reset-onboarding-721b0b10-bc2e-47aa-be1b-da921594ecbd",
+      "count": 1,
+      "firstSeenAt": "2026-06-09T05:17:09.678Z",
+      "lastSeenAt": "2026-06-09T05:17:09.678Z"
     }
   }
 }

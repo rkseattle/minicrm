@@ -162,27 +162,45 @@ describe('is_demo column — contacts', () => {
 
 describe('is_demo column — deals', () => {
   it('defaults to false', async () => {
+    const stageIdForDefault = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     const result = await pool.query<{ is_demo: boolean }>(
-      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Real Deal', 'Prospecting', $1, $2) RETURNING is_demo`,
-      [ownerId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES ('Real Deal', 'Prospecting', $1, $2, $3) RETURNING is_demo`,
+      [ownerId, defaultPipelineId, stageIdForDefault],
     );
     expect(result.rows[0].is_demo).toBe(false);
   });
 
   it('can be set to true on insert', async () => {
+    const stageIdForDemo = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     const result = await pool.query<{ is_demo: boolean }>(
-      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id) VALUES ('Demo Deal', 'Prospecting', $1, true, $2) RETURNING is_demo`,
-      [ownerId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id, pipeline_stage_id) VALUES ('Demo Deal', 'Prospecting', $1, true, $2, $3) RETURNING is_demo`,
+      [ownerId, defaultPipelineId, stageIdForDemo],
     );
     expect(result.rows[0].is_demo).toBe(true);
   });
 
   it('DELETE WHERE is_demo = true removes only demo rows', async () => {
+    const stageIdForDeleteTest = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id)
-       VALUES ('Real Deal', 'Prospecting', $1, false, $2),
-              ('Demo Deal', 'Prospecting', $1, true, $2)`,
-      [ownerId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, owner_id, is_demo, pipeline_id, pipeline_stage_id)
+       VALUES ('Real Deal', 'Prospecting', $1, false, $2, $3),
+              ('Demo Deal', 'Prospecting', $1, true, $2, $3)`,
+      [ownerId, defaultPipelineId, stageIdForDeleteTest],
     );
     await pool.query(`DELETE FROM deals WHERE is_demo = true`);
     const result = await pool.query<{ name: string }>(

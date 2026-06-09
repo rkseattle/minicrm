@@ -327,8 +327,8 @@ describe('DELETE /api/v1/pipelines/:id — admin only', () => {
 
     try {
       await pool.query(
-        `INSERT INTO deals (pipeline_id, name, stage, currency, owner_id) VALUES ($1, $2, $3, 'USD', $4)`,
-        [pipelineId, `${FILE_PREFIX}-deal`, stageNameRows[0].name, userId],
+        `INSERT INTO deals (pipeline_id, name, stage, currency, owner_id, pipeline_stage_id) VALUES ($1, $2, $3, 'USD', $4, $5)`,
+        [pipelineId, `${FILE_PREFIX}-deal`, stageNameRows[0].name, userId, stageRows[0].id],
       );
 
       const res = await request(app)

@@ -45,6 +45,22 @@ async function resolvePipelineId(pipelineId?: string): Promise<string> {
 }
 
 /**
+ * Ensures stage_exit_requirements always has both arrays, even when the DB stores
+ * the column default `{}` (which has no keys). Rows created before MINCRM-527 or
+ * stages that never had requirements set are safely normalised here. (MINCRM-527)
+ */
+function normaliseRow(row: PipelineStageRow): PipelineStageRow {
+  const raw = row.stage_exit_requirements as Partial<StageExitRequirements> | null | undefined;
+  return {
+    ...row,
+    stage_exit_requirements: {
+      required_fields: raw?.required_fields ?? [],
+      warning_fields: raw?.warning_fields ?? [],
+    },
+  };
+}
+
+/**
  * Returns all pipeline stages for the given pipeline, ordered by sort_order ASC.
  */
 export async function listPipelineStages(pipelineId?: string): Promise<PipelineStageRow[]> {
@@ -53,7 +69,7 @@ export async function listPipelineStages(pipelineId?: string): Promise<PipelineS
     `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE pipeline_id = $1 ORDER BY sort_order ASC`,
     [pid],
   );
-  return result.rows;
+  return result.rows.map(normaliseRow);
 }
 
 /**
@@ -89,7 +105,7 @@ export async function findPipelineStageById(id: string): Promise<PipelineStageRo
     `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE id = $1 LIMIT 1`,
     [id],
   );
-  return result.rows[0] ?? null;
+  return result.rows[0] ? normaliseRow(result.rows[0]) : null;
 }
 
 /**
@@ -105,7 +121,7 @@ export async function findPipelineStageByNameAndPipeline(
     `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
     [name, pipelineId],
   );
-  return result.rows[0] ?? null;
+  return result.rows[0] ? normaliseRow(result.rows[0]) : null;
 }
 
 /**
@@ -150,7 +166,7 @@ export async function createPipelineStage(
     });
 
     await client.query('COMMIT');
-    return stage;
+    return normaliseRow(stage);
   } catch (err) {
     await client.query('ROLLBACK');
     if ((err as NodeJS.ErrnoException).code === '23505') {
@@ -285,7 +301,7 @@ export async function updatePipelineStage(
     }
 
     await client.query('COMMIT');
-    return updated ?? null;
+    return updated ? normaliseRow(updated) : null;
   } catch (error) {
     await client.query('ROLLBACK');
     const pgCode = (error as NodeJS.ErrnoException).code;
@@ -384,7 +400,7 @@ export async function deletePipelineStage(
     }
 
     await client.query('COMMIT');
-    return deleted ?? null;
+    return deleted ? normaliseRow(deleted) : null;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -458,7 +474,7 @@ export async function reorderPipelineStages(
 
     await client.query('COMMIT');
 
-    return result.rows;
+    return result.rows.map(normaliseRow);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -471,14 +487,15 @@ export async function reorderPipelineStages(
  * Maps a PipelineStageRow to the API response shape.
  */
 export function toStageResponse(row: PipelineStageRow): PipelineStageResponse {
+  const normalised = normaliseRow(row);
   return {
-    id: row.id,
-    pipeline_id: row.pipeline_id,
-    name: row.name,
-    sort_order: row.sort_order,
-    probability: row.probability,
-    is_terminal: row.is_terminal,
-    is_fixed: row.is_fixed,
-    stage_exit_requirements: row.stage_exit_requirements,
+    id: normalised.id,
+    pipeline_id: normalised.pipeline_id,
+    name: normalised.name,
+    sort_order: normalised.sort_order,
+    probability: normalised.probability,
+    is_terminal: normalised.is_terminal,
+    is_fixed: normalised.is_fixed,
+    stage_exit_requirements: normalised.stage_exit_requirements,
   };
 }

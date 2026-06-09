@@ -240,10 +240,16 @@ describe('createDeal', () => {
 
 describe('DB constraints — deals', () => {
   it('rejects a deal with a null name (NOT NULL)', async () => {
+    const stageIdForNullName = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await expect(
       pool.query(
-        `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES (NULL, 'Prospecting', $1, $2)`,
-        [ownerId, defaultPipelineId],
+        `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES (NULL, 'Prospecting', $1, $2, $3)`,
+        [ownerId, defaultPipelineId, stageIdForNullName],
       ),
     ).rejects.toThrow();
   });
@@ -252,9 +258,16 @@ describe('DB constraints — deals', () => {
     // Migration 021 removed the deals_stage_check constraint so admins can define
     // custom stage names. The pipelineStageService.getStageNames() list is the
     // authoritative allowlist — enforced in the deal controller, not in the DB.
+    // pipeline_stage_id uses 'Prospecting' ID since 'Discovery' does not exist as a stage row.
+    const stageIdForCustomStage = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     const result = await pool.query(
-      `INSERT INTO deals (name, stage, owner_id, pipeline_id) VALUES ('Custom Stage Deal', 'Discovery', $1, $2) RETURNING id`,
-      [ownerId, defaultPipelineId],
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id) VALUES ('Custom Stage Deal', 'Discovery', $1, $2, $3) RETURNING id`,
+      [ownerId, defaultPipelineId, stageIdForCustomStage],
     );
     expect(result.rows[0].id).toBeTruthy();
     // Clean up
@@ -869,11 +882,17 @@ describe('exportDealsForCsv — currency field', () => {
 
 describe('deals.pipeline_id NOT NULL constraint', () => {
   it('rejects a raw INSERT with pipeline_id = NULL at the DB level', async () => {
+    const stageIdForNullPipeline = (
+      await pool.query<{ id: string }>(
+        'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
+        ['Prospecting', defaultPipelineId],
+      )
+    ).rows[0].id;
     await expect(
       pool.query(
-        `INSERT INTO deals (name, stage, owner_id, pipeline_id)
-         VALUES ('No Pipeline Deal', 'Prospecting', $1, NULL)`,
-        [ownerId],
+        `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id)
+         VALUES ('No Pipeline Deal', 'Prospecting', $1, NULL, $2)`,
+        [ownerId, stageIdForNullPipeline],
       ),
     ).rejects.toThrow(/not-null constraint|null value in column "pipeline_id"/i);
   });

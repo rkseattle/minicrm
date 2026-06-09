@@ -294,8 +294,8 @@ describe('deletePipeline', () => {
 
     try {
       await pool.query(
-        `INSERT INTO deals (pipeline_id, name, stage, currency, owner_id) VALUES ($1, $2, $3, 'USD', $4)`,
-        [created.id, `${FILE_PREFIX}-deal`, stageName, userId],
+        `INSERT INTO deals (pipeline_id, name, stage, currency, owner_id, pipeline_stage_id) VALUES ($1, $2, $3, 'USD', $4, $5)`,
+        [created.id, `${FILE_PREFIX}-deal`, stageName, userId, stageRows[0].id],
       );
 
       await expect(deletePipeline(created.id, ACTOR)).rejects.toMatchObject({
