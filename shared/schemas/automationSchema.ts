@@ -147,6 +147,7 @@ export const automationRuleLogResponseSchema = z.object({
   triggering_record_id: z.string().uuid(),
   outcome: z.enum(['success', 'error']),
   error_message: z.string().nullable(),
+  action_config_snapshot: z.record(z.unknown()).nullable(),
 });
 
 // ── Inferred types ─────────────────────────────────────────────────────────────
