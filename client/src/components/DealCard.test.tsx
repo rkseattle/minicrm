@@ -15,6 +15,7 @@ const noop = () => {};
 const DEAL_DEFAULT_PROB: DealResponse = {
   id: '00000000-0000-0000-0000-000000000401',
   name: 'Stage Default Deal',
+  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
   stage: 'Prospecting',
   value: '50000.00',
   currency: 'USD',

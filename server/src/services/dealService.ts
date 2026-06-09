@@ -13,6 +13,7 @@ import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.j
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { getDefaultCurrency } from './settingsService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
+import { findPipelineStageByNameAndPipeline } from './pipelineStageService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -36,7 +37,10 @@ export interface DealRow {
   id: string;
   /** UUID of the pipeline this deal belongs to (MINCRM-397) */
   pipeline_id: string;
+  /** FK to pipeline_stages.id — the authoritative stage reference (MINCRM-499) */
+  pipeline_stage_id: string;
   name: string;
+  /** @deprecated Stage name kept for transition period; use pipeline_stage_id (MINCRM-499) */
   stage: string;
   value: string | null; // pg returns numeric as string
   /** ISO 4217 currency code for the deal value (MINCRM-189) */
@@ -119,6 +123,14 @@ export async function createDeal(
   // Fall back to the default pipeline when not specified (MINCRM-397)
   const resolvedPipelineId = pipelineIdParam ?? (await getDefaultPipelineId());
 
+  // Resolve stage name to UUID — the controller has already validated the name exists. (MINCRM-499)
+  const stageRow = await findPipelineStageByNameAndPipeline(stage, resolvedPipelineId);
+  if (!stageRow) {
+    throw Object.assign(new Error(`Stage "${stage}" not found in pipeline ${resolvedPipelineId}`), {
+      code: 'STAGE_NOT_FOUND',
+    });
+  }
+
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -126,13 +138,14 @@ export async function createDeal(
 
     // Insert the deal, then immediately re-query with the pipeline_stages JOIN so
     // effective_probability and probability_is_overridden are resolved correctly.
-    // (MINCRM-179)
+    // pipeline_stage_id is written alongside stage for FK integrity. (MINCRM-179, MINCRM-499)
     const insertResult = await client.query<{ id: string }>(
-      `INSERT INTO deals (pipeline_id, name, stage, value, currency, close_date, account_id, owner_id, probability)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO deals (pipeline_id, pipeline_stage_id, name, stage, value, currency, close_date, account_id, owner_id, probability)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
       [
         resolvedPipelineId,
+        stageRow.id,
         name,
         stage,
         value ?? null,
@@ -198,19 +211,22 @@ export async function findDealById(id: string): Promise<DealRow | null> {
 
 /**
  * SELECT columns used in deal list queries.
- * JOINs pipeline_stages to resolve effective_probability and probability_is_overridden.
+ * JOINs pipeline_stages via pipeline_stage_id FK to resolve effective_probability.
  * effective_probability = deal.probability if overridden, else stage default, else 0.
  * The final fallback to 0 guards against a deal whose stage was deleted (ps row absent).
  * probability_is_overridden = true when d.probability IS NOT NULL.
- * (MINCRM-179)
+ * (MINCRM-179, MINCRM-499)
  */
-const DEAL_SELECT = `d.id, d.pipeline_id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
+const DEAL_SELECT = `d.id, d.pipeline_id, d.pipeline_stage_id, d.name, d.stage, d.value, d.currency, d.close_date::text, d.loss_reason, d.account_id, d.owner_id,
   COALESCE(d.probability, ps.probability, 0) AS effective_probability,
   (d.probability IS NOT NULL) AS probability_is_overridden,
   d.created_at, d.updated_at, d.version`;
 
-/** FROM clause that joins pipeline_stages scoped to the same pipeline for probability resolution (MINCRM-397) */
-const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.name = d.stage AND ps.pipeline_id = d.pipeline_id`;
+/**
+ * FROM clause — joins pipeline_stages via FK for probability resolution.
+ * Uses pipeline_stage_id (indexed) instead of the deprecated name-based join. (MINCRM-499)
+ */
+const DEAL_FROM = `deals d LEFT JOIN pipeline_stages ps ON ps.id = d.pipeline_stage_id`;
 
 /**
  * Returns a paginated list of deals, optionally scoped by owner and/or account.
@@ -240,9 +256,9 @@ export async function listDeals(
   }
 
   if (options.excludeClosedStages) {
-    // Exclude terminal stages for this pipeline (MINCRM-397: no longer hardcoded stage names)
+    // Exclude terminal stages using the FK — avoids the stale text-column join. (MINCRM-397, MINCRM-499)
     conditions.push(
-      `d.stage NOT IN (SELECT name FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true)`,
+      `d.pipeline_stage_id NOT IN (SELECT id FROM pipeline_stages WHERE pipeline_id = d.pipeline_id AND is_terminal = true)`,
     );
   }
 
@@ -326,10 +342,39 @@ export async function updateDeal(
 
   const previousStage = before?.stage;
 
-  // Build dynamic SET clause: name = $2, stage = $3, ..., version = version + 1
-  // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
-  const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-  const versionParam = fields.length + 2;
+  // When stage is changing, resolve the new stage name to its UUID so pipeline_stage_id
+  // stays in sync with the text column. The controller has already validated the name. (MINCRM-499)
+  let resolvedStageId: string | undefined;
+  if (params.stage !== undefined) {
+    const effectivePipelineId = params.pipeline_id ?? before?.pipeline_id;
+    if (!effectivePipelineId) {
+      throw Object.assign(new Error('Cannot resolve stage: pipeline_id is unknown'), {
+        code: 'STAGE_NOT_FOUND',
+      });
+    }
+    const stageRow = await findPipelineStageByNameAndPipeline(params.stage, effectivePipelineId);
+    if (!stageRow) {
+      throw Object.assign(
+        new Error(`Stage "${params.stage}" not found in pipeline ${effectivePipelineId}`),
+        { code: 'STAGE_NOT_FOUND' },
+      );
+    }
+    resolvedStageId = stageRow.id;
+  }
+
+  // Build dynamic SET clause — include pipeline_stage_id alongside stage when stage changes.
+  // $1=id, $2...$N=field values, [$N+1=pipeline_stage_id if injected], $(last)=version (MINCRM-349, MINCRM-499)
+  const fieldValues = fields.map((f) => dealParams[f as keyof typeof dealParams]);
+  const setClauses = fields.map((field, index) => `${field} = $${index + 2}`);
+
+  let pipelineStageIdParamIndex: number | undefined;
+  if (resolvedStageId !== undefined) {
+    pipelineStageIdParamIndex = fieldValues.length + 2;
+    fieldValues.push(resolvedStageId);
+    setClauses.push(`pipeline_stage_id = $${pipelineStageIdParamIndex}`);
+  }
+
+  const versionParam = fieldValues.length + 2;
 
   const client: PoolClient = await pool.connect();
   try {
@@ -338,10 +383,10 @@ export async function updateDeal(
 
     const updateResult = await client.query<{ id: string }>(
       `UPDATE deals
-       SET ${setClauses}, updated_at = now(), version = version + 1
+       SET ${setClauses.join(', ')}, updated_at = now(), version = version + 1
        WHERE id = $1 AND version = $${versionParam}
        RETURNING id`,
-      [id, ...fields.map((f) => dealParams[f as keyof typeof dealParams]), version],
+      [id, ...fieldValues, version],
     );
 
     if (updateResult.rowCount === 0) {
@@ -542,19 +587,20 @@ export async function deleteDeal(
     await setRlsUserId(client);
 
     // Use a CTE so we can JOIN pipeline_stages on the deleted row, keeping the returned
-    // DealRow consistent with every other query path. (MINCRM-179)
+    // DealRow consistent with every other query path. (MINCRM-179, MINCRM-499)
     const result = await client.query<DealRow>(
       `WITH deleted AS (
          DELETE FROM deals WHERE id = $1 RETURNING *
        )
        SELECT
-         deleted.id, deleted.pipeline_id, deleted.name, deleted.stage, deleted.value, deleted.currency,
-         deleted.close_date::text, deleted.loss_reason, deleted.account_id, deleted.owner_id,
+         deleted.id, deleted.pipeline_id, deleted.pipeline_stage_id, deleted.name, deleted.stage,
+         deleted.value, deleted.currency, deleted.close_date::text, deleted.loss_reason,
+         deleted.account_id, deleted.owner_id,
          COALESCE(deleted.probability, ps.probability, 0) AS effective_probability,
          (deleted.probability IS NOT NULL) AS probability_is_overridden,
          deleted.created_at, deleted.updated_at
        FROM deleted
-       LEFT JOIN pipeline_stages ps ON ps.name = deleted.stage AND ps.pipeline_id = deleted.pipeline_id`,
+       LEFT JOIN pipeline_stages ps ON ps.id = deleted.pipeline_stage_id`,
       [id],
     );
 
