@@ -218,6 +218,7 @@ test('@functional F9-V1: Convert Lead creates contact, account, and deal atomica
   const company = `F9V1 Corp ${uniqueSuffix}`;
   const created = await createLeadViaApi(restClient, {
     first_name: 'F9V1',
+    last_name: 'Lead',
     email,
     company_name: company,
   });
