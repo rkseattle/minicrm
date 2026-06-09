@@ -54,6 +54,72 @@ qa/e2e/
 
 ---
 
+## Migration Baseline Squash (MINCRM-528)
+
+`db/migrations/000_baseline.js` captures the full schema after migrations 001–101.
+Fresh environments use it to skip replaying 101 individual migrations.
+
+### Fresh environment setup
+
+Do NOT run `npm run migrate` on a brand-new database — it would try to run
+`000_baseline` + 001–101 in sequence and fail (objects already exist).
+Use the two-step bootstrap script instead:
+
+```bash
+DATABASE_URL=postgres://... npm run migrate:fresh --workspace=minicrm-server
+```
+
+This script (`server/src/scripts/migrate-fresh.ts`):
+
+1. Runs **only** `000_baseline` (`count: 1`) — creates the full schema
+2. Marks migrations 001–101 as applied via node-pg-migrate's `fake` mode
+3. Future migrations (102+) run normally via `npm run migrate`
+
+### Existing deployments
+
+`000_baseline` is safe to run on existing databases. Every `CREATE TABLE/INDEX/EXTENSION`
+uses `IF NOT EXISTS`. When `npm run migrate` runs on an existing DB that does not yet
+have `000_baseline` in `pgmigrations`, it will execute the baseline once and it will be
+a no-op for all objects that already exist.
+
+**Exception:** `CREATE TRIGGER`, `CREATE POLICY`, and `ALTER TABLE ADD CONSTRAINT` do
+not support `IF NOT EXISTS`. These will error on existing databases if the trigger/policy/
+constraint already exists. Test on a backup before deploying to production.
+
+### When to regenerate the baseline
+
+Regenerate `000_baseline.js` every **~50 migrations** or once per major release, whichever
+comes first. The goal is to keep fresh-install time under 10 seconds.
+
+**Regeneration process:**
+
+```bash
+# 1. Ensure all migrations are applied
+DATABASE_URL=postgres://... npm run migrate --workspace=minicrm-server
+
+# 2. Dump the full schema (run inside the DB container)
+docker exec minicrm-db pg_dump \
+  --username=minicrm --dbname=minicrm \
+  --schema-only --no-owner --no-acl --schema=public \
+  > /tmp/minicrm_schema_dump.sql
+
+# 3. Rewrite db/migrations/000_baseline.js from the dump
+#    - Wrap every CREATE in IF NOT EXISTS
+#    - Maintain dependency order (no forward FK references)
+#    - Update the migration list in the JSDoc header comment
+
+# 4. Verify against a clean Docker environment
+docker exec minicrm-db psql -U minicrm -c "CREATE DATABASE minicrm_baseline_test"
+DATABASE_URL=postgres://minicrm:password@localhost:5432/minicrm_baseline_test \
+  npm run migrate:fresh --workspace=minicrm-server
+# Compare table/index/constraint counts against the production DB
+
+# 5. Drop the test DB
+docker exec minicrm-db psql -U minicrm -c "DROP DATABASE minicrm_baseline_test"
+```
+
+---
+
 ## Database Schema
 
 Non-obvious fields, enums, and constraints only. Standard columns (`id`, `created_at`,
