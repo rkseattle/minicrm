@@ -1477,6 +1477,7 @@
     "convertError": "La conversión falló. Inténtelo de nuevo.",
     "convertErrorSelectAccount": "Por favor seleccione una cuenta existente.",
     "convertErrorContactRequired": "El nombre y el correo electrónico son obligatorios.",
+    "convertErrorLastNameRequired": "Se requiere el apellido para convertir un cliente potencial en un contacto.",
     "convertErrorDealRequired": "El nombre del trato es obligatorio.",
     "convertSectionContact": "Contacto",
     "convertSectionAccount": "Cuenta",

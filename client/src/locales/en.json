@@ -1442,6 +1442,7 @@
     "convertError": "Conversion failed. Please try again.",
     "convertErrorSelectAccount": "Please select an existing account.",
     "convertErrorContactRequired": "First name and email are required.",
+    "convertErrorLastNameRequired": "Last name is required to convert a lead to a contact.",
     "convertErrorDealRequired": "Deal name is required.",
     "convertSectionContact": "Contact",
     "convertSectionAccount": "Account",

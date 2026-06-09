@@ -1477,6 +1477,7 @@
     "convertError": "Konvertierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "convertErrorSelectAccount": "Bitte wählen Sie ein vorhandenes Konto aus.",
     "convertErrorContactRequired": "Vorname und E-Mail sind erforderlich.",
+    "convertErrorLastNameRequired": "Nachname ist erforderlich, um einen Lead in einen Kontakt umzuwandeln.",
     "convertErrorDealRequired": "Deal-Name ist erforderlich.",
     "convertSectionContact": "Kontakt",
     "convertSectionAccount": "Konto",
