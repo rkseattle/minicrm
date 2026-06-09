@@ -194,8 +194,9 @@ export async function updateNoteHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  // When tags are present in the update body, enforce tags_restrict_creation for rep callers (MINCRM-506)
-  if (parsed.data.tags !== undefined && req.user!.role === 'rep') {
+  // When non-empty tags are present in the update body, enforce tags_restrict_creation for rep callers (MINCRM-506)
+  // Empty array (clearing tags) does not create new tags, so no restriction applies.
+  if (parsed.data.tags !== undefined && parsed.data.tags.length > 0 && req.user!.role === 'rep') {
     const restricted = await getTagsRestrictCreation();
     if (restricted) {
       res.status(403).json({

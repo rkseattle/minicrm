@@ -454,4 +454,21 @@ describe('PATCH /api/v1/:entityType/:entityId/notes/:noteId — tag restriction'
 
     expect(res.status).toBe(200);
   });
+
+  it('allows rep to send tags: [] to clear tags even when restriction is enabled', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: VALID_BODY, visibility: 'team', tags: [] },
+      { id: repId, name: 'Note Ctrl Rep' },
+    );
+    await setTagsRestrictCreation(true);
+
+    const res = await request(app)
+      .patch(`/api/v1/contact/${contactId}/notes/${note.id}`)
+      .set('Cookie', repCookie)
+      .send({ tags: [] });
+
+    expect(res.status).toBe(200);
+  });
 });
