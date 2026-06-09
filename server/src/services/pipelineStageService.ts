@@ -350,10 +350,15 @@ export async function deletePipelineStage(
   );
   const terminalIds = terminalResult.rows.map((r) => r.id);
 
-  // When a pipeline has no terminal stages, "NOT IN ()" is invalid SQL — omit the clause.
+  // Exclude the stage being deleted from the NOT IN list. If the stage is itself terminal,
+  // leaving its id in would cancel the pipeline_stage_id = $1 condition (always false),
+  // returning a count of 0 and bypassing the open-deal guard entirely.
+  const otherTerminalIds = terminalIds.filter((tid) => tid !== existing.id);
+
+  // When there are no other terminal stages, "NOT IN ()" is invalid SQL — omit the clause.
   // Uses withRlsQuery so the count reflects all deals regardless of owner under RLS.
   const dealCountResult =
-    terminalIds.length === 0
+    otherTerminalIds.length === 0
       ? await withRlsQuery<{ count: string }>((client) =>
           client.query(`SELECT COUNT(*) AS count FROM deals WHERE pipeline_stage_id = $1`, [
             existing.id,
@@ -363,8 +368,8 @@ export async function deletePipelineStage(
           client.query(
             `SELECT COUNT(*) AS count FROM deals
              WHERE pipeline_stage_id = $1
-               AND pipeline_stage_id NOT IN (${terminalIds.map((_, i) => `$${i + 2}`).join(', ')})`,
-            [existing.id, ...terminalIds],
+               AND pipeline_stage_id NOT IN (${otherTerminalIds.map((_, i) => `$${i + 2}`).join(', ')})`,
+            [existing.id, ...otherTerminalIds],
           ),
         );
   const openDealCount = parseInt(dealCountResult.rows[0].count, 10);

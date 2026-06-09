@@ -460,6 +460,48 @@ describe('deletePipelineStage', () => {
     await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
   });
 
+  it('throws STAGE_HAS_OPEN_DEALS when deleting a terminal stage that has open deals', async () => {
+    // createPipelineStage does not expose is_terminal — insert via SQL so we can test the
+    // terminal-stage variant of the guard without touching fixed stages (which throw STAGE_FIXED).
+    const stages = await listPipelineStages();
+    const defaultPipeline = stages[0].pipeline_id;
+    const maxSort = Math.max(...stages.map((s) => s.sort_order));
+
+    const stageResult = await pool.query<{ id: string }>(
+      `INSERT INTO pipeline_stages (pipeline_id, name, sort_order, probability, is_terminal)
+       VALUES ($1, 'CustomTerminal', $2, 100, true) RETURNING id`,
+      [defaultPipeline, maxSort + 10],
+    );
+    const terminalStageId = stageResult.rows[0].id;
+
+    const userResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, name, role, status)
+       VALUES ('terminal-block@example.com', 'x', 'Terminal Block', 'rep', 'active')
+       RETURNING id`,
+    );
+    const ownerId = userResult.rows[0].id;
+
+    await pool.query(
+      `INSERT INTO deals (name, stage, owner_id, pipeline_id, pipeline_stage_id)
+       VALUES ('Terminal Deal', 'CustomTerminal', $1, $2, $3)`,
+      [ownerId, defaultPipeline, terminalStageId],
+    );
+
+    let thrownError: (Error & { code?: string; dealCount?: number }) | null = null;
+    try {
+      await deletePipelineStage(terminalStageId);
+    } catch (err) {
+      thrownError = err as Error & { code?: string; dealCount?: number };
+    }
+    expect(thrownError?.code).toBe('STAGE_HAS_OPEN_DEALS');
+    expect(thrownError?.dealCount).toBe(1);
+
+    // Clean up
+    await pool.query(`DELETE FROM deals WHERE owner_id = $1`, [ownerId]);
+    await pool.query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+    await pool.query(`DELETE FROM pipeline_stages WHERE id = $1`, [terminalStageId]);
+  });
+
   it('returns null for a non-existent stage id', async () => {
     const result = await deletePipelineStage('00000000-0000-0000-0000-000000000000');
     expect(result).toBeNull();
