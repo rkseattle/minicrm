@@ -11,6 +11,7 @@
     "migrate": "node-pg-migrate -m ../db/migrations up",
     "migrate:down": "node-pg-migrate -m ../db/migrations down",
     "migrate:fresh": "tsx src/scripts/migrate-fresh.ts",
+    "db:erd": "cd .. && DATABASE_URL=${DATABASE_URL:-postgres://minicrm:password@localhost:5432/minicrm} tbls doc",
     "typecheck": "tsc --noEmit",
     "test": "DOTENV_CONFIG_PATH=../.env.test vitest run",
     "test:coverage": "npm test -- --coverage",

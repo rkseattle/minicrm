@@ -4,3 +4,4 @@ client/node_modules
 server/node_modules
 shared/node_modules
 db/migrations
+docs/schema
