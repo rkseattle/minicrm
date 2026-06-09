@@ -90,6 +90,22 @@ export async function findPipelineStageById(id: string): Promise<PipelineStageRo
 }
 
 /**
+ * Finds a single pipeline stage by its name within a specific pipeline.
+ * Used by dealService to resolve a stage name to its UUID on deal create/update.
+ * (MINCRM-499)
+ */
+export async function findPipelineStageByNameAndPipeline(
+  name: string,
+  pipelineId: string,
+): Promise<PipelineStageRow | null> {
+  const result = await pool.query<PipelineStageRow>(
+    `SELECT ${STAGE_SELECT} FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
+    [name, pipelineId],
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
  * Creates a new pipeline stage within the specified pipeline.
  *
  * sort_order is auto-assigned as MAX(sort_order within that pipeline) + 10.
@@ -291,30 +307,28 @@ export async function deletePipelineStage(
     throw err;
   }
 
-  // Count open deals (not in a terminal stage) within the same pipeline
-  const terminalResult = await pool.query<{ name: string }>(
-    'SELECT name FROM pipeline_stages WHERE pipeline_id = $1 AND is_terminal = true',
+  // Count open (non-terminal) deals currently in this stage, using the FK for correctness. (MINCRM-499)
+  const terminalResult = await pool.query<{ id: string }>(
+    'SELECT id FROM pipeline_stages WHERE pipeline_id = $1 AND is_terminal = true',
     [existing.pipeline_id],
   );
-  const terminalNames = terminalResult.rows.map((r) => r.name);
+  const terminalIds = terminalResult.rows.map((r) => r.id);
 
   // When a pipeline has no terminal stages, "NOT IN ()" is invalid SQL — omit the clause.
   // Uses withRlsQuery so the count reflects all deals regardless of owner under RLS.
   const dealCountResult =
-    terminalNames.length === 0
+    terminalIds.length === 0
       ? await withRlsQuery<{ count: string }>((client) =>
-          client.query(
-            `SELECT COUNT(*) AS count FROM deals WHERE pipeline_id = $1 AND stage = $2`,
-            [existing.pipeline_id, existing.name],
-          ),
+          client.query(`SELECT COUNT(*) AS count FROM deals WHERE pipeline_stage_id = $1`, [
+            existing.id,
+          ]),
         )
       : await withRlsQuery<{ count: string }>((client) =>
           client.query(
             `SELECT COUNT(*) AS count FROM deals
-             WHERE pipeline_id = $1
-               AND stage = $2
-               AND stage NOT IN (${terminalNames.map((_, i) => `$${i + 3}`).join(', ')})`,
-            [existing.pipeline_id, existing.name, ...terminalNames],
+             WHERE pipeline_stage_id = $1
+               AND pipeline_stage_id NOT IN (${terminalIds.map((_, i) => `$${i + 2}`).join(', ')})`,
+            [existing.id, ...terminalIds],
           ),
         );
   const openDealCount = parseInt(dealCountResult.rows[0].count, 10);

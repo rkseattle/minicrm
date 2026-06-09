@@ -333,6 +333,7 @@ export const CONTACT_2: ContactResponse = {
 export const DEAL_1: DealResponse = {
   id: '00000000-0000-0000-0000-000000000301',
   pipeline_id: DEFAULT_PIPELINE_ID,
+  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000.00',

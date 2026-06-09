@@ -130,7 +130,10 @@ export const dealResponseSchema = z.object({
   id: z.string().uuid(),
   /** UUID of the pipeline this deal belongs to (MINCRM-397) */
   pipeline_id: z.string().uuid(),
+  /** FK to pipeline_stages.id — the authoritative stage reference (MINCRM-499) */
+  pipeline_stage_id: z.string().uuid(),
   name: z.string(),
+  /** @deprecated Stage name kept for transition period; use pipeline_stage_id (MINCRM-499) */
   stage: z.string(),
   value: z.string().nullable(), // pg returns numeric as string
   /** ISO 4217 currency code for the deal value (MINCRM-189) */

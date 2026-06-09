@@ -12,6 +12,7 @@ const noop = () => {};
 
 const DEAL_FIXTURE: DealResponse = {
   id: '00000000-0000-0000-0000-000000000301',
+  pipeline_stage_id: '00000000-0000-0000-0000-000000000a01',
   name: 'Acme Enterprise Deal',
   stage: 'Prospecting',
   value: '50000',
