@@ -40,6 +40,18 @@ export interface EmbeddedTag {
   name: string;
 }
 
+/** Default address embedded in contact responses (sourced from contact_addresses, MINCRM-500) */
+export interface ContactDefaultAddress {
+  id: string;
+  label: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_region: string | null;
+  postal_code: string | null;
+  country: string | null;
+}
+
 /** Shape of a contact row returned from the database */
 export interface ContactRow {
   id: string;
@@ -59,6 +71,8 @@ export interface ContactRow {
   updated_at: Date;
   /** Optimistic lock version (MINCRM-349) */
   version: number;
+  /** Default address from contact_addresses — null when no default row exists (MINCRM-500) */
+  default_address: ContactDefaultAddress | null;
   /** Tags attached to this contact — only populated in list responses (MINCRM-186) */
   tags?: EmbeddedTag[];
 }
@@ -189,6 +203,10 @@ export async function createContact(
 
     await client.query('COMMIT');
 
+    // Re-fetch with default_address joined — RETURNING * on contacts does not include the
+    // address sub-resource written above (MINCRM-500).
+    const enriched = (await findContactById(contact.id)) ?? contact;
+
     // Fire-and-forget: fireAutomationTrigger swallows all internal errors and logs them.
     // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
     void fireAutomationTrigger('contact_created', {
@@ -197,9 +215,9 @@ export async function createContact(
       ownerId: owner_id,
     });
 
-    void dispatchWebhookEvent('contact.created', contact as unknown as Record<string, unknown>);
+    void dispatchWebhookEvent('contact.created', enriched as unknown as Record<string, unknown>);
 
-    return contact;
+    return enriched;
   } catch (error) {
     await client.query('ROLLBACK');
     // PostgreSQL error code 23505 = unique_violation — catches concurrent inserts
@@ -253,7 +271,20 @@ export async function findContactByEmail(
  */
 export async function findContactById(id: string): Promise<ContactRow | null> {
   const result = await withRlsQuery((client) =>
-    client.query<ContactRow>('SELECT * FROM contacts WHERE id = $1 LIMIT 1', [id]),
+    client.query<ContactRow>(
+      `SELECT c.*,
+        CASE WHEN ca.id IS NOT NULL THEN JSON_BUILD_OBJECT(
+          'id', ca.id, 'label', ca.label,
+          'address_line1', ca.address_line1, 'address_line2', ca.address_line2,
+          'city', ca.city, 'state_region', ca.state_region,
+          'postal_code', ca.postal_code, 'country', ca.country
+        ) ELSE NULL END AS default_address
+       FROM contacts c
+       LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true
+       WHERE c.id = $1
+       LIMIT 1`,
+      [id],
+    ),
   );
 
   return result.rows[0] ?? null;
@@ -310,8 +341,8 @@ export async function listContacts(
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const fromClause = needsAccountJoin
-    ? 'FROM contacts c LEFT JOIN accounts a ON c.account_id = a.id'
-    : 'FROM contacts c';
+    ? 'FROM contacts c LEFT JOIN accounts a ON c.account_id = a.id LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true'
+    : 'FROM contacts c LEFT JOIN contact_addresses ca ON ca.contact_id = c.id AND ca.is_default = true';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
   const sortCol = (CONTACT_SORT_COLUMNS as readonly string[]).includes(options.sort ?? '')
@@ -331,6 +362,15 @@ export async function listContacts(
       WHERE ct.contact_id = c.id
     ), '[]'::json) AS tags`;
 
+  // Embed default address as a JSON object (MINCRM-500)
+  const defaultAddressSubquery = `
+    CASE WHEN ca.id IS NOT NULL THEN JSON_BUILD_OBJECT(
+      'id', ca.id, 'label', ca.label,
+      'address_line1', ca.address_line1, 'address_line2', ca.address_line2,
+      'city', ca.city, 'state_region', ca.state_region,
+      'postal_code', ca.postal_code, 'country', ca.country
+    ) ELSE NULL END AS default_address`;
+
   // Run count and data queries in parallel (MINCRM-68)
   const [countResult, dataResult] = await Promise.all([
     withRlsQuery((client) =>
@@ -341,7 +381,7 @@ export async function listContacts(
     ),
     withRlsQuery((client) =>
       client.query<ContactRow>(
-        `SELECT c.*, ${tagsSubquery} ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        `SELECT c.*, ${tagsSubquery}, ${defaultAddressSubquery} ${fromClause} ${whereClause} ORDER BY c.${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset],
       ),
     ),
@@ -514,15 +554,19 @@ export async function updateContact(
 
     await client.query('COMMIT');
 
-    if (contact) {
+    // Re-fetch with default_address joined — RETURNING * on contacts does not include the
+    // address sub-resource (MINCRM-500).
+    const enriched = contact ? ((await findContactById(contact.id)) ?? contact) : null;
+
+    if (enriched) {
       void dispatchWebhookEvent(
         'contact.updated',
-        contact as unknown as Record<string, unknown>,
+        enriched as unknown as Record<string, unknown>,
         before ? (before as unknown as Record<string, unknown>) : undefined,
       );
     }
 
-    return contact;
+    return enriched;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -898,7 +942,10 @@ export async function mergeContacts(
     );
 
     await client.query('COMMIT');
-    return updatedWinner;
+
+    // Re-fetch with default_address joined — SELECT * on contacts does not include the
+    // address sub-resource (MINCRM-500).
+    return (await findContactById(winnerId)) ?? updatedWinner;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

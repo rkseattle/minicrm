@@ -1024,21 +1024,18 @@ jobs:
             fi
           }
 
-          {
-            echo 'body<<COMMENT_EOF'
-            build_summary
-            echo 'COMMENT_EOF'
-          } >> $GITHUB_OUTPUT
+          # Write body to a file to avoid ARG_MAX when the failure list is large.
+          build_summary > /tmp/e2e-comment-body.md
 
           # MINCRM-332: Also write to job summary so the merged pass/fail table
           # is visible in the Actions workflow run summary tab.
-          build_summary >> $GITHUB_STEP_SUMMARY
+          cat /tmp/e2e-comment-body.md >> $GITHUB_STEP_SUMMARY
 
       - name: Post combined summary comment (MINCRM-135)
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
-          message: ${{ steps.comment.outputs.body }}
+          path: /tmp/e2e-comment-body.md
 
 
   unit-test-report:
@@ -1115,8 +1112,8 @@ jobs:
           IFS='|' read -r c_status c_tests c_passed c_failed c_skipped <<< "$CLIENT_TESTS"
           IFS='|' read -r fw_status fw_tests fw_passed fw_failed fw_skipped <<< "$FRAMEWORK_TESTS"
 
+          # Write body to a file to avoid ARG_MAX on large outputs.
           {
-            echo 'body<<COMMENT_EOF'
             echo "## Phase 2 — Unit & Framework Tests"
             echo ""
             echo "| Suite | Status | Tests | Passed | Failed | Skipped |"
@@ -1136,14 +1133,14 @@ jobs:
             echo "> Thresholds: server services ≥ 80% · client components/pages ≥ 70%"
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
-            echo 'COMMENT_EOF'
-          } >> $GITHUB_OUTPUT
+          } > /tmp/coverage-comment-body.md
+          cat /tmp/coverage-comment-body.md >> $GITHUB_STEP_SUMMARY
 
       - name: Post coverage comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: unit-test-coverage
-          message: ${{ steps.comment.outputs.body }}
+          path: /tmp/coverage-comment-body.md
 
   lint-docs:
     name: Phase 1 - Lint Docs
