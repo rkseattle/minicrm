@@ -25,12 +25,15 @@ export interface TagRow {
 /** Valid entity types that support tagging */
 export type TaggableEntity = 'contact' | 'account' | 'deal' | 'note';
 
-/** Maps taggable entity type to its AuditRecordType for audit log entries */
-const ENTITY_AUDIT_TYPE: Record<TaggableEntity, AuditRecordType> = {
+/** Entity types that support standalone attach/detach tag operations.
+ * 'note' is excluded: note tags are managed atomically via syncEntityTagsWithinTransaction. */
+type AttachableEntity = Exclude<TaggableEntity, 'note'>;
+
+/** Maps attachable entity type to its AuditRecordType for audit log entries */
+const ENTITY_AUDIT_TYPE: Record<AttachableEntity, AuditRecordType> = {
   contact: 'contact',
   account: 'account',
   deal: 'deal',
-  note: 'contact', // notes are attached to an entity; use 'contact' as fallback audit type
 };
 
 /** Maps entity type to its junction table and FK column name */
@@ -210,7 +213,7 @@ export async function listEntityTags(entity: TaggableEntity, entityId: string): 
  * @returns The tag row
  */
 export async function attachTag(
-  entity: TaggableEntity,
+  entity: AttachableEntity,
   entityId: string,
   params: AttachTagInput,
   actor?: AuditActor,
@@ -269,7 +272,7 @@ export async function attachTag(
  * @returns true if removed, false if the association did not exist
  */
 export async function detachTag(
-  entity: TaggableEntity,
+  entity: AttachableEntity,
   entityId: string,
   tagId: string,
   actor?: AuditActor,
