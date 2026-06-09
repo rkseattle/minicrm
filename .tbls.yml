@@ -5,7 +5,10 @@
 # CI:  check-erd job in .github/workflows/ci.yml regenerates and diffs output;
 #      fails if committed docs/schema/ is stale after a migration change.
 
-dsn: ${DATABASE_URL}?sslmode=disable
+# sslmode=disable is injected via PGSSLMODE env var in the db:erd npm script
+# and in the CI check-erd job — do not append query params here since DATABASE_URL
+# may already contain them.
+dsn: ${DATABASE_URL}
 
 docPath: docs/schema
 
@@ -20,6 +23,11 @@ er:
 
 # Exclude internal partitions and migration tracking tables from the ERD —
 # they add visual noise without conveying schema decisions.
+#
+# NOTE: audit_log partition names are time-based. When auditPartitionService creates
+# new monthly partitions (e.g. audit_log_y2027m01), they will appear in the ERD until
+# added here. Update this list as part of the quarterly baseline refresh, or accept
+# that new partitions appear until the next ERD update cycle.
 exclude:
   - audit_log_default
   - audit_log_y2026m06

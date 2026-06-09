@@ -1235,14 +1235,20 @@ jobs:
       - name: Regenerate ERD
         env:
           DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
-        run: DATABASE_URL=$DATABASE_URL tbls doc --force
+          PGSSLMODE: disable
+        run: tbls doc --force
 
       - name: Fail if ERD is stale
         run: |
-          git diff --exit-code docs/schema/ || {
-            echo "docs/schema/ is out of date. Run 'npm run db:erd --workspace=minicrm-server' and commit the result."
+          if git ls-files --error-unmatch docs/schema/ 2>/dev/null; then
+            git diff --exit-code docs/schema/ || {
+              echo "docs/schema/ is out of date. Run 'npm run db:erd --workspace=minicrm-server' and commit the result."
+              exit 1
+            }
+          else
+            echo "ERROR: docs/schema/ is not tracked in git. Commit it first."
             exit 1
-          }
+          fi
 
   # MINCRM-324: Generate visual regression baselines on Linux and commit them
   # back to the PR branch. Runs only on qa path changes. Services and setup
