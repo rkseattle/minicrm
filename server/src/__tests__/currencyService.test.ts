@@ -62,7 +62,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // Reset currencies table to just the USD home row before each test
+  // Reset currencies and history tables to just the USD home row before each test
+  await pool.query('DELETE FROM currency_rate_history');
   await pool.query('DELETE FROM currencies');
   await pool.query(
     `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home)
@@ -353,5 +354,97 @@ describe('PUT /api/settings/currencies', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// currency_rate_history snapshot tests (MINCRM-526)
+// ---------------------------------------------------------------------------
+
+describe('updateCurrencies() — currency_rate_history snapshots', () => {
+  it('writes a history row capturing the previous rate when a currency is updated', async () => {
+    // First call: establish EUR at 0.92
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.92 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    // Second call: update EUR to 0.88 — should snapshot the 0.92 rate
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.88 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    const history = await pool.query<{ code: string; rate_to_home: string }>(
+      `SELECT code, rate_to_home::float8 AS rate_to_home
+       FROM currency_rate_history
+       WHERE code = 'EUR'
+       ORDER BY effective_from DESC`,
+    );
+    expect(history.rows.length).toBeGreaterThanOrEqual(1);
+    expect(history.rows[0]?.rate_to_home).toBeCloseTo(0.92, 5);
+  });
+
+  it('does not write a history row for a brand-new currency (no prior rate to snapshot)', async () => {
+    // First-ever call with GBP — no existing row to snapshot
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'GBP', name: 'British Pound', symbol: '£', rate_to_home: 0.79 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    const history = await pool.query(`SELECT * FROM currency_rate_history WHERE code = 'GBP'`);
+    expect(history.rows).toHaveLength(0);
+  });
+
+  it('accumulates multiple history rows across successive rate changes', async () => {
+    // Establish EUR at 0.90
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.9 }],
+      },
+      'US Dollar',
+      '$',
+    );
+    // Update EUR to 0.85 — snapshot 0.90
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.85 }],
+      },
+      'US Dollar',
+      '$',
+    );
+    // Update EUR to 0.80 — snapshot 0.85
+    await updateCurrencies(
+      {
+        home_currency: 'USD',
+        currencies: [{ code: 'EUR', name: 'Euro', symbol: '€', rate_to_home: 0.8 }],
+      },
+      'US Dollar',
+      '$',
+    );
+
+    const history = await pool.query<{ rate_to_home: string }>(
+      `SELECT rate_to_home::float8 AS rate_to_home
+       FROM currency_rate_history
+       WHERE code = 'EUR'
+       ORDER BY effective_from ASC`,
+    );
+    expect(history.rows).toHaveLength(2);
+    expect(history.rows[0]?.rate_to_home).toBeCloseTo(0.9, 5);
+    expect(history.rows[1]?.rate_to_home).toBeCloseTo(0.85, 5);
   });
 });
