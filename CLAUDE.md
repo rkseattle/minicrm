@@ -142,7 +142,8 @@ The `check-erd` CI job runs whenever `db/migrations/**` changes:
 
 1. Runs all migrations on a clean PostgreSQL service container
 2. Reinstalls tbls and regenerates `docs/schema/`
-3. Fails with `git diff --exit-code docs/schema/` if the committed output is stale
+3. Fails with `git diff --exit-code -- 'docs/schema/*.md'` if the committed markdown is stale
+   (`schema.json` is excluded — it embeds postgres version strings and extension lists that vary by environment)
 
 **When you add a migration:** regenerate the ERD locally and commit the updated
 `docs/schema/` files in the same PR. The CI job will verify freshness.
