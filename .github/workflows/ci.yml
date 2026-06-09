@@ -1199,7 +1199,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # Using ECR Public mirror to avoid Docker Hub unauthenticated pull rate limits
+        image: public.ecr.aws/docker/library/postgres:16
         env:
           POSTGRES_USER: minicrm
           POSTGRES_PASSWORD: password
@@ -1229,7 +1230,7 @@ jobs:
 
       - name: Install tbls
         run: |
-          curl -sL https://github.com/k1LoW/tbls/releases/download/v1.94.5/tbls_linux_amd64.tar.gz | tar xz -C /usr/local/bin tbls
+          curl --fail -sL https://github.com/k1LoW/tbls/releases/download/v1.94.5/tbls_linux_amd64.tar.gz | tar xz -C /usr/local/bin tbls
           tbls version
 
       - name: Regenerate ERD

@@ -24,10 +24,10 @@ er:
 # Exclude internal partitions and migration tracking tables from the ERD —
 # they add visual noise without conveying schema decisions.
 #
-# NOTE: audit_log partition names are time-based. When auditPartitionService creates
-# new monthly partitions (e.g. audit_log_y2027m01), they will appear in the ERD until
-# added here. Update this list as part of the quarterly baseline refresh, or accept
-# that new partitions appear until the next ERD update cycle.
+# audit_log partitions are created monthly by auditPartitionService (3 months ahead).
+# This list is pre-populated through 2027m12 to avoid needing updates for ~18 months.
+# When regenerating the baseline (~every 50 migrations), extend this list to cover
+# the next 18 months from that date.
 exclude:
   - audit_log_default
   - audit_log_y2026m06
@@ -36,4 +36,17 @@ exclude:
   - audit_log_y2026m09
   - audit_log_y2026m10
   - audit_log_y2026m11
+  - audit_log_y2026m12
+  - audit_log_y2027m01
+  - audit_log_y2027m02
+  - audit_log_y2027m03
+  - audit_log_y2027m04
+  - audit_log_y2027m05
+  - audit_log_y2027m06
+  - audit_log_y2027m07
+  - audit_log_y2027m08
+  - audit_log_y2027m09
+  - audit_log_y2027m10
+  - audit_log_y2027m11
+  - audit_log_y2027m12
   - pgmigrations

@@ -8,6 +8,7 @@
  */
 
 import 'dotenv/config';
+import { readdirSync } from 'fs';
 import { resolve } from 'path';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
@@ -55,6 +56,9 @@ export default async function globalSetup(): Promise<void> {
     checkOrder: false,
     log: () => {},
   };
+  const baselineCoveredCount = readdirSync(MIGRATIONS_DIR).filter(
+    (f) => f.endsWith('.js') && f !== '000_baseline.js',
+  ).length;
   await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-  await migrationRunner({ ...SHARED_OPTIONS, fake: true });
+  await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
 }
