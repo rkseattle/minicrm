@@ -26,6 +26,7 @@ export async function runMigrations(): Promise<void> {
     dir: MIGRATIONS_DIR,
     direction: 'up',
     migrationsTable: 'pgmigrations',
+    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs (MINCRM-528)
     log: (msg: string) => logger.debug(msg),
   });
 
