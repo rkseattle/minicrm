@@ -410,18 +410,21 @@ export async function updateContact(
 
     if (fields.length === 0) {
       // Payload contains only address fields (+ version) — no scalar contact columns to update.
-      // Verify the record exists and the optimistic-lock version matches before touching
-      // contact_addresses, so we honour the same concurrency guarantees as a full update.
-      const check = await client.query<ContactRow>(
-        'SELECT * FROM contacts WHERE id = $1 AND version = $2',
+      // Still bump updated_at and version so the optimistic lock is consumed and concurrent
+      // address-only PATCHes with the same version are correctly rejected. (MINCRM-500)
+      const result = await client.query<ContactRow>(
+        `UPDATE contacts
+         SET updated_at = now(), version = version + 1
+         WHERE id = $1 AND version = $2
+         RETURNING *`,
         [id, version],
       );
-      if (check.rows.length === 0) {
+      if (result.rowCount === 0) {
         // Distinguish NOT_FOUND from version mismatch (MINCRM-349)
-        const exists = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
+        const check = await client.query<{ id: string }>('SELECT id FROM contacts WHERE id = $1', [
           id,
         ]);
-        if (exists.rows.length === 0) {
+        if (check.rows.length === 0) {
           await client.query('ROLLBACK');
           return null;
         }
@@ -432,7 +435,7 @@ export async function updateContact(
           { code: 'OPTIMISTIC_LOCK_CONFLICT', entity: 'contact', recordId: id },
         );
       }
-      contact = check.rows[0] ?? null;
+      contact = result.rows[0] ?? null;
     } else {
       // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
       // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
