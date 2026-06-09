@@ -120,6 +120,41 @@ docker exec minicrm-db psql -U minicrm -c "DROP DATABASE minicrm_baseline_test"
 
 ---
 
+## ERD — Schema Documentation (MINCRM-529)
+
+`docs/schema/` contains auto-generated Markdown and Mermaid ERD output produced by
+[tbls](https://github.com/k1LoW/tbls). The output is committed and must stay in sync
+with `db/migrations/`.
+
+### Generating the ERD locally
+
+```bash
+# Uses the dev DB by default (postgres://minicrm:password@localhost:5432/minicrm)
+npm run db:erd --workspace=minicrm-server
+
+# Override the database
+DATABASE_URL=postgres://user:pass@host:5432/db npm run db:erd --workspace=minicrm-server
+```
+
+### CI staleness check
+
+The `check-erd` CI job runs whenever `db/migrations/**` changes:
+
+1. Runs all migrations on a clean PostgreSQL service container
+2. Reinstalls tbls and regenerates `docs/schema/`
+3. Fails with `git diff --exit-code docs/schema/` if the committed output is stale
+
+**When you add a migration:** regenerate the ERD locally and commit the updated
+`docs/schema/` files in the same PR. The CI job will verify freshness.
+
+### tbls configuration
+
+`.tbls.yml` at the repo root. Audit log partitions and `pgmigrations` are excluded
+from the ERD (visual noise). To upgrade tbls: update the pinned version in both
+`.tbls.yml` comments and the `check-erd` job's `curl` command.
+
+---
+
 ## Database Schema
 
 Non-obvious fields, enums, and constraints only. Standard columns (`id`, `created_at`,

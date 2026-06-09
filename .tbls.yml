@@ -1,0 +1,31 @@
+# tbls configuration — ERD and schema documentation (MINCRM-529)
+# https://github.com/k1LoW/tbls
+#
+# Run: npm run db:erd --workspace=minicrm-server
+# CI:  check-erd job in .github/workflows/ci.yml regenerates and diffs output;
+#      fails if committed docs/schema/ is stale after a migration change.
+
+dsn: ${DATABASE_URL}?sslmode=disable
+
+docPath: docs/schema
+
+format:
+  # Adjust column sort so id/created_at/updated_at always appear last
+  sort: false
+
+er:
+  format: mermaid
+  comment: true
+  skip: false
+
+# Exclude internal partitions and migration tracking tables from the ERD —
+# they add visual noise without conveying schema decisions.
+exclude:
+  - audit_log_default
+  - audit_log_y2026m06
+  - audit_log_y2026m07
+  - audit_log_y2026m08
+  - audit_log_y2026m09
+  - audit_log_y2026m10
+  - audit_log_y2026m11
+  - pgmigrations
