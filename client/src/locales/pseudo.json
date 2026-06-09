@@ -633,7 +633,12 @@
       "saveError": "[Fäïlëd tö ŝävë. Plëäŝë try ägäïñ.~~~~~~~~~~]",
       "deleteSuccess": "[Ŝtägë dëlëtëd.~~~~~]",
       "deleteError": "[Fäïlëd tö dëlëtë. Plëäŝë try ägäïñ.~~~~~~~~~~~]",
-      "reorderError": "[Fäïlëd tö ŝävë ñëw ördër. Plëäŝë try ägäïñ.~~~~~~~~~~~~~]"
+      "reorderError": "[Fäïlëd tö ŝävë ñëw ördër. Plëäŝë try ägäïñ.~~~~~~~~~~~~~]",
+      "exitRequirementsLabel": "[Ëxït rëqüïrëmëñtŝ~~~~~]",
+      "exitRequirementsHint": "[Rëqüïrëd fïëldŝ blöck thë träñŝïtïöñ. Wärñïñg fïëldŝ ällöw ït büt flàg mïŝŝïñg dätä.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "exitRequiredFieldsLabel": "[Rëqüïrëd fïëldŝ (blöckŝ träñŝïtïöñ)~~~~~~~~~~~~~]",
+      "exitWarningFieldsLabel": "[Wärñïñg fïëldŝ (ällöwŝ träñŝïtïöñ)~~~~~~~~~~~~~]",
+      "exitFieldsPlaceholder": "[ë.g. clöŝë_dätë, välüë~~~]"
     },
     "customFields": {
       "sectionTitle": "[Ĉüŝtöm Fïëldŝ~~~~]",

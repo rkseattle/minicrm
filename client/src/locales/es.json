@@ -688,7 +688,12 @@
       "saveError": "Error al guardar. Inténtelo de nuevo.",
       "deleteSuccess": "Etapa eliminada.",
       "deleteError": "Error al eliminar. Inténtelo de nuevo.",
-      "reorderError": "Error al guardar el nuevo orden. Inténtelo de nuevo."
+      "reorderError": "Error al guardar el nuevo orden. Inténtelo de nuevo.",
+      "exitRequirementsLabel": "Requisitos de salida",
+      "exitRequirementsHint": "Los campos requeridos bloquean la transición. Los campos de advertencia la permiten pero marcan los datos faltantes.",
+      "exitRequiredFieldsLabel": "Campos requeridos (bloquea la transición)",
+      "exitWarningFieldsLabel": "Campos de advertencia (permite la transición)",
+      "exitFieldsPlaceholder": "p. ej. close_date, value"
     },
     "exchangeRates": {
       "sectionTitle": "Tipos de cambio",

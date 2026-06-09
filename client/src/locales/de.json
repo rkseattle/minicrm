@@ -688,7 +688,12 @@
       "saveError": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
       "deleteSuccess": "Phase gelöscht.",
       "deleteError": "Löschen fehlgeschlagen. Bitte erneut versuchen.",
-      "reorderError": "Neue Reihenfolge konnte nicht gespeichert werden. Bitte erneut versuchen."
+      "reorderError": "Neue Reihenfolge konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "exitRequirementsLabel": "Ausstiegsanforderungen",
+      "exitRequirementsHint": "Pflichtfelder blockieren den Übergang. Warnfelder erlauben ihn, markieren aber fehlende Daten.",
+      "exitRequiredFieldsLabel": "Pflichtfelder (blockiert den Übergang)",
+      "exitWarningFieldsLabel": "Warnfelder (erlaubt den Übergang)",
+      "exitFieldsPlaceholder": "z. B. close_date, value"
     },
     "exchangeRates": {
       "sectionTitle": "Wechselkurse",
