@@ -1238,15 +1238,16 @@ jobs:
         env:
           DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
           PGSSLMODE: disable
-        run: |
-          tbls doc --force
-          jq 'del(.driver.database_version)' docs/schema/schema.json > /tmp/schema.json && mv /tmp/schema.json docs/schema/schema.json
+        run: tbls doc --force
 
       - name: Fail if ERD is stale
         run: |
           if git ls-files --error-unmatch docs/schema/ 2>/dev/null; then
-            git diff --exit-code docs/schema/ || {
-              echo "docs/schema/ is out of date. Run 'npm run db:erd --workspace=minicrm-server' and commit the result."
+            # Exclude schema.json: it embeds postgres version strings and uuid-ossp
+            # function lists that vary across environments (version, installed extensions).
+            # The markdown files are the human-readable artifact that must stay in sync.
+            git diff --exit-code -- 'docs/schema/*.md' || {
+              echo "docs/schema/ markdown is out of date. Run 'npm run db:erd --workspace=minicrm-server' and commit the result."
               exit 1
             }
           else
