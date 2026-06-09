@@ -64,10 +64,20 @@ export async function updateCurrencies(
   try {
     await client.query('BEGIN');
 
-    // Step 1: Demote any existing home row (so we have no is_home constraint issues)
+    // Step 1: Snapshot all current non-home rates BEFORE any deletes or updates.
+    // This must run first so that currencies removed in Step 2 still have their last
+    // known rate preserved in history. Home-currency rows (rate always 1.0) are
+    // excluded — their rate is a definitional constant, not a meaningful exchange rate.
+    // (MINCRM-526)
+    await client.query(
+      `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
+       SELECT code, rate_to_home, now() FROM currencies WHERE is_home = false`,
+    );
+
+    // Step 2: Demote any existing home row (so we have no is_home constraint issues)
     await client.query('UPDATE currencies SET is_home = false WHERE is_home = true');
 
-    // Step 2: Remove currencies that are not in the new non-home set and are not the new home
+    // Step 3: Remove currencies that are not in the new non-home set and are not the new home
     const newNonHomeCodes = config.currencies.map((c) => c.code);
     const codesToKeep = [...newNonHomeCodes, config.home_currency];
     if (codesToKeep.length > 0) {
@@ -76,16 +86,8 @@ export async function updateCurrencies(
       await client.query('DELETE FROM currencies');
     }
 
-    // Step 3: Upsert each new non-home currency, snapshotting the previous rate first
+    // Step 4: Upsert each new non-home currency
     for (const currency of config.currencies) {
-      // Snapshot the existing rate into currency_rate_history before overwriting it.
-      // The INSERT is a no-op when the currency row does not yet exist. (MINCRM-526)
-      await client.query(
-        `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
-         SELECT code, rate_to_home, now() FROM currencies WHERE code = $1`,
-        [currency.code],
-      );
-
       await client.query(
         `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
          VALUES ($1, $2, $3, $4, false, now())
@@ -99,14 +101,7 @@ export async function updateCurrencies(
       );
     }
 
-    // Step 4: Upsert the home currency row (rate always 1.000000, is_home true),
-    // snapshotting its previous rate first in case the home currency is being switched.
-    await client.query(
-      `INSERT INTO currency_rate_history (code, rate_to_home, effective_from)
-       SELECT code, rate_to_home, now() FROM currencies WHERE code = $1`,
-      [config.home_currency],
-    );
-
+    // Step 5: Upsert the home currency row (rate always 1.000000, is_home true)
     await client.query(
       `INSERT INTO currencies (code, name, symbol, rate_to_home, is_home, updated_at)
        VALUES ($1, $2, $3, 1.000000, true, now())

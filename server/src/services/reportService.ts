@@ -149,14 +149,24 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
   // Scalar subqueries for home currency code/symbol are retained so that home_currency and
   // home_symbol remain populated even when the deals table is empty (aggregate over zero rows
   // would otherwise make LATERAL join columns null). (MINCRM-253)
+  //
+  // home_currency CTE deduplicates the four scalar subqueries that look up the home currency
+  // code and symbol, so the optimizer can satisfy them from a single index scan. (MINCRM-509)
+  //
+  // currency_updated_at in rate_at_close uses COALESCE(c.updated_at, rh.effective_from) so that
+  // deals whose currency was later deleted from the currencies table still contribute a
+  // meaningful timestamp to rates_last_updated via their history rows. (MINCRM-509)
   const aggCte = `
-    WITH rate_at_close AS (
+    WITH home_currency AS (
+      SELECT code, symbol FROM currencies WHERE is_home = true LIMIT 1
+    ),
+    rate_at_close AS (
       SELECT DISTINCT ON (d.id)
         d.id                                                           AS deal_id,
         COALESCE(rh.rate_to_home, c.rate_to_home)                     AS effective_rate,
         CASE WHEN rh.code IS NOT NULL OR c.code IS NOT NULL THEN true
              ELSE false END                                            AS has_rate,
-        c.updated_at                                                   AS currency_updated_at
+        COALESCE(c.updated_at, rh.effective_from)                     AS currency_updated_at
       FROM deals d
       LEFT JOIN currency_rate_history rh
         ON rh.code = d.currency
@@ -177,22 +187,22 @@ export async function getWinLossReport(params: WinLossReportParams): Promise<Win
        MIN(d.currency)                                                                    AS single_currency,
        SUM(
          CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Won'
-                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                   AND (d.currency = (SELECT code FROM home_currency)
                         OR rac.has_rate)
               THEN d.value::numeric * COALESCE(rac.effective_rate, 1.0)
               ELSE NULL END
        )::text AS converted_won_value,
        SUM(
          CASE WHEN d.value IS NOT NULL AND d.stage = 'Closed Lost'
-                   AND (d.currency = (SELECT code FROM currencies WHERE is_home = true LIMIT 1)
+                   AND (d.currency = (SELECT code FROM home_currency)
                         OR rac.has_rate)
               THEN d.value::numeric * COALESCE(rac.effective_rate, 1.0)
               ELSE NULL END
        )::text AS converted_lost_value,
-       (SELECT code   FROM currencies WHERE is_home = true LIMIT 1) AS home_currency,
-       (SELECT symbol FROM currencies WHERE is_home = true LIMIT 1) AS home_symbol,
+       (SELECT code   FROM home_currency) AS home_currency,
+       (SELECT symbol FROM home_currency) AS home_symbol,
        COUNT(*) FILTER (WHERE NOT rac.has_rate AND d.value IS NOT NULL
-                          AND d.currency != (SELECT code FROM currencies WHERE is_home = true LIMIT 1)) AS unrated_count,
+                          AND d.currency != (SELECT code FROM home_currency)) AS unrated_count,
        MAX(rac.currency_updated_at)::text AS rates_last_updated,
        (SELECT COUNT(*) FROM currencies WHERE is_home = false)::text AS has_rates_count`;
 

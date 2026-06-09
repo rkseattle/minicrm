@@ -145,6 +145,7 @@ export const AUTOMATION_LOG_1: AutomationRuleLogResponse = {
   triggering_record_id: '00000000-0000-0000-0000-000000000301',
   outcome: 'success',
   error_message: null,
+  action_config_snapshot: { assignee_type: 'owner', due_date_offset_days: 1 },
 };
 
 /** Reusable fixture: win/loss report response */
