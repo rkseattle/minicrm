@@ -364,6 +364,17 @@ export async function listContacts(
  * @param before - Snapshot of the contact before update (used for diff)
  * @returns The updated contact row, or null if not found
  */
+/** Address fields accepted in updateContact — forwarded to contact_addresses (MINCRM-500) */
+const ADDRESS_UPDATE_FIELDS = [
+  'address_line1',
+  'address_line2',
+  'city',
+  'state_region',
+  'postal_code',
+  'country',
+] as const;
+type AddressUpdateField = (typeof ADDRESS_UPDATE_FIELDS)[number];
+
 export async function updateContact(
   id: string,
   params: UpdateContactInput,
@@ -378,6 +389,17 @@ export async function updateContact(
   const fields = (Object.keys(normalized) as (keyof typeof normalized)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateContactInput),
   );
+
+  // Extract any address fields supplied in the update payload (MINCRM-500)
+  const addressFields = ADDRESS_UPDATE_FIELDS.filter(
+    (f) => (normalized as Record<string, unknown>)[f] !== undefined,
+  );
+  const addressUpdate =
+    addressFields.length > 0
+      ? (Object.fromEntries(
+          addressFields.map((f) => [f, (normalized as Record<string, unknown>)[f] ?? null]),
+        ) as Partial<Record<AddressUpdateField, string | null>>)
+      : null;
 
   // Build dynamic SET clause: first_name = $2, last_name = $3, ..., version = version + 1
   // $1=id, $2...$N=field values, $(N+1)=version (MINCRM-349)
@@ -419,6 +441,20 @@ export async function updateContact(
     }
 
     const contact = result.rows[0] ?? null;
+
+    // Forward address fields to the default contact_addresses row. (MINCRM-500)
+    // Upserts the existing default row if one exists; inserts a new default row otherwise.
+    if (contact && addressUpdate) {
+      const addrCols = Object.keys(addressUpdate) as AddressUpdateField[];
+      const setClauses = addrCols.map((col, i) => `${col} = $${i + 2}`).join(', ');
+      await client.query(
+        `INSERT INTO contact_addresses (contact_id, is_default, ${addrCols.join(', ')})
+         VALUES ($1, true, ${addrCols.map((_, i) => `$${i + 2}`).join(', ')})
+         ON CONFLICT ON CONSTRAINT contact_addresses_one_default_per_contact
+         DO UPDATE SET ${setClauses}, updated_at = now()`,
+        [id, ...addrCols.map((col) => addressUpdate[col])],
+      );
+    }
 
     if (contact && before) {
       // Audit: per-field diff (MINCRM-170)

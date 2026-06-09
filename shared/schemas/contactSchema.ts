@@ -110,7 +110,7 @@ export const contactResponseSchema = z.object({
   /** Set when the contact was created via lead conversion (MINCRM-175) */
   source_lead_id: z.string().uuid().nullable().optional(),
   /** Default address from contact_addresses — null when no default row exists (MINCRM-500) */
-  default_address: contactDefaultAddressSchema.nullable().optional(),
+  default_address: contactDefaultAddressSchema.nullable(),
   // Social profile URLs (MINCRM-190)
   linkedin_url: z.string().nullable(),
   twitter_x_url: z.string().nullable(),
