@@ -55,6 +55,7 @@ export interface AutomationRuleLogRow {
   triggering_record_id: string;
   outcome: 'success' | 'error';
   error_message: string | null;
+  action_config_snapshot: Record<string, unknown> | null;
 }
 
 /** Context passed to fireAutomationTrigger describing the record that caused the trigger */
@@ -275,7 +276,8 @@ export async function deleteAutomationRule(
 export async function listRuleLogs(ruleId: string): Promise<AutomationRuleLogRow[]> {
   const result = await pool.query<AutomationRuleLogRow>(
     `SELECT l.id, l.rule_id, r.name AS rule_name, l.triggered_at,
-            l.triggering_record_type, l.triggering_record_id, l.outcome, l.error_message
+            l.triggering_record_type, l.triggering_record_id, l.outcome, l.error_message,
+            l.action_config_snapshot
      FROM automation_rule_logs l
      JOIN automation_rules r ON r.id = l.rule_id
      WHERE l.rule_id = $1
@@ -298,17 +300,19 @@ async function writeRuleLog(params: {
   triggeringRecordId: string;
   outcome: 'success' | 'error';
   errorMessage?: string;
+  actionConfigSnapshot: Record<string, unknown>;
 }): Promise<void> {
   await pool.query(
     `INSERT INTO automation_rule_logs
-       (rule_id, triggering_record_type, triggering_record_id, outcome, error_message)
-     VALUES ($1, $2, $3, $4, $5)`,
+       (rule_id, triggering_record_type, triggering_record_id, outcome, error_message, action_config_snapshot)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
     [
       params.ruleId,
       params.triggeringRecordType,
       params.triggeringRecordId,
       params.outcome,
       params.errorMessage ?? null,
+      JSON.stringify(params.actionConfigSnapshot),
     ],
   );
 }
@@ -324,10 +328,15 @@ const MAX_DUE_DATE_OFFSET_DAYS = 3650;
  * @param context - Contextual data about the triggering event
  */
 async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Promise<void> {
+  // Capture the action_config at the moment of execution so the log entry remains
+  // accurate even if the rule is subsequently edited. (MINCRM-509)
+  const actionConfigSnapshot = rule.action_config;
+
   const logBase = {
     ruleId: rule.id,
     triggeringRecordType: context.recordType,
     triggeringRecordId: context.recordId,
+    actionConfigSnapshot,
   };
 
   try {

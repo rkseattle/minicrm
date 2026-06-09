@@ -17,6 +17,7 @@ import {
   deleteAutomationRule,
   listRuleLogs,
   fireAutomationTrigger,
+  type AutomationRuleLogRow,
 } from '../services/automationService.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
@@ -744,5 +745,86 @@ describe('audit log entries for automation rules (MINCRM-382)', () => {
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].record_type).toBe('system_settings');
     expect(result.rows[0].record_name).toBe('Audit delete rule');
+  });
+});
+
+// ── action_config_snapshot (MINCRM-509) ────────────────────────────────────────
+
+describe('action_config_snapshot', () => {
+  it('log row captures the action_config at fire time', async () => {
+    const rule = await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].action_config_snapshot).toEqual(BASE_RULE.action_config);
+  });
+
+  it('snapshot is frozen at fire time — subsequent rule edits do not affect it', async () => {
+    const originalConfig = {
+      subject: 'Original task subject',
+      task_type: 'Task',
+      assignee_type: 'owner' as const,
+      due_date_offset_days: 1,
+    };
+    const rule = await createAutomationRule({
+      ...BASE_RULE,
+      action_config: originalConfig,
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    // Edit the rule's action_config after execution
+    await updateAutomationRule(
+      rule.id,
+      {
+        action_config: {
+          subject: 'Edited subject',
+          task_type: 'Task',
+          assignee_type: 'owner',
+          due_date_offset_days: 3,
+        },
+      },
+      { id: adminId, name: 'Automation Admin' },
+    );
+
+    // The log snapshot must still reflect the config that was live at execution time
+    const logs = await listRuleLogs(rule.id);
+    expect(logs).toHaveLength(1);
+    expect((logs[0] as AutomationRuleLogRow).action_config_snapshot).toEqual(originalConfig);
+    expect((logs[0] as AutomationRuleLogRow).action_config_snapshot).not.toMatchObject({
+      subject: 'Edited subject',
+    });
+  });
+
+  it('snapshot is captured even when execution fails', async () => {
+    const invalidConfig = { subject: '' }; // missing required fields → throws
+    const rule = await createAutomationRule({
+      ...BASE_RULE,
+      action_config: invalidConfig,
+      created_by: adminId,
+    });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const logs = await listRuleLogs(rule.id);
+    expect(logs.length).toBeGreaterThanOrEqual(1);
+    const errorLog = logs.find((l) => l.outcome === 'error');
+    expect(errorLog).toBeDefined();
+    expect(errorLog!.action_config_snapshot).toEqual(invalidConfig);
   });
 });
