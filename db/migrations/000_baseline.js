@@ -1337,6 +1337,39 @@ exports.up = (pgm) => {
     ON CONFLICT ON CONSTRAINT smtp_configuration_singleton_unique DO NOTHING
   `);
 
+  // ── minicrm_app role (migration 092) ─────────────────────────────────────────
+  // This cluster-level role is not captured by pg_dump --schema-only, so it must
+  // be added here manually. It is used by rlsEnforcement.test.ts to connect as a
+  // non-superuser so that RLS policies are evaluated (the primary minicrm role is
+  // a superuser and bypasses RLS regardless of BYPASSRLS settings).
+  pgm.sql(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'minicrm_app') THEN
+        CREATE ROLE minicrm_app
+          NOSUPERUSER
+          NOCREATEDB
+          NOCREATEROLE
+          NOBYPASSRLS
+          LOGIN
+          PASSWORD 'minicrm_app';
+      END IF;
+    END
+    $$
+  `);
+  pgm.sql(`GRANT USAGE ON SCHEMA public TO minicrm_app`);
+  pgm.sql(`
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+      public.contacts,
+      public.accounts,
+      public.deals,
+      public.leads,
+      public.activities
+    TO minicrm_app
+  `);
+  pgm.sql(`GRANT SELECT ON TABLE public.users TO minicrm_app`);
+  pgm.sql(`GRANT EXECUTE ON FUNCTION public.app_current_user_id() TO minicrm_app`);
+
 };
 
 /**
