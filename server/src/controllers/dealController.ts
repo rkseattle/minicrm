@@ -229,6 +229,24 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
       return;
     }
+    if (code === 'STAGE_EXIT_REQUIREMENTS_NOT_MET') {
+      // Return the missing fields so the client can present a targeted error or warning. (MINCRM-527)
+      const typedErr = err as Error & {
+        missing_fields: string[];
+        warning_fields: string[];
+        severity: 'error' | 'warning';
+      };
+      res.status(400).json({
+        error: {
+          code,
+          message: typedErr.message,
+          missing_fields: typedErr.missing_fields,
+          warning_fields: typedErr.warning_fields,
+          severity: typedErr.severity,
+        },
+      });
+      return;
+    }
     throw err;
   }
   if (!deal) {
