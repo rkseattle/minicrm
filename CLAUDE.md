@@ -98,6 +98,25 @@ activities
   direction(Inbound|Outbound) nullable   outcome text nullable
   contact_id nullable   account_id nullable   deal_id nullable   owner_id   is_demo
   CHECK: at least one of contact_id / account_id / deal_id must be non-null
+  metadata jsonb nullable  ← type-specific overflow; see Extension Strategy below
+
+  **Activity Type Extension Strategy (MINCRM-525)**
+  Decision: JSONB metadata overflow column. New activity types store type-specific
+  fields in `metadata` rather than adding nullable typed columns to the shared table.
+
+  Column boundary:
+  - **Shared typed columns** (present for all types): `subject`, `due_date`, `status`,
+    `direction`, `outcome`, `owner_id`, `contact_id`, `account_id`, `deal_id`
+  - **metadata jsonb** (type-specific extensions): any field that is meaningful only
+    for a specific type, e.g. `thread_id`/`connection_degree` for LinkedIn messages,
+    `phone_number`/`message_sid` for WhatsApp messages.
+
+  Adding a new activity type:
+  1. Add the new value to the `varchar + CHECK` constraint (NOT the grandfathered
+     `activity_type` ENUM — see Schema Conventions below).
+  2. Store type-specific fields in `metadata jsonb`; never add nullable typed columns
+     to `activities` for type-specific data.
+  3. Document the expected `metadata` shape in the migration comment.
 
 leads
   last_name nullable   company_name nullable

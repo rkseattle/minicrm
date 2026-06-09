@@ -968,3 +968,53 @@ describe('audit log entries (MINCRM-382)', () => {
     expect(result.rows[0].record_name).toBe('To be deleted audit');
   });
 });
+
+// ── metadata jsonb column (MINCRM-525) ───────────────────────────────────────
+//
+// Verifies that the metadata column exists and that JSONB payloads round-trip
+// through the DB intact. The column is the designated extension point for
+// type-specific fields on new activity types (see CLAUDE.md).
+
+describe('activities metadata column', () => {
+  it('accepts and returns a JSONB metadata payload', async () => {
+    const payload = {
+      thread_id: 'abc-123',
+      connection_degree: 2,
+      profile_url: 'https://example.com/p/1',
+    };
+
+    const insertResult = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, contact_id, owner_id, metadata)
+       VALUES ('Call', 'Metadata test call', $1, $2, $3)
+       RETURNING id`,
+      [contactId, ownerId, JSON.stringify(payload)],
+    );
+    const id = insertResult.rows[0].id;
+
+    const selectResult = await pool.query<{ metadata: unknown }>(
+      `SELECT metadata FROM activities WHERE id = $1`,
+      [id],
+    );
+    expect(selectResult.rows[0]?.metadata).toEqual(payload);
+
+    await pool.query(`DELETE FROM activities WHERE id = $1`, [id]);
+  });
+
+  it('stores null metadata for activities that do not require type-specific fields', async () => {
+    const insertResult = await pool.query<{ id: string }>(
+      `INSERT INTO activities (type, subject, contact_id, owner_id)
+       VALUES ('Task', 'No-metadata task', $1, $2)
+       RETURNING id`,
+      [contactId, ownerId],
+    );
+    const id = insertResult.rows[0].id;
+
+    const selectResult = await pool.query<{ metadata: unknown }>(
+      `SELECT metadata FROM activities WHERE id = $1`,
+      [id],
+    );
+    expect(selectResult.rows[0]?.metadata).toBeNull();
+
+    await pool.query(`DELETE FROM activities WHERE id = $1`, [id]);
+  });
+});
