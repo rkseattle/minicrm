@@ -509,7 +509,12 @@ export async function convertLead(
       `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
       [dealStage, defaultPipelineId],
     );
-    const dealPipelineStageId = dealStageRow.rows[0]?.id ?? null;
+    const dealPipelineStageId = dealStageRow.rows[0]?.id;
+    if (!dealPipelineStageId) {
+      throw Object.assign(new Error(`Unknown stage: '${dealStage}'`), {
+        code: 'STAGE_NOT_FOUND',
+      });
+    }
 
     const dealResult = await client.query<{ id: string }>(
       `INSERT INTO deals (name, stage, value, close_date, account_id, owner_id, source_lead_id, pipeline_id, pipeline_stage_id)

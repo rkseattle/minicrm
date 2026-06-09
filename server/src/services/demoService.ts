@@ -1701,7 +1701,10 @@ async function insertDemoData(
       `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
       [deal.stage, pipelineId],
     );
-    const demoPipelineStageId = demoStageRow.rows[0]?.id ?? null;
+    const demoPipelineStageId = demoStageRow.rows[0]?.id;
+    if (!demoPipelineStageId) {
+      throw new Error(`Demo seed: unknown stage '${deal.stage}' in pipeline ${pipelineId}`);
+    }
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
@@ -1871,7 +1874,10 @@ async function insertDemoData(
       `SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1`,
       [deal.stage, pipelineId],
     );
-    const repDemoPipelineStageId = repDemoStageRow.rows[0]?.id ?? null;
+    const repDemoPipelineStageId = repDemoStageRow.rows[0]?.id;
+    if (!repDemoPipelineStageId) {
+      throw new Error(`Demo seed: unknown stage '${deal.stage}' in pipeline ${pipelineId}`);
+    }
     const result = await client.query<{ id: string }>(
       `INSERT INTO deals
          (name, stage, value, probability, currency, close_date, loss_reason, account_id, owner_id, pipeline_id, pipeline_stage_id, is_demo)
