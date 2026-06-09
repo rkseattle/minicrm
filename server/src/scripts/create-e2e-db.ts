@@ -60,14 +60,19 @@ async function main(): Promise<void> {
 
   const databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${E2E_DB_NAME}`;
 
-  await migrationRunner({
+  // Use the two-step fresh-bootstrap approach (MINCRM-528):
+  // Step 1 runs only 000_baseline; step 2 fake-marks 001-101 without re-executing their SQL.
+  // Prevents "relation already exists" on fresh databases (e.g. first-time local setup, CI).
+  const SHARED_OPTIONS = {
     databaseUrl,
     dir: MIGRATIONS_DIR,
-    direction: 'up',
+    direction: 'up' as const,
     migrationsTable: 'pgmigrations',
-    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs (MINCRM-528)
+    checkOrder: false,
     log: () => {},
-  });
+  };
+  await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
+  await migrationRunner({ ...SHARED_OPTIONS, fake: true });
 
   console.log(`[create-e2e-db] Migrations complete on ${E2E_DB_NAME}.`);
 }

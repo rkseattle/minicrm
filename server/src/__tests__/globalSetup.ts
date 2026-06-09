@@ -43,12 +43,18 @@ export default async function globalSetup(): Promise<void> {
   // Run migrations against the test database
   const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
-  await migrationRunner({
+  // Use the two-step fresh-bootstrap approach (MINCRM-528):
+  // Step 1 runs only 000_baseline; step 2 fake-marks 001-101 without re-executing their SQL.
+  // This prevents "relation already exists" errors on fresh CI databases where 000_baseline
+  // and 001-101 would otherwise both try to CREATE TABLE.
+  const SHARED_OPTIONS = {
     databaseUrl,
     dir: MIGRATIONS_DIR,
-    direction: 'up',
+    direction: 'up' as const,
     migrationsTable: 'pgmigrations',
-    checkOrder: false, // 000_baseline was added after 001-101 on existing DBs (MINCRM-528)
+    checkOrder: false,
     log: () => {},
-  });
+  };
+  await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
+  await migrationRunner({ ...SHARED_OPTIONS, fake: true });
 }
