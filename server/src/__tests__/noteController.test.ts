@@ -17,6 +17,7 @@ import app from '../app.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { createNote } from '../services/noteService.js';
+import { setTagsRestrictCreation } from '../services/settingsService.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'note-ctrl';
@@ -372,5 +373,85 @@ describe('DELETE /api/v1/:entityType/:entityId/notes/:noteId', () => {
       `/api/v1/contact/${contactId}/notes/00000000-0000-0000-0000-000000000000`,
     );
     expect(res.status).toBe(401);
+  });
+});
+
+// ── Tag restriction on create/update (MINCRM-506) ─────────────────────────────
+
+describe('POST /api/v1/:entityType/:entityId/notes — tag restriction', () => {
+  afterEach(async () => {
+    await setTagsRestrictCreation(false);
+  });
+
+  it('returns 403 TAG_CREATION_RESTRICTED when rep submits tags while restriction is enabled', async () => {
+    await setTagsRestrictCreation(true);
+    const res = await request(app)
+      .post(`/api/v1/contact/${contactId}/notes`)
+      .set('Cookie', repCookie)
+      .send({ body: VALID_BODY, visibility: 'team', tags: ['urgent'] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('TAG_CREATION_RESTRICTED');
+  });
+
+  it('allows admin to create note with tags even when restriction is enabled', async () => {
+    await setTagsRestrictCreation(true);
+    const res = await request(app)
+      .post(`/api/v1/contact/${contactId}/notes`)
+      .set('Cookie', adminCookie)
+      .send({ body: VALID_BODY, visibility: 'team', tags: ['urgent'] });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('allows rep to create note without tags when restriction is enabled', async () => {
+    await setTagsRestrictCreation(true);
+    const res = await request(app)
+      .post(`/api/v1/contact/${contactId}/notes`)
+      .set('Cookie', repCookie)
+      .send({ body: VALID_BODY, visibility: 'team', tags: [] });
+
+    expect(res.status).toBe(201);
+  });
+});
+
+describe('PATCH /api/v1/:entityType/:entityId/notes/:noteId — tag restriction', () => {
+  afterEach(async () => {
+    await setTagsRestrictCreation(false);
+  });
+
+  it('returns 403 TAG_CREATION_RESTRICTED when rep supplies tags in update while restriction is enabled', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: VALID_BODY, visibility: 'team', tags: [] },
+      { id: repId, name: 'Note Ctrl Rep' },
+    );
+    await setTagsRestrictCreation(true);
+
+    const res = await request(app)
+      .patch(`/api/v1/contact/${contactId}/notes/${note.id}`)
+      .set('Cookie', repCookie)
+      .send({ tags: ['urgent'] });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('TAG_CREATION_RESTRICTED');
+  });
+
+  it('allows rep to update note body without tags even when restriction is enabled', async () => {
+    const note = await createNote(
+      'contact',
+      contactId,
+      { body: VALID_BODY, visibility: 'team', tags: [] },
+      { id: repId, name: 'Note Ctrl Rep' },
+    );
+    await setTagsRestrictCreation(true);
+
+    const res = await request(app)
+      .patch(`/api/v1/contact/${contactId}/notes/${note.id}`)
+      .set('Cookie', repCookie)
+      .send({ body: VALID_BODY });
+
+    expect(res.status).toBe(200);
   });
 });

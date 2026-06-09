@@ -408,7 +408,14 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
       pool.query<NoteRow>(
         `SELECT
            n.id, n.entity_type, n.entity_id, n.title, n.body, n.body_text,
-           n.visibility, n.tags, n.created_by, n.updated_by, n.created_at, n.updated_at,
+           n.visibility,
+           COALESCE(
+             (SELECT array_agg(t.name ORDER BY t.name)
+              FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
+              WHERE nt.note_id = n.id),
+             ARRAY[]::text[]
+           ) AS tags,
+           n.created_by, n.updated_by, n.created_at, n.updated_at,
            creator.name AS created_by_name,
            updater.name AS updated_by_name
          FROM notes n
@@ -501,7 +508,14 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
     pool.query<NoteRow>(
       `SELECT
          n.id, n.entity_type, n.entity_id, n.title, n.body, n.body_text,
-         n.visibility, n.tags, n.created_by, n.updated_by, n.created_at, n.updated_at,
+         n.visibility,
+         COALESCE(
+           (SELECT array_agg(t.name ORDER BY t.name)
+            FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
+            WHERE nt.note_id = n.id),
+           ARRAY[]::text[]
+         ) AS tags,
+         n.created_by, n.updated_by, n.created_at, n.updated_at,
          creator.name AS created_by_name,
          updater.name AS updated_by_name
        FROM notes n

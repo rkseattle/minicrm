@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../db.js';
 import { encrypt } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
+import { syncEntityTagsWithinTransaction } from './tagService.js';
 import type pg from 'pg';
 
 /** Number of bcrypt salt rounds — matches userService.ts */
@@ -1964,20 +1965,20 @@ async function insertDemoData(
     }
     const createdBy = note.ownerType === 'admin' ? adminId : repId;
     const body = tiptapText(note.bodyText);
-    await client.query(
-      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, tags, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        note.entityType,
-        entityId,
-        note.title,
-        body,
-        note.bodyText,
-        note.visibility,
-        note.tags,
-        createdBy,
-      ],
+    const noteInsertResult = await client.query<{ id: string }>(
+      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [note.entityType, entityId, note.title, body, note.bodyText, note.visibility, createdBy],
     );
+    if (note.tags.length > 0) {
+      await syncEntityTagsWithinTransaction(
+        client,
+        'note',
+        noteInsertResult.rows[0]!.id,
+        note.tags,
+      );
+    }
   }
 
   // 17. Custom field definitions and values (MINCRM-353)

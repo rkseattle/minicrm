@@ -13,6 +13,7 @@ import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { syncEntityTagsWithinTransaction } from './tagService.js';
 import type {
   CreateNoteInput,
   UpdateNoteInput,
@@ -28,7 +29,8 @@ const AUDIT_BODY_TEXT_MAX = 200;
 /** Placeholder shown in audit log for private note content */
 const PRIVATE_NOTE_AUDIT_VALUE = '[private note]';
 
-/** Columns selected when fetching notes with creator/updater display names */
+/** Columns selected when fetching notes with creator/updater display names.
+ * Tags are aggregated from note_tags → tags instead of the dropped text[] column. */
 const SELECT_COLS = `
   n.id,
   n.entity_type,
@@ -37,7 +39,13 @@ const SELECT_COLS = `
   n.body,
   n.body_text,
   n.visibility,
-  n.tags,
+  COALESCE(
+    (SELECT array_agg(t.name ORDER BY t.name)
+     FROM note_tags nt
+     JOIN tags t ON t.id = nt.tag_id
+     WHERE nt.note_id = n.id),
+    ARRAY[]::text[]
+  ) AS tags,
   n.created_by,
   creator.name  AS created_by_name,
   n.updated_by,
@@ -300,8 +308,8 @@ export async function createNote(
     await assertEntityExists(client, entityType, entityId);
 
     const insertResult = await client.query<{ id: string }>(
-      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, tags, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO notes (entity_type, entity_id, title, body, body_text, visibility, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
       [
         entityType,
@@ -310,12 +318,18 @@ export async function createNote(
         params.body,
         bodyText || null,
         params.visibility ?? 'team',
-        params.tags ?? [],
         actor.id,
       ],
     );
 
-    const note = await fetchNoteRow(client, insertResult.rows[0]!.id);
+    const noteId = insertResult.rows[0]!.id;
+
+    // Sync tags via note_tags junction (MINCRM-506)
+    if (params.tags && params.tags.length > 0) {
+      await syncEntityTagsWithinTransaction(client, 'note', noteId, params.tags);
+    }
+
+    const note = await fetchNoteRow(client, noteId);
     if (!note) throw new Error('Note insert succeeded but fetch returned nothing');
 
     const isPrivate = note.visibility === 'private';
@@ -413,8 +427,7 @@ export async function updateNote(
            body       = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE body END,
            body_text  = CASE WHEN $4::text IS NOT NULL THEN $4 ELSE body_text END,
            visibility = CASE WHEN $5::text IS NOT NULL THEN $5::varchar(8) ELSE visibility END,
-           tags       = CASE WHEN $6::text[] IS NOT NULL THEN $6 ELSE tags END,
-           updated_by = $7,
+           updated_by = $6,
            updated_at = now()
        WHERE id = $1`,
       [
@@ -423,10 +436,14 @@ export async function updateNote(
         params.body ?? null,
         newBodyText || null,
         params.visibility ?? null,
-        params.tags ?? null,
         actor.id,
       ],
     );
+
+    // Sync tags via note_tags junction when tags were explicitly provided (MINCRM-506)
+    if (params.tags !== undefined) {
+      await syncEntityTagsWithinTransaction(client, 'note', noteId, params.tags);
+    }
 
     const after = await fetchNoteRow(client, noteId);
     if (!after) throw new Error('Note update succeeded but fetch returned nothing');
