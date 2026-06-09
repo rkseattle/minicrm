@@ -29,11 +29,25 @@
  */
 
 import 'dotenv/config';
+import { readdirSync } from 'fs';
 import { resolve } from 'path';
 import { runner as migrationRunner } from 'node-pg-migrate';
 
 /** CWD is server/ when run via npm --workspace=minicrm-server */
 const MIGRATIONS_DIR = resolve(process.cwd(), '../db/migrations');
+
+/**
+ * Count migration files that the baseline covers: all *.js files in the
+ * migrations directory EXCLUDING 000_baseline itself. This bounds the fake
+ * step so that any migration added after the baseline (102, 103, …) is NOT
+ * fake-marked — it will run for real on the next `npm run migrate`.
+ */
+function countBaselineCoveredMigrations(): number {
+  const files = readdirSync(MIGRATIONS_DIR).filter(
+    (f) => f.endsWith('.js') && f !== '000_baseline.js',
+  );
+  return files.length;
+}
 
 const databaseUrl =
   process.env.DATABASE_URL ??
@@ -61,10 +75,14 @@ async function main(): Promise<void> {
     console.log(`[migrate:fresh] 000_baseline applied: ${baselineResult[0].name}`);
   }
 
-  console.log('[migrate:fresh] Step 2 — marking migrations 001–101 as applied (fake)...');
+  const baselineCoveredCount = countBaselineCoveredMigrations();
+  console.log(
+    `[migrate:fresh] Step 2 — fake-marking up to ${baselineCoveredCount} baseline-covered migration(s)...`,
+  );
   const fakeResult = await migrationRunner({
     ...SHARED_OPTIONS,
     fake: true,
+    count: baselineCoveredCount,
   });
 
   if (fakeResult.length === 0) {

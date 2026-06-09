@@ -82,9 +82,9 @@ uses `IF NOT EXISTS`. When `npm run migrate` runs on an existing DB that does no
 have `000_baseline` in `pgmigrations`, it will execute the baseline once and it will be
 a no-op for all objects that already exist.
 
-**Exception:** `CREATE TRIGGER`, `CREATE POLICY`, and `ALTER TABLE ADD CONSTRAINT` do
-not support `IF NOT EXISTS`. These will error on existing databases if the trigger/policy/
-constraint already exists. Test on a backup before deploying to production.
+All `CREATE TRIGGER`, `CREATE POLICY`, and `ALTER TABLE ADD CONSTRAINT` statements
+are wrapped in `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$`
+blocks, so the baseline is fully idempotent on existing databases.
 
 ### When to regenerate the baseline
 

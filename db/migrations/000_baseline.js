@@ -29,9 +29,9 @@
  * The IF NOT EXISTS guards on every CREATE statement make this a safe no-op —
  * all schema objects already exist and are skipped.
  *
- * Note: CREATE TRIGGER, CREATE POLICY, and ALTER TABLE statements without
- * IF NOT EXISTS may produce errors on existing databases. Run against a backup
- * first to verify, or use the `migrate:fresh` path for all new environments.
+ * All CREATE TRIGGER, CREATE POLICY, and ALTER TABLE ADD CONSTRAINT statements
+ * are wrapped in DO/EXCEPTION blocks (duplicate_object) so this migration is
+ * fully idempotent and safe to run on existing databases.
  *
  * DOWN MIGRATION
  * --------------
@@ -942,72 +942,78 @@ exports.up = (pgm) => {
 
   // -------------------------------------------------------------------------
   // Additional constraints (added after all tables exist to avoid FK ordering)
+  // Each is wrapped in DO/EXCEPTION so the baseline is safe to run on existing
+  // databases where the constraint already exists (duplicate_object = sqlstate 42710).
   // -------------------------------------------------------------------------
 
-  // audit_log PK — omit ONLY so the constraint propagates to all existing partitions automatically
-  pgm.sql(`ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id, created_at)`);
+  const constraints = [
+    // audit_log PK — omit ONLY so the constraint propagates to all existing partitions automatically
+    `ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY (id, created_at)`,
+    `ALTER TABLE ONLY public.system_settings ADD CONSTRAINT system_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.pipelines ADD CONSTRAINT pipelines_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.pipeline_stages ADD CONSTRAINT pipeline_stages_pipeline_id_fkey FOREIGN KEY (pipeline_id) REFERENCES public.pipelines(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.accounts ADD CONSTRAINT accounts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.accounts ADD CONSTRAINT accounts_parent_account_id_fkey FOREIGN KEY (parent_account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_source_lead_id_fkey FOREIGN KEY (source_lead_id) REFERENCES public.leads(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_contact_id_fkey FOREIGN KEY (converted_contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_account_id_fkey FOREIGN KEY (converted_account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_deal_id_fkey FOREIGN KEY (converted_deal_id) REFERENCES public.deals(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_source_lead_id_fkey FOREIGN KEY (source_lead_id) REFERENCES public.leads(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_pipeline_id_fkey FOREIGN KEY (pipeline_id) REFERENCES public.pipelines(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_pipeline_stage_id_fkey FOREIGN KEY (pipeline_stage_id) REFERENCES public.pipeline_stages(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.automation_rules ADD CONSTRAINT automation_rules_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT`,
+    `ALTER TABLE ONLY public.automation_rule_logs ADD CONSTRAINT automation_rule_logs_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.automation_rules(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.attachments ADD CONSTRAINT attachments_uploader_id_fkey FOREIGN KEY (uploader_id) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.contact_addresses ADD CONSTRAINT contact_addresses_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.contact_tags ADD CONSTRAINT contact_tags_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.contact_tags ADD CONSTRAINT contact_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.account_tags ADD CONSTRAINT account_tags_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.account_tags ADD CONSTRAINT account_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.notes ADD CONSTRAINT notes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)`,
+    `ALTER TABLE ONLY public.notes ADD CONSTRAINT notes_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id)`,
+    `ALTER TABLE ONLY public.note_tags ADD CONSTRAINT note_tags_note_id_fkey FOREIGN KEY (note_id) REFERENCES public.notes(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.note_tags ADD CONSTRAINT note_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.custom_field_values ADD CONSTRAINT custom_field_values_definition_id_fkey FOREIGN KEY (definition_id) REFERENCES public.custom_field_definitions(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.overdue_task_notifications ADD CONSTRAINT overdue_task_notifications_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES public.activities(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.webhook_subscriptions ADD CONSTRAINT webhook_subscriptions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.webhook_delivery_logs ADD CONSTRAINT webhook_delivery_logs_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.webhook_subscriptions(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.import_jobs ADD CONSTRAINT import_jobs_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.gdpr_deletion_log ADD CONSTRAINT gdpr_deletion_log_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id)`,
+    `ALTER TABLE ONLY public.lead_status_history ADD CONSTRAINT lead_status_history_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.custom_reports ADD CONSTRAINT custom_reports_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.sales_sequences ADD CONSTRAINT sales_sequences_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.sales_sequence_steps ADD CONSTRAINT sales_sequence_steps_sequence_id_fkey FOREIGN KEY (sequence_id) REFERENCES public.sales_sequences(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_sequence_id_fkey FOREIGN KEY (sequence_id) REFERENCES public.sales_sequences(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_enrolled_by_id_fkey FOREIGN KEY (enrolled_by_id) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_current_step_id_fkey FOREIGN KEY (current_step_id) REFERENCES public.sales_sequence_steps(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.sequence_enrollment_logs ADD CONSTRAINT sequence_enrollment_logs_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES public.sequence_enrollments(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.sequence_enrollment_logs ADD CONSTRAINT sequence_enrollment_logs_step_id_fkey FOREIGN KEY (step_id) REFERENCES public.sales_sequence_steps(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.feature_flags ADD CONSTRAINT feature_flags_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_dpa_acknowledged_by_fkey FOREIGN KEY (dpa_acknowledged_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.ai_token_budgets ADD CONSTRAINT ai_token_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.ai_token_usage ADD CONSTRAINT ai_token_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+  ];
 
-  // users
-  pgm.sql(`ALTER TABLE ONLY public.system_settings ADD CONSTRAINT system_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.pipelines ADD CONSTRAINT pipelines_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.pipeline_stages ADD CONSTRAINT pipeline_stages_pipeline_id_fkey FOREIGN KEY (pipeline_id) REFERENCES public.pipelines(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.accounts ADD CONSTRAINT accounts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.accounts ADD CONSTRAINT accounts_parent_account_id_fkey FOREIGN KEY (parent_account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.contacts ADD CONSTRAINT contacts_source_lead_id_fkey FOREIGN KEY (source_lead_id) REFERENCES public.leads(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_contact_id_fkey FOREIGN KEY (converted_contact_id) REFERENCES public.contacts(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_account_id_fkey FOREIGN KEY (converted_account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.leads ADD CONSTRAINT leads_converted_deal_id_fkey FOREIGN KEY (converted_deal_id) REFERENCES public.deals(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_source_lead_id_fkey FOREIGN KEY (source_lead_id) REFERENCES public.leads(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_pipeline_id_fkey FOREIGN KEY (pipeline_id) REFERENCES public.pipelines(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.deals ADD CONSTRAINT deals_pipeline_stage_id_fkey FOREIGN KEY (pipeline_stage_id) REFERENCES public.pipeline_stages(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.automation_rules ADD CONSTRAINT automation_rules_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT`);
-  pgm.sql(`ALTER TABLE ONLY public.automation_rule_logs ADD CONSTRAINT automation_rule_logs_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.automation_rules(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.attachments ADD CONSTRAINT attachments_uploader_id_fkey FOREIGN KEY (uploader_id) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.contact_addresses ADD CONSTRAINT contact_addresses_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.contact_tags ADD CONSTRAINT contact_tags_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.contact_tags ADD CONSTRAINT contact_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.account_tags ADD CONSTRAINT account_tags_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.account_tags ADD CONSTRAINT account_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.notes ADD CONSTRAINT notes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)`);
-  pgm.sql(`ALTER TABLE ONLY public.notes ADD CONSTRAINT notes_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id)`);
-  pgm.sql(`ALTER TABLE ONLY public.note_tags ADD CONSTRAINT note_tags_note_id_fkey FOREIGN KEY (note_id) REFERENCES public.notes(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.note_tags ADD CONSTRAINT note_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.custom_field_values ADD CONSTRAINT custom_field_values_definition_id_fkey FOREIGN KEY (definition_id) REFERENCES public.custom_field_definitions(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.overdue_task_notifications ADD CONSTRAINT overdue_task_notifications_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES public.activities(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.webhook_subscriptions ADD CONSTRAINT webhook_subscriptions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.webhook_delivery_logs ADD CONSTRAINT webhook_delivery_logs_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES public.webhook_subscriptions(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.import_jobs ADD CONSTRAINT import_jobs_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.gdpr_deletion_log ADD CONSTRAINT gdpr_deletion_log_requested_by_fkey FOREIGN KEY (requested_by) REFERENCES public.users(id)`);
-  pgm.sql(`ALTER TABLE ONLY public.lead_status_history ADD CONSTRAINT lead_status_history_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.custom_reports ADD CONSTRAINT custom_reports_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.sales_sequences ADD CONSTRAINT sales_sequences_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.sales_sequence_steps ADD CONSTRAINT sales_sequence_steps_sequence_id_fkey FOREIGN KEY (sequence_id) REFERENCES public.sales_sequences(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_sequence_id_fkey FOREIGN KEY (sequence_id) REFERENCES public.sales_sequences(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_enrolled_by_id_fkey FOREIGN KEY (enrolled_by_id) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollments ADD CONSTRAINT sequence_enrollments_current_step_id_fkey FOREIGN KEY (current_step_id) REFERENCES public.sales_sequence_steps(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollment_logs ADD CONSTRAINT sequence_enrollment_logs_enrollment_id_fkey FOREIGN KEY (enrollment_id) REFERENCES public.sequence_enrollments(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.sequence_enrollment_logs ADD CONSTRAINT sequence_enrollment_logs_step_id_fkey FOREIGN KEY (step_id) REFERENCES public.sales_sequence_steps(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.feature_flags ADD CONSTRAINT feature_flags_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_dpa_acknowledged_by_fkey FOREIGN KEY (dpa_acknowledged_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`);
-  pgm.sql(`ALTER TABLE ONLY public.ai_token_budgets ADD CONSTRAINT ai_token_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`);
-  pgm.sql(`ALTER TABLE ONLY public.ai_token_usage ADD CONSTRAINT ai_token_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`);
+  for (const constraint of constraints) {
+    pgm.sql(`DO $$ BEGIN ${constraint}; EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL; END $$`);
+  }
 
   // -------------------------------------------------------------------------
   // Indexes
@@ -1181,7 +1187,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
 
   // -------------------------------------------------------------------------
-  // Triggers
+  // Triggers — wrapped in DO/EXCEPTION so baseline is safe on existing databases
   // -------------------------------------------------------------------------
 
   // set_updated_at triggers on all mutable tables (migration 077)
@@ -1194,41 +1200,142 @@ exports.up = (pgm) => {
     'sequence_enrollments', 'system_settings', 'tags', 'users',
   ]) {
     pgm.sql(`
-      CREATE TRIGGER ${table}_set_updated_at
-        BEFORE UPDATE ON public.${table}
-        FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()
+      DO $$ BEGIN
+        CREATE TRIGGER ${table}_set_updated_at
+          BEFORE UPDATE ON public.${table}
+          FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
   }
 
   // audit_log triggers — append-only + pg_notify
   pgm.sql(`
-    CREATE TRIGGER audit_log_no_modify
-      BEFORE DELETE OR UPDATE ON public.audit_log
-      FOR EACH ROW EXECUTE FUNCTION public.audit_log_immutable()
+    DO $$ BEGIN
+      CREATE TRIGGER audit_log_no_modify
+        BEFORE DELETE OR UPDATE ON public.audit_log
+        FOR EACH ROW EXECUTE FUNCTION public.audit_log_immutable();
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
   `);
   pgm.sql(`
-    CREATE TRIGGER audit_log_after_insert
-      AFTER INSERT ON public.audit_log
-      FOR EACH ROW EXECUTE FUNCTION public.audit_log_notify()
+    DO $$ BEGIN
+      CREATE TRIGGER audit_log_after_insert
+        AFTER INSERT ON public.audit_log
+        FOR EACH ROW EXECUTE FUNCTION public.audit_log_notify();
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
   `);
 
   // -------------------------------------------------------------------------
-  // Row-Level Security (migration 092)
+  // Row-Level Security (migration 092) — ENABLE/FORCE are idempotent in PG;
+  // policies are wrapped in DO/EXCEPTION to handle existing databases.
   // -------------------------------------------------------------------------
   for (const table of ['accounts', 'activities', 'contacts', 'deals', 'leads']) {
     pgm.sql(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
     pgm.sql(`ALTER TABLE ONLY public.${table} FORCE ROW LEVEL SECURITY`);
 
     // admin: full access
-    pgm.sql(`CREATE POLICY rls_admin_select ON public.${table} FOR SELECT USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text))`);
-    pgm.sql(`CREATE POLICY rls_admin_update ON public.${table} FOR UPDATE USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text))`);
-    pgm.sql(`CREATE POLICY rls_admin_delete ON public.${table} FOR DELETE USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text))`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_admin_select ON public.${table} FOR SELECT USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text)); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_admin_update ON public.${table} FOR UPDATE USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text)); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_admin_delete ON public.${table} FOR DELETE USING (((( SELECT users.role FROM public.users WHERE (users.id = public.app_current_user_id())))::text = 'admin'::text)); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
 
     // rep: own records only
-    pgm.sql(`CREATE POLICY rls_owner_select ON public.${table} FOR SELECT USING ((owner_id = public.app_current_user_id()))`);
-    pgm.sql(`CREATE POLICY rls_owner_update ON public.${table} FOR UPDATE USING ((owner_id = public.app_current_user_id()))`);
-    pgm.sql(`CREATE POLICY rls_owner_delete ON public.${table} FOR DELETE USING ((owner_id = public.app_current_user_id()))`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_owner_select ON public.${table} FOR SELECT USING ((owner_id = public.app_current_user_id())); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_owner_update ON public.${table} FOR UPDATE USING ((owner_id = public.app_current_user_id())); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+    pgm.sql(`DO $$ BEGIN CREATE POLICY rls_owner_delete ON public.${table} FOR DELETE USING ((owner_id = public.app_current_user_id())); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
   }
+
+  // ---------------------------------------------------------------------------
+  // Seed data — rows required for the application to function on a fresh install.
+  // Mirrors the INSERT statements from migrations 008, 014, 017, 021, 035, 038,
+  // 039, 054, 056, 066, 071, 086, 087. All inserts use ON CONFLICT DO NOTHING
+  // so this section is safe to run on existing databases that already have rows.
+  // ---------------------------------------------------------------------------
+
+  pgm.sql(`
+    INSERT INTO public.system_settings (key, value, updated_at) VALUES
+      ('default_language',            'en',    now()),
+      ('nav_layout',                  'top',   now()),
+      ('email_notifications_enabled', 'true',  now()),
+      ('tags_restrict_creation',      'false', now()),
+      ('onboarding_completed',        'false', now()),
+      ('require_mfa',                 'false', now()),
+      ('default_currency',            'USD',   now()),
+      ('pipeline_stages_reviewed',    'false', now())
+    ON CONFLICT (key) DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.currencies (code, name, symbol, rate_to_home, is_home)
+    VALUES ('USD', 'US Dollar', '$', 1.000000, true)
+    ON CONFLICT (code) DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.pipelines (name, is_default)
+    VALUES ('Default', true)
+    ON CONFLICT DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.pipeline_stages (name, sort_order, probability, is_terminal, is_fixed, pipeline_id)
+    SELECT name, sort_order, probability, is_terminal, is_fixed, (SELECT id FROM public.pipelines WHERE is_default = true)
+    FROM (VALUES
+      ('Prospecting',  10, 10,  false, false),
+      ('Qualification',20, 25,  false, false),
+      ('Proposal',     30, 50,  false, false),
+      ('Negotiation',  40, 75,  false, false),
+      ('Closed Won',   50, 100, true,  true),
+      ('Closed Lost',  60, 0,   true,  true)
+    ) AS stages(name, sort_order, probability, is_terminal, is_fixed)
+    WHERE NOT EXISTS (SELECT 1 FROM public.pipeline_stages)
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.feature_flags (flag_key, label, description, category, enabled, role_overrides, system_flag)
+    VALUES
+      ('notes',               'Notes',                    'Allows users to create and view notes on contacts, accounts, and deals.',              'Core CRM',     true,  NULL,                          true),
+      ('tags',                'Tags',                     'Allows users to tag contacts, accounts, and deals for categorization.',                'Core CRM',     true,  NULL,                          true),
+      ('activities',          'Activities',               'Enables activity logging (calls, emails, meetings) on CRM records.',                  'Core CRM',     true,  NULL,                          true),
+      ('tasks',               'Tasks',                    'Allows users to create and track tasks linked to CRM records.',                       'Core CRM',     true,  NULL,                          true),
+      ('lead_scoring',        'Lead Scoring',             'Enables automated scoring of leads based on configurable criteria.',                   'Productivity', true,  NULL,                          true),
+      ('duplicate_detection', 'Duplicate Detection',      'Warns users when creating records that may be duplicates of existing ones.',          'Productivity', true,  NULL,                          true),
+      ('custom_fields',       'Custom Fields',            'Allows admins to define custom data fields on contacts, accounts, and deals.',        'Productivity', true,  NULL,                          true),
+      ('multiple_pipelines',  'Multiple Pipelines',       'Enables management of more than one deal pipeline with independent stage sets.',      'Productivity', true,  NULL,                          true),
+      ('reporting',           'Reporting & Dashboards',   'Provides access to built-in reports and the dashboard analytics view.',               'Data',         true,  '{"admin":true,"rep":true}',   true),
+      ('sequencing',          'Sequencing',               'Enables automated email cadence sequences for outbound sales outreach.',              'Productivity', true,  NULL,                          true),
+      ('csv_import',          'CSV Import',               'Allows bulk import of contacts, accounts, and deals from CSV files.',                 'Data',         true,  NULL,                          true),
+      ('csv_export',          'CSV Export',               'Allows users to export CRM records as CSV files.',                                   'Data',         true,  '{"admin":true,"rep":true}',   true),
+      ('automation_rules',    'Automation Rules',         'Enables configurable trigger-action automation rules that run on record changes.',    'Integrations', true,  NULL,                          true),
+      ('webhooks',            'Webhooks',                 'Allows admins to configure outbound webhook notifications to external systems.',      'Integrations', true,  NULL,                          true),
+      ('email_templates',     'Email Templates',          'Provides a library of reusable email templates for use in sequences and activities.','Integrations', true,  NULL,                          true),
+      ('ai_features',         'AI Features',              'Master toggle for all AI-powered features in the CRM.',                              'AI',           true,  NULL,                          true),
+      ('mobile_access',       'Mobile Access',            'Enables access to the CRM from mobile devices.',                                     'Core CRM',     false, NULL,                          true),
+      ('demo_data',           'Demo Data',                'Allows loading and removing demo data for onboarding and evaluation purposes.',       'Data',         false, NULL,                          true),
+      ('ai_nli_page',              'NLI Page',                    'Provides the natural language interface page where users can query CRM data in plain English.',          'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_activity_summarizer',   'Activity Summarizer',         'Generates AI summaries of recent activity on contact, account, and deal record timelines.',             'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_email_draft',           'Email Draft',                 'Assists users with drafting outbound emails in the activity composer using AI.',                         'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_task_suggestions',      'Task Suggestions',            'Suggests follow-up tasks based on recent activity and deal context.',                                    'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_contact_enrichment',    'Contact Enrichment',          'Automatically enriches contact records with additional data from AI-powered inference.',                 'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_duplicate_explanation', 'Duplicate Explanation',       'Provides a natural language explanation of why two records were flagged as potential duplicates.',       'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_lead_score_narrative',  'Lead Score Narrative',        'Generates a plain-English explanation of the factors contributing to a lead score.',                    'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_deal_health_check',     'Deal Health Check',           'Assesses overall deal health and surfaces risk signals using AI analysis of deal activity.',             'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_stage_advancement',     'Stage Advancement Suggestion','Suggests when a deal is ready to advance to the next pipeline stage based on activity signals.',         'AI', true, '{"admin":true,"rep":true}', true)
+    ON CONFLICT (flag_key) DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.ai_configuration (singleton)
+    VALUES (TRUE)
+    ON CONFLICT ON CONSTRAINT ai_configuration_singleton_unique DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.smtp_configuration (singleton)
+    VALUES (TRUE)
+    ON CONFLICT ON CONSTRAINT smtp_configuration_singleton_unique DO NOTHING
+  `);
 
 };
 
