@@ -181,6 +181,21 @@ jobs:
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
 
+      - name: Guard against empty server test results
+        if: always()
+        run: |
+          COUNT=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          try:
+              print(ET.parse('server/test-results/junit.xml').getroot().get('tests', '0'))
+          except Exception:
+              print('0')
+          ")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Server test results contain 0 tests — likely a globalSetup crash. Check the 'Run server tests with coverage' step above."
+            exit 1
+          fi
+
       - name: Publish server test results to GitHub Checks
         uses: dorny/test-reporter@v3
         if: always()
@@ -239,6 +254,21 @@ jobs:
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
+
+      - name: Guard against empty client test results
+        if: always()
+        run: |
+          COUNT=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          try:
+              print(ET.parse('client/test-results/junit.xml').getroot().get('tests', '0'))
+          except Exception:
+              print('0')
+          ")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Client test results contain 0 tests — likely a setup crash. Check the 'Run client tests with coverage' step above."
+            exit 1
+          fi
 
       - name: Publish client test results to GitHub Checks
         uses: dorny/test-reporter@v3
