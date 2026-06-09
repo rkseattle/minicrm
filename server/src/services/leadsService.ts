@@ -12,15 +12,11 @@ import type {
   ConvertLeadInput,
 } from '@minicrm/shared/schemas/leadSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
-import {
-  writeAuditEntry,
-  writeAuditEntries,
-  writeAuditEntryBestEffort,
-  diffFields,
-} from './auditService.js';
+import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
+import { softDeleteNotesByEntity } from './noteService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -392,23 +388,36 @@ export async function deleteLead(
   id: string,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<LeadRow | null> {
-  const result = await withRlsQuery((client) =>
-    client.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]),
-  );
-  const deleted = result.rows[0] ?? null;
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await setRlsUserId(client);
 
-  if (deleted) {
-    void writeAuditEntryBestEffort({
-      recordType: 'contact', // leads share 'contact' record type in the audit log
-      recordId: deleted.id,
-      recordName: `${deleted.first_name}${deleted.last_name ? ' ' + deleted.last_name : ''}`,
-      eventType: 'deleted',
-      changedById: actor.id,
-      changedByName: actor.name,
-    });
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    await softDeleteNotesByEntity(client, 'lead', id);
+
+    const result = await client.query<LeadRow>('DELETE FROM leads WHERE id = $1 RETURNING *', [id]);
+    const deleted = result.rows[0] ?? null;
+
+    if (deleted) {
+      await writeAuditEntry(client, {
+        recordType: 'contact', // leads share 'contact' record type in the audit log
+        recordId: deleted.id,
+        recordName: `${deleted.first_name}${deleted.last_name ? ' ' + deleted.last_name : ''}`,
+        eventType: 'deleted',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    return deleted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return deleted;
 }
 
 /**

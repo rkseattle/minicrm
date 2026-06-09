@@ -15,6 +15,7 @@ import { dispatchWebhookEvent } from './webhookService.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
+import { softDeleteNotesByEntity } from './noteService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -707,6 +708,9 @@ export async function deleteContact(
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
+
+    // Soft-delete notes before removing the parent row to prevent orphaned active notes (MINCRM-523)
+    await softDeleteNotesByEntity(client, 'contact', id);
 
     const result = await client.query<ContactRow>(
       'DELETE FROM contacts WHERE id = $1 RETURNING *',

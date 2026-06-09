@@ -493,6 +493,30 @@ export async function updateNote(
 }
 
 /**
+ * Soft-deletes all non-deleted notes for a given entity within an existing transaction.
+ * Must be called before hard-deleting the parent entity row so that orphaned notes
+ * are never left with deleted_at = NULL pointing at a non-existent parent. (MINCRM-523)
+ *
+ * @param client - Checked-out pool client already inside a BEGIN/COMMIT block
+ * @param entityType - Parent entity type (contact | account | deal | lead)
+ * @param entityId - UUID of the parent entity being deleted
+ */
+export async function softDeleteNotesByEntity(
+  client: PoolClient,
+  entityType: NoteEntityType,
+  entityId: string,
+): Promise<void> {
+  await client.query(
+    `UPDATE notes
+     SET deleted_at = now()
+     WHERE entity_type = $1
+       AND entity_id   = $2
+       AND deleted_at IS NULL`,
+    [entityType, entityId],
+  );
+}
+
+/**
  * Soft-deletes a note by setting deleted_at. Only the creator or an admin may delete.
  *
  * @param entityType - Parent entity type (for validation)
