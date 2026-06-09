@@ -46,6 +46,12 @@ export const DEFAULT_PIPELINE_FIXTURE: PipelineResponse = {
   updated_at: '2025-01-01T00:00:00.000Z',
 };
 
+const EMPTY_EXIT_REQUIREMENTS = { required_fields: [], warning_fields: [] };
+const CLOSE_DATE_EXIT_REQUIREMENTS = {
+  required_fields: ['close_date'],
+  warning_fields: [],
+};
+
 /** Reusable fixture: the six default pipeline stages */
 export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
   {
@@ -56,6 +62,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 10,
     is_terminal: false,
     is_fixed: false,
+    stage_exit_requirements: EMPTY_EXIT_REQUIREMENTS,
   },
   {
     id: 'ps-2',
@@ -65,6 +72,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 25,
     is_terminal: false,
     is_fixed: false,
+    stage_exit_requirements: EMPTY_EXIT_REQUIREMENTS,
   },
   {
     id: 'ps-3',
@@ -74,6 +82,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 50,
     is_terminal: false,
     is_fixed: false,
+    stage_exit_requirements: EMPTY_EXIT_REQUIREMENTS,
   },
   {
     id: 'ps-4',
@@ -83,6 +92,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 75,
     is_terminal: false,
     is_fixed: false,
+    stage_exit_requirements: EMPTY_EXIT_REQUIREMENTS,
   },
   {
     id: 'ps-5',
@@ -92,6 +102,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 100,
     is_terminal: true,
     is_fixed: true,
+    stage_exit_requirements: CLOSE_DATE_EXIT_REQUIREMENTS,
   },
   {
     id: 'ps-6',
@@ -101,6 +112,7 @@ export const PIPELINE_STAGES_FIXTURE: PipelineStageResponse[] = [
     probability: 0,
     is_terminal: true,
     is_fixed: true,
+    stage_exit_requirements: CLOSE_DATE_EXIT_REQUIREMENTS,
   },
 ];
 
@@ -1764,6 +1776,7 @@ export const handlers = [
       is_terminal: false,
       is_fixed: false,
       pipeline_id: DEFAULT_PIPELINE_ID,
+      stage_exit_requirements: { required_fields: [], warning_fields: [] },
     };
     return HttpResponse.json(newStage, { status: 201 });
   }),

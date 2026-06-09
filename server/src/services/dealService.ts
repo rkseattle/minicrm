@@ -342,10 +342,10 @@ export async function updateDeal(
 
   const previousStage = before?.stage;
 
-  // When stage is changing, resolve the new stage name to its UUID so pipeline_stage_id
-  // stays in sync with the text column. The controller has already validated the name. (MINCRM-499)
+  // When stage is changing, resolve the new stage name to its UUID and enforce exit requirements.
+  // The controller has already validated the stage name exists. (MINCRM-499, MINCRM-527)
   let resolvedStageId: string | undefined;
-  if (params.stage !== undefined) {
+  if (params.stage !== undefined && params.stage !== before?.stage) {
     const effectivePipelineId = params.pipeline_id ?? before?.pipeline_id;
     if (!effectivePipelineId) {
       throw Object.assign(new Error('Cannot resolve stage: pipeline_id is unknown'), {
@@ -360,6 +360,56 @@ export async function updateDeal(
       );
     }
     resolvedStageId = stageRow.id;
+
+    // Validate stage_exit_requirements against the deal's effective state after this update.
+    // Fields being set in this same request satisfy requirements even if null before. (MINCRM-527)
+    const { required_fields, warning_fields } = stageRow.stage_exit_requirements;
+    if (required_fields.length > 0 || warning_fields.length > 0) {
+      // Merge current deal state with incoming params to get the post-update picture
+      const mergedDeal = { ...before, ...dealParams } as Record<string, unknown>;
+
+      const missingRequired = required_fields.filter(
+        (field) => mergedDeal[field] === null || mergedDeal[field] === undefined,
+      );
+      const missingWarning = warning_fields.filter(
+        (field) => mergedDeal[field] === null || mergedDeal[field] === undefined,
+      );
+
+      if (missingRequired.length > 0) {
+        throw Object.assign(
+          new Error(
+            `Cannot move deal to "${params.stage}": the following fields are required but missing: ${missingRequired.join(', ')}`,
+          ),
+          {
+            code: 'STAGE_EXIT_REQUIREMENTS_NOT_MET',
+            missing_fields: missingRequired,
+            warning_fields: missingWarning,
+            severity: 'error' as const,
+          },
+        );
+      }
+
+      if (missingWarning.length > 0) {
+        throw Object.assign(
+          new Error(
+            `Moving deal to "${params.stage}": the following fields are recommended but missing: ${missingWarning.join(', ')}`,
+          ),
+          {
+            code: 'STAGE_EXIT_REQUIREMENTS_NOT_MET',
+            missing_fields: [],
+            warning_fields: missingWarning,
+            severity: 'warning' as const,
+          },
+        );
+      }
+    }
+  } else if (params.stage !== undefined) {
+    // Stage is in payload but unchanged — still need to resolve the UUID for the SET clause.
+    const effectivePipelineId = params.pipeline_id ?? before?.pipeline_id;
+    if (effectivePipelineId) {
+      const stageRow = await findPipelineStageByNameAndPipeline(params.stage, effectivePipelineId);
+      if (stageRow) resolvedStageId = stageRow.id;
+    }
   }
 
   // Build dynamic SET clause — include pipeline_stage_id alongside stage when stage changes.

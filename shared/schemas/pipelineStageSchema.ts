@@ -6,6 +6,19 @@
 import { z } from 'zod';
 
 /**
+ * Schema for the stage_exit_requirements jsonb column. (MINCRM-527)
+ *
+ * required_fields: deal fields that must be non-null before leaving this stage; blocks the transition.
+ * warning_fields:  deal fields that ideally should be set; the transition is allowed but a warning is returned.
+ */
+export const stageExitRequirementsSchema = z.object({
+  required_fields: z.array(z.string()),
+  warning_fields: z.array(z.string()),
+});
+
+export type StageExitRequirements = z.infer<typeof stageExitRequirementsSchema>;
+
+/**
  * Shape of a pipeline stage row as returned by GET /api/settings/pipeline-stages.
  */
 export const pipelineStageResponseSchema = z.object({
@@ -17,6 +30,8 @@ export const pipelineStageResponseSchema = z.object({
   probability: z.number().int().min(0).max(100),
   is_terminal: z.boolean(),
   is_fixed: z.boolean(),
+  /** Configurable data quality gates for stage transitions (MINCRM-527) */
+  stage_exit_requirements: stageExitRequirementsSchema,
 });
 
 export type PipelineStageResponse = z.infer<typeof pipelineStageResponseSchema>;
@@ -40,7 +55,7 @@ export type CreatePipelineStageInput = z.infer<typeof createPipelineStageSchema>
 /**
  * Request body for updating an existing pipeline stage.
  * All fields optional; at least one must be provided.
- * Fixed stages may only update probability and sort_order.
+ * Fixed stages may only update probability, sort_order, and stage_exit_requirements.
  */
 export const updatePipelineStageSchema = z
   .object({
@@ -52,6 +67,8 @@ export const updatePipelineStageSchema = z
       .optional(),
     sort_order: z.number().int().nonnegative().optional(),
     probability: z.number().int().min(0).max(100).optional(),
+    /** Configurable data quality gates for stage transitions (MINCRM-527) */
+    stage_exit_requirements: stageExitRequirementsSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',

@@ -19,6 +19,7 @@ const STAGES: PipelineStageResponse[] = [
     is_terminal: false,
     is_fixed: true,
     pipeline_id: '00000000-0000-0000-0000-000000000001',
+    stage_exit_requirements: { required_fields: [], warning_fields: [] },
   },
   {
     id: 's2',
@@ -28,6 +29,7 @@ const STAGES: PipelineStageResponse[] = [
     is_terminal: false,
     is_fixed: true,
     pipeline_id: '00000000-0000-0000-0000-000000000001',
+    stage_exit_requirements: { required_fields: [], warning_fields: [] },
   },
 ];
 

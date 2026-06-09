@@ -32,6 +32,11 @@ const SEED_STAGES: PipelineStageResponse[] = PIPELINE_STAGES.map((name, index) =
               : 0,
   is_terminal: name === 'Closed Won' || name === 'Closed Lost',
   is_fixed: name === 'Closed Won' || name === 'Closed Lost',
+  // Seed fallback — real requirements come from the API response. (MINCRM-527)
+  stage_exit_requirements:
+    name === 'Closed Won' || name === 'Closed Lost'
+      ? { required_fields: ['close_date'], warning_fields: [] }
+      : { required_fields: [], warning_fields: [] },
 }));
 
 /** Result shape returned by usePipelineStages */

@@ -11,6 +11,7 @@ import type {
   UpdatePipelineStageInput,
   ReorderPipelineStagesInput,
   PipelineStageResponse,
+  StageExitRequirements,
 } from '@minicrm/shared/schemas/pipelineStageSchema.js';
 import { writeAuditEntry, writeAuditEntries, SYSTEM_ACTOR } from './auditService.js';
 import { withRlsQuery } from './rlsContextService.js';
@@ -26,13 +27,15 @@ export interface PipelineStageRow {
   probability: number;
   is_terminal: boolean;
   is_fixed: boolean;
+  /** Configurable data quality gates for stage transitions (MINCRM-527) */
+  stage_exit_requirements: StageExitRequirements;
   created_at: Date;
   updated_at: Date;
 }
 
 /** Columns to SELECT for stage list queries */
 const STAGE_SELECT =
-  'id, pipeline_id, name, sort_order, probability, is_terminal, is_fixed, created_at, updated_at';
+  'id, pipeline_id, name, sort_order, probability, is_terminal, is_fixed, stage_exit_requirements, created_at, updated_at';
 
 /**
  * Resolves a pipeline_id, falling back to the default pipeline when not supplied.
@@ -212,6 +215,10 @@ export async function updatePipelineStage(
       values.push(params.probability);
       setClauses.push(`probability = $${values.length}`);
     }
+    if (params.stage_exit_requirements !== undefined) {
+      values.push(JSON.stringify(params.stage_exit_requirements));
+      setClauses.push(`stage_exit_requirements = $${values.length}`);
+    }
 
     setClauses.push('updated_at = now()');
 
@@ -257,6 +264,19 @@ export async function updatePipelineStage(
           fieldName: 'probability',
           oldValue: String(existing.probability),
           newValue: String(params.probability),
+        });
+      }
+      if (
+        params.stage_exit_requirements !== undefined &&
+        JSON.stringify(params.stage_exit_requirements) !==
+          JSON.stringify(existing.stage_exit_requirements)
+      ) {
+        entries.push({
+          ...auditBase,
+          eventType: 'updated',
+          fieldName: 'stage_exit_requirements',
+          oldValue: JSON.stringify(existing.stage_exit_requirements),
+          newValue: JSON.stringify(params.stage_exit_requirements),
         });
       }
       if (entries.length > 0) {
@@ -459,5 +479,6 @@ export function toStageResponse(row: PipelineStageRow): PipelineStageResponse {
     probability: row.probability,
     is_terminal: row.is_terminal,
     is_fixed: row.is_fixed,
+    stage_exit_requirements: row.stage_exit_requirements,
   };
 }
