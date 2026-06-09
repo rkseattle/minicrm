@@ -1238,7 +1238,9 @@ jobs:
         env:
           DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
           PGSSLMODE: disable
-        run: tbls doc --force
+        run: |
+          tbls doc --force
+          jq 'del(.driver.database_version)' docs/schema/schema.json > /tmp/schema.json && mv /tmp/schema.json docs/schema/schema.json
 
       - name: Fail if ERD is stale
         run: |

@@ -211,7 +211,7 @@
         {
           "name": "users_sso_subject_max_length",
           "type": "CHECK",
-          "def": "CHECK (((sso_subject IS NULL) OR (length(sso_subject) \u003c= 1024)))",
+          "def": "CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024)))",
           "table": "public.users",
           "referenced_table": "",
           "columns": [
@@ -822,7 +822,7 @@
         {
           "name": "deals_probability_check",
           "type": "CHECK",
-          "def": "CHECK (((probability IS NULL) OR ((probability \u003e= 0) AND (probability \u003c= 100))))",
+          "def": "CHECK (((probability IS NULL) OR ((probability >= 0) AND (probability <= 100))))",
           "table": "public.deals",
           "referenced_table": "",
           "columns": [
@@ -2145,7 +2145,7 @@
         {
           "name": "pipeline_stages_probability_check",
           "type": "CHECK",
-          "def": "CHECK (((probability \u003e= 0) AND (probability \u003c= 100)))",
+          "def": "CHECK (((probability >= 0) AND (probability <= 100)))",
           "table": "public.pipeline_stages",
           "referenced_table": "",
           "columns": [
@@ -2684,7 +2684,7 @@
         {
           "name": "currencies_rate_to_home_positive",
           "type": "CHECK",
-          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
+          "def": "CHECK ((rate_to_home > (0)::numeric))",
           "table": "public.currencies",
           "referenced_table": "",
           "columns": [
@@ -3969,7 +3969,7 @@
         {
           "name": "sales_sequence_steps_delay_days_check",
           "type": "CHECK",
-          "def": "CHECK ((delay_days \u003e= 0))",
+          "def": "CHECK ((delay_days >= 0))",
           "table": "public.sales_sequence_steps",
           "referenced_table": "",
           "columns": [
@@ -4806,7 +4806,7 @@
           "type": "smallint",
           "nullable": false,
           "default": "1",
-          "comment": "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V\u003cn\u003e env var (MINCRM-519)"
+          "comment": "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
         }
       ],
       "indexes": [
@@ -4919,7 +4919,7 @@
           "type": "smallint",
           "nullable": false,
           "default": "1",
-          "comment": "Key version used to encrypt pass_encrypted. References ENCRYPTION_KEY_V\u003cn\u003e env var (MINCRM-519)"
+          "comment": "Key version used to encrypt pass_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
         }
       ],
       "indexes": [
@@ -5221,7 +5221,7 @@
         {
           "name": "currency_rate_history_rate_positive",
           "type": "CHECK",
-          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
+          "def": "CHECK ((rate_to_home > (0)::numeric))",
           "table": "public.currency_rate_history",
           "referenced_table": "",
           "columns": [
@@ -6291,7 +6291,6 @@
   ],
   "driver": {
     "name": "postgres",
-    "database_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
     "meta": {
       "current_schema": "public",
       "search_paths": [
