@@ -908,6 +908,42 @@ describe('updateContact — address and social fields', () => {
   });
 });
 
+// ── updateContact — address-only PATCH (fields.length === 0) ────────────────────
+
+describe('updateContact — address-only PATCH', () => {
+  it('persists address fields when no scalar contact fields are included', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+
+    const updated = await updateContact(contact.id, {
+      address_line1: '123 Main St',
+      version: contact.version,
+    });
+
+    expect(updated).not.toBeNull();
+    expect(updated!.id).toBe(contact.id);
+
+    const addresses = await listContactAddresses(contact.id);
+    expect(addresses).toHaveLength(1);
+    expect(addresses[0].address_line1).toBe('123 Main St');
+    expect(addresses[0].is_default).toBe(true);
+  });
+
+  it('returns null for a non-existent contact id', async () => {
+    const result = await updateContact('00000000-0000-0000-0000-000000000001', {
+      address_line1: '1 Ghost St',
+      version: 1,
+    });
+    expect(result).toBeNull();
+  });
+
+  it('throws OPTIMISTIC_LOCK_CONFLICT when version is stale', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: ownerId });
+    await expect(
+      updateContact(contact.id, { address_line1: '1 Stale St', version: contact.version - 1 }),
+    ).rejects.toMatchObject({ code: 'OPTIMISTIC_LOCK_CONFLICT' });
+  });
+});
+
 // ── mergeContacts ───────────────────────────────────────────────────────────────
 
 describe('mergeContacts', () => {
