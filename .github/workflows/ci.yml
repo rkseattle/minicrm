@@ -465,7 +465,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations on E2E database
-        run: npm run migrate --workspace=minicrm-server
+        run: npm run migrate:fresh --workspace=minicrm-server
         env:
           DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
           DB_USER: minicrm
@@ -1225,7 +1225,7 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
-        run: DATABASE_URL=$DATABASE_URL npm run migrate --workspace=minicrm-server
+        run: DATABASE_URL=$DATABASE_URL npm run migrate:fresh --workspace=minicrm-server
 
       - name: Install tbls
         run: |
@@ -1317,7 +1317,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations on E2E database
-        run: npm run migrate --workspace=minicrm-server
+        run: npm run migrate:fresh --workspace=minicrm-server
         env:
           DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
           DB_USER: minicrm
