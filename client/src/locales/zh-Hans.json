@@ -1477,6 +1477,7 @@
     "convertError": "转化失败，请重试。",
     "convertErrorSelectAccount": "请选择一个现有客户。",
     "convertErrorContactRequired": "名和电子邮件为必填项。",
+    "convertErrorLastNameRequired": "将潜在客户转化为联系人时，姓氏为必填项。",
     "convertErrorDealRequired": "商机名称为必填项。",
     "convertSectionContact": "联系人",
     "convertSectionAccount": "客户",

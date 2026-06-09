@@ -26,6 +26,7 @@ import {
 import { findContactById } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
+import { convertLeadSchema } from '@minicrm/shared/schemas/leadSchema.js';
 import pool from '../db.js';
 import { uid } from './testUtils.js';
 
@@ -317,7 +318,7 @@ describe('convertLead', () => {
       {
         contact: {
           first_name: lead.first_name,
-          last_name: lead.last_name ?? undefined,
+          last_name: lead.last_name!, // makeLead() always sets last_name: 'Kim'
           email: lead.email,
           phone: lead.phone ?? undefined,
         },
@@ -345,7 +346,11 @@ describe('convertLead', () => {
   it('throws ALREADY_CONVERTED when lead is already converted', async () => {
     const lead = await createLead({ ...makeLead(), owner_id: ownerId });
     const convInput = {
-      contact: { first_name: lead.first_name, email: lead.email },
+      contact: {
+        first_name: lead.first_name,
+        last_name: lead.last_name ?? 'Lead',
+        email: lead.email,
+      },
       account: { mode: 'create' as const, name: 'Acme' },
       deal: { name: 'Acme — Opp' },
     };
@@ -371,7 +376,11 @@ describe('convertLead', () => {
       convertLead(
         lead.id,
         {
-          contact: { first_name: lead.first_name, email: lead.email },
+          contact: {
+            first_name: lead.first_name,
+            last_name: lead.last_name ?? 'Lead',
+            email: lead.email,
+          },
           account: { mode: 'create', name: 'Acme' },
           deal: { name: 'Acme — Opp' },
         },
@@ -387,7 +396,11 @@ describe('convertLead', () => {
       convertLead(
         lead.id,
         {
-          contact: { first_name: lead.first_name, email: lead.email },
+          contact: {
+            first_name: lead.first_name,
+            last_name: lead.last_name ?? 'Lead',
+            email: lead.email,
+          },
           account: { mode: 'link', account_id: '00000000-0000-0000-0000-000000000000' },
           deal: { name: 'Opp' },
         },
@@ -409,7 +422,11 @@ describe('convertLead', () => {
     const result = await convertLead(
       lead.id,
       {
-        contact: { first_name: lead.first_name, email: lead.email },
+        contact: {
+          first_name: lead.first_name,
+          last_name: lead.last_name ?? 'Lead',
+          email: lead.email,
+        },
         account: { mode: 'link', account_id: existingAccountId },
         deal: { name: 'Existing Corp — Opp' },
       },
@@ -417,6 +434,26 @@ describe('convertLead', () => {
     );
 
     expect(result.account_id).toBe(existingAccountId);
+  });
+
+  it('rejects conversion when last_name is empty (MINCRM-507)', () => {
+    // Absent key → "Required"; empty string → our custom message. Both cases must fail.
+    const absentParsed = convertLeadSchema.safeParse({
+      contact: { first_name: 'Jane', email: 'jane@example.com' },
+      account: { mode: 'create', name: 'Acme' },
+      deal: { name: 'Acme — Opp' },
+    });
+    expect(absentParsed.success).toBe(false);
+
+    const emptyParsed = convertLeadSchema.safeParse({
+      contact: { first_name: 'Jane', last_name: '', email: 'jane@example.com' },
+      account: { mode: 'create', name: 'Acme' },
+      deal: { name: 'Acme — Opp' },
+    });
+    expect(emptyParsed.success).toBe(false);
+    if (!emptyParsed.success) {
+      expect(emptyParsed.error.errors[0].message).toMatch(/last name is required/i);
+    }
   });
 });
 
@@ -453,7 +490,11 @@ describe('findLeadByContactId', () => {
     const result = await convertLead(
       lead.id,
       {
-        contact: { first_name: lead.first_name, email: lead.email },
+        contact: {
+          first_name: lead.first_name,
+          last_name: lead.last_name ?? 'Lead',
+          email: lead.email,
+        },
         account: { mode: 'create', name: 'Contact Test Corp' },
         deal: { name: 'Contact Test Opp' },
       },
@@ -481,7 +522,11 @@ describe('findLeadByDealId', () => {
     const result = await convertLead(
       lead.id,
       {
-        contact: { first_name: lead.first_name, email: lead.email },
+        contact: {
+          first_name: lead.first_name,
+          last_name: lead.last_name ?? 'Lead',
+          email: lead.email,
+        },
         account: { mode: 'create', name: 'Deal Test Corp' },
         deal: { name: 'Deal Test Opp' },
       },

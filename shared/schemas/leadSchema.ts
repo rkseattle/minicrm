@@ -63,7 +63,7 @@ export const updateLeadSchema = createLeadSchema
 export const convertLeadSchema = z.object({
   contact: z.object({
     first_name: z.string().min(1, 'First name is required').trim(),
-    last_name: z.string().trim().optional(),
+    last_name: z.string().trim().min(1, 'Last name is required to convert a lead to a contact'),
     email: z.string().email('Must be a valid email address').toLowerCase().trim(),
     phone: z.string().trim().optional(),
   }),

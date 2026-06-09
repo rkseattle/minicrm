@@ -485,7 +485,7 @@ export async function convertLead(
        RETURNING id`,
       [
         input.contact.first_name,
-        input.contact.last_name ?? '',
+        input.contact.last_name,
         input.contact.email.toLowerCase(),
         input.contact.phone ?? null,
         accountId,

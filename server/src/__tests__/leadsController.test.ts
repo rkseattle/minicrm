@@ -494,7 +494,7 @@ describe('POST /api/leads/:id/convert', () => {
       .post(`/api/v1/leads/${lead.id}/convert`)
       .set('Cookie', otherRepCookie)
       .send({
-        contact: { first_name: 'Dana', email: 'x@x.com' },
+        contact: { first_name: 'Dana', last_name: 'Kim', email: 'x@x.com' },
         account: { mode: 'create', name: 'X Corp' },
         deal: { name: 'X Deal' },
       });
@@ -508,7 +508,7 @@ describe('POST /api/leads/:id/convert', () => {
       .post('/api/v1/leads/00000000-0000-0000-0000-000000000000/convert')
       .set('Cookie', repCookie)
       .send({
-        contact: { first_name: 'Dana', email: 'x@x.com' },
+        contact: { first_name: 'Dana', last_name: 'Kim', email: 'x@x.com' },
         account: { mode: 'create', name: 'X Corp' },
         deal: { name: 'X Deal' },
       });

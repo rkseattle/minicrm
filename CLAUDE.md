@@ -576,6 +576,13 @@ ADRs in `docs/adr/`. Reference them in migration comments and PR descriptions.
 
 ## Schema Conventions (MINCRM-512)
 
+### Lead conversion — `last_name` required at conversion boundary (MINCRM-507)
+
+`leads.last_name` is nullable; `contacts.last_name` is NOT NULL. The `convertLeadSchema` enforces
+`last_name` as required at the conversion boundary so the mismatch is caught with a clean 400 error
+before reaching the `contacts` INSERT. Do not add a `?? ''` fallback — an empty string would pass
+the DB constraint but is semantically wrong data.
+
 ### `varchar + CHECK` over PostgreSQL ENUMs
 
 Use `varchar(N) + CHECK` for all new constrained-string columns. Do **not** introduce new PostgreSQL ENUM types — they cannot be rolled back within a transaction and require `ALTER TYPE ... ADD VALUE` to extend.
@@ -602,7 +609,11 @@ Five tables use `(type, id)` discriminator pairs instead of typed FK columns. Re
 | `gdpr_deletion_log`   | `record_type`                      | any erasable entity type             | No — retained by design |
 | `audit_log`           | `record_type`                      | see migration 076                    | No — retained by design |
 
-When hard-deleting a parent entity, delete dependent rows in `attachments`, `custom_field_values`, and `notes` first. For `attachments`, delete the object-storage file (by `storage_key`) before deleting the row.
+When hard-deleting a parent entity, clean up polymorphic dependents inside the same transaction:
+
+- `attachments`: delete the object-storage file (by `storage_key`) first, then delete the row
+- `custom_field_values`: delete rows before the parent DELETE
+- `notes`: soft-delete (set `deleted_at = now()`) via `softDeleteNotesByEntity(client, entityType, entityId)` from `noteService.ts` — do NOT hard-delete notes, to preserve audit history (MINCRM-523)
 
 `audit_log` and `gdpr_deletion_log` rows are **retained intentionally** for compliance traceability.
 

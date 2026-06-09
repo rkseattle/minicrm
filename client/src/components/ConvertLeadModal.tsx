@@ -100,7 +100,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
       convertLead(lead.id, {
         contact: {
           first_name: contactFirstName,
-          last_name: contactLastName || undefined,
+          last_name: contactLastName,
           email: contactEmail,
           phone: contactPhone || undefined,
         },
@@ -133,6 +133,10 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
     }
     if (!contactFirstName.trim() || !contactEmail.trim()) {
       setConvertError(t('leads.convertErrorContactRequired'));
+      return;
+    }
+    if (!contactLastName.trim()) {
+      setConvertError(t('leads.convertErrorLastNameRequired'));
       return;
     }
     if (!dealName.trim()) {
@@ -198,6 +202,7 @@ export default function ConvertLeadModal({ lead, onClose, onConverted }: Convert
                   data-testid="convert-contact-last-name"
                   name="contact_last_name"
                   type="text"
+                  required
                   label={t('leads.lastNameLabel')}
                   value={contactLastName}
                   onChange={(e) => setContactLastName(e.target.value)}

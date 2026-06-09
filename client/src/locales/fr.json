@@ -1477,6 +1477,7 @@
     "convertError": "La conversion a échoué. Veuillez réessayer.",
     "convertErrorSelectAccount": "Veuillez sélectionner un compte existant.",
     "convertErrorContactRequired": "Le prénom et l'e-mail sont obligatoires.",
+    "convertErrorLastNameRequired": "Le nom de famille est requis pour convertir un prospect en contact.",
     "convertErrorDealRequired": "Le nom de l'affaire est obligatoire.",
     "convertSectionContact": "Contact",
     "convertSectionAccount": "Compte",
