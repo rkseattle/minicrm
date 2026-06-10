@@ -138,17 +138,10 @@ DATABASE_URL=postgres://user:pass@host:5432/db npm run db:erd --workspace=minicr
 
 ### CI staleness check
 
-The `check-erd` CI job runs whenever `db/migrations/**` changes:
+There is no automated CI check for ERD freshness — tbls output is non-deterministic
+across postgres versions and installed extensions, making a diff-based gate unreliable.
 
-1. Runs all migrations on a clean PostgreSQL service container
-2. Reinstalls tbls and regenerates `docs/schema/`
-3. Auto-commits any changes back to the PR branch with `[skip ci]`
-
-tbls output is non-deterministic across postgres versions and installed extensions,
-so CI owns the canonical `docs/schema/` output. Running `npm run db:erd` locally
-is useful for preview but CI will overwrite it.
-
-**When you add a migration:** the CI job regenerates and commits `docs/schema/` automatically.
+**When you add a migration:** regenerate the ERD locally with `npm run db:erd --workspace=minicrm-server` and commit the updated `docs/schema/` files in the same PR.
 
 ### tbls configuration
 

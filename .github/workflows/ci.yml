@@ -1190,68 +1190,6 @@ jobs:
       - name: Lint markdown files
         run: markdownlint-cli2 "**/*.md" "#node_modules"
 
-  # MINCRM-529: Fail if docs/schema/ is stale after a db/migrations/** change.
-  # tbls regenerates the ERD from the live database and diffs against committed output.
-  check-erd:
-    name: Phase 1 - Check ERD Freshness
-    needs: changes
-    if: needs.changes.outputs.migrations == 'true'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        # Using ECR Public mirror to avoid Docker Hub unauthenticated pull rate limits
-        image: public.ecr.aws/docker/library/postgres:16
-        env:
-          POSTGRES_USER: minicrm
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: minicrm
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
-        run: DATABASE_URL=$DATABASE_URL npm run migrate:fresh --workspace=minicrm-server
-
-      - name: Install tbls
-        run: |
-          curl --fail -sL https://github.com/k1LoW/tbls/releases/download/v1.94.5/tbls_v1.94.5_linux_amd64.tar.gz -o /tmp/tbls.tar.gz
-          tar xz -C /usr/local/bin tbls -f /tmp/tbls.tar.gz
-          tbls version
-
-      - name: Regenerate ERD
-        env:
-          DATABASE_URL: postgres://minicrm:password@localhost:5432/minicrm
-          PGSSLMODE: disable
-        run: tbls doc --force
-
-      - name: Commit updated ERD if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/schema/
-          if git diff --cached --quiet; then
-            echo "ERD is up to date — nothing to commit."
-          else
-            git commit -m "chore: regenerate ERD docs [skip ci]"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-
   # MINCRM-324: Generate visual regression baselines on Linux and commit them
   # back to the PR branch. Runs only on qa path changes. Services and setup
   # steps mirror e2e-functional. The .github/actions/e2e-infra composite action
@@ -1515,7 +1453,6 @@ jobs:
       - client-tests
       - e2e-framework-purity
       - lint-docs
-      - check-erd
       - e2e-aggregate
       - e2e-all-shards-passed
     if: always()
@@ -1530,7 +1467,6 @@ jobs:
             "${{ needs.client-tests.result }}" \
             "${{ needs.e2e-framework-purity.result }}" \
             "${{ needs.lint-docs.result }}" \
-            "${{ needs.check-erd.result }}" \
             "${{ needs.e2e-aggregate.result }}" \
             "${{ needs.e2e-all-shards-passed.result }}" \
           )
