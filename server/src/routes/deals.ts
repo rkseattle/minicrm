@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { blockViewer } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -192,7 +193,7 @@ router.get(
  *       403:
  *         description: Rep attempting to act on deals they do not own
  */
-router.post('/bulk', authenticate, asyncHandler(bulkDealsHandler));
+router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkDealsHandler));
 
 /**
  * @openapi
@@ -259,7 +260,7 @@ router.post('/bulk', authenticate, asyncHandler(bulkDealsHandler));
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.post('/', authenticate, asyncHandler(createDealHandler));
+router.post('/', authenticate, blockViewer(), asyncHandler(createDealHandler));
 
 /**
  * @openapi
@@ -415,7 +416,7 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
+router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateDealHandler));
 
 /**
  * @openapi
@@ -470,7 +471,7 @@ router.patch('/:id', authenticate, asyncHandler(updateDealHandler));
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
+router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteDealHandler));
 
 /**
  * @openapi
@@ -534,7 +535,12 @@ router.delete('/:id', authenticate, asyncHandler(deleteDealHandler));
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHandler));
+router.post(
+  '/:id/contacts/:contactId',
+  authenticate,
+  blockViewer(),
+  asyncHandler(linkContactHandler),
+);
 
 /**
  * @openapi
@@ -587,7 +593,12 @@ router.post('/:id/contacts/:contactId', authenticate, asyncHandler(linkContactHa
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.delete('/:id/contacts/:contactId', authenticate, asyncHandler(unlinkContactHandler));
+router.delete(
+  '/:id/contacts/:contactId',
+  authenticate,
+  blockViewer(),
+  asyncHandler(unlinkContactHandler),
+);
 
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────
 
@@ -603,6 +614,7 @@ router.get(
 router.post(
   '/:id/tags',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('tags'),
   asyncHandler(attachDealTagHandler),
 );
@@ -611,6 +623,7 @@ router.post(
 router.delete(
   '/:id/tags/:tagId',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('tags'),
   asyncHandler(detachDealTagHandler),
 );

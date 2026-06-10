@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { blockViewer } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -290,6 +291,7 @@ router.get(
 router.post(
   '/',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('activities'),
   asyncHandler(createActivityHandler),
 );
@@ -461,6 +463,7 @@ router.get(
 router.patch(
   '/:id',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('activities'),
   asyncHandler(updateActivityHandler),
 );
@@ -522,6 +525,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('activities'),
   asyncHandler(deleteActivityHandler),
 );

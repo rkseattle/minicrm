@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { blockViewer } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -191,7 +192,7 @@ router.get(
  *       403:
  *         description: Rep attempting to act on accounts they do not own
  */
-router.post('/bulk', authenticate, asyncHandler(bulkAccountsHandler));
+router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkAccountsHandler));
 
 /**
  * @openapi
@@ -257,7 +258,7 @@ router.post('/bulk', authenticate, asyncHandler(bulkAccountsHandler));
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.post('/', authenticate, asyncHandler(createAccountHandler));
+router.post('/', authenticate, blockViewer(), asyncHandler(createAccountHandler));
 
 /**
  * @openapi
@@ -442,7 +443,7 @@ router.get('/:id', authenticate, asyncHandler(getAccountHandler));
  *                 code: NOT_FOUND
  *                 message: Account not found
  */
-router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
+router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateAccountHandler));
 
 /**
  * @openapi
@@ -498,7 +499,7 @@ router.patch('/:id', authenticate, asyncHandler(updateAccountHandler));
  *                 code: NOT_FOUND
  *                 message: Account not found
  */
-router.delete('/:id', authenticate, asyncHandler(deleteAccountHandler));
+router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteAccountHandler));
 
 /**
  * @openapi
@@ -539,6 +540,7 @@ router.get(
 router.post(
   '/:id/tags',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('tags'),
   asyncHandler(attachAccountTagHandler),
 );
@@ -547,6 +549,7 @@ router.post(
 router.delete(
   '/:id/tags/:tagId',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('tags'),
   asyncHandler(detachAccountTagHandler),
 );

@@ -381,6 +381,75 @@ export async function resetOnboardingHandler(req: Request, res: Response): Promi
 }
 
 /**
+ * POST /api/users/:id/api-token
+ * Issues a new API token for a service account user. Admin only. (MINCRM-536)
+ * Any previously issued token is atomically revoked on issuance.
+ * The plaintext token is returned exactly once — it is never stored.
+ */
+export async function issueApiToken(req: Request, res: Response): Promise<void> {
+  const targetUserId = String(req.params['id']);
+  const actor = { id: req.user!.id, name: req.user!.name };
+
+  const targetUser = await userService.findUserById(targetUserId);
+  if (!targetUser) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+
+  if (targetUser.role !== 'service_account') {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_OPERATION',
+        message: 'API tokens can only be issued for service_account users',
+      },
+    });
+    return;
+  }
+
+  const result = await userService.issueServiceAccountToken(targetUserId, actor);
+  if (!result) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+
+  res.status(201).json({ token: result.plaintextToken, issued_at: result.issuedAt });
+}
+
+/**
+ * DELETE /api/users/:id/api-token
+ * Revokes the API token for a service account user. Admin only. (MINCRM-536)
+ * After revocation the token is immediately invalid — no grace period.
+ */
+export async function revokeApiToken(req: Request, res: Response): Promise<void> {
+  const targetUserId = String(req.params['id']);
+  const actor = { id: req.user!.id, name: req.user!.name };
+
+  const targetUser = await userService.findUserById(targetUserId);
+  if (!targetUser) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+
+  if (targetUser.role !== 'service_account') {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_OPERATION',
+        message: 'API tokens can only be revoked for service_account users',
+      },
+    });
+    return;
+  }
+
+  const revoked = await userService.revokeServiceAccountToken(targetUserId, actor);
+  if (!revoked) {
+    res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    return;
+  }
+
+  res.status(200).json({ success: true });
+}
+
+/**
  * POST /api/users/:id/admin-set-password
  * Admin sets a user's password directly, without requiring an invite token.
  * The target user will be prompted to change their password on next login.

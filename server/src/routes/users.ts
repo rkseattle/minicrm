@@ -21,6 +21,8 @@ import {
   updateMyNotificationPrefs,
   getNotificationRecipientCount,
   resetOnboardingHandler,
+  issueApiToken,
+  revokeApiToken,
 } from '../controllers/userController.js';
 
 const router = Router();
@@ -878,5 +880,89 @@ router.post('/:id/admin-set-password', asyncHandler(adminSetPassword));
  *         $ref: '#/components/responses/NotFound'
  */
 router.post('/:id/reset-onboarding', asyncHandler(resetOnboardingHandler));
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/api-token:
+ *   post:
+ *     tags: [Users]
+ *     operationId: issueApiToken
+ *     summary: Issue an API token for a service account user (admin only, MINCRM-536)
+ *     description: >
+ *       Generates a new long-lived API token for the specified service_account user.
+ *       Any previously issued token is atomically revoked. The plaintext token is
+ *       returned exactly once — it is never stored and cannot be retrieved again.
+ *       Requires admin role.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Service account user ID
+ *     responses:
+ *       201:
+ *         description: Token issued — store it securely, it will not be shown again
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string }
+ *                 issued_at: { type: string, format: date-time }
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.post('/:id/api-token', asyncHandler(issueApiToken));
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/api-token:
+ *   delete:
+ *     tags: [Users]
+ *     operationId: revokeApiToken
+ *     summary: Revoke a service account's API token (admin only, MINCRM-536)
+ *     description: >
+ *       Immediately invalidates the API token for the specified service_account user.
+ *       No grace period — the token stops working as soon as this request succeeds.
+ *       Requires admin role.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Service account user ID
+ *     responses:
+ *       200:
+ *         description: Token revoked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete('/:id/api-token', asyncHandler(revokeApiToken));
 
 export default router;

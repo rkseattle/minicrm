@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { blockViewer } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -118,7 +119,13 @@ router.get('/', authenticate, requireFeatureEnabled('notes'), asyncHandler(listN
  *       401:
  *         description: Unauthenticated
  */
-router.post('/', authenticate, requireFeatureEnabled('notes'), asyncHandler(createNoteHandler));
+router.post(
+  '/',
+  authenticate,
+  blockViewer(),
+  requireFeatureEnabled('notes'),
+  asyncHandler(createNoteHandler),
+);
 
 /**
  * @openapi
@@ -202,6 +209,7 @@ router.get('/:noteId', authenticate, requireFeatureEnabled('notes'), asyncHandle
 router.patch(
   '/:noteId',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('notes'),
   asyncHandler(updateNoteHandler),
 );
@@ -248,6 +256,7 @@ router.patch(
 router.delete(
   '/:noteId',
   authenticate,
+  blockViewer(),
   requireFeatureEnabled('notes'),
   asyncHandler(deleteNoteHandler),
 );

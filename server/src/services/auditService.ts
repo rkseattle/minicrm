@@ -85,7 +85,10 @@ export type AuditEventType =
   | 'sso_login'
   | 'sso_provisioned'
   | 'sso_linked'
-  | 'sso_unlinked';
+  | 'sso_unlinked'
+  /** Service account API token lifecycle (MINCRM-536) */
+  | 'api_token_issued'
+  | 'api_token_revoked';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

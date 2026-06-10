@@ -8,6 +8,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
+import { blockViewer } from '../middleware/requireRole.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   listAttachmentsHandler,
@@ -95,7 +96,7 @@ router.get('/', asyncHandler(listAttachmentsHandler));
  *       503:
  *         description: Storage not configured
  */
-router.post('/', upload.single('file'), asyncHandler(uploadAttachmentHandler));
+router.post('/', blockViewer(), upload.single('file'), asyncHandler(uploadAttachmentHandler));
 
 /**
  * @openapi
@@ -149,7 +150,7 @@ router.get('/:id/download', asyncHandler(downloadAttachmentHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id', asyncHandler(deleteAttachmentHandler));
+router.delete('/:id', blockViewer(), asyncHandler(deleteAttachmentHandler));
 
 /**
  * Multer error handler — converts oversized-file errors into 400 responses.
