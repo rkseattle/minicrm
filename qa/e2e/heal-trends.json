@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-09T05:17:11.428Z",
+  "updatedAt": "2026-06-10T02:51:05.036Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -855,6 +855,15 @@
       "count": 1,
       "firstSeenAt": "2026-06-09T05:17:09.678Z",
       "lastSeenAt": "2026-06-09T05:17:09.678Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-f5412968-5f9b-41b1-b7a7-12d0308c7c85": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-f5412968-5f9b-41b1-b7a7-12d0308c7c85",
+      "count": 2,
+      "firstSeenAt": "2026-06-10T02:44:41.248Z",
+      "lastSeenAt": "2026-06-10T02:44:43.325Z"
     }
   }
 }
