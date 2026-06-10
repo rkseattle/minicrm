@@ -53,7 +53,9 @@ export type AuditRecordType =
   /** Feature flag registry entries (MINCRM-463) */
   | 'feature_flag'
   /** AI provider/model configuration (MINCRM-457) */
-  | 'ai_settings';
+  | 'ai_settings'
+  /** Teams and team membership (MINCRM-537) */
+  | 'team';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
