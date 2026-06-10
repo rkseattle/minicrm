@@ -106,6 +106,15 @@ describe('POST /api/v1/teams', () => {
     expect(res.body.error.code).toBe('TEAM_NAME_DUPLICATE');
   });
 
+  it('returns 400 MANAGER_OR_PARENT_NOT_FOUND when manager_id is a non-existent UUID', async () => {
+    const res = await request(app)
+      .post('/api/v1/teams')
+      .set('Cookie', adminCookie)
+      .send({ name: 'Bad Manager Team', manager_id: '00000000-0000-0000-0000-000000000099' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('MANAGER_OR_PARENT_NOT_FOUND');
+  });
+
   it('returns 403 when a rep attempts to create a team', async () => {
     const res = await request(app)
       .post('/api/v1/teams')
