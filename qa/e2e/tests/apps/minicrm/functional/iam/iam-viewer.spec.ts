@@ -24,7 +24,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAndVerify } from '@apps/minicrm/helpers.js';
-import { RestClient } from '@framework/clients/rest-client.js';
+import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -221,6 +221,7 @@ test('@functional F-VIEWER-R5: viewer can read activities list', async ({
 
 // ---------------------------------------------------------------------------
 // Write Blocked tests — viewer POST/PATCH/DELETE return 403
+// RestClient throws RestClientError on non-2xx; catch and assert the status.
 // ---------------------------------------------------------------------------
 
 test('@functional F-VIEWER-W1: viewer cannot create a contact', async ({
@@ -231,12 +232,18 @@ test('@functional F-VIEWER-W1: viewer cannot create a contact', async ({
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.post('/api/v1/contacts', {
-      first_name: 'Viewer',
-      last_name: 'Blocked',
-      email: `viewer-blocked-contact-${Date.now()}@example.com`,
-    });
-    expect(res.status, 'viewer POST /contacts should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.post('/api/v1/contacts', {
+        first_name: 'Viewer',
+        last_name: 'Blocked',
+        email: `viewer-blocked-contact-${Date.now()}@example.com`,
+      });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer POST /contacts should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -252,19 +259,24 @@ test('@functional F-VIEWER-W2: viewer blocked response carries VIEWER_WRITE_BLOC
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.post<{ error: { code: string; message: string } }>(
-      '/api/v1/contacts',
-      {
+    let caughtErr: RestClientError | null = null;
+    try {
+      await viewerClient.post('/api/v1/contacts', {
         first_name: 'Viewer',
         last_name: 'Blocked',
         email: `viewer-blocked-shape-${Date.now()}@example.com`,
-      },
-    );
-    expect(res.status, '403 status').toBe(403);
-    expect(res.body.error?.code, 'error code should be VIEWER_WRITE_BLOCKED').toBe(
+      });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) caughtErr = err;
+      else throw err;
+    }
+    expect(caughtErr, '403 error should have been thrown').not.toBeNull();
+    expect(caughtErr!.status, '403 status').toBe(403);
+    const body = caughtErr!.body as { error?: { code?: string; message?: string } };
+    expect(body.error?.code, 'error code should be VIEWER_WRITE_BLOCKED').toBe(
       'VIEWER_WRITE_BLOCKED',
     );
-    expect(res.body.error?.message, 'error message should be present').toBeTruthy();
+    expect(body.error?.message, 'error message should be present').toBeTruthy();
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -280,8 +292,14 @@ test('@functional F-VIEWER-W3: viewer cannot create an account', async ({
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.post('/api/v1/accounts', { name: 'Viewer Blocked Account' });
-    expect(res.status, 'viewer POST /accounts should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.post('/api/v1/accounts', { name: 'Viewer Blocked Account' });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer POST /accounts should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -294,27 +312,33 @@ test('@functional F-VIEWER-W4: viewer cannot create a deal', async ({
   restClient,
   testData,
 }) => {
+  // Create a contact (as admin) to satisfy the deal's contact_ids requirement
+  const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
+    first_name: 'DealOwner',
+    last_name: `VIEWER-W4-${Date.now()}`,
+    email: `deal-owner-viewer-w4-${Date.now()}@example.com`,
+  });
+  const contactId = contactRes.body.contact.id;
+  testData.registerCustomTeardown(`delete-contact-viewer-w4-${contactId}`, async () => {
+    await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
+  });
+
   const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
     playwright.request.newContext(),
   );
   try {
-    // Create a contact first (as admin) to satisfy the deal owner requirement
-    const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
-      first_name: 'DealOwner',
-      last_name: `VIEWER-W4-${Date.now()}`,
-      email: `deal-owner-viewer-w4-${Date.now()}@example.com`,
-    });
-    const contactId = contactRes.body.contact.id;
-    testData.registerCustomTeardown(`delete-contact-viewer-w4-${contactId}`, async () => {
-      await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-    });
-
-    const res = await viewerClient.post('/api/v1/deals', {
-      name: 'Viewer Blocked Deal',
-      stage: 'Prospecting',
-      contact_ids: [contactId],
-    });
-    expect(res.status, 'viewer POST /deals should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.post('/api/v1/deals', {
+        name: 'Viewer Blocked Deal',
+        stage: 'Prospecting',
+        contact_ids: [contactId],
+      });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer POST /deals should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -327,12 +351,18 @@ test('@functional F-VIEWER-W5: viewer cannot create a lead', async ({ playwright
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.post('/api/v1/leads', {
-      first_name: 'Viewer',
-      last_name: 'BlockedLead',
-      email: `viewer-blocked-lead-${Date.now()}@example.com`,
-    });
-    expect(res.status, 'viewer POST /leads should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.post('/api/v1/leads', {
+        first_name: 'Viewer',
+        last_name: 'BlockedLead',
+        email: `viewer-blocked-lead-${Date.now()}@example.com`,
+      });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer POST /leads should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -345,7 +375,6 @@ test('@functional F-VIEWER-W6: viewer cannot update a contact', async ({
   restClient,
   testData,
 }) => {
-  // Admin creates a contact
   const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
     first_name: 'PatchTarget',
     last_name: `VIEWER-W6-${Date.now()}`,
@@ -360,10 +389,14 @@ test('@functional F-VIEWER-W6: viewer cannot update a contact', async ({
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.patch(`/api/v1/contacts/${contactId}`, {
-      first_name: 'ViewerPatched',
-    });
-    expect(res.status, 'viewer PATCH /contacts/:id should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.patch(`/api/v1/contacts/${contactId}`, { first_name: 'ViewerPatched' });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer PATCH /contacts/:id should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -391,8 +424,14 @@ test('@functional F-VIEWER-W7: viewer cannot delete a contact', async ({
   );
   try {
     // blockViewer() runs before the handler — returns 403 even if the record ID is valid
-    const res = await viewerClient.delete(`/api/v1/contacts/${contactId}`);
-    expect(res.status, 'viewer DELETE /contacts/:id should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.delete(`/api/v1/contacts/${contactId}`);
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer DELETE /contacts/:id should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -417,10 +456,14 @@ test('@functional F-VIEWER-W8: viewer cannot update an account', async ({
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.patch(`/api/v1/accounts/${accountId}`, {
-      name: 'ViewerPatched',
-    });
-    expect(res.status, 'viewer PATCH /accounts/:id should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.patch(`/api/v1/accounts/${accountId}`, { name: 'ViewerPatched' });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer PATCH /accounts/:id should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
@@ -457,8 +500,14 @@ test('@functional F-VIEWER-W9: viewer cannot update a deal', async ({
     playwright.request.newContext(),
   );
   try {
-    const res = await viewerClient.patch(`/api/v1/deals/${dealId}`, { name: 'ViewerPatched' });
-    expect(res.status, 'viewer PATCH /deals/:id should return 403').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await viewerClient.patch(`/api/v1/deals/${dealId}`, { name: 'ViewerPatched' });
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'viewer PATCH /deals/:id should return 403').toBe(403);
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
