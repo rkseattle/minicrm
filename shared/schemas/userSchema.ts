@@ -6,8 +6,8 @@
 import { z } from 'zod';
 import { SUPPORTED_LOCALES } from './settingsSchema.js';
 
-/** Allowed user roles */
-export const USER_ROLES = ['admin', 'rep'] as const;
+/** Allowed user roles (MINCRM-533) */
+export const USER_ROLES = ['admin', 'rep', 'manager', 'viewer', 'service_account'] as const;
 
 /** Allowed user statuses */
 export const USER_STATUSES = ['active', 'invited', 'inactive'] as const;
@@ -38,7 +38,7 @@ export const inviteUserSchema = z.object({
   name: z.string({ required_error: 'Name is required' }).min(1, 'Name is required').trim(),
   role: z.enum(USER_ROLES, {
     required_error: 'Role is required',
-    invalid_type_error: 'Role must be admin or rep',
+    invalid_type_error: 'Role must be one of: admin, rep, manager, viewer, service_account',
   }),
 });
 
@@ -97,7 +97,7 @@ export const resetPasswordSchema = z.object({
 export const updateRoleSchema = z.object({
   role: z.enum(USER_ROLES, {
     required_error: 'Role is required',
-    invalid_type_error: 'Role must be admin or rep',
+    invalid_type_error: 'Role must be one of: admin, rep, manager, viewer, service_account',
   }),
 });
 
