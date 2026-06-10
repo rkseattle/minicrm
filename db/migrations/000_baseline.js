@@ -1325,6 +1325,13 @@ exports.up = (pgm) => {
     ON CONFLICT (flag_key) DO NOTHING
   `);
 
+  // Seed stage exit requirements for fixed terminal stages (migration 096)
+  pgm.sql(`
+    UPDATE public.pipeline_stages
+    SET stage_exit_requirements = '{"required_fields":["close_date"],"warning_fields":[]}'
+    WHERE is_fixed = true
+  `);
+
   pgm.sql(`
     INSERT INTO public.ai_configuration (singleton)
     VALUES (TRUE)
