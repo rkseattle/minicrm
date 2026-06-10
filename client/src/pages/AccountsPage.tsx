@@ -34,6 +34,7 @@ import type { AccountResponse, AccountType } from '@shared/schemas/accountSchema
 import { ACCOUNT_TYPE_VALUES } from '@shared/schemas/accountSchema.js';
 import { Select } from '@/components/ui/Select.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
 
@@ -49,6 +50,7 @@ export default function AccountsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -290,7 +292,7 @@ export default function AccountsPage() {
                 {isExporting ? t('accounts.exporting') : t('accounts.exportAll')}
               </Button>
             )}
-            {!showForm && (
+            {canWrite && !showForm && (
               <Button
                 ref={newAccountButtonRef}
                 type="button"
@@ -352,7 +354,7 @@ export default function AccountsPage() {
         )}
 
         {/* Bulk action bar (MINCRM-188) */}
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
             actions={[

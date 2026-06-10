@@ -135,7 +135,16 @@
       "success": "[Päŝŝwörd ŝët. Thë üŝër wïll bë prömptëd tö ĉhäñgë ït öñ ñëxt lögïñ.~~~~~~~~~~~~~~~~~~~~~]",
       "mismatch": "[Päŝŝwördŝ dö ñöt mätĉh.~~~~~~~]",
       "complexity": "[Päŝŝwörd müŝt bë ät lëäŝt {{min}} ĉhäräĉtërŝ äñd ĉöñtäïñ ät lëäŝt öñë lëttër, öñë ñümbër, äñd öñë ŝpëĉïäl ĉhäräĉtër.~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
-    }
+    },
+    "roleViewer": "[Vïéwér]",
+    "roleManager": "[Mânâgér]",
+    "roleServiceAccount": "[Sérvïcé âccôûnt]",
+    "actionIssueToken": "[Ïssûé ÂPÏ tôkén]",
+    "actionRevokeToken": "[Révôké ÂPÏ tôkén]",
+    "apiTokenIssuedTitle": "[ÂPÏ tôkén ïssûéd]",
+    "apiTokenCopyLabel": "[Côpy thïs tôkén — ït wïll nôt bé shôwn âgâïn.]",
+    "apiTokenRevoked": "[ÂPÏ tôkén révôkéd.]",
+    "badgeServiceAccount": "[Sérvïcé âccôûnt]"
   },
   "changePassword": {
     "title": "[Ĉhäñgë yöür päŝŝwörd~~~~~~]",

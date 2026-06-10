@@ -135,7 +135,16 @@
       "success": "Passwort gesetzt. Der Benutzer wird beim nächsten Login aufgefordert, es zu ändern.",
       "mismatch": "Die Passwörter stimmen nicht überein.",
       "complexity": "Das Passwort muss mindestens {{min}} Zeichen enthalten und mindestens einen Buchstaben, eine Zahl und ein Sonderzeichen."
-    }
+    },
+    "roleViewer": "Betrachter",
+    "roleManager": "Manager",
+    "roleServiceAccount": "Dienstkonto",
+    "actionIssueToken": "API-Token ausstellen",
+    "actionRevokeToken": "API-Token widerrufen",
+    "apiTokenIssuedTitle": "API-Token ausgestellt",
+    "apiTokenCopyLabel": "Kopieren Sie dieses Token — es wird nicht erneut angezeigt.",
+    "apiTokenRevoked": "API-Token widerrufen.",
+    "badgeServiceAccount": "Dienstkonto"
   },
   "changePassword": {
     "title": "Passwort ändern",

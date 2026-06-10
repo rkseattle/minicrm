@@ -25,7 +25,10 @@ import {
   reactivateUser,
   adminSetPassword,
   resetUserOnboarding,
+  issueApiToken,
+  revokeApiToken,
 } from '@/api/users.js';
+import type { IssueApiTokenResponse } from '@shared/schemas/userSchema.js';
 import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
@@ -153,6 +156,9 @@ function InviteUserForm({ onSuccess }: InviteUserFormProps) {
               >
                 <option value="rep">{t('users.roleRep')}</option>
                 <option value="admin">{t('users.roleAdmin')}</option>
+                <option value="viewer">{t('users.roleViewer')}</option>
+                <option value="manager">{t('users.roleManager')}</option>
+                <option value="service_account">{t('users.roleServiceAccount')}</option>
               </Select>
             </div>
 
@@ -370,6 +376,8 @@ export default function UsersPage() {
   const [resetOnboardingSuccessUserId, setResetOnboardingSuccessUserId] = useState<string | null>(
     null,
   );
+  /** Issued token data shown once after Issue API Token action (MINCRM-536) */
+  const [issuedTokenResult, setIssuedTokenResult] = useState<IssueApiTokenResponse | null>(null);
 
   /**
    * Toggles the desktop action menu for the given user.
@@ -418,6 +426,21 @@ export default function UsersPage() {
     onSuccess: (_data, id) => {
       setResetOnboardingUserId(null);
       setResetOnboardingSuccessUserId(id);
+    },
+  });
+
+  const issueTokenMutation = useMutation({
+    mutationFn: (id: string) => issueApiToken(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      setIssuedTokenResult(data);
+    },
+  });
+
+  const revokeTokenMutation = useMutation({
+    mutationFn: (id: string) => revokeApiToken(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
     },
   });
 
@@ -504,7 +527,15 @@ export default function UsersPage() {
                           <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
                           <td className="px-4 py-3 text-gray-500">{user.email}</td>
                           <td className="px-4 py-3 text-gray-700">
-                            {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                            {user.role === 'admin'
+                              ? t('users.roleAdmin')
+                              : user.role === 'manager'
+                                ? t('users.roleManager')
+                                : user.role === 'viewer'
+                                  ? t('users.roleViewer')
+                                  : user.role === 'service_account'
+                                    ? t('users.roleServiceAccount')
+                                    : t('users.roleRep')}
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
@@ -532,6 +563,8 @@ export default function UsersPage() {
                               onDeactivate={(id) => deactivateMutation.mutate(id)}
                               onReactivate={(id) => reactivateMutation.mutate(id)}
                               onResetOnboarding={(id) => setResetOnboardingUserId(id)}
+                              onIssueToken={(id) => issueTokenMutation.mutate(id)}
+                              onRevokeToken={(id) => revokeTokenMutation.mutate(id)}
                               currentUserId={currentUser?.id ?? ''}
                             />
                           </td>
@@ -564,7 +597,15 @@ export default function UsersPage() {
                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-xs text-gray-600">
-                                {user.role === 'admin' ? t('users.roleAdmin') : t('users.roleRep')}
+                                {user.role === 'admin'
+                                  ? t('users.roleAdmin')
+                                  : user.role === 'manager'
+                                    ? t('users.roleManager')
+                                    : user.role === 'viewer'
+                                      ? t('users.roleViewer')
+                                      : user.role === 'service_account'
+                                        ? t('users.roleServiceAccount')
+                                        : t('users.roleRep')}
                               </span>
                               <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
                                 {user.status === 'active'
@@ -594,6 +635,8 @@ export default function UsersPage() {
                               onDeactivate={(id) => deactivateMutation.mutate(id)}
                               onReactivate={(id) => reactivateMutation.mutate(id)}
                               onResetOnboarding={(id) => setResetOnboardingUserId(id)}
+                              onIssueToken={(id) => issueTokenMutation.mutate(id)}
+                              onRevokeToken={(id) => revokeTokenMutation.mutate(id)}
                               currentUserId={currentUser?.id ?? ''}
                               testIdPrefix="mobile-"
                             />
@@ -689,6 +732,63 @@ export default function UsersPage() {
             >
               {t('users.resetOnboardingSuccessDismiss')}
             </button>
+          </div>
+        )}
+        {/* Issued API token modal — shown exactly once after Issue API Token action (MINCRM-536) */}
+        {issuedTokenResult && (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            data-testid="api-token-modal-overlay"
+            onClick={() => setIssuedTokenResult(null)}
+          >
+            <dialog
+              open
+              aria-modal="true"
+              aria-labelledby="api-token-dialog-title"
+              data-testid="api-token-modal"
+              className="relative w-full max-w-lg mx-4 p-0"
+            >
+              <div
+                role="presentation"
+                className="rounded-lg bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2
+                  id="api-token-dialog-title"
+                  className="text-base font-semibold text-gray-900 mb-2"
+                >
+                  {t('users.apiTokenIssuedTitle')}
+                </h2>
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+                  {t('users.apiTokenCopyLabel')}
+                </p>
+                <div className="flex items-center gap-2 mb-4">
+                  <code
+                    data-testid="api-token-value"
+                    className="flex-1 rounded bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-700 break-all font-mono"
+                  >
+                    {issuedTokenResult.token}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="api-token-copy-button"
+                    onClick={() => navigator.clipboard.writeText(issuedTokenResult.token)}
+                  >
+                    {t('users.copyLink')}
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  data-testid="api-token-modal-close"
+                  onClick={() => setIssuedTokenResult(null)}
+                >
+                  {t('users.cancel')}
+                </Button>
+              </div>
+            </dialog>
           </div>
         )}
       </main>

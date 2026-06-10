@@ -2,6 +2,8 @@
  * UserActionsMenu component.
  * Renders a meatball (⋯) trigger button that opens a dropdown context menu
  * with role, password, and activation actions for a single user row.
+ * Service accounts show Issue/Revoke API token actions instead of role/password controls.
+ * (MINCRM-535, MINCRM-536)
  */
 
 import { useRef, useCallback } from 'react';
@@ -25,6 +27,10 @@ export interface UserActionsMenuProps {
   onReactivate: (id: string) => void;
   /** Called when the admin selects Reset onboarding. Hidden for the admin's own row. (MINCRM-410) */
   onResetOnboarding: (id: string) => void;
+  /** Called when the admin issues an API token for a service account. (MINCRM-536) */
+  onIssueToken?: (id: string) => void;
+  /** Called when the admin revokes the API token for a service account. (MINCRM-536) */
+  onRevokeToken?: (id: string) => void;
   /** UUID of the currently logged-in admin — hides Reset Onboarding on the admin's own row. (MINCRM-410) */
   currentUserId: string;
   /** Whether the menu should be forced open (e.g. another menu is opening this one). */
@@ -52,6 +58,8 @@ export function UserActionsMenu({
   onDeactivate,
   onReactivate,
   onResetOnboarding,
+  onIssueToken,
+  onRevokeToken,
   currentUserId,
   isOpen,
   onToggle,
@@ -78,6 +86,8 @@ export function UserActionsMenu({
     action();
   }
 
+  const isServiceAccount = user.role === 'service_account';
+
   return (
     <div ref={containerRef} className="relative inline-block">
       <Button
@@ -96,7 +106,7 @@ export function UserActionsMenu({
 
       {isOpen && (
         <div
-          className="absolute right-0 z-50 mt-1 w-44 rounded-md bg-white shadow-md border border-gray-200 divide-y divide-gray-100"
+          className="absolute right-0 z-50 mt-1 w-48 rounded-md bg-white shadow-md border border-gray-200 divide-y divide-gray-100"
           role="menu"
           tabIndex={-1}
           onKeyDown={(e) => {
@@ -105,55 +115,83 @@ export function UserActionsMenu({
             }
           }}
         >
-          {/* Non-destructive actions */}
-          <div className="py-1">
-            {user.role === 'rep' ? (
+          {/* Service account token actions (MINCRM-536) */}
+          {isServiceAccount && (
+            <div className="py-1">
               <button
                 type="button"
                 role="menuitem"
-                data-testid={`${testIdPrefix}make-admin-${user.id}`}
+                data-testid={`${testIdPrefix}issue-token-${user.id}`}
                 className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => closeAndRun(() => onRoleChange(user.id, 'admin'))}
+                onClick={() => closeAndRun(() => onIssueToken?.(user.id))}
               >
-                {t('users.actionMakeAdmin')}
+                {t('users.actionIssueToken')}
               </button>
-            ) : (
-              <button
-                type="button"
-                role="menuitem"
-                data-testid={`${testIdPrefix}make-rep-${user.id}`}
-                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => closeAndRun(() => onRoleChange(user.id, 'rep'))}
-              >
-                {t('users.actionMakeRep')}
-              </button>
-            )}
+              {user.has_api_token && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid={`${testIdPrefix}revoke-token-${user.id}`}
+                  className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-red-50"
+                  onClick={() => closeAndRun(() => onRevokeToken?.(user.id))}
+                >
+                  {t('users.actionRevokeToken')}
+                </button>
+              )}
+            </div>
+          )}
 
-            {user.status !== 'inactive' && (
-              <button
-                type="button"
-                role="menuitem"
-                data-testid={`${testIdPrefix}set-password-toggle-${user.id}`}
-                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => closeAndRun(() => onSetPassword(user.id))}
-              >
-                {t('users.actionSetPassword')}
-              </button>
-            )}
+          {/* Non-destructive actions — hidden for service accounts */}
+          {!isServiceAccount && (
+            <div className="py-1">
+              {user.role === 'rep' ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid={`${testIdPrefix}make-admin-${user.id}`}
+                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => closeAndRun(() => onRoleChange(user.id, 'admin'))}
+                >
+                  {t('users.actionMakeAdmin')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid={`${testIdPrefix}make-rep-${user.id}`}
+                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => closeAndRun(() => onRoleChange(user.id, 'rep'))}
+                >
+                  {t('users.actionMakeRep')}
+                </button>
+              )}
 
-            {/* Reset onboarding — hidden for the admin's own row (MINCRM-410) */}
-            {user.id !== currentUserId && (
-              <button
-                type="button"
-                role="menuitem"
-                data-testid={`${testIdPrefix}reset-onboarding-${user.id}`}
-                className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => closeAndRun(() => onResetOnboarding(user.id))}
-              >
-                {t('users.actionResetOnboarding')}
-              </button>
-            )}
-          </div>
+              {user.status !== 'inactive' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid={`${testIdPrefix}set-password-toggle-${user.id}`}
+                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => closeAndRun(() => onSetPassword(user.id))}
+                >
+                  {t('users.actionSetPassword')}
+                </button>
+              )}
+
+              {/* Reset onboarding — hidden for the admin's own row (MINCRM-410) */}
+              {user.id !== currentUserId && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid={`${testIdPrefix}reset-onboarding-${user.id}`}
+                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => closeAndRun(() => onResetOnboarding(user.id))}
+                >
+                  {t('users.actionResetOnboarding')}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Activation / destructive actions */}
           <div className="py-1">

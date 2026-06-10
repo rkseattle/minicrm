@@ -135,7 +135,16 @@
       "success": "密码已设置。用户下次登录时将被提示修改密码。",
       "mismatch": "两次输入的密码不一致。",
       "complexity": "密码必须至少包含 {{min}} 个字符，且包含至少一个字母、一个数字和一个特殊字符。"
-    }
+    },
+    "roleViewer": "查看者",
+    "roleManager": "经理",
+    "roleServiceAccount": "服务账户",
+    "actionIssueToken": "颁发 API 令牌",
+    "actionRevokeToken": "撤销 API 令牌",
+    "apiTokenIssuedTitle": "API 令牌已颁发",
+    "apiTokenCopyLabel": "复制此令牌 — 将不再显示。",
+    "apiTokenRevoked": "API 令牌已撤销。",
+    "badgeServiceAccount": "服务账户"
   },
   "changePassword": {
     "title": "修改密码",

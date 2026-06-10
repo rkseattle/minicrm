@@ -23,6 +23,7 @@ import type { ActiveUser } from '@/api/users.js';
 import type { LeadResponse } from '@shared/schemas/leadSchema.js';
 import { LEAD_STATUSES, LEAD_SOURCES } from '@shared/schemas/leadSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 import { usePagination } from '@/hooks/usePagination.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
 
@@ -45,6 +46,7 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { canWrite } = usePermissions();
 
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -212,7 +214,7 @@ export default function LeadsPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('leads.pageTitle')}</h1>
-          {!showForm && (
+          {canWrite && !showForm && (
             <Button ref={newLeadButtonRef} onClick={handleFormOpen} data-testid="new-lead-button">
               {t('leads.newLead')}
             </Button>

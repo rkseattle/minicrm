@@ -38,6 +38,7 @@ import { usePagination } from '@/hooks/usePagination.js';
 const PAGINATION_MAX_BOARD_LIMIT = PAGINATION_MAX_LIMIT;
 import { listAccounts } from '@/api/accounts.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
 import { DASHBOARD_QUERY_KEY } from '@/api/dashboard.js';
@@ -97,6 +98,7 @@ export default function DealsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { canWrite } = usePermissions();
 
   // Pipeline selector — persisted in sessionStorage (MINCRM-397)
   const { pipelines, defaultPipeline } = usePipelines();
@@ -588,8 +590,8 @@ export default function DealsPage() {
             >
               {viewMode === 'board' ? t('deals.viewList') : t('deals.viewBoard')}
             </Button>
-            {/* New Deal button — only shown when form is not open */}
-            {!showForm && (
+            {/* New Deal button — only shown when form is not open and user can write */}
+            {canWrite && !showForm && (
               <Button
                 ref={newDealButtonRef}
                 type="button"
@@ -835,7 +837,7 @@ export default function DealsPage() {
             )}
 
             {/* Bulk action bar (MINCRM-188) */}
-            {selectedIds.size > 0 && (
+            {canWrite && selectedIds.size > 0 && (
               <BulkActionBar
                 selectedCount={selectedIds.size}
                 actions={[
