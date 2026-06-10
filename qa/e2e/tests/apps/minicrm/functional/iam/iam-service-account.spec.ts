@@ -20,7 +20,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { RestClient } from '@framework/clients/rest-client.js';
+import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -87,8 +87,22 @@ async function createServiceAccount(adminClient: RestClient): Promise<UserRow> {
     token: res.body.inviteToken,
     password: 'SaPassword1!',
   });
-  const userRes = await adminClient.get<{ user: UserRow }>(`/api/v1/users/${res.body.user.id}`);
-  return userRes.body.user;
+  // There is no GET /api/v1/users/:id endpoint — return from the invite response.
+  // set-password transitions the user to status='active'; the id is stable.
+  return res.body.user;
+}
+
+/**
+ * Fetches the current state of a user from the paginated list.
+ * Used when we need to verify server-side state changes (e.g. has_api_token).
+ * The list endpoint returns { data, total, page, limit } per PaginatedResponse<T>.
+ */
+async function fetchUserFromList(
+  adminClient: RestClient,
+  userId: string,
+): Promise<UserRow | undefined> {
+  const res = await adminClient.get<{ data: UserRow[]; total: number }>('/api/v1/users?limit=100');
+  return res.body.data.find((u) => u.id === userId);
 }
 
 /**
@@ -228,10 +242,9 @@ test('@functional F-SA-T3: user detail reflects has_api_token after issuance', a
   const saUser = await createServiceAccount(restClient);
   try {
     await restClient.post(`/api/v1/users/${saUser.id}/api-token`);
-    const userRes = await restClient.get<{ user: UserRow }>(`/api/v1/users/${saUser.id}`);
-    expect(userRes.body.user.has_api_token, 'has_api_token should be true after issuance').toBe(
-      true,
-    );
+    const user = await fetchUserFromList(restClient, saUser.id);
+    expect(user, 'user should appear in admin list').toBeTruthy();
+    expect(user?.has_api_token, 'has_api_token should be true after issuance').toBe(true);
   } finally {
     await deactivateUser(restClient, saUser.id, 'F-SA-T3');
   }
@@ -385,10 +398,9 @@ test('@functional F-SA-R3: has_api_token is false after revocation', async ({ re
     await issueToken(restClient, saUser.id);
     await restClient.delete(`/api/v1/users/${saUser.id}/api-token`);
 
-    const userRes = await restClient.get<{ user: UserRow }>(`/api/v1/users/${saUser.id}`);
-    expect(userRes.body.user.has_api_token, 'has_api_token should be false after revocation').toBe(
-      false,
-    );
+    const user = await fetchUserFromList(restClient, saUser.id);
+    expect(user, 'user should appear in admin list').toBeTruthy();
+    expect(user?.has_api_token, 'has_api_token should be false after revocation').toBe(false);
   } finally {
     await deactivateUser(restClient, saUser.id, 'F-SA-R3');
   }
@@ -421,8 +433,14 @@ test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', a
       password: 'RepPass1!',
     });
 
-    const res = await repClient.post(`/api/v1/users/${saUser.id}/api-token`, {});
-    expect(res.status, 'rep should not be able to issue API tokens').toBe(403);
+    let errorStatus: number | null = null;
+    try {
+      await repClient.post(`/api/v1/users/${saUser.id}/api-token`, {});
+    } catch (err: unknown) {
+      if (err instanceof RestClientError) errorStatus = err.status;
+      else throw err;
+    }
+    expect(errorStatus, 'rep should not be able to issue API tokens').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
