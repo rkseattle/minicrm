@@ -592,3 +592,134 @@ describe('MINCRM-88 — ownership check uses req.user, not request body', () => 
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 });
+
+// ── MINCRM-533: New role boundary enforcement ─────────────────────────────────
+
+describe('MINCRM-533 — manager and viewer are blocked from admin-only endpoints', () => {
+  let managerCookie: string;
+  let viewerCookie: string;
+
+  beforeAll(async () => {
+    const manager = await createUser({
+      ...BASE_USER,
+      email: 'bounds-manager@example.com',
+      name: 'Manager User',
+      role: 'manager',
+    });
+    managerCookie = makeAuthCookie({
+      id: manager.id,
+      email: manager.email,
+      name: manager.name,
+      role: manager.role,
+    });
+
+    const viewer = await createUser({
+      ...BASE_USER,
+      email: 'bounds-viewer@example.com',
+      name: 'Viewer User',
+      role: 'viewer',
+    });
+    viewerCookie = makeAuthCookie({
+      id: viewer.id,
+      email: viewer.email,
+      name: viewer.name,
+      role: viewer.role,
+    });
+  });
+
+  afterAll(async () => {
+    await pool.query(
+      "DELETE FROM users WHERE email IN ('bounds-manager@example.com', 'bounds-viewer@example.com')",
+    );
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when manager attempts to change a user role', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${repAId}/role`)
+      .set('Cookie', managerCookie)
+      .send({ role: 'admin' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when viewer attempts to change a user role', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${repAId}/role`)
+      .set('Cookie', viewerCookie)
+      .send({ role: 'admin' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when manager attempts to patch default language setting', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/default-language')
+      .set('Cookie', managerCookie)
+      .send({ language: 'es' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when viewer attempts to patch default language setting', async () => {
+    const res = await request(app)
+      .patch('/api/v1/settings/default-language')
+      .set('Cookie', viewerCookie)
+      .send({ language: 'es' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+});
+
+describe('MINCRM-533 — service_account is blocked from admin-only endpoints', () => {
+  let serviceAccountCookie: string;
+
+  beforeAll(async () => {
+    const sa = await createUser({
+      ...BASE_USER,
+      email: 'bounds-service-account@example.com',
+      name: 'Service Account',
+      role: 'service_account',
+    });
+    serviceAccountCookie = makeAuthCookie({
+      id: sa.id,
+      email: sa.email,
+      name: sa.name,
+      role: sa.role,
+    });
+  });
+
+  afterAll(async () => {
+    await pool.query("DELETE FROM users WHERE email = 'bounds-service-account@example.com'");
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when service_account attempts to change a user role', async () => {
+    const res = await request(app)
+      .patch(`/api/v1/users/${repAId}/role`)
+      .set('Cookie', serviceAccountCookie)
+      .send({ role: 'admin' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when service_account attempts to POST an automation rule', async () => {
+    const res = await request(app)
+      .post('/api/v1/automation/rules')
+      .set('Cookie', serviceAccountCookie)
+      .send({
+        name: 'SA Rule',
+        enabled: true,
+        trigger_type: 'deal_created',
+        trigger_config: {},
+        action_type: 'send_notification',
+        action_config: { message: 'Hello' },
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+  });
+});
