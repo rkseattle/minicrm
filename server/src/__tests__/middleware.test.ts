@@ -10,7 +10,10 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 import jwt from 'jsonwebtoken';
+import { vi } from 'vitest';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import { requireRole, blockServiceAccount } from '../middleware/requireRole.js';
+import type { Request, Response, NextFunction } from 'express';
 
 const FILE_PREFIX = 'mw';
 
@@ -190,6 +193,74 @@ describe('requireRole middleware', () => {
     });
     const res = await request(app).get('/api/v1/admin/webhooks').set('Cookie', adminCookie);
     expect(res.status).toBe(200);
+  });
+});
+
+// ── requireRole — unauthenticated path ────────────────────────────────────────
+// These unit tests call the middleware directly to cover branches that cannot be
+// reached through the normal request flow (authenticate always runs first).
+
+describe('requireRole — called without req.user', () => {
+  it('returns 401 AUTH_MISSING_TOKEN when req.user is not set (MINCRM-533)', () => {
+    const middleware = requireRole('admin');
+    const req = { user: undefined } as unknown as Request;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status } as unknown as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(status).toHaveBeenCalledWith(401);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.objectContaining({ code: 'AUTH_MISSING_TOKEN' }) }),
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+});
+
+// ── blockServiceAccount middleware ────────────────────────────────────────────
+
+describe('blockServiceAccount (MINCRM-533)', () => {
+  it('returns 403 SERVICE_ACCOUNT_UI_BLOCKED for a service_account user', () => {
+    const middleware = blockServiceAccount();
+    const req = { user: { role: 'service_account' } } as unknown as Request;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status } as unknown as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'SERVICE_ACCOUNT_UI_BLOCKED' }),
+      }),
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('calls next() for non-service-account users', () => {
+    const middleware = blockServiceAccount();
+    const req = { user: { role: 'rep' } } as unknown as Request;
+    const res = {} as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+  });
+
+  it('calls next() when req.user is undefined (unauthenticated — let authenticate handle it)', () => {
+    const middleware = blockServiceAccount();
+    const req = { user: undefined } as unknown as Request;
+    const res = {} as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalled();
   });
 });
 
