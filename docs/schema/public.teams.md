@@ -1,12 +1,13 @@
-# public.ai_token_budgets
+# public.teams
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false |  |  |  |
-| user_id | uuid |  | true |  | [public.users](public.users.md) |  |
-| monthly_limit | bigint |  | false |  |  |  |
+| id | uuid | gen_random_uuid() | false | [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) |  |  |
+| name | text |  | false |  |  |  |
+| manager_id | uuid |  | true |  | [public.users](public.users.md) |  |
+| parent_team_id | uuid |  | true |  | [public.teams](public.teams.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -14,36 +15,46 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| ai_token_budgets_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| ai_token_budgets_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| teams_manager_id_fkey | FOREIGN KEY | FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL |
+| teams_parent_team_id_fkey | FOREIGN KEY | FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL |
+| teams_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| teams_name_key | UNIQUE | UNIQUE (name) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| ai_token_budgets_pkey | CREATE UNIQUE INDEX ai_token_budgets_pkey ON public.ai_token_budgets USING btree (id) |
-| ai_token_budgets_user_id_idx | CREATE UNIQUE INDEX ai_token_budgets_user_id_idx ON public.ai_token_budgets USING btree (user_id) WHERE (user_id IS NOT NULL) |
-| ai_token_budgets_org_default_idx | CREATE UNIQUE INDEX ai_token_budgets_org_default_idx ON public.ai_token_budgets USING btree (((user_id IS NULL))) WHERE (user_id IS NULL) |
+| teams_pkey | CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id) |
+| teams_name_key | CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name) |
+| teams_name_lower_idx | CREATE UNIQUE INDEX teams_name_lower_idx ON public.teams USING btree (lower(name)) |
 
 ## Triggers
 
 | Name | Definition |
 | ---- | ---------- |
-| ai_token_budgets_set_updated_at | CREATE TRIGGER ai_token_budgets_set_updated_at BEFORE UPDATE ON public.ai_token_budgets FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| set_teams_updated_at | CREATE TRIGGER set_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
+"public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 
-"public.ai_token_budgets" {
+"public.teams" {
   uuid id ""
-  uuid user_id FK ""
-  bigint monthly_limit ""
+  text name ""
+  uuid manager_id FK ""
+  uuid parent_team_id FK ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.team_memberships" {
+  uuid team_id FK ""
+  uuid user_id FK ""
+  text role ""
 }
 "public.users" {
   uuid id ""

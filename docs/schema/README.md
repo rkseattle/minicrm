@@ -46,6 +46,8 @@
 | [public.audit_log](public.audit_log.md) | 11 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
 | [public.note_tags](public.note_tags.md) | 3 |  | BASE TABLE |
 | [public.currency_rate_history](public.currency_rate_history.md) | 5 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 6 |  | BASE TABLE |
+| [public.team_memberships](public.team_memberships.md) | 3 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -164,13 +166,17 @@ erDiagram
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.note_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 "public.note_tags" }o--|| "public.notes" : "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
+"public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
+"public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
+"public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
   varchar_255_ email ""
   text password_hash ""
   varchar_255_ name ""
-  varchar_10_ role ""
+  varchar_20_ role ""
   varchar_10_ status ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
@@ -617,6 +623,19 @@ erDiagram
   numeric_18_6_ rate_to_home ""
   timestamp_with_time_zone effective_from ""
   timestamp_with_time_zone created_at ""
+}
+"public.teams" {
+  uuid id ""
+  text name ""
+  uuid manager_id FK ""
+  uuid parent_team_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.team_memberships" {
+  uuid team_id FK ""
+  uuid user_id FK ""
+  text role ""
 }
 ```
 

@@ -4,11 +4,11 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.system_settings](public.system_settings.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.leads](public.leads.md) [public.import_jobs](public.import_jobs.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.notes](public.notes.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.pipelines](public.pipelines.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_configuration](public.ai_configuration.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.system_settings](public.system_settings.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.leads](public.leads.md) [public.import_jobs](public.import_jobs.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.notes](public.notes.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.pipelines](public.pipelines.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
-| role | varchar(10) | '''rep'''::character varying | false |  |  |  |
+| role | varchar(20) | '''rep'''::character varying | false |  |  |  |
 | status | varchar(10) | '''active'''::character varying | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
@@ -33,7 +33,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| users_role_check | CHECK | CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying])::text[]))) |
+| users_role_check | CHECK | CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[]))) |
 | users_sso_provider_requires_subject | CHECK | CHECK (((sso_provider IS NULL) OR (sso_subject IS NOT NULL))) |
 | users_sso_subject_max_length | CHECK | CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024))) |
 | users_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'invited'::character varying, 'inactive'::character varying])::text[]))) |
@@ -84,13 +84,15 @@ erDiagram
 "public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
+"public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
   varchar_255_ email ""
   text password_hash ""
   varchar_255_ name ""
-  varchar_10_ role ""
+  varchar_20_ role ""
   varchar_10_ status ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
@@ -371,6 +373,19 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   uuid updated_by FK ""
   smallint api_key_key_version "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
+}
+"public.teams" {
+  uuid id ""
+  text name ""
+  uuid manager_id FK ""
+  uuid parent_team_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.team_memberships" {
+  uuid team_id FK ""
+  uuid user_id FK ""
+  text role ""
 }
 ```
 

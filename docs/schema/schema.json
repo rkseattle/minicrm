@@ -28,7 +28,7 @@
         },
         {
           "name": "role",
-          "type": "varchar(10)",
+          "type": "varchar(20)",
           "nullable": false,
           "default": "'''rep'''::character varying"
         },
@@ -190,7 +190,7 @@
         {
           "name": "users_role_check",
           "type": "CHECK",
-          "def": "CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying])::text[])))",
+          "def": "CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[])))",
           "table": "public.users",
           "referenced_table": "",
           "columns": [
@@ -211,7 +211,7 @@
         {
           "name": "users_sso_subject_max_length",
           "type": "CHECK",
-          "def": "CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024)))",
+          "def": "CHECK (((sso_subject IS NULL) OR (length(sso_subject) \u003c= 1024)))",
           "table": "public.users",
           "referenced_table": "",
           "columns": [
@@ -822,7 +822,7 @@
         {
           "name": "deals_probability_check",
           "type": "CHECK",
-          "def": "CHECK (((probability IS NULL) OR ((probability >= 0) AND (probability <= 100))))",
+          "def": "CHECK (((probability IS NULL) OR ((probability \u003e= 0) AND (probability \u003c= 100))))",
           "table": "public.deals",
           "referenced_table": "",
           "columns": [
@@ -2145,7 +2145,7 @@
         {
           "name": "pipeline_stages_probability_check",
           "type": "CHECK",
-          "def": "CHECK (((probability >= 0) AND (probability <= 100)))",
+          "def": "CHECK (((probability \u003e= 0) AND (probability \u003c= 100)))",
           "table": "public.pipeline_stages",
           "referenced_table": "",
           "columns": [
@@ -2684,7 +2684,7 @@
         {
           "name": "currencies_rate_to_home_positive",
           "type": "CHECK",
-          "def": "CHECK ((rate_to_home > (0)::numeric))",
+          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
           "table": "public.currencies",
           "referenced_table": "",
           "columns": [
@@ -3969,7 +3969,7 @@
         {
           "name": "sales_sequence_steps_delay_days_check",
           "type": "CHECK",
-          "def": "CHECK ((delay_days >= 0))",
+          "def": "CHECK ((delay_days \u003e= 0))",
           "table": "public.sales_sequence_steps",
           "referenced_table": "",
           "columns": [
@@ -4806,7 +4806,7 @@
           "type": "smallint",
           "nullable": false,
           "default": "1",
-          "comment": "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
+          "comment": "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V\u003cn\u003e env var (MINCRM-519)"
         }
       ],
       "indexes": [
@@ -4919,7 +4919,7 @@
           "type": "smallint",
           "nullable": false,
           "default": "1",
-          "comment": "Key version used to encrypt pass_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
+          "comment": "Key version used to encrypt pass_encrypted. References ENCRYPTION_KEY_V\u003cn\u003e env var (MINCRM-519)"
         }
       ],
       "indexes": [
@@ -5221,7 +5221,7 @@
         {
           "name": "currency_rate_history_rate_positive",
           "type": "CHECK",
-          "def": "CHECK ((rate_to_home > (0)::numeric))",
+          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
           "table": "public.currency_rate_history",
           "referenced_table": "",
           "columns": [
@@ -5236,6 +5236,214 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.teams",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "manager_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "parent_team_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "teams_pkey",
+          "def": "CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id)",
+          "table": "public.teams",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_name_key",
+          "def": "CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name)",
+          "table": "public.teams",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "teams_name_lower_idx",
+          "def": "CREATE UNIQUE INDEX teams_name_lower_idx ON public.teams USING btree (lower(name))",
+          "table": "public.teams",
+          "columns": [
+            "lower"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "teams_manager_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.teams",
+          "referenced_table": "public.users",
+          "columns": [
+            "manager_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_parent_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL",
+          "table": "public.teams",
+          "referenced_table": "public.teams",
+          "columns": [
+            "parent_team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "teams_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "set_teams_updated_at",
+          "def": "CREATE TRIGGER set_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.team_memberships",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_memberships_pkey",
+          "def": "CREATE UNIQUE INDEX team_memberships_pkey ON public.team_memberships USING btree (team_id, user_id)",
+          "table": "public.team_memberships",
+          "columns": [
+            "team_id",
+            "user_id"
+          ]
+        },
+        {
+          "name": "team_memberships_user_id_idx",
+          "def": "CREATE INDEX team_memberships_user_id_idx ON public.team_memberships USING btree (user_id)",
+          "table": "public.team_memberships",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_memberships_role_check",
+          "type": "CHECK",
+          "def": "CHECK ((role = ANY (ARRAY['lead'::text, 'member'::text])))",
+          "table": "public.team_memberships",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "team_memberships_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.team_memberships",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_memberships_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_memberships",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_memberships_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, user_id)",
+          "table": "public.team_memberships",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "user_id"
           ]
         }
       ]
@@ -6021,6 +6229,58 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.teams",
+      "columns": [
+        "manager_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.teams",
+      "columns": [
+        "parent_team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.team_memberships",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_memberships",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -6291,6 +6551,7 @@
   ],
   "driver": {
     "name": "postgres",
+    "database_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
     "meta": {
       "current_schema": "public",
       "search_paths": [

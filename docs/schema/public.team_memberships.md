@@ -1,47 +1,48 @@
-# public.ai_token_usage
+# public.team_memberships
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| team_id | uuid |  | false |  | [public.teams](public.teams.md) |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
-| year_month | character(7) |  | false |  |  |  |
-| input_tokens | bigint | 0 | false |  |  |  |
-| output_tokens | bigint | 0 | false |  |  |  |
-| updated_at | timestamp with time zone | now() | false |  |  |  |
+| role | text |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| ai_token_usage_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| ai_token_usage_pkey | PRIMARY KEY | PRIMARY KEY (user_id, year_month) |
+| team_memberships_role_check | CHECK | CHECK ((role = ANY (ARRAY['lead'::text, 'member'::text]))) |
+| team_memberships_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
+| team_memberships_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| team_memberships_pkey | PRIMARY KEY | PRIMARY KEY (team_id, user_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| ai_token_usage_pkey | CREATE UNIQUE INDEX ai_token_usage_pkey ON public.ai_token_usage USING btree (user_id, year_month) |
-| ai_token_usage_year_month_index | CREATE INDEX ai_token_usage_year_month_index ON public.ai_token_usage USING btree (year_month) |
-
-## Triggers
-
-| Name | Definition |
-| ---- | ---------- |
-| ai_token_usage_set_updated_at | CREATE TRIGGER ai_token_usage_set_updated_at BEFORE UPDATE ON public.ai_token_usage FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| team_memberships_pkey | CREATE UNIQUE INDEX team_memberships_pkey ON public.team_memberships USING btree (team_id, user_id) |
+| team_memberships_user_id_idx | CREATE INDEX team_memberships_user_id_idx ON public.team_memberships USING btree (user_id) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
-"public.ai_token_usage" {
+"public.team_memberships" {
+  uuid team_id FK ""
   uuid user_id FK ""
-  character_7_ year_month ""
-  bigint input_tokens ""
-  bigint output_tokens ""
+  text role ""
+}
+"public.teams" {
+  uuid id ""
+  text name ""
+  uuid manager_id FK ""
+  uuid parent_team_id FK ""
+  timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
 "public.users" {
