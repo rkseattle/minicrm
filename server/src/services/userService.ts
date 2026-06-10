@@ -851,7 +851,7 @@ export async function revokeServiceAccountToken(
        SET api_token_hash = NULL,
            api_token_issued_at = NULL,
            updated_at = now()
-       WHERE id = $1 AND role = 'service_account'
+       WHERE id = $1 AND role = 'service_account' AND api_token_hash IS NOT NULL
        RETURNING id, name`,
       [userId],
     );

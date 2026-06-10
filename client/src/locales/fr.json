@@ -144,7 +144,9 @@
     "apiTokenIssuedTitle": "Jeton API émis",
     "apiTokenCopyLabel": "Copiez ce jeton — il ne sera plus affiché.",
     "apiTokenRevoked": "Jeton API révoqué.",
-    "badgeServiceAccount": "Compte de service"
+    "badgeServiceAccount": "Compte de service",
+    "copyToken": "Copier le jeton",
+    "done": "Terminé"
   },
   "changePassword": {
     "title": "Changer votre mot de passe",

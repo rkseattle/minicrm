@@ -144,7 +144,9 @@
     "apiTokenIssuedTitle": "API token issued",
     "apiTokenCopyLabel": "Copy this token — it will not be shown again.",
     "apiTokenRevoked": "API token revoked.",
-    "badgeServiceAccount": "Service account"
+    "badgeServiceAccount": "Service account",
+    "copyToken": "Copy token",
+    "done": "Done"
   },
   "changePassword": {
     "title": "Change your password",
