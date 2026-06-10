@@ -1186,6 +1186,33 @@ exports.up = (pgm) => {
   // currency_rate_history
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
 
+  // teams (migration 103 — MINCRM-537)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.teams (
+      id             uuid DEFAULT gen_random_uuid() NOT NULL,
+      name           text NOT NULL,
+      manager_id     uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      parent_team_id uuid REFERENCES public.teams(id) ON DELETE SET NULL,
+      created_at     timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at     timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT teams_pkey PRIMARY KEY (id),
+      CONSTRAINT teams_name_key UNIQUE (name)
+    )
+  `);
+  pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS teams_name_lower_idx ON public.teams (lower(name))`);
+
+  // team_memberships (migration 103 — MINCRM-537)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.team_memberships (
+      team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+      user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      role    text NOT NULL,
+      CONSTRAINT team_memberships_pkey PRIMARY KEY (team_id, user_id),
+      CONSTRAINT team_memberships_role_check CHECK (role IN ('lead', 'member'))
+    )
+  `);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS team_memberships_user_id_idx ON public.team_memberships (user_id)`);
+
   // -------------------------------------------------------------------------
   // Triggers — wrapped in DO/EXCEPTION so baseline is safe on existing databases
   // -------------------------------------------------------------------------
@@ -1197,7 +1224,7 @@ exports.up = (pgm) => {
     'custom_field_definitions', 'custom_field_values', 'custom_reports',
     'deals', 'feature_flags', 'import_jobs', 'leads', 'notes',
     'pipeline_stages', 'pipelines', 'sales_sequence_steps', 'sales_sequences',
-    'sequence_enrollments', 'system_settings', 'tags', 'users',
+    'sequence_enrollments', 'system_settings', 'tags', 'teams', 'users',
   ]) {
     pgm.sql(`
       DO $$ BEGIN
