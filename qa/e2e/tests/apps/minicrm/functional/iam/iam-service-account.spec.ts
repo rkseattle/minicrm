@@ -70,8 +70,9 @@ interface IssueTokenResponse {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates an invited (but not yet activated) service account user.
- * Service accounts authenticate via Bearer token, not cookie — no password activation needed.
+ * Creates an activated service account user.
+ * Activation uses POST /users/set-password with the invite token, which sets
+ * status='active' and must_change_password=false — the clean activation path.
  * Caller is responsible for deactivating in teardown.
  */
 async function createServiceAccount(adminClient: RestClient): Promise<UserRow> {
@@ -81,14 +82,11 @@ async function createServiceAccount(adminClient: RestClient): Promise<UserRow> {
     email: `sa-${uniqueSuffix}@example.com`,
     role: 'service_account',
   });
-  // Service accounts start as 'invited'; they never log in via the UI.
-  // The invite endpoint activates them as 'active' upon creation in newer builds,
-  // or they remain 'invited' — either way, Bearer auth requires status='active'.
-  // Use admin-set-password to force activation to 'active'.
-  await adminClient.post(`/api/v1/users/${res.body.user.id}/admin-set-password`, {
+  // Activate with invite token (must_change_password stays false, status becomes 'active')
+  await adminClient.post('/api/v1/users/set-password', {
+    token: res.body.inviteToken,
     password: 'SaPassword1!',
   });
-  // Re-fetch to get current status
   const userRes = await adminClient.get<{ user: UserRow }>(`/api/v1/users/${res.body.user.id}`);
   return userRes.body.user;
 }
