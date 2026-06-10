@@ -28,6 +28,8 @@
 | onboarding_completed_at | timestamp with time zone |  | true |  |  |  |
 | sso_provider | varchar(20) | NULL::character varying | true |  |  | SSO protocol that provisioned this user: saml \| oidc |
 | sso_subject | text |  | true |  |  | Stable external identity: SAML nameID or OIDC sub claim |
+| api_token_hash | text |  | true |  |  |  |
+| api_token_issued_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
 
@@ -49,6 +51,7 @@
 | users_email_index | CREATE INDEX users_email_index ON public.users USING btree (email) |
 | users_password_reset_token_hash_idx | CREATE INDEX users_password_reset_token_hash_idx ON public.users USING btree (password_reset_token_hash) WHERE (password_reset_token_hash IS NOT NULL) |
 | users_sso_provider_sso_subject_unique | CREATE UNIQUE INDEX users_sso_provider_sso_subject_unique ON public.users USING btree (sso_provider, sso_subject) WHERE (sso_subject IS NOT NULL) |
+| users_api_token_hash_unique | CREATE UNIQUE INDEX users_api_token_hash_unique ON public.users USING btree (api_token_hash) WHERE (api_token_hash IS NOT NULL) |
 
 ## Triggers
 
@@ -112,6 +115,8 @@ erDiagram
   timestamp_with_time_zone onboarding_completed_at ""
   varchar_20_ sso_provider "SSO protocol that provisioned this user: saml | oidc"
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
+  text api_token_hash ""
+  timestamp_with_time_zone api_token_issued_at ""
 }
 "public.contacts" {
   uuid id ""
