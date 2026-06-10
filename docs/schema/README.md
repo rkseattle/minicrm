@@ -4,7 +4,7 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.users](public.users.md) | 24 |  | BASE TABLE |
+| [public.users](public.users.md) | 26 |  | BASE TABLE |
 | [public.contacts](public.contacts.md) | 17 |  | BASE TABLE |
 | [public.accounts](public.accounts.md) | 13 |  | BASE TABLE |
 | [public.deals](public.deals.md) | 17 |  | BASE TABLE |
@@ -196,6 +196,8 @@ erDiagram
   timestamp_with_time_zone onboarding_completed_at ""
   varchar_20_ sso_provider "SSO protocol that provisioned this user: saml | oidc"
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
+  text api_token_hash ""
+  timestamp_with_time_zone api_token_issued_at ""
 }
 "public.contacts" {
   uuid id ""
