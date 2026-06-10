@@ -50,10 +50,13 @@ export async function createTeamHandler(req: Request, res: Response): Promise<vo
     const team = await createTeam(parsed.data, actor);
     res.status(201).json({ team });
   } catch (err) {
-    if ((err as { code?: string }).code === 'TEAM_NAME_DUPLICATE') {
-      res
-        .status(409)
-        .json({ error: { code: 'TEAM_NAME_DUPLICATE', message: (err as Error).message } });
+    const code = (err as { code?: string }).code;
+    if (code === 'TEAM_NAME_DUPLICATE') {
+      res.status(409).json({ error: { code, message: (err as Error).message } });
+      return;
+    }
+    if (code === 'MANAGER_OR_PARENT_NOT_FOUND') {
+      res.status(400).json({ error: { code, message: (err as Error).message } });
       return;
     }
     throw err;
@@ -83,7 +86,7 @@ export async function updateTeamHandler(req: Request, res: Response): Promise<vo
       res.status(409).json({ error: { code, message: (err as Error).message } });
       return;
     }
-    if (code === 'TEAM_CIRCULAR_REFERENCE') {
+    if (code === 'TEAM_CIRCULAR_REFERENCE' || code === 'MANAGER_OR_PARENT_NOT_FOUND') {
       res.status(400).json({ error: { code, message: (err as Error).message } });
       return;
     }

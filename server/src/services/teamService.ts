@@ -118,6 +118,7 @@ export async function createTeam(
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<TeamResponse> {
   const client: PoolClient = await pool.connect();
+  let newTeamId: string;
   try {
     await client.query('BEGIN');
 
@@ -129,6 +130,7 @@ export async function createTeam(
     );
     // Safe: INSERT RETURNING always returns the newly inserted row.
     const team = insertResult.rows[0]!;
+    newTeamId = team.id;
 
     await writeAuditEntry(client, {
       recordType: 'team',
@@ -140,8 +142,6 @@ export async function createTeam(
     });
 
     await client.query('COMMIT');
-
-    return fetchTeamWithManager(team.id);
   } catch (err) {
     await client.query('ROLLBACK');
     if ((err as { code?: string }).code === '23505') {
@@ -149,10 +149,19 @@ export async function createTeam(
         code: 'TEAM_NAME_DUPLICATE',
       });
     }
+    if ((err as { code?: string }).code === '23503') {
+      throw Object.assign(
+        new Error('manager_id or parent_team_id references a non-existent record'),
+        { code: 'MANAGER_OR_PARENT_NOT_FOUND' },
+      );
+    }
     throw err;
   } finally {
     client.release();
   }
+  // Post-commit re-read is outside the transaction try/catch so a transient
+  // SELECT failure cannot trigger a no-op ROLLBACK on the committed write.
+  return fetchTeamWithManager(newTeamId);
 }
 
 /**
@@ -196,15 +205,23 @@ export async function updateTeam(
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<TeamResponse | null> {
   const client: PoolClient = await pool.connect();
+  let found = false;
   try {
     await client.query('BEGIN');
 
-    const beforeResult = await client.query<TeamRow>('SELECT * FROM teams WHERE id = $1', [id]);
+    // FOR UPDATE serializes concurrent reparent attempts on the same team row,
+    // preventing a race where two transactions both pass the cycle check before
+    // either commits (MINCRM-537).
+    const beforeResult = await client.query<TeamRow>(
+      'SELECT * FROM teams WHERE id = $1 FOR UPDATE',
+      [id],
+    );
     const before = beforeResult.rows[0];
     if (!before) {
       await client.query('ROLLBACK');
       return null;
     }
+    found = true;
 
     if (params.parent_team_id !== undefined && params.parent_team_id !== null) {
       if (await wouldCreateCycle(client, id, params.parent_team_id)) {
@@ -253,7 +270,6 @@ export async function updateTeam(
     }
 
     await client.query('COMMIT');
-    return fetchTeamWithManager(id);
   } catch (err) {
     await client.query('ROLLBACK');
     if ((err as { code?: string }).code === '23505') {
@@ -261,10 +277,20 @@ export async function updateTeam(
         code: 'TEAM_NAME_DUPLICATE',
       });
     }
+    if ((err as { code?: string }).code === '23503') {
+      throw Object.assign(
+        new Error('manager_id or parent_team_id references a non-existent record'),
+        { code: 'MANAGER_OR_PARENT_NOT_FOUND' },
+      );
+    }
     throw err;
   } finally {
     client.release();
   }
+  if (!found) return null;
+  // Post-commit re-read is outside the transaction try/catch so a transient
+  // SELECT failure cannot trigger a no-op ROLLBACK on the committed write.
+  return fetchTeamWithManager(id);
 }
 
 /**
@@ -367,16 +393,6 @@ export async function addTeamMember(
     });
 
     await client.query('COMMIT');
-
-    const result = await pool.query<MembershipRowWithUser>(
-      `SELECT tm.team_id, tm.user_id, u.name AS user_name, u.email AS user_email, tm.role
-         FROM team_memberships tm
-         JOIN users u ON u.id = tm.user_id
-        WHERE tm.team_id = $1 AND tm.user_id = $2`,
-      [teamId, userId],
-    );
-    // Safe: we just inserted this row.
-    return toTeamMemberResponse(result.rows[0]!);
   } catch (err) {
     await client.query('ROLLBACK');
     if ((err as { code?: string }).code === '23505') {
@@ -393,6 +409,17 @@ export async function addTeamMember(
   } finally {
     client.release();
   }
+  // Post-commit re-read is outside the transaction try/catch so a transient
+  // SELECT failure cannot trigger a no-op ROLLBACK on the committed write.
+  const result = await pool.query<MembershipRowWithUser>(
+    `SELECT tm.team_id, tm.user_id, u.name AS user_name, u.email AS user_email, tm.role
+       FROM team_memberships tm
+       JOIN users u ON u.id = tm.user_id
+      WHERE tm.team_id = $1 AND tm.user_id = $2`,
+    [teamId, userId],
+  );
+  // Safe: we just inserted this row.
+  return toTeamMemberResponse(result.rows[0]!);
 }
 
 /**
