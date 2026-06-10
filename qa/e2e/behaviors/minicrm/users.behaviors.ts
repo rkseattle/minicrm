@@ -74,7 +74,7 @@ export interface InviteUserViaUIResult {
  *
  * @param name - Display name for the invited user.
  * @param email - Email address for the invited user.
- * @param role - Role to assign ('admin' | 'rep').
+ * @param role - Role to assign.
  * @param context - Playwright fixture context.
  * @returns InviteUserViaUIResult.
  *
@@ -87,7 +87,7 @@ export interface InviteUserViaUIResult {
 export async function inviteUserViaUI(
   name: string,
   email: string,
-  role: 'admin' | 'rep',
+  role: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account',
   context: UsersBehaviorContext,
 ): Promise<InviteUserViaUIResult> {
   const usersPage = new UsersPage(context);
@@ -153,7 +153,7 @@ export interface UserRow {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'rep';
+  role: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account';
   status: 'active' | 'invited' | 'inactive';
   must_change_password: boolean;
 }
@@ -200,7 +200,11 @@ export async function findUserById(
  */
 export async function inviteUserViaApi(
   restClient: RestClient,
-  params: { name: string; email: string; role: 'admin' | 'rep' },
+  params: {
+    name: string;
+    email: string;
+    role: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account';
+  },
 ): Promise<InviteUserResponse> {
   const res = await restClient.post<InviteUserResponse>('/api/v1/users/invite', params);
   return res.body;

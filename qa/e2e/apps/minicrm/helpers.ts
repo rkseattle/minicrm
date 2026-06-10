@@ -468,7 +468,7 @@ export interface TestUser {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'rep';
+  role: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account';
   status: 'active' | 'invited' | 'inactive';
 }
 
@@ -476,7 +476,7 @@ export interface TestUser {
 export interface CreateUserOverrides {
   name?: string;
   email?: string;
-  role?: 'admin' | 'rep';
+  role?: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account';
   /** Password to set immediately after invite via admin-set-password. */
   password?: string;
 }

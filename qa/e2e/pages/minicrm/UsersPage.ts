@@ -66,9 +66,13 @@ export class UsersPage {
    *
    * @param name - User display name.
    * @param email - User email address.
-   * @param role - 'admin' | 'rep'.
+   * @param role - Role to assign.
    */
-  async fillInviteForm(name: string, email: string, role: 'admin' | 'rep'): Promise<void> {
+  async fillInviteForm(
+    name: string,
+    email: string,
+    role: 'admin' | 'rep' | 'viewer' | 'manager' | 'service_account',
+  ): Promise<void> {
     await this.page.fill(
       name,
       [
