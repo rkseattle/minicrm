@@ -181,6 +181,25 @@ describe('updateUserRole', () => {
     const result = await updateUserRole('00000000-0000-0000-0000-000000000000', 'admin');
     expect(result).toBeNull();
   });
+
+  // MINCRM-533 — new roles
+  it('assigns manager role', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await updateUserRole(user.id, 'manager');
+    expect(updated!.role).toBe('manager');
+  });
+
+  it('assigns viewer role', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await updateUserRole(user.id, 'viewer');
+    expect(updated!.role).toBe('viewer');
+  });
+
+  it('assigns service_account role', async () => {
+    const user = await createUser(BASE_USER);
+    const updated = await updateUserRole(user.id, 'service_account');
+    expect(updated!.role).toBe('service_account');
+  });
 });
 
 // ── DB constraints ─────────────────────────────────────────────────────────────
