@@ -40,7 +40,7 @@ export async function createTeamHandler(req: Request, res: Response): Promise<vo
   const parsed = createTeamSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
     });
     return;
   }
@@ -64,7 +64,7 @@ export async function updateTeamHandler(req: Request, res: Response): Promise<vo
   const parsed = updateTeamSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
     });
     return;
   }
@@ -127,7 +127,7 @@ export async function addTeamMemberHandler(req: Request, res: Response): Promise
   const parsed = addTeamMemberSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0]!.message },
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
     });
     return;
   }
