@@ -23,6 +23,7 @@ import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import type { UserRow } from './userService.js';
 import type { SsoProtocol } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -359,7 +360,7 @@ interface SsoUserRow {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'rep';
+  role: UserRole;
   status: 'active' | 'invited' | 'inactive';
   must_change_password: boolean;
   sso_provider: SsoProtocol | null;

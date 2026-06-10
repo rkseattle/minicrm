@@ -83,7 +83,11 @@ const componentSchemas = {
       id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
       email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
       name: { type: 'string', example: 'Jane Smith' },
-      role: { type: 'string', enum: ['admin', 'rep'], example: 'rep' },
+      role: {
+        type: 'string',
+        enum: ['admin', 'rep', 'manager', 'viewer', 'service_account'],
+        example: 'rep',
+      },
       status: { type: 'string', enum: ['active', 'invited', 'inactive'], example: 'active' },
       must_change_password: { type: 'boolean', example: false },
       preferred_language: {
@@ -105,7 +109,11 @@ const componentSchemas = {
     properties: {
       email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
       name: { type: 'string', example: 'Jane Smith' },
-      role: { type: 'string', enum: ['admin', 'rep'], example: 'rep' },
+      role: {
+        type: 'string',
+        enum: ['admin', 'rep', 'manager', 'viewer', 'service_account'],
+        example: 'rep',
+      },
     },
   },
   SetPasswordRequest: {
@@ -141,7 +149,11 @@ const componentSchemas = {
     type: 'object',
     required: ['role'],
     properties: {
-      role: { type: 'string', enum: ['admin', 'rep'], example: 'admin' },
+      role: {
+        type: 'string',
+        enum: ['admin', 'rep', 'manager', 'viewer', 'service_account'],
+        example: 'admin',
+      },
     },
   },
   UpdateLanguageRequest: {
