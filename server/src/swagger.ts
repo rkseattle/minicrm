@@ -578,6 +578,61 @@ const componentSchemas = {
       },
     },
   },
+
+  // ── Team (MINCRM-537) ─────────────────────────────────────────────────────
+  Team: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid', example: 't1b2c3d4-0000-0000-0000-000000000001' },
+      name: { type: 'string', example: 'West Coast Sales' },
+      manager_id: {
+        type: 'string',
+        format: 'uuid',
+        nullable: true,
+        example: 'u1b2c3d4-0000-0000-0000-000000000001',
+      },
+      manager_name: { type: 'string', nullable: true, example: 'Jane Smith' },
+      parent_team_id: { type: 'string', format: 'uuid', nullable: true, example: null },
+      created_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+      updated_at: { type: 'string', format: 'date-time', example: '2025-03-15T09:00:00.000Z' },
+    },
+  },
+  TeamMember: {
+    type: 'object',
+    properties: {
+      team_id: { type: 'string', format: 'uuid', example: 't1b2c3d4-0000-0000-0000-000000000001' },
+      user_id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
+      user_name: { type: 'string', example: 'Jane Smith' },
+      user_email: { type: 'string', format: 'email', example: 'jane.smith@acme.com' },
+      role: { type: 'string', enum: ['lead', 'member'], example: 'member' },
+    },
+  },
+  CreateTeamRequest: {
+    type: 'object',
+    required: ['name'],
+    properties: {
+      name: { type: 'string', minLength: 1, example: 'West Coast Sales' },
+      manager_id: { type: 'string', format: 'uuid', nullable: true, example: null },
+      parent_team_id: { type: 'string', format: 'uuid', nullable: true, example: null },
+    },
+  },
+  UpdateTeamRequest: {
+    type: 'object',
+    description: 'At least one field must be provided',
+    properties: {
+      name: { type: 'string', minLength: 1, example: 'West Coast Sales' },
+      manager_id: { type: 'string', format: 'uuid', nullable: true, example: null },
+      parent_team_id: { type: 'string', format: 'uuid', nullable: true, example: null },
+    },
+  },
+  AddTeamMemberRequest: {
+    type: 'object',
+    required: ['user_id', 'role'],
+    properties: {
+      user_id: { type: 'string', format: 'uuid', example: 'u1b2c3d4-0000-0000-0000-000000000001' },
+      role: { type: 'string', enum: ['lead', 'member'], example: 'member' },
+    },
+  },
 };
 
 /** swagger-jsdoc options */
