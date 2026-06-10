@@ -303,8 +303,10 @@ export async function deleteTeam(id: string, actor: AuditActor = SYSTEM_ACTOR): 
   try {
     await client.query('BEGIN');
 
+    // FOR UPDATE prevents a concurrent createTeam from inserting a child row
+    // between the COUNT(*) check and the DELETE (MINCRM-537).
     const teamResult = await client.query<{ name: string }>(
-      'SELECT name FROM teams WHERE id = $1',
+      'SELECT name FROM teams WHERE id = $1 FOR UPDATE',
       [id],
     );
     if (!teamResult.rows[0]) {
