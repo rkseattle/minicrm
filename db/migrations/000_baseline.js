@@ -142,7 +142,7 @@ exports.up = (pgm) => {
           RETURN FALSE;
         END IF;
         FOR k IN SELECT jsonb_object_keys(overrides) LOOP
-          IF k NOT IN ('admin', 'rep') THEN
+          IF k NOT IN ('admin', 'rep', 'manager', 'viewer', 'service_account') THEN
             RETURN FALSE;
           END IF;
         END LOOP;
@@ -202,7 +202,7 @@ exports.up = (pgm) => {
       email                       character varying(255) NOT NULL,
       password_hash               text,
       name                        character varying(255) NOT NULL,
-      role                        character varying(10) DEFAULT '''rep'''::character varying NOT NULL,
+      role                        character varying(20) DEFAULT '''rep'''::character varying NOT NULL,
       status                      character varying(10) DEFAULT '''active'''::character varying NOT NULL,
       created_at                  timestamp with time zone DEFAULT now() NOT NULL,
       updated_at                  timestamp with time zone DEFAULT now() NOT NULL,
@@ -224,7 +224,7 @@ exports.up = (pgm) => {
       sso_subject                 text,
       CONSTRAINT users_pkey PRIMARY KEY (id),
       CONSTRAINT users_email_key UNIQUE (email),
-      CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying])::text[]))),
+      CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[]))),
       CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'invited'::character varying, 'inactive'::character varying])::text[]))),
       CONSTRAINT users_sso_provider_requires_subject CHECK (((sso_provider IS NULL) OR (sso_subject IS NOT NULL))),
       CONSTRAINT users_sso_subject_max_length CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024)))
