@@ -74,7 +74,7 @@ erDiagram
   varchar_255_ email ""
   text password_hash ""
   varchar_255_ name ""
-  varchar_10_ role ""
+  varchar_20_ role ""
   varchar_10_ status ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
