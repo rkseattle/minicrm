@@ -702,6 +702,11 @@ All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, 
         description:
           'User management. Most endpoints require admin role. The set-password and language endpoints are available to all authenticated users.',
       },
+      {
+        name: 'Teams',
+        description:
+          'Team management with nested hierarchy and membership. Read endpoints are open to all authenticated users; mutations require admin role. (MINCRM-537)',
+      },
     ],
     components: {
       securitySchemes: {

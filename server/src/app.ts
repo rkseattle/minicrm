@@ -41,6 +41,7 @@ import sequenceRoutes from './routes/sequences.js';
 import sequenceEnrollmentRoutes from './routes/sequenceEnrollments.js';
 import featureFlagRoutes from './routes/featureFlags.js';
 import aiRoutes, { aiUserRouter } from './routes/ai.js';
+import teamRoutes from './routes/teams.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -157,6 +158,8 @@ app.use(`${API_V1}/sequence-enrollments`, sequenceEnrollmentRoutes);
 // router (/ and /:key) are still protected by requireRole('admin') middleware.
 app.use(`${API_V1}/feature-flags`, featureFlagRoutes);
 app.use(`${API_V1}/admin/feature-flags`, featureFlagRoutes);
+// Teams — read endpoints open to all authenticated users; mutations admin-only (MINCRM-537)
+app.use(`${API_V1}/teams`, teamRoutes);
 // User-facing AI routes — only /token-budget/me; no admin handlers. (MINCRM-458)
 app.use(`${API_V1}/ai`, aiUserRouter);
 // Admin AI config/token-budget routes — full router at the admin prefix. (MINCRM-457, MINCRM-458)
