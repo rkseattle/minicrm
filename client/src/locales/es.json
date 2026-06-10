@@ -135,7 +135,16 @@
       "success": "Contraseña establecida. Se pedirá al usuario que la cambie en el próximo inicio de sesión.",
       "mismatch": "Las contraseñas no coinciden.",
       "complexity": "La contraseña debe tener al menos {{min}} caracteres y contener al menos una letra, un número y un carácter especial."
-    }
+    },
+    "roleViewer": "Visor",
+    "roleManager": "Gerente",
+    "roleServiceAccount": "Cuenta de servicio",
+    "actionIssueToken": "Emitir token de API",
+    "actionRevokeToken": "Revocar token de API",
+    "apiTokenIssuedTitle": "Token de API emitido",
+    "apiTokenCopyLabel": "Copie este token: no se mostrará de nuevo.",
+    "apiTokenRevoked": "Token de API revocado.",
+    "badgeServiceAccount": "Cuenta de servicio"
   },
   "changePassword": {
     "title": "Cambia tu contraseña",

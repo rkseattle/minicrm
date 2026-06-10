@@ -135,7 +135,16 @@
       "success": "Password set. The user will be prompted to change it on next login.",
       "mismatch": "Passwords do not match.",
       "complexity": "Password must be at least {{min}} characters and contain at least one letter, one number, and one special character."
-    }
+    },
+    "roleViewer": "Viewer",
+    "roleManager": "Manager",
+    "roleServiceAccount": "Service account",
+    "actionIssueToken": "Issue API token",
+    "actionRevokeToken": "Revoke API token",
+    "apiTokenIssuedTitle": "API token issued",
+    "apiTokenCopyLabel": "Copy this token — it will not be shown again.",
+    "apiTokenRevoked": "API token revoked.",
+    "badgeServiceAccount": "Service account"
   },
   "changePassword": {
     "title": "Change your password",

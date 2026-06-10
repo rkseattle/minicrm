@@ -35,6 +35,7 @@ import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import type { ContactFormValues } from '@/components/ContactForm.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
 
@@ -50,6 +51,7 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -333,7 +335,7 @@ export default function ContactsPage() {
                 {isExporting ? t('contacts.exporting') : t('contacts.exportAll')}
               </Button>
             )}
-            {!showForm && (
+            {canWrite && !showForm && (
               <Button
                 ref={newContactButtonRef}
                 type="button"
@@ -446,7 +448,7 @@ export default function ContactsPage() {
         )}
 
         {/* Bulk action bar (MINCRM-188) */}
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
             actions={[

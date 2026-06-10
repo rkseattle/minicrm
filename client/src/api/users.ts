@@ -5,7 +5,7 @@
  */
 
 import apiClient from './axiosInstance.js';
-import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
+import type { UserResponse, UserRole, IssueApiTokenResponse } from '@shared/schemas/userSchema.js';
 import type { SupportedLocale } from '@shared/schemas/settingsSchema.js';
 
 /** Minimal user shape returned by the /active endpoint — sufficient for owner dropdowns */
@@ -230,6 +230,33 @@ export async function getNotificationRecipientCount(): Promise<NotificationRecip
   const response = await apiClient.get<NotificationRecipientCountResponse>(
     '/users/notification-recipient-count',
   );
+  return response.data;
+}
+
+/**
+ * Issues a new API token for a service account user.
+ * Returns the plaintext token (shown to the admin exactly once) and the issuance timestamp.
+ * Any previously issued token for this user is atomically replaced.
+ *
+ * @param userId - UUID of the service_account user.
+ */
+export async function issueApiToken(userId: string): Promise<IssueApiTokenResponse> {
+  const response = await apiClient.post<IssueApiTokenResponse>(`/users/${userId}/api-token`);
+  return response.data;
+}
+
+/** Response shape from revoking an API token */
+interface RevokeApiTokenResponse {
+  success: boolean;
+}
+
+/**
+ * Revokes the current API token for a service account user.
+ *
+ * @param userId - UUID of the service_account user.
+ */
+export async function revokeApiToken(userId: string): Promise<RevokeApiTokenResponse> {
+  const response = await apiClient.delete<RevokeApiTokenResponse>(`/users/${userId}/api-token`);
   return response.data;
 }
 

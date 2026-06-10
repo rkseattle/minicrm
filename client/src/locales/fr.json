@@ -135,7 +135,16 @@
       "success": "Mot de passe défini. L'utilisateur sera invité à le modifier lors de sa prochaine connexion.",
       "mismatch": "Les mots de passe ne correspondent pas.",
       "complexity": "Le mot de passe doit comporter au moins {{min}} caractères et contenir au moins une lettre, un chiffre et un caractère spécial."
-    }
+    },
+    "roleViewer": "Lecteur",
+    "roleManager": "Responsable",
+    "roleServiceAccount": "Compte de service",
+    "actionIssueToken": "Émettre un jeton API",
+    "actionRevokeToken": "Révoquer le jeton API",
+    "apiTokenIssuedTitle": "Jeton API émis",
+    "apiTokenCopyLabel": "Copiez ce jeton — il ne sera plus affiché.",
+    "apiTokenRevoked": "Jeton API révoqué.",
+    "badgeServiceAccount": "Compte de service"
   },
   "changePassword": {
     "title": "Changer votre mot de passe",
