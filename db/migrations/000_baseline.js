@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–101 fully applied.
+ * with migrations 001–104 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -222,6 +222,8 @@ exports.up = (pgm) => {
       onboarding_completed_at     timestamp with time zone,
       sso_provider                character varying(20) DEFAULT NULL::character varying,
       sso_subject                 text,
+      api_token_hash              text,
+      api_token_issued_at         timestamp with time zone,
       CONSTRAINT users_pkey PRIMARY KEY (id),
       CONSTRAINT users_email_key UNIQUE (email),
       CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[]))),
@@ -1023,6 +1025,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS users_email_index ON public.users USING btree (email)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS users_password_reset_token_hash_idx ON public.users USING btree (password_reset_token_hash) WHERE (password_reset_token_hash IS NOT NULL)`);
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS users_sso_provider_sso_subject_unique ON public.users USING btree (sso_provider, sso_subject) WHERE (sso_subject IS NOT NULL)`);
+  pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS users_api_token_hash_unique ON public.users USING btree (api_token_hash) WHERE (api_token_hash IS NOT NULL)`);
 
   // contacts
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS contacts_email_unique_index ON public.contacts USING btree (email)`);

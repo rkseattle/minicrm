@@ -127,7 +127,7 @@ export const updateNotificationPrefsSchema = z.object({
 
 /**
  * Schema for the safe user response shape returned to API consumers.
- * Never includes password_hash.
+ * Never includes password_hash or api_token_hash.
  */
 export const userResponseSchema = z.object({
   id: z.string().uuid(),
@@ -140,7 +140,19 @@ export const userResponseSchema = z.object({
   notify_overdue_tasks: z.boolean().optional(),
   notify_assignments: z.boolean().optional(),
   notify_deal_stage_changes: z.boolean().optional(),
+  /** True when a service account has an active (non-revoked) API token (MINCRM-536) */
+  has_api_token: z.boolean().optional(),
+  api_token_issued_at: z.string().or(z.date()).nullable().optional(),
   created_at: z.string().or(z.date()),
+});
+
+/**
+ * Response shape for POST /api/v1/users/:id/api-token (MINCRM-536).
+ * The plaintext token is shown exactly once — it is never stored.
+ */
+export const issueApiTokenResponseSchema = z.object({
+  token: z.string().min(1),
+  issued_at: z.string().or(z.date()),
 });
 
 // ── Envelope schemas (for API response validation) ─────────────────────────────
@@ -168,3 +180,4 @@ export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type UpdatePreferredLanguageInput = z.infer<typeof updatePreferredLanguageSchema>;
 export type UpdateNotificationPrefsInput = z.infer<typeof updateNotificationPrefsSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
+export type IssueApiTokenResponse = z.infer<typeof issueApiTokenResponseSchema>;

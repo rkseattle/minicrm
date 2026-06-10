@@ -44,6 +44,9 @@ export interface UserRow {
   // SSO fields (MINCRM-399)
   sso_provider: 'saml' | 'oidc' | null;
   sso_subject: string | null;
+  // API token fields (MINCRM-536)
+  api_token_hash: string | null;
+  api_token_issued_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -302,11 +305,11 @@ export interface ActiveUserRow {
 /**
  * Returns id and name for every user with status = 'active', ordered alphabetically by name.
  * Intended for owner-assignment dropdowns accessible to all authenticated users,
- * not just admins.
+ * not just admins. Service accounts are excluded — they cannot own CRM records.
  */
 export async function listActiveUsers(): Promise<ActiveUserRow[]> {
   const result = await pool.query<ActiveUserRow>(
-    `SELECT id, name FROM users WHERE status = 'active' ORDER BY name ASC`,
+    `SELECT id, name FROM users WHERE status = 'active' AND role != 'service_account' ORDER BY name ASC`,
   );
   return result.rows;
 }
@@ -748,4 +751,153 @@ export async function resetUserOnboarding(targetUserId: string, actor: AuditActo
   } finally {
     client.release();
   }
+}
+
+// ── Service account API tokens (MINCRM-536) ───────────────────────────────────
+
+/** Byte length of the raw token — produces a 64-char hex string */
+const API_TOKEN_BYTES = 32;
+
+/**
+ * Hashes a plaintext API token using SHA-256.
+ * The hash is stored in the DB; the plaintext is returned only once at issuance.
+ */
+function hashApiToken(plaintext: string): string {
+  return crypto.createHash('sha256').update(plaintext).digest('hex');
+}
+
+/** Shape returned by issueServiceAccountToken — the plaintext token is shown once */
+export interface IssueApiTokenResult {
+  /** The plaintext token to return to the caller. Never stored. */
+  plaintextToken: string;
+  /** Timestamp when the token was issued. */
+  issuedAt: Date;
+}
+
+/**
+ * Generates a cryptographically random API token for a service account user,
+ * stores its SHA-256 hash, and returns the plaintext token (shown only once).
+ *
+ * Atomically revokes any previously issued token by overwriting the hash in the
+ * same UPDATE statement. Writes an audit entry in the same transaction.
+ *
+ * @param userId - The UUID of the service account user.
+ * @param actor  - Admin performing the action.
+ * @returns The plaintext token and issuance timestamp, or null if the user was not found.
+ */
+export async function issueServiceAccountToken(
+  userId: string,
+  actor: AuditActor,
+): Promise<IssueApiTokenResult | null> {
+  const plaintextToken = crypto.randomBytes(API_TOKEN_BYTES).toString('hex');
+  const tokenHash = hashApiToken(plaintextToken);
+  const issuedAt = new Date();
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<Pick<UserRow, 'id' | 'name' | 'role'>>(
+      `UPDATE users
+       SET api_token_hash = $2,
+           api_token_issued_at = $3,
+           updated_at = now()
+       WHERE id = $1 AND role = 'service_account'
+       RETURNING id, name, role`,
+      [userId, tokenHash, issuedAt],
+    );
+
+    if (result.rows.length === 0) return null;
+
+    const user = result.rows[0];
+
+    await writeAuditEntry(client, {
+      recordType: 'user',
+      recordId: user.id,
+      recordName: user.name,
+      eventType: 'api_token_issued',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return { plaintextToken, issuedAt };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Revokes the API token for a service account user by NULLing the hash columns.
+ * Writes an audit entry in the same transaction.
+ *
+ * @param userId - The UUID of the service account user.
+ * @param actor  - Admin performing the revocation.
+ * @returns True if the user was found and updated; false otherwise.
+ */
+export async function revokeServiceAccountToken(
+  userId: string,
+  actor: AuditActor,
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<Pick<UserRow, 'id' | 'name'>>(
+      `UPDATE users
+       SET api_token_hash = NULL,
+           api_token_issued_at = NULL,
+           updated_at = now()
+       WHERE id = $1 AND role = 'service_account'
+       RETURNING id, name`,
+      [userId],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    const user = result.rows[0];
+
+    await writeAuditEntry(client, {
+      recordType: 'user',
+      recordId: user.id,
+      recordName: user.name,
+      eventType: 'api_token_revoked',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Looks up an active service account user by a plaintext API token.
+ * Hashes the supplied token and queries for a matching, active service account.
+ *
+ * @param plaintextToken - The raw token from the Authorization header.
+ * @returns The matching UserRow, or null if the token is invalid or the account is inactive.
+ */
+export async function findUserByApiToken(plaintextToken: string): Promise<UserRow | null> {
+  const tokenHash = hashApiToken(plaintextToken);
+  const result = await pool.query<UserRow>(
+    `SELECT * FROM users
+     WHERE api_token_hash = $1
+       AND status = 'active'
+       AND role = 'service_account'
+     LIMIT 1`,
+    [tokenHash],
+  );
+  return result.rows[0] ?? null;
 }

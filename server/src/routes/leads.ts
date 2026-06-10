@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireRole, blockViewer } from '../middleware/requireRole.js';
 import {
   createLeadHandler,
   listLeadsHandler,
@@ -114,7 +114,7 @@ router.get('/', authenticate, asyncHandler(listLeadsHandler));
  *       409:
  *         description: Duplicate email warning
  */
-router.post('/', authenticate, asyncHandler(createLeadHandler));
+router.post('/', authenticate, blockViewer(), asyncHandler(createLeadHandler));
 
 /**
  * @openapi
@@ -176,7 +176,7 @@ router.get('/:id', authenticate, asyncHandler(getLeadHandler));
  *       404:
  *         description: Lead not found
  */
-router.patch('/:id', authenticate, asyncHandler(updateLeadHandler));
+router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateLeadHandler));
 
 /**
  * @openapi
@@ -204,7 +204,7 @@ router.patch('/:id', authenticate, asyncHandler(updateLeadHandler));
  *       404:
  *         description: Lead not found
  */
-router.delete('/:id', authenticate, asyncHandler(deleteLeadHandler));
+router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteLeadHandler));
 
 /**
  * @openapi
@@ -270,7 +270,7 @@ router.get('/:id/status-history', authenticate, asyncHandler(getLeadStatusHistor
  *       422:
  *         description: Lead is Disqualified and cannot be converted
  */
-router.post('/:id/convert', authenticate, asyncHandler(convertLeadHandler));
+router.post('/:id/convert', authenticate, blockViewer(), asyncHandler(convertLeadHandler));
 
 // ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────
 

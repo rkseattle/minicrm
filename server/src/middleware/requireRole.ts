@@ -72,3 +72,27 @@ export function blockServiceAccount(): RequestHandler {
     next();
   };
 }
+
+/**
+ * Blocks viewer-role users from all mutating operations (MINCRM-535).
+ * Viewers have org-wide read access but must not create, update, delete, or
+ * reassign any record. Apply this guard on every POST, PATCH, PUT, and DELETE
+ * route that modifies CRM data.
+ *
+ * Intended to be applied per-verb on individual routes rather than as a blanket
+ * router-level guard, so that GET (read) routes on the same router remain open.
+ */
+export function blockViewer(): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (req.user?.role === 'viewer') {
+      res.status(403).json({
+        error: {
+          code: 'VIEWER_WRITE_BLOCKED',
+          message: 'Viewers have read-only access and cannot perform this operation',
+        },
+      });
+      return;
+    }
+    next();
+  };
+}

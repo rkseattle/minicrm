@@ -11,7 +11,7 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import type { JwtTokenPayload } from '../types/express.js';
-import { findUserById } from '../services/userService.js';
+import { findUserById, findUserByApiToken } from '../services/userService.js';
 import { runWithRequestContext } from '../utils/requestContext.js';
 
 /** Name of the cookie that holds the JWT */
@@ -26,9 +26,19 @@ export const AUTH_COOKIE_NAME = 'minicrm_token';
  * except when the request targets /api/auth/change-password.
  */
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
+  const cookieToken = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
-  if (!token) {
+  // Service accounts authenticate via Authorization: Bearer <token> (MINCRM-536).
+  // Cookie takes precedence — a request with both a valid cookie and a Bearer header
+  // is treated as a human session.
+  const authHeader = req.headers.authorization ?? '';
+  const bearerToken = !cookieToken && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (bearerToken) {
+    return authenticateBearer(req, res, next, bearerToken);
+  }
+
+  if (!cookieToken) {
     res.status(401).json({
       error: { code: 'AUTH_MISSING_TOKEN', message: 'Authentication required' },
     });
@@ -37,7 +47,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
   let decoded: JwtTokenPayload;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET ?? '') as JwtTokenPayload;
+    decoded = jwt.verify(cookieToken, process.env.JWT_SECRET ?? '') as JwtTokenPayload;
   } catch {
     res.status(401).json({
       error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid or expired token' },
@@ -127,5 +137,42 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   // so service-layer helpers (setRlsUserId, withRlsQuery) can read it without
   // threading req.user through every function call. The context propagates to all
   // async work spawned from next() — controllers, services, and their awaited calls.
+  runWithRequestContext(user.id, user.role, next);
+}
+
+/**
+ * Bearer-token authentication path for service account users (MINCRM-536).
+ * Hashes the supplied token and performs a live DB lookup. No JWT involved —
+ * the token is a long-lived opaque secret, not a signed claim set.
+ */
+async function authenticateBearer(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  rawToken: string,
+): Promise<void> {
+  let user: Awaited<ReturnType<typeof findUserByApiToken>>;
+  try {
+    user = await findUserByApiToken(rawToken);
+  } catch {
+    next(new Error('Database error during authentication'));
+    return;
+  }
+
+  if (!user) {
+    res.status(401).json({
+      error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid or revoked API token' },
+    });
+    return;
+  }
+
+  req.user = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+  };
+
   runWithRequestContext(user.id, user.role, next);
 }

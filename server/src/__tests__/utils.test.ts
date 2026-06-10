@@ -204,6 +204,9 @@ describe('sanitizeUser', () => {
       // SSO fields (MINCRM-399)
       sso_provider: null,
       sso_subject: null,
+      // API token fields (MINCRM-536)
+      api_token_hash: null,
+      api_token_issued_at: null,
       created_at: new Date(),
       updated_at: new Date(),
     };
@@ -212,6 +215,7 @@ describe('sanitizeUser', () => {
     expect(safe).not.toHaveProperty('mfa_secret');
     expect(safe).not.toHaveProperty('mfa_pending_secret');
     expect(safe).not.toHaveProperty('mfa_recovery_codes');
+    expect(safe).not.toHaveProperty('api_token_hash');
     expect(safe.email).toBe('a@b.com');
   });
 });

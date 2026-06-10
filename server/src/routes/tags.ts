@@ -9,7 +9,7 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireRole, blockViewer } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -97,7 +97,13 @@ router.get('/', authenticate, requireFeatureEnabled('tags'), asyncHandler(listTa
  *       401:
  *         description: Not authenticated
  */
-router.post('/', authenticate, requireFeatureEnabled('tags'), asyncHandler(createTagHandler));
+router.post(
+  '/',
+  authenticate,
+  blockViewer(),
+  requireFeatureEnabled('tags'),
+  asyncHandler(createTagHandler),
+);
 
 /**
  * @openapi
