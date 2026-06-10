@@ -19,7 +19,7 @@ exports.shorthands = undefined;
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */
 exports.up = (pgm) => {
   pgm.sql(`
-    CREATE TABLE public.teams (
+    CREATE TABLE IF NOT EXISTS public.teams (
       id             uuid DEFAULT gen_random_uuid() NOT NULL,
       name           text NOT NULL,
       manager_id     uuid REFERENCES public.users(id) ON DELETE SET NULL,
@@ -32,18 +32,21 @@ exports.up = (pgm) => {
   `);
 
   pgm.sql(`
-    CREATE UNIQUE INDEX teams_name_lower_idx
+    CREATE UNIQUE INDEX IF NOT EXISTS teams_name_lower_idx
       ON public.teams (lower(name))
   `);
 
   pgm.sql(`
-    CREATE TRIGGER set_teams_updated_at
-      BEFORE UPDATE ON public.teams
-      FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()
+    DO $$ BEGIN
+      CREATE TRIGGER teams_set_updated_at
+        BEFORE UPDATE ON public.teams
+        FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
   `);
 
   pgm.sql(`
-    CREATE TABLE public.team_memberships (
+    CREATE TABLE IF NOT EXISTS public.team_memberships (
       team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
       user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
       role    text NOT NULL,
@@ -53,7 +56,7 @@ exports.up = (pgm) => {
   `);
 
   pgm.sql(`
-    CREATE INDEX team_memberships_user_id_idx ON public.team_memberships (user_id)
+    CREATE INDEX IF NOT EXISTS team_memberships_user_id_idx ON public.team_memberships (user_id)
   `);
 };
 

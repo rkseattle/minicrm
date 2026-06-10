@@ -127,6 +127,7 @@ export async function createTeam(
        RETURNING *`,
       [params.name, params.manager_id ?? null, params.parent_team_id ?? null],
     );
+    // Safe: INSERT RETURNING always returns the newly inserted row.
     const team = insertResult.rows[0]!;
 
     await writeAuditEntry(client, {
@@ -230,6 +231,7 @@ export async function updateTeam(
         params.parent_team_id ?? null,
       ],
     );
+    // Safe: UPDATE RETURNING always returns the modified row; null case was already handled above.
     const after = afterResult.rows[0]!;
 
     const auditBase = {
@@ -289,6 +291,7 @@ export async function deleteTeam(id: string, actor: AuditActor = SYSTEM_ACTOR): 
       'SELECT COUNT(*)::text AS count FROM teams WHERE parent_team_id = $1',
       [id],
     );
+    // Safe: COUNT(*) always returns exactly one row.
     if (parseInt(childResult.rows[0]!.count, 10) > 0) {
       throw Object.assign(new Error('Cannot delete a team that has child teams'), {
         code: 'TEAM_HAS_CHILDREN',
