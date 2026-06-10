@@ -179,6 +179,20 @@ describe('revokeServiceAccountToken', () => {
     expect(result).toBe(false);
   });
 
+  it('returns false when the service account has no active token', async () => {
+    const sa = await createUser({
+      email: `${FILE_PREFIX}-sa-no-token@example.com`,
+      name: 'SA No Token',
+      role: 'service_account',
+      passwordHash: null,
+      status: 'active',
+    });
+
+    const result = await revokeServiceAccountToken(sa.id, ACTOR);
+
+    expect(result).toBe(false);
+  });
+
   it('returns false for a non-service-account user', async () => {
     const rep = await createUser({
       email: `${FILE_PREFIX}-rep-revoke@example.com`,

@@ -777,7 +777,7 @@ export default function UsersPage() {
                     data-testid="api-token-copy-button"
                     onClick={() => navigator.clipboard.writeText(issuedTokenResult.token)}
                   >
-                    {t('users.copyLink')}
+                    {t('users.copyToken')}
                   </Button>
                 </div>
                 <Button
@@ -785,7 +785,7 @@ export default function UsersPage() {
                   data-testid="api-token-modal-close"
                   onClick={() => setIssuedTokenResult(null)}
                 >
-                  {t('users.cancel')}
+                  {t('users.done')}
                 </Button>
               </div>
             </dialog>

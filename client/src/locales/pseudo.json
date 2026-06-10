@@ -144,7 +144,9 @@
     "apiTokenIssuedTitle": "[ÂPÏ tôkén ïssûéd]",
     "apiTokenCopyLabel": "[Côpy thïs tôkén — ït wïll nôt bé shôwn âgâïn.]",
     "apiTokenRevoked": "[ÂPÏ tôkén révôkéd.]",
-    "badgeServiceAccount": "[Sérvïcé âccôûnt]"
+    "badgeServiceAccount": "[Sérvïcé âccôûnt]",
+    "copyToken": "[Côpy tôkén]",
+    "done": "[Dôné]"
   },
   "changePassword": {
     "title": "[Ĉhäñgë yöür päŝŝwörd~~~~~~]",

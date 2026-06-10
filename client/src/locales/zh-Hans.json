@@ -144,7 +144,9 @@
     "apiTokenIssuedTitle": "API 令牌已颁发",
     "apiTokenCopyLabel": "复制此令牌 — 将不再显示。",
     "apiTokenRevoked": "API 令牌已撤销。",
-    "badgeServiceAccount": "服务账户"
+    "badgeServiceAccount": "服务账户",
+    "copyToken": "复制令牌",
+    "done": "完成"
   },
   "changePassword": {
     "title": "修改密码",

@@ -144,7 +144,9 @@
     "apiTokenIssuedTitle": "API-Token ausgestellt",
     "apiTokenCopyLabel": "Kopieren Sie dieses Token — es wird nicht erneut angezeigt.",
     "apiTokenRevoked": "API-Token widerrufen.",
-    "badgeServiceAccount": "Dienstkonto"
+    "badgeServiceAccount": "Dienstkonto",
+    "copyToken": "Token kopieren",
+    "done": "Fertig"
   },
   "changePassword": {
     "title": "Passwort ändern",
