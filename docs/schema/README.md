@@ -49,6 +49,9 @@
 | [public.teams](public.teams.md) | 6 |  | BASE TABLE |
 | [public.team_memberships](public.team_memberships.md) | 3 |  | BASE TABLE |
 | [public.org_visibility_settings](public.org_visibility_settings.md) | 4 |  | BASE TABLE |
+| [public.custom_roles](public.custom_roles.md) | 6 | Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles (admin, manager, rep, viewer, service_account) and cannot be deleted or renamed via the REST API. Custom roles (is_builtin = false) are admin-configurable. | BASE TABLE |
+| [public.role_capabilities](public.role_capabilities.md) | 2 | Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum in shared/schemas/capabilitySchema.ts is the source of truth for valid capability strings — the DB stores assignments only. A capability absent from this table means the role does not have it. | BASE TABLE |
+| [public.user_custom_roles](public.user_custom_roles.md) | 2 | Assignment of custom roles to users (MINCRM-542). A user may hold multiple roles; effective capabilities are the union of all capabilities from all assigned roles. At least one built-in role row is inserted for every user by this migration; additional custom roles are additive. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -172,6 +175,9 @@ erDiagram
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.org_visibility_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.role_capabilities" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
+"public.user_custom_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.user_custom_roles" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -646,6 +652,22 @@ erDiagram
   text policy ""
   timestamp_with_time_zone updated_at ""
   uuid updated_by FK ""
+}
+"public.custom_roles" {
+  uuid id ""
+  text name ""
+  text description ""
+  boolean is_builtin ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.role_capabilities" {
+  uuid role_id FK ""
+  text capability ""
+}
+"public.user_custom_roles" {
+  uuid user_id FK ""
+  uuid role_id FK ""
 }
 ```
 

@@ -5548,6 +5548,238 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.custom_roles",
+      "type": "BASE TABLE",
+      "comment": "Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles (admin, manager, rep, viewer, service_account) and cannot be deleted or renamed via the REST API. Custom roles (is_builtin = false) are admin-configurable.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "is_builtin",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "custom_roles_pkey",
+          "def": "CREATE UNIQUE INDEX custom_roles_pkey ON public.custom_roles USING btree (id)",
+          "table": "public.custom_roles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "custom_roles_name_key",
+          "def": "CREATE UNIQUE INDEX custom_roles_name_key ON public.custom_roles USING btree (name)",
+          "table": "public.custom_roles",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "custom_roles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.custom_roles",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "custom_roles_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.custom_roles",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "custom_roles_set_updated_at",
+          "def": "CREATE TRIGGER custom_roles_set_updated_at BEFORE UPDATE ON public.custom_roles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.role_capabilities",
+      "type": "BASE TABLE",
+      "comment": "Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum in shared/schemas/capabilitySchema.ts is the source of truth for valid capability strings — the DB stores assignments only. A capability absent from this table means the role does not have it.",
+      "columns": [
+        {
+          "name": "role_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "capability",
+          "type": "text",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "role_capabilities_pkey",
+          "def": "CREATE UNIQUE INDEX role_capabilities_pkey ON public.role_capabilities USING btree (role_id, capability)",
+          "table": "public.role_capabilities",
+          "columns": [
+            "role_id",
+            "capability"
+          ]
+        },
+        {
+          "name": "role_capabilities_role_id_idx",
+          "def": "CREATE INDEX role_capabilities_role_id_idx ON public.role_capabilities USING btree (role_id)",
+          "table": "public.role_capabilities",
+          "columns": [
+            "role_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "role_capabilities_role_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE",
+          "table": "public.role_capabilities",
+          "referenced_table": "public.custom_roles",
+          "columns": [
+            "role_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "role_capabilities_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (role_id, capability)",
+          "table": "public.role_capabilities",
+          "referenced_table": "",
+          "columns": [
+            "role_id",
+            "capability"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.user_custom_roles",
+      "type": "BASE TABLE",
+      "comment": "Assignment of custom roles to users (MINCRM-542). A user may hold multiple roles; effective capabilities are the union of all capabilities from all assigned roles. At least one built-in role row is inserted for every user by this migration; additional custom roles are additive.",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "role_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "user_custom_roles_pkey",
+          "def": "CREATE UNIQUE INDEX user_custom_roles_pkey ON public.user_custom_roles USING btree (user_id, role_id)",
+          "table": "public.user_custom_roles",
+          "columns": [
+            "user_id",
+            "role_id"
+          ]
+        },
+        {
+          "name": "user_custom_roles_user_id_idx",
+          "def": "CREATE INDEX user_custom_roles_user_id_idx ON public.user_custom_roles USING btree (user_id)",
+          "table": "public.user_custom_roles",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "user_custom_roles_role_id_idx",
+          "def": "CREATE INDEX user_custom_roles_role_id_idx ON public.user_custom_roles USING btree (role_id)",
+          "table": "public.user_custom_roles",
+          "columns": [
+            "role_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "user_custom_roles_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.user_custom_roles",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_custom_roles_role_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE",
+          "table": "public.user_custom_roles",
+          "referenced_table": "public.custom_roles",
+          "columns": [
+            "role_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_custom_roles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (user_id, role_id)",
+          "table": "public.user_custom_roles",
+          "referenced_table": "",
+          "columns": [
+            "user_id",
+            "role_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6395,6 +6627,45 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.role_capabilities",
+      "columns": [
+        "role_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.custom_roles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.user_custom_roles",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.user_custom_roles",
+      "columns": [
+        "role_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.custom_roles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

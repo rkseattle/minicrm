@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.system_settings](public.system_settings.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.leads](public.leads.md) [public.import_jobs](public.import_jobs.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.notes](public.notes.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.pipelines](public.pipelines.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.system_settings](public.system_settings.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.leads](public.leads.md) [public.import_jobs](public.import_jobs.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.notes](public.notes.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.pipelines](public.pipelines.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
@@ -90,6 +90,7 @@ erDiagram
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.org_visibility_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.user_custom_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -398,6 +399,10 @@ erDiagram
   text policy ""
   timestamp_with_time_zone updated_at ""
   uuid updated_by FK ""
+}
+"public.user_custom_roles" {
+  uuid user_id FK ""
+  uuid role_id FK ""
 }
 ```
 
