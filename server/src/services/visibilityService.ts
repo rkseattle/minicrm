@@ -121,6 +121,14 @@ export async function updateVisibilityConfig(
   try {
     await client.query('BEGIN');
 
+    // Fetch current policies before updating so oldValue is captured in audit entries
+    const objectTypes = entries.map(([t]) => t);
+    const existing = await client.query<{ object_type: string; policy: string }>(
+      `SELECT object_type, policy FROM org_visibility_settings WHERE object_type = ANY($1)`,
+      [objectTypes],
+    );
+    const oldPolicies = new Map(existing.rows.map((r) => [r.object_type, r.policy]));
+
     for (const [objectType, policy] of entries) {
       await client.query(
         `INSERT INTO org_visibility_settings (object_type, policy, updated_at, updated_by)
@@ -141,6 +149,7 @@ export async function updateVisibilityConfig(
         recordName: objectType,
         eventType: 'updated' as const,
         fieldName: 'policy' as const,
+        oldValue: oldPolicies.get(objectType) ?? null,
         newValue: policy,
         changedById: actor.id,
         changedByName: actor.name,
@@ -213,18 +222,15 @@ async function buildTeamScopedFilter(
 
   const memberIds = await resolveTeamMemberIds(teamIds);
 
-  if (memberIds.length === 0) {
-    // Teams exist but have no members — can only see their own records
-    return {
-      clause: `${ownerColumn} = $${paramOffset}`,
-      params: [managerId],
-    };
-  }
+  // Always include the manager's own records alongside their team members'.
+  // A manager may own records directly (e.g. contacts they created before being
+  // assigned as manager_id) and must not lose visibility over them.
+  const visibleIds = [...new Set([managerId, ...memberIds])];
 
-  const placeholders = memberIds.map((_, i) => `$${paramOffset + i}`).join(', ');
+  const placeholders = visibleIds.map((_, i) => `$${paramOffset + i}`).join(', ');
   return {
     clause: `${ownerColumn} IN (${placeholders})`,
-    params: memberIds,
+    params: visibleIds,
   };
 }
 

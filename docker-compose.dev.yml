@@ -5,7 +5,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
 # Usage (E2E testing — starts server-e2e, MinIO + Mailhog in addition to the dev stack):
-#   docker compose -f docker-compose.dev.yml --profile e2e up -d
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
 #   npm run e2e:setup
 # (MINCRM-317, MINCRM-330)
 
@@ -33,7 +33,7 @@ services:
       - /app/client/node_modules
 
   # MINCRM-317: Optional E2E infrastructure — disabled by default.
-  # Enable with: docker compose -f docker-compose.dev.yml --profile e2e up -d
+  # Enable with: docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
   # Then run: npm run e2e:setup
 
   # MINCRM-330: Dedicated app server for E2E runs.

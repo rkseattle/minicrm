@@ -5,6 +5,7 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { hasCapability, Capability } from '../utils/userUtils.js';
 import { createContactSchema, updateContactSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import {
   createContact,
@@ -219,11 +220,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (
-    existing.owner_id !== req.user!.id &&
-    req.user!.role !== 'admin' &&
-    req.user!.role !== 'manager'
-  ) {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -302,11 +299,11 @@ export async function listContactDealsHandler(req: Request, res: Response): Prom
  * (MINCRM-164)
  */
 export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
-  const isAdmin = req.user!.role === 'admin';
+  const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
   const exportAll = req.query.all === 'true';
 
-  // Reps always get their own contacts; admins get all unless scoped
-  const ownerId = !isAdmin || !exportAll ? req.user!.id : undefined;
+  // Non-admin/viewer roles always get their own contacts; org-wide readers get all unless scoped
+  const ownerId = !canReadAll || !exportAll ? req.user!.id : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
@@ -419,7 +416,7 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -448,7 +445,7 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  if (winner.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (winner.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }

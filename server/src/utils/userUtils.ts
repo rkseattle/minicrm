@@ -3,6 +3,7 @@
  */
 
 import type { UserRow } from '../services/userService.js';
+export { hasCapability, Capability } from '@minicrm/shared/schemas/userSchema.js';
 
 /**
  * Safe user shape returned to API consumers.

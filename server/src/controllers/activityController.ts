@@ -5,6 +5,7 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { hasCapability, Capability } from '../utils/userUtils.js';
 import {
   createActivitySchema,
   updateActivitySchema,
@@ -102,8 +103,8 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
   if (ownerParam === 'me') {
     ownerId = req.user!.id;
   } else if (ownerParam && uuidQuerySchema.safeParse(ownerParam).success) {
-    if (req.user!.role !== 'admin') {
-      // Reps may not filter by arbitrary owner UUID; silently scope to themselves
+    if (!hasCapability(req.user!.role, Capability.orgWideRead)) {
+      // Non-admin/viewer roles may not filter by arbitrary owner UUID; silently scope to themselves
       ownerId = req.user!.id;
     } else {
       ownerId = ownerParam;
@@ -193,7 +194,7 @@ export async function updateActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -249,7 +250,7 @@ export async function deleteActivityHandler(req: Request, res: Response): Promis
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
