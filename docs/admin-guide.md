@@ -19,6 +19,7 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 10. [AI Token Budgets](#10-ai-token-budgets)
 11. [AI Role-Based Feature Access](#11-ai-role-based-feature-access)
 12. [Data Visibility Scoping](#12-data-visibility-scoping)
+13. [Roles and Capabilities](#13-roles-and-capabilities)
 
 ---
 
@@ -712,3 +713,101 @@ All users immediately regain access to all records of that type.
 
 Every visibility policy change is recorded in the **Audit Log** under record type
 `org_visibility_settings`, including the previous value, the new value, and the admin who made the change.
+
+---
+
+## 13. Roles and Capabilities
+
+MiniCRM uses capability-based access control (RBAC). Every user's permissions are determined
+by the union of all capabilities granted across their assigned roles. Custom roles let you
+define precise permission sets beyond the five built-in roles.
+
+### Built-in roles
+
+| Role            | Description                                                                   |
+| --------------- | ----------------------------------------------------------------------------- |
+| admin           | Full access to all capabilities                                               |
+| manager         | Team-scoped record access; can edit deals, contacts, and activities they own  |
+| rep             | Standard sales rep — create and edit their own records                        |
+| viewer          | Read-only access across the organisation; cannot create or edit               |
+| service_account | Machine-to-machine API access via bearer token; blocked from all UI endpoints |
+
+Built-in roles cannot be renamed or deleted.
+
+### Capability groups
+
+Capabilities are grouped by domain. The full list is visible in **Admin → Settings → Roles**.
+
+| Group         | Capabilities                                                                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contacts      | `contacts:view`, `contacts:create`, `contacts:edit`, `contacts:delete`, `contacts:export`                                                                      |
+| Deals         | `deals:view`, `deals:create`, `deals:edit`, `deals:delete`, `deals:reassign`                                                                                   |
+| Activities    | `activities:view`, `activities:create`, `activities:edit`, `activities:delete`                                                                                 |
+| Pipelines     | `pipelines:view`, `pipelines:manage`                                                                                                                           |
+| Reports       | `reports:view`, `reports:create`, `reports:edit`, `reports:delete`, `reports:export`, `reports:schedule`                                                       |
+| Data          | `data:import`, `data:export`                                                                                                                                   |
+| Users & Admin | `users:view`, `users:create`, `users:edit`, `users:delete`, `teams:manage`, `integrations:manage`, `settings:manage`, `feature_flags:manage`, `audit_log:view` |
+| API           | `api:access`                                                                                                                                                   |
+
+Capabilities marked as **admin-only** (`contacts:delete`, `deals:delete`, `activities:delete`)
+are not included in the built-in `rep` or `manager` roles and should only be granted to custom
+roles used by trusted personnel.
+
+### Tutorial: create a custom role and assign it to a user
+
+#### Step 1 — Create the role
+
+1. Go to **Admin → Settings → Roles** tab.
+2. Click **New role**.
+3. Enter a **Name** (max 100 characters) and an optional **Description**.
+4. In the capability picker, check each capability the role should grant. Use the group-level
+   checkbox to select or deselect an entire domain at once.
+5. Click **Save**.
+
+The new role appears in the list immediately.
+
+#### Step 2 — Assign the role to a user
+
+Custom role assignment is done via the API (UI-based assignment is coming in a future release):
+
+```bash
+curl -X POST https://<your-crm>/api/v1/users/<userId>/roles \
+  -H "Content-Type: application/json" \
+  -b "token=<admin-jwt>" \
+  -d '{"roleId":"<roleId>"}'
+```
+
+A user's effective capabilities are the union of all capabilities from all their assigned roles.
+If a user has no custom role assignments, their capabilities fall back to the built-in role
+corresponding to their `role` field (`admin`, `rep`, etc.).
+
+#### Step 3 — Remove a role assignment
+
+```bash
+curl -X DELETE https://<your-crm>/api/v1/users/<userId>/roles/<roleId> \
+  -b "token=<admin-jwt>"
+```
+
+Removal is idempotent — deleting a role the user was not assigned is a no-op.
+
+### Reference
+
+| Endpoint                          | Method | Description                                     |
+| --------------------------------- | ------ | ----------------------------------------------- |
+| `/api/v1/custom-roles`            | GET    | List all roles (built-in and custom)            |
+| `/api/v1/custom-roles`            | POST   | Create a new custom role                        |
+| `/api/v1/custom-roles/:id`        | GET    | Get a single role                               |
+| `/api/v1/custom-roles/:id`        | PUT    | Update name, description, or capabilities       |
+| `/api/v1/custom-roles/:id`        | DELETE | Delete a custom role (fails if assignees exist) |
+| `/api/v1/users/:id/roles`         | GET    | List roles assigned to a user                   |
+| `/api/v1/users/:id/roles`         | POST   | Assign a role to a user (idempotent)            |
+| `/api/v1/users/:id/roles/:roleId` | DELETE | Remove a role assignment (idempotent)           |
+
+All endpoints require `settings:manage` capability. Deleting a role that has active assignees
+returns `409 CUSTOM_ROLE_HAS_ASSIGNEES` — reassign or remove those users first.
+
+### Audit trail
+
+Every role create, update, and delete is recorded in the **Audit Log** under record type
+`custom_role`. User role assignments and removals are recorded under record type `user`
+with field names `custom_role_assigned` and `custom_role_removed`.
