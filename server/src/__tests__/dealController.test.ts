@@ -473,22 +473,25 @@ describe('DELETE /api/deals/:id/contacts/:contactId — unlink contact', () => {
 
 // ── DELETE /api/deals/:id ─────────────────────────────────────────────────────
 
+// Per MINCRM-542 capability matrix: deals:delete is admin-only.
+// Reps receive 403 AUTH_FORBIDDEN from requireCapability(DealsDelete).
 describe('DELETE /api/deals/:id — ownership', () => {
-  it('allows the owning rep to delete their own deal', async () => {
+  it('returns 403 AUTH_FORBIDDEN when a rep tries to delete their own deal (MINCRM-542)', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', repCookie);
 
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it("returns 403 when a rep tries to delete another rep's deal", async () => {
+  it("returns 403 AUTH_FORBIDDEN when a rep tries to delete another rep's deal (MINCRM-542)", async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('allows an admin to delete any deal', async () => {
@@ -499,13 +502,13 @@ describe('DELETE /api/deals/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 404 for a non-existent deal', async () => {
+  it('returns 403 for a non-existent deal when user lacks deals:delete (MINCRM-542)', async () => {
     const res = await request(app)
       .delete('/api/v1/deals/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(404);
-    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 });
 

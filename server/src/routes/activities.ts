@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { blockViewer } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -291,7 +292,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ActivitiesCreate),
   requireFeatureEnabled('activities'),
   asyncHandler(createActivityHandler),
 );
@@ -463,7 +464,7 @@ router.get(
 router.patch(
   '/:id',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ActivitiesEdit),
   requireFeatureEnabled('activities'),
   asyncHandler(updateActivityHandler),
 );
@@ -525,7 +526,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ActivitiesDelete),
   requireFeatureEnabled('activities'),
   asyncHandler(deleteActivityHandler),
 );

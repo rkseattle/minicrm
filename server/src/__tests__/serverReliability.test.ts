@@ -240,12 +240,21 @@ describe('MINCRM-248: pool exhaustion returns 503', () => {
     });
 
     // findUserById (inside authenticate) uses pool.query — mock it to return a valid user.
-    // findContactByEmail also uses pool.query (superuser, bypasses RLS) — return empty rows
-    // so it does not short-circuit with a 409 before pool.connect is attempted.
+    // userCapabilities (inside requireCapability middleware) uses pool.query — mock it to return
+    // a contacts:create capability row so the middleware passes and pool.connect is attempted.
+    // findContactByEmail also uses pool.query — return empty rows so it does not short-circuit
+    // with a 409 before pool.connect is attempted.
     // pool.connect is used by service layer functions (createContact, setRlsUserId, etc.) —
     // mock it to throw a connection-timeout error, simulating pool exhaustion.
     const querySpy = vi.spyOn(pool, 'query').mockImplementation((sql: unknown) => {
       const sqlStr = typeof sql === 'string' ? sql : ((sql as { text?: string }).text ?? '');
+      if (sqlStr.includes('user_custom_roles') || sqlStr.includes('role_capabilities')) {
+        // Simulate the rep having contacts:create so requireCapability passes
+        return Promise.resolve({
+          rows: [{ capability: 'contacts:create' }],
+          rowCount: 1,
+        } as unknown as Awaited<ReturnType<typeof pool.query>>);
+      }
       if (sqlStr.includes('FROM users')) {
         return Promise.resolve({
           rows: [

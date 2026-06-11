@@ -1,9 +1,10 @@
 /**
- * Augments the Express Request type to include the JWT payload
- * attached by the authenticate middleware.
+ * Augments the Express Request and Response types with the MiniCRM-specific
+ * fields attached by authentication and capability middleware.
  */
 
 import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
+import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 /** Shape of the JWT payload signed at login and decoded by the authenticate middleware. */
 export interface JwtTokenPayload {
@@ -24,6 +25,14 @@ declare global {
   namespace Express {
     interface Request {
       user?: JwtTokenPayload;
+    }
+    interface Locals {
+      /**
+       * Effective capability set for the authenticated user — populated lazily by
+       * requireCapability() on the first capability check in a request and cached
+       * for subsequent checks in the same request lifecycle (MINCRM-542).
+       */
+      capabilities?: Set<Capability>;
     }
   }
 }

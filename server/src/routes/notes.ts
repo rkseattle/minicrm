@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { blockViewer } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -122,7 +123,7 @@ router.get('/', authenticate, requireFeatureEnabled('notes'), asyncHandler(listN
 router.post(
   '/',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('notes'),
   asyncHandler(createNoteHandler),
 );
@@ -209,7 +210,7 @@ router.get('/:noteId', authenticate, requireFeatureEnabled('notes'), asyncHandle
 router.patch(
   '/:noteId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('notes'),
   asyncHandler(updateNoteHandler),
 );
@@ -256,7 +257,7 @@ router.patch(
 router.delete(
   '/:noteId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('notes'),
   asyncHandler(deleteNoteHandler),
 );
