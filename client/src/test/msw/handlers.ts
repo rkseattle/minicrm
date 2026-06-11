@@ -2558,4 +2558,23 @@ export const handlers = [
       status: 'ok',
     });
   }),
+
+  /** Visibility settings: GET /api/settings/visibility (MINCRM-538) */
+  http.get('/api/v1/settings/visibility', () => {
+    return HttpResponse.json({
+      visibility: { contact: 'org', deal: 'org', activity: 'org' },
+    });
+  }),
+
+  /** Visibility settings: PUT /api/settings/visibility (MINCRM-538) */
+  http.put('/api/v1/settings/visibility', async ({ request }) => {
+    const body = (await request.json()) as Record<string, string>;
+    return HttpResponse.json({
+      visibility: {
+        contact: body['contact'] ?? 'org',
+        deal: body['deal'] ?? 'org',
+        activity: body['activity'] ?? 'org',
+      },
+    });
+  }),
 ];
