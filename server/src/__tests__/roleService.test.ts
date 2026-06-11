@@ -76,8 +76,10 @@ describe('userCapabilities', () => {
     expect(caps.has(Capability.ContactsView)).toBe(true);
     expect(caps.has(Capability.ContactsCreate)).toBe(true);
     expect(caps.has(Capability.ContactsEdit)).toBe(true);
-    // rep does NOT have contacts:delete
-    expect(caps.has(Capability.ContactsDelete)).toBe(false);
+    // rep has contacts:delete — migration 109 restored pre-MINCRM-542 behavior
+    expect(caps.has(Capability.ContactsDelete)).toBe(true);
+    // rep does NOT have admin-only capabilities
+    expect(caps.has(Capability.SettingsManage)).toBe(false);
   });
 
   it('returns full capability set for admin via fallback', async () => {

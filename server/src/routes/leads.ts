@@ -218,7 +218,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireCapability(Capability.ContactsEdit),
+  requireCapability(Capability.ContactsDelete),
   asyncHandler(deleteLeadHandler),
 );
 
