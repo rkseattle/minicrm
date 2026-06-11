@@ -4,6 +4,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { hasCapability, Capability } from '../utils/userUtils.js';
 import { createDealSchema, updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import {
   createDeal,
@@ -168,11 +169,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  if (
-    existing.owner_id !== req.user!.id &&
-    req.user!.role !== 'admin' &&
-    req.user!.role !== 'manager'
-  ) {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -302,7 +299,7 @@ export async function linkContactHandler(req: Request, res: Response): Promise<v
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (deal.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -333,7 +330,7 @@ export async function unlinkContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (deal.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -358,7 +355,7 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -376,10 +373,10 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
  * (MINCRM-166)
  */
 export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
-  const isAdmin = req.user!.role === 'admin';
+  const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
   const exportAll = req.query.all === 'true';
 
-  const ownerId = !isAdmin || !exportAll ? req.user!.id : undefined;
+  const ownerId = !canReadAll || !exportAll ? req.user!.id : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {

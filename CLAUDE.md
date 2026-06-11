@@ -555,7 +555,7 @@ The E2E suite requires: Vite dev server (port 5173), E2E app server (port 3002),
 #### E2E session setup (once per session)
 
 ```bash
-docker compose -f docker-compose.dev.yml --profile e2e up -d
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
 npm run e2e:setup
 API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client  # separate terminal
 ```

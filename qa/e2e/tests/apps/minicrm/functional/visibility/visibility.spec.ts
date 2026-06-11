@@ -167,15 +167,27 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
 
   // Rep B creates their own contact
   await loginAndVerify(restClient, repB.email, repB.password);
-  await createContactViaApi(restClient, {
+  const repBContact = await createContactViaApi(restClient, {
     first_name: 'RepB',
     last_name: 'Own',
     email: `repb-own-${Date.now()}@example.com`,
   });
 
-  // Rep B's contact list should NOT include repA's contact
-  const { data } = await listContactsViaApi(restClient);
+  // Re-assert private policy immediately before listing — prevents a race where a
+  // concurrent test's afterEach resets visibility to 'org' between our PUT and the
+  // list call, causing rep A's contact to bleed into rep B's results.
+  await loginAsAdmin(restClient);
+  await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+
+  // Rep B's contact list should contain their own contact but NOT rep A's
+  await loginAndVerify(restClient, repB.email, repB.password);
+  const { data } = await listContactsViaApi(restClient, {
+    limit: 100,
+    sort: 'created_at',
+    dir: 'desc',
+  });
   const ids = data.map((c) => c.id);
+  expect(ids).toContain(repBContact.id);
   expect(ids).not.toContain(contactOwnedByA.id);
 });
 
