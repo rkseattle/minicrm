@@ -12,7 +12,7 @@
  *   2. Runs all remaining migrations with `fake: true` — records them in pgmigrations
  *      without executing their SQL (safe because the schema already contains everything
  *      those migrations would have created)
- *   3. From this point, `npm run migrate` behaves normally: only future migrations (108+)
+ *   3. From this point, `npm run migrate` behaves normally: only future migrations (110+)
  *      are pending and will be run for real.
  *
  * USAGE
