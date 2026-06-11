@@ -302,8 +302,11 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
   const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
   const exportAll = req.query.all === 'true';
 
-  // Non-admin/viewer roles always get their own contacts; org-wide readers get all unless scoped
-  const ownerId = !canReadAll || !exportAll ? req.user!.id : undefined;
+  // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
+  // All other roles (rep, manager): apply visibility filter via requestingUser so managers
+  // get team-scoped results matching what they see in the list view (MINCRM-534).
+  const ownerId = canReadAll && !exportAll ? req.user!.id : undefined;
+  const requestingUser = !canReadAll ? { id: req.user!.id, role: req.user!.role } : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
@@ -327,7 +330,13 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
       ? req.query.accountSearch.trim()
       : undefined;
 
-  const rows = await exportContactsForCsv({ ownerId, accountId, search, accountSearch });
+  const rows = await exportContactsForCsv({
+    ownerId,
+    accountId,
+    search,
+    accountSearch,
+    requestingUser,
+  });
 
   // Custom field columns — fetch definitions and values in application code (MINCRM-276)
   const customDefs = await listDefinitions('contact');

@@ -376,7 +376,11 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
   const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
   const exportAll = req.query.all === 'true';
 
-  const ownerId = !canReadAll || !exportAll ? req.user!.id : undefined;
+  // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
+  // All other roles (rep, manager): apply visibility filter via requestingUser so managers
+  // get team-scoped results matching what they see in the list view (MINCRM-534).
+  const ownerId = canReadAll && !exportAll ? req.user!.id : undefined;
+  const requestingUser = !canReadAll ? { id: req.user!.id, role: req.user!.role } : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
@@ -390,7 +394,7 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
     accountId = parsed.data;
   }
 
-  const rows = await exportDealsForCsv({ ownerId, accountId });
+  const rows = await exportDealsForCsv({ ownerId, accountId, requestingUser });
 
   // Custom field columns — fetch definitions and values in application code (MINCRM-276)
   const customDefs = await listDefinitions('deal');

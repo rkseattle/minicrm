@@ -311,7 +311,9 @@ export async function validateReassignment(
   }
 
   const memberIds = await resolveTeamMemberIds(teamIds);
-  if (!memberIds.includes(newOwnerId)) {
+  // Include the manager's own ID — a manager should be able to self-assign a record.
+  const allowedIds = new Set([requestingUser.id, ...memberIds]);
+  if (!allowedIds.has(newOwnerId)) {
     throw Object.assign(
       new Error('Managers can only reassign records to members of their own team(s)'),
       { code: 'REASSIGNMENT_NOT_PERMITTED' },

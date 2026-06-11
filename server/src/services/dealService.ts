@@ -570,6 +570,8 @@ interface ExportDealsOptions {
   ownerId?: string;
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
+  /** When provided, the org visibility policy is enforced for this user (MINCRM-534) */
+  requestingUser?: { id: string; role: string };
 }
 
 /**
@@ -589,6 +591,20 @@ export async function exportDealsForCsv(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`d.owner_id = $${values.length}`);
+  }
+
+  if (options.requestingUser) {
+    const visFilter = await buildVisibilityFilter(
+      'deal',
+      options.requestingUser.id,
+      options.requestingUser.role,
+      'd.owner_id',
+      values.length + 1,
+    );
+    if (visFilter.clause) {
+      visFilter.params.forEach((p) => values.push(p));
+      conditions.push(visFilter.clause);
+    }
   }
 
   if (options.accountId) {
