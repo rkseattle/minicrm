@@ -24,6 +24,11 @@ import {
   issueApiToken,
   revokeApiToken,
 } from '../controllers/userController.js';
+import {
+  listUserRolesHandler,
+  assignUserRoleHandler,
+  removeUserRoleHandler,
+} from '../controllers/customRolesController.js';
 
 const router = Router();
 
@@ -964,5 +969,112 @@ router.post('/:id/api-token', asyncHandler(issueApiToken));
  *         $ref: '#/components/responses/NotFound'
  */
 router.delete('/:id/api-token', asyncHandler(revokeApiToken));
+
+// ── User custom role assignment (MINCRM-542) ───────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/roles:
+ *   get:
+ *     tags: [Users]
+ *     operationId: listUserRoles
+ *     summary: List custom roles assigned to a user (MINCRM-542)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Array of custom roles assigned to the user
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.get('/:id/roles', asyncHandler(listUserRolesHandler));
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/roles:
+ *   post:
+ *     tags: [Users]
+ *     operationId: assignUserRole
+ *     summary: Assign a custom role to a user (MINCRM-542)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [roleId]
+ *             properties:
+ *               roleId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       204:
+ *         description: Role assigned (or already assigned — idempotent)
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.post('/:id/roles', asyncHandler(assignUserRoleHandler));
+
+/**
+ * @openapi
+ * /api/v1/users/{id}/roles/{roleId}:
+ *   delete:
+ *     tags: [Users]
+ *     operationId: removeUserRole
+ *     summary: Remove a custom role assignment from a user (MINCRM-542)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: roleId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Role removed (or was not assigned — idempotent)
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete('/:id/roles/:roleId', asyncHandler(removeUserRoleHandler));
 
 export default router;
