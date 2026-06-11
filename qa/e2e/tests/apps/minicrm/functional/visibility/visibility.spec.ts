@@ -1,0 +1,420 @@
+/**
+ * F-VIS — Data Visibility Scoping (MINCRM-534, MINCRM-538)
+ *
+ * Functional regression tests for the org-level visibility policy configuration
+ * and its enforcement across contacts for admin, manager, and rep roles.
+ *
+ * Test groups:
+ *   F-VIS1  — Admin navigates to the visibility settings tab and sees the panel
+ *   F-VIS2  — Admin changes a contact policy to 'private' and saves successfully
+ *   F-VIS3  — Rep with org policy sees all contacts in the API response
+ *   F-VIS4  — Rep with private policy sees only their own contacts
+ *   F-VIS5  — Manager sees only team-scoped contacts regardless of policy
+ *   F-VIS6  — Manager can reassign a contact to a team member
+ *   F-VIS7  — Manager cannot reassign a contact to a user outside their team (403)
+ *   F-VIS8  — Rep cannot access the PUT /settings/visibility endpoint (403)
+ *
+ * Framework conventions (MINCRM-42):
+ *   - All tests tagged @functional
+ *   - Import test/expect from @apps/minicrm/fixtures.js only
+ *   - Behaviors imported from @behaviors/* only — never @pages/*
+ *   - System settings mutated here are reset in afterEach via resetVisibilitySettings
+ */
+
+import { test, expect } from '@apps/minicrm/fixtures.js';
+import { createTestAdmin, createTestRep, loginAndVerify } from '@apps/minicrm/helpers.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  inviteUserViaApi,
+  setUserPassword,
+  suppressUserOnboarding,
+  deactivateUser,
+} from '@behaviors/minicrm/users.behaviors.js';
+import {
+  navigateToAdminSettings,
+  getVisibilitySettingsPanelLocator,
+  getVisibilityContactsSelectLocator,
+  getVisibilitySaveButtonLocator,
+  getVisibilitySaveSuccessLocator,
+  resetVisibilitySettings,
+} from '@behaviors/minicrm/settings.behaviors.js';
+import { createContactViaApi, listContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+// ---------------------------------------------------------------------------
+// Setup / teardown
+// ---------------------------------------------------------------------------
+
+test.beforeEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+  await resetVisibilitySettings(restClient);
+});
+
+test.afterEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+  await resetVisibilitySettings(restClient);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS1 — Admin navigates to the visibility settings tab and sees the panel
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS1: admin can navigate to the visibility tab and see the settings panel', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'visibility');
+
+  const panel = await getVisibilitySettingsPanelLocator({ page });
+  await expect(panel).toBeVisible({ timeout: 10_000 });
+
+  const contactsSelect = await getVisibilityContactsSelectLocator({ page });
+  await expect(contactsSelect).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS2 — Admin changes contact policy to 'private' and saves
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS2: admin can change a visibility policy and see the save success message', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'visibility');
+
+  const contactsSelect = await getVisibilityContactsSelectLocator({ page });
+  await expect(contactsSelect).toBeVisible({ timeout: 10_000 });
+
+  await contactsSelect.selectOption('private');
+
+  const saveButton = await getVisibilitySaveButtonLocator({ page });
+  await saveButton.click();
+
+  const successMessage = await getVisibilitySaveSuccessLocator({ page });
+  await expect(successMessage).toBeVisible({ timeout: 5_000 });
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS3 — Rep with org policy sees all contacts
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS3: rep with org policy can list contacts owned by other users', async ({
+  restClient,
+  testData,
+}) => {
+  // Create two reps; rep A creates a contact; rep B should see it under org policy
+  const repA = await createTestRep(testData, restClient);
+  const repB = await createTestRep(testData, restClient);
+
+  // Ensure org policy is active
+  await loginAsAdmin(restClient);
+  await restClient.put('/api/v1/settings/visibility', {
+    contact: 'org',
+    deal: 'org',
+    activity: 'org',
+  });
+
+  // Rep A creates a contact
+  await loginAndVerify(restClient, repA.email, repA.password);
+  const contact = await createContactViaApi(restClient, {
+    first_name: 'Org',
+    last_name: 'Visible',
+    email: `org-visible-${Date.now()}@example.com`,
+  });
+
+  // Rep B should see it
+  await loginAndVerify(restClient, repB.email, repB.password);
+  const { data } = await listContactsViaApi(restClient);
+  const ids = data.map((c) => c.id);
+  expect(ids).toContain(contact.id);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS4 — Rep with private policy sees only own contacts
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS4: rep with private policy cannot see contacts owned by other users', async ({
+  restClient,
+  testData,
+}) => {
+  const repA = await createTestRep(testData, restClient);
+  const repB = await createTestRep(testData, restClient);
+
+  // Set contact policy to private
+  await loginAsAdmin(restClient);
+  await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+
+  // Rep A creates a contact that repB should NOT see
+  await loginAndVerify(restClient, repA.email, repA.password);
+  const contactOwnedByA = await createContactViaApi(restClient, {
+    first_name: 'Private',
+    last_name: 'Contact',
+    email: `priv-contact-${Date.now()}@example.com`,
+  });
+
+  // Rep B creates their own contact
+  await loginAndVerify(restClient, repB.email, repB.password);
+  await createContactViaApi(restClient, {
+    first_name: 'RepB',
+    last_name: 'Own',
+    email: `repb-own-${Date.now()}@example.com`,
+  });
+
+  // Rep B's contact list should NOT include repA's contact
+  const { data } = await listContactsViaApi(restClient);
+  const ids = data.map((c) => c.id);
+  expect(ids).not.toContain(contactOwnedByA.id);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS5 — Manager sees only team-scoped contacts
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS5: manager sees only contacts owned by their team members', async ({
+  restClient,
+  testData,
+}) => {
+  await loginAsAdmin(restClient);
+
+  // Create a manager user
+  const uniqueSuffix = `${Date.now()}-${process.pid}`;
+  const managerEmail = `manager-vis5-${uniqueSuffix}@example.com`;
+  const managerPassword = 'BvtPassword1!';
+  const { user: managerUser, inviteToken: managerToken } = await inviteUserViaApi(restClient, {
+    name: `Manager VIS5 ${uniqueSuffix}`,
+    email: managerEmail,
+    role: 'manager',
+  });
+  await setUserPassword(restClient, managerToken, managerPassword);
+  await suppressUserOnboarding(restClient, managerEmail, managerPassword);
+  testData.registerCustomTeardown(`deactivate-manager-vis5-${managerUser.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, managerUser.id);
+  });
+
+  // Create a team member
+  const memberEmail = `member-vis5-${uniqueSuffix}@example.com`;
+  const memberPassword = 'BvtPassword1!';
+  const { user: memberUser, inviteToken: memberToken } = await inviteUserViaApi(restClient, {
+    name: `Member VIS5 ${uniqueSuffix}`,
+    email: memberEmail,
+    role: 'rep',
+  });
+  await setUserPassword(restClient, memberToken, memberPassword);
+  await suppressUserOnboarding(restClient, memberEmail, memberPassword);
+  testData.registerCustomTeardown(`deactivate-member-vis5-${memberUser.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, memberUser.id);
+  });
+
+  // Create an outsider rep
+  const outsider = await createTestRep(testData, restClient, {
+    email: `outsider-vis5-${uniqueSuffix}@example.com`,
+  });
+
+  // Create a team managed by managerUser with memberUser as a member
+  await loginAsAdmin(restClient);
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+    name: `VIS5-team-${uniqueSuffix}`,
+    manager_id: managerUser.id,
+  });
+  const teamId = teamRes.body.team.id;
+  await restClient.post(`/api/v1/admin/teams/${teamId}/members`, {
+    user_id: memberUser.id,
+    role: 'member',
+  });
+  testData.registerCustomTeardown(`delete-team-vis5-${teamId}`, async () => {
+    await loginAsAdmin(restClient);
+    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+  });
+
+  // Member creates a contact
+  await loginAndVerify(restClient, memberEmail, memberPassword);
+  const memberContact = await createContactViaApi(restClient, {
+    first_name: 'TeamMember',
+    last_name: 'Contact',
+    email: `member-contact-vis5-${uniqueSuffix}@example.com`,
+  });
+
+  // Outsider creates a contact
+  await loginAndVerify(restClient, outsider.email, outsider.password);
+  const outsiderContact = await createContactViaApi(restClient, {
+    first_name: 'Outsider',
+    last_name: 'Contact',
+    email: `outsider-contact-vis5-${uniqueSuffix}@example.com`,
+  });
+
+  // Manager should see member's contact but NOT outsider's contact
+  await loginAndVerify(restClient, managerEmail, managerPassword);
+  const { data } = await listContactsViaApi(restClient);
+  const ids = data.map((c) => c.id);
+
+  expect(ids).toContain(memberContact.id);
+  expect(ids).not.toContain(outsiderContact.id);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS6 — Manager can reassign a contact to a team member
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS6: manager can reassign a contact to a member of their team', async ({
+  restClient,
+  testData,
+}) => {
+  await loginAsAdmin(restClient);
+
+  const uniqueSuffix = `${Date.now()}-${process.pid}`;
+  const managerEmail = `manager-vis6-${uniqueSuffix}@example.com`;
+  const managerPassword = 'BvtPassword1!';
+  const { user: managerUser, inviteToken: managerToken } = await inviteUserViaApi(restClient, {
+    name: `Manager VIS6 ${uniqueSuffix}`,
+    email: managerEmail,
+    role: 'manager',
+  });
+  await setUserPassword(restClient, managerToken, managerPassword);
+  await suppressUserOnboarding(restClient, managerEmail, managerPassword);
+  testData.registerCustomTeardown(`deactivate-manager-vis6-${managerUser.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, managerUser.id);
+  });
+
+  const memberEmail = `member-vis6-${uniqueSuffix}@example.com`;
+  const memberPassword = 'BvtPassword1!';
+  const { user: memberUser, inviteToken: memberToken } = await inviteUserViaApi(restClient, {
+    name: `Member VIS6 ${uniqueSuffix}`,
+    email: memberEmail,
+    role: 'rep',
+  });
+  await setUserPassword(restClient, memberToken, memberPassword);
+  await suppressUserOnboarding(restClient, memberEmail, memberPassword);
+  testData.registerCustomTeardown(`deactivate-member-vis6-${memberUser.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, memberUser.id);
+  });
+
+  // Create team
+  await loginAsAdmin(restClient);
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+    name: `VIS6-team-${uniqueSuffix}`,
+    manager_id: managerUser.id,
+  });
+  const teamId = teamRes.body.team.id;
+  await restClient.post(`/api/v1/admin/teams/${teamId}/members`, {
+    user_id: memberUser.id,
+    role: 'member',
+  });
+  testData.registerCustomTeardown(`delete-team-vis6-${teamId}`, async () => {
+    await loginAsAdmin(restClient);
+    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+  });
+
+  // Manager creates a contact owned by themselves
+  await loginAndVerify(restClient, managerEmail, managerPassword);
+  const contact = await createContactViaApi(restClient, {
+    first_name: 'ReassignMe',
+    last_name: 'Contact',
+    email: `reassign-vis6-${uniqueSuffix}@example.com`,
+  });
+
+  // Manager reassigns the contact to the team member — should succeed
+  const updated = await restClient.patch<{ contact: { owner_id: string } }>(
+    `/api/v1/contacts/${contact.id}`,
+    { owner_id: memberUser.id, version: contact.version },
+  );
+  expect(updated.body.contact.owner_id).toBe(memberUser.id);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS7 — Manager cannot reassign contact to outside-team user (403)
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS7: manager gets 403 when reassigning a contact to a user outside their team', async ({
+  restClient,
+  testData,
+}) => {
+  await loginAsAdmin(restClient);
+
+  const uniqueSuffix = `${Date.now()}-${process.pid}`;
+  const managerEmail = `manager-vis7-${uniqueSuffix}@example.com`;
+  const managerPassword = 'BvtPassword1!';
+  const { user: managerUser, inviteToken: managerToken } = await inviteUserViaApi(restClient, {
+    name: `Manager VIS7 ${uniqueSuffix}`,
+    email: managerEmail,
+    role: 'manager',
+  });
+  await setUserPassword(restClient, managerToken, managerPassword);
+  await suppressUserOnboarding(restClient, managerEmail, managerPassword);
+  testData.registerCustomTeardown(`deactivate-manager-vis7-${managerUser.id}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, managerUser.id);
+  });
+
+  // Create a team (empty — no members that the manager can reassign to,
+  // except the manager themselves)
+  await loginAsAdmin(restClient);
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+    name: `VIS7-team-${uniqueSuffix}`,
+    manager_id: managerUser.id,
+  });
+  const teamId = teamRes.body.team.id;
+  testData.registerCustomTeardown(`delete-team-vis7-${teamId}`, async () => {
+    await loginAsAdmin(restClient);
+    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+  });
+
+  // Create an outsider rep
+  const outsider = await createTestRep(testData, restClient, {
+    email: `outsider-vis7-${uniqueSuffix}@example.com`,
+  });
+
+  // Manager creates a contact
+  await loginAndVerify(restClient, managerEmail, managerPassword);
+  const contact = await createContactViaApi(restClient, {
+    first_name: 'Locked',
+    last_name: 'Contact',
+    email: `locked-vis7-${uniqueSuffix}@example.com`,
+  });
+
+  // Attempt to reassign to outsider — should fail with 403
+  let caughtStatus: number | undefined;
+  try {
+    await restClient.patch(`/api/v1/contacts/${contact.id}`, {
+      owner_id: outsider.userId,
+      version: contact.version,
+    });
+  } catch (err: unknown) {
+    const e = err as { status?: number };
+    caughtStatus = e.status;
+  }
+  expect(caughtStatus).toBe(403);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS8 — Rep cannot access PUT /settings/visibility (403)
+// ---------------------------------------------------------------------------
+
+test('@functional F-VIS8: rep cannot call the visibility settings PUT endpoint', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+  await loginAndVerify(restClient, rep.email, rep.password);
+
+  let caughtStatus: number | undefined;
+  try {
+    await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+  } catch (err: unknown) {
+    const e = err as { status?: number };
+    caughtStatus = e.status;
+  }
+  expect(caughtStatus).toBe(403);
+});
