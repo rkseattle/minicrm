@@ -467,7 +467,31 @@ export async function removeTeamMember(
   }
 }
 
-// ── Hierarchy helper ───────────────────────────────────────────────────────────
+// ── Hierarchy helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Returns the IDs of all teams where the given user is set as manager_id,
+ * including the subtrees rooted at those teams when the manager manages a
+ * parent team.
+ *
+ * Used by visibilityService to resolve team-scoped access for the manager role.
+ * A single recursive CTE avoids N+1 queries regardless of hierarchy depth.
+ */
+export async function getTeamIdsForManager(managerId: string): Promise<string[]> {
+  // Collect all teams directly managed by this user, then walk each subtree.
+  const result = await pool.query<{ id: string }>(
+    `
+    WITH RECURSIVE managed_subtree AS (
+      SELECT id FROM teams WHERE manager_id = $1
+      UNION ALL
+      SELECT t.id FROM teams t JOIN managed_subtree m ON t.parent_team_id = m.id
+    )
+    SELECT DISTINCT id FROM managed_subtree
+    `,
+    [managerId],
+  );
+  return result.rows.map((r) => r.id);
+}
 
 /**
  * Returns the UUIDs of all users who are members of the given team.
