@@ -131,9 +131,13 @@ test('@functional F-VIS3: rep with org policy can list contacts owned by other u
     email: `org-visible-${Date.now()}@example.com`,
   });
 
-  // Rep B should see it
+  // Rep B should see it — use large limit + newest-first so the just-created contact is in the first page
   await loginAndVerify(restClient, repB.email, repB.password);
-  const { data } = await listContactsViaApi(restClient);
+  const { data } = await listContactsViaApi(restClient, {
+    limit: 100,
+    sort: 'created_at',
+    dir: 'desc',
+  });
   const ids = data.map((c) => c.id);
   expect(ids).toContain(contact.id);
 });
@@ -223,18 +227,18 @@ test('@functional F-VIS5: manager sees only contacts owned by their team members
 
   // Create a team managed by managerUser with memberUser as a member
   await loginAsAdmin(restClient);
-  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/teams', {
     name: `VIS5-team-${uniqueSuffix}`,
     manager_id: managerUser.id,
   });
   const teamId = teamRes.body.team.id;
-  await restClient.post(`/api/v1/admin/teams/${teamId}/members`, {
+  await restClient.post(`/api/v1/teams/${teamId}/members`, {
     user_id: memberUser.id,
     role: 'member',
   });
   testData.registerCustomTeardown(`delete-team-vis5-${teamId}`, async () => {
     await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
   });
 
   // Member creates a contact
@@ -253,9 +257,13 @@ test('@functional F-VIS5: manager sees only contacts owned by their team members
     email: `outsider-contact-vis5-${uniqueSuffix}@example.com`,
   });
 
-  // Manager should see member's contact but NOT outsider's contact
+  // Manager should see member's contact but NOT outsider's contact — use large limit + newest-first
   await loginAndVerify(restClient, managerEmail, managerPassword);
-  const { data } = await listContactsViaApi(restClient);
+  const { data } = await listContactsViaApi(restClient, {
+    limit: 100,
+    sort: 'created_at',
+    dir: 'desc',
+  });
   const ids = data.map((c) => c.id);
 
   expect(ids).toContain(memberContact.id);
@@ -303,18 +311,18 @@ test('@functional F-VIS6: manager can reassign a contact to a member of their te
 
   // Create team
   await loginAsAdmin(restClient);
-  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/teams', {
     name: `VIS6-team-${uniqueSuffix}`,
     manager_id: managerUser.id,
   });
   const teamId = teamRes.body.team.id;
-  await restClient.post(`/api/v1/admin/teams/${teamId}/members`, {
+  await restClient.post(`/api/v1/teams/${teamId}/members`, {
     user_id: memberUser.id,
     role: 'member',
   });
   testData.registerCustomTeardown(`delete-team-vis6-${teamId}`, async () => {
     await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
   });
 
   // Manager creates a contact owned by themselves
@@ -361,14 +369,14 @@ test('@functional F-VIS7: manager gets 403 when reassigning a contact to a user 
   // Create a team (empty — no members that the manager can reassign to,
   // except the manager themselves)
   await loginAsAdmin(restClient);
-  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/admin/teams', {
+  const teamRes = await restClient.post<{ team: { id: string } }>('/api/v1/teams', {
     name: `VIS7-team-${uniqueSuffix}`,
     manager_id: managerUser.id,
   });
   const teamId = teamRes.body.team.id;
   testData.registerCustomTeardown(`delete-team-vis7-${teamId}`, async () => {
     await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/admin/teams/${teamId}`).catch(() => undefined);
+    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
   });
 
   // Create an outsider rep
