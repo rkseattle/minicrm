@@ -636,6 +636,8 @@ interface ExportContactsOptions {
   search?: string;
   /** Case-insensitive substring match on the linked account name */
   accountSearch?: string;
+  /** When provided, the org visibility policy is enforced for this user (MINCRM-534) */
+  requestingUser?: { id: string; role: string };
 }
 
 /**
@@ -655,6 +657,20 @@ export async function exportContactsForCsv(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`c.owner_id = $${values.length}`);
+  }
+
+  if (options.requestingUser) {
+    const visFilter = await buildVisibilityFilter(
+      'contact',
+      options.requestingUser.id,
+      options.requestingUser.role,
+      'c.owner_id',
+      values.length + 1,
+    );
+    if (visFilter.clause) {
+      visFilter.params.forEach((p) => values.push(p));
+      conditions.push(visFilter.clause);
+    }
   }
 
   if (options.accountId) {
