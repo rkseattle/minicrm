@@ -4,7 +4,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   inviteUser,
@@ -998,7 +999,11 @@ router.delete('/:id/api-token', asyncHandler(revokeApiToken));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id/roles', asyncHandler(listUserRolesHandler));
+router.get(
+  '/:id/roles',
+  requireCapability(Capability.UsersView),
+  asyncHandler(listUserRolesHandler),
+);
 
 /**
  * @openapi
@@ -1039,7 +1044,11 @@ router.get('/:id/roles', asyncHandler(listUserRolesHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.post('/:id/roles', asyncHandler(assignUserRoleHandler));
+router.post(
+  '/:id/roles',
+  requireCapability(Capability.UsersEdit),
+  asyncHandler(assignUserRoleHandler),
+);
 
 /**
  * @openapi
@@ -1075,6 +1084,10 @@ router.post('/:id/roles', asyncHandler(assignUserRoleHandler));
  *       404:
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id/roles/:roleId', asyncHandler(removeUserRoleHandler));
+router.delete(
+  '/:id/roles/:roleId',
+  requireCapability(Capability.UsersEdit),
+  asyncHandler(removeUserRoleHandler),
+);
 
 export default router;

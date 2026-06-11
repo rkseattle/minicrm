@@ -473,25 +473,24 @@ describe('DELETE /api/deals/:id/contacts/:contactId — unlink contact', () => {
 
 // ── DELETE /api/deals/:id ─────────────────────────────────────────────────────
 
-// Per MINCRM-542 capability matrix: deals:delete is admin-only.
-// Reps receive 403 AUTH_FORBIDDEN from requireCapability(DealsDelete).
+// Per MINCRM-542 + migration 109: reps have deals:delete and can delete their
+// own deals. Ownership check in the controller blocks deletion of other users' deals.
 describe('DELETE /api/deals/:id — ownership', () => {
-  it('returns 403 AUTH_FORBIDDEN when a rep tries to delete their own deal (MINCRM-542)', async () => {
+  it('allows a rep to delete their own deal (MINCRM-542)', async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', repCookie);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    expect(res.status).toBe(204);
   });
 
-  it("returns 403 AUTH_FORBIDDEN when a rep tries to delete another rep's deal (MINCRM-542)", async () => {
+  it("returns 403 FORBIDDEN when a rep tries to delete another rep's deal (MINCRM-542)", async () => {
     const deal = await createDeal({ ...makeDealParams(), owner_id: repId });
 
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('allows an admin to delete any deal', async () => {
@@ -502,13 +501,14 @@ describe('DELETE /api/deals/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 403 for a non-existent deal when user lacks deals:delete (MINCRM-542)', async () => {
+  it('returns 404 for a non-existent deal when rep has deals:delete (MINCRM-542)', async () => {
     const res = await request(app)
       .delete('/api/v1/deals/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    // Rep has deals:delete so the capability gate passes; controller returns 404
+    // because the deal does not exist.
+    expect(res.status).toBe(404);
   });
 });
 

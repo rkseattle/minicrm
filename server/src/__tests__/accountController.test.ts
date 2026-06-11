@@ -201,21 +201,21 @@ describe('PATCH /api/accounts/:id — ownership', () => {
 
 // ── DELETE /api/accounts/:id — ownership ─────────────────────────────────────
 
-// Per MINCRM-542 capability matrix: accounts use contacts:delete, which is admin-only.
-// Reps receive 403 AUTH_FORBIDDEN from requireCapability(ContactsDelete).
+// Per MINCRM-542 + migration 109: reps have contacts:delete and can delete their
+// own accounts. Ownership check (owner_id = req.user.id OR role = 'admin') in
+// the controller blocks deletion of accounts owned by other users.
 describe('DELETE /api/accounts/:id — ownership', () => {
-  it('returns 403 AUTH_FORBIDDEN when a rep tries to delete their own account (MINCRM-542)', async () => {
+  it('allows a rep to delete their own account (MINCRM-542)', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
       .delete(`/api/v1/accounts/${account.id}`)
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    expect(res.status).toBe(204);
   });
 
-  it("returns 403 AUTH_FORBIDDEN when a rep attempts to delete another rep's account (MINCRM-542)", async () => {
+  it("returns 403 FORBIDDEN when a rep attempts to delete another rep's account (MINCRM-542)", async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
@@ -223,7 +223,7 @@ describe('DELETE /api/accounts/:id — ownership', () => {
       .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('allows an admin to delete any account', async () => {
@@ -236,13 +236,14 @@ describe('DELETE /api/accounts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 403 for a non-existent account when user lacks contacts:delete (MINCRM-542)', async () => {
+  it('returns 404 for a non-existent account when rep has contacts:delete (MINCRM-542)', async () => {
     const res = await request(app)
       .delete('/api/v1/accounts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
+    // Rep has contacts:delete so the capability gate passes; controller returns 404
+    // because the account does not exist.
+    expect(res.status).toBe(404);
   });
 });
 
