@@ -510,6 +510,135 @@ describe('UsersPage', () => {
     });
   });
 
+  describe('API token management — service accounts (MINCRM-536)', () => {
+    const SA_USER = {
+      id: '00000000-0000-0000-0000-000000000099',
+      email: 'sa@example.com',
+      name: 'Service Account',
+      role: 'service_account' as const,
+      status: 'active' as const,
+      must_change_password: false,
+      has_api_token: false,
+      created_at: '2025-01-01T00:00:00.000Z',
+    };
+
+    function renderWithSA() {
+      server.use(
+        http.get('/api/v1/users', () =>
+          HttpResponse.json({ data: [ADMIN_USER, SA_USER], total: 2, page: 1, limit: 50 }),
+        ),
+      );
+      renderWithProviders(<UsersPage />);
+    }
+
+    async function openSAMenu(user: ReturnType<typeof userEvent.setup>) {
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${SA_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`user-actions-${SA_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId(`issue-token-${SA_USER.id}`)).toBeInTheDocument();
+      });
+    }
+
+    it('shows Issue API token action for a service account row', async () => {
+      renderWithSA();
+      const user = userEvent.setup();
+      await openSAMenu(user);
+      expect(screen.getByTestId(`issue-token-${SA_USER.id}`)).toBeInTheDocument();
+    });
+
+    it('clicking Issue API token calls the API and shows the one-time token modal', async () => {
+      server.use(
+        http.post('/api/v1/users/:id/api-token', () =>
+          HttpResponse.json({
+            token: 'sa-plaintext-token-abc123',
+            issuedAt: new Date().toISOString(),
+          }),
+        ),
+      );
+      renderWithSA();
+      const user = userEvent.setup();
+      await openSAMenu(user);
+      await user.click(screen.getByTestId(`issue-token-${SA_USER.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('api-token-modal')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('api-token-modal')).toHaveTextContent('sa-plaintext-token-abc123');
+    });
+
+    it('the token modal close button dismisses the modal', async () => {
+      server.use(
+        http.post('/api/v1/users/:id/api-token', () =>
+          HttpResponse.json({
+            token: 'sa-plaintext-token-abc123',
+            issuedAt: new Date().toISOString(),
+          }),
+        ),
+      );
+      renderWithSA();
+      const user = userEvent.setup();
+      await openSAMenu(user);
+      await user.click(screen.getByTestId(`issue-token-${SA_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId('api-token-modal')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('api-token-modal-close'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('api-token-modal')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows Revoke API token action when the service account has a token', async () => {
+      const saWithToken = { ...SA_USER, has_api_token: true };
+      server.use(
+        http.get('/api/v1/users', () =>
+          HttpResponse.json({ data: [ADMIN_USER, saWithToken], total: 2, page: 1, limit: 50 }),
+        ),
+      );
+      renderWithProviders(<UsersPage />);
+      const user = userEvent.setup();
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${SA_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`user-actions-${SA_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId(`revoke-token-${SA_USER.id}`)).toBeInTheDocument();
+      });
+    });
+
+    it('clicking Revoke API token calls the DELETE endpoint', async () => {
+      const saWithToken = { ...SA_USER, has_api_token: true };
+      let revokeCalled = false;
+      server.use(
+        http.get('/api/v1/users', () =>
+          HttpResponse.json({ data: [ADMIN_USER, saWithToken], total: 2, page: 1, limit: 50 }),
+        ),
+        http.delete('/api/v1/users/:id/api-token', () => {
+          revokeCalled = true;
+          return HttpResponse.json({ success: true });
+        }),
+      );
+      renderWithProviders(<UsersPage />);
+      const user = userEvent.setup();
+      await waitFor(() => {
+        expect(screen.getByTestId(`user-actions-${SA_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`user-actions-${SA_USER.id}`));
+      await waitFor(() => {
+        expect(screen.getByTestId(`revoke-token-${SA_USER.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`revoke-token-${SA_USER.id}`));
+
+      await waitFor(() => {
+        expect(revokeCalled).toBe(true);
+      });
+    });
+  });
+
   describe('Reset onboarding (MINCRM-410)', () => {
     async function openMenuForRep(user: ReturnType<typeof userEvent.setup>) {
       await waitFor(() => {
