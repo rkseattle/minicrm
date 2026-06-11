@@ -421,7 +421,7 @@ test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', a
   });
   await restClient.post('/api/v1/users/set-password', {
     token: repInvite.body.inviteToken,
-    password: 'RepPass1!',
+    password: 'RepPassword1!',
   });
 
   const repContext = await playwright.request.newContext();
@@ -430,7 +430,7 @@ test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', a
   try {
     await repClient.post('/api/v1/auth/login', {
       email: repInvite.body.user.email,
-      password: 'RepPass1!',
+      password: 'RepPassword1!',
     });
 
     let errorStatus: number | null = null;
