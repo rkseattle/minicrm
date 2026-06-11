@@ -1645,11 +1645,30 @@
       "productivity": "[Ƥŗöðùçŧïvïŧÿ]",
       "data": "[Ðàŧà]",
       "integrations": "[Ïñŧéǧŗàŧïöñš]",
-      "ai": "[ÀÏ]"
+      "ai": "[ÀÏ]",
+      "visibility": "[Vïšïƀïlïŧÿ]"
     },
     "roles": {
       "admin": "[Àðmïñ]",
       "rep": "[Ŕéƥ]"
     }
+  },
+  "visibilitySettings": {
+    "tabLabel": "[Vïšïƀïlïŧÿ]",
+    "sectionTitle": "[Ðàŧà Vïšïƀïlïŧÿ]",
+    "sectionHint": "[Çöñŧŗöl whïçh ŗéçöŗðš éàçh ŗölé çàñ šéé.]",
+    "contactsLabel": "[Çöñŧàçŧš]",
+    "dealsLabel": "[Ðéàlš]",
+    "activitiesLabel": "[Àçŧïvïŧïéš]",
+    "policy": {
+      "private": "[Ƥŗïvàŧé]",
+      "team": "[Ŧéàm]",
+      "org": "[Öŗǧàñïšàŧïöñ]"
+    },
+    "saveButton": "[Šàvé vïšïƀïlïŧÿ šéŧŧïñǧš]",
+    "saving": "[Šàvïñǧ…]",
+    "saveSuccess": "[Vïšïƀïlïŧÿ šéŧŧïñǧš ùƥðàŧéð.]",
+    "saveError": "[Ƒàïléð ŧö šàvé. Ƥléàšé ŧŗÿ àǧàïñ.]",
+    "loadError": "[Ƒàïléð ŧö löàð šéŧŧïñǧš. Ƥléàšé ŧŗÿ àǧàïñ.]"
   }
 }

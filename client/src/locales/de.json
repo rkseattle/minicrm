@@ -550,7 +550,8 @@
       "data": "Daten",
       "integrations": "Integrationen",
       "features": "Funktionen",
-      "ai": "KI"
+      "ai": "KI",
+      "visibility": "Sichtbarkeit"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
@@ -1955,5 +1956,23 @@
   "aiTokenBudget": {
     "warning": "Sie haben {{percentage}} % Ihres monatlichen KI-Token-Budgets verbraucht. Kontaktieren Sie Ihren Administrator, wenn Sie ein höheres Limit benötigen.",
     "exceeded": "Sie haben Ihr monatliches KI-Limit erreicht — kontaktieren Sie Ihren Administrator, um es zu erhöhen"
+  },
+  "visibilitySettings": {
+    "tabLabel": "Sichtbarkeit",
+    "sectionTitle": "Datensichtbarkeit",
+    "sectionHint": "Steuern Sie, welche Datensätze jede Rolle sehen kann. Änderungen treten sofort in Kraft.",
+    "contactsLabel": "Kontakte",
+    "dealsLabel": "Deals",
+    "activitiesLabel": "Aktivitäten",
+    "policy": {
+      "private": "Privat (nur eigene Datensätze)",
+      "team": "Team (Datensätze der Teammitglieder)",
+      "org": "Organisation (alle Datensätze)"
+    },
+    "saveButton": "Sichtbarkeitseinstellungen speichern",
+    "saving": "Wird gespeichert…",
+    "saveSuccess": "Sichtbarkeitseinstellungen aktualisiert.",
+    "saveError": "Sichtbarkeitseinstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "loadError": "Sichtbarkeitseinstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
   }
 }

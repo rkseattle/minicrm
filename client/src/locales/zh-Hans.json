@@ -550,7 +550,8 @@
       "data": "数据",
       "integrations": "集成",
       "features": "功能",
-      "ai": "AI"
+      "ai": "AI",
+      "visibility": "可见性"
     },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
@@ -1955,5 +1956,23 @@
   "aiTokenBudget": {
     "warning": "您已使用每月 AI Token 预算的 {{percentage}}%。如需提高限额，请联系管理员。",
     "exceeded": "您已达到每月 AI 限额——请联系管理员以提高限额"
+  },
+  "visibilitySettings": {
+    "tabLabel": "可见性",
+    "sectionTitle": "数据可见性",
+    "sectionHint": "控制每个角色可以查看哪些记录。更改立即生效。",
+    "contactsLabel": "联系人",
+    "dealsLabel": "商机",
+    "activitiesLabel": "活动",
+    "policy": {
+      "private": "私有（仅自己的记录）",
+      "team": "团队（团队成员的记录）",
+      "org": "组织（所有记录）"
+    },
+    "saveButton": "保存可见性设置",
+    "saving": "保存中…",
+    "saveSuccess": "可见性设置已更新。",
+    "saveError": "保存失败，请重试。",
+    "loadError": "加载失败，请重试。"
   }
 }

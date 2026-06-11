@@ -550,7 +550,8 @@
       "data": "Datos",
       "integrations": "Integraciones",
       "features": "Funciones",
-      "ai": "IA"
+      "ai": "IA",
+      "visibility": "Visibilidad"
     },
     "defaultLanguageLabel": "Idioma predeterminado",
     "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
@@ -1955,5 +1956,23 @@
   "aiTokenBudget": {
     "warning": "Has usado el {{percentage}}% de tu presupuesto mensual de tokens de IA. Contacta a tu administrador si necesitas un límite mayor.",
     "exceeded": "Has alcanzado tu límite mensual de IA — contacta a tu administrador para aumentarlo"
+  },
+  "visibilitySettings": {
+    "tabLabel": "Visibilidad",
+    "sectionTitle": "Visibilidad de datos",
+    "sectionHint": "Controla qué registros puede ver cada rol. Los cambios se aplican de inmediato.",
+    "contactsLabel": "Contactos",
+    "dealsLabel": "Negocios",
+    "activitiesLabel": "Actividades",
+    "policy": {
+      "private": "Privado (solo mis registros)",
+      "team": "Equipo (registros de los miembros del equipo)",
+      "org": "Organización (todos los registros)"
+    },
+    "saveButton": "Guardar configuración de visibilidad",
+    "saving": "Guardando…",
+    "saveSuccess": "Configuración de visibilidad actualizada.",
+    "saveError": "Error al guardar la configuración. Inténtelo de nuevo.",
+    "loadError": "Error al cargar la configuración. Inténtelo de nuevo."
   }
 }

@@ -550,7 +550,8 @@
       "data": "Données",
       "integrations": "Intégrations",
       "features": "Fonctionnalités",
-      "ai": "IA"
+      "ai": "IA",
+      "visibility": "Visibilité"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
@@ -1955,5 +1956,23 @@
   "aiTokenBudget": {
     "warning": "Vous avez utilisé {{percentage}} % de votre budget mensuel de tokens IA. Contactez votre administrateur si vous avez besoin d'une limite plus élevée.",
     "exceeded": "Vous avez atteint votre limite mensuelle d'IA — contactez votre administrateur pour l'augmenter"
+  },
+  "visibilitySettings": {
+    "tabLabel": "Visibilité",
+    "sectionTitle": "Visibilité des données",
+    "sectionHint": "Contrôlez quels enregistrements chaque rôle peut voir. Les modifications prennent effet immédiatement.",
+    "contactsLabel": "Contacts",
+    "dealsLabel": "Opportunités",
+    "activitiesLabel": "Activités",
+    "policy": {
+      "private": "Privé (mes enregistrements uniquement)",
+      "team": "Équipe (enregistrements des membres de l'équipe)",
+      "org": "Organisation (tous les enregistrements)"
+    },
+    "saveButton": "Enregistrer les paramètres de visibilité",
+    "saving": "Enregistrement…",
+    "saveSuccess": "Paramètres de visibilité mis à jour.",
+    "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
+    "loadError": "Échec du chargement des paramètres. Veuillez réessayer."
   }
 }

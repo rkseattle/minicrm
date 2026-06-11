@@ -55,7 +55,9 @@ export type AuditRecordType =
   /** AI provider/model configuration (MINCRM-457) */
   | 'ai_settings'
   /** Teams and team membership (MINCRM-537) */
-  | 'team';
+  | 'team'
+  /** Per-object-type data visibility policies (MINCRM-538) */
+  | 'org_visibility_settings';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
