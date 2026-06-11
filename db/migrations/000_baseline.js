@@ -1,11 +1,11 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–106 (MINCRM-528, MINCRM-542)
+ * Migration 000: Schema baseline — squash of migrations 001–107 (MINCRM-528, MINCRM-542)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 106 migrations (001–106), so
+ * Captures the full schema as it exists after all 107 migrations (001–107), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 106 individual migrations.
+ * replaying all 107 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
@@ -17,9 +17,9 @@
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–106 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–107 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (107+) run normally via `npm run migrate`
+ *   3. Future migrations (108+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -1527,7 +1527,15 @@ exports.up = (pgm) => {
       ('admin','users:delete'),('admin','teams:manage'),('admin','integrations:manage'),
       ('admin','settings:manage'),('admin','feature_flags:manage'),
       ('admin','audit_log:view'),
-      ('service_account','api:access')
+      ('service_account','api:access'),
+      ('service_account','contacts:view'),('service_account','contacts:create'),
+      ('service_account','contacts:edit'),('service_account','contacts:export'),
+      ('service_account','deals:view'),('service_account','deals:create'),
+      ('service_account','deals:edit'),
+      ('service_account','activities:view'),('service_account','activities:create'),
+      ('service_account','activities:edit'),
+      ('service_account','pipelines:view'),('service_account','sequences:enroll'),
+      ('service_account','data:import'),('service_account','data:export')
     ) AS c(role_name, capability) ON r.name = c.role_name
     ON CONFLICT (role_id, capability) DO NOTHING
   `);

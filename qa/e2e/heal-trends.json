@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-10T02:51:05.036Z",
+  "updatedAt": "2026-06-11T21:58:46.541Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -864,6 +864,24 @@
       "count": 2,
       "firstSeenAt": "2026-06-10T02:44:41.248Z",
       "lastSeenAt": "2026-06-10T02:44:43.325Z"
+    },
+    "ContactsPage::duplicateWarningIsVisible::testId::duplicate-contact-warning": {
+      "pageObject": "ContactsPage",
+      "method": "duplicateWarningIsVisible",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "duplicate-contact-warning",
+      "count": 1,
+      "firstSeenAt": "2026-06-11T21:26:34.022Z",
+      "lastSeenAt": "2026-06-11T21:26:34.022Z"
+    },
+    "ContactsPage::waitForContact::testId::contact-link-e707db24-f1fc-43d9-974c-c088859f7bb3": {
+      "pageObject": "ContactsPage",
+      "method": "waitForContact",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "contact-link-e707db24-f1fc-43d9-974c-c088859f7bb3",
+      "count": 2,
+      "firstSeenAt": "2026-06-11T21:51:40.597Z",
+      "lastSeenAt": "2026-06-11T21:51:42.690Z"
     }
   }
 }

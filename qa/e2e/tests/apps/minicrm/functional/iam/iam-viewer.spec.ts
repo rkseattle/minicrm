@@ -2,7 +2,7 @@
  * F-VIEWER — Viewer role write-blocking
  *
  * Verifies that users with role='viewer' can read all CRM data (contacts, accounts,
- * deals, activities, leads) but receive 403 VIEWER_WRITE_BLOCKED on every mutating
+ * deals, activities, leads) but receive 403 AUTH_FORBIDDEN on every mutating
  * operation (POST, PATCH, DELETE).
  *
  * Also verifies that the viewer's cookie session is rejected at write boundaries
@@ -11,7 +11,7 @@
  * Test groups:
  *   Read Access       — viewer GET endpoints return 200
  *   Write Blocked     — viewer POST/PATCH/DELETE endpoints return 403
- *   Error Shape       — 403 response carries code VIEWER_WRITE_BLOCKED
+ *   Error Shape       — 403 response carries code AUTH_FORBIDDEN (MINCRM-542)
  *
  * Framework conventions:
  *   - All tests tagged @functional
@@ -251,7 +251,7 @@ test('@functional F-VIEWER-W1: viewer cannot create a contact', async ({
   }
 });
 
-test('@functional F-VIEWER-W2: viewer blocked response carries VIEWER_WRITE_BLOCKED code', async ({
+test('@functional F-VIEWER-W2: viewer blocked response carries AUTH_FORBIDDEN code (MINCRM-542)', async ({
   playwright,
   restClient,
 }) => {
@@ -273,8 +273,8 @@ test('@functional F-VIEWER-W2: viewer blocked response carries VIEWER_WRITE_BLOC
     expect(caughtErr, '403 error should have been thrown').not.toBeNull();
     expect(caughtErr!.status, '403 status').toBe(403);
     const body = caughtErr!.body as { error?: { code?: string; message?: string } };
-    expect(body.error?.code, 'error code should be VIEWER_WRITE_BLOCKED').toBe(
-      'VIEWER_WRITE_BLOCKED',
+    expect(body.error?.code, 'error code should be AUTH_FORBIDDEN (MINCRM-542)').toBe(
+      'AUTH_FORBIDDEN',
     );
     expect(body.error?.message, 'error message should be present').toBeTruthy();
   } finally {
@@ -423,7 +423,7 @@ test('@functional F-VIEWER-W7: viewer cannot delete a contact', async ({
     playwright.request.newContext(),
   );
   try {
-    // blockViewer() runs before the handler — returns 403 even if the record ID is valid
+    // requireCapability(ContactsDelete) runs before the handler — returns 403 even if the record ID is valid
     let errorStatus: number | null = null;
     try {
       await viewerClient.delete(`/api/v1/contacts/${contactId}`);
