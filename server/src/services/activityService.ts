@@ -19,6 +19,7 @@ import {
 } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
+import { buildVisibilityFilter } from './visibilityService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -72,6 +73,8 @@ interface ListActivitiesOptions {
   page?: number;
   /** Records per page; defaults to 50 */
   limit?: number;
+  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  requestingUser?: { id: string; role: string };
 }
 
 /** Columns selected when JOINing users for owner_name */
@@ -204,6 +207,21 @@ export async function listActivities(
   if (options.end) {
     values.push(options.end);
     conditions.push(`a.updated_at::date <= $${values.length}::date`);
+  }
+
+  // Org visibility policy enforcement (MINCRM-538)
+  if (options.requestingUser) {
+    const visFilter = await buildVisibilityFilter(
+      'activity',
+      options.requestingUser.id,
+      options.requestingUser.role,
+      'a.owner_id',
+      values.length + 1,
+    );
+    if (visFilter.clause) {
+      visFilter.params.forEach((p) => values.push(p));
+      conditions.push(visFilter.clause);
+    }
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

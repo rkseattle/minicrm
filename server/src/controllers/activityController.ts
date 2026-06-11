@@ -149,6 +149,7 @@ export async function listActivitiesHandler(req: Request, res: Response): Promis
     start: rawStart,
     end: rawEnd,
     ...paginationParsed.data,
+    requestingUser: { id: req.user!.id, role: req.user!.role },
   });
   res.status(200).json(result);
 }
