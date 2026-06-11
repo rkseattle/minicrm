@@ -123,6 +123,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
     dir,
     tagIds,
     ...paginationParsed.data,
+    requestingUser: { id: req.user!.id, role: req.user!.role },
   });
   res.status(200).json(result);
 }
@@ -167,7 +168,11 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (
+    existing.owner_id !== req.user!.id &&
+    req.user!.role !== 'admin' &&
+    req.user!.role !== 'manager'
+  ) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -220,13 +225,20 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
 
   let deal;
   try {
-    deal = await updateDeal(id, parsed.data, { id: req.user!.id, name: req.user!.name }, existing);
+    deal = await updateDeal(id, parsed.data, { id: req.user!.id, name: req.user!.name }, existing, {
+      id: req.user!.id,
+      role: req.user!.role,
+    });
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === 'OPTIMISTIC_LOCK_CONFLICT') {
       // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
       const current = await findDealById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
+      return;
+    }
+    if (code === 'REASSIGNMENT_NOT_PERMITTED') {
+      res.status(403).json({ error: { code, message: (err as Error).message } });
       return;
     }
     if (code === 'STAGE_EXIT_REQUIREMENTS_NOT_MET') {

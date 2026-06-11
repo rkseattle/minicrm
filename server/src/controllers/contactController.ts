@@ -175,6 +175,7 @@ export async function listContactsHandler(req: Request, res: Response): Promise<
     dir,
     tagIds,
     ...paginationParsed.data,
+    requestingUser: { id: req.user!.id, role: req.user!.role },
   });
   res.status(200).json(result);
 }
@@ -218,7 +219,11 @@ export async function updateContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  if (
+    existing.owner_id !== req.user!.id &&
+    req.user!.role !== 'admin' &&
+    req.user!.role !== 'manager'
+  ) {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -230,6 +235,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
       parsed.data,
       { id: req.user!.id, name: req.user!.name },
       existing,
+      { id: req.user!.id, role: req.user!.role },
     );
   } catch (err) {
     const code = (err as { code?: string }).code;
@@ -237,6 +243,10 @@ export async function updateContactHandler(req: Request, res: Response): Promise
       // Include current server state so the client can render a three-way merge without a second round-trip (MINCRM-351)
       const current = await findContactById(id);
       res.status(409).json({ error: { code, message: (err as Error).message, current } });
+      return;
+    }
+    if (code === 'REASSIGNMENT_NOT_PERMITTED') {
+      res.status(403).json({ error: { code, message: (err as Error).message } });
       return;
     }
     throw err;

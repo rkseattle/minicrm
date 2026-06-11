@@ -219,6 +219,38 @@ async function buildPolicyFilter(
 }
 
 /**
+ * Validates that a reassignment target (newOwnerId) is permitted for the
+ * requesting user. Throws with code REASSIGNMENT_NOT_PERMITTED (403) if:
+ *   - the requesting user is a manager AND the new owner is not within their team(s)
+ * admin, viewer, and rep roles are not subject to this check.
+ *
+ * @param newOwnerId     - UUID of the user being assigned ownership
+ * @param requestingUser - The user performing the reassignment
+ */
+export async function validateReassignment(
+  newOwnerId: string,
+  requestingUser: { id: string; role: string },
+): Promise<void> {
+  if (requestingUser.role !== 'manager') return;
+
+  const teamIds = await getTeamIdsForManager(requestingUser.id);
+  if (teamIds.length === 0) {
+    // Manager belongs to no teams — can only keep the same owner, not reassign
+    throw Object.assign(new Error('Managers without a team assignment cannot reassign records'), {
+      code: 'REASSIGNMENT_NOT_PERMITTED',
+    });
+  }
+
+  const memberIds = await resolveTeamMemberIds(teamIds);
+  if (!memberIds.includes(newOwnerId)) {
+    throw Object.assign(
+      new Error('Managers can only reassign records to members of their own team(s)'),
+      { code: 'REASSIGNMENT_NOT_PERMITTED' },
+    );
+  }
+}
+
+/**
  * Given a list of team IDs, returns the deduplicated list of member user UUIDs
  * across all those teams and their subtrees, using a single recursive CTE.
  */

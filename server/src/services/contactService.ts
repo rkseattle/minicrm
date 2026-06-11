@@ -16,6 +16,7 @@ import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.j
 import type { AuditActor, AuditEntryInput } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -108,6 +109,8 @@ interface ListContactsOptions {
   limit?: number;
   /** When provided, only contacts tagged with at least one of these tag IDs are returned (MINCRM-186) */
   tagIds?: string[];
+  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  requestingUser?: { id: string; role: string };
 }
 
 /**
@@ -339,6 +342,21 @@ export async function listContacts(
     );
   }
 
+  // Org visibility policy enforcement (MINCRM-538)
+  if (options.requestingUser) {
+    const visFilter = await buildVisibilityFilter(
+      'contact',
+      options.requestingUser.id,
+      options.requestingUser.role,
+      'c.owner_id',
+      values.length + 1,
+    );
+    if (visFilter.clause) {
+      visFilter.params.forEach((p) => values.push(p));
+      conditions.push(visFilter.clause);
+    }
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const fromClause = needsAccountJoin
@@ -421,7 +439,13 @@ export async function updateContact(
   params: UpdateContactInput,
   actor: AuditActor = SYSTEM_ACTOR,
   before?: ContactRow,
+  requestingUser?: { id: string; role: string },
 ): Promise<ContactRow | null> {
+  // Managers may only reassign records to users within their own team(s) (MINCRM-534)
+  if (params.owner_id !== undefined && requestingUser) {
+    await validateReassignment(params.owner_id, requestingUser);
+  }
+
   const { version, ...rest } = params;
   const normalized: Omit<UpdateContactInput, 'version'> = {
     ...rest,

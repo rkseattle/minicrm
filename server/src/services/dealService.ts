@@ -16,6 +16,7 @@ import { getDefaultPipelineId } from './pipelineService.js';
 import { findPipelineStageByNameAndPipeline } from './pipelineStageService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { buildVisibilityFilter, validateReassignment } from './visibilityService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -93,6 +94,8 @@ interface ListDealsOptions {
   limit?: number;
   /** When provided, only deals tagged with at least one of these tag IDs are returned (MINCRM-186) */
   tagIds?: string[];
+  /** When provided, the org visibility policy is enforced for this user (MINCRM-538) */
+  requestingUser?: { id: string; role: string };
 }
 
 /**
@@ -272,6 +275,21 @@ export async function listDeals(
     );
   }
 
+  // Org visibility policy enforcement (MINCRM-538)
+  if (options.requestingUser) {
+    const visFilter = await buildVisibilityFilter(
+      'deal',
+      options.requestingUser.id,
+      options.requestingUser.role,
+      'd.owner_id',
+      values.length + 1,
+    );
+    if (visFilter.clause) {
+      visFilter.params.forEach((p) => values.push(p));
+      conditions.push(visFilter.clause);
+    }
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
@@ -330,7 +348,13 @@ export async function updateDeal(
   params: UpdateDealInput,
   actor: AuditActor = SYSTEM_ACTOR,
   before?: DealRow,
+  requestingUser?: { id: string; role: string },
 ): Promise<DealRow | null> {
+  // Managers may only reassign records to users within their own team(s) (MINCRM-534)
+  if (params.owner_id !== undefined && requestingUser) {
+    await validateReassignment(params.owner_id, requestingUser);
+  }
+
   const { version, ...dealParams } = params;
   const fields = (Object.keys(dealParams) as (keyof typeof dealParams)[]).filter((field) =>
     ALLOWED_UPDATE_FIELDS.has(field as keyof UpdateDealInput),
