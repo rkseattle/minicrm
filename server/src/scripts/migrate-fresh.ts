@@ -7,12 +7,12 @@
  * This means a migration cannot mark later migrations as "already applied" during its own
  * up() call — the runner has already decided to run them.
  *
- * To bootstrap a fresh database without replaying 101 individual migrations, this script:
+ * To bootstrap a fresh database without replaying 107 individual migrations, this script:
  *   1. Runs ONLY `000_baseline` (count: 1) — creates the full schema via one migration
  *   2. Runs all remaining migrations with `fake: true` — records them in pgmigrations
  *      without executing their SQL (safe because the schema already contains everything
  *      those migrations would have created)
- *   3. From this point, `npm run migrate` behaves normally: only future migrations (102+)
+ *   3. From this point, `npm run migrate` behaves normally: only future migrations (108+)
  *      are pending and will be run for real.
  *
  * USAGE
