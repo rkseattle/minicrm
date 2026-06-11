@@ -18,6 +18,7 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 9. [AI Configuration](#9-ai-configuration)
 10. [AI Token Budgets](#10-ai-token-budgets)
 11. [AI Role-Based Feature Access](#11-ai-role-based-feature-access)
+12. [Data Visibility Scoping](#12-data-visibility-scoping)
 
 ---
 
@@ -663,3 +664,51 @@ without disabling AI entirely.
 
 Reps will no longer see that feature on their next page load. Their existing data is not
 affected.
+
+---
+
+## 12. Data Visibility Scoping
+
+Controls which records each role can see when listing contacts, deals, and activities.
+(MINCRM-534, MINCRM-538)
+
+### How it works
+
+Each object type (contacts, deals, activities) has an independently configurable **policy**:
+
+| Policy    | Who can see a record                                                                  |
+| --------- | ------------------------------------------------------------------------------------- |
+| `org`     | All authenticated users (default)                                                     |
+| `team`    | Only users who share at least one team with the record owner, or the owner themselves |
+| `private` | Only the record's owner                                                               |
+
+**Role overrides** — regardless of the active policy:
+
+- **Admin** and **Viewer** always see all records org-wide (policy is ignored).
+- **Manager** always sees team-scoped records for all teams they manage, including sub-teams. If the manager belongs to no team, they see only their own records.
+- **Rep** follows the active policy for their own role.
+
+### Reassignment restrictions for managers
+
+When a manager changes the `owner` field on a contact or deal, the new owner must belong to one of the manager's teams. Attempting to assign ownership to a user outside the team returns a 403 error. Admins and reps are not subject to this restriction.
+
+### Tutorial: restrict contacts to team visibility
+
+1. Go to **Admin Settings → Visibility**.
+2. In the **Contacts** row, change the policy from _Org_ to _Team_.
+3. Click **Save**.
+
+Reps will now only see contacts owned by members of their team. Contacts outside their team are filtered from list results. Existing records are not deleted — only their visibility in list views is affected.
+
+### Tutorial: revert to org-wide visibility
+
+1. Go to **Admin Settings → Visibility**.
+2. Change the policy back to _Org_ for the relevant object type.
+3. Click **Save**.
+
+All users immediately regain access to all records of that type.
+
+### Audit trail
+
+Every visibility policy change is recorded in the **Audit Log** under record type
+`org_visibility_settings`, including the previous value, the new value, and the admin who made the change.
