@@ -30,6 +30,8 @@ import {
   SUPPORTED_CURRENCY_LIST,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
+import { getAllVisibilityPolicies, updateVisibilityConfig } from '../services/visibilityService.js';
+import { updateVisibilityConfigSchema } from '@minicrm/shared/schemas/visibilitySchema.js';
 import logger from '../logger.js';
 
 /**
@@ -456,4 +458,32 @@ export async function setMfaRequiredHandler(req: Request, res: Response): Promis
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write MFA settings audit entry'));
+}
+
+/**
+ * GET /api/settings/visibility
+ * Returns the current per-object-type data visibility policies.
+ * Accessible to admin and manager roles. (MINCRM-538)
+ */
+export async function getVisibilityConfigHandler(_req: Request, res: Response): Promise<void> {
+  const config = await getAllVisibilityPolicies();
+  res.status(200).json({ visibility: config });
+}
+
+/**
+ * PUT /api/settings/visibility
+ * Updates one or more per-object-type visibility policies. Admin only. (MINCRM-538)
+ */
+export async function putVisibilityConfigHandler(req: Request, res: Response): Promise<void> {
+  const parsed = updateVisibilityConfigSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const config = await updateVisibilityConfig(parsed.data, actor);
+  res.status(200).json({ visibility: config });
 }

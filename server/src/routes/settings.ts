@@ -26,6 +26,8 @@ import {
   deletePipelineStagesReviewedHandler,
   getMfaRequiredHandler,
   setMfaRequiredHandler,
+  getVisibilityConfigHandler,
+  putVisibilityConfigHandler,
 } from '../controllers/settingsController.js';
 import {
   getStorageStatusHandler,
@@ -1312,5 +1314,78 @@ router.put('/sso', authenticate, requireRole('admin'), asyncHandler(putSsoConfig
  *         $ref: '#/components/responses/Forbidden'
  */
 router.delete('/sso', authenticate, requireRole('admin'), asyncHandler(deleteSsoConfigHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/visibility:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getVisibilityConfig
+ *     summary: Get per-object data visibility policies
+ *     description: >
+ *       Returns the current visibility policy for each object type (contact, deal, activity).
+ *       Accessible to admin and manager roles. (MINCRM-538)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current visibility configuration
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/visibility',
+  authenticate,
+  requireRole('admin', 'manager'),
+  asyncHandler(getVisibilityConfigHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/visibility:
+ *   put:
+ *     tags: [Settings]
+ *     operationId: putVisibilityConfig
+ *     summary: Update per-object data visibility policies (admin only)
+ *     description: >
+ *       Updates one or more visibility policies. Only provided object types are changed;
+ *       omitted types retain their current policy. Changes take effect immediately.
+ *       Admin only. (MINCRM-538)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               contact:
+ *                 type: string
+ *                 enum: [private, team, org]
+ *               deal:
+ *                 type: string
+ *                 enum: [private, team, org]
+ *               activity:
+ *                 type: string
+ *                 enum: [private, team, org]
+ *     responses:
+ *       200:
+ *         description: Visibility policies updated
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.put(
+  '/visibility',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(putVisibilityConfigHandler),
+);
 
 export default router;

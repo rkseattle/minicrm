@@ -13,6 +13,10 @@ import type {
   DefaultCurrencyResponse,
   SupportedCurrency,
 } from '@shared/schemas/settingsSchema.js';
+import type {
+  VisibilityConfig,
+  UpdateVisibilityConfigInput,
+} from '@shared/schemas/visibilitySchema.js';
 
 /** React Query cache key for the default language setting */
 export const DEFAULT_LANGUAGE_QUERY_KEY = ['settings', 'defaultLanguage'] as const;
@@ -255,5 +259,36 @@ export interface SmtpTestResult {
  */
 export async function testSmtpConfig(to: string): Promise<SmtpTestResult> {
   const response = await apiClient.post<SmtpTestResult>('/settings/smtp/test', { to });
+  return response.data;
+}
+
+// ── Data visibility policies (MINCRM-538) ─────────────────────────────────────
+
+/** Shape returned by GET/PUT /api/settings/visibility */
+export interface VisibilityConfigResponse {
+  visibility: VisibilityConfig;
+}
+
+/** React Query cache key for the visibility config */
+export const VISIBILITY_CONFIG_QUERY_KEY = ['settings', 'visibility'] as const;
+
+/**
+ * Returns the current per-object-type visibility policies.
+ * Accessible to admin and manager roles.
+ */
+export async function getVisibilityConfig(): Promise<VisibilityConfigResponse> {
+  const response = await apiClient.get<VisibilityConfigResponse>('/settings/visibility');
+  return response.data;
+}
+
+/**
+ * Updates one or more per-object-type visibility policies. Admin only.
+ *
+ * @param updates - Partial config; only provided keys are updated.
+ */
+export async function putVisibilityConfig(
+  updates: UpdateVisibilityConfigInput,
+): Promise<VisibilityConfigResponse> {
+  const response = await apiClient.put<VisibilityConfigResponse>('/settings/visibility', updates);
   return response.data;
 }

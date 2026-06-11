@@ -22,13 +22,20 @@ import pool from '../db.js';
 import type {
   VisibilityObjectType,
   VisibilityPolicy,
+  VisibilityConfig,
+  UpdateVisibilityConfigInput,
 } from '@minicrm/shared/schemas/visibilitySchema.js';
 import {
   VISIBILITY_OBJECT_TYPES,
   VISIBILITY_POLICIES,
 } from '@minicrm/shared/schemas/visibilitySchema.js';
 import { getTeamIdsForManager } from './teamService.js';
+import { writeAuditEntries } from './auditService.js';
+import type { AuditActor } from './auditService.js';
 import logger from '../logger.js';
+
+/** Full org visibility configuration as returned by the GET endpoint */
+export type { VisibilityConfig };
 
 /** Resolved visibility filter — inject clause into WHERE and spread params into query values */
 export interface VisibilityFilter {
@@ -93,6 +100,62 @@ export async function getAllVisibilityPolicies(): Promise<
     }
   }
   return defaults;
+}
+
+/**
+ * Updates one or more per-object-type visibility policies.
+ * Each updated policy is written in a single transaction and audit-logged.
+ * Unchanged object types are left unmodified.
+ *
+ * @param updates - Partial config; only provided keys are updated
+ * @param actor   - Admin user performing the change
+ * @returns The full visibility config after the update
+ */
+export async function updateVisibilityConfig(
+  updates: UpdateVisibilityConfigInput,
+  actor: AuditActor,
+): Promise<VisibilityConfig> {
+  const entries = Object.entries(updates) as [VisibilityObjectType, VisibilityPolicy][];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const [objectType, policy] of entries) {
+      await client.query(
+        `INSERT INTO org_visibility_settings (object_type, policy, updated_at, updated_by)
+         VALUES ($1, $2, now(), $3)
+         ON CONFLICT (object_type) DO UPDATE
+           SET policy = EXCLUDED.policy,
+               updated_at = EXCLUDED.updated_at,
+               updated_by = EXCLUDED.updated_by`,
+        [objectType, policy, actor.id],
+      );
+    }
+
+    await writeAuditEntries(
+      client,
+      entries.map(([objectType, policy]) => ({
+        recordType: 'org_visibility_settings' as const,
+        recordId: null,
+        recordName: objectType,
+        eventType: 'updated' as const,
+        fieldName: 'policy' as const,
+        newValue: policy,
+        changedById: actor.id,
+        changedByName: actor.name,
+      })),
+    );
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return getAllVisibilityPolicies();
 }
 
 /**
