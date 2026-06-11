@@ -551,7 +551,8 @@
       "integrations": "Integraciones",
       "features": "Funciones",
       "ai": "IA",
-      "visibility": "Visibilidad"
+      "visibility": "Visibilidad",
+      "roles": "Roles"
     },
     "defaultLanguageLabel": "Idioma predeterminado",
     "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
@@ -1974,5 +1975,34 @@
     "saveSuccess": "Configuración de visibilidad actualizada.",
     "saveError": "Error al guardar la configuración. Inténtelo de nuevo.",
     "loadError": "Error al cargar la configuración. Inténtelo de nuevo."
+  },
+  "rolesSettings": {
+    "sectionTitle": "Roles y permisos",
+    "sectionHint": "Cree y gestione roles personalizados. Asigne permisos para controlar lo que cada rol puede hacer.",
+    "newRoleButton": "Nuevo rol",
+    "builtinBadge": "Integrado",
+    "editButton": "Editar",
+    "deleteButton": "Eliminar",
+    "capabilityCount": "{{count}} permisos",
+    "loadError": "Error al cargar los roles. Inténtelo de nuevo.",
+    "createError": "Error al crear el rol. Inténtelo de nuevo.",
+    "updateError": "Error al actualizar el rol. Inténtelo de nuevo.",
+    "form": {
+      "createTitle": "Nuevo rol",
+      "editTitle": "Editar rol",
+      "nameLabel": "Nombre",
+      "nameRequired": "El nombre es obligatorio",
+      "descriptionLabel": "Descripción",
+      "capabilitiesLabel": "Permisos",
+      "capabilitiesRequired": "Seleccione al menos un permiso",
+      "saveButton": "Guardar",
+      "saving": "Guardando…",
+      "cancelButton": "Cancelar"
+    },
+    "deleteError": {
+      "hasAssignees": "Este rol no se puede eliminar mientras haya usuarios asignados. Elimine primero esas asignaciones.",
+      "builtin": "Los roles integrados no se pueden eliminar.",
+      "generic": "Error al eliminar el rol. Inténtelo de nuevo."
+    }
   }
 }

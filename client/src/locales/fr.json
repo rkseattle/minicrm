@@ -551,7 +551,8 @@
       "integrations": "Intégrations",
       "features": "Fonctionnalités",
       "ai": "IA",
-      "visibility": "Visibilité"
+      "visibility": "Visibilité",
+      "roles": "Rôles"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
@@ -1974,5 +1975,34 @@
     "saveSuccess": "Paramètres de visibilité mis à jour.",
     "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
     "loadError": "Échec du chargement des paramètres. Veuillez réessayer."
+  },
+  "rolesSettings": {
+    "sectionTitle": "Rôles et autorisations",
+    "sectionHint": "Créez et gérez des rôles personnalisés. Attribuez des autorisations pour contrôler ce que chaque rôle peut faire.",
+    "newRoleButton": "Nouveau rôle",
+    "builtinBadge": "Intégré",
+    "editButton": "Modifier",
+    "deleteButton": "Supprimer",
+    "capabilityCount": "{{count}} autorisations",
+    "loadError": "Échec du chargement des rôles. Veuillez réessayer.",
+    "createError": "Échec de la création du rôle. Veuillez réessayer.",
+    "updateError": "Échec de la mise à jour du rôle. Veuillez réessayer.",
+    "form": {
+      "createTitle": "Nouveau rôle",
+      "editTitle": "Modifier le rôle",
+      "nameLabel": "Nom",
+      "nameRequired": "Le nom est obligatoire",
+      "descriptionLabel": "Description",
+      "capabilitiesLabel": "Autorisations",
+      "capabilitiesRequired": "Sélectionnez au moins une autorisation",
+      "saveButton": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancelButton": "Annuler"
+    },
+    "deleteError": {
+      "hasAssignees": "Ce rôle ne peut pas être supprimé tant que des utilisateurs lui sont attribués. Supprimez ces attributions d'abord.",
+      "builtin": "Les rôles intégrés ne peuvent pas être supprimés.",
+      "generic": "Échec de la suppression du rôle. Veuillez réessayer."
+    }
   }
 }

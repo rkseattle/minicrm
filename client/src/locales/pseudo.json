@@ -750,7 +750,8 @@
       "disableConfirmButton": "Yes, disable SSO"
     },
     "tabs": {
-      "features": "Ƒéàŧůŗéş"
+      "features": "Ƒéàŧůŗéş",
+      "roles": "[Ŕöĺéš]"
     }
   },
   "profileSettings": {
@@ -1670,5 +1671,34 @@
     "saveSuccess": "[Vïšïƀïlïŧÿ šéŧŧïñǧš ùƥðàŧéð.]",
     "saveError": "[Ƒàïléð ŧö šàvé. Ƥléàšé ŧŗÿ àǧàïñ.]",
     "loadError": "[Ƒàïléð ŧö löàð šéŧŧïñǧš. Ƥléàšé ŧŗÿ àǧàïñ.]"
+  },
+  "rolesSettings": {
+    "sectionTitle": "[Ŕöĺéš & Çàƥàƀïĺïŧïéš]",
+    "sectionHint": "[Çŗéàŧé àñð màñàǧé çùšŧöm ŗöĺéš. Àššïǧñ çàƥàƀïĺïŧïéš ŧö çöñŧŗöĺ whàŧ éàçh ŗöĺé çàñ ðö.]",
+    "newRoleButton": "[Ñéw ŗöĺé]",
+    "builtinBadge": "[Büïĺŧ-ïñ]",
+    "editButton": "[Éðïŧ]",
+    "deleteButton": "[Ðéĺéŧé]",
+    "capabilityCount": "[{{count}} çàƥàƀïĺïŧïéš]",
+    "loadError": "[Ƒàïĺéð ŧö ĺöàð ŗöĺéš. Ƥĺéàšé ŧŗÿ àǧàïñ.]",
+    "createError": "[Ƒàïĺéð ŧö çŗéàŧé ŗöĺé. Ƥĺéàšé ŧŗÿ àǧàïñ.]",
+    "updateError": "[Ƒàïĺéð ŧö ùƥðàŧé ŗöĺé. Ƥĺéàšé ŧŗÿ àǧàïñ.]",
+    "form": {
+      "createTitle": "[Ñéw ŗöĺé]",
+      "editTitle": "[Éðïŧ ŗöĺé]",
+      "nameLabel": "[Ñàmé]",
+      "nameRequired": "[Ñàmé ïš ŗéqùïŗéð]",
+      "descriptionLabel": "[Ðéšçŗïƥŧïöñ]",
+      "capabilitiesLabel": "[Çàƥàƀïĺïŧïéš]",
+      "capabilitiesRequired": "[Šéĺéçŧ àŧ ĺéàšŧ öñé çàƥàƀïĺïŧÿ]",
+      "saveButton": "[Šàvé]",
+      "saving": "[Šàvïñǧ…]",
+      "cancelButton": "[Çàñçéĺ]"
+    },
+    "deleteError": {
+      "hasAssignees": "[Ŧhïš ŗöĺé çàññöŧ ƀé ðéĺéŧéð whïĺé ùšéŗš àŗé àššïǧñéð ŧö ïŧ.]",
+      "builtin": "[Büïĺŧ-ïñ ŗöĺéš çàññöŧ ƀé ðéĺéŧéð.]",
+      "generic": "[Ƒàïĺéð ŧö ðéĺéŧé ŗöĺé. Ƥĺéàšé ŧŗÿ àǧàïñ.]"
+    }
   }
 }

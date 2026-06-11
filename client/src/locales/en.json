@@ -551,7 +551,8 @@
       "integrations": "Integrations",
       "features": "Features",
       "ai": "AI",
-      "visibility": "Visibility"
+      "visibility": "Visibility",
+      "roles": "Roles"
     },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
@@ -1974,5 +1975,34 @@
     "saveSuccess": "Visibility settings updated.",
     "saveError": "Failed to save visibility settings. Please try again.",
     "loadError": "Failed to load visibility settings. Please try again."
+  },
+  "rolesSettings": {
+    "sectionTitle": "Roles & Capabilities",
+    "sectionHint": "Create and manage custom roles. Assign capabilities to control what each role can do.",
+    "newRoleButton": "New role",
+    "builtinBadge": "Built-in",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "capabilityCount": "{{count}} capabilities",
+    "loadError": "Failed to load roles. Please try again.",
+    "createError": "Failed to create role. Please try again.",
+    "updateError": "Failed to update role. Please try again.",
+    "form": {
+      "createTitle": "New role",
+      "editTitle": "Edit role",
+      "nameLabel": "Name",
+      "nameRequired": "Name is required",
+      "descriptionLabel": "Description",
+      "capabilitiesLabel": "Capabilities",
+      "capabilitiesRequired": "Select at least one capability",
+      "saveButton": "Save",
+      "saving": "Saving…",
+      "cancelButton": "Cancel"
+    },
+    "deleteError": {
+      "hasAssignees": "This role cannot be deleted while users are assigned to it. Remove those assignments first.",
+      "builtin": "Built-in roles cannot be deleted.",
+      "generic": "Failed to delete role. Please try again."
+    }
   }
 }
