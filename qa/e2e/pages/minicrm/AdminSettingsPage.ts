@@ -33,7 +33,8 @@ export type AdminSettingsTab =
   | 'data'
   | 'integrations'
   | 'features'
-  | 'ai';
+  | 'ai'
+  | 'visibility';
 
 // ---------------------------------------------------------------------------
 // AdminSettingsPage
@@ -1365,6 +1366,75 @@ export class AdminSettingsPage {
           { type: 'css', value: '[data-testid="ai-dpa-status-badge"]' },
         ],
         { intent: 'badge showing the current DPA acknowledgment status' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Visibility Settings locators (MINCRM-538)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the visibility settings panel container. */
+  async visibilitySettingsPanelLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-settings-panel' },
+          { type: 'role', value: 'region' },
+        ],
+        { intent: 'main panel for per-object data visibility policy configuration' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the contacts visibility select element. */
+  async visibilityContactsSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-contacts-select' },
+          { type: 'role', value: 'combobox', options: { name: /contacts/i } },
+        ],
+        { intent: 'select for choosing the contacts visibility policy (private, team, or org)' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the deals visibility select element. */
+  async visibilityDealsSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-deals-select' },
+          { type: 'role', value: 'combobox', options: { name: /deals/i } },
+        ],
+        { intent: 'select for choosing the deals visibility policy (private, team, or org)' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the save button in visibility settings. */
+  async visibilitySaveButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-settings-save-button' },
+          { type: 'role', value: 'button', options: { name: /save/i } },
+        ],
+        { intent: 'button that saves the visibility policy changes' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the visibility save success message. */
+  async visibilitySaveSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-settings-success' },
+          { type: 'role', value: 'status' },
+        ],
+        { intent: 'success message confirming the visibility settings were saved' },
       )
       .resolve();
   }

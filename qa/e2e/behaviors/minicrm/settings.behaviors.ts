@@ -1283,3 +1283,47 @@ export async function getAiTestConnectionResultLocator(context: AdminSettingsBeh
 export async function getAiModelSelectLocator(context: AdminSettingsBehaviorContext) {
   return new AdminSettingsPage(context).aiModelSelectLocator();
 }
+
+// ---------------------------------------------------------------------------
+// Visibility Settings behaviors (MINCRM-538)
+// ---------------------------------------------------------------------------
+
+/** Resolves the visibility settings panel locator. */
+export async function getVisibilitySettingsPanelLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).visibilitySettingsPanelLocator();
+}
+
+/** Resolves the contacts visibility select locator. */
+export async function getVisibilityContactsSelectLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).visibilityContactsSelectLocator();
+}
+
+/** Resolves the deals visibility select locator. */
+export async function getVisibilityDealsSelectLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).visibilityDealsSelectLocator();
+}
+
+/** Resolves the visibility save button locator. */
+export async function getVisibilitySaveButtonLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).visibilitySaveButtonLocator();
+}
+
+/** Resolves the visibility save success message locator. */
+export async function getVisibilitySaveSuccessLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).visibilitySaveSuccessLocator();
+}
+
+/**
+ * Resets all visibility policies back to 'org' via the REST API.
+ * Safe to call in beforeEach/afterEach when tests mutate visibility settings.
+ * Caller must be authenticated as admin.
+ */
+export async function resetVisibilitySettings(restClient: RestClient): Promise<void> {
+  await restClient
+    .put('/api/v1/settings/visibility', {
+      contact: 'org',
+      deal: 'org',
+      activity: 'org',
+    })
+    .catch(() => undefined);
+}
