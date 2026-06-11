@@ -48,6 +48,7 @@
 | [public.currency_rate_history](public.currency_rate_history.md) | 5 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 6 |  | BASE TABLE |
 | [public.team_memberships](public.team_memberships.md) | 3 |  | BASE TABLE |
+| [public.org_visibility_settings](public.org_visibility_settings.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -170,6 +171,7 @@ erDiagram
 "public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.org_visibility_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.users" {
   uuid id ""
@@ -638,6 +640,12 @@ erDiagram
   uuid team_id FK ""
   uuid user_id FK ""
   text role ""
+}
+"public.org_visibility_settings" {
+  text object_type ""
+  text policy ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
 }
 ```
 
