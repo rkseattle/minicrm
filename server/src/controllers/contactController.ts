@@ -5,7 +5,6 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { hasCapability, Capability } from '../utils/userUtils.js';
 import { createContactSchema, updateContactSchema } from '@minicrm/shared/schemas/contactSchema.js';
 import {
   createContact,
@@ -220,7 +219,7 @@ export async function updateContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -299,14 +298,14 @@ export async function listContactDealsHandler(req: Request, res: Response): Prom
  * (MINCRM-164)
  */
 export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
-  const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
+  const orgWideRead = req.user!.role === 'admin' || req.user!.role === 'viewer';
   const exportAll = req.query.all === 'true';
 
   // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
   // All other roles (rep, manager): apply visibility filter via requestingUser so managers
   // get team-scoped results matching what they see in the list view (MINCRM-534).
-  const ownerId = canReadAll && !exportAll ? req.user!.id : undefined;
-  const requestingUser = !canReadAll ? { id: req.user!.id, role: req.user!.role } : undefined;
+  const ownerId = orgWideRead && !exportAll ? req.user!.id : undefined;
+  const requestingUser = !orgWideRead ? { id: req.user!.id, role: req.user!.role } : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {
@@ -425,7 +424,7 @@ export async function deleteContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -454,7 +453,7 @@ export async function mergeContactHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  if (winner.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (winner.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }

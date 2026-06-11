@@ -149,7 +149,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's deal", async () => {
+  it("returns 403 AUTH_FORBIDDEN when rep B deletes rep A's deal (MINCRM-542: deals:delete is admin-only)", async () => {
     const deal = await createDeal({
       name: 'Rep A Deal To Delete',
       stage: 'Prospecting',
@@ -159,7 +159,7 @@ describe('MINCRM-88 — deal ownership enforcement', () => {
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it("allows admin to patch rep A's deal", async () => {
@@ -211,7 +211,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's activity", async () => {
+  it("returns 403 AUTH_FORBIDDEN when rep B deletes rep A's activity (MINCRM-542: activities:delete is admin-only)", async () => {
     const activity = await createActivity({
       type: 'Task',
       subject: 'Rep A Task To Delete',
@@ -224,7 +224,7 @@ describe('MINCRM-88 — activity ownership enforcement', () => {
       .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it("allows admin to patch rep A's activity", async () => {
@@ -370,7 +370,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's contact", async () => {
+  it("returns 403 AUTH_FORBIDDEN when rep B deletes rep A's contact (MINCRM-542: contacts:delete is admin-only)", async () => {
     const contact = await createContact({
       first_name: 'Rep',
       last_name: 'A Contact Delete',
@@ -383,7 +383,7 @@ describe("MINCRM-81 — rep cannot modify another rep's contact", () => {
       .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it("allows admin to patch rep A's contact", async () => {
@@ -435,7 +435,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
-  it("returns 403 FORBIDDEN when rep B deletes rep A's account", async () => {
+  it("returns 403 AUTH_FORBIDDEN when rep B deletes rep A's account (MINCRM-542: contacts:delete is admin-only)", async () => {
     const account = await createAccount({
       name: 'Rep A Account Delete',
       owner_id: repAId,
@@ -446,7 +446,7 @@ describe("MINCRM-81 — rep cannot modify another rep's account", () => {
       .set('Cookie', repBCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it("allows admin to patch rep A's account", async () => {

@@ -1,9 +1,12 @@
 /**
- * Viewer role write-blocking tests (MINCRM-535).
+ * Viewer role write-blocking tests (MINCRM-535, MINCRM-542).
  *
- * Verifies that users with role='viewer' receive 403 VIEWER_WRITE_BLOCKED on
+ * Verifies that users with role='viewer' receive 403 AUTH_FORBIDDEN on
  * all mutating endpoints (POST/PATCH/DELETE) while GET operations return 200/404
  * (allowed, subject to normal ownership/auth rules).
+ *
+ * Previously: AUTH_FORBIDDEN (blockViewer() middleware).
+ * Now: AUTH_FORBIDDEN (requireCapability() — viewer lacks create/edit/delete capabilities).
  *
  * Covers: contacts, accounts, deals, activities, leads, notes.
  */
@@ -107,17 +110,17 @@ afterAll(async () => {
 // ── Contacts ──────────────────────────────────────────────────────────────────
 
 describe('MINCRM-535 — viewer blocked from writing contacts', () => {
-  it('POST /contacts returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('POST /contacts returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const res = await request(app)
       .post('/api/v1/contacts')
       .set('Cookie', viewerCookie)
       .send({ first_name: 'Test', last_name: 'Contact', email: `${FILE_PREFIX}-new@example.com` });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('PATCH /contacts/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('PATCH /contacts/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const contact = await createContact({
       first_name: 'Admin',
       last_name: 'Contact',
@@ -131,10 +134,10 @@ describe('MINCRM-535 — viewer blocked from writing contacts', () => {
       .send({ first_name: 'Viewer Hacked', version: 1 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('DELETE /contacts/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('DELETE /contacts/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const contact = await createContact({
       first_name: 'Admin',
       last_name: 'Delete Target',
@@ -147,7 +150,7 @@ describe('MINCRM-535 — viewer blocked from writing contacts', () => {
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('GET /contacts returns 200 (viewer can read)', async () => {
@@ -159,17 +162,17 @@ describe('MINCRM-535 — viewer blocked from writing contacts', () => {
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 describe('MINCRM-535 — viewer blocked from writing accounts', () => {
-  it('POST /accounts returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('POST /accounts returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const res = await request(app)
       .post('/api/v1/accounts')
       .set('Cookie', viewerCookie)
       .send({ name: 'Viewer Account Attempt' });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('PATCH /accounts/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('PATCH /accounts/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const account = await createAccount({
       name: 'Admin Account Patch',
       owner_id: adminId,
@@ -181,10 +184,10 @@ describe('MINCRM-535 — viewer blocked from writing accounts', () => {
       .send({ name: 'Viewer Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('DELETE /accounts/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('DELETE /accounts/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const account = await createAccount({
       name: 'Admin Account Delete',
       owner_id: adminId,
@@ -195,7 +198,7 @@ describe('MINCRM-535 — viewer blocked from writing accounts', () => {
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('GET /accounts returns 200 (viewer can read)', async () => {
@@ -207,17 +210,17 @@ describe('MINCRM-535 — viewer blocked from writing accounts', () => {
 // ── Deals ─────────────────────────────────────────────────────────────────────
 
 describe('MINCRM-535 — viewer blocked from writing deals', () => {
-  it('POST /deals returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('POST /deals returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const res = await request(app)
       .post('/api/v1/deals')
       .set('Cookie', viewerCookie)
       .send({ name: 'Viewer Deal', stage: 'Prospecting' });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('PATCH /deals/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('PATCH /deals/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const deal = await createDeal({
       name: 'Admin Deal Patch',
       stage: 'Prospecting',
@@ -230,10 +233,10 @@ describe('MINCRM-535 — viewer blocked from writing deals', () => {
       .send({ name: 'Viewer Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('DELETE /deals/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('DELETE /deals/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const deal = await createDeal({
       name: 'Admin Deal Delete',
       stage: 'Prospecting',
@@ -243,7 +246,7 @@ describe('MINCRM-535 — viewer blocked from writing deals', () => {
     const res = await request(app).delete(`/api/v1/deals/${deal.id}`).set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('GET /deals returns 200 (viewer can read)', async () => {
@@ -255,7 +258,7 @@ describe('MINCRM-535 — viewer blocked from writing deals', () => {
 // ── Activities ────────────────────────────────────────────────────────────────
 
 describe('MINCRM-535 — viewer blocked from writing activities', () => {
-  it('POST /activities returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('POST /activities returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const res = await request(app).post('/api/v1/activities').set('Cookie', viewerCookie).send({
       type: 'Task',
       subject: 'Viewer Task Attempt',
@@ -264,10 +267,10 @@ describe('MINCRM-535 — viewer blocked from writing activities', () => {
     });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('PATCH /activities/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('PATCH /activities/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const activity = await createActivity({
       type: 'Task',
       subject: 'Admin Task',
@@ -281,10 +284,10 @@ describe('MINCRM-535 — viewer blocked from writing activities', () => {
       .send({ subject: 'Viewer Hijacked', version: 1 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('DELETE /activities/:id returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('DELETE /activities/:id returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const activity = await createActivity({
       type: 'Task',
       subject: 'Admin Task Delete',
@@ -297,7 +300,7 @@ describe('MINCRM-535 — viewer blocked from writing activities', () => {
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('GET /activities returns 200 (viewer can read)', async () => {
@@ -309,17 +312,17 @@ describe('MINCRM-535 — viewer blocked from writing activities', () => {
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 describe('MINCRM-535 — viewer blocked from writing leads', () => {
-  it('POST /leads returns 403 VIEWER_WRITE_BLOCKED', async () => {
+  it('POST /leads returns 403 AUTH_FORBIDDEN (MINCRM-542)', async () => {
     const res = await request(app)
       .post('/api/v1/leads')
       .set('Cookie', viewerCookie)
       .send({ first_name: 'Viewer', status: 'New' });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('PATCH /leads/:id returns 403 VIEWER_WRITE_BLOCKED (using non-existent UUID)', async () => {
+  it('PATCH /leads/:id returns 403 AUTH_FORBIDDEN (using non-existent UUID)', async () => {
     // 403 must fire before the 404 check — blockViewer runs first in the middleware chain
     const res = await request(app)
       .patch('/api/v1/leads/00000000-0000-0000-0000-000000000001')
@@ -327,16 +330,16 @@ describe('MINCRM-535 — viewer blocked from writing leads', () => {
       .send({ first_name: 'Hacked', version: 1 });
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it('DELETE /leads/:id returns 403 VIEWER_WRITE_BLOCKED (using non-existent UUID)', async () => {
+  it('DELETE /leads/:id returns 403 AUTH_FORBIDDEN (using non-existent UUID)', async () => {
     const res = await request(app)
       .delete('/api/v1/leads/00000000-0000-0000-0000-000000000001')
       .set('Cookie', viewerCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('VIEWER_WRITE_BLOCKED');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('GET /leads returns 200 (viewer can read)', async () => {

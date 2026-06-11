@@ -57,7 +57,9 @@ export type AuditRecordType =
   /** Teams and team membership (MINCRM-537) */
   | 'team'
   /** Per-object-type data visibility policies (MINCRM-538) */
-  | 'org_visibility_settings';
+  | 'org_visibility_settings'
+  /** Capability-based RBAC custom role definitions (MINCRM-542) */
+  | 'custom_role';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =

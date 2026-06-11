@@ -141,18 +141,21 @@ describe('PATCH /api/contacts/:id — ownership', () => {
 
 // ── DELETE /api/contacts/:id ─────────────────────────────────────────────────
 
+// Per MINCRM-542 capability matrix: contacts:delete is admin-only.
+// Reps receive 403 AUTH_FORBIDDEN from requireCapability(ContactsDelete).
 describe('DELETE /api/contacts/:id — ownership', () => {
-  it('allows the owning rep to delete their own contact', async () => {
+  it('returns 403 AUTH_FORBIDDEN when a rep attempts to delete their own contact (MINCRM-542)', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
       .delete(`/api/v1/contacts/${contact.id}`)
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(204);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
-  it("returns 403 when a rep attempts to delete another rep's contact", async () => {
+  it("returns 403 AUTH_FORBIDDEN when a rep attempts to delete another rep's contact (MINCRM-542)", async () => {
     const contact = await createContact({ ...makeContact(), owner_id: repId });
 
     const res = await request(app)
@@ -160,7 +163,7 @@ describe('DELETE /api/contacts/:id — ownership', () => {
       .set('Cookie', otherRepCookie);
 
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 
   it('allows an admin to delete any contact', async () => {
@@ -173,12 +176,13 @@ describe('DELETE /api/contacts/:id — ownership', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 404 for a non-existent contact', async () => {
+  it('returns 403 for a non-existent contact when user lacks contacts:delete (MINCRM-542)', async () => {
     const res = await request(app)
       .delete('/api/v1/contacts/00000000-0000-0000-0000-000000000000')
       .set('Cookie', repCookie);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
   });
 });
 

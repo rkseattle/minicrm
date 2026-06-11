@@ -12,7 +12,8 @@ import { makeAuthCookie } from './testUtils.js';
 import jwt from 'jsonwebtoken';
 import { vi } from 'vitest';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
-import { requireRole, blockServiceAccount } from '../middleware/requireRole.js';
+import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import type { Request, Response, NextFunction } from 'express';
 
 const FILE_PREFIX = 'mw';
@@ -219,18 +220,18 @@ describe('requireRole — called without req.user', () => {
   });
 });
 
-// ── blockServiceAccount middleware ────────────────────────────────────────────
+// ── requireCapability — service account blocking ──────────────────────────────
 
-describe('blockServiceAccount (MINCRM-533)', () => {
-  it('returns 403 SERVICE_ACCOUNT_UI_BLOCKED for a service_account user', () => {
-    const middleware = blockServiceAccount();
-    const req = { user: { role: 'service_account' } } as unknown as Request;
+describe('requireCapability — service account UI blocking (MINCRM-542)', () => {
+  it('returns 403 SERVICE_ACCOUNT_UI_BLOCKED when a service_account requests a non-api:access capability', async () => {
+    const middleware = requireCapability(Capability.ContactsView);
+    const req = { user: { id: 'test-id', role: 'service_account' } } as unknown as Request;
     const json = vi.fn();
     const status = vi.fn().mockReturnValue({ json });
-    const res = { status } as unknown as Response;
+    const res = { status, locals: {} } as unknown as Response;
     const next = vi.fn() as unknown as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(status).toHaveBeenCalledWith(403);
     expect(json).toHaveBeenCalledWith(
@@ -241,26 +242,18 @@ describe('blockServiceAccount (MINCRM-533)', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next() for non-service-account users', () => {
-    const middleware = blockServiceAccount();
-    const req = { user: { role: 'rep' } } as unknown as Request;
-    const res = {} as Response;
-    const next = vi.fn() as unknown as NextFunction;
-
-    middleware(req, res, next);
-
-    expect(next).toHaveBeenCalled();
-  });
-
-  it('calls next() when req.user is undefined (unauthenticated — let authenticate handle it)', () => {
-    const middleware = blockServiceAccount();
+  it('returns 401 when req.user is undefined', async () => {
+    const middleware = requireCapability(Capability.ContactsView);
     const req = { user: undefined } as unknown as Request;
-    const res = {} as Response;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status, locals: {} } as unknown as Response;
     const next = vi.fn() as unknown as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
-    expect(next).toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
   });
 });
 

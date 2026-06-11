@@ -4,7 +4,6 @@
  */
 
 import type { Request, Response } from 'express';
-import { hasCapability, Capability } from '../utils/userUtils.js';
 import { createDealSchema, updateDealSchema } from '@minicrm/shared/schemas/dealSchema.js';
 import {
   createDeal,
@@ -169,7 +168,7 @@ export async function updateDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -299,7 +298,7 @@ export async function linkContactHandler(req: Request, res: Response): Promise<v
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -330,7 +329,7 @@ export async function unlinkContactHandler(req: Request, res: Response): Promise
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -355,7 +354,7 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
     return;
   }
 
-  if (existing.owner_id !== req.user!.id && !hasCapability(req.user!.role, Capability.editOthers)) {
+  if (existing.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
@@ -373,14 +372,14 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
  * (MINCRM-166)
  */
 export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
-  const canReadAll = hasCapability(req.user!.role, Capability.orgWideRead);
+  const orgWideRead = req.user!.role === 'admin' || req.user!.role === 'viewer';
   const exportAll = req.query.all === 'true';
 
   // Org-wide readers (admin/viewer): export all when ?all=true, otherwise own records only.
   // All other roles (rep, manager): apply visibility filter via requestingUser so managers
   // get team-scoped results matching what they see in the list view (MINCRM-534).
-  const ownerId = canReadAll && !exportAll ? req.user!.id : undefined;
-  const requestingUser = !canReadAll ? { id: req.user!.id, role: req.user!.role } : undefined;
+  const ownerId = orgWideRead && !exportAll ? req.user!.id : undefined;
+  const requestingUser = !orgWideRead ? { id: req.user!.id, role: req.user!.role } : undefined;
 
   let accountId: string | undefined;
   if (typeof req.query.account === 'string' && req.query.account.length > 0) {

@@ -166,74 +166,10 @@ export const inviteUserResponseEnvelopeSchema = z.object({
   inviteToken: z.string().min(1),
 });
 
-// ── Role capabilities ──────────────────────────────────────────────────────────
-
-/** Capabilities that can be checked against a role. */
-export enum Capability {
-  /** May edit or delete records owned by another user. */
-  editOthers = 'editOthers',
-  /** Reads all records regardless of the active visibility policy. */
-  orgWideRead = 'orgWideRead',
-  /** May invite, deactivate, and change roles of other users. */
-  manageUsers = 'manageUsers',
-  /** May change system settings, pipeline stages, and visibility policies. */
-  manageSettings = 'manageSettings',
-}
-
-/** Map of capability flags for a role. */
-export type RoleCapabilities = Record<Capability, boolean>;
-
-/**
- * Authoritative capability map for all supported roles.
- * When custom roles are introduced (future), this map will be seeded from the DB
- * and this constant will become the bootstrap fallback.
- */
-export const ROLE_CAPABILITIES: Record<UserRole, RoleCapabilities> = {
-  admin: {
-    [Capability.editOthers]: true,
-    [Capability.orgWideRead]: true,
-    [Capability.manageUsers]: true,
-    [Capability.manageSettings]: true,
-  },
-  manager: {
-    [Capability.editOthers]: true,
-    [Capability.orgWideRead]: false,
-    [Capability.manageUsers]: false,
-    [Capability.manageSettings]: false,
-  },
-  rep: {
-    [Capability.editOthers]: false,
-    [Capability.orgWideRead]: false,
-    [Capability.manageUsers]: false,
-    [Capability.manageSettings]: false,
-  },
-  viewer: {
-    [Capability.editOthers]: false,
-    [Capability.orgWideRead]: true,
-    [Capability.manageUsers]: false,
-    [Capability.manageSettings]: false,
-  },
-  service_account: {
-    [Capability.editOthers]: false,
-    [Capability.orgWideRead]: false,
-    [Capability.manageUsers]: false,
-    [Capability.manageSettings]: false,
-  },
-};
-
-/**
- * Returns true when the given role has the specified capability.
- * Falls back to the most restrictive set of capabilities when the role is unrecognised,
- * so unknown roles are denied rather than accidentally granted access.
- *
- * @param role       - The user's role string (from JWT / DB)
- * @param capability - The capability to check
- */
-export function hasCapability(role: string, capability: Capability): boolean {
-  const caps = ROLE_CAPABILITIES[role as UserRole];
-  if (!caps) return false;
-  return caps[capability];
-}
+// ── Role capabilities — re-exported from capabilitySchema (MINCRM-542) ──────────
+// The full Capability enum and RBAC schemas live in capabilitySchema.ts.
+// Importing from userSchema continues to work for existing call sites.
+export { Capability, CAPABILITY_VALUES, capabilitySchema } from './capabilitySchema.js';
 
 // ── Inferred types ─────────────────────────────────────────────────────────────
 

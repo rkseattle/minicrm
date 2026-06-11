@@ -360,10 +360,10 @@ describe('MINCRM-536 — Bearer token HTTP authentication', () => {
     expect(res.status).toBe(403);
   });
 
-  it('service account is blocked from writing (403 VIEWER_WRITE_BLOCKED is NOT the right code — actually no blockServiceAccount applies to all routes)', async () => {
-    // Service accounts are service_account role — blockServiceAccount() blocks them
-    // from browser-UI-only routes. For write routes (contacts POST) they are NOT
-    // blocked by blockViewer() (they are not viewers). They CAN write via the API.
+  it('service account is blocked from data routes without explicit capability assignment (MINCRM-542)', async () => {
+    // Per MINCRM-542 capability matrix, service_account only has api:access by default.
+    // To write CRM data, an admin must explicitly assign contacts:create (or other capabilities)
+    // to the service account via the user role assignment API. Without that, POST /contacts → 403.
     const sa = await createUser({
       email: `${FILE_PREFIX}-sa-write@example.com`,
       name: 'SA Write',
@@ -373,7 +373,7 @@ describe('MINCRM-536 — Bearer token HTTP authentication', () => {
     });
     const issued = await issueServiceAccountToken(sa.id, ACTOR);
 
-    // Service accounts have write access to CRM data via the REST API
+    // service_account has only api:access; requireCapability(ContactsCreate) returns SERVICE_ACCOUNT_UI_BLOCKED
     const res = await request(app)
       .post('/api/v1/contacts')
       .set('Authorization', `Bearer ${issued!.plaintextToken}`)
@@ -383,7 +383,7 @@ describe('MINCRM-536 — Bearer token HTTP authentication', () => {
         email: `${FILE_PREFIX}-created-contact@example.com`,
       });
 
-    // 201 = service account successfully created a contact
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('SERVICE_ACCOUNT_UI_BLOCKED');
   });
 });

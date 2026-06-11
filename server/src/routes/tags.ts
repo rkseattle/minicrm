@@ -9,7 +9,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole, blockViewer } from '../middleware/requireRole.js';
+import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -100,7 +101,7 @@ router.get('/', authenticate, requireFeatureEnabled('tags'), asyncHandler(listTa
 router.post(
   '/',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(createTagHandler),
 );

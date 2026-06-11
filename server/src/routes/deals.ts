@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { blockViewer } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -193,7 +194,12 @@ router.get(
  *       403:
  *         description: Rep attempting to act on deals they do not own
  */
-router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkDealsHandler));
+router.post(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.DealsCreate),
+  asyncHandler(bulkDealsHandler),
+);
 
 /**
  * @openapi
@@ -260,7 +266,12 @@ router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkDealsHandler)
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.post('/', authenticate, blockViewer(), asyncHandler(createDealHandler));
+router.post(
+  '/',
+  authenticate,
+  requireCapability(Capability.DealsCreate),
+  asyncHandler(createDealHandler),
+);
 
 /**
  * @openapi
@@ -416,7 +427,12 @@ router.get('/:id', authenticate, asyncHandler(getDealHandler));
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateDealHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.DealsEdit),
+  asyncHandler(updateDealHandler),
+);
 
 /**
  * @openapi
@@ -471,7 +487,12 @@ router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateDealHandler
  *                 code: NOT_FOUND
  *                 message: Deal not found
  */
-router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteDealHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.DealsDelete),
+  asyncHandler(deleteDealHandler),
+);
 
 /**
  * @openapi
@@ -538,7 +559,7 @@ router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteDealHandle
 router.post(
   '/:id/contacts/:contactId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.DealsEdit),
   asyncHandler(linkContactHandler),
 );
 
@@ -596,7 +617,7 @@ router.post(
 router.delete(
   '/:id/contacts/:contactId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.DealsEdit),
   asyncHandler(unlinkContactHandler),
 );
 
@@ -614,7 +635,7 @@ router.get(
 router.post(
   '/:id/tags',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.DealsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(attachDealTagHandler),
 );
@@ -623,7 +644,7 @@ router.post(
 router.delete(
   '/:id/tags/:tagId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.DealsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(detachDealTagHandler),
 );

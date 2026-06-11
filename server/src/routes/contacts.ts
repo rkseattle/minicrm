@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { blockViewer } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -219,7 +220,12 @@ router.get(
  *       403:
  *         description: Rep attempting to act on contacts they do not own
  */
-router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkContactsHandler));
+router.post(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.ContactsCreate),
+  asyncHandler(bulkContactsHandler),
+);
 
 /**
  * @openapi
@@ -291,7 +297,12 @@ router.post('/bulk', authenticate, blockViewer(), asyncHandler(bulkContactsHandl
  *                 code: UNAUTHORIZED
  *                 message: Authentication required
  */
-router.post('/', authenticate, blockViewer(), asyncHandler(createContactHandler));
+router.post(
+  '/',
+  authenticate,
+  requireCapability(Capability.ContactsCreate),
+  asyncHandler(createContactHandler),
+);
 
 /**
  * @openapi
@@ -449,7 +460,12 @@ router.get('/:id', authenticate, asyncHandler(getContactHandler));
  *                 code: NOT_FOUND
  *                 message: Contact not found
  */
-router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateContactHandler));
+router.patch(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(updateContactHandler),
+);
 
 /**
  * @openapi
@@ -505,7 +521,12 @@ router.patch('/:id', authenticate, blockViewer(), asyncHandler(updateContactHand
  *                 code: NOT_FOUND
  *                 message: Contact not found
  */
-router.delete('/:id', authenticate, blockViewer(), asyncHandler(deleteContactHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.ContactsDelete),
+  asyncHandler(deleteContactHandler),
+);
 
 /**
  * @openapi
@@ -618,7 +639,12 @@ router.get('/:id/deals', authenticate, asyncHandler(listContactDealsHandler));
  *       404:
  *         description: Contact not found
  */
-router.post('/:id/merge', authenticate, blockViewer(), asyncHandler(mergeContactHandler));
+router.post(
+  '/:id/merge',
+  authenticate,
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(mergeContactHandler),
+);
 
 /**
  * @openapi
@@ -696,7 +722,12 @@ router.post('/:id/merge', authenticate, blockViewer(), asyncHandler(mergeContact
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:id/send-email', authenticate, blockViewer(), asyncHandler(sendContactEmailHandler));
+router.post(
+  '/:id/send-email',
+  authenticate,
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(sendContactEmailHandler),
+);
 
 // ── Contact Address Routes ─────────────────────────────────────────────────────
 
@@ -704,13 +735,18 @@ router.post('/:id/send-email', authenticate, blockViewer(), asyncHandler(sendCon
 router.get('/:id/addresses', authenticate, asyncHandler(listContactAddressesHandler));
 
 /** Add a new address to a contact. */
-router.post('/:id/addresses', authenticate, blockViewer(), asyncHandler(addContactAddressHandler));
+router.post(
+  '/:id/addresses',
+  authenticate,
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(addContactAddressHandler),
+);
 
 /** Update a contact address. */
 router.patch(
   '/:id/addresses/:addressId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   asyncHandler(updateContactAddressHandler),
 );
 
@@ -718,7 +754,7 @@ router.patch(
 router.delete(
   '/:id/addresses/:addressId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   asyncHandler(deleteContactAddressHandler),
 );
 
@@ -726,7 +762,7 @@ router.delete(
 router.post(
   '/:id/addresses/:addressId/set-default',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   asyncHandler(setDefaultContactAddressHandler),
 );
 
@@ -744,7 +780,7 @@ router.get(
 router.post(
   '/:id/tags',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(attachContactTagHandler),
 );
@@ -753,7 +789,7 @@ router.post(
 router.delete(
   '/:id/tags/:tagId',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(detachContactTagHandler),
 );
@@ -764,7 +800,7 @@ router.delete(
 router.post(
   '/:id/sequence-enrollments',
   authenticate,
-  blockViewer(),
+  requireCapability(Capability.SequencesEnroll),
   requireFeatureEnabled('sequencing'),
   asyncHandler(enrollContactHandler),
 );
