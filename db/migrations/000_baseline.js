@@ -1,11 +1,11 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–101 (MINCRM-528)
+ * Migration 000: Schema baseline — squash of migrations 001–106 (MINCRM-528, MINCRM-542)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 101 migrations (001–101), so
+ * Captures the full schema as it exists after all 106 migrations (001–106), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 101 individual migrations.
+ * replaying all 106 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
@@ -17,9 +17,9 @@
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–101 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–106 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (102+) run normally via `npm run migrate`
+ *   3. Future migrations (107+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -1426,6 +1426,119 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`GRANT SELECT ON TABLE public.users TO minicrm_app`);
   pgm.sql(`GRANT EXECUTE ON FUNCTION public.app_current_user_id() TO minicrm_app`);
+
+  // custom_roles / role_capabilities / user_custom_roles (migration 106 — MINCRM-542)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.custom_roles (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name        TEXT NOT NULL,
+      description TEXT,
+      is_builtin  BOOLEAN NOT NULL DEFAULT false,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT custom_roles_name_key UNIQUE (name)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.custom_roles IS 'Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles and cannot be deleted or renamed via the REST API.'`);
+
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.role_capabilities (
+      role_id    UUID NOT NULL REFERENCES public.custom_roles(id) ON DELETE CASCADE,
+      capability TEXT NOT NULL,
+      PRIMARY KEY (role_id, capability)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.role_capabilities IS 'Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum is the source of truth for valid strings; the DB stores assignments only.'`);
+
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.user_custom_roles (
+      user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      role_id UUID NOT NULL REFERENCES public.custom_roles(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, role_id)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.user_custom_roles IS 'Assignment of custom roles to users (MINCRM-542). Effective capabilities are the union of all capabilities from all assigned roles.'`);
+
+  pgm.sql(`CREATE INDEX IF NOT EXISTS user_custom_roles_user_id_idx ON public.user_custom_roles (user_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS user_custom_roles_role_id_idx ON public.user_custom_roles (role_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS role_capabilities_role_id_idx ON public.role_capabilities (role_id)`);
+
+  pgm.sql(`
+    DO $$ BEGIN
+      CREATE TRIGGER custom_roles_set_updated_at
+        BEFORE UPDATE ON public.custom_roles
+        FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.custom_roles (name, description, is_builtin) VALUES
+      ('admin',           'Full administrative access to all capabilities',        true),
+      ('manager',         'Team management with broad record access',              true),
+      ('rep',             'Standard sales representative access',                  true),
+      ('viewer',          'Read-only access across the organisation',              true),
+      ('service_account', 'Machine-to-machine API access via bearer token',        true)
+    ON CONFLICT (name) DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.role_capabilities (role_id, capability)
+    SELECT r.id, c.capability
+    FROM public.custom_roles r
+    JOIN (VALUES
+      ('admin','contacts:view'),('admin','contacts:create'),('admin','contacts:edit'),
+      ('admin','contacts:delete'),('admin','contacts:export'),
+      ('manager','contacts:view'),('manager','contacts:edit'),('manager','contacts:export'),
+      ('rep','contacts:view'),('rep','contacts:create'),('rep','contacts:edit'),
+      ('viewer','contacts:view'),
+      ('admin','deals:view'),('admin','deals:create'),('admin','deals:edit'),
+      ('admin','deals:delete'),('admin','deals:reassign'),
+      ('manager','deals:view'),('manager','deals:edit'),('manager','deals:reassign'),
+      ('rep','deals:view'),('rep','deals:create'),('rep','deals:edit'),
+      ('viewer','deals:view'),
+      ('admin','activities:view'),('admin','activities:create'),('admin','activities:edit'),
+      ('admin','activities:delete'),
+      ('manager','activities:view'),('manager','activities:edit'),
+      ('rep','activities:view'),('rep','activities:create'),('rep','activities:edit'),
+      ('viewer','activities:view'),
+      ('admin','pipelines:view'),('admin','pipelines:manage'),
+      ('manager','pipelines:view'),('rep','pipelines:view'),('viewer','pipelines:view'),
+      ('admin','sequences:view'),('admin','sequences:create'),('admin','sequences:edit'),
+      ('admin','sequences:delete'),('admin','sequences:enroll'),
+      ('manager','sequences:view'),('manager','sequences:create'),('manager','sequences:edit'),
+      ('manager','sequences:enroll'),('rep','sequences:view'),('rep','sequences:enroll'),
+      ('admin','workflows:view'),('admin','workflows:create'),('admin','workflows:edit'),
+      ('admin','workflows:delete'),('admin','workflows:activate'),
+      ('manager','workflows:view'),
+      ('admin','reports:view'),('admin','reports:create'),('admin','reports:edit'),
+      ('admin','reports:delete'),('admin','reports:export'),('admin','reports:schedule'),
+      ('manager','reports:view'),('manager','reports:create'),('manager','reports:edit'),
+      ('manager','reports:export'),('manager','reports:schedule'),
+      ('rep','reports:view'),('viewer','reports:view'),
+      ('admin','dashboards:view'),('admin','dashboards:manage'),
+      ('manager','dashboards:view'),('manager','dashboards:manage'),
+      ('rep','dashboards:view'),('viewer','dashboards:view'),
+      ('admin','forecasting:view'),('admin','forecasting:edit'),
+      ('manager','forecasting:view'),('manager','forecasting:edit'),
+      ('rep','forecasting:view'),('viewer','forecasting:view'),
+      ('admin','data:import'),('admin','data:export'),('manager','data:export'),
+      ('admin','users:view'),('admin','users:create'),('admin','users:edit'),
+      ('admin','users:delete'),('admin','teams:manage'),('admin','integrations:manage'),
+      ('admin','settings:manage'),('admin','feature_flags:manage'),
+      ('admin','audit_log:view'),
+      ('service_account','api:access')
+    ) AS c(role_name, capability) ON r.name = c.role_name
+    ON CONFLICT (role_id, capability) DO NOTHING
+  `);
+
+  pgm.sql(`
+    INSERT INTO public.user_custom_roles (user_id, role_id)
+    SELECT u.id, r.id
+    FROM public.users u
+    JOIN public.custom_roles r ON r.name = u.role AND r.is_builtin = true
+    ON CONFLICT (user_id, role_id) DO NOTHING
+  `);
 
 };
 
