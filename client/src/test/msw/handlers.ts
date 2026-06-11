@@ -2559,6 +2559,80 @@ export const handlers = [
     });
   }),
 
+  /** Custom roles: GET /api/v1/custom-roles (MINCRM-542) */
+  http.get('/api/v1/custom-roles', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 'builtin-admin-id',
+          name: 'admin',
+          description: null,
+          is_builtin: true,
+          capabilities: ['contacts:view', 'contacts:create', 'contacts:edit', 'contacts:delete'],
+          created_at: '2024-01-01T00:00:00.000Z',
+          updated_at: '2024-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'builtin-rep-id',
+          name: 'rep',
+          description: null,
+          is_builtin: true,
+          capabilities: ['contacts:view', 'contacts:create', 'contacts:edit'],
+          created_at: '2024-01-01T00:00:00.000Z',
+          updated_at: '2024-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+  }),
+
+  /** Custom roles: POST /api/v1/custom-roles (MINCRM-542) */
+  http.post('/api/v1/custom-roles', async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string;
+      description?: string;
+      capabilities: string[];
+    };
+    return HttpResponse.json(
+      {
+        data: {
+          id: 'new-role-id',
+          name: body.name,
+          description: body.description ?? null,
+          is_builtin: false,
+          capabilities: body.capabilities,
+          created_at: '2024-01-01T00:00:00.000Z',
+          updated_at: '2024-01-01T00:00:00.000Z',
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Custom roles: PUT /api/v1/custom-roles/:id (MINCRM-542) */
+  http.put('/api/v1/custom-roles/:id', async ({ request, params }) => {
+    const body = (await request.json()) as {
+      name?: string;
+      description?: string | null;
+      capabilities?: string[];
+    };
+    return HttpResponse.json({
+      data: {
+        id: params['id'] as string,
+        name: body.name ?? 'Updated Role',
+        description: body.description ?? null,
+        is_builtin: false,
+        capabilities: body.capabilities ?? [],
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z',
+      },
+    });
+  }),
+
+  /** Custom roles: DELETE /api/v1/custom-roles/:id (MINCRM-542) */
+  http.delete('/api/v1/custom-roles/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   /** Visibility settings: GET /api/settings/visibility (MINCRM-538) */
   http.get('/api/v1/settings/visibility', () => {
     return HttpResponse.json({

@@ -551,7 +551,8 @@
       "integrations": "集成",
       "features": "功能",
       "ai": "AI",
-      "visibility": "可见性"
+      "visibility": "可见性",
+      "roles": "角色"
     },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
@@ -1974,5 +1975,34 @@
     "saveSuccess": "可见性设置已更新。",
     "saveError": "保存失败，请重试。",
     "loadError": "加载失败，请重试。"
+  },
+  "rolesSettings": {
+    "sectionTitle": "角色与权限",
+    "sectionHint": "创建和管理自定义角色。分配权限以控制每个角色可以执行的操作。",
+    "newRoleButton": "新建角色",
+    "builtinBadge": "内置",
+    "editButton": "编辑",
+    "deleteButton": "删除",
+    "capabilityCount": "{{count}} 个权限",
+    "loadError": "加载角色失败，请重试。",
+    "createError": "创建角色失败，请重试。",
+    "updateError": "更新角色失败，请重试。",
+    "form": {
+      "createTitle": "新建角色",
+      "editTitle": "编辑角色",
+      "nameLabel": "名称",
+      "nameRequired": "名称为必填项",
+      "descriptionLabel": "描述",
+      "capabilitiesLabel": "权限",
+      "capabilitiesRequired": "请至少选择一个权限",
+      "saveButton": "保存",
+      "saving": "保存中…",
+      "cancelButton": "取消"
+    },
+    "deleteError": {
+      "hasAssignees": "无法删除已分配给用户的角色。请先移除相关分配。",
+      "builtin": "内置角色无法删除。",
+      "generic": "删除角色失败，请重试。"
+    }
   }
 }

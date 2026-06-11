@@ -551,7 +551,8 @@
       "integrations": "Integrationen",
       "features": "Funktionen",
       "ai": "KI",
-      "visibility": "Sichtbarkeit"
+      "visibility": "Sichtbarkeit",
+      "roles": "Rollen"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
@@ -1974,5 +1975,34 @@
     "saveSuccess": "Sichtbarkeitseinstellungen aktualisiert.",
     "saveError": "Sichtbarkeitseinstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "loadError": "Sichtbarkeitseinstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+  },
+  "rolesSettings": {
+    "sectionTitle": "Rollen & Berechtigungen",
+    "sectionHint": "Erstellen und verwalten Sie benutzerdefinierte Rollen. Weisen Sie Berechtigungen zu, um zu steuern, was jede Rolle tun darf.",
+    "newRoleButton": "Neue Rolle",
+    "builtinBadge": "Integriert",
+    "editButton": "Bearbeiten",
+    "deleteButton": "Löschen",
+    "capabilityCount": "{{count}} Berechtigungen",
+    "loadError": "Rollen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "createError": "Rolle konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+    "updateError": "Rolle konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "form": {
+      "createTitle": "Neue Rolle",
+      "editTitle": "Rolle bearbeiten",
+      "nameLabel": "Name",
+      "nameRequired": "Name ist erforderlich",
+      "descriptionLabel": "Beschreibung",
+      "capabilitiesLabel": "Berechtigungen",
+      "capabilitiesRequired": "Wählen Sie mindestens eine Berechtigung aus",
+      "saveButton": "Speichern",
+      "saving": "Wird gespeichert…",
+      "cancelButton": "Abbrechen"
+    },
+    "deleteError": {
+      "hasAssignees": "Diese Rolle kann nicht gelöscht werden, solange Benutzer ihr zugeordnet sind. Entfernen Sie zuerst diese Zuordnungen.",
+      "builtin": "Integrierte Rollen können nicht gelöscht werden.",
+      "generic": "Rolle konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
+    }
   }
 }
