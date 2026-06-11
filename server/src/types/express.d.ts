@@ -19,6 +19,15 @@ export interface JwtTokenPayload {
   login_at?: number;
   iat?: number;
   exp?: number;
+  /**
+   * How the request was authenticated (MINCRM-542).
+   * 'bearer' = service account API token via Authorization header.
+   * 'cookie' = JWT in httpOnly cookie (human session).
+   * Used by requireCapability() to distinguish machine-to-machine calls from
+   * UI calls — service accounts may use data endpoints via bearer but are
+   * blocked from UI-only routes that are cookie-only by design.
+   */
+  authMethod?: 'cookie' | 'bearer';
 }
 
 declare global {

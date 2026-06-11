@@ -95,14 +95,24 @@ async function createServiceAccount(adminClient: RestClient): Promise<UserRow> {
 /**
  * Fetches the current state of a user from the paginated list.
  * Used when we need to verify server-side state changes (e.g. has_api_token).
- * The list endpoint returns { data, total, page, limit } per PaginatedResponse<T>.
+ * Paginates through all pages (100 per page) because the E2E database accumulates
+ * users across runs and the target user may not appear in the first page.
  */
 async function fetchUserFromList(
   adminClient: RestClient,
   userId: string,
 ): Promise<UserRow | undefined> {
-  const res = await adminClient.get<{ data: UserRow[]; total: number }>('/api/v1/users?limit=100');
-  return res.body.data.find((u) => u.id === userId);
+  const PAGE_SIZE = 100;
+  let page = 1;
+  while (true) {
+    const res = await adminClient.get<{ data: UserRow[]; total: number }>(
+      `/api/v1/users?limit=${PAGE_SIZE}&page=${page}`,
+    );
+    const found = res.body.data.find((u) => u.id === userId);
+    if (found) return found;
+    if (res.body.data.length < PAGE_SIZE) return undefined;
+    page++;
+  }
 }
 
 /**

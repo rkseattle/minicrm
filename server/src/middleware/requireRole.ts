@@ -24,7 +24,7 @@
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
-import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { userCapabilities } from '../services/roleService.js';
 
 /**
@@ -70,9 +70,10 @@ export function requireRole(...roles: UserRole[]): RequestHandler {
  * res.locals.capabilities. Subsequent requireCapability() calls in the same
  * request reuse the cached set — no additional DB queries.
  *
- * Service accounts are rejected with 403 on any capability other than api:access
- * regardless of their DB-assigned capabilities, because the bearer-token path is
- * restricted to machine-to-machine use only (MINCRM-536).
+ * Service accounts that authenticate via cookie (not bearer token) are rejected with
+ * 403 SERVICE_ACCOUNT_UI_BLOCKED — they must use the bearer token path for data access.
+ * Bearer token requests from service accounts go through normal capability resolution
+ * so that integrations can read and write CRM data (MINCRM-542).
  */
 export function requireCapability(capability: Capability): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -83,9 +84,10 @@ export function requireCapability(capability: Capability): RequestHandler {
       return;
     }
 
-    // Service accounts may only use api:access — block all other capabilities
-    // regardless of what is in role_capabilities for their role.
-    if (req.user.role === 'service_account' && capability !== Capability.ApiAccess) {
+    // Cookie-authenticated service accounts are always blocked — they must use a
+    // bearer token. Bearer-authenticated service accounts are subject to normal
+    // capability resolution so integrations can call data endpoints.
+    if (req.user.role === 'service_account' && req.user.authMethod !== 'bearer') {
       res.status(403).json({
         error: {
           code: 'SERVICE_ACCOUNT_UI_BLOCKED',
@@ -132,17 +134,14 @@ export function requireCapabilities(...capabilities: Capability[]): RequestHandl
       return;
     }
 
-    if (req.user.role === 'service_account') {
-      const onlyApiAccess = capabilities.length === 1 && capabilities[0] === Capability.ApiAccess;
-      if (!onlyApiAccess) {
-        res.status(403).json({
-          error: {
-            code: 'SERVICE_ACCOUNT_UI_BLOCKED',
-            message: 'Service account tokens may not be used on this endpoint',
-          },
-        });
-        return;
-      }
+    if (req.user.role === 'service_account' && req.user.authMethod !== 'bearer') {
+      res.status(403).json({
+        error: {
+          code: 'SERVICE_ACCOUNT_UI_BLOCKED',
+          message: 'Service account tokens may not be used on this endpoint',
+        },
+      });
+      return;
     }
 
     try {

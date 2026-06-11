@@ -5,7 +5,7 @@
  * 1. Custom role CRUD works end-to-end (create, read, update, delete)
  * 2. Built-in roles cannot be modified or deleted
  * 3. A role with active assignees cannot be deleted
- * 4. contacts:delete is admin-only; reps receive 403 AUTH_FORBIDDEN
+ * 4. contacts:delete: rep can delete own contact (204); rep cannot delete another user's contact (403)
  * 5. An admin can delete any contact (204)
  * 6. Custom role list endpoint requires settings:manage
  * 7. Assigning a custom role grants its capabilities to the user
@@ -212,9 +212,43 @@ test('@functional custom role — cannot delete a role with active assignees', a
   }
 });
 
-// ── Rep cannot delete (admin-only contacts:delete) ────────────────────────────
+// ── Rep delete ownership enforcement ──────────────────────────────────────────
+// Reps have contacts:delete but the service layer enforces ownership:
+// a rep can delete their own contact but not another user's contact.
 
-test('@functional rep cannot delete a contact — contacts:delete is admin-only', async ({
+test('@functional rep can delete their own contact (contacts:delete, MINCRM-542)', async ({
+  restClient,
+  playwright,
+}) => {
+  const suffix = `${Date.now()}-${process.pid}`;
+  let repId: string | null = null;
+
+  try {
+    const {
+      repId: id,
+      repClient,
+      repContext,
+    } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
+    repId = id;
+
+    // Create contact as the rep (rep is the owner)
+    const contactRes = await repClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
+      first_name: 'Cap',
+      last_name: 'OwnDelete',
+      email: `cap-own-delete-${suffix}@example.com`,
+    });
+    const contactId = contactRes.body.contact.id;
+
+    const deleteRes = await repClient.delete(`/api/v1/contacts/${contactId}`);
+    expect(deleteRes.status).toBe(204);
+
+    await repContext.dispose();
+  } finally {
+    if (repId) await deactivateUser(restClient, repId);
+  }
+});
+
+test('@functional rep cannot delete a contact they do not own (MINCRM-542)', async ({
   restClient,
   playwright,
 }) => {
@@ -230,10 +264,11 @@ test('@functional rep cannot delete a contact — contacts:delete is admin-only'
     } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
     repId = id;
 
+    // Admin creates the contact (admin is the owner, not the rep)
     const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
       first_name: 'Cap',
-      last_name: 'Delete',
-      email: `cap-delete-${suffix}@example.com`,
+      last_name: 'OtherDelete',
+      email: `cap-other-delete-${suffix}@example.com`,
     });
     contactId = contactRes.body.contact.id;
 
@@ -244,7 +279,6 @@ test('@functional rep cannot delete a contact — contacts:delete is admin-only'
       threw = true;
       expect(err).toBeInstanceOf(RestClientError);
       expect((err as RestClientError).status).toBe(403);
-      expect(errorBody(err).error?.code).toBe('AUTH_FORBIDDEN');
     }
     expect(threw).toBe(true);
 

@@ -127,6 +127,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     name: user.name,
     role: user.role,
     status: user.status,
+    authMethod: 'cookie',
     // Preserve the JWT claims that are not in the DB record (MINCRM-365).
     login_at: decoded.login_at,
     iat: decoded.iat,
@@ -172,6 +173,7 @@ async function authenticateBearer(
     name: user.name,
     role: user.role,
     status: user.status,
+    authMethod: 'bearer',
   };
 
   runWithRequestContext(user.id, user.role, next);

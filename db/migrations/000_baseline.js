@@ -1,11 +1,11 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–107 (MINCRM-528, MINCRM-542)
+ * Migration 000: Schema baseline — squash of migrations 001–109 (MINCRM-528, MINCRM-542)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 107 migrations (001–107), so
+ * Captures the full schema as it exists after all 109 migrations (001–109), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 107 individual migrations.
+ * replaying all 109 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
@@ -17,9 +17,9 @@
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–107 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–109 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (108+) run normally via `npm run migrate`
+ *   3. Future migrations (110+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -1489,18 +1489,18 @@ exports.up = (pgm) => {
     JOIN (VALUES
       ('admin','contacts:view'),('admin','contacts:create'),('admin','contacts:edit'),
       ('admin','contacts:delete'),('admin','contacts:export'),
-      ('manager','contacts:view'),('manager','contacts:edit'),('manager','contacts:export'),
-      ('rep','contacts:view'),('rep','contacts:create'),('rep','contacts:edit'),
+      ('manager','contacts:view'),('manager','contacts:create'),('manager','contacts:edit'),('manager','contacts:delete'),('manager','contacts:export'),
+      ('rep','contacts:view'),('rep','contacts:create'),('rep','contacts:edit'),('rep','contacts:delete'),
       ('viewer','contacts:view'),
       ('admin','deals:view'),('admin','deals:create'),('admin','deals:edit'),
       ('admin','deals:delete'),('admin','deals:reassign'),
-      ('manager','deals:view'),('manager','deals:edit'),('manager','deals:reassign'),
-      ('rep','deals:view'),('rep','deals:create'),('rep','deals:edit'),
+      ('manager','deals:view'),('manager','deals:create'),('manager','deals:edit'),('manager','deals:delete'),('manager','deals:reassign'),
+      ('rep','deals:view'),('rep','deals:create'),('rep','deals:edit'),('rep','deals:delete'),
       ('viewer','deals:view'),
       ('admin','activities:view'),('admin','activities:create'),('admin','activities:edit'),
       ('admin','activities:delete'),
-      ('manager','activities:view'),('manager','activities:edit'),
-      ('rep','activities:view'),('rep','activities:create'),('rep','activities:edit'),
+      ('manager','activities:view'),('manager','activities:create'),('manager','activities:edit'),('manager','activities:delete'),
+      ('rep','activities:view'),('rep','activities:create'),('rep','activities:edit'),('rep','activities:delete'),
       ('viewer','activities:view'),
       ('admin','pipelines:view'),('admin','pipelines:manage'),
       ('manager','pipelines:view'),('rep','pipelines:view'),('viewer','pipelines:view'),
