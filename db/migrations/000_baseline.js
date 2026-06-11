@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–104 fully applied.
+ * with migrations 001–105 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -1394,6 +1394,26 @@ exports.up = (pgm) => {
     END
     $$
   `);
+  // org_visibility_settings (migration 105 — MINCRM-538)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.org_visibility_settings (
+      object_type  text        NOT NULL,
+      policy       text        NOT NULL DEFAULT 'org',
+      updated_at   timestamptz NOT NULL DEFAULT now(),
+      updated_by   uuid        REFERENCES public.users(id) ON DELETE SET NULL,
+      CONSTRAINT org_visibility_settings_pkey PRIMARY KEY (object_type),
+      CONSTRAINT org_visibility_settings_policy_check
+        CHECK (policy IN ('private', 'team', 'org')),
+      CONSTRAINT org_visibility_settings_object_type_check
+        CHECK (object_type IN ('contact', 'deal', 'activity'))
+    )
+  `);
+  pgm.sql(`
+    INSERT INTO public.org_visibility_settings (object_type, policy)
+    VALUES ('contact', 'org'), ('deal', 'org'), ('activity', 'org')
+    ON CONFLICT (object_type) DO NOTHING
+  `);
+
   pgm.sql(`GRANT USAGE ON SCHEMA public TO minicrm_app`);
   pgm.sql(`
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
