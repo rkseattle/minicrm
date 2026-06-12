@@ -12,7 +12,7 @@ import { makeAuthCookie } from './testUtils.js';
 import jwt from 'jsonwebtoken';
 import { vi } from 'vitest';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
-import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { requireRole, requireCapability, requireCapabilities } from '../middleware/requireRole.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -254,6 +254,87 @@ describe('requireCapability — service account UI blocking (MINCRM-542)', () =>
 
     expect(status).toHaveBeenCalledWith(401);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+// ── requireCapabilities — multi-capability AND gate ───────────────────────────
+
+describe('requireCapabilities (MINCRM-542)', () => {
+  it('returns 401 when req.user is undefined', async () => {
+    const middleware = requireCapabilities(Capability.ContactsView, Capability.DealsView);
+    const req = { user: undefined } as unknown as Request;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status, locals: {} } as unknown as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    await middleware(req, res, next);
+
+    expect(status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 SERVICE_ACCOUNT_UI_BLOCKED for service_account without bearer auth', async () => {
+    const middleware = requireCapabilities(Capability.ContactsView);
+    const req = { user: { id: 'sa-id', role: 'service_account' } } as unknown as Request;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status, locals: {} } as unknown as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    await middleware(req, res, next);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'SERVICE_ACCOUNT_UI_BLOCKED' }),
+      }),
+    );
+  });
+
+  it('calls next() when user has all required capabilities', async () => {
+    // repId is a real user with contacts:view and deals:view in the test DB
+    const middleware = requireCapabilities(Capability.ContactsView, Capability.DealsView);
+    const req = { user: { id: repId, role: 'rep' } } as unknown as Request;
+    const next = vi.fn() as unknown as NextFunction;
+    const res = { locals: {} } as unknown as Response;
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('returns 403 AUTH_FORBIDDEN when user is missing one capability', async () => {
+    // repId does not have settings:manage
+    const middleware = requireCapabilities(Capability.ContactsView, Capability.SettingsManage);
+    const req = { user: { id: repId, role: 'rep' } } as unknown as Request;
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    const res = { status, locals: {} } as unknown as Response;
+    const next = vi.fn() as unknown as NextFunction;
+
+    await middleware(req, res, next);
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'AUTH_FORBIDDEN' }),
+      }),
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('uses the per-request cache when res.locals.capabilities is already set', async () => {
+    const middleware = requireCapabilities(Capability.ContactsView);
+    const req = { user: { id: repId, role: 'rep' } } as unknown as Request;
+    const next = vi.fn() as unknown as NextFunction;
+    // Pre-populate the cache
+    const cachedCaps = new Set([Capability.ContactsView]);
+    const res = { locals: { capabilities: cachedCaps } } as unknown as Response;
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
   });
 });
 

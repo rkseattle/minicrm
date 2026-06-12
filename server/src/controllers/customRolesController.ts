@@ -54,9 +54,10 @@ export async function createCustomRoleHandler(req: Request, res: Response): Prom
     res.status(201).json({ data: role });
   } catch (err: unknown) {
     const serviceErr = err as Error & { code?: string; statusCode?: number };
-    if (serviceErr.code === 'CUSTOM_ROLE_DUPLICATE') {
+    // Postgres unique_violation on custom_roles.name
+    if (serviceErr.code === 'CUSTOM_ROLE_DUPLICATE' || serviceErr.code === '23505') {
       res.status(409).json({
-        error: { code: 'CUSTOM_ROLE_DUPLICATE', message: serviceErr.message },
+        error: { code: 'CUSTOM_ROLE_DUPLICATE', message: 'A role with that name already exists' },
       });
       return;
     }
