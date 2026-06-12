@@ -2043,6 +2043,8 @@
       "roleMember": "Member",
       "userLabel": "User",
       "userPlaceholder": "Select a user",
+      "showButton": "Members",
+      "hideButton": "Hide members",
       "noMembers": "No members yet.",
       "addError": "Failed to add member. Please try again.",
       "removeError": "Failed to remove member. Please try again.",

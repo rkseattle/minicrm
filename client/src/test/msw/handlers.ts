@@ -2651,4 +2651,78 @@ export const handlers = [
       },
     });
   }),
+
+  /** Teams: GET /api/v1/teams (MINCRM-539) */
+  http.get('/api/v1/teams', () => {
+    return HttpResponse.json({ teams: [] });
+  }),
+
+  /** Teams: POST /api/v1/teams (MINCRM-539) */
+  http.post('/api/v1/teams', async ({ request }) => {
+    const body = (await request.json()) as { name: string };
+    return HttpResponse.json(
+      {
+        team: {
+          id: 'mock-team-id',
+          name: body.name,
+          manager_id: null,
+          manager_name: null,
+          parent_team_id: null,
+          member_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Teams: PUT /api/v1/teams/:id (MINCRM-539) */
+  http.put('/api/v1/teams/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { name?: string };
+    return HttpResponse.json({
+      team: {
+        id: params.id,
+        name: body.name ?? 'Mock Team',
+        manager_id: null,
+        manager_name: null,
+        parent_team_id: null,
+        member_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    });
+  }),
+
+  /** Teams: DELETE /api/v1/teams/:id (MINCRM-539) */
+  http.delete('/api/v1/teams/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** Teams: GET /api/v1/teams/:id/members (MINCRM-539) */
+  http.get('/api/v1/teams/:id/members', () => {
+    return HttpResponse.json({ members: [] });
+  }),
+
+  /** Teams: POST /api/v1/teams/:id/members (MINCRM-539) */
+  http.post('/api/v1/teams/:id/members', async ({ params, request }) => {
+    const body = (await request.json()) as { user_id: string; role: string };
+    return HttpResponse.json(
+      {
+        member: {
+          team_id: params.id,
+          user_id: body.user_id,
+          user_name: 'Mock User',
+          user_email: 'mock@example.com',
+          role: body.role,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Teams: DELETE /api/v1/teams/:id/members/:userId (MINCRM-539) */
+  http.delete('/api/v1/teams/:id/members/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

@@ -651,8 +651,8 @@ export default function TeamsSettings() {
                       aria-expanded={expandedId === team.id}
                     >
                       {expandedId === team.id
-                        ? t('teamsSettings.members.sectionTitle')
-                        : t('teamsSettings.members.sectionTitle')}
+                        ? t('teamsSettings.members.hideButton')
+                        : t('teamsSettings.members.showButton')}
                     </Button>
                     <Button
                       variant="secondary"

@@ -2043,6 +2043,8 @@
       "roleMember": "Membre",
       "userLabel": "Utilisateur",
       "userPlaceholder": "Sélectionner un utilisateur",
+      "showButton": "Membres",
+      "hideButton": "Masquer les membres",
       "noMembers": "Aucun membre pour l'instant.",
       "addError": "Échec de l'ajout du membre. Veuillez réessayer.",
       "removeError": "Échec de la suppression du membre. Veuillez réessayer.",
