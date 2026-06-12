@@ -103,18 +103,21 @@ async function wouldCreateCycle(
   return result.rows.length > 0;
 }
 
-/** Fetches a single team row with manager name join using the shared pool. Does not check existence. */
+/** Fetches a single team row with manager name and member count. Does not check existence. */
 async function fetchTeamWithManager(id: string): Promise<TeamResponse> {
-  const result = await pool.query<TeamRowWithManager>(
+  const result = await pool.query<TeamRowWithMemberCount>(
     `SELECT t.id, t.name, t.manager_id, t.parent_team_id, t.created_at, t.updated_at,
-            u.name AS manager_name
+            u.name AS manager_name,
+            COUNT(m.user_id)::text AS member_count
        FROM teams t
        LEFT JOIN users u ON u.id = t.manager_id
-      WHERE t.id = $1`,
+       LEFT JOIN team_memberships m ON m.team_id = t.id
+      WHERE t.id = $1
+      GROUP BY t.id, u.name`,
     [id],
   );
   // Safe non-null assertion: callers only call this after confirming the row exists.
-  return toTeamResponse(result.rows[0]!);
+  return toTeamResponseWithCount(result.rows[0]!);
 }
 
 // ── CRUD ───────────────────────────────────────────────────────────────────────
@@ -178,16 +181,19 @@ export async function createTeam(
  * Returns a single team by ID with manager name, or null when not found.
  */
 export async function getTeamById(id: string): Promise<TeamResponse | null> {
-  const result = await pool.query<TeamRowWithManager>(
+  const result = await pool.query<TeamRowWithMemberCount>(
     `SELECT t.id, t.name, t.manager_id, t.parent_team_id, t.created_at, t.updated_at,
-            u.name AS manager_name
+            u.name AS manager_name,
+            COUNT(m.user_id)::text AS member_count
        FROM teams t
        LEFT JOIN users u ON u.id = t.manager_id
-      WHERE t.id = $1`,
+       LEFT JOIN team_memberships m ON m.team_id = t.id
+      WHERE t.id = $1
+      GROUP BY t.id, u.name`,
     [id],
   );
   if (!result.rows[0]) return null;
-  return toTeamResponse(result.rows[0]);
+  return toTeamResponseWithCount(result.rows[0]);
 }
 
 /**

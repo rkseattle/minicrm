@@ -51,10 +51,13 @@ function buildTreeNodes(teams: TeamResponse[]): TreeNode[] {
   }
 
   const result: TreeNode[] = [];
+  const visited = new Set<string>();
 
   function walk(parentId: string | null, depth: number) {
     const children = byParent.get(parentId) ?? [];
     for (const team of children) {
+      if (visited.has(team.id)) continue;
+      visited.add(team.id);
       result.push({ team, depth });
       walk(team.id, depth + 1);
     }
@@ -474,7 +477,7 @@ export default function TeamsSettings() {
       const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data
         ?.error?.code;
       if (code === 'TEAM_NAME_DUPLICATE') {
-        setCreateError(t('teamsSettings.createError'));
+        setCreateError(t('teamsSettings.createError_duplicate'));
       } else {
         setCreateError(t('teamsSettings.createError'));
       }
@@ -498,7 +501,7 @@ export default function TeamsSettings() {
       const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data
         ?.error?.code;
       if (code === 'TEAM_CIRCULAR_REFERENCE') {
-        setUpdateError(t('teamsSettings.updateError'));
+        setUpdateError(t('teamsSettings.updateError_circular'));
       } else {
         setUpdateError(t('teamsSettings.updateError'));
       }

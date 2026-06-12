@@ -2020,7 +2020,9 @@
     "noParent": "Ninguno",
     "loadError": "Error al cargar los equipos. Inténtelo de nuevo.",
     "createError": "Error al crear el equipo. Inténtelo de nuevo.",
+    "createError_duplicate": "Ya existe un equipo con ese nombre.",
     "updateError": "Error al actualizar el equipo. Inténtelo de nuevo.",
+    "updateError_circular": "Un equipo no puede ser su propio antepasado.",
     "form": {
       "createTitle": "Nuevo equipo",
       "editTitle": "Editar equipo",
