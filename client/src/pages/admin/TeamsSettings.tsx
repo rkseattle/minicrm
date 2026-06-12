@@ -662,6 +662,8 @@ export default function TeamsSettings() {
                       size="sm"
                       onClick={() => {
                         setEditingId(team.id);
+                        setCreating(false);
+                        setCreateError(null);
                         setDeleteError(null);
                         setUpdateError(null);
                       }}
