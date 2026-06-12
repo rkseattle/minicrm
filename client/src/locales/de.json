@@ -2043,6 +2043,8 @@
       "roleMember": "Mitglied",
       "userLabel": "Benutzer",
       "userPlaceholder": "Benutzer auswählen",
+      "showButton": "Mitglieder",
+      "hideButton": "Mitglieder ausblenden",
       "noMembers": "Noch keine Mitglieder.",
       "addError": "Mitglied konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.",
       "removeError": "Mitglied konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",

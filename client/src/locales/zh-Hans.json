@@ -2043,6 +2043,8 @@
       "roleMember": "成员",
       "userLabel": "用户",
       "userPlaceholder": "选择用户",
+      "showButton": "成员",
+      "hideButton": "隐藏成员",
       "noMembers": "暂无成员。",
       "addError": "添加成员失败，请重试。",
       "removeError": "移除成员失败，请重试。",
