@@ -2023,6 +2023,7 @@
     "createError_duplicate": "已存在同名团队。",
     "updateError": "更新团队失败，请重试。",
     "updateError_circular": "团队不能成为自身的上级。",
+    "updateError_duplicate": "已存在同名团队。",
     "form": {
       "createTitle": "新建团队",
       "editTitle": "编辑团队",
