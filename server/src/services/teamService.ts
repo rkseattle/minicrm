@@ -30,6 +30,11 @@ interface TeamRowWithManager extends TeamRow {
   manager_name: string | null;
 }
 
+/** Team row joined with manager name and membership count for list responses */
+interface TeamRowWithMemberCount extends TeamRowWithManager {
+  member_count: string; // PostgreSQL COUNT returns text via ::text cast
+}
+
 /** Membership row joined with user details for API responses */
 interface MembershipRowWithUser {
   team_id: string;
@@ -39,16 +44,21 @@ interface MembershipRowWithUser {
   role: TeamMemberRole;
 }
 
-function toTeamResponse(row: TeamRowWithManager): TeamResponse {
+function toTeamResponse(row: TeamRowWithManager, memberCount = 0): TeamResponse {
   return {
     id: row.id,
     name: row.name,
     manager_id: row.manager_id,
     manager_name: row.manager_name,
     parent_team_id: row.parent_team_id,
+    member_count: memberCount,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
   };
+}
+
+function toTeamResponseWithCount(row: TeamRowWithMemberCount): TeamResponse {
+  return toTeamResponse(row, parseInt(row.member_count, 10));
 }
 
 function toTeamMemberResponse(row: MembershipRowWithUser): TeamMemberResponse {
@@ -184,14 +194,17 @@ export async function getTeamById(id: string): Promise<TeamResponse | null> {
  * Returns all teams ordered by name.
  */
 export async function listTeams(): Promise<TeamResponse[]> {
-  const result = await pool.query<TeamRowWithManager>(
+  const result = await pool.query<TeamRowWithMemberCount>(
     `SELECT t.id, t.name, t.manager_id, t.parent_team_id, t.created_at, t.updated_at,
-            u.name AS manager_name
+            u.name AS manager_name,
+            COUNT(m.user_id)::text AS member_count
        FROM teams t
        LEFT JOIN users u ON u.id = t.manager_id
+       LEFT JOIN team_memberships m ON m.team_id = t.id
+      GROUP BY t.id, u.name
       ORDER BY t.name ASC`,
   );
-  return result.rows.map(toTeamResponse);
+  return result.rows.map(toTeamResponseWithCount);
 }
 
 /**

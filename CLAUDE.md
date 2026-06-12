@@ -56,8 +56,8 @@ qa/e2e/
 
 ## Migration Baseline Squash (MINCRM-528)
 
-`db/migrations/000_baseline.js` captures the full schema after migrations 001–101.
-Fresh environments use it to skip replaying 101 individual migrations.
+`db/migrations/000_baseline.js` captures the full schema after all migrations.
+Fresh environments use it to skip replaying all individual migrations.
 
 ### Fresh environment setup
 
@@ -72,8 +72,8 @@ DATABASE_URL=postgres://... npm run migrate:fresh --workspace=minicrm-server
 This script (`server/src/scripts/migrate-fresh.ts`):
 
 1. Runs **only** `000_baseline` (`count: 1`) — creates the full schema
-2. Marks migrations 001–101 as applied via node-pg-migrate's `fake` mode
-3. Future migrations (102+) run normally via `npm run migrate`
+2. Marks migrations 001–N as applied via node-pg-migrate's `fake` mode
+3. Future migrations (N+) run normally via `npm run migrate`
 
 ### Existing deployments
 
@@ -466,6 +466,7 @@ void fireAutomationTrigger('deal_stage_changed', {
 - [ ] Service-layer unit test covering the new function, including ownership enforcement
 - [ ] Functional E2E spec updated or added for the new behaviour
 - [ ] OpenAPI spec passes `npm run lint:api --workspace=minicrm-server`
+- [ ] Capabilities & Roles enforcement
 
 ---
 
@@ -544,6 +545,7 @@ bash qa/scripts/check-behavior-layer.sh     # if qa/e2e/tests/ changed
 bash qa/scripts/check-settings-mutations.sh # if any spec mutates system settings
 
 # Step 5 — E2E functional suite (ALWAYS — no scope exceptions)
+date
 rm -rf qa/e2e/test-results/
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
 ```
@@ -759,3 +761,4 @@ Orphan detection SQL for DBA diagnostics: see `docs/adr/` or run targeted `NOT E
 - [ ] **Framework purity** — `bash qa/scripts/check-framework-purity.sh` if `qa/e2e/framework/` touched
 - [ ] **Behavior layer** — `bash qa/scripts/check-behavior-layer.sh` if `qa/e2e/tests/` touched
 - [ ] **Settings mutations** — `bash qa/scripts/check-settings-mutations.sh` if any spec mutates settings
+- [ ] **Roles & Capabilities** - CRUD operations are scoped appropriately for least priveledge

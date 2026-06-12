@@ -122,6 +122,35 @@ describe('listTeams', () => {
     const zebraIdx = names.indexOf('Zebra Team');
     expect(alphaIdx).toBeLessThan(zebraIdx);
   });
+
+  it('returns member_count = 0 for teams with no members', async () => {
+    const team = await createTeam({ name: 'Empty Team' }, ACTOR);
+    const teams = await listTeams();
+    const found = teams.find((t) => t.id === team.id);
+    expect(found).toBeDefined();
+    expect(found!.member_count).toBe(0);
+  });
+
+  it('returns correct member_count after adding members', async () => {
+    const user1 = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-mc1@example.com',
+      name: 'MC User 1',
+    });
+    const user2 = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-mc2@example.com',
+      name: 'MC User 2',
+    });
+    const team = await createTeam({ name: 'Counted Team' }, ACTOR);
+    await addTeamMember(team.id, user1.id, 'member', ACTOR);
+    await addTeamMember(team.id, user2.id, 'lead', ACTOR);
+
+    const teams = await listTeams();
+    const found = teams.find((t) => t.id === team.id);
+    expect(found).toBeDefined();
+    expect(found!.member_count).toBe(2);
+  });
 });
 
 // ── updateTeam ─────────────────────────────────────────────────────────────────

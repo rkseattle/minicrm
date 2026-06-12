@@ -6,8 +6,9 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireCapability } from '../middleware/requireRole.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import {
   listTeamsHandler,
   getTeamHandler,
@@ -77,11 +78,16 @@ router.get('/', authenticate, asyncHandler(listTeamsHandler));
  *       401:
  *         description: Not authenticated
  *       403:
- *         description: Forbidden — admin role required
+ *         description: Forbidden — teams:manage capability required
  *       409:
  *         description: A team with this name already exists
  */
-router.post('/', authenticate, requireRole('admin'), asyncHandler(createTeamHandler));
+router.post(
+  '/',
+  authenticate,
+  requireCapability(Capability.TeamsManage),
+  asyncHandler(createTeamHandler),
+);
 
 /**
  * @openapi
@@ -153,13 +159,18 @@ router.get('/:id', authenticate, asyncHandler(getTeamHandler));
  *       401:
  *         description: Not authenticated
  *       403:
- *         description: Forbidden — admin role required
+ *         description: Forbidden — teams:manage capability required
  *       404:
  *         description: Team not found
  *       409:
  *         description: A team with this name already exists
  */
-router.put('/:id', authenticate, requireRole('admin'), asyncHandler(updateTeamHandler));
+router.put(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.TeamsManage),
+  asyncHandler(updateTeamHandler),
+);
 
 /**
  * @openapi
@@ -183,13 +194,18 @@ router.put('/:id', authenticate, requireRole('admin'), asyncHandler(updateTeamHa
  *       401:
  *         description: Not authenticated
  *       403:
- *         description: Forbidden — admin role required
+ *         description: Forbidden — teams:manage capability required
  *       404:
  *         description: Team not found
  *       409:
  *         description: Team has child teams and cannot be deleted
  */
-router.delete('/:id', authenticate, requireRole('admin'), asyncHandler(deleteTeamHandler));
+router.delete(
+  '/:id',
+  authenticate,
+  requireCapability(Capability.TeamsManage),
+  asyncHandler(deleteTeamHandler),
+);
 
 /**
  * @openapi
@@ -263,13 +279,18 @@ router.get('/:id/members', authenticate, asyncHandler(listTeamMembersHandler));
  *       401:
  *         description: Not authenticated
  *       403:
- *         description: Forbidden — admin role required
+ *         description: Forbidden — teams:manage capability required
  *       404:
  *         description: Team or user not found
  *       409:
  *         description: User is already a member of this team
  */
-router.post('/:id/members', authenticate, requireRole('admin'), asyncHandler(addTeamMemberHandler));
+router.post(
+  '/:id/members',
+  authenticate,
+  requireCapability(Capability.TeamsManage),
+  asyncHandler(addTeamMemberHandler),
+);
 
 /**
  * @openapi
@@ -299,14 +320,14 @@ router.post('/:id/members', authenticate, requireRole('admin'), asyncHandler(add
  *       401:
  *         description: Not authenticated
  *       403:
- *         description: Forbidden — admin role required
+ *         description: Forbidden — teams:manage capability required
  *       404:
  *         description: Team or member not found
  */
 router.delete(
   '/:id/members/:userId',
   authenticate,
-  requireRole('admin'),
+  requireCapability(Capability.TeamsManage),
   asyncHandler(removeTeamMemberHandler),
 );
 
