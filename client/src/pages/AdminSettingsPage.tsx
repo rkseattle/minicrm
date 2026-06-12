@@ -26,6 +26,7 @@ import FeatureFlagsSettings from '@/pages/admin/FeatureFlagsSettings.js';
 import AiSettings from '@/pages/admin/AiSettings.js';
 import VisibilitySettings from '@/pages/admin/VisibilitySettings.js';
 import RolesSettings from '@/pages/admin/RolesSettings.js';
+import TeamsSettings from '@/pages/admin/TeamsSettings.js';
 
 type TabKey =
   | 'general'
@@ -38,7 +39,8 @@ type TabKey =
   | 'features'
   | 'ai'
   | 'visibility'
-  | 'roles';
+  | 'roles'
+  | 'teams';
 
 const TAB_KEYS: TabKey[] = [
   'general',
@@ -52,6 +54,7 @@ const TAB_KEYS: TabKey[] = [
   'ai',
   'visibility',
   'roles',
+  'teams',
 ];
 
 const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
@@ -66,6 +69,7 @@ const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
   ai: AiSettings,
   visibility: VisibilitySettings,
   roles: RolesSettings,
+  teams: TeamsSettings,
 };
 
 function isValidTab(value: string | null): value is TabKey {
