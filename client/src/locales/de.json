@@ -552,7 +552,8 @@
       "features": "Funktionen",
       "ai": "KI",
       "visibility": "Sichtbarkeit",
-      "roles": "Rollen"
+      "roles": "Rollen",
+      "teams": "Teams"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",
@@ -2004,5 +2005,54 @@
       "builtin": "Integrierte Rollen können nicht gelöscht werden.",
       "generic": "Rolle konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
     }
+  },
+  "teamsSettings": {
+    "sectionTitle": "Teamverwaltung",
+    "sectionHint": "Teams erstellen und verwalten, um Benutzer zu organisieren und Zugriff zu steuern.",
+    "newTeamButton": "Neues Team",
+    "editButton": "Bearbeiten",
+    "deleteButton": "Löschen",
+    "memberCount": "{{count}} Mitglied",
+    "memberCount_other": "{{count}} Mitglieder",
+    "managerLabel": "Manager",
+    "noManager": "Kein Manager",
+    "parentLabel": "Übergeordnetes Team",
+    "noParent": "Keines",
+    "loadError": "Teams konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "createError": "Team konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+    "updateError": "Team konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "form": {
+      "createTitle": "Neues Team",
+      "editTitle": "Team bearbeiten",
+      "nameLabel": "Teamname",
+      "nameRequired": "Teamname ist erforderlich",
+      "managerLabel": "Manager",
+      "managerPlaceholder": "Kein Manager",
+      "parentLabel": "Übergeordnetes Team",
+      "parentPlaceholder": "Keines (oberste Ebene)",
+      "saveButton": "Speichern",
+      "saving": "Wird gespeichert…",
+      "cancelButton": "Abbrechen"
+    },
+    "members": {
+      "sectionTitle": "Mitglieder",
+      "addButton": "Mitglied hinzufügen",
+      "removeButton": "Entfernen",
+      "roleLabel": "Rolle",
+      "roleLead": "Lead",
+      "roleMember": "Mitglied",
+      "userLabel": "Benutzer",
+      "userPlaceholder": "Benutzer auswählen",
+      "noMembers": "Noch keine Mitglieder.",
+      "addError": "Mitglied konnte nicht hinzugefügt werden. Bitte versuchen Sie es erneut.",
+      "removeError": "Mitglied konnte nicht entfernt werden. Bitte versuchen Sie es erneut.",
+      "alreadyMember": "Dieser Benutzer ist bereits Mitglied dieses Teams."
+    },
+    "deleteError": {
+      "hasChildren": "Dieses Team hat Unterteams. Bitte weisen Sie diese neu zu oder löschen Sie sie zuerst.",
+      "generic": "Team konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
+    },
+    "empty": "Es wurden noch keine Teams erstellt.",
+    "loading": "Teams werden geladen…"
   }
 }

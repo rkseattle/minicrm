@@ -552,7 +552,8 @@
       "features": "Fonctionnalités",
       "ai": "IA",
       "visibility": "Visibilité",
-      "roles": "Rôles"
+      "roles": "Rôles",
+      "teams": "Équipes"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",
@@ -2004,5 +2005,54 @@
       "builtin": "Les rôles intégrés ne peuvent pas être supprimés.",
       "generic": "Échec de la suppression du rôle. Veuillez réessayer."
     }
+  },
+  "teamsSettings": {
+    "sectionTitle": "Gestion des équipes",
+    "sectionHint": "Créez et gérez des équipes pour organiser les utilisateurs et contrôler les accès.",
+    "newTeamButton": "Nouvelle équipe",
+    "editButton": "Modifier",
+    "deleteButton": "Supprimer",
+    "memberCount": "{{count}} membre",
+    "memberCount_other": "{{count}} membres",
+    "managerLabel": "Responsable",
+    "noManager": "Aucun responsable",
+    "parentLabel": "Équipe parente",
+    "noParent": "Aucune",
+    "loadError": "Échec du chargement des équipes. Veuillez réessayer.",
+    "createError": "Échec de la création de l'équipe. Veuillez réessayer.",
+    "updateError": "Échec de la mise à jour de l'équipe. Veuillez réessayer.",
+    "form": {
+      "createTitle": "Nouvelle équipe",
+      "editTitle": "Modifier l'équipe",
+      "nameLabel": "Nom de l'équipe",
+      "nameRequired": "Le nom de l'équipe est obligatoire",
+      "managerLabel": "Responsable",
+      "managerPlaceholder": "Aucun responsable",
+      "parentLabel": "Équipe parente",
+      "parentPlaceholder": "Aucune (équipe de premier niveau)",
+      "saveButton": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancelButton": "Annuler"
+    },
+    "members": {
+      "sectionTitle": "Membres",
+      "addButton": "Ajouter un membre",
+      "removeButton": "Retirer",
+      "roleLabel": "Rôle",
+      "roleLead": "Responsable",
+      "roleMember": "Membre",
+      "userLabel": "Utilisateur",
+      "userPlaceholder": "Sélectionner un utilisateur",
+      "noMembers": "Aucun membre pour l'instant.",
+      "addError": "Échec de l'ajout du membre. Veuillez réessayer.",
+      "removeError": "Échec de la suppression du membre. Veuillez réessayer.",
+      "alreadyMember": "Cet utilisateur est déjà membre de cette équipe."
+    },
+    "deleteError": {
+      "hasChildren": "Cette équipe a des sous-équipes. Réaffectez-les ou supprimez-les d'abord.",
+      "generic": "Échec de la suppression de l'équipe. Veuillez réessayer."
+    },
+    "empty": "Aucune équipe n'a encore été créée.",
+    "loading": "Chargement des équipes…"
   }
 }
