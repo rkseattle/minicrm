@@ -2020,7 +2020,9 @@
     "noParent": "None",
     "loadError": "Failed to load teams. Please try again.",
     "createError": "Failed to create team. Please try again.",
+    "createError_duplicate": "A team with that name already exists.",
     "updateError": "Failed to update team. Please try again.",
+    "updateError_circular": "A team cannot be its own ancestor.",
     "form": {
       "createTitle": "New team",
       "editTitle": "Edit team",

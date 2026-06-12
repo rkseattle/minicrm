@@ -2020,7 +2020,9 @@
     "noParent": "Aucune",
     "loadError": "Échec du chargement des équipes. Veuillez réessayer.",
     "createError": "Échec de la création de l'équipe. Veuillez réessayer.",
+    "createError_duplicate": "Une équipe portant ce nom existe déjà.",
     "updateError": "Échec de la mise à jour de l'équipe. Veuillez réessayer.",
+    "updateError_circular": "Une équipe ne peut pas être son propre ancêtre.",
     "form": {
       "createTitle": "Nouvelle équipe",
       "editTitle": "Modifier l'équipe",
