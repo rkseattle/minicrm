@@ -303,22 +303,26 @@ export async function deleteCustomRole(id: string, actor: AuditActor): Promise<v
     throw err;
   }
 
-  const assigneeCount = await pool.query<{ count: string }>(
-    `SELECT COUNT(*) AS count FROM public.user_custom_roles WHERE role_id = $1`,
-    [id],
-  );
-  if (parseInt(assigneeCount.rows[0].count, 10) > 0) {
-    const err = new Error(
-      'Cannot delete a role that is currently assigned to users. Reassign those users first.',
-    ) as Error & { statusCode: number; code: string };
-    err.statusCode = 409;
-    err.code = 'CUSTOM_ROLE_HAS_ASSIGNEES';
-    throw err;
-  }
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Lock the role row to serialise concurrent assignment + delete operations,
+    // then recheck assignees inside the transaction to close the TOCTOU window.
+    await client.query(`SELECT id FROM public.custom_roles WHERE id = $1 FOR UPDATE`, [id]);
+    const assigneeCount = await client.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM public.user_custom_roles WHERE role_id = $1`,
+      [id],
+    );
+    if (parseInt(assigneeCount.rows[0].count, 10) > 0) {
+      const err = new Error(
+        'Cannot delete a role that is currently assigned to users. Reassign those users first.',
+      ) as Error & { statusCode: number; code: string };
+      err.statusCode = 409;
+      err.code = 'CUSTOM_ROLE_HAS_ASSIGNEES';
+      throw err;
+    }
+
     await client.query(`DELETE FROM public.custom_roles WHERE id = $1`, [id]);
     await writeAuditEntry(client, {
       recordType: 'custom_role',

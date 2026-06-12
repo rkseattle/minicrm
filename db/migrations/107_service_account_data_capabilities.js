@@ -15,8 +15,11 @@
  * where the service_account role is explicitly permitted.
  */
 
-/** @type {import('node-pg-migrate').MigrationBuilder} */
-export const up = (pgm) => {
+/** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
+exports.shorthands = undefined;
+
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+exports.up = (pgm) => {
   pgm.sql(`
     INSERT INTO public.role_capabilities (role_id, capability)
     SELECT r.id, c.capability
@@ -42,8 +45,8 @@ export const up = (pgm) => {
   `);
 };
 
-/** @type {import('node-pg-migrate').MigrationBuilder} */
-export const down = (pgm) => {
+/** @param {import('node-pg-migrate').MigrationBuilder} pgm */
+exports.down = (pgm) => {
   pgm.sql(`
     DELETE FROM public.role_capabilities
     WHERE role_id = (
