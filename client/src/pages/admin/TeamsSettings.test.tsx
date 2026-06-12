@@ -564,3 +564,24 @@ describe('TeamsSettings — member remove', () => {
     );
   });
 });
+
+describe('TeamsSettings — dual-form guard', () => {
+  it('closes the create form when Edit is clicked on a team row', async () => {
+    server.use(http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })));
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('teams-settings-new-button')).toBeInTheDocument();
+    });
+
+    // open the create form
+    fireEvent.click(screen.getByTestId('teams-settings-new-button'));
+    expect(screen.getByTestId('teams-settings-create-form')).toBeInTheDocument();
+
+    // clicking edit on a row must close the create form
+    fireEvent.click(screen.getByTestId(`team-edit-button-${TEAM_1.id}`));
+    expect(screen.queryByTestId('teams-settings-create-form')).not.toBeInTheDocument();
+    expect(screen.getByTestId('team-form')).toBeInTheDocument();
+  });
+});
