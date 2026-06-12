@@ -40,6 +40,7 @@ export interface TeamResponse {
   manager_id: string | null;
   manager_name: string | null;
   parent_team_id: string | null;
+  member_count: number;
   created_at: string;
   updated_at: string;
 }
