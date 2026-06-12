@@ -552,7 +552,8 @@
       "features": "Features",
       "ai": "AI",
       "visibility": "Visibility",
-      "roles": "Roles"
+      "roles": "Roles",
+      "teams": "Teams"
     },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",
@@ -2004,5 +2005,54 @@
       "builtin": "Built-in roles cannot be deleted.",
       "generic": "Failed to delete role. Please try again."
     }
+  },
+  "teamsSettings": {
+    "sectionTitle": "Team Management",
+    "sectionHint": "Create and manage teams to organize users and scope access.",
+    "newTeamButton": "New team",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "memberCount": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "managerLabel": "Manager",
+    "noManager": "No manager",
+    "parentLabel": "Parent team",
+    "noParent": "None",
+    "loadError": "Failed to load teams. Please try again.",
+    "createError": "Failed to create team. Please try again.",
+    "updateError": "Failed to update team. Please try again.",
+    "form": {
+      "createTitle": "New team",
+      "editTitle": "Edit team",
+      "nameLabel": "Team name",
+      "nameRequired": "Team name is required",
+      "managerLabel": "Manager",
+      "managerPlaceholder": "No manager",
+      "parentLabel": "Parent team",
+      "parentPlaceholder": "None (top-level team)",
+      "saveButton": "Save",
+      "saving": "Saving…",
+      "cancelButton": "Cancel"
+    },
+    "members": {
+      "sectionTitle": "Members",
+      "addButton": "Add member",
+      "removeButton": "Remove",
+      "roleLabel": "Role",
+      "roleLead": "Lead",
+      "roleMember": "Member",
+      "userLabel": "User",
+      "userPlaceholder": "Select a user",
+      "noMembers": "No members yet.",
+      "addError": "Failed to add member. Please try again.",
+      "removeError": "Failed to remove member. Please try again.",
+      "alreadyMember": "This user is already a member of this team."
+    },
+    "deleteError": {
+      "hasChildren": "This team has sub-teams. Reassign or delete those sub-teams first.",
+      "generic": "Failed to delete team. Please try again."
+    },
+    "empty": "No teams have been created yet.",
+    "loading": "Loading teams…"
   }
 }

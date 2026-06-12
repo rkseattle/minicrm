@@ -552,7 +552,8 @@
       "features": "Funciones",
       "ai": "IA",
       "visibility": "Visibilidad",
-      "roles": "Roles"
+      "roles": "Roles",
+      "teams": "Equipos"
     },
     "defaultLanguageLabel": "Idioma predeterminado",
     "defaultLanguageHint": "Establece el idioma para todos los usuarios que no han configurado una preferencia personal.",
@@ -2004,5 +2005,54 @@
       "builtin": "Los roles integrados no se pueden eliminar.",
       "generic": "Error al eliminar el rol. Inténtelo de nuevo."
     }
+  },
+  "teamsSettings": {
+    "sectionTitle": "Gestión de equipos",
+    "sectionHint": "Cree y gestione equipos para organizar usuarios y controlar el acceso.",
+    "newTeamButton": "Nuevo equipo",
+    "editButton": "Editar",
+    "deleteButton": "Eliminar",
+    "memberCount": "{{count}} miembro",
+    "memberCount_other": "{{count}} miembros",
+    "managerLabel": "Responsable",
+    "noManager": "Sin responsable",
+    "parentLabel": "Equipo superior",
+    "noParent": "Ninguno",
+    "loadError": "Error al cargar los equipos. Inténtelo de nuevo.",
+    "createError": "Error al crear el equipo. Inténtelo de nuevo.",
+    "updateError": "Error al actualizar el equipo. Inténtelo de nuevo.",
+    "form": {
+      "createTitle": "Nuevo equipo",
+      "editTitle": "Editar equipo",
+      "nameLabel": "Nombre del equipo",
+      "nameRequired": "El nombre del equipo es obligatorio",
+      "managerLabel": "Responsable",
+      "managerPlaceholder": "Sin responsable",
+      "parentLabel": "Equipo superior",
+      "parentPlaceholder": "Ninguno (equipo de nivel superior)",
+      "saveButton": "Guardar",
+      "saving": "Guardando…",
+      "cancelButton": "Cancelar"
+    },
+    "members": {
+      "sectionTitle": "Miembros",
+      "addButton": "Añadir miembro",
+      "removeButton": "Eliminar",
+      "roleLabel": "Rol",
+      "roleLead": "Líder",
+      "roleMember": "Miembro",
+      "userLabel": "Usuario",
+      "userPlaceholder": "Seleccionar un usuario",
+      "noMembers": "Aún no hay miembros.",
+      "addError": "Error al añadir el miembro. Inténtelo de nuevo.",
+      "removeError": "Error al eliminar el miembro. Inténtelo de nuevo.",
+      "alreadyMember": "Este usuario ya es miembro de este equipo."
+    },
+    "deleteError": {
+      "hasChildren": "Este equipo tiene sub-equipos. Reasígnelos o elimínelos primero.",
+      "generic": "Error al eliminar el equipo. Inténtelo de nuevo."
+    },
+    "empty": "Todavía no se han creado equipos.",
+    "loading": "Cargando equipos…"
   }
 }

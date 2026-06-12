@@ -552,7 +552,8 @@
       "features": "功能",
       "ai": "AI",
       "visibility": "可见性",
-      "roles": "角色"
+      "roles": "角色",
+      "teams": "团队"
     },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
@@ -2004,5 +2005,54 @@
       "builtin": "内置角色无法删除。",
       "generic": "删除角色失败，请重试。"
     }
+  },
+  "teamsSettings": {
+    "sectionTitle": "团队管理",
+    "sectionHint": "创建和管理团队，以组织用户并控制访问权限。",
+    "newTeamButton": "新建团队",
+    "editButton": "编辑",
+    "deleteButton": "删除",
+    "memberCount": "{{count}} 名成员",
+    "memberCount_other": "{{count}} 名成员",
+    "managerLabel": "负责人",
+    "noManager": "无负责人",
+    "parentLabel": "上级团队",
+    "noParent": "无",
+    "loadError": "加载团队失败，请重试。",
+    "createError": "创建团队失败，请重试。",
+    "updateError": "更新团队失败，请重试。",
+    "form": {
+      "createTitle": "新建团队",
+      "editTitle": "编辑团队",
+      "nameLabel": "团队名称",
+      "nameRequired": "团队名称为必填项",
+      "managerLabel": "负责人",
+      "managerPlaceholder": "无负责人",
+      "parentLabel": "上级团队",
+      "parentPlaceholder": "无（顶级团队）",
+      "saveButton": "保存",
+      "saving": "保存中…",
+      "cancelButton": "取消"
+    },
+    "members": {
+      "sectionTitle": "成员",
+      "addButton": "添加成员",
+      "removeButton": "移除",
+      "roleLabel": "角色",
+      "roleLead": "负责人",
+      "roleMember": "成员",
+      "userLabel": "用户",
+      "userPlaceholder": "选择用户",
+      "noMembers": "暂无成员。",
+      "addError": "添加成员失败，请重试。",
+      "removeError": "移除成员失败，请重试。",
+      "alreadyMember": "该用户已是此团队成员。"
+    },
+    "deleteError": {
+      "hasChildren": "此团队有子团队。请先重新分配或删除这些子团队。",
+      "generic": "删除团队失败，请重试。"
+    },
+    "empty": "尚未创建任何团队。",
+    "loading": "正在加载团队…"
   }
 }
