@@ -401,4 +401,166 @@ describe('TeamsSettings — edit flow', () => {
     fireEvent.click(screen.getByTestId('team-form-cancel'));
     expect(screen.queryByTestId('team-form')).not.toBeInTheDocument();
   });
+
+  it('shows generic update error for non-circular failures', async () => {
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })),
+      http.put(`/api/v1/teams/${TEAM_1.id}`, () => new HttpResponse(null, { status: 500 })),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-edit-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-edit-button-${TEAM_1.id}`));
+    fireEvent.click(screen.getByTestId('team-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('team-form-error')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('team-form-error')).toHaveTextContent(
+      'Failed to update team. Please try again.',
+    );
+  });
+
+  it('changes manager and parent selects in the edit form', async () => {
+    const TEAM_2 = { ...TEAM_1, id: 'team-bbb', name: 'Design' };
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1, TEAM_2] })),
+      http.get('/api/v1/users/active', () =>
+        HttpResponse.json({
+          users: [{ id: 'user-001', name: 'Alice', email: 'alice@example.com', role: 'rep' }],
+        }),
+      ),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-edit-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-edit-button-${TEAM_1.id}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('team-form-manager')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('team-form-manager'), { target: { value: 'user-001' } });
+    fireEvent.change(screen.getByTestId('team-form-parent'), { target: { value: 'team-bbb' } });
+
+    expect((screen.getByTestId('team-form-manager') as HTMLSelectElement).value).toBe('user-001');
+    expect((screen.getByTestId('team-form-parent') as HTMLSelectElement).value).toBe('team-bbb');
+  });
+});
+
+describe('TeamsSettings — member remove', () => {
+  it('calls DELETE member when remove button is clicked', async () => {
+    const MEMBER = {
+      team_id: TEAM_1.id,
+      user_id: 'user-001',
+      user_name: 'Alice',
+      user_email: 'alice@example.com',
+      role: 'member',
+    };
+    let removeCalled = false;
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })),
+      http.get(`/api/v1/teams/${TEAM_1.id}/members`, () =>
+        HttpResponse.json({ members: [MEMBER] }),
+      ),
+      http.delete(`/api/v1/teams/${TEAM_1.id}/members/${MEMBER.user_id}`, () => {
+        removeCalled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-expand-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-expand-button-${TEAM_1.id}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-member-remove-${MEMBER.user_id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-member-remove-${MEMBER.user_id}`));
+
+    await waitFor(() => {
+      expect(removeCalled).toBe(true);
+    });
+  });
+
+  it('cancels add-member form when cancel is clicked', async () => {
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })),
+      http.get(`/api/v1/teams/${TEAM_1.id}/members`, () => HttpResponse.json({ members: [] })),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-expand-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-expand-button-${TEAM_1.id}`));
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-add-member-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-add-member-button-${TEAM_1.id}`));
+    expect(screen.getByTestId(`team-add-member-form-${TEAM_1.id}`)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId(`team-add-member-cancel-${TEAM_1.id}`));
+    expect(screen.queryByTestId(`team-add-member-form-${TEAM_1.id}`)).not.toBeInTheDocument();
+  });
+
+  it('shows generic add-member error for non-duplicate failures', async () => {
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })),
+      http.get(`/api/v1/teams/${TEAM_1.id}/members`, () => HttpResponse.json({ members: [] })),
+      http.get('/api/v1/users/active', () =>
+        HttpResponse.json({
+          users: [{ id: 'user-001', name: 'Alice', email: 'alice@example.com', role: 'rep' }],
+        }),
+      ),
+      http.post(
+        `/api/v1/teams/${TEAM_1.id}/members`,
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-expand-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-expand-button-${TEAM_1.id}`));
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-add-member-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-add-member-button-${TEAM_1.id}`));
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-add-member-user-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId(`team-add-member-user-${TEAM_1.id}`), {
+      target: { value: 'user-001' },
+    });
+    fireEvent.click(screen.getByTestId(`team-add-member-submit-${TEAM_1.id}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-add-member-error-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`team-add-member-error-${TEAM_1.id}`)).toHaveTextContent(
+      'Failed to add member',
+    );
+  });
 });
