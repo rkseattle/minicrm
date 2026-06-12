@@ -386,6 +386,34 @@ describe('TeamsSettings — edit flow', () => {
     );
   });
 
+  it('shows duplicate name error when server returns TEAM_NAME_DUPLICATE on update', async () => {
+    server.use(
+      http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })),
+      http.put(`/api/v1/teams/${TEAM_1.id}`, () =>
+        HttpResponse.json(
+          { error: { code: 'TEAM_NAME_DUPLICATE', message: 'duplicate' } },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderWithProviders(<TeamsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`team-edit-button-${TEAM_1.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`team-edit-button-${TEAM_1.id}`));
+    fireEvent.click(screen.getByTestId('team-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('team-form-error')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('team-form-error')).toHaveTextContent(
+      'A team with that name already exists.',
+    );
+  });
+
   it('closes edit form when Cancel is clicked', async () => {
     server.use(http.get('/api/v1/teams', () => HttpResponse.json({ teams: [TEAM_1] })));
 

@@ -2023,6 +2023,7 @@
     "createError_duplicate": "A team with that name already exists.",
     "updateError": "Failed to update team. Please try again.",
     "updateError_circular": "A team cannot be its own ancestor.",
+    "updateError_duplicate": "A team with that name already exists.",
     "form": {
       "createTitle": "New team",
       "editTitle": "Edit team",

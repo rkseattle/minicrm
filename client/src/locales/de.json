@@ -2023,6 +2023,7 @@
     "createError_duplicate": "Ein Team mit diesem Namen existiert bereits.",
     "updateError": "Team konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
     "updateError_circular": "Ein Team kann nicht sein eigener Vorfahre sein.",
+    "updateError_duplicate": "Ein Team mit diesem Namen existiert bereits.",
     "form": {
       "createTitle": "Neues Team",
       "editTitle": "Team bearbeiten",

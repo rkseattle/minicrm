@@ -302,19 +302,25 @@ async function writeRuleLog(params: {
   errorMessage?: string;
   actionConfigSnapshot: Record<string, unknown>;
 }): Promise<void> {
-  await pool.query(
-    `INSERT INTO automation_rule_logs
-       (rule_id, triggering_record_type, triggering_record_id, outcome, error_message, action_config_snapshot)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [
-      params.ruleId,
-      params.triggeringRecordType,
-      params.triggeringRecordId,
-      params.outcome,
-      params.errorMessage ?? null,
-      JSON.stringify(params.actionConfigSnapshot),
-    ],
-  );
+  try {
+    await pool.query(
+      `INSERT INTO automation_rule_logs
+         (rule_id, triggering_record_type, triggering_record_id, outcome, error_message, action_config_snapshot)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        params.ruleId,
+        params.triggeringRecordType,
+        params.triggeringRecordId,
+        params.outcome,
+        params.errorMessage ?? null,
+        JSON.stringify(params.actionConfigSnapshot),
+      ],
+    );
+  } catch (err) {
+    // 23503 = FK violation: the rule was deleted between query and log write — no log needed
+    if ((err as { code?: string }).code === '23503') return;
+    throw err;
+  }
 }
 
 /** The maximum number of days a due_date_offset can advance a task */

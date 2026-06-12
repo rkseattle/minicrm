@@ -502,6 +502,8 @@ export default function TeamsSettings() {
         ?.error?.code;
       if (code === 'TEAM_CIRCULAR_REFERENCE') {
         setUpdateError(t('teamsSettings.updateError_circular'));
+      } else if (code === 'TEAM_NAME_DUPLICATE') {
+        setUpdateError(t('teamsSettings.updateError_duplicate'));
       } else {
         setUpdateError(t('teamsSettings.updateError'));
       }

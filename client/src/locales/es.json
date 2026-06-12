@@ -2023,6 +2023,7 @@
     "createError_duplicate": "Ya existe un equipo con ese nombre.",
     "updateError": "Error al actualizar el equipo. Inténtelo de nuevo.",
     "updateError_circular": "Un equipo no puede ser su propio antepasado.",
+    "updateError_duplicate": "Ya existe un equipo con ese nombre.",
     "form": {
       "createTitle": "Nuevo equipo",
       "editTitle": "Editar equipo",
