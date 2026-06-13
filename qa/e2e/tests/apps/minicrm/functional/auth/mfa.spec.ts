@@ -30,6 +30,7 @@ import {
   getMfaRequiredSuccessLocator,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestUser } from '@apps/minicrm/helpers.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
 
 // F8 tests exercise login flows — do not inherit the project-level admin storageState.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -162,6 +163,18 @@ test('@functional F8-D1: disable MFA via profile page — password confirmed →
 // Admin MFA enforcement tests
 // ---------------------------------------------------------------------------
 
+// Unconditionally reset require_mfa to false after F8-A1 regardless of how the
+// test body exits. UI-based "restore to initiallyChecked" is not reliable: if
+// require_mfa was already true (from a prior dirty run), the test would toggle
+// false → true and leave the setting dirty, blocking every other test suite
+// that calls loginAsAdmin(). (MINCRM-544 env-cleanup fix)
+async function resetMfaRequired(restClient: RestClient): Promise<void> {
+  await loginAsAdmin(restClient);
+  await restClient
+    .patch('/api/v1/settings/mfa-required', { mfa_required: false })
+    .catch(() => undefined);
+}
+
 test('@functional F8-A1: admin can toggle org-wide MFA enforcement in General Settings', async ({
   page,
   restClient,
@@ -169,25 +182,33 @@ test('@functional F8-A1: admin can toggle org-wide MFA enforcement in General Se
   await loginAsAdmin(restClient);
   await loginViaBrowser(ADMIN_EMAIL, ADMIN_PASSWORD, { page });
 
-  await navigateToAdminSettingsGeneralPage({ page });
+  try {
+    await navigateToAdminSettingsGeneralPage({ page });
 
-  const checkbox = await getMfaRequiredCheckboxLocator({ page });
+    const checkbox = await getMfaRequiredCheckboxLocator({ page });
+    await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
 
-  await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
-  const initiallyChecked = await checkbox.isChecked();
+    // Ensure we start from a known-false state so the test is deterministic.
+    if (await checkbox.isChecked()) {
+      await checkbox.click();
+      const successMsg = await getMfaRequiredSuccessLocator({ page });
+      await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
+    }
 
-  // Toggle on.
-  await checkbox.click();
-  const successMsg = await getMfaRequiredSuccessLocator({ page });
-  await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
-  expect(await checkbox.isChecked(), 'checkbox should flip after first click').toBe(
-    !initiallyChecked,
-  );
+    // Toggle on.
+    await checkbox.click();
+    const successMsg = await getMfaRequiredSuccessLocator({ page });
+    await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
+    expect(await checkbox.isChecked(), 'checkbox should be enabled after first click').toBe(true);
 
-  // Restore.
-  await checkbox.click();
-  await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
-  expect(await checkbox.isChecked(), 'checkbox should return to original state').toBe(
-    initiallyChecked,
-  );
+    // Toggle off.
+    await checkbox.click();
+    await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
+    expect(await checkbox.isChecked(), 'checkbox should be disabled after second click').toBe(
+      false,
+    );
+  } finally {
+    // Always reset via API — UI-based restore is unreliable across dirty runs.
+    await resetMfaRequired(restClient);
+  }
 });
