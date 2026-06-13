@@ -100,7 +100,11 @@ const SERIAL_FILES = [
   'src/__tests__/dealController.test.ts',
   // teamController and teamService both truncate teams/team_memberships in beforeEach;
   // running them in parallel causes cross-file row-delete races and FK violations.
+  // visibilityService creates teams in beforeAll that teamService's beforeEach deletes
+  // globally — must run serial alongside the other team-mutating files.
   'src/__tests__/teamController.test.ts',
+  'src/__tests__/teamService.test.ts',
+  'src/__tests__/visibilityService.test.ts',
   // bulkService and bulkController validate stage names via getStageNames(); pipelineStageService
   // deletes/re-seeds stages in beforeEach, causing stage-not-found errors in parallel runs.
   'src/__tests__/bulkService.test.ts',
