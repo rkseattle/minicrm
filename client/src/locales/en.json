@@ -1191,7 +1191,8 @@
     "ownerToggle": {
       "label": "Filter by owner",
       "all": "All",
-      "mine": "Mine"
+      "mine": "Mine",
+      "myTeam": "My Team"
     },
     "loading": "Loading…",
     "sortAsc": "sorted ascending",

@@ -28,7 +28,8 @@ export interface DuplicateLeadInfo {
 
 /** Parameters for filtering and paginating the leads list */
 export interface ListLeadsParams {
-  owner?: 'me';
+  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  owner?: 'me' | 'my_team';
   status?: string;
   lead_source?: string;
   includeDisqualified?: boolean;

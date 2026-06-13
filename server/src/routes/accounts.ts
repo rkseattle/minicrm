@@ -36,8 +36,8 @@ const router = Router();
  *     operationId: listAccounts
  *     summary: List accounts
  *     description: >
- *       Returns all accounts. Pass `?owner=me` to scope results to the authenticated
- *       user's accounts.
+ *       Returns all accounts. Pass `?owner=me` to scope to the authenticated user's accounts,
+ *       or `?owner=my_team` to scope to accounts owned by any member of the user's teams.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -45,8 +45,8 @@ const router = Router();
  *         name: owner
  *         schema:
  *           type: string
- *           enum: [me]
- *         description: Pass 'me' to return only the authenticated user's accounts
+ *           enum: [me, my_team]
+ *         description: "'me' returns only the authenticated user's accounts; 'my_team' returns accounts owned by any member of the user's teams (MINCRM-545)"
  *     responses:
  *       200:
  *         description: Array of accounts

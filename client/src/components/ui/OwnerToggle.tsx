@@ -1,26 +1,26 @@
 /**
- * OwnerToggle — segmented "All / Mine" button control for list view owner filtering.
- * Satisfies MINCRM-55: visible recognition-based filter replacing URL-only ?owner=me param.
+ * OwnerToggle — segmented "All / Mine / My Team" button control for list view owner filtering.
+ * Satisfies MINCRM-55 (All/Mine) and MINCRM-545 (My Team).
  */
 
 import { useTranslation } from 'react-i18next';
 
 /** Owner filter value */
-export type OwnerFilter = 'all' | 'me';
+export type OwnerFilter = 'all' | 'me' | 'my_team';
 
 export interface OwnerToggleProps {
   /** Current filter value */
   value: OwnerFilter;
   /** Called when the user selects a new value */
   onChange: (value: OwnerFilter) => void;
-  /** data-testid prefix — rendered as `{testIdPrefix}-all` and `{testIdPrefix}-mine` */
+  /** data-testid prefix — rendered as `{testIdPrefix}-all`, `{testIdPrefix}-mine`, `{testIdPrefix}-my-team` */
   testIdPrefix: string;
 }
 
 /**
- * Segmented "All / Mine" toggle for owner filtering on list views.
+ * Segmented "All / Mine / My Team" toggle for owner filtering on list views.
  *
- * @param value - Active filter ('all' | 'me')
+ * @param value - Active filter ('all' | 'me' | 'my_team')
  * @param onChange - Handler called with the new filter value
  * @param testIdPrefix - Base string for data-testid attributes
  */
@@ -52,9 +52,18 @@ export function OwnerToggle({ value, onChange, testIdPrefix }: OwnerToggleProps)
         data-testid={`${testIdPrefix}-mine`}
         aria-pressed={value === 'me'}
         onClick={() => value !== 'me' && onChange('me')}
-        className={`${BASE} ${value === 'me' ? ACTIVE : INACTIVE} -ms-px rounded-e-md`}
+        className={`${BASE} ${value === 'me' ? ACTIVE : INACTIVE} -ms-px`}
       >
         {t('common.ownerToggle.mine')}
+      </button>
+      <button
+        type="button"
+        data-testid={`${testIdPrefix}-my-team`}
+        aria-pressed={value === 'my_team'}
+        onClick={() => value !== 'my_team' && onChange('my_team')}
+        className={`${BASE} ${value === 'my_team' ? ACTIVE : INACTIVE} -ms-px rounded-e-md`}
+      >
+        {t('common.ownerToggle.myTeam')}
       </button>
     </div>
   );

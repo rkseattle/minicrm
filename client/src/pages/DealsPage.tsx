@@ -8,7 +8,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
@@ -136,20 +136,36 @@ export default function DealsPage() {
   const newDealButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
 
-  // ── Shared filter state (MINCRM-176) ──────────────────────────────────────
-  // Both ownerFilter and showClosed are lifted to the parent so they persist
-  // across Board ↔ List view switches.
-  const [ownerFilter, setOwnerFilterState] = useState<OwnerFilter>('all');
+  // ── Shared filter state (MINCRM-176, MINCRM-545) ─────────────────────────
+  // ownerFilter persists in the URL ?owner param so the filter survives navigation.
+  // showClosed is lifted to the parent so it persists across Board ↔ List switches.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ownerParam = searchParams.get('owner');
+  const ownerFilter: OwnerFilter =
+    ownerParam === 'me' ? 'me' : ownerParam === 'my_team' ? 'my_team' : 'all';
 
   /**
-   * Updates the owner filter. Resets list pagination to page 1. (MINCRM-176)
+   * Updates the ?owner query param and resets list pagination to page 1.
    *
    * @param value - New owner filter value
    */
   function setOwnerFilter(value: OwnerFilter): void {
     setListPage(1);
-    setOwnerFilterState(value);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === 'me' || value === 'my_team') {
+          next.set('owner', value);
+        } else {
+          next.delete('owner');
+        }
+        return next;
+      },
+      { replace: true },
+    );
   }
+
+  const ownerApiParam = ownerFilter === 'all' ? undefined : ownerFilter;
 
   // ── List view state ────────────────────────────────────────────────────────
   const {
@@ -190,14 +206,14 @@ export default function DealsPage() {
   const boardQueryKey = [
     ...DEALS_QUERY_KEY,
     'board',
-    { owner: ownerFilter === 'me' ? 'me' : undefined, pipeline: activePipelineId },
+    { owner: ownerApiParam, pipeline: activePipelineId },
   ] as const;
 
   const listQueryKey = [
     ...DEALS_QUERY_KEY,
     'list',
     {
-      owner: ownerFilter === 'me' ? 'me' : undefined,
+      owner: ownerApiParam,
       pipeline: activePipelineId,
       hideClosed: !showClosed,
       sort: sortCol,
@@ -216,7 +232,7 @@ export default function DealsPage() {
     queryKey: boardQueryKey,
     queryFn: () =>
       listDeals({
-        owner: ownerFilter === 'me' ? 'me' : undefined,
+        owner: ownerApiParam,
         pipelineId: activePipelineId,
         limit: PAGINATION_MAX_BOARD_LIMIT,
       }),
@@ -231,7 +247,7 @@ export default function DealsPage() {
     queryKey: listQueryKey,
     queryFn: () =>
       listDeals({
-        owner: ownerFilter === 'me' ? 'me' : undefined,
+        owner: ownerApiParam,
         pipelineId: activePipelineId,
         hideClosed: !showClosed || undefined,
         sort: sortCol,
@@ -314,7 +330,7 @@ export default function DealsPage() {
   // Server handles sorting, pagination, and closed-stage filtering (MINCRM-176)
   const sortedDeals: DealResponse[] = listData?.data ?? [];
 
-  const hasActiveListFilters = ownerFilter === 'me' || !showClosed || selectedTagIds.length > 0;
+  const hasActiveListFilters = ownerFilter !== 'all' || !showClosed || selectedTagIds.length > 0;
 
   function clearListFilters(): void {
     setOwnerFilter('all');

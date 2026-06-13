@@ -513,6 +513,31 @@ export async function getTeamIdsForManager(managerId: string): Promise<string[]>
 }
 
 /**
+ * Returns the UUIDs of all users who share at least one team with the given user,
+ * including the user themselves. Used to power the "My Team" ownership filter on
+ * list views (MINCRM-545).
+ *
+ * Falls back to [userId] when the user belongs to no teams, so callers can always
+ * use the result as an IN-list without special-casing the empty set.
+ */
+export async function getCoMemberIds(userId: string): Promise<string[]> {
+  const result = await pool.query<{ user_id: string }>(
+    `
+    SELECT DISTINCT tm2.user_id
+      FROM team_memberships tm1
+      JOIN team_memberships tm2 ON tm2.team_id = tm1.team_id
+     WHERE tm1.user_id = $1
+    `,
+    [userId],
+  );
+  // Always include the requesting user (covers the no-team case and ensures
+  // the user's own records appear even if they are the only team member).
+  const ids = new Set(result.rows.map((r) => r.user_id));
+  ids.add(userId);
+  return Array.from(ids);
+}
+
+/**
  * Returns the UUIDs of all users who are members of the given team.
  *
  * When recursive=true, walks the full team subtree rooted at teamId using a

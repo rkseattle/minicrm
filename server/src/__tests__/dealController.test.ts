@@ -12,6 +12,7 @@ import app from '../app.js';
 import { createDeal } from '../services/dealService.js';
 import { createContact } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
+import { createTeam, addTeamMember } from '../services/teamService.js';
 import pool from '../db.js';
 import { makeAuthCookie, uid } from './testUtils.js';
 
@@ -532,5 +533,90 @@ describe('GET /api/deals/export', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ── GET /api/deals — ?owner=my_team filter (MINCRM-545) ─────────────────────
+
+describe('GET /api/deals — ?owner=my_team filter', () => {
+  const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
+  const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+
+  it('returns deals owned by all team co-members including the requesting user', async () => {
+    const userA = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-a@example.com`,
+      name: 'Deal Team A',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const userB = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-b@example.com`,
+      name: 'Deal Team B',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const cookieA = makeAuthCookie({
+      id: userA.id,
+      email: userA.email,
+      name: userA.name,
+      role: userA.role,
+    });
+
+    const team = await createTeam({ name: `${TEAM_PREFIX}-${uid()}` }, ACTOR);
+    await addTeamMember(team.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team.id, userB.id, 'member', ACTOR);
+
+    const dealA = await createDeal({ ...makeDealParams(), owner_id: userA.id });
+    const dealB = await createDeal({ ...makeDealParams(), owner_id: userB.id });
+
+    const res = await request(app).get('/api/v1/deals?owner=my_team').set('Cookie', cookieA);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.data as { id: string }[]).map((d) => d.id);
+    expect(ids).toContain(dealA.id);
+    expect(ids).toContain(dealB.id);
+
+    await pool.query('DELETE FROM deals WHERE id = ANY($1::uuid[])', [[dealA.id, dealB.id]]);
+    await pool.query('DELETE FROM team_memberships WHERE team_id = $1', [team.id]);
+    await pool.query('DELETE FROM teams WHERE id = $1', [team.id]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[userA.id, userB.id]]);
+  });
+
+  it('falls back to the requesting user only when they belong to no teams', async () => {
+    const solo = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-solo@example.com`,
+      name: 'Solo Deal User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const other = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-other@example.com`,
+      name: 'Other Deal User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const soloCookie = makeAuthCookie({
+      id: solo.id,
+      email: solo.email,
+      name: solo.name,
+      role: solo.role,
+    });
+
+    const myDeal = await createDeal({ ...makeDealParams(), owner_id: solo.id });
+    const otherDeal = await createDeal({ ...makeDealParams(), owner_id: other.id });
+
+    const res = await request(app).get('/api/v1/deals?owner=my_team').set('Cookie', soloCookie);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.data as { id: string }[]).map((d) => d.id);
+    expect(ids).toContain(myDeal.id);
+    expect(ids).not.toContain(otherDeal.id);
+
+    await pool.query('DELETE FROM deals WHERE id = ANY($1::uuid[])', [[myDeal.id, otherDeal.id]]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
   });
 });

@@ -21,6 +21,7 @@ import {
   searchAccounts,
   ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
+import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
@@ -68,7 +69,9 @@ export async function createAccountHandler(req: Request, res: Response): Promise
  *   ?limit=<n>       — records per page (default 50, max 100)
  */
 export async function listAccountsHandler(req: Request, res: Response): Promise<void> {
-  const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
+  const ownerParam = typeof req.query.owner === 'string' ? req.query.owner : undefined;
+  const ownerId = ownerParam === 'me' ? req.user!.id : undefined;
+  const ownerIds = ownerParam === 'my_team' ? await getCoMemberIds(req.user!.id) : undefined;
 
   const search =
     typeof req.query.search === 'string' && req.query.search.trim().length > 0
@@ -119,6 +122,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
 
   const result = await listAccounts({
     ownerId,
+    ownerIds,
     search,
     industry,
     accountType,

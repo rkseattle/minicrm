@@ -1226,7 +1226,8 @@
     "ownerToggle": {
       "label": "按负责人筛选",
       "all": "全部",
-      "mine": "我的"
+      "mine": "我的",
+      "myTeam": "我的团队"
     },
     "loading": "加载中…",
     "sortAsc": "升序排列",

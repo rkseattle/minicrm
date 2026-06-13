@@ -6,7 +6,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveApiError } from '@/utils/apiError.js';
@@ -15,6 +15,8 @@ import EmptyState from '@/components/EmptyState.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
+import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
+import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listLeads, createLead, updateLead, deleteLead } from '@/api/leads.js';
 import type { DuplicateLeadInfo } from '@/api/leads.js';
@@ -57,7 +59,35 @@ export default function LeadsPage() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const { page, limit, setPage, handleLimitChange } = usePagination();
-  const [ownerFilter, setOwnerFilter] = useState<'all' | 'me'>('all');
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ownerParam = searchParams.get('owner');
+  const ownerFilter: OwnerFilter =
+    ownerParam === 'me' ? 'me' : ownerParam === 'my_team' ? 'my_team' : 'all';
+
+  /**
+   * Updates the ?owner query param and resets to page 1. (MINCRM-545)
+   *
+   * @param value - New owner filter value
+   */
+  function setOwnerFilter(value: OwnerFilter): void {
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === 'me' || value === 'my_team') {
+          next.set('owner', value);
+        } else {
+          next.delete('owner');
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  const ownerApiParam = ownerFilter === 'all' ? undefined : ownerFilter;
+
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sourceFilter, setSourceFilter] = useState<string>('');
   const [includeDisqualified, setIncludeDisqualified] = useState(false);
@@ -67,7 +97,7 @@ export default function LeadsPage() {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
 
   const queryParams = {
-    owner: ownerFilter === 'me' ? ('me' as const) : undefined,
+    owner: ownerApiParam,
     status: statusFilter || undefined,
     lead_source: sourceFilter || undefined,
     includeDisqualified,
@@ -91,7 +121,7 @@ export default function LeadsPage() {
   const total = data?.total ?? 0;
 
   const hasActiveFilters =
-    ownerFilter === 'me' ||
+    ownerFilter !== 'all' ||
     !!statusFilter ||
     !!sourceFilter ||
     includeDisqualified ||
@@ -292,31 +322,12 @@ export default function LeadsPage() {
           <PagedListLayout
             toolbar={
               <div className="flex flex-wrap items-center gap-3">
-                {/* Owner toggle */}
-                <div className="flex rounded-md border border-gray-300 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOwnerFilter('all');
-                      setPage(1);
-                    }}
-                    className={`px-3 py-1.5 ${ownerFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-s-md`}
-                    data-testid="filter-owner-all"
-                  >
-                    {t('leads.filterAll')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOwnerFilter('me');
-                      setPage(1);
-                    }}
-                    className={`px-3 py-1.5 ${ownerFilter === 'me' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'} rounded-e-md border-s border-gray-300`}
-                    data-testid="filter-owner-me"
-                  >
-                    {t('leads.filterMine')}
-                  </button>
-                </div>
+                {/* Owner toggle (MINCRM-545) */}
+                <OwnerToggle
+                  value={ownerFilter}
+                  onChange={setOwnerFilter}
+                  testIdPrefix="filter-owner"
+                />
 
                 {/* Status filter */}
                 <select

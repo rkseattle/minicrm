@@ -13,6 +13,7 @@ import request from 'supertest';
 import app from '../app.js';
 import { createContact } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
+import { createTeam, addTeamMember } from '../services/teamService.js';
 import pool from '../db.js';
 import { makeAuthCookie, uid } from './testUtils.js';
 
@@ -423,5 +424,94 @@ describe('POST /api/contacts/:id/send-email', () => {
       .send({ subject: 'Hello', body: 'Hi' });
 
     expect(res.status).toBe(401);
+  });
+});
+
+// ── GET /api/contacts — ?owner=my_team filter (MINCRM-545) ──────────────────
+
+describe('GET /api/contacts — ?owner=my_team filter', () => {
+  const TEAM_PREFIX = `${FILE_PREFIX}-my-team`;
+  const ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Test Actor' };
+
+  it('returns contacts owned by all team co-members including the requesting user', async () => {
+    const userA = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-a@example.com`,
+      name: 'Team User A',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const userB = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-b@example.com`,
+      name: 'Team User B',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const cookieA = makeAuthCookie({
+      id: userA.id,
+      email: userA.email,
+      name: userA.name,
+      role: userA.role,
+    });
+
+    const team = await createTeam({ name: `${TEAM_PREFIX}-${uid()}` }, ACTOR);
+    await addTeamMember(team.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team.id, userB.id, 'member', ACTOR);
+
+    const contactA = await createContact({ ...makeContact(), owner_id: userA.id });
+    const contactB = await createContact({ ...makeContact(), owner_id: userB.id });
+
+    const res = await request(app).get('/api/v1/contacts?owner=my_team').set('Cookie', cookieA);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.data as { id: string }[]).map((c) => c.id);
+    expect(ids).toContain(contactA.id);
+    expect(ids).toContain(contactB.id);
+
+    await pool.query('DELETE FROM contacts WHERE id = ANY($1::uuid[])', [
+      [contactA.id, contactB.id],
+    ]);
+    await pool.query('DELETE FROM team_memberships WHERE team_id = $1', [team.id]);
+    await pool.query('DELETE FROM teams WHERE id = $1', [team.id]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[userA.id, userB.id]]);
+  });
+
+  it('falls back to the requesting user only when they belong to no teams', async () => {
+    const solo = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-solo@example.com`,
+      name: 'Solo User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const other = await createUser({
+      email: `${TEAM_PREFIX}-${uid()}-other@example.com`,
+      name: 'Other User',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder',
+      status: 'active',
+    });
+    const soloCookie = makeAuthCookie({
+      id: solo.id,
+      email: solo.email,
+      name: solo.name,
+      role: solo.role,
+    });
+
+    const myContact = await createContact({ ...makeContact(), owner_id: solo.id });
+    const otherContact = await createContact({ ...makeContact(), owner_id: other.id });
+
+    const res = await request(app).get('/api/v1/contacts?owner=my_team').set('Cookie', soloCookie);
+
+    expect(res.status).toBe(200);
+    const ids = (res.body.data as { id: string }[]).map((c) => c.id);
+    expect(ids).toContain(myContact.id);
+    expect(ids).not.toContain(otherContact.id);
+
+    await pool.query('DELETE FROM contacts WHERE id = ANY($1::uuid[])', [
+      [myContact.id, otherContact.id],
+    ]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
   });
 });

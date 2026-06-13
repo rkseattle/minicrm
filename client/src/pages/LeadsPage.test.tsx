@@ -205,8 +205,8 @@ describe('filter interactions', () => {
 
     const user = userEvent.setup();
     renderWithProviders(<LeadsPage />);
-    await waitFor(() => expect(screen.getByTestId('filter-owner-me')).toBeInTheDocument());
-    await user.click(screen.getByTestId('filter-owner-me'));
+    await waitFor(() => expect(screen.getByTestId('filter-owner-mine')).toBeInTheDocument());
+    await user.click(screen.getByTestId('filter-owner-mine'));
 
     await waitFor(() => {
       expect(capturedOwner).toBe('me');
@@ -225,8 +225,8 @@ describe('filter interactions', () => {
 
     const user = userEvent.setup();
     renderWithProviders(<LeadsPage />);
-    await waitFor(() => expect(screen.getByTestId('filter-owner-me')).toBeInTheDocument());
-    await user.click(screen.getByTestId('filter-owner-me'));
+    await waitFor(() => expect(screen.getByTestId('filter-owner-mine')).toBeInTheDocument());
+    await user.click(screen.getByTestId('filter-owner-mine'));
     await user.click(screen.getByTestId('filter-owner-all'));
 
     await waitFor(() => {

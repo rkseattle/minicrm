@@ -78,6 +78,8 @@ export type DealSortColumn = (typeof DEAL_SORT_COLUMNS)[number];
 interface ListDealsOptions {
   /** When provided, only deals with this owner_id are returned */
   ownerId?: string;
+  /** When provided, only deals whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  ownerIds?: string[];
   /** When provided, only deals linked to this account_id are returned */
   accountId?: string;
   /** When true, terminal-stage deals are excluded (MINCRM-176) */
@@ -247,6 +249,11 @@ export async function listDeals(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`d.owner_id = $${values.length}`);
+  }
+
+  if (options.ownerIds && options.ownerIds.length > 0) {
+    values.push(options.ownerIds);
+    conditions.push(`d.owner_id = ANY($${values.length}::uuid[])`);
   }
 
   if (options.accountId) {

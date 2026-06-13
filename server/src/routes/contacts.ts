@@ -48,8 +48,9 @@ const router = Router();
  *     operationId: listContacts
  *     summary: List contacts
  *     description: >
- *       Returns all contacts. Pass `?owner=me` to scope results to the authenticated
- *       user's contacts. Pass `?account=<uuid>` to filter by account.
+ *       Returns all contacts. Pass `?owner=me` to scope to the authenticated user's contacts,
+ *       or `?owner=my_team` to scope to contacts owned by any member of the user's teams.
+ *       Pass `?account=<uuid>` to filter by account.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -57,8 +58,8 @@ const router = Router();
  *         name: owner
  *         schema:
  *           type: string
- *           enum: [me]
- *         description: Pass 'me' to return only the authenticated user's contacts
+ *           enum: [me, my_team]
+ *         description: "'me' returns only the authenticated user's contacts; 'my_team' returns contacts owned by any member of the user's teams (MINCRM-545)"
  *       - in: query
  *         name: account
  *         schema:

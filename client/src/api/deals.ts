@@ -27,8 +27,8 @@ export interface DealContact {
 
 /** Parameters for filtering and paginating the deals list */
 export interface ListDealsParams {
-  /** When 'me', only the current user's deals are returned */
-  owner?: 'me';
+  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  owner?: 'me' | 'my_team';
   /** When provided, only deals for this account are returned */
   accountId?: string;
   /** When true, terminal-stage deals are excluded (MINCRM-176) */

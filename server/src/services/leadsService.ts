@@ -89,6 +89,8 @@ export type LeadSortColumn = (typeof LEAD_SORT_COLUMNS)[number];
 /** Options for filtering and paginating the leads list */
 interface ListLeadsOptions {
   ownerId?: string;
+  /** When provided, only leads whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  ownerIds?: string[];
   status?: string;
   lead_source?: string;
   /** When true, include Disqualified leads (hidden by default) */
@@ -222,6 +224,11 @@ export async function listLeads(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`owner_id = $${values.length}`);
+  }
+
+  if (options.ownerIds && options.ownerIds.length > 0) {
+    values.push(options.ownerIds);
+    conditions.push(`owner_id = ANY($${values.length}::uuid[])`);
   }
 
   if (options.status) {
