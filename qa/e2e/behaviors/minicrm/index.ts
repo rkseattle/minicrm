@@ -98,6 +98,10 @@ export {
   performGdprErasure,
   getContactNameHeadingLocator,
   getContactEmailFieldLocator,
+  navigateToContactsWithOwnerFilter,
+  clickMyTeamOwnerFilter,
+  clickAllOwnerFilter,
+  getContactsPageUrl,
 } from './contacts.behaviors.js';
 export type {
   ContactsBehaviorContext,
