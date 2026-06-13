@@ -22,7 +22,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
-import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import {
   navigateToAdminSettings,
@@ -406,8 +406,7 @@ test('@functional built-in role View button expands read-only capability panel',
   restClient,
   testData,
 }) => {
-  await loginAsAdmin(restClient);
-
+  // restClient is already authenticated as admin by test.beforeEach
   // Fetch the built-in admin role ID via API so the test is not sensitive to DB seed order
   const listRes = await restClient.get<{ data: CustomRoleResponse[] }>('/api/v1/custom-roles');
   const adminRole = listRes.body.data.find((r) => r.is_builtin && r.name === 'admin');
