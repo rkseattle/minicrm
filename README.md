@@ -353,6 +353,31 @@ Demo data volume (MINCRM-353):
 
 All demo records have `is_demo = true`. The remove script deletes **only** rows where `is_demo = true`, so real data is never affected. Running the seed script twice is a no-op if demo data already exists.
 
+### Demo accounts
+
+The seed script creates a full set of IAM users to explore role-based access control:
+
+| Email                           | Name             | Role             | Team             |
+| ------------------------------- | ---------------- | ---------------- | ---------------- |
+| `admin@demo.minicrm.dev`        | Alex Admin       | admin            | —                |
+| `manager.west@demo.minicrm.dev` | Morgan West      | manager          | West Coast Sales |
+| `manager.east@demo.minicrm.dev` | Elliott East     | manager          | East Coast Sales |
+| `rep1@demo.minicrm.dev`         | Riley Rep        | rep              | West Coast Sales |
+| `rep2@demo.minicrm.dev`         | Sam Seller       | rep              | West Coast Sales |
+| `rep3@demo.minicrm.dev`         | Jordan Closer    | rep + Senior Rep | East Coast Sales |
+| `viewer@demo.minicrm.dev`       | Val Viewer       | viewer           | —                |
+| `svc-demo@demo.minicrm.dev`     | Demo Integration | service_account  | —                |
+
+**Password for all demo accounts:** `Demo1234!`
+
+Team structure: `Sales` (parent) → `West Coast Sales` + `East Coast Sales` (children).
+
+The **Senior Rep** custom role grants `reports:create`, `reports:edit`, `reports:export`, and `data:export` capabilities. It is assigned to Jordan Closer (rep3).
+
+Record distribution: ~40% of contacts and deals are owned by West Coast reps (Riley/Sam, alternating), ~30% by the East Coast rep (Jordan), ~30% by the admin.
+
+After seeding, a service account API token is written to `.env.demo` in the project root. This file is gitignored.
+
 ## Implemented Features
 
 ### Auth
