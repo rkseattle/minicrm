@@ -121,6 +121,59 @@ describe('RolesSettings — roles list', () => {
   });
 });
 
+describe('RolesSettings — capability picker labels', () => {
+  it('renders human-readable action labels, not raw capability strings', async () => {
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roles-settings-new-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('roles-settings-new-button'));
+
+    const picker = screen.getByTestId('capability-picker');
+
+    // Raw key strings must not appear as visible text (MINCRM-544)
+    expect(picker).not.toHaveTextContent('contacts:view');
+    expect(picker).not.toHaveTextContent('deals:create');
+
+    // Human-readable labels must be present within the picker
+    expect(picker).toHaveTextContent('View');
+    expect(picker).toHaveTextContent('Create');
+    expect(picker).toHaveTextContent('Edit');
+    expect(picker).toHaveTextContent('Delete');
+  });
+
+  it('renders translated group headers', async () => {
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roles-settings-new-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('roles-settings-new-button'));
+
+    const picker = screen.getByTestId('capability-picker');
+    expect(picker).toHaveTextContent('Contacts');
+    expect(picker).toHaveTextContent('Deals');
+    expect(picker).toHaveTextContent('Users & Admin');
+  });
+
+  it('uses stable groupKey-based test ids for group checkboxes', async () => {
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roles-settings-new-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('roles-settings-new-button'));
+
+    expect(screen.getByTestId('capability-group-contacts')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-group-usersAdmin')).toBeInTheDocument();
+    expect(screen.getByTestId('capability-group-api')).toBeInTheDocument();
+  });
+});
+
 describe('RolesSettings — create form', () => {
   it('opens create form when New role button is clicked', async () => {
     renderWithProviders(<RolesSettings />);

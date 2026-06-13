@@ -2004,6 +2004,30 @@
       "hasAssignees": "This role cannot be deleted while users are assigned to it. Remove those assignments first.",
       "builtin": "Built-in roles cannot be deleted.",
       "generic": "Failed to delete role. Please try again."
+    },
+    "capabilityGroups": {
+      "contacts": "Contacts",
+      "deals": "Deals",
+      "activities": "Activities",
+      "pipelines": "Pipelines",
+      "reports": "Reports",
+      "data": "Data",
+      "usersAdmin": "Users & Admin",
+      "api": "API"
+    },
+    "capabilityActions": {
+      "view": "View",
+      "create": "Create",
+      "edit": "Edit",
+      "delete": "Delete",
+      "export": "Export",
+      "reassign": "Reassign",
+      "manage": "Manage",
+      "import": "Import",
+      "access": "Access",
+      "schedule": "Schedule",
+      "enroll": "Enroll",
+      "activate": "Activate"
     }
   },
   "teamsSettings": {

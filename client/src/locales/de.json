@@ -2004,6 +2004,30 @@
       "hasAssignees": "Diese Rolle kann nicht gelöscht werden, solange Benutzer ihr zugeordnet sind. Entfernen Sie zuerst diese Zuordnungen.",
       "builtin": "Integrierte Rollen können nicht gelöscht werden.",
       "generic": "Rolle konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
+    },
+    "capabilityGroups": {
+      "contacts": "Kontakte",
+      "deals": "Deals",
+      "activities": "Aktivitäten",
+      "pipelines": "Pipelines",
+      "reports": "Berichte",
+      "data": "Daten",
+      "usersAdmin": "Benutzer & Administration",
+      "api": "API"
+    },
+    "capabilityActions": {
+      "view": "Anzeigen",
+      "create": "Erstellen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "export": "Exportieren",
+      "reassign": "Neu zuweisen",
+      "manage": "Verwalten",
+      "import": "Importieren",
+      "access": "Zugreifen",
+      "schedule": "Planen",
+      "enroll": "Einschreiben",
+      "activate": "Aktivieren"
     }
   },
   "teamsSettings": {

@@ -2004,6 +2004,30 @@
       "hasAssignees": "无法删除已分配给用户的角色。请先移除相关分配。",
       "builtin": "内置角色无法删除。",
       "generic": "删除角色失败，请重试。"
+    },
+    "capabilityGroups": {
+      "contacts": "联系人",
+      "deals": "交易",
+      "activities": "活动",
+      "pipelines": "管道",
+      "reports": "报告",
+      "data": "数据",
+      "usersAdmin": "用户与管理",
+      "api": "API"
+    },
+    "capabilityActions": {
+      "view": "查看",
+      "create": "创建",
+      "edit": "编辑",
+      "delete": "删除",
+      "export": "导出",
+      "reassign": "重新分配",
+      "manage": "管理",
+      "import": "导入",
+      "access": "访问",
+      "schedule": "计划",
+      "enroll": "注册",
+      "activate": "激活"
     }
   },
   "teamsSettings": {
