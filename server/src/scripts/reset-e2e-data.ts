@@ -68,9 +68,9 @@ async function main(adminEmail: string): Promise<void> {
       [adminEmail],
     );
     if (adminResult.rows.length === 0) {
-      throw new Error(
-        `[reset-e2e-data] Admin user not found for email "${adminEmail}". Run e2e:setup first.`,
-      );
+      // Fresh database — nothing to reset yet. seedE2eAdmin() will populate it.
+      await client.query('ROLLBACK');
+      return;
     }
     const adminId = adminResult.rows[0].id;
 
