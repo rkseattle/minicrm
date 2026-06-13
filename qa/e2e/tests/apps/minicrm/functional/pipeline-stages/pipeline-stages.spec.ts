@@ -213,11 +213,13 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
     await submitAddPipelineStage({ page });
     await waitForPipelineStagesFeedback('visible', { page });
 
-    // Verify the stage now appears in the API list
+    // Verify the stage now appears in the API list.
+    // Assign createdStageId before asserting so the finally block can always
+    // delete the stage even if the assertion fails. (MINCRM-544 env-cleanup fix)
     const stages = await fetchStages(restClient);
     const created = stages.find((s) => s.name === stageName);
-    expect(created, `stage "${stageName}" must appear in the API response`).toBeDefined();
     createdStageId = created?.id;
+    expect(created, `stage "${stageName}" must appear in the API response`).toBeDefined();
   } finally {
     // Delete the created stage to restore state
     if (createdStageId) {

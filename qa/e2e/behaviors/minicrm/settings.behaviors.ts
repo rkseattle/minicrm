@@ -671,6 +671,11 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     restClient.delete('/api/v1/settings/pipeline-stages-reviewed').catch(() => undefined),
     // Clear any SSO configuration left over from SSO tests (MINCRM-399)
     restClient.delete('/api/v1/settings/sso').catch(() => undefined),
+    // Reset org-wide MFA enforcement; mfa.spec.ts F8-A1 can leave this true if
+    // the test body exits before its UI-based restore step runs. (MINCRM-544)
+    restClient
+      .patch('/api/v1/settings/mfa-required', { mfa_required: false })
+      .catch(() => undefined),
   ]);
 }
 
