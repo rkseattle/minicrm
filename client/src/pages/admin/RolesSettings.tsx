@@ -7,6 +7,7 @@
  * - Create a new custom role via an inline form
  * - Edit an existing custom role's name, description, and capabilities
  * - Delete non-built-in roles (with guard against roles with active assignees)
+ * - View capabilities for built-in roles via a read-only inline panel (MINCRM-547)
  */
 
 import { useState } from 'react';
@@ -201,6 +202,64 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
   );
 }
 
+interface CapabilityReadOnlyListProps {
+  capabilities: Capability[];
+}
+
+function CapabilityReadOnlyList({ capabilities }: CapabilityReadOnlyListProps) {
+  const { t } = useTranslation();
+  const granted = new Set(capabilities);
+
+  return (
+    <div className="space-y-5" data-testid="capability-readonly-list">
+      {CAPABILITY_GROUPS.map((group, groupIndex) => {
+        const groupLabel = t(`rolesSettings.capabilityGroups.${group.groupKey}`);
+        return (
+          <div
+            key={group.groupKey}
+            className={groupIndex > 0 ? 'border-t border-gray-100 pt-4' : undefined}
+          >
+            <label className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={group.caps.every((c) => granted.has(c))}
+                disabled
+                data-testid={`readonly-capability-group-${group.groupKey}`}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              />
+              <span className="text-sm font-semibold text-gray-800">{groupLabel}</span>
+            </label>
+            <div className="ps-6 grid grid-cols-3 gap-x-4 gap-y-2">
+              {group.caps.map((cap) => {
+                const isGranted = granted.has(cap);
+                return (
+                  <label
+                    key={cap}
+                    className={`flex items-center gap-2 rounded px-2 py-1 ${
+                      isGranted ? 'bg-indigo-50 ring-1 ring-indigo-200' : ''
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isGranted}
+                      disabled
+                      data-testid={`readonly-capability-checkbox-${cap}`}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 shrink-0"
+                    />
+                    <span className="text-sm text-gray-700 select-none">
+                      {capabilityLabel(cap, t)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface RoleFormProps {
   initial?: CustomRoleResponse;
   onSave: (data: { name: string; description: string; capabilities: Capability[] }) => void;
@@ -306,6 +365,7 @@ export default function RolesSettings() {
 
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const {
@@ -456,59 +516,82 @@ export default function RolesSettings() {
                 )}
               </div>
             ) : (
-              <div className="flex items-start justify-between p-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-sm font-medium text-gray-900"
-                      data-testid={`role-name-${role.id}`}
-                    >
-                      {role.name}
-                    </span>
-                    {role.is_builtin && (
+              <div>
+                <div className="flex items-start justify-between p-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
                       <span
-                        className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
-                        data-testid={`role-builtin-badge-${role.id}`}
+                        className="text-sm font-medium text-gray-900"
+                        data-testid={`role-name-${role.id}`}
                       >
-                        {t('rolesSettings.builtinBadge')}
+                        {role.name}
                       </span>
+                      {role.is_builtin && (
+                        <span
+                          className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+                          data-testid={`role-builtin-badge-${role.id}`}
+                        >
+                          {t('rolesSettings.builtinBadge')}
+                        </span>
+                      )}
+                    </div>
+                    {role.description && (
+                      <p
+                        className="mt-0.5 text-xs text-gray-500"
+                        data-testid={`role-description-${role.id}`}
+                      >
+                        {role.description}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-400">
+                      {t('rolesSettings.capabilityCount', { count: role.capabilities.length })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ms-4 shrink-0">
+                    {role.is_builtin ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setViewingId((prev) => (prev === role.id ? null : role.id))}
+                        data-testid={`role-view-button-${role.id}`}
+                      >
+                        {t('rolesSettings.viewButton')}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setEditingId(role.id);
+                            setDeleteError(null);
+                          }}
+                          data-testid={`role-edit-button-${role.id}`}
+                        >
+                          {t('rolesSettings.editButton')}
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => {
+                            setDeleteError(null);
+                            deleteMutation.mutate(role.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`role-delete-button-${role.id}`}
+                        >
+                          {t('rolesSettings.deleteButton')}
+                        </Button>
+                      </>
                     )}
                   </div>
-                  {role.description && (
-                    <p
-                      className="mt-0.5 text-xs text-gray-500"
-                      data-testid={`role-description-${role.id}`}
-                    >
-                      {role.description}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-gray-400">
-                    {t('rolesSettings.capabilityCount', { count: role.capabilities.length })}
-                  </p>
                 </div>
-                {!role.is_builtin && (
-                  <div className="flex items-center gap-2 ms-4 shrink-0">
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setEditingId(role.id);
-                        setDeleteError(null);
-                      }}
-                      data-testid={`role-edit-button-${role.id}`}
-                    >
-                      {t('rolesSettings.editButton')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => {
-                        setDeleteError(null);
-                        deleteMutation.mutate(role.id);
-                      }}
-                      disabled={deleteMutation.isPending}
-                      data-testid={`role-delete-button-${role.id}`}
-                    >
-                      {t('rolesSettings.deleteButton')}
-                    </Button>
+                {role.is_builtin && viewingId === role.id && (
+                  <div
+                    className="border-t border-gray-100 px-4 pb-4 pt-3"
+                    data-testid={`role-capability-panel-${role.id}`}
+                  >
+                    <p className="mb-3 text-xs text-gray-500 italic">
+                      {t('rolesSettings.builtinReadOnlyNotice')}
+                    </p>
+                    <CapabilityReadOnlyList capabilities={role.capabilities} />
                   </div>
                 )}
               </div>

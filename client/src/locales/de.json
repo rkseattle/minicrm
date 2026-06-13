@@ -1985,6 +1985,8 @@
     "builtinBadge": "Integriert",
     "editButton": "Bearbeiten",
     "deleteButton": "Löschen",
+    "viewButton": "Anzeigen",
+    "builtinReadOnlyNotice": "Integrierte Rollen sind schreibgeschützt und können nicht geändert werden.",
     "capabilityCount": "{{count}} Berechtigungen",
     "loadError": "Rollen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
     "createError": "Rolle konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",

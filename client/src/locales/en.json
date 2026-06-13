@@ -1985,6 +1985,8 @@
     "builtinBadge": "Built-in",
     "editButton": "Edit",
     "deleteButton": "Delete",
+    "viewButton": "View",
+    "builtinReadOnlyNotice": "Built-in roles are read-only and cannot be modified.",
     "capabilityCount": "{{count}} capabilities",
     "loadError": "Failed to load roles. Please try again.",
     "createError": "Failed to create role. Please try again.",

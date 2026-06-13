@@ -1679,6 +1679,8 @@
     "builtinBadge": "[Büïĺŧ-ïñ]",
     "editButton": "[Éðïŧ]",
     "deleteButton": "[Ðéĺéŧé]",
+    "viewButton": "[Vïéw]",
+    "builtinReadOnlyNotice": "[Büïĺŧ-ïñ ŗöĺéš àŗé ŗéàð-öñĺÿ àñð çàññöŧ ƀé möðïƒïéð.]",
     "capabilityCount": "[{{count}} çàƥàƀïĺïŧïéš]",
     "loadError": "[Ƒàïĺéð ŧö ĺöàð ŗöĺéš. Ƥĺéàšé ŧŗÿ àǧàïñ.]",
     "createError": "[Ƒàïĺéð ŧö çŗéàŧé ŗöĺé. Ƥĺéàšé ŧŗÿ àǧàïñ.]",

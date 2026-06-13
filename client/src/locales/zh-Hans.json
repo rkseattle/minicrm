@@ -1985,6 +1985,8 @@
     "builtinBadge": "内置",
     "editButton": "编辑",
     "deleteButton": "删除",
+    "viewButton": "查看",
+    "builtinReadOnlyNotice": "内置角色为只读，无法修改。",
     "capabilityCount": "{{count}} 个权限",
     "loadError": "加载角色失败，请重试。",
     "createError": "创建角色失败，请重试。",

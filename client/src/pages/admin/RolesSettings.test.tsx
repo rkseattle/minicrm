@@ -1,12 +1,14 @@
 /**
- * Tests for RolesSettings — custom role management admin panel (MINCRM-542).
+ * Tests for RolesSettings — custom role management admin panel (MINCRM-542, MINCRM-547).
  *
  * Verifies:
  * - Loading state renders while query is in flight
  * - Error state renders when query fails
  * - Roles list renders with names and built-in badges
- * - Built-in roles do not show edit/delete buttons
- * - Non-built-in roles show edit/delete buttons
+ * - Built-in roles show a View button; no edit/delete buttons
+ * - Clicking View expands a read-only capability panel with disabled checkboxes
+ * - Clicking View again collapses the panel
+ * - Non-built-in roles show edit/delete buttons; no view button
  * - Create form opens and submits correctly
  * - Edit form opens with pre-filled values
  * - Delete calls the API; shows error when assignees exist
@@ -66,7 +68,7 @@ describe('RolesSettings — error state', () => {
 });
 
 describe('RolesSettings — roles list', () => {
-  it('renders built-in role with badge and no edit/delete buttons', async () => {
+  it('renders built-in role with badge, View button, and no edit/delete buttons', async () => {
     server.use(http.get('/api/v1/custom-roles', () => HttpResponse.json({ data: [BUILTIN_ROLE] })));
 
     renderWithProviders(<RolesSettings />);
@@ -76,11 +78,63 @@ describe('RolesSettings — roles list', () => {
     });
 
     expect(screen.getByTestId(`role-builtin-badge-${BUILTIN_ROLE.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`)).toBeInTheDocument();
     expect(screen.queryByTestId(`role-edit-button-${BUILTIN_ROLE.id}`)).not.toBeInTheDocument();
     expect(screen.queryByTestId(`role-delete-button-${BUILTIN_ROLE.id}`)).not.toBeInTheDocument();
   });
 
-  it('renders custom role with edit and delete buttons', async () => {
+  it('clicking View expands read-only capability panel with disabled checkboxes', async () => {
+    server.use(http.get('/api/v1/custom-roles', () => HttpResponse.json({ data: [BUILTIN_ROLE] })));
+
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`)).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId(`role-capability-panel-${BUILTIN_ROLE.id}`),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`));
+
+    const panel = screen.getByTestId(`role-capability-panel-${BUILTIN_ROLE.id}`);
+    expect(panel).toBeInTheDocument();
+
+    // Panel contains the read-only capability list
+    expect(screen.getByTestId('capability-readonly-list')).toBeInTheDocument();
+
+    // All checkboxes within the panel are disabled
+    const checkboxes = panel.querySelectorAll('input[type="checkbox"]');
+    expect(checkboxes.length).toBeGreaterThan(0);
+    checkboxes.forEach((cb) => {
+      expect(cb).toBeDisabled();
+    });
+
+    // Capabilities granted to the role appear checked
+    expect(screen.getByTestId('readonly-capability-checkbox-contacts:view')).toBeChecked();
+    expect(screen.getByTestId('readonly-capability-checkbox-contacts:create')).toBeChecked();
+  });
+
+  it('clicking View again collapses the capability panel', async () => {
+    server.use(http.get('/api/v1/custom-roles', () => HttpResponse.json({ data: [BUILTIN_ROLE] })));
+
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`));
+    expect(screen.getByTestId(`role-capability-panel-${BUILTIN_ROLE.id}`)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId(`role-view-button-${BUILTIN_ROLE.id}`));
+    expect(
+      screen.queryByTestId(`role-capability-panel-${BUILTIN_ROLE.id}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders custom role with edit and delete buttons and no View button', async () => {
     server.use(http.get('/api/v1/custom-roles', () => HttpResponse.json({ data: [CUSTOM_ROLE] })));
 
     renderWithProviders(<RolesSettings />);
@@ -92,6 +146,7 @@ describe('RolesSettings — roles list', () => {
     expect(screen.queryByTestId(`role-builtin-badge-${CUSTOM_ROLE.id}`)).not.toBeInTheDocument();
     expect(screen.getByTestId(`role-edit-button-${CUSTOM_ROLE.id}`)).toBeInTheDocument();
     expect(screen.getByTestId(`role-delete-button-${CUSTOM_ROLE.id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`role-view-button-${CUSTOM_ROLE.id}`)).not.toBeInTheDocument();
   });
 
   it('renders role description when present', async () => {
