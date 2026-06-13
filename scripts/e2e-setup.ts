@@ -90,7 +90,48 @@ function ensureE2eDatabase(): void {
   console.log(`[e2e:setup] ${E2E_DB_NAME} is ready.`);
 }
 
-// ── Step 2: Seed E2E admin user ───────────────────────────────────────────────
+// ── Step 2: Reset accumulated test data ──────────────────────────────────────
+// Without this step, test users accumulate across runs (50k+ users observed),
+// causing user-list pagination to time out and cascade failures across many
+// test suites. Runs before seedE2eAdmin so the admin row is always present
+// after the reset. (MINCRM-544)
+
+function resetE2eData(): void {
+  const adminEmail = process.env.E2E_ADMIN_EMAIL;
+  const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    console.error(
+      '[e2e:setup] ERROR: E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD must be set.\n' +
+        '  Copy qa/e2e/.env.example to qa/e2e/.env and fill in the credentials.',
+    );
+    process.exit(1);
+  }
+
+  console.log('[e2e:setup] Resetting accumulated E2E test data...');
+
+  const dbUser = process.env.DB_USER ?? 'minicrm';
+  const dbPassword = process.env.DB_PASSWORD ?? 'password';
+  const dbHost = process.env.DB_HOST ?? 'localhost';
+  const dbPort = process.env.DB_PORT ?? '5432';
+
+  execSync('npm run reset:e2e-data --workspace=minicrm-server', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DB_USER: dbUser,
+      DB_PASSWORD: dbPassword,
+      DB_NAME: E2E_DB_NAME,
+      DB_HOST: dbHost,
+      DB_PORT: dbPort,
+      E2E_ADMIN_EMAIL: adminEmail,
+    },
+  });
+
+  console.log('[e2e:setup] E2E test data reset complete.');
+}
+
+// ── Step 3: Seed E2E admin user ───────────────────────────────────────────────
 
 function seedE2eAdmin(): void {
   const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -252,7 +293,8 @@ function seedSmtpConfig(): void {
 
 async function main(): Promise<void> {
   ensureE2eDatabase(); // MINCRM-330: create + migrate minicrm_e2e
-  seedE2eAdmin(); // MINCRM-330: seed admin user into minicrm_e2e
+  resetE2eData(); // MINCRM-544: truncate accumulated test data before seeding
+  seedE2eAdmin(); // MINCRM-330: re-seed admin after reset
   await waitForMinio();
   createMinioBucket();
   seedStorageConfig();
