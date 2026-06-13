@@ -6,6 +6,9 @@
  */
 
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
 import pool from '../db.js';
 import { encrypt } from './cryptoService.js';
 import { setRlsUserId } from './rlsContextService.js';
@@ -736,6 +739,41 @@ const DEMO_REP = {
   password: 'Demo1234!',
   role: 'rep' as const,
 };
+
+// ── Extended demo users (MINCRM-546) ─────────────────────────────────────────
+// All use @demo.minicrm.dev domain to distinguish from the original .app domain.
+
+/** Password shared by all MINCRM-546 demo users */
+const DEMO_IAM_PASSWORD = 'Demo1234!';
+
+const DEMO_IAM_USERS = [
+  { email: 'admin@demo.minicrm.dev', name: 'Alex Admin', role: 'admin' as const },
+  { email: 'manager.west@demo.minicrm.dev', name: 'Morgan West', role: 'manager' as const },
+  { email: 'manager.east@demo.minicrm.dev', name: 'Elliott East', role: 'manager' as const },
+  { email: 'rep1@demo.minicrm.dev', name: 'Riley Rep', role: 'rep' as const },
+  { email: 'rep2@demo.minicrm.dev', name: 'Sam Seller', role: 'rep' as const },
+  { email: 'rep3@demo.minicrm.dev', name: 'Jordan Closer', role: 'rep' as const },
+  { email: 'viewer@demo.minicrm.dev', name: 'Val Viewer', role: 'viewer' as const },
+  {
+    email: 'svc-demo@demo.minicrm.dev',
+    name: 'Demo Integration',
+    role: 'service_account' as const,
+  },
+] as const;
+
+/** Bytes of entropy for the service-account API token (matches userService) */
+const DEMO_API_TOKEN_BYTES = 32;
+
+/** Custom role seeded by MINCRM-546 */
+const DEMO_SENIOR_REP_ROLE_NAME = 'Senior Rep';
+
+/** Capabilities granted to the "Senior Rep" custom role (additive on top of built-in rep) */
+const DEMO_SENIOR_REP_CAPABILITIES = [
+  'reports:create',
+  'reports:edit',
+  'reports:export',
+  'data:export',
+] as const;
 
 // Rep accounts include international companies to demonstrate cross-locale data (MINCRM-408).
 const DEMO_REP_ACCOUNTS = [
@@ -1533,6 +1571,21 @@ async function removeDemoData(client: pg.PoolClient): Promise<void> {
 
   // Remove the demo rep user — all their owned records are already deleted above via is_demo
   await client.query(`DELETE FROM users WHERE email = $1`, [DEMO_REP.email]);
+
+  // MINCRM-546: remove IAM demo teams (cascade deletes team_memberships)
+  await client.query(`DELETE FROM teams WHERE name = ANY($1::text[])`, [
+    ['West Coast Sales', 'East Coast Sales', 'Sales'],
+  ]);
+
+  // MINCRM-546: remove Senior Rep custom role (cascade deletes role_capabilities + user_custom_roles)
+  await client.query(`DELETE FROM public.custom_roles WHERE name = $1 AND is_builtin = false`, [
+    DEMO_SENIOR_REP_ROLE_NAME,
+  ]);
+
+  // MINCRM-546: remove IAM demo users — owned records already gone via is_demo cascade above
+  await client.query(`DELETE FROM users WHERE email = ANY($1::text[])`, [
+    DEMO_IAM_USERS.map((u) => u.email),
+  ]);
 }
 
 /**
@@ -1546,7 +1599,7 @@ async function insertDemoData(
   client: pg.PoolClient,
   adminId: string,
   repPasswordHash: string,
-): Promise<void> {
+): Promise<{ svcDemoToken: string }> {
   // 0. Create demo rep user — ON CONFLICT preserves idempotency if partially seeded
   await client.query(
     `INSERT INTO users (email, name, role, password_hash, status)
@@ -2085,6 +2138,147 @@ async function insertDemoData(
       );
     }
   }
+
+  // ── 22. MINCRM-546 — IAM demo users, teams, custom role, and record redistribution ──
+
+  // 22a. Hash password once (bcrypt is CPU-bound; do it before any DB calls to keep
+  //      the hot path short while holding a transaction).
+  const iamPasswordHash = await bcrypt.hash(DEMO_IAM_PASSWORD, BCRYPT_SALT_ROUNDS);
+
+  // 22b. Upsert all IAM demo users and collect their IDs.
+  const iamUserIds: Record<string, string> = {};
+  for (const u of DEMO_IAM_USERS) {
+    await client.query(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, $2, $3, $4, 'active')
+       ON CONFLICT (email) DO UPDATE SET
+         name = EXCLUDED.name,
+         role = EXCLUDED.role,
+         status = 'active'`,
+      [u.email, u.name, u.role, iamPasswordHash],
+    );
+    const row = await client.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
+      u.email,
+    ]);
+    // Safe: we just upserted the row above.
+    iamUserIds[u.email] = row.rows[0]!.id;
+  }
+
+  const westMgrId = iamUserIds['manager.west@demo.minicrm.dev']!;
+  const eastMgrId = iamUserIds['manager.east@demo.minicrm.dev']!;
+  const rep1Id = iamUserIds['rep1@demo.minicrm.dev']!;
+  const rep2Id = iamUserIds['rep2@demo.minicrm.dev']!;
+  const rep3Id = iamUserIds['rep3@demo.minicrm.dev']!;
+  const svcId = iamUserIds['svc-demo@demo.minicrm.dev']!;
+
+  // 22c. Team hierarchy: Sales (parent, no manager) → West Coast Sales + East Coast Sales
+  const salesTeamResult = await client.query<{ id: string }>(
+    `INSERT INTO teams (name, manager_id, parent_team_id)
+     VALUES ('Sales', NULL, NULL)
+     ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+  );
+  const salesTeamId = salesTeamResult.rows[0]!.id;
+
+  const westTeamResult = await client.query<{ id: string }>(
+    `INSERT INTO teams (name, manager_id, parent_team_id)
+     VALUES ('West Coast Sales', $1, $2)
+     ON CONFLICT (name) DO UPDATE SET manager_id = EXCLUDED.manager_id, parent_team_id = EXCLUDED.parent_team_id
+     RETURNING id`,
+    [westMgrId, salesTeamId],
+  );
+  const westTeamId = westTeamResult.rows[0]!.id;
+
+  const eastTeamResult = await client.query<{ id: string }>(
+    `INSERT INTO teams (name, manager_id, parent_team_id)
+     VALUES ('East Coast Sales', $1, $2)
+     ON CONFLICT (name) DO UPDATE SET manager_id = EXCLUDED.manager_id, parent_team_id = EXCLUDED.parent_team_id
+     RETURNING id`,
+    [eastMgrId, salesTeamId],
+  );
+  const eastTeamId = eastTeamResult.rows[0]!.id;
+
+  // 22d. Team memberships
+  const memberships: Array<{ team_id: string; user_id: string }> = [
+    { team_id: westTeamId, user_id: westMgrId },
+    { team_id: westTeamId, user_id: rep1Id },
+    { team_id: westTeamId, user_id: rep2Id },
+    { team_id: eastTeamId, user_id: eastMgrId },
+    { team_id: eastTeamId, user_id: rep3Id },
+  ];
+  for (const m of memberships) {
+    await client.query(
+      `INSERT INTO team_memberships (team_id, user_id, role)
+       VALUES ($1, $2, 'member')
+       ON CONFLICT (team_id, user_id) DO NOTHING`,
+      [m.team_id, m.user_id],
+    );
+  }
+
+  // 22e. "Senior Rep" custom role with extra reporting/export capabilities
+  const srRoleResult = await client.query<{ id: string }>(
+    `INSERT INTO public.custom_roles (name, description, is_builtin)
+     VALUES ($1, 'Additive role for experienced reps: adds reporting and export capabilities.', false)
+     ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description
+     RETURNING id`,
+    [DEMO_SENIOR_REP_ROLE_NAME],
+  );
+  const srRoleId = srRoleResult.rows[0]!.id;
+
+  for (const cap of DEMO_SENIOR_REP_CAPABILITIES) {
+    await client.query(
+      `INSERT INTO public.role_capabilities (role_id, capability)
+       VALUES ($1, $2)
+       ON CONFLICT (role_id, capability) DO NOTHING`,
+      [srRoleId, cap],
+    );
+  }
+
+  // Assign Senior Rep role to rep3 (Jordan Closer)
+  await client.query(
+    `INSERT INTO public.user_custom_roles (user_id, role_id)
+     VALUES ($1, $2)
+     ON CONFLICT (user_id, role_id) DO NOTHING`,
+    [rep3Id, srRoleId],
+  );
+
+  // 22f. Record redistribution — 40% West Coast reps, 30% East, 30% admin
+  // DEMO_CONTACTS has 20 records (0-19), all currently owned by adminId.
+  // Indices 0-7 (8 contacts, ~40%) → West Coast reps, alternating riley/sam
+  // Indices 8-13 (6 contacts, ~30%) → East Coast (Jordan)
+  // Indices 14-19 remain with admin (~30%)
+  for (let i = 0; i < 8; i++) {
+    const ownerId = i % 2 === 0 ? rep1Id : rep2Id;
+    await client.query(`UPDATE contacts SET owner_id = $1 WHERE id = $2`, [ownerId, contactIds[i]]);
+  }
+  for (let i = 8; i < 14; i++) {
+    await client.query(`UPDATE contacts SET owner_id = $1 WHERE id = $2`, [rep3Id, contactIds[i]]);
+  }
+
+  // DEMO_DEALS has 17+ deals seeded for adminId. Redistribute the first 10 similarly.
+  // dealIds is scoped to this function — use them directly.
+  const dealCount = dealIds.length;
+  const westDealCount = Math.floor(dealCount * 0.4);
+  const eastDealCount = Math.floor(dealCount * 0.3);
+  for (let i = 0; i < westDealCount; i++) {
+    const ownerId = i % 2 === 0 ? rep1Id : rep2Id;
+    await client.query(`UPDATE deals SET owner_id = $1 WHERE id = $2`, [ownerId, dealIds[i]]);
+  }
+  for (let i = westDealCount; i < westDealCount + eastDealCount; i++) {
+    await client.query(`UPDATE deals SET owner_id = $1 WHERE id = $2`, [rep3Id, dealIds[i]]);
+  }
+
+  // 22g. Service account API token — generate plaintext and store SHA-256 hash
+  const svcPlainToken = crypto.randomBytes(DEMO_API_TOKEN_BYTES).toString('hex');
+  const svcTokenHash = crypto.createHash('sha256').update(svcPlainToken).digest('hex');
+  await client.query(
+    `UPDATE users
+     SET api_token_hash = $2, api_token_issued_at = now(), updated_at = now()
+     WHERE id = $1 AND role = 'service_account'`,
+    [svcId, svcTokenHash],
+  );
+
+  return { svcDemoToken: svcPlainToken };
 }
 
 /**
@@ -2096,6 +2290,7 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
   // the event loop while holding a pool client, risking connection timeout under load.
   const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
   const client = await pool.connect();
+  let svcToken: string | undefined;
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
@@ -2108,16 +2303,29 @@ export async function seedDemo(): Promise<{ seeded: boolean; reason?: string }> 
     }
 
     const adminId = await getAdminUserId(client);
-    await insertDemoData(client, adminId, repPasswordHash);
+    const result = await insertDemoData(client, adminId, repPasswordHash);
+    svcToken = result.svcDemoToken;
     await client.query('COMMIT');
-    console.log(`[seed-demo] Demo rep user: ${DEMO_REP.email} / ${DEMO_REP.password}`);
-    return { seeded: true };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  console.log(`[seed-demo] Demo rep user: ${DEMO_REP.email} / ${DEMO_REP.password}`);
+  console.log(`[DEMO] svc-demo API token: ${svcToken}`);
+
+  // Persist the token to .env.demo so local tooling can authenticate as the service account.
+  const envDemoPath = path.resolve(process.cwd(), '.env.demo');
+  await fs.writeFile(
+    envDemoPath,
+    `# Auto-generated by npm run seed:demo — do not commit\nDEMO_SVC_API_TOKEN=${svcToken}\n`,
+    { encoding: 'utf-8' },
+  );
+  console.log(`[DEMO] Token written to ${envDemoPath}`);
+
+  return { seeded: true };
 }
 
 /**
@@ -2154,19 +2362,31 @@ export async function resetDemo(): Promise<{ reset: boolean }> {
   // Hash before acquiring a DB connection — same reason as seedDemo.
   const repPasswordHash = await bcrypt.hash(DEMO_REP.password, BCRYPT_SALT_ROUNDS);
   const client = await pool.connect();
+  let svcToken: string | undefined;
   try {
     await client.query('BEGIN');
     await setRlsUserId(client);
     // getAdminUserId runs inside the transaction so any error triggers a clean ROLLBACK.
     const adminId = await getAdminUserId(client);
     await removeDemoData(client);
-    await insertDemoData(client, adminId, repPasswordHash);
+    const result = await insertDemoData(client, adminId, repPasswordHash);
+    svcToken = result.svcDemoToken;
     await client.query('COMMIT');
-    return { reset: true };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  console.log(`[DEMO] svc-demo API token: ${svcToken}`);
+  const envDemoPath = path.resolve(process.cwd(), '.env.demo');
+  await fs.writeFile(
+    envDemoPath,
+    `# Auto-generated by npm run seed:demo — do not commit\nDEMO_SVC_API_TOKEN=${svcToken}\n`,
+    { encoding: 'utf-8' },
+  );
+  console.log(`[DEMO] Token written to ${envDemoPath}`);
+
+  return { reset: true };
 }
