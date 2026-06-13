@@ -172,7 +172,6 @@ function CapabilityPicker({ selected, onChange, disabled, readOnly }: Capability
               <input
                 type="checkbox"
                 checked={allSelected}
-                readOnly={readOnly}
                 ref={(el) => {
                   if (el) el.indeterminate = someSelected;
                 }}
@@ -204,7 +203,6 @@ function CapabilityPicker({ selected, onChange, disabled, readOnly }: Capability
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      readOnly={readOnly}
                       onChange={() => toggle(cap)}
                       disabled={isInert}
                       data-testid={
@@ -520,6 +518,8 @@ export default function RolesSettings() {
                       <Button
                         variant="secondary"
                         onClick={() => setViewingId((prev) => (prev === role.id ? null : role.id))}
+                        aria-expanded={viewingId === role.id}
+                        aria-controls={`role-capability-panel-${role.id}`}
                         data-testid={`role-view-button-${role.id}`}
                       >
                         {t('rolesSettings.viewButton')}
@@ -553,6 +553,7 @@ export default function RolesSettings() {
                 </div>
                 {role.is_builtin && viewingId === role.id && (
                   <div
+                    id={`role-capability-panel-${role.id}`}
                     className="border-t border-gray-100 px-4 pb-4 pt-3"
                     data-testid={`role-capability-panel-${role.id}`}
                   >
