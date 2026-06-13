@@ -2244,7 +2244,7 @@ async function insertDemoData(
 
   // 22f. Record redistribution — 40% West Coast reps, 30% East, 30% admin
   // DEMO_CONTACTS has 20 records (0-19), all currently owned by adminId.
-  // Indices 0-7 (8 contacts, ~40%) → West Coast reps, alternating riley/sam
+  // Indices 0-7 (8 contacts, ~40%) → West Coast reps, alternating Priya/Marcus
   // Indices 8-13 (6 contacts, ~30%) → East Coast (Jordan)
   // Indices 14-19 remain with admin (~30%)
   for (let i = 0; i < 8; i++) {
