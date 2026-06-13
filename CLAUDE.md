@@ -567,6 +567,40 @@ API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client  # separate
 
 `E2E_API_URL=http://localhost:3002`, `E2E_BASE_URL=http://localhost:5173` in `qa/e2e/.env`. (MINCRM-317, MINCRM-318, MINCRM-330)
 
+### Timing-Aware Sharding (MINCRM-549)
+
+Per-test durations are recorded by `TimingReporter` (`qa/e2e/framework/reporting/timing-reporter.ts`) on every run — locally and in CI — and appended to `qa/e2e/test-timing.jsonl` (gitignored). The committed source of truth is `qa/e2e/test-timing-baseline.json`, which stores the median duration per spec file and is updated automatically after every push to `main` by `.github/workflows/update-timing-baseline.yml`.
+
+**Key files:**
+
+| File                                  | Committed?      | Purpose                                                              |
+| ------------------------------------- | --------------- | -------------------------------------------------------------------- |
+| `qa/e2e/test-timing.jsonl`            | No (gitignored) | Per-run history; accumulates locally and is uploaded from CI shards  |
+| `qa/e2e/test-timing-baseline.json`    | **Yes**         | Median durations per file; consumed by CI for LPT shard assignment   |
+| `qa/e2e/playwright.shard.*.config.ts` | No (gitignored) | Generated per CI run; extends base config with per-shard `testMatch` |
+
+**Regenerating the baseline locally:**
+
+```bash
+# After running the full E2E suite at least 3 times (builds up test-timing.jsonl):
+npm run e2e:timing:baseline
+# Then commit the updated test-timing-baseline.json
+```
+
+**Running timing-aware shards locally:**
+
+```bash
+# Generate a shard config (shard 0 of 4) and run it
+npm run e2e:timing:gen-config -- --shard-index=0 --total-shards=4
+npx playwright test --config=qa/e2e/playwright.shard.0.config.ts --project=desktop
+```
+
+**Preview LPT assignment without generating configs:**
+
+```bash
+npm run e2e:timing:shards -- --workers=4
+```
+
 ### E2E Functional Suite — Execution Rules
 
 > **THIS DIRECTIVE EXISTS BECAUSE IT HAS BEEN VIOLATED REPEATEDLY.**

@@ -102,6 +102,55 @@ npx playwright test --config=qa/e2e/playwright.config.ts qa/e2e/tests/apps/minic
 
 Copy `qa/e2e/.env.example` to `qa/e2e/.env` and fill in the required values before running against a live environment.
 
+## Timing-Aware Sharding (MINCRM-549)
+
+Playwright's built-in `--shard=K/N` splits tests by count, ignoring duration. This produces hot-spot workers when a few spec files are significantly longer than the rest. The timing pipeline replaces count-based sharding with **LPT (Longest Processing Time) bin-packing**, minimising the maximum worker wall time (makespan).
+
+### How it works
+
+1. **`TimingReporter`** (`framework/reporting/timing-reporter.ts`) appends one JSONL record per test to `test-timing.jsonl` on every local or CI run. The file accumulates history across runs and is gitignored.
+2. **`compute-timing-baseline`** reads `test-timing.jsonl`, filters out `skipped`/`timedOut` records, computes the median duration per spec file across all qualifying runs, and writes `test-timing-baseline.json`. Files with fewer than 3 qualifying runs fall back to a 30 000 ms default and emit a warning.
+3. **`gen-shards`** reads the baseline, discovers all functional spec files, and runs LPT bin-packing: sort files descending by estimated duration, then greedily assign each to the worker with the lowest accumulated total. Produces a `string[][]` assignment (index = worker, values = file paths).
+4. **`gen-shard-config`** runs the same LPT logic and writes a `playwright.shard.<N>.config.ts` file for each shard index, overriding only `testMatch` from the base config.
+5. **CI** (`e2e-timing-setup` job) generates all shard configs before the matrix runs, uploads them as an artifact, and each `e2e-functional` matrix shard downloads and uses its own config. If the baseline is absent (e.g. first run on a fresh branch), CI falls back to native `--shard=K/N`.
+6. **Baseline update** (`.github/workflows/update-timing-baseline.yml`) runs after every push to `main`: downloads all shard JSONL artifacts, merges them, recomputes the baseline, and commits the updated `test-timing-baseline.json` with `[skip ci]`.
+
+### Committed vs. gitignored
+
+| File                           | Status         | Purpose                                                            |
+| ------------------------------ | -------------- | ------------------------------------------------------------------ |
+| `test-timing-baseline.json`    | **Committed**  | Shared source of truth — median durations per file, consumed by CI |
+| `test-timing.jsonl`            | **Gitignored** | Per-machine run history — accumulates locally, uploaded from CI    |
+| `playwright.shard.*.config.ts` | **Gitignored** | Generated fresh per CI run by `e2e-timing-setup`                   |
+
+### npm scripts (run from repo root)
+
+```bash
+# Recompute the baseline from local test-timing.jsonl history
+npm run e2e:timing:baseline
+
+# Preview LPT shard assignment for 4 workers (prints assignment + makespan to stdout)
+npm run e2e:timing:shards -- --workers=4
+
+# Generate playwright.shard.0.config.ts for shard 0 of 4 (locally, for testing)
+npm run e2e:timing:gen-config -- --shard-index=0 --total-shards=4
+```
+
+### Running timing-aware shards locally
+
+```bash
+# 1. Build a baseline (requires at least 3 prior runs of the full suite)
+npm run e2e:timing:baseline
+
+# 2. Generate a shard config (e.g. shard 0 of 4)
+npm run e2e:timing:gen-config -- --shard-index=0 --total-shards=4
+
+# 3. Run only that shard
+npx playwright test --config=qa/e2e/playwright.shard.0.config.ts --project=desktop
+```
+
+If `test-timing-baseline.json` does not yet exist, run the full suite a few times first so `test-timing.jsonl` accumulates enough history, then run `npm run e2e:timing:baseline` to generate it. The generated baseline should be committed so CI and other developers share the same estimates.
+
 ## Debugging Failures
 
 ### Artifact Types
