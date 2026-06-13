@@ -25,9 +25,10 @@ import { Button } from '@/components/ui/Button.js';
 
 // ── Capability grouping for the capability picker ─────────────────────────────
 
-const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
+// groupKey maps to rolesSettings.capabilityGroups.<key> in locale files (MINCRM-544)
+const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
   {
-    label: 'Contacts',
+    groupKey: 'contacts',
     caps: [
       Capability.ContactsView,
       Capability.ContactsCreate,
@@ -37,7 +38,7 @@ const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
     ],
   },
   {
-    label: 'Deals',
+    groupKey: 'deals',
     caps: [
       Capability.DealsView,
       Capability.DealsCreate,
@@ -47,7 +48,7 @@ const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
     ],
   },
   {
-    label: 'Activities',
+    groupKey: 'activities',
     caps: [
       Capability.ActivitiesView,
       Capability.ActivitiesCreate,
@@ -56,11 +57,11 @@ const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
     ],
   },
   {
-    label: 'Pipelines',
+    groupKey: 'pipelines',
     caps: [Capability.PipelinesView, Capability.PipelinesManage],
   },
   {
-    label: 'Reports',
+    groupKey: 'reports',
     caps: [
       Capability.ReportsView,
       Capability.ReportsCreate,
@@ -71,11 +72,11 @@ const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
     ],
   },
   {
-    label: 'Data',
+    groupKey: 'data',
     caps: [Capability.DataImport, Capability.DataExport],
   },
   {
-    label: 'Users & Admin',
+    groupKey: 'usersAdmin',
     caps: [
       Capability.UsersView,
       Capability.UsersCreate,
@@ -89,10 +90,19 @@ const CAPABILITY_GROUPS: Array<{ label: string; caps: Capability[] }> = [
     ],
   },
   {
-    label: 'API',
+    groupKey: 'api',
     caps: [Capability.ApiAccess],
   },
 ];
+
+/**
+ * Extracts the action segment from a capability string (e.g. 'contacts:view' → 'view')
+ * and resolves it to a human-readable label via i18n (MINCRM-544).
+ */
+function capabilityActionLabel(cap: Capability, t: (key: string) => string): string {
+  const action = cap.split(':')[1] ?? cap;
+  return t(`rolesSettings.capabilityActions.${action}`);
+}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -103,6 +113,8 @@ interface CapabilityPickerProps {
 }
 
 function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProps) {
+  const { t } = useTranslation();
+
   function toggle(cap: Capability) {
     const next = new Set(selected);
     if (next.has(cap)) {
@@ -125,13 +137,17 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
   }
 
   return (
-    <div className="space-y-4" data-testid="capability-picker">
-      {CAPABILITY_GROUPS.map((group) => {
+    <div className="space-y-5" data-testid="capability-picker">
+      {CAPABILITY_GROUPS.map((group, groupIndex) => {
         const allSelected = group.caps.every((c) => selected.has(c));
         const someSelected = !allSelected && group.caps.some((c) => selected.has(c));
+        const groupLabel = t(`rolesSettings.capabilityGroups.${group.groupKey}`);
         return (
-          <div key={group.label}>
-            <label className="flex items-center gap-2 mb-1 cursor-pointer">
+          <div
+            key={group.groupKey}
+            className={groupIndex > 0 ? 'border-t border-gray-100 pt-4' : undefined}
+          >
+            <label className="flex items-center gap-2 mb-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={allSelected}
@@ -140,25 +156,35 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
                 }}
                 onChange={() => toggleGroup(group.caps)}
                 disabled={disabled}
-                data-testid={`capability-group-${group.label.toLowerCase().replace(/[^a-z]+/g, '-')}`}
+                data-testid={`capability-group-${group.groupKey}`}
                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <span className="text-sm font-medium text-gray-700">{group.label}</span>
+              <span className="text-sm font-semibold text-gray-800">{groupLabel}</span>
             </label>
-            <div className="ps-6 flex flex-wrap gap-x-4 gap-y-1">
-              {group.caps.map((cap) => (
-                <label key={cap} className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(cap)}
-                    onChange={() => toggle(cap)}
-                    disabled={disabled}
-                    data-testid={`capability-checkbox-${cap}`}
-                    className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-xs text-gray-600">{cap}</span>
-                </label>
-              ))}
+            <div className="ps-6 grid grid-cols-3 gap-x-4 gap-y-2">
+              {group.caps.map((cap) => {
+                const isChecked = selected.has(cap);
+                return (
+                  <label
+                    key={cap}
+                    className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-colors ${
+                      isChecked ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggle(cap)}
+                      disabled={disabled}
+                      data-testid={`capability-checkbox-${cap}`}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                    />
+                    <span className="text-sm text-gray-700 select-none">
+                      {capabilityActionLabel(cap, t)}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         );

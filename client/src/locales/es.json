@@ -2004,6 +2004,30 @@
       "hasAssignees": "Este rol no se puede eliminar mientras haya usuarios asignados. Elimine primero esas asignaciones.",
       "builtin": "Los roles integrados no se pueden eliminar.",
       "generic": "Error al eliminar el rol. Inténtelo de nuevo."
+    },
+    "capabilityGroups": {
+      "contacts": "Contactos",
+      "deals": "Negocios",
+      "activities": "Actividades",
+      "pipelines": "Embudos",
+      "reports": "Informes",
+      "data": "Datos",
+      "usersAdmin": "Usuarios y administración",
+      "api": "API"
+    },
+    "capabilityActions": {
+      "view": "Ver",
+      "create": "Crear",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "export": "Exportar",
+      "reassign": "Reasignar",
+      "manage": "Gestionar",
+      "import": "Importar",
+      "access": "Acceder",
+      "schedule": "Programar",
+      "enroll": "Inscribir",
+      "activate": "Activar"
     }
   },
   "teamsSettings": {

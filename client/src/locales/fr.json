@@ -2004,6 +2004,30 @@
       "hasAssignees": "Ce rôle ne peut pas être supprimé tant que des utilisateurs lui sont attribués. Supprimez ces attributions d'abord.",
       "builtin": "Les rôles intégrés ne peuvent pas être supprimés.",
       "generic": "Échec de la suppression du rôle. Veuillez réessayer."
+    },
+    "capabilityGroups": {
+      "contacts": "Contacts",
+      "deals": "Affaires",
+      "activities": "Activités",
+      "pipelines": "Pipelines",
+      "reports": "Rapports",
+      "data": "Données",
+      "usersAdmin": "Utilisateurs et administration",
+      "api": "API"
+    },
+    "capabilityActions": {
+      "view": "Voir",
+      "create": "Créer",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "export": "Exporter",
+      "reassign": "Réaffecter",
+      "manage": "Gérer",
+      "import": "Importer",
+      "access": "Accéder",
+      "schedule": "Planifier",
+      "enroll": "Inscrire",
+      "activate": "Activer"
     }
   },
   "teamsSettings": {
