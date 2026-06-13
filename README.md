@@ -374,7 +374,7 @@ Team structure: `Sales` (parent) → `West Coast Sales` + `East Coast Sales` (ch
 
 The **Senior Rep** custom role grants `reports:create`, `reports:edit`, `reports:export`, and `data:export` capabilities. It is assigned to Jordan Closer (rep3).
 
-Record distribution: ~40% of contacts and deals are owned by West Coast reps (Riley/Sam, alternating), ~30% by the East Coast rep (Jordan), ~30% by the admin.
+Record distribution: ~40% of contacts and deals are owned by West Coast reps (Priya/Marcus, alternating), ~30% by the East Coast rep (Jordan), ~30% by the admin.
 
 After seeding, a service account API token is written to `.env.demo` in the project root. This file is gitignored.
 
