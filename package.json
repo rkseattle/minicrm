@@ -19,6 +19,7 @@
     "seed:e2e-storage": "npm run seed:e2e-storage --workspace=minicrm-server",
     "seed:e2e-smtp": "npm run seed:e2e-smtp --workspace=minicrm-server",
     "create:e2e-db": "npm run create:e2e-db --workspace=minicrm-server",
+    "reset:e2e-data": "npm run reset:e2e-data --workspace=minicrm-server",
     "e2e:setup": "npx tsx scripts/e2e-setup.ts",
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
