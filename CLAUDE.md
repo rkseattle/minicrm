@@ -535,16 +535,19 @@ cd qa && npx tsc --noEmit   # qa/ is excluded from root typecheck
 # Step 2 — lint
 npm run lint
 
-# Step 3 — unit tests (changed workspaces only)
+# Step 3 - audit
+npm audit
+
+# Step 4 — unit tests (changed workspaces only)
 npm test --workspace=minicrm-server   # if server/ changed
 npm test --workspace=minicrm-client   # if client/ changed
 
-# Step 4 — QA static checks (when qa/ files changed)
+# Step 5 — QA static checks (when qa/ files changed)
 bash qa/scripts/check-framework-purity.sh   # if qa/e2e/framework/ changed
 bash qa/scripts/check-behavior-layer.sh     # if qa/e2e/tests/ changed
 bash qa/scripts/check-settings-mutations.sh # if any spec mutates system settings
 
-# Step 5 — E2E functional suite (ALWAYS — no scope exceptions)
+# Step 6 — E2E functional suite (ALWAYS — no scope exceptions)
 date
 rm -rf qa/e2e/test-results/
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
