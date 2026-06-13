@@ -6,12 +6,12 @@
  *
  * Algorithm:
  *   1. Parse all records, dropping lines with status 'skipped' or 'timedOut'.
- *   2. Group qualifying durations by file path.
- *   3. For each file, collect the set of distinct runIds that contributed at
- *      least one qualifying record — this is the "run count" for that file.
- *   4. Files with run count < MIN_RUN_COUNT get the fallback duration and a
- *      stderr warning; all others get the median of their qualifying durations.
- *   5. Write the result to test-timing-baseline.json.
+ *   2. Group per-test durations by (file, runId) and sum within each group,
+ *      producing one total wall-clock duration per spec file per run.
+ *   3. Files with fewer than MIN_RUN_COUNT distinct runIds get the fallback
+ *      duration and a stderr warning; all others get the median of their
+ *      per-run totals.
+ *   4. Write the result to test-timing-baseline.json.
  *
  * Usage (from repo root):
  *   npm run e2e:timing:baseline
@@ -50,28 +50,28 @@ function main(): void {
     process.exit(0);
   }
 
-  // Group qualifying durations and distinct runIds by file.
-  const durationsByFile = new Map<string, number[]>();
-  const runIdsByFile = new Map<string, Set<number>>();
+  // Group per-test durations by (file, runId) so we can sum per-run totals.
+  // Each JSONL record is one test's duration; a spec file's wall-clock time is the
+  // sum of all its tests in a single run. Taking the median over per-run totals
+  // gives an accurate estimate of how long Playwright spends on that file end-to-end.
+  const runTotalsByFile = new Map<string, Map<number, number>>();
 
   for (const record of records) {
     if (EXCLUDED_STATUSES.has(record.status)) continue;
 
-    if (!durationsByFile.has(record.file)) {
-      durationsByFile.set(record.file, []);
-      runIdsByFile.set(record.file, new Set());
+    if (!runTotalsByFile.has(record.file)) {
+      runTotalsByFile.set(record.file, new Map());
     }
-    durationsByFile.get(record.file)!.push(record.duration); // non-null: set above
-    runIdsByFile.get(record.file)!.add(record.runId); // non-null: set above
+    const byRun = runTotalsByFile.get(record.file)!; // non-null: set above
+    byRun.set(record.runId, (byRun.get(record.runId) ?? 0) + record.duration);
   }
 
   const files: Record<string, BaselineEntry> = {};
   let stableCount = 0;
   let fallbackCount = 0;
 
-  for (const [file, durations] of durationsByFile) {
-    const runIds = runIdsByFile.get(file)!; // non-null: always set alongside durationsByFile
-    const runCount = runIds.size;
+  for (const [file, byRun] of runTotalsByFile) {
+    const runCount = byRun.size;
 
     if (runCount < MIN_RUN_COUNT) {
       process.stderr.write(
@@ -81,7 +81,8 @@ function main(): void {
       files[file] = { medianMs: DEFAULT_FALLBACK_MS, runCount };
       fallbackCount++;
     } else {
-      files[file] = { medianMs: Math.round(median(durations)), runCount };
+      const perRunTotals = [...byRun.values()];
+      files[file] = { medianMs: Math.round(median(perRunTotals)), runCount };
       stableCount++;
     }
   }

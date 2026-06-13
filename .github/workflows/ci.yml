@@ -425,10 +425,7 @@ jobs:
             npx tsx qa/e2e/scripts/gen-shard-config.ts \
               --shard-index=$i \
               --total-shards=${{ env.TOTAL_SHARDS }}
-            # gen-shard-config writes to qa/e2e/playwright.shard.config.ts; rename per shard.
-            cp qa/e2e/playwright.shard.config.ts qa/e2e/playwright.shard.$i.config.ts
           done
-          rm -f qa/e2e/playwright.shard.config.ts
 
       - name: Upload shard configs artifact
         if: steps.check-baseline.outputs.exists == 'true'

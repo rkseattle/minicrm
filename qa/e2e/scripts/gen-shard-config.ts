@@ -20,14 +20,16 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {
   readTimingBaseline,
+  discoverSpecFiles,
+  lptAssign,
   TIMING_BASELINE_FILENAME,
   DEFAULT_FALLBACK_MS,
+  type FileDuration,
 } from '../framework/reporting/timing-utils.js';
 
 const E2E_DIR = path.resolve(process.cwd(), 'qa/e2e');
 const BASELINE_PATH = path.join(E2E_DIR, TIMING_BASELINE_FILENAME);
 const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional');
-const OUTPUT_CONFIG_PATH = path.join(E2E_DIR, 'playwright.shard.config.ts');
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
@@ -64,48 +66,6 @@ function parseArgs(): CliArgs {
   }
 
   return { shardIndex, totalShards };
-}
-
-// ── Spec file discovery (mirrors gen-shards.ts) ───────────────────────────────
-
-function discoverSpecFiles(dir: string): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dir)) return results;
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...discoverSpecFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith('.spec.ts')) {
-      results.push(path.relative(process.cwd(), fullPath));
-    }
-  }
-  return results.sort();
-}
-
-// ── LPT bin-packing (mirrors gen-shards.ts) ──────────────────────────────────
-
-interface FileDuration {
-  file: string;
-  estimatedMs: number;
-}
-
-function lptAssign(files: FileDuration[], workerCount: number): string[][] {
-  const sorted = [...files].sort((a, b) => b.estimatedMs - a.estimatedMs);
-  const buckets: string[][] = Array.from({ length: workerCount }, () => []);
-  const totals: number[] = Array.from({ length: workerCount }, () => 0);
-
-  for (const { file, estimatedMs } of sorted) {
-    let minIdx = 0;
-    for (let i = 1; i < workerCount; i++) {
-      if ((totals[i] as number) < (totals[minIdx] as number)) minIdx = i;
-    }
-    (buckets[minIdx] as string[]).push(file);
-    (totals[minIdx] as number) += estimatedMs;
-  }
-
-  return buckets;
 }
 
 // ── Config file generation ────────────────────────────────────────────────────
@@ -185,11 +145,12 @@ function main(): void {
   const assignment = lptAssign(fileDurations, totalShards);
   const shardFiles = assignment[shardIndex] ?? [];
 
+  const outputPath = path.join(E2E_DIR, `playwright.shard.${shardIndex}.config.ts`);
   const configContent = generateShardConfig(shardFiles, shardIndex, totalShards);
-  fs.writeFileSync(OUTPUT_CONFIG_PATH, configContent, 'utf-8');
+  fs.writeFileSync(outputPath, configContent, 'utf-8');
 
   process.stdout.write(
-    `[gen-shard-config] Wrote ${OUTPUT_CONFIG_PATH}\n` +
+    `[gen-shard-config] Wrote ${outputPath}\n` +
       `  Shard ${shardIndex}/${totalShards}: ${shardFiles.length} files\n`,
   );
 }
