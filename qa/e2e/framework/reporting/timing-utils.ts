@@ -4,7 +4,7 @@
  * Kept in framework/reporting/ alongside step-summary-reporter.ts and
  * perf-reporter.ts so framework-purity checks see no app-domain strings here.
  *
- * MINCRM-549
+ * See: qa/e2e/scripts/compute-timing-baseline.ts, gen-shards.ts, gen-shard-config.ts
  */
 
 import fs from 'node:fs';

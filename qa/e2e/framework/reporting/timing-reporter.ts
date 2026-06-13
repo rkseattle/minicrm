@@ -1,6 +1,6 @@
 /**
  * TimingReporter — custom Playwright reporter that appends per-test duration
- * records to test-timing.jsonl for use by the LPT shard assignment pipeline.
+ * records to test-timing.jsonl for use by the LPT shard assignment scripts.
  *
  * - Hooks onBegin (captures runId) and onTestEnd (writes one record per final attempt).
  * - Retry attempts are skipped — only the final outcome is recorded so the baseline
@@ -16,8 +16,6 @@
  *
  * Register in playwright.config.ts:
  *   ['./framework/reporting/timing-reporter.ts']
- *
- * MINCRM-549
  */
 
 import path from 'node:path';
