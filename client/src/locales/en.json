@@ -2015,6 +2015,21 @@
       "usersAdmin": "Users & Admin",
       "api": "API"
     },
+    "capabilityNamespaces": {
+      "contacts": "Contacts",
+      "deals": "Deals",
+      "activities": "Activities",
+      "pipelines": "Pipelines",
+      "reports": "Reports",
+      "data": "Data",
+      "users": "Users",
+      "teams": "Teams",
+      "integrations": "Integrations",
+      "settings": "Settings",
+      "feature_flags": "Feature Flags",
+      "audit_log": "Audit Log",
+      "api": "API"
+    },
     "capabilityActions": {
       "view": "View",
       "create": "Create",

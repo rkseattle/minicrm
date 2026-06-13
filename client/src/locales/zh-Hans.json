@@ -2015,6 +2015,21 @@
       "usersAdmin": "用户与管理",
       "api": "API"
     },
+    "capabilityNamespaces": {
+      "contacts": "联系人",
+      "deals": "商机",
+      "activities": "活动",
+      "pipelines": "销售管道",
+      "reports": "报告",
+      "data": "数据",
+      "users": "用户",
+      "teams": "团队",
+      "integrations": "集成",
+      "settings": "设置",
+      "feature_flags": "功能标志",
+      "audit_log": "审计日志",
+      "api": "API"
+    },
     "capabilityActions": {
       "view": "查看",
       "create": "创建",
