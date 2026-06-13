@@ -137,11 +137,11 @@ describe('RolesSettings — capability picker labels', () => {
     expect(picker).not.toHaveTextContent('contacts:view');
     expect(picker).not.toHaveTextContent('deals:create');
 
-    // Human-readable labels must be present within the picker
-    expect(picker).toHaveTextContent('View');
-    expect(picker).toHaveTextContent('Create');
-    expect(picker).toHaveTextContent('Edit');
-    expect(picker).toHaveTextContent('Delete');
+    // Human-readable labels must be present within the picker (namespace: action format)
+    expect(picker).toHaveTextContent('Contacts: View');
+    expect(picker).toHaveTextContent('Contacts: Create');
+    expect(picker).toHaveTextContent('Contacts: Edit');
+    expect(picker).toHaveTextContent('Contacts: Delete');
   });
 
   it('renders translated group headers', async () => {

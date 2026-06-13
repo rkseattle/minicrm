@@ -96,15 +96,20 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
 ];
 
 /**
- * Extracts the action segment from a capability string (e.g. 'contacts:view' → 'view')
- * and resolves it to a human-readable label via i18n (MINCRM-544).
+ * Returns a fully-qualified label for a capability checkbox: "Namespace: Action"
+ * e.g. contacts:view → "Contacts: View", feature_flags:manage → "Feature Flags: Manage".
+ * Consistent across all groups; eliminates duplicate action names within a group (MINCRM-544).
  */
-function capabilityActionLabel(
+function capabilityLabel(
   cap: Capability,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string {
-  const action = cap.split(':')[1] ?? cap;
-  return t(`rolesSettings.capabilityActions.${action}`, { defaultValue: action });
+  const [ns, action] = cap.split(':');
+  const nsLabel = t(`rolesSettings.capabilityNamespaces.${ns ?? cap}`, { defaultValue: ns ?? cap });
+  const actionLabel = t(`rolesSettings.capabilityActions.${action ?? cap}`, {
+    defaultValue: action ?? cap,
+  });
+  return `${nsLabel}: ${actionLabel}`;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -183,7 +188,7 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
                     />
                     <span className="text-sm text-gray-700 select-none">
-                      {capabilityActionLabel(cap, t)}
+                      {capabilityLabel(cap, t)}
                     </span>
                   </label>
                 );
