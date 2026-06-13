@@ -573,12 +573,14 @@ API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client  # separate
 
 **RULE 1 — One run per code change, no re-runs to paper over failures.** Fix the code; that fix is a new code change. Never re-run on the same code to see if a failure goes away.
 
-**RULE 2 — Read report files, not console output:**
+**RULE 2 - All tests passed on main, NEVER try to run them on main** When tests fail, you must fix them on your branch, even if they weren't part of your code change.
+
+**RULE 3 — Delete stale results before each run** (`rm -rf qa/e2e/test-results/`).
+
+**RULE 4 — Read report files, not console output:**
 
 - `qa/e2e/test-results/results.xml` — JUnit XML; check `tests`, `failures`, `errors`
 - `qa/e2e/test-results/healing-report.json` — heal event counts
-
-**RULE 3 — Delete stale results before each run** (`rm -rf qa/e2e/test-results/`).
 
 ### E2E Locator Authoring Requirements
 
