@@ -1,0 +1,3 @@
+{"runId":1749836400000,"file":"qa/e2e/tests/apps/minicrm/functional/contacts/contacts.spec.ts","title":"contacts > @functional > create a new contact","duration":4821,"status":"passed","ts":"2025-06-13T17:00:04.821Z"}
+{"runId":1749836400000,"file":"qa/e2e/tests/apps/minicrm/functional/deals/deals.spec.ts","title":"deals > @functional > advance deal through pipeline stages","duration":9344,"status":"passed","ts":"2025-06-13T17:00:14.165Z"}
+{"runId":1749836400000,"file":"qa/e2e/tests/apps/minicrm/functional/auth/auth.spec.ts","title":"auth > @functional > login with valid credentials","duration":2103,"status":"passed","ts":"2025-06-13T17:00:16.268Z"}
