@@ -67,10 +67,10 @@ export class LeadsPage {
    * method guards with waitForPresent before clicking.
    */
   async filterByOwnerMe(): Promise<void> {
-    await this.page.waitForPresent('[data-testid="filter-owner-me"]');
+    await this.page.waitForPresent('[data-testid="filter-owner-mine"]');
     await this.page.click(
       [
-        { type: 'testId', value: 'filter-owner-me' },
+        { type: 'testId', value: 'filter-owner-mine' },
         { type: 'role', value: 'button', options: { name: /mine/i } },
       ],
       { intent: 'owner filter button to scope leads list to current user only' },

@@ -837,6 +837,7 @@ export async function deleteContact(restClient: RestClient, contactId: string): 
 export async function listContactsViaApi(
   restClient: RestClient,
   options: {
+    owner?: 'me' | 'my_team';
     search?: string;
     sort?: string;
     dir?: 'asc' | 'desc';
@@ -845,6 +846,7 @@ export async function listContactsViaApi(
   } = {},
 ): Promise<{ total: number; data: ContactListRow[] }> {
   const params = new URLSearchParams();
+  if (options.owner) params.set('owner', options.owner);
   if (options.search) params.set('search', options.search);
   if (options.sort) params.set('sort', options.sort);
   if (options.dir) params.set('dir', options.dir);
@@ -1422,4 +1424,67 @@ export async function getContactEmailFieldLocator(context: ContactsBehaviorConte
       { intent: 'email value field on the contact detail page' },
     )
     .resolve();
+}
+
+// ---------------------------------------------------------------------------
+// Owner-filter UI behaviors (MINCRM-545)
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates to the contacts list filtered by the given owner value.
+ * Waits for the page to reach networkidle before returning.
+ *
+ * @param context - Playwright fixture context.
+ * @param owner - Owner filter value to set in the URL.
+ */
+export async function navigateToContactsWithOwnerFilter(
+  context: ContactsBehaviorContext,
+  owner: 'me' | 'my_team' | 'all',
+): Promise<void> {
+  const param = owner === 'all' ? '' : `?owner=${owner}`;
+  await context.page.goto(`/contacts${param}`, { waitUntil: 'networkidle' });
+}
+
+/**
+ * Clicks the "My Team" button in the three-way owner filter toggle on the
+ * contacts list and waits for the URL to update to ?owner=my_team.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function clickMyTeamOwnerFilter(context: ContactsBehaviorContext): Promise<void> {
+  await context.page.click(
+    [
+      { type: 'testId', value: 'filter-owner-my-team' },
+      { type: 'role', value: 'button', options: { name: /my team/i } },
+    ],
+    { intent: 'My Team button in the three-way owner filter toggle on contacts list' },
+  );
+  await context.page.waitForURL(/owner=my_team/);
+}
+
+/**
+ * Clicks the "All" button in the three-way owner filter toggle on the contacts
+ * list and waits for the ?owner URL param to be cleared.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function clickAllOwnerFilter(context: ContactsBehaviorContext): Promise<void> {
+  await context.page.click(
+    [
+      { type: 'testId', value: 'filter-owner-all' },
+      { type: 'role', value: 'button', options: { name: /all/i } },
+    ],
+    { intent: 'All button in the owner filter toggle to clear owner scoping on contacts list' },
+  );
+  await context.page.waitForURL((url) => !new URL(url).searchParams.has('owner'));
+}
+
+/**
+ * Returns the current URL of the contacts page. Use this after interacting
+ * with the owner filter toggle to assert the ?owner param state.
+ *
+ * @param context - Playwright fixture context.
+ */
+export function getContactsPageUrl(context: ContactsBehaviorContext): string {
+  return context.page.url();
 }
