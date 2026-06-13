@@ -1,5 +1,5 @@
 /**
- * F-CAPABILITIES — Capability-based RBAC (MINCRM-542)
+ * F-CAPABILITIES — Capability-based RBAC (MINCRM-542, MINCRM-547)
  *
  * Verifies that:
  * 1. Custom role CRUD works end-to-end (create, read, update, delete)
@@ -9,18 +9,28 @@
  * 5. An admin can delete any contact (204)
  * 6. Custom role list endpoint requires settings:manage
  * 7. Assigning a custom role grants its capabilities to the user
+ * 8. Built-in role cards show a View button that expands a read-only capability panel (MINCRM-547)
  *
  * Framework conventions:
  *   - All tests tagged @functional
- *   - API-only; no browser UI navigation
- *   - Each test tears down its own fixtures in try/finally
+ *   - API tests: no browser UI navigation; each test tears down its own fixtures in try/finally
+ *   - Browser tests: import from @behaviors/* only, no @pages/* imports
  *
- * MINCRM-542
+ * MINCRM-542, MINCRM-547
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import {
+  navigateToAdminSettings,
+  getRoleViewButtonLocator,
+  getRoleCapabilityPanelLocator,
+  getRoleCapabilityReadOnlyListLocator,
+  getRoleReadOnlyCapabilityCheckboxLocator,
+} from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -387,4 +397,52 @@ test('@functional assigning a custom role grants its capabilities to the user', 
     if (repId) await deactivateUser(restClient, repId);
     if (roleId) await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
   }
+});
+
+// ── Built-in role View button (MINCRM-547) ────────────────────────────────────
+
+test('@functional built-in role View button expands read-only capability panel', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  await loginAsAdmin(restClient);
+
+  // Fetch the built-in admin role ID via API so the test is not sensitive to DB seed order
+  const listRes = await restClient.get<{ data: CustomRoleResponse[] }>('/api/v1/custom-roles');
+  const adminRole = listRes.body.data.find((r) => r.is_builtin && r.name === 'admin');
+  if (!adminRole) throw new Error('[MINCRM-547] Built-in admin role not found in API response');
+
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'roles');
+
+  // View button is present, panel is not yet expanded
+  const viewBtn = await getRoleViewButtonLocator({ page }, adminRole.id);
+  await expect(viewBtn).toBeVisible({ timeout: 10_000 });
+
+  const panelBefore = await getRoleCapabilityPanelLocator({ page }, adminRole.id);
+  await expect(panelBefore).not.toBeVisible();
+
+  // Click View — panel expands
+  await viewBtn.click();
+
+  const panel = await getRoleCapabilityPanelLocator({ page }, adminRole.id);
+  await expect(panel).toBeVisible({ timeout: 5_000 });
+
+  // The read-only list is inside the panel
+  const readOnlyList = await getRoleCapabilityReadOnlyListLocator({ page });
+  await expect(readOnlyList).toBeVisible();
+
+  // A known capability checkbox is present and disabled (admin role always has contacts:view)
+  const contactsViewCheckbox = await getRoleReadOnlyCapabilityCheckboxLocator(
+    { page },
+    'contacts:view',
+  );
+  await expect(contactsViewCheckbox).toBeDisabled();
+
+  // Click View again — panel collapses
+  await viewBtn.click();
+  await expect(panel).not.toBeVisible({ timeout: 5_000 });
 });

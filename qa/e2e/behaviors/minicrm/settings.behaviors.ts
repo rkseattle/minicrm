@@ -1332,3 +1332,39 @@ export async function resetVisibilitySettings(restClient: RestClient): Promise<v
     })
     .catch(() => undefined);
 }
+
+// ---------------------------------------------------------------------------
+// Roles tab — built-in role View button (MINCRM-547)
+// ---------------------------------------------------------------------------
+
+/** Returns a resolved locator for the View button on a built-in role card. */
+export async function getRoleViewButtonLocator(
+  context: AdminSettingsBehaviorContext,
+  roleId: string,
+) {
+  return new AdminSettingsPage(context).roleViewButtonLocator(roleId);
+}
+
+/** Returns a resolved locator for the read-only capability panel of a built-in role. */
+export async function getRoleCapabilityPanelLocator(
+  context: AdminSettingsBehaviorContext,
+  roleId: string,
+) {
+  return new AdminSettingsPage(context).roleCapabilityPanelLocator(roleId);
+}
+
+/** Returns a resolved locator for the read-only capability list inside an expanded panel. */
+export async function getRoleCapabilityReadOnlyListLocator(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).roleCapabilityReadOnlyListLocator();
+}
+
+/**
+ * Returns a resolved locator for a specific disabled capability checkbox in a built-in role panel.
+ * @param capabilityKey - e.g. 'contacts:view'
+ */
+export async function getRoleReadOnlyCapabilityCheckboxLocator(
+  context: AdminSettingsBehaviorContext,
+  capabilityKey: string,
+) {
+  return new AdminSettingsPage(context).roleReadOnlyCapabilityCheckboxLocator(capabilityKey);
+}

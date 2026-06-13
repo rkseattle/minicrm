@@ -34,7 +34,9 @@ export type AdminSettingsTab =
   | 'integrations'
   | 'features'
   | 'ai'
-  | 'visibility';
+  | 'visibility'
+  | 'roles'
+  | 'teams';
 
 // ---------------------------------------------------------------------------
 // AdminSettingsPage
@@ -1435,6 +1437,73 @@ export class AdminSettingsPage {
           { type: 'role', value: 'status' },
         ],
         { intent: 'success message confirming the visibility settings were saved' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Roles tab (MINCRM-547)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the View button on a built-in role card.
+   * @param roleId - The role's UUID from the API response.
+   */
+  async roleViewButtonLocator(roleId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `role-view-button-${roleId}` },
+          { type: 'role', value: 'button', options: { name: /view/i } },
+        ],
+        { intent: 'View button on a built-in role card to expand capability details' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the read-only capability panel for a built-in role.
+   * @param roleId - The role's UUID from the API response.
+   */
+  async roleCapabilityPanelLocator(roleId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `role-capability-panel-${roleId}` },
+          { type: 'text', value: 'Built-in roles are read-only' },
+        ],
+        { intent: 'read-only capability panel expanded below a built-in role card' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the read-only capability list inside an expanded panel. */
+  async roleCapabilityReadOnlyListLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'capability-readonly-list' },
+          { type: 'text', value: 'Contacts' },
+        ],
+        { intent: 'grouped read-only capability list with disabled checkboxes' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the disabled contacts:view checkbox in a built-in role panel.
+   * Used to verify the panel renders capabilities as disabled checkboxes (MINCRM-547).
+   */
+  async roleReadOnlyCapabilityCheckboxLocator(capabilityKey: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `readonly-capability-checkbox-${capabilityKey}` },
+          { type: 'role', value: 'checkbox', options: { name: /contacts.*view/i } },
+        ],
+        {
+          intent: `disabled read-only checkbox for the ${capabilityKey} capability in a built-in role panel`,
+        },
       )
       .resolve();
   }
