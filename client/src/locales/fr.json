@@ -1985,6 +1985,8 @@
     "builtinBadge": "Intégré",
     "editButton": "Modifier",
     "deleteButton": "Supprimer",
+    "viewButton": "Afficher",
+    "builtinReadOnlyNotice": "Les rôles intégrés sont en lecture seule et ne peuvent pas être modifiés.",
     "capabilityCount": "{{count}} autorisations",
     "loadError": "Échec du chargement des rôles. Veuillez réessayer.",
     "createError": "Échec de la création du rôle. Veuillez réessayer.",
