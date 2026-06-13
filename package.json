@@ -24,7 +24,10 @@
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
     "audit:testids": "tsx qa/scripts/audit-testids.ts",
-    "generate:proto": "npx @bufbuild/buf generate"
+    "generate:proto": "npx @bufbuild/buf generate",
+    "e2e:timing:baseline": "npx tsx qa/e2e/scripts/compute-timing-baseline.ts",
+    "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",
+    "e2e:timing:gen-config": "npx tsx qa/e2e/scripts/gen-shard-config.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
