@@ -676,6 +676,12 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
     restClient
       .patch('/api/v1/settings/mfa-required', { mfa_required: false })
       .catch(() => undefined),
+    // Reset org visibility policies; visibility.spec.ts mutates these and the
+    // afterEach reset can race with concurrent shards' beforeEach calls, causing
+    // policy to read as 'org' mid-test when a private/team policy is expected.
+    restClient
+      .put('/api/v1/settings/visibility', { contact: 'org', deal: 'org', activity: 'org' })
+      .catch(() => undefined),
   ]);
 }
 

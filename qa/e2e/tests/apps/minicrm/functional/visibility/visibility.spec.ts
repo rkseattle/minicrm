@@ -153,9 +153,8 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
   const repA = await createTestRep(testData, restClient);
   const repB = await createTestRep(testData, restClient);
 
-  // Set contact policy to private
-  await loginAsAdmin(restClient);
-  await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+  // Create contacts first, then set the policy last — minimises the window between
+  // the policy PUT and the list call to eliminate races with concurrent test resets.
 
   // Rep A creates a contact that repB should NOT see
   await loginAndVerify(restClient, repA.email, repA.password);
@@ -165,7 +164,7 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
     email: `priv-contact-${Date.now()}@example.com`,
   });
 
-  // Rep B creates their own contact
+  // Rep B creates their own contact and stays logged in
   await loginAndVerify(restClient, repB.email, repB.password);
   const repBContact = await createContactViaApi(restClient, {
     first_name: 'RepB',
@@ -173,14 +172,14 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
     email: `repb-own-${Date.now()}@example.com`,
   });
 
-  // Re-assert private policy immediately before listing — prevents a race where a
-  // concurrent test's afterEach resets visibility to 'org' between our PUT and the
-  // list call, causing rep A's contact to bleed into rep B's results.
+  // Set private policy as admin, then immediately switch back to repB and list —
+  // no re-login for repB, so the window where another shard can reset to 'org' is
+  // only the single list API call.
   await loginAsAdmin(restClient);
   await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+  await loginAndVerify(restClient, repB.email, repB.password);
 
   // Rep B's contact list should contain their own contact but NOT rep A's
-  await loginAndVerify(restClient, repB.email, repB.password);
   const { data } = await listContactsViaApi(restClient, {
     limit: 100,
     sort: 'created_at',
