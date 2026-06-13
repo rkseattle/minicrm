@@ -169,7 +169,11 @@ test('@functional F8-D1: disable MFA via profile page — password confirmed →
 // false → true and leave the setting dirty, blocking every other test suite
 // that calls loginAsAdmin(). (MINCRM-544 env-cleanup fix)
 async function resetMfaRequired(restClient: RestClient): Promise<void> {
-  await loginAsAdmin(restClient);
+  try {
+    await loginAsAdmin(restClient);
+  } catch {
+    // Ignore re-auth errors; attempt the patch regardless.
+  }
   await restClient
     .patch('/api/v1/settings/mfa-required', { mfa_required: false })
     .catch(() => undefined);

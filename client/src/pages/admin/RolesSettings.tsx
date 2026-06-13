@@ -99,9 +99,12 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
  * Extracts the action segment from a capability string (e.g. 'contacts:view' → 'view')
  * and resolves it to a human-readable label via i18n (MINCRM-544).
  */
-function capabilityActionLabel(cap: Capability, t: (key: string) => string): string {
+function capabilityActionLabel(
+  cap: Capability,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const action = cap.split(':')[1] ?? cap;
-  return t(`rolesSettings.capabilityActions.${action}`);
+  return t(`rolesSettings.capabilityActions.${action}`, { defaultValue: action });
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
