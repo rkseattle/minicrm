@@ -62,21 +62,28 @@ export async function assertEmptyStateContainerFills(
 
   // Walk up from the empty-state element to find the nearest overflow-auto
   // ancestor that PagedListLayout applies to the list container, then return
-  // its clientHeight.
-  const containerHeight = (await page.evaluate(
-    `(() => {
-      const el = document.querySelector('[data-testid="${emptyStateTestId}"]');
-      if (!el) return 0;
-      let node = el.parentElement;
-      while (node) {
-        if (node.classList.contains('overflow-auto') || node.classList.contains('overflow-hidden')) {
-          return node.clientHeight;
-        }
-        node = node.parentElement;
+  // its clientHeight. Poll until the container has a positive height so that
+  // a deferred flex layout pass in CI does not return 0 prematurely.
+  const getHeight = `(() => {
+    const el = document.querySelector('[data-testid="${emptyStateTestId}"]');
+    if (!el) return 0;
+    let node = el.parentElement;
+    while (node) {
+      if (node.classList.contains('overflow-auto') || node.classList.contains('overflow-hidden')) {
+        return node.clientHeight;
       }
-      return 0;
-    })()`,
-  )) as number;
+      node = node.parentElement;
+    }
+    return 0;
+  })()`;
+
+  // Wait up to 5 s for the flex chain to resolve before taking the measurement.
+  await page.waitForFunction(getHeight + ' > 0').catch(() => {
+    // If the container never grows, fall through and return 0 so the caller's
+    // assertion produces a clear failure message rather than a timeout.
+  });
+
+  const containerHeight = (await page.evaluate(getHeight)) as number;
 
   const emptyEl = await page
     .locate(
