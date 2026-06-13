@@ -117,14 +117,22 @@ function capabilityLabel(
 
 interface CapabilityPickerProps {
   selected: Set<Capability>;
-  onChange: (caps: Set<Capability>) => void;
+  onChange?: (caps: Set<Capability>) => void;
   disabled?: boolean;
+  /**
+   * Renders all checkboxes as disabled with read-only testid prefixes and no
+   * hover/cursor affordances. Use for built-in role inspection (MINCRM-547).
+   * When true, `onChange` is not required.
+   */
+  readOnly?: boolean;
 }
 
-function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProps) {
+function CapabilityPicker({ selected, onChange, disabled, readOnly }: CapabilityPickerProps) {
   const { t } = useTranslation();
+  const isInert = disabled || readOnly;
 
   function toggle(cap: Capability) {
+    if (isInert || !onChange) return;
     const next = new Set(selected);
     if (next.has(cap)) {
       next.delete(cap);
@@ -135,6 +143,7 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
   }
 
   function toggleGroup(caps: Capability[]) {
+    if (isInert || !onChange) return;
     const allSelected = caps.every((c) => selected.has(c));
     const next = new Set(selected);
     if (allSelected) {
@@ -146,26 +155,34 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
   }
 
   return (
-    <div className="space-y-5" data-testid="capability-picker">
+    <div
+      className="space-y-5"
+      data-testid={readOnly ? 'capability-readonly-list' : 'capability-picker'}
+    >
       {CAPABILITY_GROUPS.map((group, groupIndex) => {
         const allSelected = group.caps.every((c) => selected.has(c));
-        const someSelected = !allSelected && group.caps.some((c) => selected.has(c));
+        const someSelected = !readOnly && !allSelected && group.caps.some((c) => selected.has(c));
         const groupLabel = t(`rolesSettings.capabilityGroups.${group.groupKey}`);
         return (
           <div
             key={group.groupKey}
             className={groupIndex > 0 ? 'border-t border-gray-100 pt-4' : undefined}
           >
-            <label className="flex items-center gap-2 mb-2 cursor-pointer">
+            <label className={`flex items-center gap-2 mb-2 ${readOnly ? '' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={allSelected}
+                readOnly={readOnly}
                 ref={(el) => {
                   if (el) el.indeterminate = someSelected;
                 }}
                 onChange={() => toggleGroup(group.caps)}
-                disabled={disabled}
-                data-testid={`capability-group-${group.groupKey}`}
+                disabled={isInert}
+                data-testid={
+                  readOnly
+                    ? `readonly-capability-group-${group.groupKey}`
+                    : `capability-group-${group.groupKey}`
+                }
                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
               <span className="text-sm font-semibold text-gray-800">{groupLabel}</span>
@@ -176,75 +193,26 @@ function CapabilityPicker({ selected, onChange, disabled }: CapabilityPickerProp
                 return (
                   <label
                     key={cap}
-                    className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer transition-colors ${
-                      isChecked ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center gap-2 rounded px-2 py-1 ${
+                      isChecked
+                        ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                        : readOnly
+                          ? ''
+                          : 'hover:bg-gray-50'
+                    } ${readOnly ? '' : 'cursor-pointer transition-colors'}`}
                   >
                     <input
                       type="checkbox"
                       checked={isChecked}
+                      readOnly={readOnly}
                       onChange={() => toggle(cap)}
-                      disabled={disabled}
-                      data-testid={`capability-checkbox-${cap}`}
+                      disabled={isInert}
+                      data-testid={
+                        readOnly
+                          ? `readonly-capability-checkbox-${cap}`
+                          : `capability-checkbox-${cap}`
+                      }
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
-                    />
-                    <span className="text-sm text-gray-700 select-none">
-                      {capabilityLabel(cap, t)}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-interface CapabilityReadOnlyListProps {
-  capabilities: Capability[];
-}
-
-function CapabilityReadOnlyList({ capabilities }: CapabilityReadOnlyListProps) {
-  const { t } = useTranslation();
-  const granted = new Set(capabilities);
-
-  return (
-    <div className="space-y-5" data-testid="capability-readonly-list">
-      {CAPABILITY_GROUPS.map((group, groupIndex) => {
-        const groupLabel = t(`rolesSettings.capabilityGroups.${group.groupKey}`);
-        return (
-          <div
-            key={group.groupKey}
-            className={groupIndex > 0 ? 'border-t border-gray-100 pt-4' : undefined}
-          >
-            <label className="flex items-center gap-2 mb-2">
-              <input
-                type="checkbox"
-                checked={group.caps.every((c) => granted.has(c))}
-                disabled
-                data-testid={`readonly-capability-group-${group.groupKey}`}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-              />
-              <span className="text-sm font-semibold text-gray-800">{groupLabel}</span>
-            </label>
-            <div className="ps-6 grid grid-cols-3 gap-x-4 gap-y-2">
-              {group.caps.map((cap) => {
-                const isGranted = granted.has(cap);
-                return (
-                  <label
-                    key={cap}
-                    className={`flex items-center gap-2 rounded px-2 py-1 ${
-                      isGranted ? 'bg-indigo-50 ring-1 ring-indigo-200' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isGranted}
-                      disabled
-                      data-testid={`readonly-capability-checkbox-${cap}`}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 shrink-0"
                     />
                     <span className="text-sm text-gray-700 select-none">
                       {capabilityLabel(cap, t)}
@@ -591,7 +559,7 @@ export default function RolesSettings() {
                     <p className="mb-3 text-xs text-gray-500 italic">
                       {t('rolesSettings.builtinReadOnlyNotice')}
                     </p>
-                    <CapabilityReadOnlyList capabilities={role.capabilities} />
+                    <CapabilityPicker selected={new Set(role.capabilities)} readOnly />
                   </div>
                 )}
               </div>

@@ -1470,7 +1470,7 @@ export class AdminSettingsPage {
       .locate(
         [
           { type: 'testId', value: `role-capability-panel-${roleId}` },
-          { type: 'text', value: 'Built-in roles are read-only' },
+          { type: 'testId', value: 'capability-readonly-list' },
         ],
         { intent: 'read-only capability panel expanded below a built-in role card' },
       )
@@ -1483,7 +1483,7 @@ export class AdminSettingsPage {
       .locate(
         [
           { type: 'testId', value: 'capability-readonly-list' },
-          { type: 'text', value: 'Contacts' },
+          { type: 'testId', value: 'readonly-capability-group-contacts' },
         ],
         { intent: 'grouped read-only capability list with disabled checkboxes' },
       )
@@ -1491,15 +1491,20 @@ export class AdminSettingsPage {
   }
 
   /**
-   * Returns a resolved locator for the disabled contacts:view checkbox in a built-in role panel.
-   * Used to verify the panel renders capabilities as disabled checkboxes (MINCRM-547).
+   * Returns a resolved locator for a specific disabled capability checkbox in a built-in role panel.
+   * @param capabilityKey - e.g. 'contacts:view'
    */
   async roleReadOnlyCapabilityCheckboxLocator(capabilityKey: string) {
+    const [ns, action] = capabilityKey.split(':');
     return this.page
       .locate(
         [
           { type: 'testId', value: `readonly-capability-checkbox-${capabilityKey}` },
-          { type: 'role', value: 'checkbox', options: { name: /contacts.*view/i } },
+          {
+            type: 'role',
+            value: 'checkbox',
+            options: { name: new RegExp(`${ns}.*${action}`, 'i') },
+          },
         ],
         {
           intent: `disabled read-only checkbox for the ${capabilityKey} capability in a built-in role panel`,
