@@ -245,6 +245,17 @@ API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client  # separate
 - [ ] Roles & Capabilities scoped for least privilege
 - [ ] Greptile review — code changes would pass a Greptile review
 
+## PR Review Feedback
+
+**"Review PR feedback"** means, in this order:
+
+1. Fetch existing reviewer comments from the open PR (both inline diff comments and top-level summary comments).
+2. Fix every issue found in the code.
+3. Reply to each inline comment explaining what changed and why.
+4. Post a top-level summary comment covering all changes made.
+
+Never reply to comments before fixing the code. Never run a fresh `/code-review` when asked to address existing feedback.
+
 ## Jira Workflow
 
 - Transition to **In Progress** when starting implementation.
