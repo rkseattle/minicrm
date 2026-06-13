@@ -36,8 +36,8 @@ const router = Router();
  *     operationId: listDeals
  *     summary: List deals
  *     description: >
- *       Returns all deals. Pass `?owner=me` to scope results to the authenticated
- *       user's deals.
+ *       Returns all deals. Pass `?owner=me` to scope to the authenticated user's deals,
+ *       or `?owner=my_team` to scope to deals owned by any member of the user's teams.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -45,8 +45,8 @@ const router = Router();
  *         name: owner
  *         schema:
  *           type: string
- *           enum: [me]
- *         description: Pass 'me' to return only the authenticated user's deals
+ *           enum: [me, my_team]
+ *         description: "'me' returns only the authenticated user's deals; 'my_team' returns deals owned by any member of the user's teams (MINCRM-545)"
  *     responses:
  *       200:
  *         description: Array of deals

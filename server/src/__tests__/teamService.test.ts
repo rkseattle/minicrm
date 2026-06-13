@@ -16,6 +16,7 @@ import {
   addTeamMember,
   removeTeamMember,
   getTeamMemberIds,
+  getCoMemberIds,
 } from '../services/teamService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -402,6 +403,127 @@ describe('getTeamMemberIds', () => {
 
     const ids = await getTeamMemberIds(root.id, true);
     const occurrences = ids.filter((id) => id === user.id).length;
+
+    expect(occurrences).toBe(1);
+  });
+});
+
+// ── getCoMemberIds (MINCRM-545) ────────────────────────────────────────────────
+
+describe('getCoMemberIds', () => {
+  it('returns [userId] when the user belongs to no teams', async () => {
+    const user = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-solo@example.com',
+      name: 'Solo User',
+    });
+
+    const ids = await getCoMemberIds(user.id);
+
+    expect(ids).toHaveLength(1);
+    expect(ids).toContain(user.id);
+  });
+
+  it('returns the user plus co-members when they share a team', async () => {
+    const userA = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-a@example.com',
+      name: 'Co-Member A',
+    });
+    const userB = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-b@example.com',
+      name: 'Co-Member B',
+    });
+    const team = await createTeam({ name: 'CoMember Team' }, ACTOR);
+    await addTeamMember(team.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team.id, userB.id, 'member', ACTOR);
+
+    const ids = await getCoMemberIds(userA.id);
+
+    expect(ids).toContain(userA.id);
+    expect(ids).toContain(userB.id);
+  });
+
+  it('unions members across multiple teams the user belongs to', async () => {
+    const userA = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-multi-a@example.com',
+      name: 'Multi Team A',
+    });
+    const userB = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-multi-b@example.com',
+      name: 'Multi Team B',
+    });
+    const userC = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-multi-c@example.com',
+      name: 'Multi Team C',
+    });
+    const team1 = await createTeam({ name: 'Multi Team 1' }, ACTOR);
+    const team2 = await createTeam({ name: 'Multi Team 2' }, ACTOR);
+    await addTeamMember(team1.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team1.id, userB.id, 'member', ACTOR);
+    await addTeamMember(team2.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team2.id, userC.id, 'member', ACTOR);
+
+    const ids = await getCoMemberIds(userA.id);
+
+    expect(ids).toContain(userA.id);
+    expect(ids).toContain(userB.id);
+    expect(ids).toContain(userC.id);
+  });
+
+  it('does not include users who share no team with the requesting user', async () => {
+    const userA = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-exclude-a@example.com',
+      name: 'Exclude A',
+    });
+    const userB = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-exclude-b@example.com',
+      name: 'Exclude B',
+    });
+    const unrelated = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-unrelated@example.com',
+      name: 'Unrelated User',
+    });
+    const sharedTeam = await createTeam({ name: 'Shared Team' }, ACTOR);
+    const otherTeam = await createTeam({ name: 'Other Team' }, ACTOR);
+    await addTeamMember(sharedTeam.id, userA.id, 'member', ACTOR);
+    await addTeamMember(sharedTeam.id, userB.id, 'member', ACTOR);
+    await addTeamMember(otherTeam.id, unrelated.id, 'member', ACTOR);
+
+    const ids = await getCoMemberIds(userA.id);
+
+    expect(ids).toContain(userA.id);
+    expect(ids).toContain(userB.id);
+    expect(ids).not.toContain(unrelated.id);
+  });
+
+  it('deduplicates IDs when a co-member shares multiple teams with the user', async () => {
+    const userA = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-dedup-a@example.com',
+      name: 'Dedup CoMember A',
+    });
+    const userB = await createUser({
+      ...BASE_USER,
+      email: 'team-svc-comember-dedup-b@example.com',
+      name: 'Dedup CoMember B',
+    });
+    const team1 = await createTeam({ name: 'Dedup CoMember Team 1' }, ACTOR);
+    const team2 = await createTeam({ name: 'Dedup CoMember Team 2' }, ACTOR);
+    await addTeamMember(team1.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team1.id, userB.id, 'member', ACTOR);
+    await addTeamMember(team2.id, userA.id, 'member', ACTOR);
+    await addTeamMember(team2.id, userB.id, 'member', ACTOR);
+
+    const ids = await getCoMemberIds(userA.id);
+    const occurrences = ids.filter((id) => id === userB.id).length;
 
     expect(occurrences).toBe(1);
   });

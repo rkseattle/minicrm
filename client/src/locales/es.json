@@ -1226,7 +1226,8 @@
     "ownerToggle": {
       "label": "Filtrar por propietario",
       "all": "Todos",
-      "mine": "Míos"
+      "mine": "Míos",
+      "myTeam": "Mi equipo"
     },
     "loading": "Cargando…",
     "sortAsc": "orden ascendente",

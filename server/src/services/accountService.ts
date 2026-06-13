@@ -60,6 +60,8 @@ export type AccountSortColumn = (typeof ACCOUNT_SORT_COLUMNS)[number];
 interface ListAccountsOptions {
   /** When provided, only accounts with this owner_id are returned */
   ownerId?: string;
+  /** When provided, only accounts whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  ownerIds?: string[];
   /**
    * When provided, accounts are filtered by a case-insensitive substring match
    * on the account name.
@@ -275,6 +277,11 @@ export async function listAccounts(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`owner_id = $${values.length}`);
+  }
+
+  if (options.ownerIds && options.ownerIds.length > 0) {
+    values.push(options.ownerIds);
+    conditions.push(`owner_id = ANY($${values.length}::uuid[])`);
   }
 
   if (options.search) {

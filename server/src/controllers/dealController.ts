@@ -20,6 +20,7 @@ import {
 import { getStageNames, getTerminalStageNames } from '../services/pipelineStageService.js';
 import { findPipelineById } from '../services/pipelineService.js';
 import { findContactById } from '../services/contactService.js';
+import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
@@ -77,7 +78,9 @@ export async function createDealHandler(req: Request, res: Response): Promise<vo
  *   ?limit=<n>        — records per page (default 50, max 100)
  */
 export async function listDealsHandler(req: Request, res: Response): Promise<void> {
-  const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
+  const ownerParam = typeof req.query.owner === 'string' ? req.query.owner : undefined;
+  const ownerId = ownerParam === 'me' ? req.user!.id : undefined;
+  const ownerIds = ownerParam === 'my_team' ? await getCoMemberIds(req.user!.id) : undefined;
   const accountId =
     typeof req.query.account === 'string' && req.query.account ? req.query.account : undefined;
   const excludeClosedStages = req.query.hideClosed === 'true';
@@ -116,6 +119,7 @@ export async function listDealsHandler(req: Request, res: Response): Promise<voi
 
   const result = await listDeals({
     ownerId,
+    ownerIds,
     accountId,
     excludeClosedStages,
     pipelineId,

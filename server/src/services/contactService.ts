@@ -87,6 +87,8 @@ export type ContactSortColumn = (typeof CONTACT_SORT_COLUMNS)[number];
 interface ListContactsOptions {
   /** When provided, only contacts with this owner_id are returned */
   ownerId?: string;
+  /** When provided, only contacts whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  ownerIds?: string[];
   /** When provided, only contacts linked to this account_id are returned */
   accountId?: string;
   /**
@@ -309,6 +311,11 @@ export async function listContacts(
   if (options.ownerId) {
     values.push(options.ownerId);
     conditions.push(`c.owner_id = $${values.length}`);
+  }
+
+  if (options.ownerIds && options.ownerIds.length > 0) {
+    values.push(options.ownerIds);
+    conditions.push(`c.owner_id = ANY($${values.length}::uuid[])`);
   }
 
   if (options.accountId) {

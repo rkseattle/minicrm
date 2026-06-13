@@ -23,6 +23,7 @@ import {
   searchAccountsForConversion,
   LEAD_SORT_COLUMNS,
 } from '../services/leadsService.js';
+import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -88,7 +89,9 @@ export async function createLeadHandler(req: Request, res: Response): Promise<vo
  *   ?limit=<n>              — records per page (default 50)
  */
 export async function listLeadsHandler(req: Request, res: Response): Promise<void> {
-  const ownerId = req.query.owner === 'me' ? req.user!.id : undefined;
+  const ownerParam = typeof req.query.owner === 'string' ? req.query.owner : undefined;
+  const ownerId = ownerParam === 'me' ? req.user!.id : undefined;
+  const ownerIds = ownerParam === 'my_team' ? await getCoMemberIds(req.user!.id) : undefined;
 
   const status =
     typeof req.query.status === 'string' && req.query.status.trim().length > 0
@@ -122,6 +125,7 @@ export async function listLeadsHandler(req: Request, res: Response): Promise<voi
 
   const result = await listLeads({
     ownerId,
+    ownerIds,
     status,
     lead_source,
     includeDisqualified,

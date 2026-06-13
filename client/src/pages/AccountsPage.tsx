@@ -57,7 +57,9 @@ export default function AccountsPage() {
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+  const ownerParam = searchParams.get('owner');
+  const ownerFilter: OwnerFilter =
+    ownerParam === 'me' ? 'me' : ownerParam === 'my_team' ? 'my_team' : 'all';
   const [searchInput, setSearchInput] = useState('');
   const [industryInput, setIndustryInput] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | ''>('');
@@ -74,8 +76,8 @@ export default function AccountsPage() {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (value === 'me') {
-          next.set('owner', 'me');
+        if (value === 'me' || value === 'my_team') {
+          next.set('owner', value);
         } else {
           next.delete('owner');
         }
@@ -105,10 +107,12 @@ export default function AccountsPage() {
   const debouncedSearch = useDebounce(searchInput);
   const debouncedIndustry = useDebounce(industryInput);
 
+  const ownerApiParam = ownerFilter === 'all' ? undefined : ownerFilter;
+
   const accountsQueryKey = [
     ...ACCOUNTS_QUERY_KEY,
     {
-      owner: ownerFilter === 'me' ? 'me' : undefined,
+      owner: ownerApiParam,
       search: debouncedSearch || undefined,
       industry: debouncedIndustry || undefined,
       account_type: accountTypeFilter || undefined,
@@ -124,7 +128,7 @@ export default function AccountsPage() {
     queryKey: accountsQueryKey,
     queryFn: () =>
       listAccounts({
-        owner: ownerFilter === 'me' ? 'me' : undefined,
+        owner: ownerApiParam,
         search: debouncedSearch || undefined,
         industry: debouncedIndustry || undefined,
         account_type: accountTypeFilter || undefined,
@@ -175,7 +179,7 @@ export default function AccountsPage() {
   const hasActiveFilters =
     !!debouncedSearch ||
     !!debouncedIndustry ||
-    ownerFilter === 'me' ||
+    ownerFilter !== 'all' ||
     !!accountTypeFilter ||
     selectedTagIds.length > 0;
 

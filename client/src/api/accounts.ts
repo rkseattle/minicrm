@@ -19,8 +19,8 @@ interface AccountSingleResponse {
 
 /** Parameters for filtering and paginating the accounts list */
 export interface ListAccountsParams {
-  /** When 'me', only the current user's accounts are returned */
-  owner?: 'me';
+  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  owner?: 'me' | 'my_team';
   /** Case-insensitive substring match on account name */
   search?: string;
   /** Case-insensitive match on industry field */

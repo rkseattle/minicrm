@@ -62,7 +62,8 @@ router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler)
  *         name: owner
  *         schema:
  *           type: string
- *           enum: [me]
+ *           enum: [me, my_team]
+ *         description: "'me' returns only the authenticated user's leads; 'my_team' returns leads owned by any member of the user's teams (MINCRM-545)"
  *       - in: query
  *         name: status
  *         schema:

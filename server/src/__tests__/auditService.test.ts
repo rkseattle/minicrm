@@ -42,10 +42,10 @@ const FILE_ACTOR_IDS = [ACTOR.id, ACTOR_2_ID];
  */
 async function clearAuditLog(): Promise<void> {
   await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-  await pool.query(
-    'DELETE FROM audit_log WHERE record_id = ANY($1) OR changed_by_id = ANY($2)',
-    [FILE_RECORD_IDS, FILE_ACTOR_IDS],
-  );
+  await pool.query('DELETE FROM audit_log WHERE record_id = ANY($1) OR changed_by_id = ANY($2)', [
+    FILE_RECORD_IDS,
+    FILE_ACTOR_IDS,
+  ]);
   await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 }
 
@@ -154,10 +154,7 @@ describe('writeAuditEntry', () => {
       client.release();
     }
 
-    const result = await pool.query(
-      'SELECT * FROM audit_log WHERE changed_by_id = $1',
-      [ACTOR.id],
-    );
+    const result = await pool.query('SELECT * FROM audit_log WHERE changed_by_id = $1', [ACTOR.id]);
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].old_value).toBeNull();
     expect(result.rows[0].new_value).toBeNull();
@@ -223,7 +220,9 @@ describe('writeAuditEntries', () => {
     }
 
     const result = await pool.query(
-      'SELECT * FROM audit_log WHERE record_id = $1 ORDER BY created_at',
+      // ctid is the physical row order within the partition — stable tiebreaker
+      // when two rows land in the same transaction and share the same created_at.
+      'SELECT * FROM audit_log WHERE record_id = $1 ORDER BY created_at, ctid',
       [RECORD_ID],
     );
     expect(result.rows).toHaveLength(2);

@@ -27,8 +27,8 @@ export interface DuplicateContactInfo {
 
 /** Parameters for filtering and paginating the contacts list */
 export interface ListContactsParams {
-  /** When 'me', only the current user's contacts are returned */
-  owner?: 'me';
+  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  owner?: 'me' | 'my_team';
   /** When provided, only contacts linked to this account UUID are returned */
   accountId?: string;
   /** Case-insensitive substring match on first name, last name, or email */

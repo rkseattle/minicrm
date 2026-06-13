@@ -66,7 +66,9 @@ export default function ContactsPage() {
   /** Ref to the ContactForm's underlying <form> element for programmatic submit. */
   const formRef = useRef<HTMLFormElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const ownerFilter: OwnerFilter = searchParams.get('owner') === 'me' ? 'me' : 'all';
+  const ownerParam = searchParams.get('owner');
+  const ownerFilter: OwnerFilter =
+    ownerParam === 'me' ? 'me' : ownerParam === 'my_team' ? 'my_team' : 'all';
   const [searchInput, setSearchInput] = useState('');
   const [accountSearchInput, setAccountSearchInput] = useState('');
   const { page, limit, setPage, handleLimitChange } = usePagination();
@@ -82,8 +84,8 @@ export default function ContactsPage() {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        if (value === 'me') {
-          next.set('owner', 'me');
+        if (value === 'me' || value === 'my_team') {
+          next.set('owner', value);
         } else {
           next.delete('owner');
         }
@@ -124,10 +126,12 @@ export default function ContactsPage() {
   const debouncedSearch = useDebounce(searchInput);
   const debouncedAccountSearch = useDebounce(accountSearchInput);
 
+  const ownerApiParam = ownerFilter === 'all' ? undefined : ownerFilter;
+
   const contactsQueryKey = [
     ...CONTACTS_QUERY_KEY,
     {
-      owner: ownerFilter === 'me' ? 'me' : undefined,
+      owner: ownerApiParam,
       search: debouncedSearch || undefined,
       accountSearch: debouncedAccountSearch || undefined,
       sort: sortCol,
@@ -142,7 +146,7 @@ export default function ContactsPage() {
     queryKey: contactsQueryKey,
     queryFn: () =>
       listContacts({
-        owner: ownerFilter === 'me' ? 'me' : undefined,
+        owner: ownerApiParam,
         search: debouncedSearch || undefined,
         accountSearch: debouncedAccountSearch || undefined,
         sort: sortCol,
@@ -219,7 +223,7 @@ export default function ContactsPage() {
   const hasActiveFilters =
     !!debouncedSearch ||
     !!debouncedAccountSearch ||
-    ownerFilter === 'me' ||
+    ownerFilter !== 'all' ||
     selectedTagIds.length > 0;
 
   // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────

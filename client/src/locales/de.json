@@ -1226,7 +1226,8 @@
     "ownerToggle": {
       "label": "Nach Inhaber filtern",
       "all": "Alle",
-      "mine": "Meine"
+      "mine": "Meine",
+      "myTeam": "Mein Team"
     },
     "loading": "Laden…",
     "sortAsc": "aufsteigend sortiert",
