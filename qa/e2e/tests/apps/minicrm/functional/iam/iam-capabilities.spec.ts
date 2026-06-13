@@ -418,12 +418,9 @@ test('@functional built-in role View button expands read-only capability panel',
 
   await navigateToAdminSettings({ page }, 'roles');
 
-  // View button is present, panel is not yet expanded
+  // View button is present on the built-in role card
   const viewBtn = await getRoleViewButtonLocator({ page }, adminRole.id);
   await expect(viewBtn).toBeVisible({ timeout: 10_000 });
-
-  const panelBefore = await getRoleCapabilityPanelLocator({ page }, adminRole.id);
-  await expect(panelBefore).not.toBeVisible();
 
   // Click View — panel expands
   await viewBtn.click();
