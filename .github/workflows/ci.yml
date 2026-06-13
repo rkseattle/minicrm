@@ -11,6 +11,11 @@ permissions:
   pull-requests: write
   contents: write
 
+# MINCRM-549: Single source of truth for shard count.
+# Update this value (and the matrix.shard list in e2e-functional) when tuning parallelism.
+env:
+  TOTAL_SHARDS: 4
+
 jobs:
   changes:
     name: Detect changed paths
@@ -375,6 +380,64 @@ jobs:
             qa/coverage/coverage-summary.json
           retention-days: 14
 
+  # MINCRM-549: Generates per-shard playwright.shard.config.ts files using LPT bin-packing
+  # so each shard gets a balanced set of spec files by estimated wall time rather than count.
+  # Falls back gracefully: if test-timing-baseline.json is absent (e.g. first run on a fresh
+  # branch) this step exits 0 and e2e-functional falls back to Playwright's native --shard.
+  e2e-timing-setup:
+    name: Phase 3 - E2E Timing Setup (LPT shard config)
+    needs: [server-tests, client-tests, changes]
+    if: |
+      always() &&
+      (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
+      (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
+    runs-on: ubuntu-latest
+    outputs:
+      baseline-exists: ${{ steps.check-baseline.outputs.exists }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for timing baseline
+        id: check-baseline
+        run: |
+          if [ -f qa/e2e/test-timing-baseline.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Timing baseline found — using LPT shard assignment."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::test-timing-baseline.json not found. Falling back to Playwright native --shard."
+          fi
+
+      - name: Generate shard configs (LPT assignment)
+        if: steps.check-baseline.outputs.exists == 'true'
+        run: |
+          for i in $(seq 0 $(( ${{ env.TOTAL_SHARDS }} - 1 ))); do
+            npx tsx qa/e2e/scripts/gen-shard-config.ts \
+              --shard-index=$i \
+              --total-shards=${{ env.TOTAL_SHARDS }}
+            # gen-shard-config writes to qa/e2e/playwright.shard.config.ts; rename per shard.
+            cp qa/e2e/playwright.shard.config.ts qa/e2e/playwright.shard.$i.config.ts
+          done
+          rm -f qa/e2e/playwright.shard.config.ts
+
+      - name: Upload shard configs artifact
+        if: steps.check-baseline.outputs.exists == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-shard-configs-${{ github.run_id }}
+          path: qa/e2e/playwright.shard.*.config.ts
+          retention-days: 1
+
   e2e-functional:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
@@ -382,8 +445,10 @@ jobs:
     # MINCRM-217: 4 shards × 2 workers = 8 parallel test slots per project;
     # 2 workers matches GitHub free-tier runner vCPU count (2 vCPUs per ubuntu-latest).
     # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
+    # MINCRM-549: Shard index is 1-based in the matrix (matching --shard=K/N convention)
+    # but 0-based in the generated config filename (playwright.shard.0.config.ts).
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
-    needs: [server-tests, client-tests, changes]
+    needs: [server-tests, client-tests, changes, e2e-timing-setup]
     # MINCRM-271: always() prevents GitHub from auto-skipping this job when server-tests
     # or client-tests were legitimately skipped (qa-only change). The explicit result checks
     # preserve the original Phase 2 gate: e2e still blocks on a unit test failure.
@@ -445,6 +510,17 @@ jobs:
         with:
           node-version: 20
           cache: npm
+
+      # MINCRM-549: Download the pre-generated shard configs from e2e-timing-setup.
+      # If the baseline was absent (e2e-timing-setup.outputs.baseline-exists == 'false'),
+      # no artifact was uploaded and this step is skipped — the test run step falls back
+      # to native --shard below.
+      - name: Download shard config artifact (MINCRM-549)
+        if: needs.e2e-timing-setup.outputs.baseline-exists == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: e2e-shard-configs-${{ github.run_id }}
+          path: qa/e2e/
 
       - name: Cache Playwright browser binaries
         id: playwright-cache
@@ -566,20 +642,37 @@ jobs:
       # globalSetup runs once per shard — each shard generates its own .auth/admin.json
       # independently via an API login. N concurrent globalSetup calls against the same
       # server are safe (no shared filesystem state between shard runners). MINCRM-217
-      # Shard total is hardcoded as 4 in --shard=K/4; update matrix.shard list if changing total.
-      - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217)
+      # MINCRM-549: When a timing baseline exists, each shard uses a pre-generated
+      # playwright.shard.<N>.config.ts (0-indexed) from the e2e-timing-setup job, which
+      # assigns spec files via LPT bin-packing. When the baseline is absent (first run on
+      # a fresh branch), the fallback native --shard=K/N is used instead.
+      - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217, MINCRM-549)
         # MINCRM-324: Exclude visual-regression spec — it requires an isolated DB to
         # avoid pixel diffs caused by other shards' seeded data appearing on the board.
         # Visual tests run exclusively in the update-visual-snapshots job.
-        run: >
-          npx playwright test
-          --config=qa/e2e/playwright.config.ts
-          --project=${{ matrix.project }}
-          --shard=${{ matrix.shard }}/4
-          --workers=2
-          --grep @functional
-          --grep-invert visual-regression
-          qa/e2e/tests/apps/minicrm/functional/
+        # MINCRM-549: shard index in the matrix is 1-based; config filename is 0-based.
+        run: |
+          SHARD_ZERO=$(( ${{ matrix.shard }} - 1 ))
+          SHARD_CONFIG="qa/e2e/playwright.shard.${SHARD_ZERO}.config.ts"
+          if [ -f "$SHARD_CONFIG" ]; then
+            echo "Using LPT shard config: $SHARD_CONFIG"
+            npx playwright test \
+              --config="$SHARD_CONFIG" \
+              --project=${{ matrix.project }} \
+              --workers=2 \
+              --grep @functional \
+              --grep-invert visual-regression
+          else
+            echo "::warning::LPT shard config not found — falling back to native --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }}"
+            npx playwright test \
+              --config=qa/e2e/playwright.config.ts \
+              --project=${{ matrix.project }} \
+              --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }} \
+              --workers=2 \
+              --grep @functional \
+              --grep-invert visual-regression \
+              qa/e2e/tests/apps/minicrm/functional/
+          fi
         env:
           SHARD_INDEX: ${{ matrix.shard }}
           E2E_BASE_URL: http://localhost:5173
@@ -606,6 +699,7 @@ jobs:
             qa/e2e/test-results/healing-shard*.json
             qa/e2e/test-results/healing-suggestions.md
             qa/e2e/blob-report/
+            qa/e2e/test-timing.jsonl
           retention-days: 7
           if-no-files-found: warn
 

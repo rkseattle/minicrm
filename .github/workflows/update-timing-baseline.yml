@@ -1,0 +1,79 @@
+name: Update E2E Timing Baseline
+
+# MINCRM-549: Runs after every push to main that includes a completed CI run.
+# Downloads test-timing.jsonl from all shard artifacts produced by the CI run
+# that triggered this push, merges them, recomputes the baseline, and commits
+# the updated test-timing-baseline.json back to main with [skip ci] so the
+# commit does not trigger another CI run.
+#
+# The workflow is also dispatchable manually so maintainers can force a baseline
+# refresh without waiting for a CI push (e.g. after mass spec file renames).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-baseline:
+    name: Merge JSONL shards and update timing baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use a token with push rights so the baseline commit can be pushed.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Download all e2e-shard-* artifacts from the most recent CI run on the
+      # commit that triggered this push. Each shard uploads its own
+      # test-timing.jsonl; we merge them into a single file before recomputing.
+      - name: Download all shard timing artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-shard-*
+          path: ./timing-shards
+          merge-multiple: false
+        # continue-on-error so a partial CI run (some shards skipped) still
+        # updates the baseline from whichever shards completed.
+        continue-on-error: true
+
+      - name: Merge shard JSONL files
+        run: |
+          MERGED="qa/e2e/test-timing.jsonl"
+          # Preserve any existing local history so a partial run doesn't erase it.
+          touch "$MERGED"
+          FOUND=0
+          for f in $(find ./timing-shards -name 'test-timing.jsonl' 2>/dev/null | sort); do
+            echo "Merging: $f"
+            cat "$f" >> "$MERGED"
+            FOUND=$(( FOUND + 1 ))
+          done
+          echo "Merged ${FOUND} shard JSONL file(s) into $MERGED"
+          wc -l "$MERGED"
+
+      - name: Recompute timing baseline
+        run: npm run e2e:timing:baseline
+
+      - name: Commit updated baseline
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add qa/e2e/test-timing-baseline.json
+          if git diff --cached --quiet; then
+            echo "Baseline unchanged — nothing to commit."
+          else
+            git commit -m "chore(e2e): update test timing baseline [skip ci]"
+            git push
+          fi
