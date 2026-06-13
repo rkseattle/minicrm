@@ -767,3 +767,4 @@ Orphan detection SQL for DBA diagnostics: see `docs/adr/` or run targeted `NOT E
 - [ ] **Behavior layer** — `bash qa/scripts/check-behavior-layer.sh` if `qa/e2e/tests/` touched
 - [ ] **Settings mutations** — `bash qa/scripts/check-settings-mutations.sh` if any spec mutates settings
 - [ ] **Roles & Capabilities** - CRUD operations are scoped appropriately for least priveledge
+- [ ] **Greptile review** - Code changes would pass a review by Greptile
