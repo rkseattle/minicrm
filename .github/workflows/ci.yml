@@ -452,10 +452,14 @@ jobs:
     # MINCRM-271: always() prevents GitHub from auto-skipping this job when server-tests
     # or client-tests were legitimately skipped (qa-only change). The explicit result checks
     # preserve the original Phase 2 gate: e2e still blocks on a unit test failure.
+    # MINCRM-549: e2e-timing-setup is included in needs so the shard configs are ready
+    # before matrix jobs start. Its result must be checked explicitly — without this,
+    # GitHub would auto-skip e2e-functional whenever e2e-timing-setup is skipped.
     if: |
       always() &&
       (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
       (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
+      (needs.e2e-timing-setup.result == 'success' || needs.e2e-timing-setup.result == 'skipped') &&
       (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
     runs-on: ubuntu-latest
     strategy:
