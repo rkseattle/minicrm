@@ -126,6 +126,51 @@ export function readTimingBaseline(filePath: string): TimingBaseline | null {
   }
 }
 
+// ── LPT bin-packing ───────────────────────────────────────────────────────────
+
+export interface FileDuration {
+  file: string;
+  estimatedMs: number;
+}
+
+/** Recursively discovers *.spec.ts files under dir, returned as repo-root-relative paths. */
+export function discoverSpecFiles(dir: string): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dir)) return results;
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...discoverSpecFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.spec.ts')) {
+      results.push(path.relative(process.cwd(), fullPath));
+    }
+  }
+  return results.sort();
+}
+
+/**
+ * LPT (Longest Processing Time) greedy bin-packing.
+ * Returns workerCount buckets of file paths, balanced by estimated wall time.
+ */
+export function lptAssign(files: FileDuration[], workerCount: number): string[][] {
+  const sorted = [...files].sort((a, b) => b.estimatedMs - a.estimatedMs);
+  const buckets: string[][] = Array.from({ length: workerCount }, () => []);
+  const totals: number[] = Array.from({ length: workerCount }, () => 0);
+
+  for (const { file, estimatedMs } of sorted) {
+    let minIdx = 0;
+    for (let i = 1; i < workerCount; i++) {
+      if ((totals[i] as number) < (totals[minIdx] as number)) minIdx = i;
+    }
+    (buckets[minIdx] as string[]).push(file);
+    (totals[minIdx] as number) += estimatedMs;
+  }
+
+  return buckets;
+}
+
 // ── Math helpers ──────────────────────────────────────────────────────────────
 
 /** Returns the median value of a sorted or unsorted array of numbers. */

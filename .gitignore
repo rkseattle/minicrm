@@ -67,8 +67,9 @@ qa/playwright-report/
 qa/e2e/.auth/
 # MINCRM-549: per-run timing log (gitignored); committed baseline is test-timing-baseline.json
 qa/e2e/test-timing.jsonl
-# MINCRM-549: per-shard generated config consumed by CI; not committed
+# MINCRM-549: per-shard generated configs consumed by CI; not committed
 qa/e2e/playwright.shard.config.ts
+qa/e2e/playwright.shard.*.config.ts
 
 # ─── OS & Editor ──────────────────────────────────────────────────────────────
 .DS_Store

@@ -23,11 +23,13 @@
  */
 
 import path from 'node:path';
-import fs from 'node:fs';
 import {
   readTimingBaseline,
+  discoverSpecFiles,
+  lptAssign,
   TIMING_BASELINE_FILENAME,
   DEFAULT_FALLBACK_MS,
+  type FileDuration,
 } from '../framework/reporting/timing-utils.js';
 
 const E2E_DIR = path.resolve(process.cwd(), 'qa/e2e');
@@ -44,52 +46,6 @@ function parseArgs(): { workers: number } {
     process.exit(1);
   }
   return { workers };
-}
-
-// ── Spec file discovery ───────────────────────────────────────────────────────
-
-function discoverSpecFiles(dir: string): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dir)) return results;
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...discoverSpecFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith('.spec.ts')) {
-      // Normalise to repo-root-relative path (matching what timing-reporter writes).
-      results.push(path.relative(process.cwd(), fullPath));
-    }
-  }
-  return results.sort(); // stable ordering before LPT sort
-}
-
-// ── LPT bin-packing ───────────────────────────────────────────────────────────
-
-interface FileDuration {
-  file: string;
-  estimatedMs: number;
-}
-
-function lptAssign(files: FileDuration[], workerCount: number): string[][] {
-  // Sort descending by duration — core of the LPT heuristic.
-  const sorted = [...files].sort((a, b) => b.estimatedMs - a.estimatedMs);
-
-  const buckets: string[][] = Array.from({ length: workerCount }, () => []);
-  const totals: number[] = Array.from({ length: workerCount }, () => 0);
-
-  for (const { file, estimatedMs } of sorted) {
-    // Find the worker with the lowest accumulated total.
-    let minIdx = 0;
-    for (let i = 1; i < workerCount; i++) {
-      if ((totals[i] as number) < (totals[minIdx] as number)) minIdx = i;
-    }
-    (buckets[minIdx] as string[]).push(file);
-    (totals[minIdx] as number) += estimatedMs;
-  }
-
-  return buckets;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

@@ -49,7 +49,11 @@ jobs:
 
       # Download all e2e-shard-* artifacts from the triggering CI run.
       # Each matrix shard uploads its own test-timing.jsonl inside the shard artifact.
+      # Skipped on workflow_dispatch — github.event.workflow_run.id is null in that case.
+      # Manual dispatch recomputes the baseline from whatever test-timing.jsonl is already
+      # present in the checkout (committed by a previous workflow_run invocation).
       - name: Download shard timing artifacts
+        if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v8
         with:
           pattern: e2e-shard-*
@@ -71,9 +75,13 @@ jobs:
             cat "$f" >> "$MERGED"
             FOUND=$(( FOUND + 1 ))
           done
-          echo "Merged ${FOUND} shard JSONL file(s) into $MERGED ($(wc -l < "$MERGED") lines total)"
-          if [ "$FOUND" -eq 0 ]; then
-            echo "::error::No shard JSONL files found. E2E shards may have been skipped or failed to upload artifacts."
+          if [ "$FOUND" -gt 0 ]; then
+            echo "Merged ${FOUND} shard JSONL file(s) into $MERGED ($(wc -l < "$MERGED") lines total)"
+          elif [ -s "$MERGED" ]; then
+            # workflow_dispatch: no shards downloaded; recompute from committed test-timing.jsonl.
+            echo "No shard artifacts found — recomputing from committed $MERGED ($(wc -l < "$MERGED") lines)."
+          else
+            echo "::error::No shard JSONL files found and $MERGED is empty. Run the E2E suite first."
             exit 1
           fi
 
