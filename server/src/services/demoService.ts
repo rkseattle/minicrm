@@ -747,13 +747,13 @@ const DEMO_REP = {
 const DEMO_IAM_PASSWORD = 'Demo1234!';
 
 const DEMO_IAM_USERS = [
-  { email: 'admin@demo.minicrm.dev', name: 'Alex Admin', role: 'admin' as const },
-  { email: 'manager.west@demo.minicrm.dev', name: 'Morgan West', role: 'manager' as const },
-  { email: 'manager.east@demo.minicrm.dev', name: 'Elliott East', role: 'manager' as const },
-  { email: 'rep1@demo.minicrm.dev', name: 'Riley Rep', role: 'rep' as const },
-  { email: 'rep2@demo.minicrm.dev', name: 'Sam Seller', role: 'rep' as const },
-  { email: 'rep3@demo.minicrm.dev', name: 'Jordan Closer', role: 'rep' as const },
-  { email: 'viewer@demo.minicrm.dev', name: 'Val Viewer', role: 'viewer' as const },
+  { email: 'admin@demo.minicrm.dev', name: 'Amara Okonkwo', role: 'admin' as const },
+  { email: 'manager.west@demo.minicrm.dev', name: 'Sofia Reyes', role: 'manager' as const },
+  { email: 'manager.east@demo.minicrm.dev', name: 'Kenji Tanaka', role: 'manager' as const },
+  { email: 'rep1@demo.minicrm.dev', name: 'Priya Sharma', role: 'rep' as const },
+  { email: 'rep2@demo.minicrm.dev', name: 'Marcus Chen', role: 'rep' as const },
+  { email: 'rep3@demo.minicrm.dev', name: 'Fatima Al-Rashid', role: 'rep' as const },
+  { email: 'viewer@demo.minicrm.dev', name: 'Lars Müller', role: 'viewer' as const },
   {
     email: 'svc-demo@demo.minicrm.dev',
     name: 'Demo Integration',

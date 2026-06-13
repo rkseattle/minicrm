@@ -359,13 +359,13 @@ The seed script creates a full set of IAM users to explore role-based access con
 
 | Email                           | Name             | Role             | Team             |
 | ------------------------------- | ---------------- | ---------------- | ---------------- |
-| `admin@demo.minicrm.dev`        | Alex Admin       | admin            | —                |
-| `manager.west@demo.minicrm.dev` | Morgan West      | manager          | West Coast Sales |
-| `manager.east@demo.minicrm.dev` | Elliott East     | manager          | East Coast Sales |
-| `rep1@demo.minicrm.dev`         | Riley Rep        | rep              | West Coast Sales |
-| `rep2@demo.minicrm.dev`         | Sam Seller       | rep              | West Coast Sales |
-| `rep3@demo.minicrm.dev`         | Jordan Closer    | rep + Senior Rep | East Coast Sales |
-| `viewer@demo.minicrm.dev`       | Val Viewer       | viewer           | —                |
+| `admin@demo.minicrm.dev`        | Amara Okonkwo    | admin            | —                |
+| `manager.west@demo.minicrm.dev` | Sofia Reyes      | manager          | West Coast Sales |
+| `manager.east@demo.minicrm.dev` | Kenji Tanaka     | manager          | East Coast Sales |
+| `rep1@demo.minicrm.dev`         | Priya Sharma     | rep              | West Coast Sales |
+| `rep2@demo.minicrm.dev`         | Marcus Chen      | rep              | West Coast Sales |
+| `rep3@demo.minicrm.dev`         | Fatima Al-Rashid | rep + Senior Rep | East Coast Sales |
+| `viewer@demo.minicrm.dev`       | Lars Müller      | viewer           | —                |
 | `svc-demo@demo.minicrm.dev`     | Demo Integration | service_account  | —                |
 
 **Password for all demo accounts:** `Demo1234!`
