@@ -20,6 +20,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Serialize baseline updates so back-to-back merges to main don't race on git
+# push. cancel-in-progress: false queues the second run rather than dropping it,
+# ensuring every CI run's timing data is eventually committed.
+concurrency:
+  group: update-timing-baseline-main
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
