@@ -213,6 +213,7 @@ describe('POST /api/admin/demo/seed', () => {
 // ── POST /api/admin/demo/reset ────────────────────────────────────────────────
 
 describe('POST /api/admin/demo/reset', () => {
+  // seed + reset together exercise ~2× the full demo dataset; 300 s covers even slow CI.
   it('resets demo data and returns 200 with success:true', async () => {
     // Seed first so there is something to reset
     await request(app).post('/api/v1/admin/demo/seed').set('Cookie', adminCookie);
@@ -221,7 +222,7 @@ describe('POST /api/admin/demo/reset', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-  });
+  }, 300_000);
 
   it('returns 403 for a rep', async () => {
     const res = await request(app).post('/api/v1/admin/demo/reset').set('Cookie', repCookie);
