@@ -880,7 +880,9 @@
       "saveError": "Échec de l’enregistrement de la configuration SSO.",
       "disableButton": "Désactiver SSO",
       "disableConfirmPrompt": "Supprimer les liaisons SSO pour tous les utilisateurs ?",
-      "disableConfirmButton": "Oui, désactiver SSO"
+      "disableConfirmButton": "Oui, désactiver SSO",
+      "jitRoleLabel": "Rôle par défaut pour les nouveaux utilisateurs SSO",
+      "jitRoleHint": "Rôle attribué aux utilisateurs provisionnés automatiquement lors de leur première connexion SSO."
     }
   },
   "import": {

@@ -6,7 +6,8 @@
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getDefaultLanguageHandler,
@@ -1252,7 +1253,12 @@ router.get('/sso/status', asyncHandler(getSsoStatusHandler));
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/sso', authenticate, requireRole('admin'), asyncHandler(getSsoConfigHandler));
+router.get(
+  '/sso',
+  authenticate,
+  requireCapability(Capability.SettingsManage),
+  asyncHandler(getSsoConfigHandler),
+);
 
 /**
  * @openapi
@@ -1291,7 +1297,12 @@ router.get('/sso', authenticate, requireRole('admin'), asyncHandler(getSsoConfig
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.put('/sso', authenticate, requireRole('admin'), asyncHandler(putSsoConfigHandler));
+router.put(
+  '/sso',
+  authenticate,
+  requireCapability(Capability.SettingsManage),
+  asyncHandler(putSsoConfigHandler),
+);
 
 /**
  * @openapi
@@ -1313,7 +1324,12 @@ router.put('/sso', authenticate, requireRole('admin'), asyncHandler(putSsoConfig
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  */
-router.delete('/sso', authenticate, requireRole('admin'), asyncHandler(deleteSsoConfigHandler));
+router.delete(
+  '/sso',
+  authenticate,
+  requireCapability(Capability.SettingsManage),
+  asyncHandler(deleteSsoConfigHandler),
+);
 
 /**
  * @openapi

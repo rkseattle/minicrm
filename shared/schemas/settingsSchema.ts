@@ -168,6 +168,8 @@ export const setSsoConfigSchema = z.object({
     .string()
     .max(8192, { message: 'IdP certificate must be 8192 characters or fewer' })
     .optional(),
+  /** UUID of the custom_roles row to assign to JIT-provisioned SSO users. null = no role assignment. */
+  jit_default_role_id: z.string().uuid().nullable().optional(),
 });
 
 export type SetSsoConfigInput = z.infer<typeof setSsoConfigSchema>;
@@ -179,6 +181,8 @@ export interface SsoConfigPublic {
   entity_id: string;
   /** True when a certificate has been stored; the value is never returned */
   idp_certificate_set: boolean;
+  /** UUID of the custom_roles row assigned to JIT-provisioned SSO users, or null if not set. */
+  jit_default_role_id: string | null;
 }
 
 /** Shape returned by GET /api/v1/settings/sso/status (unauthenticated-safe) */

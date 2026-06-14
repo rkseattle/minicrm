@@ -880,7 +880,9 @@
       "saveError": "Error al guardar la configuración SSO.",
       "disableButton": "Deshabilitar SSO",
       "disableConfirmPrompt": "¿Eliminar las vinculaciones SSO de todos los usuarios?",
-      "disableConfirmButton": "Sí, deshabilitar SSO"
+      "disableConfirmButton": "Sí, deshabilitar SSO",
+      "jitRoleLabel": "Rol predeterminado para nuevos usuarios SSO",
+      "jitRoleHint": "Rol asignado a usuarios aprovisionados automáticamente en su primer inicio de sesión SSO."
     }
   },
   "import": {
