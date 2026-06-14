@@ -883,6 +883,25 @@
       "disableConfirmButton": "Yes, disable SSO",
       "jitRoleLabel": "Default Role for New SSO Users",
       "jitRoleHint": "Role assigned to users provisioned automatically on first SSO login."
+    },
+    "scim": {
+      "sectionTitle": "SCIM 2.0 Provisioning",
+      "sectionHint": "Connect your identity provider to automatically provision and deprovision users and teams via SCIM 2.0.",
+      "tokenSectionTitle": "Bearer Token",
+      "noToken": "No token has been issued. Generate one to enable SCIM provisioning.",
+      "tokenIssuedAt": "Issued:",
+      "tokenLastUsed": "Last used:",
+      "generateToken": "Generate Token",
+      "regenerateToken": "Regenerate Token",
+      "revokeToken": "Revoke Token",
+      "newTokenWarning": "Copy this token now — it will not be shown again.",
+      "copyToken": "Copy",
+      "tokenCopied": "Copied!",
+      "mappingsSectionTitle": "Group-to-Role Mappings",
+      "mappingsSectionHint": "Map IdP groups to MiniCRM custom roles. Members added to a mapped group are automatically assigned the role; members removed have it revoked.",
+      "mappingGroupLabel": "IdP Group",
+      "mappingRoleLabel": "CRM Role",
+      "noMappings": "No group-to-role mappings configured."
     }
   },
   "profileSettings": {
