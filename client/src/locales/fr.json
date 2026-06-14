@@ -883,6 +883,25 @@
       "disableConfirmButton": "Oui, désactiver SSO",
       "jitRoleLabel": "Rôle par défaut pour les nouveaux utilisateurs SSO",
       "jitRoleHint": "Rôle attribué aux utilisateurs provisionnés automatiquement lors de leur première connexion SSO."
+    },
+    "scim": {
+      "sectionTitle": "Approvisionnement SCIM 2.0",
+      "sectionHint": "Connectez votre fournisseur d'identité pour approvisionner et déprovisionner automatiquement les utilisateurs et les équipes via SCIM 2.0.",
+      "tokenSectionTitle": "Jeton porteur",
+      "noToken": "Aucun jeton n'a été émis. Générez-en un pour activer l'approvisionnement SCIM.",
+      "tokenIssuedAt": "Émis le :",
+      "tokenLastUsed": "Dernière utilisation :",
+      "generateToken": "Générer un jeton",
+      "regenerateToken": "Regénérer le jeton",
+      "revokeToken": "Révoquer le jeton",
+      "newTokenWarning": "Copiez ce jeton maintenant — il ne sera plus affiché.",
+      "copyToken": "Copier",
+      "tokenCopied": "Copié !",
+      "mappingsSectionTitle": "Correspondances groupe-rôle",
+      "mappingsSectionHint": "Associez les groupes IdP aux rôles personnalisés MiniCRM. Les membres ajoutés à un groupe mappé reçoivent automatiquement le rôle ; les membres supprimés le perdent.",
+      "mappingGroupLabel": "Groupe IdP",
+      "mappingRoleLabel": "Rôle CRM",
+      "noMappings": "Aucune correspondance groupe-rôle configurée."
     }
   },
   "import": {

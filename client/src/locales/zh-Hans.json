@@ -883,6 +883,25 @@
       "disableConfirmButton": "是，禁用 SSO",
       "jitRoleLabel": "新SSO用户的默认角色",
       "jitRoleHint": "首次SSO登录时自动配置的用户所分配的角色。"
+    },
+    "scim": {
+      "sectionTitle": "SCIM 2.0 配置",
+      "sectionHint": "连接您的身份提供商，通过 SCIM 2.0 自动配置和取消配置用户及团队。",
+      "tokenSectionTitle": "Bearer 令牌",
+      "noToken": "尚未颁发令牌。生成一个以启用 SCIM 配置。",
+      "tokenIssuedAt": "颁发时间：",
+      "tokenLastUsed": "最后使用：",
+      "generateToken": "生成令牌",
+      "regenerateToken": "重新生成令牌",
+      "revokeToken": "撤销令牌",
+      "newTokenWarning": "请立即复制此令牌——之后将不再显示。",
+      "copyToken": "复制",
+      "tokenCopied": "已复制！",
+      "mappingsSectionTitle": "群组到角色映射",
+      "mappingsSectionHint": "将 IdP 群组映射到 MiniCRM 自定义角色。添加到已映射群组的成员将自动获得该角色；被移除的成员将失去该角色。",
+      "mappingGroupLabel": "IdP 群组",
+      "mappingRoleLabel": "CRM 角色",
+      "noMappings": "未配置群组到角色映射。"
     }
   },
   "import": {

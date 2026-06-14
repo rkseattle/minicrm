@@ -15,6 +15,7 @@ import {
 } from '@/api/attachments.js';
 import { Button } from '@/components/ui/Button.js';
 import SsoSettings from '@/pages/admin/SsoSettings.js';
+import ScimSettings from '@/pages/admin/ScimSettings.js';
 import WebhookSettings from '@/pages/admin/WebhookSettings.js';
 
 export default function IntegrationSettings() {
@@ -294,6 +295,11 @@ export default function IntegrationSettings() {
       {/* SSO configuration (MINCRM-399) */}
       <div className="mt-8" data-testid="sso-settings-wrapper">
         <SsoSettings />
+      </div>
+
+      {/* SCIM 2.0 provisioning (MINCRM-541) */}
+      <div className="mt-8" data-testid="scim-settings-wrapper">
+        <ScimSettings />
       </div>
 
       <div
