@@ -44,6 +44,7 @@ import aiRoutes, { aiUserRouter } from './routes/ai.js';
 import teamRoutes from './routes/teams.js';
 import customRoleRoutes from './routes/customRoles.js';
 import scimTokenRoutes from './routes/scimToken.js';
+import scimRoutes from './routes/scim.js';
 import { expressConnectMiddleware } from '@connectrpc/connect-express';
 import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
@@ -165,6 +166,7 @@ app.use(`${API_V1}/teams`, teamRoutes);
 app.use(`${API_V1}/custom-roles`, customRoleRoutes);
 // SCIM token management — issue/revoke the long-lived SCIM bearer token. (MINCRM-541)
 app.use(API_V1, scimTokenRoutes);
+app.use('/scim/v2', scimRoutes);
 // User-facing AI routes — only /token-budget/me; no admin handlers. (MINCRM-458)
 app.use(`${API_V1}/ai`, aiUserRouter);
 // Admin AI config/token-budget routes — full router at the admin prefix. (MINCRM-457, MINCRM-458)
