@@ -15,7 +15,11 @@
  *   F-VIS8  — Rep cannot access the PUT /settings/visibility endpoint (403)
  *
  * Framework conventions (MINCRM-42):
- *   - All tests tagged @functional
+ *   - All tests tagged @functional @serial
+ *   - @serial causes CI to run this file in a dedicated single-worker job (e2e-serial)
+ *     isolated from the parallel sharded runners — prevents concurrent shard
+ *     beforeEach/afterEach resets from racing with tests that mutate global visibility
+ *     policy. See MINCRM-549 and ci.yml e2e-serial job.
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - System settings mutated here are reset in afterEach via resetVisibilitySettings
@@ -60,7 +64,7 @@ test.afterEach(async ({ restClient }) => {
 // F-VIS1 — Admin navigates to the visibility settings tab and sees the panel
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS1: admin can navigate to the visibility tab and see the settings panel', async ({
+test('@functional @serial F-VIS1: admin can navigate to the visibility tab and see the settings panel', async ({
   page,
   restClient,
   testData,
@@ -81,7 +85,7 @@ test('@functional F-VIS1: admin can navigate to the visibility tab and see the s
 // F-VIS2 — Admin changes contact policy to 'private' and saves
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS2: admin can change a visibility policy and see the save success message', async ({
+test('@functional @serial F-VIS2: admin can change a visibility policy and see the save success message', async ({
   page,
   restClient,
   testData,
@@ -107,7 +111,7 @@ test('@functional F-VIS2: admin can change a visibility policy and see the save 
 // F-VIS3 — Rep with org policy sees all contacts
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS3: rep with org policy can list contacts owned by other users', async ({
+test('@functional @serial F-VIS3: rep with org policy can list contacts owned by other users', async ({
   restClient,
   testData,
 }) => {
@@ -146,15 +150,15 @@ test('@functional F-VIS3: rep with org policy can list contacts owned by other u
 // F-VIS4 — Rep with private policy sees only own contacts
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS4: rep with private policy cannot see contacts owned by other users', async ({
+test('@functional @serial F-VIS4: rep with private policy cannot see contacts owned by other users', async ({
   restClient,
   testData,
 }) => {
   const repA = await createTestRep(testData, restClient);
   const repB = await createTestRep(testData, restClient);
 
-  // Create contacts first, then set the policy last — minimises the window between
-  // the policy PUT and the list call to eliminate races with concurrent test resets.
+  // Create contacts first, then set the policy — no concurrent shard resets
+  // can race here because this file runs in the dedicated e2e-serial job (--workers=1).
 
   // Rep A creates a contact that repB should NOT see
   await loginAndVerify(restClient, repA.email, repA.password);
@@ -164,7 +168,7 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
     email: `priv-contact-${Date.now()}@example.com`,
   });
 
-  // Rep B creates their own contact and stays logged in
+  // Rep B creates their own contact
   await loginAndVerify(restClient, repB.email, repB.password);
   const repBContact = await createContactViaApi(restClient, {
     first_name: 'RepB',
@@ -172,9 +176,7 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
     email: `repb-own-${Date.now()}@example.com`,
   });
 
-  // Set private policy as admin, then immediately switch back to repB and list —
-  // no re-login for repB, so the window where another shard can reset to 'org' is
-  // only the single list API call.
+  // Set private policy as admin, then verify as repB
   await loginAsAdmin(restClient);
   await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
   await loginAndVerify(restClient, repB.email, repB.password);
@@ -194,7 +196,7 @@ test('@functional F-VIS4: rep with private policy cannot see contacts owned by o
 // F-VIS5 — Manager sees only team-scoped contacts
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS5: manager sees only contacts owned by their team members', async ({
+test('@functional @serial F-VIS5: manager sees only contacts owned by their team members', async ({
   restClient,
   testData,
 }) => {
@@ -285,7 +287,7 @@ test('@functional F-VIS5: manager sees only contacts owned by their team members
 // F-VIS6 — Manager can reassign a contact to a team member
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS6: manager can reassign a contact to a member of their team', async ({
+test('@functional @serial F-VIS6: manager can reassign a contact to a member of their team', async ({
   restClient,
   testData,
 }) => {
@@ -356,7 +358,7 @@ test('@functional F-VIS6: manager can reassign a contact to a member of their te
 // F-VIS7 — Manager cannot reassign contact to outside-team user (403)
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS7: manager gets 403 when reassigning a contact to a user outside their team', async ({
+test('@functional @serial F-VIS7: manager gets 403 when reassigning a contact to a user outside their team', async ({
   restClient,
   testData,
 }) => {
@@ -421,7 +423,7 @@ test('@functional F-VIS7: manager gets 403 when reassigning a contact to a user 
 // F-VIS8 — Rep cannot access PUT /settings/visibility (403)
 // ---------------------------------------------------------------------------
 
-test('@functional F-VIS8: rep cannot call the visibility settings PUT endpoint', async ({
+test('@functional @serial F-VIS8: rep cannot call the visibility settings PUT endpoint', async ({
   restClient,
   testData,
 }) => {
