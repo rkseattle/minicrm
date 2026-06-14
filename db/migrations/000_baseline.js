@@ -1220,32 +1220,6 @@ exports.up = (pgm) => {
   `);
   pgm.sql(`CREATE INDEX IF NOT EXISTS team_memberships_user_id_idx ON public.team_memberships (user_id)`);
 
-  // scim_tokens (migration 111 — MINCRM-541)
-  pgm.sql(`
-    CREATE TABLE IF NOT EXISTS public.scim_tokens (
-      id           uuid DEFAULT gen_random_uuid() NOT NULL,
-      token_hash   text NOT NULL,
-      created_by   uuid REFERENCES public.users(id) ON DELETE SET NULL,
-      created_at   timestamp with time zone DEFAULT now() NOT NULL,
-      last_used_at timestamp with time zone,
-      CONSTRAINT scim_tokens_pkey PRIMARY KEY (id),
-      CONSTRAINT scim_tokens_token_hash_key UNIQUE (token_hash)
-    )
-  `);
-
-  // scim_group_role_mappings (migration 111 — MINCRM-541)
-  pgm.sql(`
-    CREATE TABLE IF NOT EXISTS public.scim_group_role_mappings (
-      id            uuid DEFAULT gen_random_uuid() NOT NULL,
-      scim_group_id text NOT NULL,
-      group_name    text NOT NULL,
-      role_id       uuid NOT NULL REFERENCES public.custom_roles(id) ON DELETE RESTRICT,
-      created_at    timestamp with time zone DEFAULT now() NOT NULL,
-      CONSTRAINT scim_group_role_mappings_pkey PRIMARY KEY (id),
-      CONSTRAINT scim_group_role_mappings_scim_group_id_key UNIQUE (scim_group_id)
-    )
-  `);
-
   // -------------------------------------------------------------------------
   // Triggers — wrapped in DO/EXCEPTION so baseline is safe on existing databases
   // -------------------------------------------------------------------------
@@ -1585,6 +1559,34 @@ exports.up = (pgm) => {
     FROM public.users u
     JOIN public.custom_roles r ON r.name = u.role AND r.is_builtin = true
     ON CONFLICT (user_id, role_id) DO NOTHING
+  `);
+
+  // scim_tokens (migration 111 — MINCRM-541)
+  // Must be after users table; placed here (after custom_roles) for grouping consistency.
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.scim_tokens (
+      id           uuid DEFAULT gen_random_uuid() NOT NULL,
+      token_hash   text NOT NULL,
+      created_by   uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      last_used_at timestamp with time zone,
+      CONSTRAINT scim_tokens_pkey PRIMARY KEY (id),
+      CONSTRAINT scim_tokens_token_hash_key UNIQUE (token_hash)
+    )
+  `);
+
+  // scim_group_role_mappings (migration 111 — MINCRM-541)
+  // FK to custom_roles — must be after custom_roles is created above.
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.scim_group_role_mappings (
+      id            uuid DEFAULT gen_random_uuid() NOT NULL,
+      scim_group_id text NOT NULL,
+      group_name    text NOT NULL,
+      role_id       uuid NOT NULL REFERENCES public.custom_roles(id) ON DELETE RESTRICT,
+      created_at    timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT scim_group_role_mappings_pkey PRIMARY KEY (id),
+      CONSTRAINT scim_group_role_mappings_scim_group_id_key UNIQUE (scim_group_id)
+    )
   `);
 
 };
