@@ -456,7 +456,7 @@ jobs:
       always() &&
       (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
       (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
-      (needs.e2e-timing-setup.result == 'success' || needs.e2e-timing-setup.result == 'skipped') &&
+      (needs.e2e-timing-setup.result == 'success' || needs.e2e-timing-setup.result == 'skipped' || needs.e2e-timing-setup.result == 'failure') &&
       (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
     runs-on: ubuntu-latest
     strategy:
