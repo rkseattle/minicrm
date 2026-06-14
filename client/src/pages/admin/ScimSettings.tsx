@@ -24,6 +24,8 @@ export default function ScimSettings() {
 
   const [newRawToken, setNewRawToken] = useState<string | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [tokenMutationError, setTokenMutationError] = useState<string | null>(null);
+  const [deletingMappingId, setDeletingMappingId] = useState<string | null>(null);
 
   const {
     data: tokenMeta,
@@ -53,7 +55,11 @@ export default function ScimSettings() {
     onSuccess: (result) => {
       setNewRawToken(result.rawToken);
       setTokenCopied(false);
+      setTokenMutationError(null);
       void queryClient.invalidateQueries({ queryKey: SCIM_TOKEN_QUERY_KEY });
+    },
+    onError: () => {
+      setTokenMutationError(t('settings.scim.tokenMutationError'));
     },
   });
 
@@ -62,14 +68,25 @@ export default function ScimSettings() {
     onSuccess: () => {
       setNewRawToken(null);
       setTokenCopied(false);
+      setTokenMutationError(null);
       void queryClient.invalidateQueries({ queryKey: SCIM_TOKEN_QUERY_KEY });
+    },
+    onError: () => {
+      setTokenMutationError(t('settings.scim.tokenMutationError'));
     },
   });
 
   const deleteMappingMutation = useMutation({
-    mutationFn: deleteScimGroupRoleMapping,
+    mutationFn: (scimGroupId: string) => {
+      setDeletingMappingId(scimGroupId);
+      return deleteScimGroupRoleMapping(scimGroupId);
+    },
     onSuccess: () => {
+      setDeletingMappingId(null);
       void queryClient.invalidateQueries({ queryKey: SCIM_GROUP_MAPPINGS_QUERY_KEY });
+    },
+    onError: () => {
+      setDeletingMappingId(null);
     },
   });
 
@@ -160,13 +177,23 @@ export default function ScimSettings() {
             </div>
           )}
 
+          {tokenMutationError && (
+            <p
+              role="alert"
+              className="text-sm text-red-600"
+              data-testid="scim-token-mutation-error"
+            >
+              {tokenMutationError}
+            </p>
+          )}
+
           <div className="flex gap-3">
             <Button
               type="button"
               variant={tokenMeta ? 'secondary' : 'primary'}
               size="sm"
               data-testid="scim-generate-token-button"
-              disabled={generateMutation.isPending}
+              disabled={generateMutation.isPending || revokeMutation.isPending}
               onClick={() => generateMutation.mutate()}
             >
               {generateMutation.isPending
@@ -182,7 +209,7 @@ export default function ScimSettings() {
                 variant="danger"
                 size="sm"
                 data-testid="scim-revoke-token-button"
-                disabled={revokeMutation.isPending}
+                disabled={revokeMutation.isPending || generateMutation.isPending}
                 onClick={() => revokeMutation.mutate()}
               >
                 {revokeMutation.isPending ? t('common.loading') : t('settings.scim.revokeToken')}
@@ -247,10 +274,12 @@ export default function ScimSettings() {
                         variant="danger"
                         size="sm"
                         data-testid={`scim-delete-mapping-${mapping.scim_group_id}`}
-                        disabled={deleteMappingMutation.isPending}
+                        disabled={deletingMappingId === mapping.scim_group_id}
                         onClick={() => deleteMappingMutation.mutate(mapping.scim_group_id)}
                       >
-                        {t('common.delete')}
+                        {deletingMappingId === mapping.scim_group_id
+                          ? t('common.loading')
+                          : t('common.delete')}
                       </Button>
                     </td>
                   </tr>

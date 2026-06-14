@@ -901,7 +901,8 @@
       "mappingsSectionHint": "Ordnen Sie IdP-Gruppen MiniCRM-Rollen zu. Mitglieder, die einer zugeordneten Gruppe hinzugefügt werden, erhalten die Rolle automatisch; entfernte Mitglieder verlieren sie.",
       "mappingGroupLabel": "IdP-Gruppe",
       "mappingRoleLabel": "CRM-Rolle",
-      "noMappings": "Keine Gruppen-zu-Rollen-Zuordnungen konfiguriert."
+      "noMappings": "Keine Gruppen-zu-Rollen-Zuordnungen konfiguriert.",
+      "tokenMutationError": "SCIM-Token konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
     }
   },
   "import": {

@@ -901,7 +901,8 @@
       "mappingsSectionHint": "Associez les groupes IdP aux rôles personnalisés MiniCRM. Les membres ajoutés à un groupe mappé reçoivent automatiquement le rôle ; les membres supprimés le perdent.",
       "mappingGroupLabel": "Groupe IdP",
       "mappingRoleLabel": "Rôle CRM",
-      "noMappings": "Aucune correspondance groupe-rôle configurée."
+      "noMappings": "Aucune correspondance groupe-rôle configurée.",
+      "tokenMutationError": "Échec de la mise à jour du jeton SCIM. Veuillez réessayer."
     }
   },
   "import": {

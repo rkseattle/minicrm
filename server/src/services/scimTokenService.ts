@@ -54,6 +54,10 @@ export async function generateScimToken(actor: AuditActor): Promise<ScimTokenGen
   try {
     await client.query('BEGIN');
 
+    // Advisory lock prevents two concurrent generates from both succeeding —
+    // without it, two requests could both DELETE before either INSERTs.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('scim_token_generate'))");
+
     // Delete any existing token — only one active token allowed at a time.
     await client.query('DELETE FROM public.scim_tokens');
 
@@ -126,7 +130,7 @@ export async function revokeScimToken(actor: AuditActor): Promise<boolean> {
       'DELETE FROM public.scim_tokens RETURNING id',
     );
 
-    if (result.rowCount === 0) {
+    if ((result.rowCount ?? 0) === 0) {
       await client.query('ROLLBACK');
       return false;
     }

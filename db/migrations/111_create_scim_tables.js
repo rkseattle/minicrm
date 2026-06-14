@@ -27,9 +27,9 @@ exports.up = (pgm) => {
     },
     created_by: {
       type: 'uuid',
-      notNull: true,
+      notNull: false,
       references: 'public.users(id)',
-      onDelete: 'CASCADE',
+      onDelete: 'SET NULL',
     },
     created_at: {
       type: 'timestamptz',
@@ -62,7 +62,7 @@ exports.up = (pgm) => {
       type: 'uuid',
       notNull: true,
       references: 'public.custom_roles(id)',
-      onDelete: 'CASCADE',
+      onDelete: 'RESTRICT',
     },
     created_at: {
       type: 'timestamptz',

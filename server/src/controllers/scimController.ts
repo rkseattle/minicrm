@@ -375,6 +375,8 @@ export async function listScimGroupRoleMappingsHandler(
  * Creates or replaces the role mapping for a SCIM group.
  * Body must include `{ roleId: string }`.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function putScimGroupRoleMappingHandler(req: Request, res: Response): Promise<void> {
   const scimGroupId = String(req.params['scimGroupId']);
   const body = req.body as Record<string, unknown>;
@@ -385,11 +387,27 @@ export async function putScimGroupRoleMappingHandler(req: Request, res: Response
     return;
   }
 
+  if (!UUID_RE.test(roleId)) {
+    res.status(400).json({ error: { code: 'INVALID_ROLE_ID', message: 'roleId must be a UUID' } });
+    return;
+  }
+
   // Use the scimGroupId as the group_name placeholder when no name is supplied
   const groupName = typeof body.groupName === 'string' ? body.groupName : scimGroupId;
 
-  await setScimGroupRoleMapping(scimGroupId, groupName, roleId);
-  res.status(204).send();
+  // Safe: req.user is guaranteed by the authenticate middleware on this router.
+  const actor = { id: req.user!.id, name: req.user!.name };
+
+  try {
+    await setScimGroupRoleMapping(scimGroupId, groupName, roleId, actor);
+    res.status(204).send();
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23503') {
+      res.status(400).json({ error: { code: 'INVALID_ROLE_ID', message: 'Role not found' } });
+      return;
+    }
+    throw err;
+  }
 }
 
 /**

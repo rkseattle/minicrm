@@ -768,7 +768,8 @@
       "mappingsSectionHint": "Map IdP groups to MiniCRM custom roles. Members added to a mapped group are automatically assigned the role; members removed have it revoked.",
       "mappingGroupLabel": "IdP Group",
       "mappingRoleLabel": "CRM Role",
-      "noMappings": "No group-to-role mappings configured."
+      "noMappings": "No group-to-role mappings configured.",
+      "tokenMutationError": "Failed to update SCIM token. Please try again."
     },
     "tabs": {
       "features": "Ƒéàŧůŗéş",

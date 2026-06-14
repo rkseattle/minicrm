@@ -232,7 +232,17 @@ export async function replaceScimUser(
        RETURNING id, email, name, status, created_at, updated_at`,
       [email, name, status, id],
     );
-    const updated = result.rows[0]!; // id was validated above
+
+    if ((result.rowCount ?? 0) === 0) {
+      // User was deleted between the pre-check read and this UPDATE — treat as 404.
+      const notFound = new Error('User not found') as Error & { statusCode: number; code: string };
+      notFound.statusCode = 404;
+      notFound.code = 'SCIM_USER_NOT_FOUND';
+      throw notFound;
+    }
+
+    // Non-null assertion safe: rowCount > 0 guarantees rows[0] exists.
+    const updated = result.rows[0]!;
 
     const auditBase = {
       recordType: 'user' as const,
@@ -291,7 +301,10 @@ export async function patchScimUser(
 
   for (const op of ops) {
     const path = op.path?.toLowerCase() ?? '';
-    if (
+    // RFC 7644 §3.5.2: op:remove on the active attribute deactivates the user.
+    if (op.op === 'remove' && path === 'active') {
+      status = 'inactive';
+    } else if (
       path === 'active' ||
       (op.value && typeof (op.value as Record<string, unknown>).active !== 'undefined' && !path)
     ) {
@@ -341,7 +354,17 @@ export async function patchScimUser(
        RETURNING id, email, name, status, created_at, updated_at`,
       [email, name, status, id],
     );
-    const updated = result.rows[0]!; // id was validated above
+
+    if ((result.rowCount ?? 0) === 0) {
+      // User was deleted between the pre-check read and this UPDATE — treat as 404.
+      const notFound = new Error('User not found') as Error & { statusCode: number; code: string };
+      notFound.statusCode = 404;
+      notFound.code = 'SCIM_USER_NOT_FOUND';
+      throw notFound;
+    }
+
+    // Non-null assertion safe: rowCount > 0 guarantees rows[0] exists.
+    const updated = result.rows[0]!;
 
     const auditBase = {
       recordType: 'user' as const,
