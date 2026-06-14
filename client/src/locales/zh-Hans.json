@@ -901,7 +901,8 @@
       "mappingsSectionHint": "将 IdP 群组映射到 MiniCRM 自定义角色。添加到已映射群组的成员将自动获得该角色；被移除的成员将失去该角色。",
       "mappingGroupLabel": "IdP 群组",
       "mappingRoleLabel": "CRM 角色",
-      "noMappings": "未配置群组到角色映射。"
+      "noMappings": "未配置群组到角色映射。",
+      "tokenMutationError": "更新 SCIM 令牌失败，请重试。"
     }
   },
   "import": {

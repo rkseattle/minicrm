@@ -61,7 +61,9 @@ export type AuditRecordType =
   /** Capability-based RBAC custom role definitions (MINCRM-542) */
   | 'custom_role'
   /** SCIM provisioning bearer token lifecycle (MINCRM-541) */
-  | 'scim_token';
+  | 'scim_token'
+  /** SCIM group-to-custom-role mapping changes (MINCRM-541) */
+  | 'scim_group_role_mapping';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =

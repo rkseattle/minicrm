@@ -25,9 +25,14 @@ export const authenticateScim: RequestHandler = async (
   const authHeader = req.headers.authorization ?? '';
 
   if (!authHeader.startsWith('Bearer ')) {
-    res.status(401).json({
-      error: { code: 'SCIM_AUTH_MISSING', message: 'SCIM bearer token required' },
-    });
+    res
+      .status(401)
+      .type('application/scim+json')
+      .json({
+        schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
+        status: '401',
+        detail: 'SCIM bearer token required',
+      });
     return;
   }
 
@@ -35,9 +40,14 @@ export const authenticateScim: RequestHandler = async (
 
   const isValid = await validateScimToken(rawToken);
   if (!isValid) {
-    res.status(401).json({
-      error: { code: 'SCIM_AUTH_INVALID', message: 'Invalid SCIM token' },
-    });
+    res
+      .status(401)
+      .type('application/scim+json')
+      .json({
+        schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
+        status: '401',
+        detail: 'Invalid or revoked SCIM token',
+      });
     return;
   }
 

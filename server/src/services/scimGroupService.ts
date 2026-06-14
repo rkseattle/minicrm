@@ -422,14 +422,40 @@ export async function setScimGroupRoleMapping(
   scimGroupId: string,
   groupName: string,
   roleId: string,
+  actor: AuditActor,
 ): Promise<void> {
-  await pool.query(
-    `INSERT INTO scim_group_role_mappings (scim_group_id, group_name, role_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (scim_group_id)
-     DO UPDATE SET role_id = EXCLUDED.role_id, group_name = EXCLUDED.group_name`,
-    [scimGroupId, groupName, roleId],
-  );
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO scim_group_role_mappings (scim_group_id, group_name, role_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (scim_group_id)
+       DO UPDATE SET role_id = EXCLUDED.role_id, group_name = EXCLUDED.group_name
+       RETURNING id`,
+      [scimGroupId, groupName, roleId],
+    );
+
+    // Non-null assertion safe: INSERT ... RETURNING always returns exactly one row.
+    const mappingId = result.rows[0]!.id;
+
+    await writeAuditEntry(client, {
+      recordType: 'scim_group_role_mapping',
+      recordId: mappingId,
+      recordName: groupName,
+      eventType: 'updated',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
