@@ -59,7 +59,9 @@ export type AuditRecordType =
   /** Per-object-type data visibility policies (MINCRM-538) */
   | 'org_visibility_settings'
   /** Capability-based RBAC custom role definitions (MINCRM-542) */
-  | 'custom_role';
+  | 'custom_role'
+  /** SCIM provisioning bearer token lifecycle (MINCRM-541) */
+  | 'scim_token';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
