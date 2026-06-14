@@ -25,6 +25,8 @@ interface ScimUserRow {
   email: string;
   name: string;
   status: 'active' | 'invited' | 'inactive';
+  role: string;
+  scim_external_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -52,6 +54,8 @@ export interface ScimCreateUserInput {
   givenName: string;
   familyName: string;
   active?: boolean;
+  /** IdP-assigned stable external identifier (externalId from SCIM request) */
+  externalId?: string | null;
 }
 
 export interface ScimReplaceUserInput {
@@ -137,10 +141,10 @@ export async function provisionScimUser(
 
     const result = await client.query<ScimUserRow>(
       `INSERT INTO public.users
-         (email, name, role, status, must_change_password, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, false, now(), now())
-       RETURNING id, email, name, status, created_at, updated_at`,
-      [email, name, SCIM_USER_ROLE, status],
+         (email, name, role, status, must_change_password, scim_external_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, false, $5, now(), now())
+       RETURNING id, email, name, role, status, scim_external_id, created_at, updated_at`,
+      [email, name, SCIM_USER_ROLE, status, input.externalId ?? null],
     );
     const newUser = result.rows[0]!; // just inserted
 
@@ -164,11 +168,14 @@ export async function provisionScimUser(
   }
 }
 
-/** Returns a single user by ID, or null. */
+/**
+ * Returns a single SCIM-provisioned user by ID, or null.
+ * Only users with a non-null scim_external_id are visible through the SCIM API.
+ */
 export async function getScimUser(id: string): Promise<ScimUserRow | null> {
   const result = await pool.query<ScimUserRow>(
-    `SELECT id, email, name, status, created_at, updated_at
-     FROM public.users WHERE id = $1 LIMIT 1`,
+    `SELECT id, email, name, role, status, scim_external_id, created_at, updated_at
+     FROM public.users WHERE id = $1 AND scim_external_id IS NOT NULL LIMIT 1`,
     [id],
   );
   return result.rows[0] ?? null;
@@ -185,8 +192,9 @@ export async function listScimUsers(filter?: string): Promise<ScimUserRow[]> {
     if (match) {
       const email = match[1]!.toLowerCase().trim(); // regex group is always present
       const result = await pool.query<ScimUserRow>(
-        `SELECT id, email, name, status, created_at, updated_at
-         FROM public.users WHERE LOWER(email) = $1`,
+        `SELECT id, email, name, role, status, scim_external_id, created_at, updated_at
+         FROM public.users
+         WHERE LOWER(email) = $1 AND scim_external_id IS NOT NULL`,
         [email],
       );
       return result.rows;
@@ -194,8 +202,10 @@ export async function listScimUsers(filter?: string): Promise<ScimUserRow[]> {
   }
 
   const result = await pool.query<ScimUserRow>(
-    `SELECT id, email, name, status, created_at, updated_at
-     FROM public.users ORDER BY created_at ASC`,
+    `SELECT id, email, name, role, status, scim_external_id, created_at, updated_at
+     FROM public.users
+     WHERE scim_external_id IS NOT NULL
+     ORDER BY created_at ASC`,
   );
   return result.rows;
 }
@@ -219,7 +229,13 @@ export async function replaceScimUser(
 
   const email = input.userName.toLowerCase().trim();
   const name = [input.givenName, input.familyName].filter(Boolean).join(' ').trim() || email;
-  const status = input.active === false ? 'inactive' : 'active';
+  let status: 'active' | 'inactive' = input.active === false ? 'inactive' : 'active';
+
+  // Admins cannot be deactivated via SCIM — they must always retain a local login escape hatch.
+  if (status === 'inactive' && existing.role === 'admin') {
+    status = 'active';
+    logger.warn({ userId: id }, 'SCIM: ignoring deactivation attempt on admin user');
+  }
 
   const client = await pool.connect();
   try {
@@ -228,8 +244,8 @@ export async function replaceScimUser(
     const result = await client.query<ScimUserRow>(
       `UPDATE public.users
        SET email = $1, name = $2, status = $3, updated_at = now()
-       WHERE id = $4
-       RETURNING id, email, name, status, created_at, updated_at`,
+       WHERE id = $4 AND scim_external_id IS NOT NULL
+       RETURNING id, email, name, role, status, scim_external_id, created_at, updated_at`,
       [email, name, status, id],
     );
 
@@ -343,6 +359,12 @@ export async function patchScimUser(
     name = [givenName, familyName].filter(Boolean).join(' ').trim() || email;
   }
 
+  // Admins cannot be deactivated via SCIM — they must always retain a local login escape hatch.
+  if (status === 'inactive' && existing.role === 'admin') {
+    status = existing.status;
+    logger.warn({ userId: id }, 'SCIM: ignoring deactivation attempt on admin user');
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -350,8 +372,8 @@ export async function patchScimUser(
     const result = await client.query<ScimUserRow>(
       `UPDATE public.users
        SET email = $1, name = $2, status = $3, updated_at = now()
-       WHERE id = $4
-       RETURNING id, email, name, status, created_at, updated_at`,
+       WHERE id = $4 AND scim_external_id IS NOT NULL
+       RETURNING id, email, name, role, status, scim_external_id, created_at, updated_at`,
       [email, name, status, id],
     );
 
