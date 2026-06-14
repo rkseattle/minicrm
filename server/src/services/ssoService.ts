@@ -496,6 +496,17 @@ export async function findOrProvisionSsoUser(
           { jitRoleId },
           'ssoService: sso_jit_default_role_id points to a non-existent custom_role — skipping role assignment',
         );
+        // Audit the misconfiguration so admins can see it in the audit log.
+        await writeAuditEntry(client, {
+          recordType: 'system_settings',
+          recordId: newUser.id,
+          recordName: 'sso_jit_default_role_id',
+          eventType: 'updated',
+          fieldName: 'jit_role_assignment_skipped',
+          oldValue: jitRoleId,
+          changedById: SYSTEM_ACTOR.id,
+          changedByName: SYSTEM_ACTOR.name,
+        });
       }
     }
 

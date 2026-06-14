@@ -291,60 +291,66 @@ export async function syncScimGroupMembers(
       }
     }
 
-    // 4. Insert new memberships
-    for (const userId of toAdd) {
+    // 4. Batch insert new memberships
+    if (toAdd.length > 0) {
+      const addValues = toAdd.map((_, i) => `($1, $${i + 2}, 'member')`).join(', ');
       await client.query(
         `INSERT INTO team_memberships (team_id, user_id, role)
-         VALUES ($1, $2, 'member')
+         VALUES ${addValues}
          ON CONFLICT (team_id, user_id) DO NOTHING`,
-        [teamId, userId],
+        [teamId, ...toAdd],
+      );
+
+      if (mappedRoleId) {
+        const roleValues = toAdd.map((_, i) => `($${i + 1}, $${toAdd.length + 1})`).join(', ');
+        await client.query(
+          `INSERT INTO user_custom_roles (user_id, role_id)
+           VALUES ${roleValues}
+           ON CONFLICT (user_id, role_id) DO NOTHING`,
+          [...toAdd, mappedRoleId],
+        );
+      }
+
+      for (const userId of toAdd) {
+        await writeAuditEntry(client, {
+          recordType: 'team',
+          recordId: teamId,
+          recordName: team.name,
+          eventType: 'updated',
+          fieldName: 'member_added',
+          newValue: userId,
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
+      }
+    }
+
+    // 5. Batch remove memberships
+    if (toRemove.length > 0) {
+      await client.query(
+        `DELETE FROM team_memberships WHERE team_id = $1 AND user_id = ANY($2::uuid[])`,
+        [teamId, toRemove],
       );
 
       if (mappedRoleId) {
         await client.query(
-          `INSERT INTO user_custom_roles (user_id, role_id)
-           VALUES ($1, $2)
-           ON CONFLICT (user_id, role_id) DO NOTHING`,
-          [userId, mappedRoleId],
+          `DELETE FROM user_custom_roles WHERE user_id = ANY($1::uuid[]) AND role_id = $2`,
+          [toRemove, mappedRoleId],
         );
       }
 
-      await writeAuditEntry(client, {
-        recordType: 'team',
-        recordId: teamId,
-        recordName: team.name,
-        eventType: 'updated',
-        fieldName: 'member_added',
-        newValue: userId,
-        changedById: actor.id,
-        changedByName: actor.name,
-      });
-    }
-
-    // 5. Remove memberships
-    for (const userId of toRemove) {
-      await client.query(`DELETE FROM team_memberships WHERE team_id = $1 AND user_id = $2`, [
-        teamId,
-        userId,
-      ]);
-
-      if (mappedRoleId) {
-        await client.query(`DELETE FROM user_custom_roles WHERE user_id = $1 AND role_id = $2`, [
-          userId,
-          mappedRoleId,
-        ]);
+      for (const userId of toRemove) {
+        await writeAuditEntry(client, {
+          recordType: 'team',
+          recordId: teamId,
+          recordName: team.name,
+          eventType: 'updated',
+          fieldName: 'member_removed',
+          oldValue: userId,
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
       }
-
-      await writeAuditEntry(client, {
-        recordType: 'team',
-        recordId: teamId,
-        recordName: team.name,
-        eventType: 'updated',
-        fieldName: 'member_removed',
-        oldValue: userId,
-        changedById: actor.id,
-        changedByName: actor.name,
-      });
     }
 
     await client.query('COMMIT');

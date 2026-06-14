@@ -119,8 +119,12 @@ export async function createScimUserHandler(req: Request, res: Response): Promis
     }
 
     const active = typeof body.active === 'boolean' ? body.active : true;
+    const externalId = typeof body.externalId === 'string' ? body.externalId : null;
 
-    const row = await provisionScimUser({ userName, givenName, familyName, active }, SCIM_ACTOR);
+    const row = await provisionScimUser(
+      { userName, givenName, familyName, active, externalId },
+      SCIM_ACTOR,
+    );
     const scimUser = toScimUser(row, SCIM_BASE_URL);
 
     res.status(201).set('Location', scimUser.meta.location).type(SCIM_CONTENT_TYPE).json(scimUser);

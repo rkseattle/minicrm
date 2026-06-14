@@ -1,11 +1,11 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–109 (MINCRM-528, MINCRM-542)
+ * Migration 000: Schema baseline — squash of migrations 001–113 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541)
  *
  * PURPOSE
  * -------
  * Captures the full schema as it exists after all 109 migrations (001–109), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 109 individual migrations.
+ * replaying all 113 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
@@ -17,9 +17,9 @@
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–109 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–113 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (110+) run normally via `npm run migrate`
+ *   3. Future migrations (114+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -224,12 +224,14 @@ exports.up = (pgm) => {
       sso_subject                 text,
       api_token_hash              text,
       api_token_issued_at         timestamp with time zone,
+      scim_external_id            text,
       CONSTRAINT users_pkey PRIMARY KEY (id),
       CONSTRAINT users_email_key UNIQUE (email),
       CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[]))),
       CONSTRAINT users_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'invited'::character varying, 'inactive'::character varying])::text[]))),
       CONSTRAINT users_sso_provider_requires_subject CHECK (((sso_provider IS NULL) OR (sso_subject IS NOT NULL))),
-      CONSTRAINT users_sso_subject_max_length CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024)))
+      CONSTRAINT users_sso_subject_max_length CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024))),
+      CONSTRAINT users_scim_external_id_key UNIQUE (scim_external_id)
     )
   `);
   pgm.sql(`COMMENT ON COLUMN public.users.sso_provider IS 'SSO protocol that provisioned this user: saml | oidc'`);
@@ -1196,10 +1198,12 @@ exports.up = (pgm) => {
       name           text NOT NULL,
       manager_id     uuid REFERENCES public.users(id) ON DELETE SET NULL,
       parent_team_id uuid REFERENCES public.teams(id) ON DELETE SET NULL,
+      scim_group_id  text,
       created_at     timestamp with time zone DEFAULT now() NOT NULL,
       updated_at     timestamp with time zone DEFAULT now() NOT NULL,
       CONSTRAINT teams_pkey PRIMARY KEY (id),
-      CONSTRAINT teams_name_key UNIQUE (name)
+      CONSTRAINT teams_name_key UNIQUE (name),
+      CONSTRAINT teams_scim_group_id_key UNIQUE (scim_group_id)
     )
   `);
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS teams_name_lower_idx ON public.teams (lower(name))`);
@@ -1215,6 +1219,32 @@ exports.up = (pgm) => {
     )
   `);
   pgm.sql(`CREATE INDEX IF NOT EXISTS team_memberships_user_id_idx ON public.team_memberships (user_id)`);
+
+  // scim_tokens (migration 111 — MINCRM-541)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.scim_tokens (
+      id           uuid DEFAULT gen_random_uuid() NOT NULL,
+      token_hash   text NOT NULL,
+      created_by   uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      last_used_at timestamp with time zone,
+      CONSTRAINT scim_tokens_pkey PRIMARY KEY (id),
+      CONSTRAINT scim_tokens_token_hash_key UNIQUE (token_hash)
+    )
+  `);
+
+  // scim_group_role_mappings (migration 111 — MINCRM-541)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.scim_group_role_mappings (
+      id            uuid DEFAULT gen_random_uuid() NOT NULL,
+      scim_group_id text NOT NULL,
+      group_name    text NOT NULL,
+      role_id       uuid NOT NULL REFERENCES public.custom_roles(id) ON DELETE RESTRICT,
+      created_at    timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT scim_group_role_mappings_pkey PRIMARY KEY (id),
+      CONSTRAINT scim_group_role_mappings_scim_group_id_key UNIQUE (scim_group_id)
+    )
+  `);
 
   // -------------------------------------------------------------------------
   // Triggers — wrapped in DO/EXCEPTION so baseline is safe on existing databases
@@ -1293,6 +1323,15 @@ exports.up = (pgm) => {
       ('require_mfa',                 'false', now()),
       ('default_currency',            'USD',   now()),
       ('pipeline_stages_reviewed',    'false', now())
+    ON CONFLICT (key) DO NOTHING
+  `);
+
+  // sso_jit_default_role_id — seeded after custom_roles exist (migration 110 — MINCRM-540)
+  pgm.sql(`
+    INSERT INTO public.system_settings (key, value, updated_at)
+    SELECT 'sso_jit_default_role_id', r.id::text, now()
+    FROM public.custom_roles r
+    WHERE r.name = 'rep' AND r.is_builtin = true
     ON CONFLICT (key) DO NOTHING
   `);
 
