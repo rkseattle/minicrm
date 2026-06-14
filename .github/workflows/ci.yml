@@ -662,7 +662,7 @@ jobs:
               --project=${{ matrix.project }} \
               --workers=2 \
               --grep @functional \
-              --grep-invert visual-regression
+              --grep-invert "visual-regression|serial"
           else
             echo "::warning::LPT shard config not found — falling back to native --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }}"
             npx playwright test \
@@ -671,7 +671,7 @@ jobs:
               --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }} \
               --workers=2 \
               --grep @functional \
-              --grep-invert visual-regression \
+              --grep-invert "visual-regression|serial" \
               qa/e2e/tests/apps/minicrm/functional/
           fi
         env:
@@ -797,6 +797,207 @@ jobs:
             exit 1
           fi
           echo "E2E shards passed or were skipped (result: $result)."
+
+  # MINCRM-549: Serial E2E job for tests that mutate shared global state and cannot
+  # safely run concurrently with the sharded matrix. Tests tagged @serial are excluded
+  # from e2e-functional (--grep-invert serial) and run here with --workers=1 so no
+  # two @serial tests ever touch the database at the same time.
+  # Currently: visibility.spec.ts (org-level visibility policy).
+  e2e-serial:
+    name: Phase 3 - E2E Serial (global-state tests)
+    needs: [server-tests, client-tests, changes]
+    if: |
+      always() &&
+      (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
+      (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
+      (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: minicrm
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: minicrm_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        command: server /data --console-address :9001
+
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache Playwright browser binaries
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('qa/package.json') }}
+
+      - name: Install dependencies
+        run: npm ci && npm install --prefix client
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations on E2E database
+        run: npm run migrate:fresh --workspace=minicrm-server
+        env:
+          DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: ci-functional-secret
+          NODE_ENV: test
+
+      - name: Seed E2E admin user
+        run: npm run seed:e2e-admin
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+
+      - name: Create MinIO test bucket
+        run: |
+          MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
+          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+
+      - name: Seed E2E storage config
+        run: npm run seed:e2e-storage
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          E2E_STORAGE_ENDPOINT: http://localhost:9000
+          E2E_STORAGE_BUCKET: minicrm-test-bucket
+          E2E_STORAGE_ACCESS_KEY_ID: minioadmin
+          E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
+
+      - name: Seed E2E SMTP config
+        run: npm run seed:e2e-smtp
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          E2E_SMTP_HOST: localhost
+          E2E_SMTP_PORT: '1025'
+
+      - name: Start application server
+        run: npm run start --workspace=minicrm-server &
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+          JWT_SECRET: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+          NODE_ENV: development
+          PORT: 3001
+          E2E: true
+          NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          APP_URL: http://localhost:5173
+
+      - name: Start frontend dev server
+        run: npm run dev --workspace=minicrm-client &
+        env:
+          API_URL: http://localhost:3001
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for API server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3001/api/health && break
+            echo "  attempt $i/30 — retrying in 2s"
+            if [ "$i" -eq 30 ]; then echo "API server did not start in time"; exit 1; fi
+            sleep 2
+          done
+          echo "Waiting for frontend dev server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5173 && break
+            echo "  attempt $i/30 — retrying in 2s"
+            if [ "$i" -eq 30 ]; then echo "Frontend server did not start in time"; exit 1; fi
+            sleep 2
+          done
+
+      - name: Run serial functional tests (MINCRM-549)
+        run: |
+          npx playwright test \
+            --config=qa/e2e/playwright.config.ts \
+            --project=desktop \
+            --workers=1 \
+            --grep "@functional.*@serial|@serial.*@functional"
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E: true
+          MAILHOG_URL: http://localhost:8025
+          AI_HEALING: true
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_HEAL_COST_WARNING_THRESHOLD: '20'
+
+      - name: Publish serial results to GitHub Checks
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Playwright – serial (functional)
+          path: qa/e2e/test-results/results.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload serial test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-serial-results
+          path: |
+            qa/e2e/test-results/results.xml
+            qa/e2e/test-results/results.json
+          retention-days: 14
+          if-no-files-found: warn
 
   # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
   # Job dependency chain:
@@ -1550,6 +1751,7 @@ jobs:
       - lint-docs
       - e2e-aggregate
       - e2e-all-shards-passed
+      - e2e-serial
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1564,6 +1766,7 @@ jobs:
             "${{ needs.lint-docs.result }}" \
             "${{ needs.e2e-aggregate.result }}" \
             "${{ needs.e2e-all-shards-passed.result }}" \
+            "${{ needs.e2e-serial.result }}" \
           )
           for result in "${results[@]}"; do
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
