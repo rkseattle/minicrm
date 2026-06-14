@@ -1300,15 +1300,6 @@ exports.up = (pgm) => {
     ON CONFLICT (key) DO NOTHING
   `);
 
-  // sso_jit_default_role_id — seeded after custom_roles exist (migration 110 — MINCRM-540)
-  pgm.sql(`
-    INSERT INTO public.system_settings (key, value, updated_at)
-    SELECT 'sso_jit_default_role_id', r.id::text, now()
-    FROM public.custom_roles r
-    WHERE r.name = 'rep' AND r.is_builtin = true
-    ON CONFLICT (key) DO NOTHING
-  `);
-
   pgm.sql(`
     INSERT INTO public.currencies (code, name, symbol, rate_to_home, is_home)
     VALUES ('USD', 'US Dollar', '$', 1.000000, true)
@@ -1493,6 +1484,15 @@ exports.up = (pgm) => {
       ('viewer',          'Read-only access across the organisation',              true),
       ('service_account', 'Machine-to-machine API access via bearer token',        true)
     ON CONFLICT (name) DO NOTHING
+  `);
+
+  // sso_jit_default_role_id — must be after custom_roles is seeded above (migration 110 — MINCRM-540)
+  pgm.sql(`
+    INSERT INTO public.system_settings (key, value, updated_at)
+    SELECT 'sso_jit_default_role_id', r.id::text, now()
+    FROM public.custom_roles r
+    WHERE r.name = 'rep' AND r.is_builtin = true
+    ON CONFLICT (key) DO NOTHING
   `);
 
   pgm.sql(`

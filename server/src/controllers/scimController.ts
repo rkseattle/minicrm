@@ -320,15 +320,24 @@ export async function replaceScimGroupHandler(req: Request, res: Response): Prom
       )
       .map((m) => m.value as string);
 
-    await syncScimGroupMembers(teamId, memberUserIds, SCIM_ACTOR);
-
+    // Check scope guard before mutating — syncScimGroupMembers also guards, but
+    // checking here first avoids starting a transaction against a non-SCIM team.
     const entry = await getScimGroupById(teamId);
     if (!entry) {
       scimError(res, 404, 'Group not found');
       return;
     }
 
-    res.type(SCIM_CONTENT_TYPE).json(toScimGroup(entry.group, entry.members, SCIM_BASE_URL));
+    await syncScimGroupMembers(teamId, memberUserIds, SCIM_ACTOR);
+
+    // Re-fetch to reflect the post-sync membership state
+    const updated = await getScimGroupById(teamId);
+    if (!updated) {
+      scimError(res, 404, 'Group not found');
+      return;
+    }
+
+    res.type(SCIM_CONTENT_TYPE).json(toScimGroup(updated.group, updated.members, SCIM_BASE_URL));
   } catch (err) {
     const status = statusCodeOf(err);
     const detail = err instanceof Error ? err.message : 'An unexpected error occurred';
