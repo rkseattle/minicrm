@@ -880,7 +880,9 @@
       "saveError": "Failed to save SSO configuration. Please try again.",
       "disableButton": "Disable SSO",
       "disableConfirmPrompt": "This will remove SSO bindings for all users. Continue?",
-      "disableConfirmButton": "Yes, disable SSO"
+      "disableConfirmButton": "Yes, disable SSO",
+      "jitRoleLabel": "Default Role for New SSO Users",
+      "jitRoleHint": "Role assigned to users provisioned automatically on first SSO login."
     }
   },
   "profileSettings": {

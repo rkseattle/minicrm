@@ -880,7 +880,9 @@
       "saveError": "SSO-Konfiguration konnte nicht gespeichert werden.",
       "disableButton": "SSO deaktivieren",
       "disableConfirmPrompt": "SSO-Bindungen für alle Benutzer entfernen?",
-      "disableConfirmButton": "Ja, SSO deaktivieren"
+      "disableConfirmButton": "Ja, SSO deaktivieren",
+      "jitRoleLabel": "Standardrolle für neue SSO-Benutzer",
+      "jitRoleHint": "Rolle, die automatisch bereitgestellten Benutzern bei ihrer ersten SSO-Anmeldung zugewiesen wird."
     }
   },
   "import": {

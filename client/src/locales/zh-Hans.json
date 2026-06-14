@@ -880,7 +880,9 @@
       "saveError": "SSO 配置保存失败。",
       "disableButton": "禁用 SSO",
       "disableConfirmPrompt": "将为所有用户删除 SSO 绑定？",
-      "disableConfirmButton": "是，禁用 SSO"
+      "disableConfirmButton": "是，禁用 SSO",
+      "jitRoleLabel": "新SSO用户的默认角色",
+      "jitRoleHint": "首次SSO登录时自动配置的用户所分配的角色。"
     }
   },
   "import": {

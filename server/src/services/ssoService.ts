@@ -17,7 +17,8 @@ import crypto from 'crypto';
 import * as nodeSaml from '@node-saml/node-saml';
 import { discovery, buildAuthorizationUrl, authorizationCodeGrant } from 'openid-client';
 import pool from '../db.js';
-import { getSsoConfigInternal } from './ssoSettingsService.js';
+import logger from '../logger.js';
+import { getSsoConfigInternal, SSO_JIT_DEFAULT_ROLE_ID_KEY } from './ssoSettingsService.js';
 import { encrypt, decrypt } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
@@ -27,7 +28,11 @@ import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Role assigned to all JIT-provisioned SSO users */
+/**
+ * Denormalized role enum value written to users.role for all JIT-provisioned SSO users.
+ * users.role is retained as a cache per MINCRM-542 design — the authoritative capability
+ * source is the custom_roles / user_custom_roles tables.
+ */
 const SSO_JIT_ROLE = 'rep' as const;
 
 /** System actor used for JIT-provision audit entries */
@@ -459,10 +464,40 @@ export async function findOrProvisionSsoUser(
       `INSERT INTO users (email, name, role, status, must_change_password, sso_provider, sso_subject, created_at, updated_at)
        VALUES ($1, $2, $3, 'active', false, $4, $5, now(), now())
        RETURNING id, email, name, role, status, must_change_password, sso_provider, sso_subject`,
+      // SSO_JIT_ROLE is the denormalized cache value — kept in sync with MINCRM-542 design.
       [claims.email, claims.name, SSO_JIT_ROLE, provider, claims.subject],
     );
 
+    // newUserResult.rows[0] is guaranteed non-null — the INSERT above always returns one row. (MINCRM-540)
     const newUser = newUserResult.rows[0]!;
+
+    // Look up the configured JIT default role and assign it via user_custom_roles. (MINCRM-540)
+    const jitRoleSettingResult = await client.query<{ value: string }>(
+      `SELECT value FROM system_settings WHERE key = $1 LIMIT 1`,
+      [SSO_JIT_DEFAULT_ROLE_ID_KEY],
+    );
+    const jitRoleId = jitRoleSettingResult.rows[0]?.value ?? null;
+
+    if (jitRoleId) {
+      // Validate the role exists before inserting to avoid a FK violation.
+      const roleExistsResult = await client.query<{ id: string }>(
+        `SELECT id FROM custom_roles WHERE id = $1 LIMIT 1`,
+        [jitRoleId],
+      );
+      if (roleExistsResult.rows[0]) {
+        await client.query(
+          `INSERT INTO user_custom_roles (user_id, role_id, created_at)
+           VALUES ($1, $2, now())
+           ON CONFLICT (user_id, role_id) DO NOTHING`,
+          [newUser.id, jitRoleId],
+        );
+      } else {
+        logger.warn(
+          { jitRoleId },
+          'ssoService: sso_jit_default_role_id points to a non-existent custom_role — skipping role assignment',
+        );
+      }
+    }
 
     await writeAuditEntry(client, {
       recordType: 'user',

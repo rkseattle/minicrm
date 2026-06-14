@@ -19,6 +19,8 @@ const SSO_IDP_METADATA_URL_KEY = 'sso_idp_metadata_url';
 const SSO_ENTITY_ID_KEY = 'sso_entity_id';
 /** Value stored as AES-256-GCM ciphertext produced by cryptoService. */
 const SSO_IDP_CERTIFICATE_ENCRYPTED_KEY = 'sso_idp_certificate_encrypted';
+/** UUID of the custom_roles row to assign to JIT-provisioned SSO users. (MINCRM-540) */
+export const SSO_JIT_DEFAULT_ROLE_ID_KEY = 'sso_jit_default_role_id';
 
 const SSO_KEYS = [
   SSO_ENABLED_KEY,
@@ -26,6 +28,7 @@ const SSO_KEYS = [
   SSO_IDP_METADATA_URL_KEY,
   SSO_ENTITY_ID_KEY,
   SSO_IDP_CERTIFICATE_ENCRYPTED_KEY,
+  SSO_JIT_DEFAULT_ROLE_ID_KEY,
 ] as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -38,6 +41,8 @@ export interface SsoConfigInternal {
   entity_id: string;
   /** Decrypted PEM certificate, or null if not set. */
   idp_certificate: string | null;
+  /** UUID of the custom_roles row to assign to JIT-provisioned SSO users, or null if not set. (MINCRM-540) */
+  jit_default_role_id: string | null;
 }
 
 /** Input accepted by setSsoConfig. idp_certificate is optional; omitting it preserves the stored cert. */
@@ -47,6 +52,8 @@ export interface SsoConfigInput {
   entity_id: string;
   /** When undefined the existing encrypted certificate is left unchanged. */
   idp_certificate?: string;
+  /** When provided (including null), upserts the JIT default role setting. (MINCRM-540) */
+  jit_default_role_id?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -91,6 +98,7 @@ export async function getSsoConfig(): Promise<SsoConfigPublic | null> {
     idp_metadata_url: map[SSO_IDP_METADATA_URL_KEY] ?? '',
     entity_id: map[SSO_ENTITY_ID_KEY] ?? '',
     idp_certificate_set: Boolean(map[SSO_IDP_CERTIFICATE_ENCRYPTED_KEY]),
+    jit_default_role_id: map[SSO_JIT_DEFAULT_ROLE_ID_KEY] ?? null,
   };
 }
 
@@ -144,6 +152,7 @@ export async function getSsoConfigInternal(): Promise<SsoConfigInternal> {
     idp_metadata_url: map[SSO_IDP_METADATA_URL_KEY] ?? '',
     entity_id: map[SSO_ENTITY_ID_KEY] ?? '',
     idp_certificate,
+    jit_default_role_id: map[SSO_JIT_DEFAULT_ROLE_ID_KEY] ?? null,
   };
 }
 
@@ -185,6 +194,23 @@ export async function setSsoConfig(
         encrypted,
         actorIdOrNull(actor),
       ]);
+    }
+
+    // When jit_default_role_id is explicitly provided (even null), persist the change. (MINCRM-540)
+    // null clears the row so a missing key and an explicit null are indistinguishable to readers.
+    if ('jit_default_role_id' in input) {
+      if (input.jit_default_role_id === null) {
+        // Remove the key so readers get null via the `?? null` fallback.
+        await client.query('DELETE FROM system_settings WHERE key = $1', [
+          SSO_JIT_DEFAULT_ROLE_ID_KEY,
+        ]);
+      } else {
+        await client.query(UPSERT_SQL, [
+          SSO_JIT_DEFAULT_ROLE_ID_KEY,
+          input.jit_default_role_id,
+          actorIdOrNull(actor),
+        ]);
+      }
     }
 
     await client.query('COMMIT');

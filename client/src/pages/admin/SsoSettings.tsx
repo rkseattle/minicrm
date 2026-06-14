@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getSsoConfig, putSsoConfig, deleteSsoConfig, SSO_CONFIG_QUERY_KEY } from '@/api/sso.js';
+import { listCustomRoles, CUSTOM_ROLES_QUERY_KEY } from '@/api/customRoles.js';
 import { Button } from '@/components/ui/Button.js';
 import type { SsoProtocol } from '@shared/schemas/settingsSchema.js';
 
@@ -20,6 +21,8 @@ interface SsoFormState {
   idp_metadata_url: string;
   entity_id: string;
   idp_certificate: string;
+  /** Empty string means "use default / no explicit assignment". */
+  jit_default_role_id: string;
 }
 
 const EMPTY_FORM: SsoFormState = {
@@ -27,6 +30,7 @@ const EMPTY_FORM: SsoFormState = {
   idp_metadata_url: '',
   entity_id: '',
   idp_certificate: '',
+  jit_default_role_id: '',
 };
 
 export default function SsoSettings() {
@@ -36,6 +40,11 @@ export default function SsoSettings() {
   const { data, isLoading, isError } = useQuery({
     queryKey: SSO_CONFIG_QUERY_KEY,
     queryFn: getSsoConfig,
+  });
+
+  const { data: rolesData } = useQuery({
+    queryKey: CUSTOM_ROLES_QUERY_KEY,
+    queryFn: listCustomRoles,
   });
 
   const [form, setForm] = useState<SsoFormState>(EMPTY_FORM);
@@ -52,6 +61,7 @@ export default function SsoSettings() {
         entity_id: data.sso.entity_id,
         // Never pre-fill the certificate — user must re-enter to update it.
         idp_certificate: '',
+        jit_default_role_id: data.sso.jit_default_role_id ?? '',
       });
     }
   }, [data]);
@@ -94,6 +104,8 @@ export default function SsoSettings() {
       protocol: form.protocol,
       idp_metadata_url: form.idp_metadata_url,
       entity_id: form.entity_id,
+      // Empty string means "no explicit role" — send null to clear the setting.
+      jit_default_role_id: form.jit_default_role_id || null,
     };
     if (form.idp_certificate) {
       payload.idp_certificate = form.idp_certificate;
@@ -210,6 +222,33 @@ export default function SsoSettings() {
                 required
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
+            </div>
+
+            {/* JIT default role */}
+            <div>
+              <label
+                htmlFor="sso-jit-role"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('settings.sso.jitRoleLabel')}
+              </label>
+              <select
+                id="sso-jit-role"
+                data-testid="sso-jit-role-select"
+                value={form.jit_default_role_id}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, jit_default_role_id: e.target.value }))
+                }
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                <option value="">—</option>
+                {rolesData?.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">{t('settings.sso.jitRoleHint')}</p>
             </div>
 
             {/* IdP Certificate — SAML only */}
