@@ -252,9 +252,11 @@ export async function syncScimGroupMembers(
   try {
     await client.query('BEGIN');
 
-    // 1. Fetch the team's scim_group_id so we can look up the role mapping
+    // 1. Fetch the team's scim_group_id so we can look up the role mapping.
+    // Guard on scim_group_id IS NOT NULL so that SCIM clients cannot clobber
+    // the memberships of manually-created teams even if they discover their UUIDs.
     const teamResult = await client.query<{ scim_group_id: string | null; name: string }>(
-      `SELECT scim_group_id, name FROM teams WHERE id = $1`,
+      `SELECT scim_group_id, name FROM teams WHERE id = $1 AND scim_group_id IS NOT NULL`,
       [teamId],
     );
 
