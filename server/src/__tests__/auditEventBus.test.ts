@@ -17,7 +17,11 @@ import { maskAuditEvent, writeAuditEntry } from '../services/auditService.js';
 import { createUser } from '../services/userService.js';
 
 const FILE_PREFIX = 'audit-event-bus';
-const RECORD_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+// Each test uses its own RECORD_ID to prevent LISTEN notifications from one
+// test bleeding into another test's event handler during the timing window.
+const RECORD_ID_EMIT = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee01';
+const RECORD_ID_NOEMIT = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeee02';
+const RECORD_ID_GDPR = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 const ACTOR_ID = 'e0e0e0e0-e0e0-e0e0-e0e0-e0e0e0e0e0e0';
 const ACTOR_NAME = 'EventBus Test Actor';
 
@@ -32,7 +36,9 @@ beforeAll(async () => {
   for (const row of prior.rows) {
     await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [row.id]);
   }
-  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [RECORD_ID]);
+  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = ANY($1::uuid[])', [
+    [RECORD_ID_EMIT, RECORD_ID_NOEMIT, RECORD_ID_GDPR],
+  ]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   // Create a real user to satisfy gdpr_deletion_log.requested_by FK
@@ -49,7 +55,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [RECORD_ID]);
+  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = ANY($1::uuid[])', [
+    [RECORD_ID_EMIT, RECORD_ID_NOEMIT, RECORD_ID_GDPR],
+  ]);
 });
 
 afterAll(async () => {
@@ -58,7 +66,9 @@ afterAll(async () => {
   if (requestedById) {
     await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [requestedById]);
   }
-  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = $1', [RECORD_ID]);
+  await pool.query('DELETE FROM gdpr_deletion_log WHERE record_id = ANY($1::uuid[])', [
+    [RECORD_ID_EMIT, RECORD_ID_NOEMIT, RECORD_ID_GDPR],
+  ]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Rows in audit_log keyed by RECORD_ID / ACTOR_ID are harmless to other test files
   // (unique IDs ensure no cross-file query contamination). Skip the DISABLE TRIGGER
@@ -92,14 +102,14 @@ function waitForEvent(recordId: string, timeoutMs: number): Promise<AuditNotific
 
 describe('auditEventBus', () => {
   it('emits audit_event within 100ms of an audit_log INSERT', async () => {
-    const eventPromise = waitForEvent(RECORD_ID, 100);
+    const eventPromise = waitForEvent(RECORD_ID_EMIT, 100);
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       await writeAuditEntry(client, {
         recordType: 'contact',
-        recordId: RECORD_ID,
+        recordId: RECORD_ID_EMIT,
         recordName: 'EventBus Subject',
         eventType: 'updated',
         fieldName: 'First Name',
@@ -115,7 +125,7 @@ describe('auditEventBus', () => {
 
     const event = await eventPromise;
     expect(event.record_type).toBe('contact');
-    expect(event.record_id).toBe(RECORD_ID);
+    expect(event.record_id).toBe(RECORD_ID_EMIT);
     expect(event.event_type).toBe('updated');
     expect(event.field_name).toBe('First Name');
     expect(event.old_value).toBe('Before');
@@ -128,7 +138,7 @@ describe('auditEventBus', () => {
     let emittedForRecord = false;
 
     function handler(event: AuditNotification): void {
-      if (event.record_id === RECORD_ID) emittedForRecord = true;
+      if (event.record_id === RECORD_ID_NOEMIT) emittedForRecord = true;
     }
     auditEventBus.on('audit_event', handler);
 
@@ -137,7 +147,7 @@ describe('auditEventBus', () => {
       await client.query('BEGIN');
       await writeAuditEntry(client, {
         recordType: 'contact',
-        recordId: RECORD_ID,
+        recordId: RECORD_ID_NOEMIT,
         recordName: 'Rollback Subject',
         eventType: 'created',
         changedById: ACTOR_ID,
@@ -174,7 +184,7 @@ describe('maskAuditEvent', () => {
   const baseEvent: AuditNotification = {
     id: '11111111-1111-1111-1111-111111111111',
     record_type: 'contact',
-    record_id: RECORD_ID,
+    record_id: RECORD_ID_GDPR,
     record_name: 'Test Subject',
     event_type: 'updated',
     field_name: 'First Name',
@@ -201,14 +211,14 @@ describe('maskAuditEvent', () => {
       `INSERT INTO gdpr_deletion_log
          (record_type, record_id, requested_by, erasure_scope, completed_at)
        VALUES ($1, $2, $3, $4, now())`,
-      ['contact', RECORD_ID, requestedById, ['first_name']],
+      ['contact', RECORD_ID_GDPR, requestedById, ['first_name']],
     );
 
     const result = await maskAuditEvent(baseEvent);
     expect(result.old_value).toBe('[GDPR deleted]');
     expect(result.new_value).toBe('[GDPR deleted]');
     // Other fields must be untouched
-    expect(result.record_id).toBe(RECORD_ID);
+    expect(result.record_id).toBe(RECORD_ID_GDPR);
     expect(result.field_name).toBe('First Name');
   });
 
@@ -217,7 +227,7 @@ describe('maskAuditEvent', () => {
       `INSERT INTO gdpr_deletion_log
          (record_type, record_id, requested_by, erasure_scope, completed_at)
        VALUES ($1, $2, $3, $4, now())`,
-      ['contact', RECORD_ID, requestedById, ['first_name']],
+      ['contact', RECORD_ID_GDPR, requestedById, ['first_name']],
     );
 
     const nullValuesEvent: AuditNotification = {
@@ -235,7 +245,7 @@ describe('maskAuditEvent', () => {
       `INSERT INTO gdpr_deletion_log
          (record_type, record_id, requested_by, erasure_scope)
        VALUES ($1, $2, $3, $4)`,
-      ['contact', RECORD_ID, requestedById, ['first_name']],
+      ['contact', RECORD_ID_GDPR, requestedById, ['first_name']],
     );
 
     const result = await maskAuditEvent(baseEvent);
