@@ -2725,4 +2725,44 @@ export const handlers = [
   http.delete('/api/v1/teams/:id/members/:userId', () => {
     return new HttpResponse(null, { status: 204 });
   }),
+
+  /** SCIM: GET /api/v1/scim-token (MINCRM-541) */
+  http.get('/api/v1/scim-token', () => {
+    return HttpResponse.json({ token: null });
+  }),
+
+  /** SCIM: POST /api/v1/scim-token (MINCRM-541) */
+  http.post('/api/v1/scim-token', () => {
+    return HttpResponse.json(
+      {
+        token: {
+          id: 'mock-scim-token-id',
+          rawToken: 'scim-mock-token-abc123',
+          createdAt: new Date().toISOString(),
+          lastUsedAt: null,
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** SCIM: DELETE /api/v1/scim-token (MINCRM-541) */
+  http.delete('/api/v1/scim-token', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** SCIM: GET /api/v1/scim/group-role-mappings (MINCRM-541) */
+  http.get('/api/v1/scim/group-role-mappings', () => {
+    return HttpResponse.json({ mappings: [] });
+  }),
+
+  /** SCIM: PUT /api/v1/scim/group-role-mappings/:scimGroupId (MINCRM-541) */
+  http.put('/api/v1/scim/group-role-mappings/:scimGroupId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** SCIM: DELETE /api/v1/scim/group-role-mappings/:scimGroupId (MINCRM-541) */
+  http.delete('/api/v1/scim/group-role-mappings/:scimGroupId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];

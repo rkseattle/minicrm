@@ -192,7 +192,8 @@ export async function getScimGroupById(
   const groupResult = await pool.query<ScimGroupRow>(
     `SELECT id, name, scim_group_id, created_at, updated_at
        FROM teams
-      WHERE id = $1`,
+      WHERE id = $1
+        AND scim_group_id IS NOT NULL`,
     [teamId],
   );
 
@@ -333,9 +334,21 @@ export async function syncScimGroupMembers(
       );
 
       if (mappedRoleId) {
+        // Only revoke the role if the user doesn't hold it via another SCIM group
         await client.query(
-          `DELETE FROM user_custom_roles WHERE user_id = ANY($1::uuid[]) AND role_id = $2`,
-          [toRemove, mappedRoleId],
+          `DELETE FROM user_custom_roles ucr
+           WHERE ucr.user_id = ANY($1::uuid[])
+             AND ucr.role_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM team_memberships tm
+                 JOIN teams t ON t.id = tm.team_id
+                 JOIN scim_group_role_mappings m ON m.scim_group_id = t.scim_group_id
+                WHERE tm.user_id = ucr.user_id
+                  AND m.role_id = $2
+                  AND tm.team_id != $3
+             )`,
+          [toRemove, mappedRoleId, teamId],
         );
       }
 
@@ -376,9 +389,9 @@ export async function deleteScimGroup(teamId: string, actor: AuditActor): Promis
   try {
     await client.query('BEGIN');
 
-    // Fetch team name for the audit entry before deleting
-    const teamResult = await client.query<{ name: string }>(
-      `SELECT name FROM teams WHERE id = $1`,
+    // Fetch team metadata and role mapping before deleting
+    const teamResult = await client.query<{ name: string; scim_group_id: string | null }>(
+      `SELECT name, scim_group_id FROM teams WHERE id = $1 AND scim_group_id IS NOT NULL`,
       [teamId],
     );
 
@@ -388,7 +401,48 @@ export async function deleteScimGroup(teamId: string, actor: AuditActor): Promis
     }
 
     // Non-null assertion safe: length > 0 guarantees rows[0] exists
-    const teamName = teamResult.rows[0]!.name;
+    const team = teamResult.rows[0]!;
+    const teamName = team.name;
+
+    // Look up any role mapping so we can revoke it from members on deletion
+    let mappedRoleId: string | null = null;
+    if (team.scim_group_id) {
+      const mappingResult = await client.query<{ role_id: string }>(
+        `SELECT role_id FROM scim_group_role_mappings WHERE scim_group_id = $1`,
+        [team.scim_group_id],
+      );
+      if (mappingResult.rows.length > 0) {
+        // Non-null assertion safe: length > 0 guarantees rows[0] exists
+        mappedRoleId = mappingResult.rows[0]!.role_id;
+      }
+    }
+
+    // Revoke the mapped role from members — but only if they don't hold it via another group
+    if (mappedRoleId) {
+      const memberResult = await client.query<{ user_id: string }>(
+        `SELECT user_id FROM team_memberships WHERE team_id = $1`,
+        [teamId],
+      );
+      const memberIds = memberResult.rows.map((r) => r.user_id);
+
+      if (memberIds.length > 0) {
+        await client.query(
+          `DELETE FROM user_custom_roles ucr
+           WHERE ucr.user_id = ANY($1::uuid[])
+             AND ucr.role_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM team_memberships tm
+                 JOIN teams t ON t.id = tm.team_id
+                 JOIN scim_group_role_mappings m ON m.scim_group_id = t.scim_group_id
+                WHERE tm.user_id = ucr.user_id
+                  AND m.role_id = $2
+                  AND tm.team_id != $3
+             )`,
+          [memberIds, mappedRoleId, teamId],
+        );
+      }
+    }
 
     // Remove memberships first (FK constraint)
     await client.query(`DELETE FROM team_memberships WHERE team_id = $1`, [teamId]);
