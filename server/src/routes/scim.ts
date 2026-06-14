@@ -16,6 +16,11 @@ import {
   getScimUserHandler,
   replaceScimUserHandler,
   patchScimUserHandler,
+  listScimGroupsHandler,
+  createScimGroupHandler,
+  getScimGroupHandler,
+  replaceScimGroupHandler,
+  deleteScimGroupHandler,
 } from '../controllers/scimController.js';
 
 const router = Router();
@@ -202,5 +207,128 @@ router.put('/Users/:id', authenticateScim, replaceScimUserHandler);
  *         description: User not found
  */
 router.patch('/Users/:id', authenticateScim, patchScimUserHandler);
+
+// ── Groups resource ────────────────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /scim/v2/Groups:
+ *   get:
+ *     tags: [SCIM]
+ *     operationId: listScimGroups
+ *     summary: List SCIM groups
+ *     description: >
+ *       Returns a SCIM ListResponse of all provisioned groups (CRM teams that
+ *       were created via SCIM).
+ *     security:
+ *       - scimBearerToken: []
+ *     responses:
+ *       200:
+ *         description: SCIM ListResponse of groups
+ *       401:
+ *         description: Missing or invalid SCIM bearer token
+ */
+router.get('/Groups', authenticateScim, listScimGroupsHandler);
+
+/**
+ * @openapi
+ * /scim/v2/Groups:
+ *   post:
+ *     tags: [SCIM]
+ *     operationId: createScimGroup
+ *     summary: Provision a new group via SCIM
+ *     security:
+ *       - scimBearerToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/scim+json:
+ *           schema:
+ *             type: object
+ *             required: [displayName]
+ *             properties:
+ *               displayName:
+ *                 type: string
+ *               externalId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Group created
+ *       400:
+ *         description: Missing required attribute
+ */
+router.post('/Groups', authenticateScim, createScimGroupHandler);
+
+/**
+ * @openapi
+ * /scim/v2/Groups/{id}:
+ *   get:
+ *     tags: [SCIM]
+ *     operationId: getScimGroup
+ *     summary: Get a SCIM group by ID
+ *     security:
+ *       - scimBearerToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: SCIM Group
+ *       404:
+ *         description: Group not found
+ */
+router.get('/Groups/:id', authenticateScim, getScimGroupHandler);
+
+/**
+ * @openapi
+ * /scim/v2/Groups/{id}:
+ *   put:
+ *     tags: [SCIM]
+ *     operationId: replaceScimGroup
+ *     summary: Replace a SCIM group's membership list
+ *     description: >
+ *       Full sync — replaces the group's current member list with the members
+ *       array in the request body.
+ *     security:
+ *       - scimBearerToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Updated SCIM Group
+ *       404:
+ *         description: Group not found
+ */
+router.put('/Groups/:id', authenticateScim, replaceScimGroupHandler);
+
+/**
+ * @openapi
+ * /scim/v2/Groups/{id}:
+ *   delete:
+ *     tags: [SCIM]
+ *     operationId: deleteScimGroup
+ *     summary: Delete a SCIM-provisioned group
+ *     security:
+ *       - scimBearerToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Group deleted
+ *       404:
+ *         description: Group not found
+ */
+router.delete('/Groups/:id', authenticateScim, deleteScimGroupHandler);
 
 export default router;
