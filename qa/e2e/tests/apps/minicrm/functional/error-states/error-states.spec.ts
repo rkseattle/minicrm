@@ -54,7 +54,6 @@ import {
   getContactsLoadingIndicator,
   getContactsContactLinkLocator,
   navigateToContactsDomReady,
-  isLoadingIndicatorGone,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   getDealById,
@@ -373,9 +372,9 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   await expect(loadingEl).toBeVisible({ timeout: DELAY_MS - 500 });
 
   // After the delay the real data arrives — wait for the loading indicator to
-  // disappear, which is exactly the condition this test verifies.
-  const loadingGone = await isLoadingIndicatorGone({ page });
-  expect(loadingGone, 'loading indicator should disappear once contacts are loaded').toBe(true);
+  // disappear. expect().not.toBeVisible() retries until the locator is gone,
+  // which is more reliable than the snapshot isLoadingIndicatorGone check.
+  await expect(loadingEl).not.toBeVisible({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
