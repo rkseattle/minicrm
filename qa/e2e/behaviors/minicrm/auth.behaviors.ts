@@ -700,11 +700,20 @@ export async function waitForLoginAlert(
   context: AuthBehaviorContext,
   timeout = 8_000,
 ): Promise<void> {
-  const po = new LoginPage(context);
-  const alert = await po.alertLocator();
-  if (alert) {
-    await alert.waitFor({ state: 'visible', timeout });
-  }
+  // Use fallbackTimeout so the healing locator waits up to `timeout` ms for the
+  // element to appear in the DOM before resolving. alertLocator() uses the default
+  // 2 s probe window and returns null if the element isn't present yet — which
+  // would cause a silent no-op before the async error response arrives.
+  const alert = await context.page
+    .locate(
+      [
+        { type: 'role', value: 'alert' },
+        { type: 'css', value: '[role="alert"]' },
+      ],
+      { intent: 'error alert message on login form', fallbackTimeout: timeout },
+    )
+    .resolve();
+  await alert.waitFor({ state: 'visible', timeout });
 }
 
 /**

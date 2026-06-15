@@ -78,6 +78,7 @@ MUTATION_PATTERNS=(
   "restClient\.put\(.*settings/sso"
   "restClient\.put\(.*settings/branding"
   "restClient\.delete\(.*settings/sso"
+  "restClient\.put\(.*settings/visibility"
   "setNavLayoutViaAPI\([^)]*'left'"
   "setNavLayoutViaAPI\([^)]*'hamburger'"
   "setNavLayoutViaUI"
@@ -112,14 +113,19 @@ while IFS= read -r -d '' spec_file; do
   fi
 
   has_ensure_defaults=false
-  # Check for actual code call (not just import or comment) by requiring
-  # the call to appear on its own outside of a comment.
+  # Accept ensureSystemDefaults() or domain-specific reset functions (e.g.
+  # resetVisibilitySettings) as valid cleanup. Both guarantee settings are
+  # returned to a known good state between tests.
   if grep -qP "(?<!//)\bensureSystemDefaults\s*\(" "$spec_file" 2>/dev/null || \
-     grep -qE "^\s+await ensureSystemDefaults" "$spec_file" 2>/dev/null; then
+     grep -qE "^\s+await ensureSystemDefaults" "$spec_file" 2>/dev/null || \
+     grep -qE "^\s+await reset[A-Z][a-zA-Z]*Settings" "$spec_file" 2>/dev/null; then
     has_ensure_defaults=true
   fi
 
-  # Check 1: file must call ensureSystemDefaults for cleanup.
+  # Check 1: file must call ensureSystemDefaults or an equivalent domain reset
+  # for cleanup. Domain-specific resets (e.g. resetVisibilitySettings) are
+  # accepted in place of ensureSystemDefaults when the file manages its own
+  # reset contract via beforeEach/afterEach.
   if [ "$has_ensure_defaults" = false ]; then
     echo "ERROR: $spec_file mutates system settings but has no ensureSystemDefaults() call."
     echo "  Mutations found:"

@@ -56,10 +56,10 @@ If you are unsure whether a behavior call mutates shared state, search for
 
 ### The two CI jobs
 
-| Job              | Playwright flag                   | What runs                                 |
-| ---------------- | --------------------------------- | ----------------------------------------- |
-| `e2e-functional` | `--workers=4` per shard, 8 shards | `@functional` tests **without** `@serial` |
-| `e2e-serial`     | `--workers=1`                     | `@functional @serial` tests               |
+| Job              | Playwright flag                                | What runs                                 |
+| ---------------- | ---------------------------------------------- | ----------------------------------------- |
+| `e2e-functional` | `--workers=2` per shard, 4 shards × 2 projects | `@functional` tests **without** `@serial` |
+| `e2e-serial`     | `--workers=1`                                  | `@functional @serial` tests               |
 
 The `e2e-functional` job passes `--grep-invert serial` so `@serial` tests are
 never picked up by parallel workers. The `e2e-serial` job greps for
@@ -99,6 +99,14 @@ array is what Playwright's filter API uses. Always include both.
 | Accessibility (A11Y-N1)   | `accessibility/accessibility.spec.ts` | `nav_layout`                  |
 | Admin email notifications | `notifications/notifications.spec.ts` | `email_notifications_enabled` |
 | Visibility policy         | `visibility/visibility.spec.ts`       | `visibility_policy`           |
+
+**Note on `test.describe.serial` vs `@serial` tag:** `onboarding.spec.ts` uses
+`test.describe.serial(...)` at the describe level to serialize tests within the
+file, but its tests are not tagged `@serial` and run in the parallel shard job.
+This works because `setOnboardingCompleted` modifies per-session state that
+self-isolates within the describe block. Use `@serial` (not just
+`test.describe.serial`) whenever the mutation affects a shared row that parallel
+workers across different files could also be reading or writing.
 
 ### Enforcement
 
