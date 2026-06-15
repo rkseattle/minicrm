@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:e2e": "API_URL=http://localhost:3002 vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

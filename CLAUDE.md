@@ -201,10 +201,12 @@ One run per code change. Fix failures on the branch; never re-run to paper over 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
 npm run e2e:setup
-API_URL=http://localhost:3002 npm run dev --workspace=minicrm-client  # separate terminal
+npm run e2e:client  # separate terminal — hardcodes API_URL=http://localhost:3002 (MINCRM-556)
 ```
 
 `E2E_API_URL=http://localhost:3002`, `E2E_BASE_URL=http://localhost:5173` in `qa/e2e/.env`.
+
+**Worker limit (MINCRM-557):** Local runs are capped at 2 Playwright workers to match CI per-shard concurrency. Higher values cause global-state races between specs that mutate shared settings, because LPT file partitioning only applies in CI.
 
 ---
 

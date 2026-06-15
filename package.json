@@ -21,6 +21,7 @@
     "create:e2e-db": "npm run create:e2e-db --workspace=minicrm-server",
     "reset:e2e-data": "npm run reset:e2e-data --workspace=minicrm-server",
     "e2e:setup": "npx tsx scripts/e2e-setup.ts",
+    "e2e:client": "npm run dev:e2e --workspace=minicrm-client",
     "screenshot": "tsx scripts/screenshot.ts",
     "pseudoloc": "tsx scripts/generate-pseudoloc.ts",
     "audit:testids": "tsx qa/scripts/audit-testids.ts",
