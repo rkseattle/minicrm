@@ -33,12 +33,9 @@
 
 set -euo pipefail
 
-TESTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/tests"
-
-if [ ! -d "$TESTS_DIR" ]; then
-  echo "tests directory not found: $TESTS_DIR"
-  exit 1
-fi
+# shellcheck source=spec-files.sh
+source "$(dirname "$0")/spec-files.sh"
+resolve_tests_dir
 
 FOUND=0
 
@@ -52,7 +49,7 @@ while IFS= read -r -d '' spec_file; do
     echo ""
     FOUND=1
   fi
-done < <(find "$TESTS_DIR" -name "*.spec.ts" -print0)
+done < <(find_spec_files)
 
 if [ "$FOUND" -eq 1 ]; then
   echo "FAIL: one or more spec files use waitForLoadState('networkidle')."
