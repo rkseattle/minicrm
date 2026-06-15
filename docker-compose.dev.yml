@@ -66,8 +66,11 @@ services:
       APP_URL: ${APP_URL:-http://localhost}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
       SSO_CALLBACK_BASE_URL: ${SSO_CALLBACK_BASE_URL:-http://localhost}
-    # tsx watch for hot-reload — mirrors the dev server command.
-    command: npx tsx watch server/src/server.ts
+    # MINCRM-558: intentionally no watch mode. tsx watch restarts the Node process
+    # on any source file change. If a developer saves a file mid-run, server-e2e
+    # restarts, drops active connections, and causes non-deterministic test failures.
+    # The dev server on port 3001 keeps tsx watch for iterative development.
+    command: npx tsx server/src/server.ts
     volumes:
       - ./server:/app/server
       - ./shared:/app/shared
