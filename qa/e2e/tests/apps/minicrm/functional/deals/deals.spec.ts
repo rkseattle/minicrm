@@ -111,11 +111,8 @@ test(
     const submitBtn = await getDealFormSubmitLocator({ page });
     await submitBtn.click();
 
-    // Wait for the form to close (submit button detaches from DOM) before querying
-    // the API — networkidle alone can resolve before the mutation response lands and
-    // the React state update closes the form.
+    // Wait for the form submit button to detach (form closed) before querying the API.
     await submitBtn.waitFor({ state: 'detached', timeout: 15_000 });
-    await page.waitForLoadState('networkidle');
 
     const listResponse = await listDealsViaApi(restClient, {
       sort: 'created_at',
@@ -177,9 +174,8 @@ test(
 
     await submitDealForm({ page });
 
-    await page.waitForLoadState('networkidle');
-
-    // UI assertion — deal name heading shows updated value
+    // UI assertion — deal name heading shows updated value; wait directly for it
+    // since it reflects the exact mutation result the test cares about.
     const dealNameEl = await getDealNameHeadingLocator({ page });
     await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
 

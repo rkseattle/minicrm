@@ -690,6 +690,24 @@ export async function submitLoginForm(context: AuthBehaviorContext): Promise<voi
 }
 
 /**
+ * Waits for the login error alert to become visible.
+ *
+ * Use this after submitLoginForm() in test scenarios that need the alert to
+ * be present before acting (e.g. accessibility audits). submitLoginForm()
+ * only clicks Submit and does not wait for the async error response.
+ */
+export async function waitForLoginAlert(
+  context: AuthBehaviorContext,
+  timeout = 8_000,
+): Promise<void> {
+  const po = new LoginPage(context);
+  const alert = await po.alertLocator();
+  if (alert) {
+    await alert.waitFor({ state: 'visible', timeout });
+  }
+}
+
+/**
  * Navigates to the forgot-password page.
  */
 export async function navigateToForgotPasswordPage(context: AuthBehaviorContext): Promise<void> {

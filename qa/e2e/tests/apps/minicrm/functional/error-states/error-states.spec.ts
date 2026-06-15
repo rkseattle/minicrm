@@ -123,10 +123,9 @@ test('@functional ES-1-1: create contact → server 500 → form stays open with
   // Submit — the mock intercepts the POST and returns 500.
   await submitContactCreateForm({ page });
 
-  await page.waitForLoadState('networkidle');
-
   // Form must still be visible — user was not navigated away.
-
+  // Waiting directly for the form is more reliable than networkidle: it targets
+  // exactly what the test needs (form stayed open) and retries until true.
   const form = await getContactsCreateFormLocator({ page });
   await expect(form).toBeVisible();
 
@@ -185,9 +184,8 @@ test('@functional ES-1-2: advance deal stage → server 500 → stage-update-err
   const stageSelect = await getDealStageSelectOnBoardLocator(deal.id, { page });
   await stageSelect.selectOption('Qualification');
 
-  await page.waitForLoadState('networkidle');
-
-  // The stage-update-error banner must be visible.
+  // Wait directly for the error banner — it appears once the mocked 500 response
+  // is processed by React Query, which is the exact condition this test asserts.
   const errorBanner = await getPipelineBoardStageUpdateErrorLocator({ page });
   await expect(errorBanner).toBeVisible({ timeout: 8_000 });
 
@@ -374,9 +372,8 @@ test('@functional ES-1-7: contacts list delayed 3s → loading indicator visible
   const loadingEl = await getContactsLoadingIndicator({ page });
   await expect(loadingEl).toBeVisible({ timeout: DELAY_MS - 500 });
 
-  // After the delay the real data arrives — wait for the page to settle.
-  await page.waitForLoadState('networkidle');
-
+  // After the delay the real data arrives — wait for the loading indicator to
+  // disappear, which is exactly the condition this test verifies.
   const loadingGone = await isLoadingIndicatorGone({ page });
   expect(loadingGone, 'loading indicator should disappear once contacts are loaded').toBe(true);
 });

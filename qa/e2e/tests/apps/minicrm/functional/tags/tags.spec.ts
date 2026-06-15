@@ -179,7 +179,6 @@ test(
 
     // Navigate to the contact detail page (assumes the app uses /contacts/:id).
     await navigateToContactDetailPage(contact.id, { page });
-    await page.waitForLoadState('networkidle');
 
     const attachResult = await attachTagViaUI(contact.id, tag.id, tag.name, { page });
     expect(attachResult.badgeVisible).toBe(true);
@@ -212,7 +211,6 @@ test(
     await attachTagToContact(restClient, contact.id, tag.name);
 
     await navigateToContactDetailPage(contact.id, { page });
-    await page.waitForLoadState('networkidle');
 
     const detachResult = await detachTagViaUI(contact.id, tag.id, { page });
     expect(detachResult.badgeGone).toBe(true);
@@ -247,7 +245,6 @@ test(
 
     // Navigate to the deal detail page.
     await navigateToDealDetailPage(deal.id, { page });
-    await page.waitForLoadState('networkidle');
 
     const attachResult = await attachTagViaUI(deal.id, tag.id, tag.name, { page });
     expect(attachResult.badgeVisible).toBe(true);
