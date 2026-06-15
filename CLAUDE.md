@@ -175,14 +175,14 @@ npm run typecheck
 # 2. Lint
 npm run lint
 
-# 3. Audit (if deps changed)
+# 3. Audit
 npm audit
 
-# 4. Unit tests (changed workspaces)
-npm test --workspace=minicrm-server   # if server/ changed
-npm test --workspace=minicrm-client   # if client/ changed
+# 4. Unit tests
+npm test --workspace=minicrm-server
+npm test --workspace=minicrm-client
 
-# 5. QA static checks (if ANY qa/e2e/ file changed — all four, every time)
+# 5. QA static checks
 bash qa/scripts/check-framework-purity.sh
 bash qa/scripts/check-behavior-layer.sh
 bash qa/scripts/check-settings-mutations.sh
@@ -247,7 +247,7 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 - [ ] Screenshots updated (`docs/screenshots/` via `scripts/screenshot.ts`)
 - [ ] E2E spec present for story AC
 - [ ] `checkScreenshot()` added/updated for complex visual surfaces
-- [ ] `npm run lint:api` passes after endpoint changes
+- [ ] Definition Of Done - all checks and tests pass
 - [ ] Framework coverage ≥ 80% (`npm run test:framework:coverage --workspace=minicrm-qa`) if `qa/e2e/framework/` touched
 - [ ] Roles & Capabilities scoped for least privilege
 - [ ] Greptile review — code changes would pass a Greptile review
