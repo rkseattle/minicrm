@@ -11,15 +11,68 @@
  *
  * The `.auth/` directory is gitignored and claudeignored — never committed.
  *
- * MINCRM-192, MINCRM-221
+ * MINCRM-192, MINCRM-221, MINCRM-559
  */
 
 import type { FullConfig } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { Client } from 'pg';
 
 /** Path where the admin session storageState is written. */
 export const ADMIN_STORAGE_STATE = path.join(__dirname, '.auth', 'admin.json');
+
+const IS_CI = Boolean(process.env['CI']);
+
+/** User count at which a stale-data warning is emitted (local only). */
+const STALE_DATA_WARN_THRESHOLD = 500;
+
+/** User count at which the run is aborted to prevent cascading failures (local only). */
+const STALE_DATA_ABORT_THRESHOLD = 2000;
+
+/**
+ * MINCRM-559: Check for accumulated test data in the local E2E database.
+ *
+ * Skipped in CI where the database is always freshly seeded. Locally, test
+ * users accumulate across sessions when `npm run e2e:setup` is skipped.
+ * 50k+ users have been observed, causing user-list pagination timeouts that
+ * cascade across unrelated specs.
+ */
+async function assertStaleDataGuard(): Promise<void> {
+  if (IS_CI) return;
+
+  const databaseUrl = process.env['E2E_DATABASE_URL'];
+  if (!databaseUrl) {
+    console.warn(
+      '[globalSetup] E2E_DATABASE_URL not set — skipping stale-data guard. ' +
+        'Set it in qa/e2e/.env to enable the guard (see .env.example).',
+    );
+    return;
+  }
+
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    const result = await client.query<{ count: string }>('SELECT COUNT(*) AS count FROM users');
+    const userCount = parseInt(result.rows[0].count, 10);
+
+    if (userCount >= STALE_DATA_ABORT_THRESHOLD) {
+      throw new Error(
+        `[globalSetup] E2E database contains ${userCount} users — ` +
+          "run 'npm run e2e:setup' to reset before testing locally.",
+      );
+    }
+
+    if (userCount >= STALE_DATA_WARN_THRESHOLD) {
+      console.warn(
+        `[globalSetup] E2E database contains ${userCount} users — ` +
+          "run 'npm run e2e:setup' to reset before testing locally.",
+      );
+    }
+  } finally {
+    await client.end();
+  }
+}
 
 /**
  * globalSetup entry point called once before all workers start.
@@ -27,6 +80,11 @@ export const ADMIN_STORAGE_STATE = path.join(__dirname, '.auth', 'admin.json');
  * @param _config - The resolved Playwright configuration (unused; env vars drive auth).
  */
 export default async function globalSetup(_config: FullConfig): Promise<void> {
+  // MINCRM-559: Abort or warn early if the local E2E database has accumulated
+  // too many users from prior test sessions. Runs before anything else so
+  // cascading failures from stale data are caught before any worker starts.
+  await assertStaleDataGuard();
+
   const E2E_API_URL = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
   const loginUrl = `${E2E_API_URL}/api/v1/auth/login`;
 
