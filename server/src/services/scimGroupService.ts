@@ -150,6 +150,16 @@ export async function provisionScimGroup(
     return team;
   } catch (err) {
     await client.query('ROLLBACK');
+    // PG unique constraint violation on teams.name — report as 409 Conflict
+    if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23505') {
+      const conflict = new Error('A team with this name already exists') as Error & {
+        statusCode: number;
+        code: string;
+      };
+      conflict.statusCode = 409;
+      conflict.code = 'SCIM_GROUP_CONFLICT';
+      throw conflict;
+    }
     throw err;
   } finally {
     client.release();
@@ -521,14 +531,88 @@ export async function setScimGroupRoleMapping(
 }
 
 /**
- * Removes the role mapping for a SCIM group.
- * Returns true if a row was deleted; false if no mapping existed.
+ * Removes the role mapping for a SCIM group and revokes that role from all current
+ * members of the group — unless they hold the same role via another SCIM group mapping.
+ * Returns true if a mapping row was deleted; false if no mapping existed.
  */
 export async function deleteScimGroupRoleMapping(scimGroupId: string): Promise<boolean> {
-  const result = await pool.query(`DELETE FROM scim_group_role_mappings WHERE scim_group_id = $1`, [
-    scimGroupId,
-  ]);
-  return (result.rowCount ?? 0) > 0;
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Fetch the mapping first so we know the role_id and the team
+    const mappingResult = await client.query<{ role_id: string }>(
+      `SELECT role_id FROM scim_group_role_mappings WHERE scim_group_id = $1`,
+      [scimGroupId],
+    );
+
+    if (mappingResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    // Non-null assertion safe: length > 0 guarantees rows[0] exists
+    const roleId = mappingResult.rows[0]!.role_id;
+
+    // Find the CRM team that corresponds to this SCIM group ID
+    const teamResult = await client.query<{ id: string }>(
+      `SELECT id FROM teams WHERE scim_group_id = $1`,
+      [scimGroupId],
+    );
+
+    if (teamResult.rows.length > 0) {
+      // Non-null assertion safe: length > 0 guarantees rows[0] exists
+      const teamId = teamResult.rows[0]!.id;
+
+      // Collect current members of this team
+      const memberResult = await client.query<{ user_id: string }>(
+        `SELECT user_id FROM team_memberships WHERE team_id = $1`,
+        [teamId],
+      );
+      const memberIds = memberResult.rows.map((r) => r.user_id);
+
+      if (memberIds.length > 0) {
+        // Delete the mapping row first so the NOT EXISTS subquery below sees the
+        // post-delete state — otherwise the subquery would find the current mapping
+        // and incorrectly conclude the user still holds the role via "another" group.
+        await client.query(`DELETE FROM scim_group_role_mappings WHERE scim_group_id = $1`, [
+          scimGroupId,
+        ]);
+
+        // Revoke role only from members who don't hold it via another SCIM group
+        await client.query(
+          `DELETE FROM user_custom_roles ucr
+           WHERE ucr.user_id = ANY($1::uuid[])
+             AND ucr.role_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+                 FROM team_memberships tm
+                 JOIN teams t ON t.id = tm.team_id
+                 JOIN scim_group_role_mappings m ON m.scim_group_id = t.scim_group_id
+                WHERE tm.user_id = ucr.user_id
+                  AND m.role_id = $2
+             )`,
+          [memberIds, roleId],
+        );
+      } else {
+        await client.query(`DELETE FROM scim_group_role_mappings WHERE scim_group_id = $1`, [
+          scimGroupId,
+        ]);
+      }
+    } else {
+      await client.query(`DELETE FROM scim_group_role_mappings WHERE scim_group_id = $1`, [
+        scimGroupId,
+      ]);
+    }
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
