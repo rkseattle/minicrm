@@ -39,8 +39,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: IS_CI,
 
-  // Retry failed tests once in CI to reduce flakiness noise
-  retries: IS_CI ? 1 : 0,
+  // MINCRM-554: Retries are disabled unconditionally. Prerequisites MINCRM-551
+  // (networkidle replacement) and MINCRM-552 (@serial tagging) are merged, so the
+  // root causes of pre-existing flakiness are gone. Keeping retries > 0 would mask
+  // any new non-determinism by letting tests pass on retry and accumulate as "flaky"
+  // below the gate threshold rather than failing visibly and being fixed promptly.
+  retries: 0,
 
   // In CI, default to 4 workers; override via PW_WORKERS env var for future tuning.
   // MINCRM-217: sharded runs pass --workers=4 on the CLI which takes precedence,
@@ -84,9 +88,10 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
-    // MINCRM-134: on-first-retry in CI; off locally by default.
+    // MINCRM-134: Capture traces on every failure in CI (retries=0 means there is no
+    // "first retry" — the single attempt IS the only chance). Off locally by default.
     // Set PLAYWRIGHT_TRACE=on to force traces locally without editing this file.
-    trace: process.env.CI ? 'on-first-retry' : process.env.PLAYWRIGHT_TRACE === 'on' ? 'on' : 'off',
+    trace: process.env.CI ? 'on' : process.env.PLAYWRIGHT_TRACE === 'on' ? 'on' : 'off',
   },
 
   // Global timeouts (ms).
