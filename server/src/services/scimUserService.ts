@@ -148,6 +148,15 @@ export async function provisionScimUser(
     );
     const newUser = result.rows[0]!; // just inserted
 
+    // If the IdP did not supply an externalId, fall back to the user's own CRM UUID
+    // so GET/PUT/PATCH can find them via the scim_external_id IS NOT NULL filter.
+    if (newUser.scim_external_id === null) {
+      await client.query(`UPDATE public.users SET scim_external_id = id WHERE id = $1`, [
+        newUser.id,
+      ]);
+      newUser.scim_external_id = newUser.id;
+    }
+
     await writeAuditEntry(client, {
       recordType: 'user',
       recordId: newUser.id,
@@ -320,14 +329,9 @@ export async function patchScimUser(
     // RFC 7644 §3.5.2: op:remove on the active attribute deactivates the user.
     if (op.op === 'remove' && path === 'active') {
       status = 'inactive';
-    } else if (
-      path === 'active' ||
-      (op.value && typeof (op.value as Record<string, unknown>).active !== 'undefined' && !path)
-    ) {
-      const activeVal =
-        path === 'active' ? op.value : (op.value as Record<string, unknown> | undefined)?.active;
-      if (typeof activeVal === 'boolean') {
-        status = activeVal ? 'active' : 'inactive';
+    } else if (path === 'active') {
+      if (typeof op.value === 'boolean') {
+        status = op.value ? 'active' : 'inactive';
       }
     } else if (path === 'username') {
       if (typeof op.value === 'string') email = op.value.toLowerCase().trim();

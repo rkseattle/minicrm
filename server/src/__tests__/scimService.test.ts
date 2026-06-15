@@ -356,6 +356,24 @@ describe('provisionScimUser', () => {
     );
     expect(audit.rows).toHaveLength(1);
   });
+
+  it('falls back to the user UUID when externalId is absent', async () => {
+    const user = await provisionScimUser(
+      {
+        userName: `${FILE_PREFIX}-no-extid@example.com`,
+        givenName: 'No',
+        familyName: 'ExtId',
+      },
+      ACTOR,
+    );
+    // scim_external_id must not be null — the user must be reachable via GET/PUT/PATCH
+    expect(user.scim_external_id).not.toBeNull();
+    expect(user.scim_external_id).toBe(user.id);
+    // Confirm getScimUser finds them
+    const found = await getScimUser(user.id);
+    expect(found).not.toBeNull();
+    expect(found!.id).toBe(user.id);
+  });
 });
 
 describe('getScimUser', () => {
