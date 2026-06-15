@@ -613,6 +613,46 @@ export class PipelineBoardPage {
   }
 
   /**
+   * Rewinds the mobile single-column board to stage 0 (Prospecting) by clicking
+   * the "prev" button until it is disabled. No-op on desktop.
+   *
+   * On mobile, navigate() restores the last active stage rather than starting at
+   * stage 0. Call this before asserting that a new deal (always in Prospecting)
+   * is visible on the board. (MINCRM-552)
+   */
+  async rewindToMobileStage0(): Promise<void> {
+    if (!this.isMobileView()) return;
+    for (let i = 0; i < PipelineBoardPage.STAGE_SLUGS.length; i++) {
+      try {
+        const prevBtn = await this.page
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-prev' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-prev"]' },
+            ],
+            { intent: 'mobile pipeline previous stage button for rewind' },
+          )
+          .resolve();
+        if (!(await prevBtn.isEnabled().catch(() => false))) break;
+        const headingEl = await this.page
+          .locate(
+            [
+              { type: 'testId', value: 'pipeline-mobile-stage-name' },
+              { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+            ],
+            { intent: 'mobile pipeline stage heading during rewind' },
+          )
+          .resolve();
+        const prevHeading = (await headingEl.textContent()) ?? '';
+        await prevBtn.click();
+        await this.waitForMobileStageChange(prevHeading).catch(() => null);
+      } catch {
+        break;
+      }
+    }
+  }
+
+  /**
    * Returns a resolved locator for the mobile single-column stage name heading.
    */
   async mobileStageNameLocator() {

@@ -47,6 +47,7 @@ import {
   getContactsBulkReassignModalLocator,
   cancelContactsBulkReassign,
   filterContactsByTerm,
+  waitForContactDetailReadMode,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { setNavLayoutViaAPI } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToContactsPage } from '@behaviors/minicrm/layout.behaviors.js';
@@ -60,6 +61,7 @@ import {
 } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToPipelineBoard,
+  waitForDealCardOnBoard,
   getDealStageSelectOnBoardLocator,
   getPipelineBoardCloseDealModalLocator,
   cancelCloseDealModal,
@@ -198,6 +200,9 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 test('@functional A11Y-C4: contact detail page', async ({ page, restClient, testData }) => {
   const contact = await createTestContact(testData, restClient);
   await navigateToContactDetail(contact.id, { page });
+  // Wait for the contact detail page to reach stable read-mode before auditing —
+  // the edit button's presence means all data-driven components have mounted.
+  await waitForContactDetailReadMode({ page });
 
   await assertNoBlockingViolations(page);
 });
@@ -226,6 +231,10 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
   await navigateToPipelineBoard({ page });
+
+  // Mobile board mounts deal card DOM asynchronously after navigation — wait
+  // for the card to be visible before interacting with its stage select.
+  await waitForDealCardOnBoard(deal.id, { page });
 
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
