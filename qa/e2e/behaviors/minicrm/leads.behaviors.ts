@@ -563,8 +563,16 @@ export async function disqualifyLead(
  */
 export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): Promise<void> {
   const leadsPage = new LeadsPage(context);
+  // Register the response listener before navigating so the initial leads
+  // query is captured even when the server responds quickly. waitForPresent
+  // inside filterByOwnerMe guards on the filter button, but the list query
+  // must have settled before clicking so React state is stable.
+  const leadsLoaded = context.page.waitForResponse(
+    (res) => res.url().includes('/api/v1/leads') && res.status() === 200,
+    { timeout: 15_000 },
+  );
   await leadsPage.navigate();
-  await context.page.waitForLoadState('networkidle');
+  await leadsLoaded;
   await leadsPage.filterByOwnerMe();
 }
 
