@@ -1341,10 +1341,8 @@ jobs:
               echo "> $TOTAL_FLAKY test(s) required a retry to pass this run."
               echo "> Fix these before they mask real failures."
               printf '%b\n' "$FLAKY_SECTION"
-              if [ "$TOTAL_FLAKY" -gt 0 ]; then
-                echo ""
-                echo "> ❌ Flaky count exceeds threshold (0) — \`ci-gate\` will fail. Retries are disabled (MINCRM-554); fix the non-determinism."
-              fi
+              echo ""
+              echo "> ❌ Flaky count exceeds threshold (0) — \`ci-gate\` will fail. Retries are disabled (MINCRM-554); fix the non-determinism."
             fi
             if [ -n "$SUGGESTIONS_BODY" ]; then
               echo ""

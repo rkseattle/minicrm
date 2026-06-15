@@ -88,10 +88,16 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
-    // MINCRM-134: Capture traces on every failure in CI (retries=0 means there is no
-    // "first retry" — the single attempt IS the only chance). Off locally by default.
+    // MINCRM-134: Retain traces only for failing tests in CI. With retries=0
+    // (MINCRM-554), 'on-first-retry' would never fire (no retry exists), and 'on'
+    // captures traces for every passing test too, bloating artifact storage.
+    // 'retain-on-failure' records during the run but discards passing-test traces.
     // Set PLAYWRIGHT_TRACE=on to force traces locally without editing this file.
-    trace: process.env.CI ? 'on' : process.env.PLAYWRIGHT_TRACE === 'on' ? 'on' : 'off',
+    trace: process.env.CI
+      ? 'retain-on-failure'
+      : process.env.PLAYWRIGHT_TRACE === 'on'
+        ? 'on'
+        : 'off',
   },
 
   // Global timeouts (ms).
