@@ -104,6 +104,10 @@ export default defineConfig({
   // 60 s per test: createTestRep (5 API calls) + loginViaBrowser + actual test work
   // needs headroom beyond the previous 30 s under 4-worker local parallelism. (MINCRM-415)
   timeout: 60_000,
+  // MINCRM-554: Cap the entire local run at 20 minutes. A healthy suite finishes in
+  // ~15 minutes; exceeding this signals a hung test rather than a slow one. CI shards
+  // are not affected — each shard runs a subset and completes well within 20 minutes.
+  globalTimeout: 20 * 60 * 1000,
   expect: {
     timeout: 5_000,
   },
