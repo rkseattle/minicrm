@@ -1193,15 +1193,15 @@ jobs:
             exit 1
           fi
 
-      - name: Enforce flaky test gate (MINCRM-355)
+      - name: Enforce flaky test gate (MINCRM-355, MINCRM-554)
         if: always()
         run: |
           REPORT="flaky-report-${{ matrix.project }}.json"
           if [ -f "$REPORT" ]; then
             COUNT=$(node -e "const r=require('./$REPORT'); console.log(r.flaky ?? 0)")
             echo "Flaky test count for ${{ matrix.project }}: $COUNT"
-            if [ "$COUNT" -gt 3 ]; then
-              echo "::error::Flaky test count ($COUNT) exceeds threshold of 3 for project ${{ matrix.project }}. Fix flaky tests before merging."
+            if [ "$COUNT" -gt 0 ]; then
+              echo "::error::Flaky test count ($COUNT) exceeds threshold of 0 for project ${{ matrix.project }}. Zero flaky tests are allowed — retries are disabled (MINCRM-554). Fix the non-determinism before merging."
               exit 1
             fi
           fi
@@ -1341,9 +1341,9 @@ jobs:
               echo "> $TOTAL_FLAKY test(s) required a retry to pass this run."
               echo "> Fix these before they mask real failures."
               printf '%b\n' "$FLAKY_SECTION"
-              if [ "$TOTAL_FLAKY" -gt 3 ]; then
+              if [ "$TOTAL_FLAKY" -gt 0 ]; then
                 echo ""
-                echo "> ❌ Flaky count exceeds threshold (3) — \`ci-gate\` will fail."
+                echo "> ❌ Flaky count exceeds threshold (0) — \`ci-gate\` will fail. Retries are disabled (MINCRM-554); fix the non-determinism."
               fi
             fi
             if [ -n "$SUGGESTIONS_BODY" ]; then
