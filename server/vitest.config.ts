@@ -146,6 +146,12 @@ const SERIAL_FILES = [
   // between its cleanup queries and concurrent tests that also create contacts/deals/etc.
   // (MINCRM-518)
   'src/__tests__/rlsEnforcement.test.ts',
+  // scimService creates SCIM teams and members; running in parallel with teamService
+  // or teamController causes cross-file teams/team_memberships races.
+  'src/__tests__/scimService.test.ts',
+  // scimController uses the Express app to test /scim/v2/* endpoints with a real bearer
+  // token; running in parallel with scimService or teamService causes FK races.
+  'src/__tests__/scimController.test.ts',
 ];
 
 const sharedResolve = {
