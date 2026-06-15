@@ -48,7 +48,7 @@ test.afterEach(async ({ restClient }) => {
 // Exchange rate configuration
 // ---------------------------------------------------------------------------
 
-test('admin can configure exchange rates and reload to confirm persistence @functional', async ({
+test('admin can configure exchange rates and reload to confirm persistence @functional @serial', async ({
   page,
   restClient,
   testData,

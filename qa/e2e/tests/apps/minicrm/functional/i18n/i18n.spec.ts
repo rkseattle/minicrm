@@ -103,7 +103,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * F9-L1: Admin sets system default to Spanish.
    * A fresh page load resolves the new default and renders Spanish nav labels.
    */
-  test('@functional F9-L1: admin sets system default language to es — UI shows Spanish nav label after reload', async ({
+  test('@functional @serial F9-L1: admin sets system default language to es — UI shows Spanish nav label after reload', async ({
     page,
     restClient,
     testData,
@@ -157,7 +157,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * the admin account or the system default setting. Both Playwright projects
    * can run this test in parallel without interfering with each other.
    */
-  test('@functional F9-L2: user language preference fr persists after two reloads', async ({
+  test('@functional @serial F9-L2: user language preference fr persists after two reloads', async ({
     page,
     restClient,
   }) => {
@@ -227,7 +227,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * A test rep with preferred_language='de' sees German nav labels; the English
    * equivalent for the same key must not be visible.
    */
-  test('@functional F9-L3: per-user language preference de overrides system default en', async ({
+  test('@functional @serial F9-L3: per-user language preference de overrides system default en', async ({
     page,
     restClient,
   }) => {
@@ -302,7 +302,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * (no page reload required) and the change persists after a manual reload.
    * Runs on both desktop and mobile-web.
    */
-  test('@functional F9-L4: nav language selector changes language immediately and persists after reload', async ({
+  test('@functional @serial F9-L4: nav language selector changes language immediately and persists after reload', async ({
     page,
     restClient,
     testData,
@@ -367,7 +367,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * The language selector in the mobile nav drawer changes the UI language when
    * a non-English option is selected. Extends F8-MN6 which only checks presence.
    */
-  test('@functional F9-L5: mobile nav language selector changes UI language', async ({
+  test('@functional @serial F9-L5: mobile nav language selector changes UI language', async ({
     page,
     restClient,
     testData,

@@ -67,7 +67,7 @@ test.afterEach(async ({ restClient }) => {
 // SSO configuration
 // ---------------------------------------------------------------------------
 
-test('admin can configure OIDC SSO and see the enabled badge @functional', async ({
+test('admin can configure OIDC SSO and see the enabled badge @functional @serial', async ({
   page,
   restClient,
   testData,
@@ -107,7 +107,7 @@ test('admin can configure OIDC SSO and see the enabled badge @functional', async
   await expect(badge).toBeVisible({ timeout: 5_000 });
 });
 
-test('SSO login button appears on the login page when SSO is enabled @functional', async ({
+test('SSO login button appears on the login page when SSO is enabled @functional @serial', async ({
   page,
   restClient,
   testData,
@@ -129,7 +129,7 @@ test('SSO login button appears on the login page when SSO is enabled @functional
   await expect(ssoButton).toBeVisible({ timeout: 8_000 });
 });
 
-test('admin can disable SSO via the confirmation flow @functional', async ({
+test('admin can disable SSO via the confirmation flow @functional @serial', async ({
   page,
   restClient,
   testData,
@@ -168,7 +168,7 @@ test('admin can disable SSO via the confirmation flow @functional', async ({
   await expect(badge).not.toBeVisible({ timeout: 8_000 });
 });
 
-test('SSO login button disappears from the login page after SSO is disabled @functional', async ({
+test('SSO login button disappears from the login page after SSO is disabled @functional @serial', async ({
   page,
   restClient,
   testData,
@@ -192,7 +192,7 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
   await expect(ssoButton).not.toBeVisible({ timeout: 5_000 });
 });
 
-test('SSO status API returns correct state after configure and disable cycle @functional', async ({
+test('SSO status API returns correct state after configure and disable cycle @functional @serial', async ({
   restClient,
 }) => {
   // Initially disabled

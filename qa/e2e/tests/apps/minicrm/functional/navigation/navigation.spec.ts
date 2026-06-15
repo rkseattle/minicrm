@@ -226,7 +226,7 @@ test.describe.serial('Layout-mutating tests', () => {
   // ── Top Nav layout ─────────────────────────────────────────────────────────
 
   test.describe('Top Nav layout', () => {
-    test('@functional F8-TN1: top nav — all destinations reachable and correct page loads', async ({
+    test('@functional @serial F8-TN1: top nav — all destinations reachable and correct page loads', async ({
       page,
       restClient,
     }) => {
@@ -268,7 +268,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-TN2: top nav — active page link is visually indicated', async ({
+    test('@functional @serial F8-TN2: top nav — active page link is visually indicated', async ({
       page,
       restClient,
     }) => {
@@ -306,7 +306,7 @@ test.describe.serial('Layout-mutating tests', () => {
   // ── Left Sidebar layout ────────────────────────────────────────────────────
 
   test.describe('Left Nav layout', () => {
-    test('@functional F8-LN1: left nav — all destinations reachable and correct page loads', async ({
+    test('@functional @serial F8-LN1: left nav — all destinations reachable and correct page loads', async ({
       page,
       restClient,
     }) => {
@@ -338,7 +338,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-LN2: left nav — active page link is visually indicated', async ({
+    test('@functional @serial F8-LN2: left nav — active page link is visually indicated', async ({
       page,
       restClient,
     }) => {
@@ -375,7 +375,7 @@ test.describe.serial('Layout-mutating tests', () => {
   // ── Hamburger Nav layout ────────────────────────────────────────────────────
 
   test.describe('Hamburger Nav layout', () => {
-    test('@functional F8-HB1: hamburger nav — all destinations reachable and correct page loads', async ({
+    test('@functional @serial F8-HB1: hamburger nav — all destinations reachable and correct page loads', async ({
       page,
       restClient,
     }) => {
@@ -413,7 +413,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-HB2: hamburger nav — active page link is visually indicated when menu is open', async ({
+    test('@functional @serial F8-HB2: hamburger nav — active page link is visually indicated when menu is open', async ({
       page,
       restClient,
     }) => {
@@ -553,8 +553,8 @@ test.describe.serial('Layout-mutating tests', () => {
 
     for (const variant of DIVIDER_VARIANTS) {
       test(
-        `@functional F8-AD1: admin sees Administration divider across all layouts — ${variant.label}`,
-        { tag: ['@functional'] },
+        `@functional @serial F8-AD1: admin sees Administration divider across all layouts — ${variant.label}`,
+        { tag: ['@functional', '@serial'] },
         async ({ page, restClient }) => {
           const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
           if (variant.skipOnMobile && isMobile) {
@@ -589,7 +589,7 @@ test.describe.serial('Layout-mutating tests', () => {
     // reload — give each test 60 s to absorb CI resource contention.
     test.setTimeout(60_000);
 
-    test('@functional F8-LS1: switching layout in Settings renders the new nav immediately without full page reload', async ({
+    test('@functional @serial F8-LS1: switching layout in Settings renders the new nav immediately without full page reload', async ({
       page,
       restClient,
     }) => {
@@ -701,8 +701,8 @@ test.describe.serial('Layout-mutating tests', () => {
 
     for (const variant of PERSISTENCE_VARIANTS) {
       test(
-        `@functional F8-LS2: selected layout persists after page refresh — ${variant.label}`,
-        { tag: ['@functional'] },
+        `@functional @serial F8-LS2: selected layout persists after page refresh — ${variant.label}`,
+        { tag: ['@functional', '@serial'] },
         async ({ page, restClient }) => {
           const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
           if (variant.skipOnMobile && isMobile) {
@@ -726,7 +726,10 @@ test.describe.serial('Layout-mutating tests', () => {
   // ── Hamburger Menu mechanics (mobile-web only) ─────────────────────────────
 
   test.describe('Hamburger Menu mechanics', () => {
-    test('@functional F8-HM1: hamburger menu opens on toggle tap', async ({ page, restClient }) => {
+    test('@functional @serial F8-HM1: hamburger menu opens on toggle tap', async ({
+      page,
+      restClient,
+    }) => {
       // NavHamburger is desktop-only — mobile always renders NavTop regardless of
       // the layout setting. Mobile nav drawer mechanics are covered by F8-MN tests.
       const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
@@ -752,7 +755,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-HM2: hamburger menu closes on outside tap', async ({
+    test('@functional @serial F8-HM2: hamburger menu closes on outside tap', async ({
       page,
       restClient,
     }) => {
@@ -776,7 +779,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-HM3: hamburger menu closes on navigation', async ({
+    test('@functional @serial F8-HM3: hamburger menu closes on navigation', async ({
       page,
       restClient,
     }) => {
@@ -801,7 +804,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-HM4: hamburger menu — all destinations are accessible within the menu', async ({
+    test('@functional @serial F8-HM4: hamburger menu — all destinations are accessible within the menu', async ({
       page,
       restClient,
     }) => {
@@ -829,7 +832,7 @@ test.describe.serial('Layout-mutating tests', () => {
       }
     });
 
-    test('@functional F8-HM5: hamburger menu is keyboard-accessible (tab + enter)', async ({
+    test('@functional @serial F8-HM5: hamburger menu is keyboard-accessible (tab + enter)', async ({
       page,
       restClient,
     }) => {

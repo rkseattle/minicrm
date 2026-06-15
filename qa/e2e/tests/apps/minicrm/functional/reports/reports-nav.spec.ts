@@ -36,19 +36,25 @@ import {
   getReportsStageTrendHeadingLocator,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
+import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.beforeEach(async ({ restClient, page }) => {
   await loginAsAdmin(restClient);
+  await ensureSystemDefaults(restClient);
   await withFlags(page, { reporting: true });
+});
+
+test.afterEach(async ({ restClient }) => {
+  await ensureSystemDefaults(restClient);
 });
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-test('reports nav: clicking Reports nav link lands on /reports @functional', async ({
+test('reports nav: clicking Reports nav link lands on /reports @functional @serial', async ({
   page,
   restClient,
   testData,
