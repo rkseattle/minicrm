@@ -178,6 +178,7 @@ export {
   pipelineBoardIsLoaded,
   getPipelineBoardLocator,
   getDealCardLocator,
+  waitForDealCardOnBoard,
   getDealStageSelectOnBoardLocator,
   getPipelineBoardStageUpdateErrorLocator,
   getPipelineBoardCloseDealModalLocator,

@@ -489,6 +489,85 @@ export async function getDealCardLocator(dealId: string, context: DealsBehaviorC
 }
 
 /**
+ * Waits for a deal card to be visible on the pipeline board.
+ *
+ * On desktop, waits for the deal card element to appear in the DOM (all stage
+ * columns are rendered simultaneously). On mobile, the board renders one column
+ * at a time; this function rewinds to stage 0 and then walks forward through
+ * columns until the deal card is found, matching the scan strategy used by
+ * PipelineBoardPage.scanMobileColumnSlug. Call this before interacting with any
+ * deal card element to avoid HealingLocator exhaustion under load. (MINCRM-552)
+ */
+export async function waitForDealCardOnBoard(
+  dealId: string,
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const board = new PipelineBoardPage(context);
+  const size = context.page.viewportSize();
+  const isMobile = size !== null && size.width < 768;
+
+  if (!isMobile) {
+    await context.page.waitForFunction(
+      `document.querySelector('[data-testid="deal-card-${dealId}"]') !== null`,
+      undefined,
+      { timeout },
+    );
+    return;
+  }
+
+  // Mobile: rewind to stage 0, then walk forward scanning each column.
+  await board.rewindToMobileStage0();
+  const testId = `mobile-deal-card-${dealId}`;
+  const deadline = Date.now() + timeout;
+  const STAGE_COUNT = 6;
+  for (let i = 0; i < STAGE_COUNT; i++) {
+    const inDom = await context.page.evaluate(
+      `document.querySelector('[data-testid="${testId}"]') !== null`,
+    );
+    if (inDom) return;
+    if (Date.now() >= deadline) break;
+    // Advance to next column.
+    try {
+      const nextBtn = await context.page
+        .locate(
+          [
+            { type: 'testId', value: 'pipeline-mobile-next' },
+            { type: 'css', value: '[data-testid="pipeline-mobile-next"]' },
+          ],
+          { intent: 'mobile pipeline next stage button during deal card scan' },
+        )
+        .resolve();
+      if (!(await nextBtn.isEnabled().catch(() => false))) break;
+      const headingEl = await context.page
+        .locate(
+          [
+            { type: 'testId', value: 'pipeline-mobile-stage-name' },
+            { type: 'css', value: '[data-testid="pipeline-mobile-stage-name"]' },
+          ],
+          { intent: 'mobile pipeline stage heading during deal card scan' },
+        )
+        .resolve();
+      const prevHeading = (await headingEl.textContent()) ?? '';
+      await nextBtn.click();
+      // Inline the same stage-change wait that PipelineBoardPage uses internally.
+      const predicate = `(() => {
+        const el = document.querySelector('[data-testid="pipeline-mobile-stage-name"]');
+        return el !== null && el.textContent !== ${JSON.stringify(prevHeading)};
+      })()`;
+      await context.page
+        .waitForFunction(predicate, undefined, { timeout: 5_000 })
+        .catch(() => null);
+    } catch {
+      break;
+    }
+  }
+  throw new Error(
+    `waitForDealCardOnBoard: deal card [data-testid="${testId}"] not found in any mobile board column within ${timeout}ms`,
+  );
+}
+
+/**
  * Returns a resolved locator for the stage select dropdown on a deal card.
  */
 export async function getDealStageSelectOnBoardLocator(
