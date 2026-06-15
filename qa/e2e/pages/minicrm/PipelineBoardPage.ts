@@ -85,6 +85,8 @@ export class PipelineBoardPage {
   }
 
   /** All pipeline stage slugs in board order. */
+  static readonly STAGE_COUNT = 6;
+
   private static readonly STAGE_SLUGS = [
     'prospecting',
     'qualification',

@@ -520,7 +520,7 @@ export async function waitForDealCardOnBoard(
   await board.rewindToMobileStage0();
   const testId = `mobile-deal-card-${dealId}`;
   const deadline = Date.now() + timeout;
-  const STAGE_COUNT = 6;
+  const STAGE_COUNT = PipelineBoardPage.STAGE_COUNT;
   for (let i = 0; i < STAGE_COUNT; i++) {
     const inDom = await context.page.evaluate(
       `document.querySelector('[data-testid="${testId}"]') !== null`,

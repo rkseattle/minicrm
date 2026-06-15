@@ -61,12 +61,9 @@
 
 set -euo pipefail
 
-TESTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/e2e/tests"
-
-if [ ! -d "$TESTS_DIR" ]; then
-  echo "tests directory not found: $TESTS_DIR"
-  exit 1
-fi
+# shellcheck source=spec-files.sh
+source "$(dirname "$0")/spec-files.sh"
+resolve_tests_dir
 
 # Mutation patterns to scan for — extended-regex passed to grep -E.
 # These patterns match only intentional non-default mutations, not resets.
@@ -157,7 +154,7 @@ while IFS= read -r -d '' spec_file; do
       FOUND=1
     fi
   fi
-done < <(find "$TESTS_DIR" -name "*.spec.ts" -print0)
+done < <(find_spec_files)
 
 if [ "$FOUND" -eq 1 ]; then
   echo "FAIL: one or more spec files mutate system settings without ensureSystemDefaults() or @serial."
@@ -165,4 +162,4 @@ if [ "$FOUND" -eq 1 ]; then
   exit 1
 fi
 
-echo "OK: all spec files that mutate settings call ensureSystemDefaults()."
+echo "OK: all spec files that mutate settings call ensureSystemDefaults() and use @serial."
