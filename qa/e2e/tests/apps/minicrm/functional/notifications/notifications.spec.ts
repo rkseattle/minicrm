@@ -39,6 +39,7 @@ import {
   loginAsAdmin,
   patchNotificationPreferences,
   ensureSystemDefaults,
+  getEmailNotificationsEnabled,
 } from '@behaviors/minicrm/index.js';
 import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
@@ -220,7 +221,17 @@ test.describe.serial('Admin Settings — global email notifications', () => {
 
   test('@functional @serial F10-AS3: toggling global email notifications off and back on persists via API (AC2)', async ({
     page,
+    restClient,
   }) => {
+    // Pre-condition: global email notifications must be enabled before toggling.
+    // ensureSystemDefaults() in beforeEach resets this, but a concurrent worker
+    // running between beforeEach and the test body could mutate it first.
+    const isEnabledAtStart = await getEmailNotificationsEnabled(restClient);
+    expect(
+      isEnabledAtStart,
+      '[pre-condition] email_notifications_enabled expected true — likely a concurrent mutation from another worker',
+    ).toBe(true);
+
     // Navigate to settings — toggle should show as enabled (ensured by beforeEach).
     const initial = await navigateToAdminSettings({ page });
     expect(initial.toggleVisible, 'toggle should be visible').toBe(true);
