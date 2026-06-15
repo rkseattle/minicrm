@@ -201,7 +201,7 @@ test.describe.serial('Admin Settings — global email notifications', () => {
     await ensureSystemDefaults(restClient);
   });
 
-  test('@functional F10-AS1: email notifications section is visible in admin settings', async ({
+  test('@functional @serial F10-AS1: email notifications section is visible in admin settings', async ({
     page,
   }) => {
     const result = await navigateToAdminSettings({ page });
@@ -210,13 +210,15 @@ test.describe.serial('Admin Settings — global email notifications', () => {
     expect(result.toggleVisible, 'email notifications toggle should be visible').toBe(true);
   });
 
-  test('@functional F10-AS2: recipient count is displayed in admin settings', async ({ page }) => {
+  test('@functional @serial F10-AS2: recipient count is displayed in admin settings', async ({
+    page,
+  }) => {
     const result = await navigateToAdminSettings({ page });
 
     expect(result.recipientCountVisible, 'recipient count element should be visible').toBe(true);
   });
 
-  test('@functional F10-AS3: toggling global email notifications off and back on persists via API (AC2)', async ({
+  test('@functional @serial F10-AS3: toggling global email notifications off and back on persists via API (AC2)', async ({
     page,
   }) => {
     // Navigate to settings — toggle should show as enabled (ensured by beforeEach).

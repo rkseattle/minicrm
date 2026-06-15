@@ -152,7 +152,7 @@ test.beforeEach(async ({ page, restClient, testData }) => {
 // Navigation — authenticated
 // ---------------------------------------------------------------------------
 
-test('@functional A11Y-N1: main navigation — top layout landmark structure', async ({
+test('@functional @serial A11Y-N1: main navigation — top layout landmark structure', async ({
   page,
   restClient,
 }) => {

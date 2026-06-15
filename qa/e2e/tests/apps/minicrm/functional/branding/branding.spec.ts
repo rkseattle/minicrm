@@ -70,7 +70,7 @@ test('admin can navigate to the Branding tab @functional', async ({
 // Save branding
 // ---------------------------------------------------------------------------
 
-test('admin can save a company name and see success confirmation @functional', async ({
+test('admin can save a company name and see success confirmation @functional @serial', async ({
   page,
   restClient,
   testData,
@@ -90,7 +90,11 @@ test('admin can save a company name and see success confirmation @functional', a
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
-test('admin can save a primary colour @functional', async ({ page, restClient, testData }) => {
+test('admin can save a primary colour @functional @serial', async ({
+  page,
+  restClient,
+  testData,
+}) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
@@ -106,7 +110,11 @@ test('admin can save a primary colour @functional', async ({ page, restClient, t
   await expect(successMsg).toBeVisible({ timeout: 8_000 });
 });
 
-test('admin can select a custom font @functional', async ({ page, restClient, testData }) => {
+test('admin can select a custom font @functional @serial', async ({
+  page,
+  restClient,
+  testData,
+}) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
@@ -126,7 +134,11 @@ test('admin can select a custom font @functional', async ({ page, restClient, te
 // Reset branding
 // ---------------------------------------------------------------------------
 
-test('admin can reset branding to defaults @functional', async ({ page, restClient, testData }) => {
+test('admin can reset branding to defaults @functional @serial', async ({
+  page,
+  restClient,
+  testData,
+}) => {
   // Seed some branding so the reset is meaningful
   await restClient.put('/api/v1/settings/branding', { companyName: 'ToBeReset' });
 
