@@ -72,19 +72,14 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   const homeSelect = await getAdminSettingsHomeCurrencySelectLocator({ page });
   await homeSelect.selectOption('GBP');
 
-  // Wait for the table to reflect GBP as home — confirms the React state update
-  // has flushed before the add-currency form is opened. Without this, the save
-  // button click may capture a stale homeCurrency='USD' closure. (MINCRM-418)
-  //
-  // Note: refetchOnWindowFocus:true with staleTime:0 means selectOption() may
-  // trigger a background re-fetch that resets homeCurrency back to 'USD' via
-  // useEffect. We wait for networkidle to let that re-fetch settle, then
-  // re-apply 'GBP' so the state is stable before Save is clicked.
-  await page.waitForLoadState('networkidle');
-  await homeSelect.selectOption('GBP');
-
+  // Wait for the exchange rate table to show GBP as the home currency before
+  // proceeding. This confirms the React state update has flushed and the
+  // refetchOnWindowFocus background re-fetch (staleTime:0) has settled.
+  // Re-applying 'GBP' after the row is visible ensures the selection is stable
+  // before the add-currency form is opened. (MINCRM-418)
   const gbpRow = await getAdminSettingsExchangeRateRowLocator('GBP', { page });
   await expect(gbpRow).toBeVisible({ timeout: 5_000 });
+  await homeSelect.selectOption('GBP');
 
   // Click Add Currency to open the form
   await clickAdminSettingsAddCurrency({ page });

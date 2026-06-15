@@ -443,12 +443,6 @@ test.describe.serial('Layout-mutating tests', () => {
         // so NavLink sees the correct active location on the next render. (MINCRM-404)
         await pipelineBoardIsLoaded({ page });
 
-        // Wait for the page to fully settle after navigation. NavHamburger
-        // remounts on route change and resets menuOpen to false. Without this
-        // wait, openHamburgerMenu can click the toggle on the unmounting instance
-        // before the new instance has wired up its state.
-        await page.waitForLoadState('networkidle');
-
         // Re-open the menu to inspect the active link class.
         await openHamburgerMenu({ page });
 
@@ -457,11 +451,6 @@ test.describe.serial('Layout-mutating tests', () => {
         // instant. Wait for a known link to confirm the drawer content is rendered
         // before resolving any specific link locator.
         await waitForNavLink('nav-hamburger-dashboard', { page }, 10_000);
-
-        // Let any in-flight React Query fetches triggered by login settle so a
-        // nav-layout re-fetch doesn't cause the NavHamburger to remount and reset
-        // the drawer-open state before we check the active link class. (MINCRM-415)
-        await page.waitForLoadState('networkidle');
 
         const dealsLink = await getNavLinkLocator('hamburger', 'deals', { page });
 
@@ -866,7 +855,8 @@ test.describe.serial('Layout-mutating tests', () => {
         await page.keyboard.press('Enter');
 
         // After pressing Enter on a nav link the menu closes and navigation occurs.
-        await page.waitForLoadState('networkidle').catch(() => null);
+        // Wait for the drawer to collapse — this is what the test actually needs to
+        // be true and is more reliable than networkidle under CI load.
         await expect(drawer).not.toBeVisible();
       } finally {
         await resetNavLayout(restClient, 'F8-HM5');
@@ -1050,14 +1040,9 @@ test('@functional F8-DL3: deep link to a non-existent contact shows a meaningful
   await navigateToUrlAndWait('/contacts/00000000-0000-0000-0000-000000000000', { page });
 
   // ContactDetailPage renders role="alert" with the contacts.notFound message on error.
-  // React Query fires its error state after the server 404 response arrives, which may
-  // land after networkidle under CI load. Waiting for networkidle a second time ensures
-  // the 404 response has been processed before we start probing for the alert.
-  await page.waitForLoadState('networkidle');
-
-  // The page must not be blank or show an unhandled 500.
-  // Pass 10 000 ms fallbackTimeout — React Query's error state can arrive after
-  // networkidle under CI load, so the probe window must match the original behaviour.
+  // React Query fires its error state after the server 404 response arrives. Waiting
+  // directly for the alert element is more reliable than networkidle because it targets
+  // exactly the condition the test cares about, without a race on the 500 ms idle window.
   const alert = await getContactNotFoundLocator({ page }, 10_000);
   await expect(alert).toBeVisible({ timeout: 15_000 });
 });

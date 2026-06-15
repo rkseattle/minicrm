@@ -134,8 +134,6 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      await page.waitForLoadState('networkidle');
-
       const widget = await getSetupChecklistWidgetLocator({ page });
       await expect(widget).toBeVisible({ timeout: 10_000 });
 
@@ -164,8 +162,6 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      await page.waitForLoadState('networkidle');
-
       const widget = await getSetupChecklistWidgetLocator({ page });
       await expect(widget).toBeVisible({ timeout: 10_000 });
 
@@ -188,7 +184,6 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      await page.waitForLoadState('networkidle');
 
       await getSetupChecklistWidgetLocator({ page });
 

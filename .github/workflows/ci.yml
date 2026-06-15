@@ -322,6 +322,9 @@ jobs:
       - name: Check spec files do not import from @pages/ directly (MINCRM-367)
         run: bash qa/scripts/check-behavior-layer.sh
 
+      - name: Check spec files do not use waitForLoadState('networkidle') (MINCRM-551)
+        run: bash qa/scripts/check-networkidle.sh
+
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests
     needs: [lint-and-typecheck, changes]

@@ -356,8 +356,6 @@ test.describe('Core Layout', () => {
       const editButton = await getContactEditButtonLocator({ page });
       await editButton.waitFor({ state: 'visible' });
 
-      await page.waitForLoadState('networkidle');
-
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contact-detail.png', { mask: masks });
     },
@@ -482,8 +480,6 @@ test.describe('Key Pages', () => {
       const newBtn = await getNewContactButtonLocator({ page });
       await newBtn.waitFor({ state: 'visible' });
 
-      await page.waitForLoadState('networkidle');
-
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contacts-list-desktop.png', { mask: masks });
     },
@@ -548,8 +544,6 @@ test.describe('Key Pages', () => {
 
       const newBtn = await getNewLeadButtonLocator({ page });
       await newBtn.waitFor({ state: 'visible' });
-
-      await page.waitForLoadState('networkidle');
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('leads-list-desktop.png', { mask: masks });

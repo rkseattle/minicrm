@@ -182,10 +182,11 @@ npm audit
 npm test --workspace=minicrm-server   # if server/ changed
 npm test --workspace=minicrm-client   # if client/ changed
 
-# 5. QA static checks (if ANY qa/e2e/ file changed — all three, every time)
+# 5. QA static checks (if ANY qa/e2e/ file changed — all four, every time)
 bash qa/scripts/check-framework-purity.sh
 bash qa/scripts/check-behavior-layer.sh
 bash qa/scripts/check-settings-mutations.sh
+bash qa/scripts/check-networkidle.sh
 
 # 6. E2E — always, no exceptions
 date
@@ -212,9 +213,13 @@ npm run e2e:client  # separate terminal — hardcodes API_URL=http://localhost:3
 
 ## E2E Authoring Rules
 
+See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full reference. Key rules inline:
+
 - **Locators:** primary strategy always `testId`; every `locate()` in a page object needs at least two strategies and an `intent` string (5–10 words). Spec-layer single-testId locates for dynamic IDs are allowed with a comment.
-- **No `page.waitForTimeout()`** in page objects. Use `locator.waitFor({ state })`, `page.waitForLoadState()`, or `page.waitForFunction()`.
+- **No `page.waitForTimeout()`** in page objects. Use `locator.waitFor({ state })`, `expect(locator).toBeVisible()`, or `page.waitForFunction()`.
+- **No `page.waitForLoadState('networkidle')`** anywhere in spec files — enforced by `check-networkidle.sh`. Replace with a specific wait targeting the exact DOM condition the test needs.
 - **Tags:** every test `@functional`; smoke tests also `@smoke`.
+- **`@serial` tag:** any test that mutates a shared `system_settings` row (nav layout, visibility policy, default language, MFA policy, branding, SSO, email notifications, currencies, pipeline stage sort order) **must** be tagged `@functional @serial`. The `e2e-serial` CI job runs `@serial` tests with `--workers=1`; the `e2e-functional` sharded job excludes them via `--grep-invert serial`. Enforced by `check-settings-mutations.sh`.
 - **Spec location:** `qa/e2e/tests/apps/minicrm/functional/<domain>/<domain>.spec.ts`.
 - **framework/ must have zero app-domain strings** — enforced by `check-framework-purity.sh`. This includes JSDoc comments: `MINCRM-*` ticket refs and words like `pipeline` match the check.
 - **Specs import only from `@behaviors/*`, `@apps/*`, `@framework/*`** — never `@pages/*`.

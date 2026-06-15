@@ -59,12 +59,10 @@ test('reports nav: clicking Reports nav link lands on /reports @functional', asy
   try {
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
-    await page.waitForLoadState('networkidle');
 
     // Set nav layout to 'left' AFTER login so the browser's initial nav-layout
     // fetch completes first. Then navigate to a page that will trigger a
-    // React Query refetch of the (now-left) layout. Setting it here narrows the
-    // race window with parallel tests' ensureSystemDefaults calls. (MINCRM-415)
+    // React Query refetch of the (now-left) layout.
     await setNavLayoutViaAPI('left', restClient);
     await navigateToPath('/', { page });
 

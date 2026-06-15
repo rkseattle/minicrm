@@ -56,6 +56,7 @@ import {
   navigateToForgotPasswordPage,
   loginAsAdmin,
   loginViaBrowser,
+  waitForLoginAlert,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToPipelineBoard,
@@ -110,7 +111,6 @@ test.describe('Auth forms', () => {
 
   test('@functional A11Y-A1: login page — empty form', async ({ page }) => {
     await navigateToLoginPage({ page });
-    await page.waitForLoadState('networkidle');
 
     await assertNoBlockingViolations(page);
   });
@@ -119,14 +119,15 @@ test.describe('Auth forms', () => {
     await navigateToLoginPage({ page });
     // Submit empty form to surface required-field / credential error state.
     await submitLoginForm({ page });
-    await page.waitForLoadState('networkidle');
+    // Wait for the error alert to appear before auditing — React renders it
+    // asynchronously after the mutation response, and the audit must see it.
+    await waitForLoginAlert({ page });
 
     await assertNoBlockingViolations(page);
   });
 
   test('@functional A11Y-A3: forgot-password page — empty form', async ({ page }) => {
     await navigateToForgotPasswordPage({ page });
-    await page.waitForLoadState('networkidle');
 
     await assertNoBlockingViolations(page);
   });
@@ -158,7 +159,6 @@ test('@functional A11Y-N1: main navigation — top layout landmark structure', a
   // Ensure a known nav layout so the NavBar renders consistently across runs.
   await setNavLayoutViaAPI('top', restClient);
   await navigateToContactsPage({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -174,7 +174,6 @@ test('@functional A11Y-C1: contacts list — table with data', async ({
 }) => {
   await createTestContact(testData, restClient);
   await navigateToContacts({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -182,7 +181,6 @@ test('@functional A11Y-C1: contacts list — table with data', async ({
 test('@functional A11Y-C2: contact creation form — empty state', async ({ page }) => {
   await navigateToContacts({ page });
   await clickNewContact({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -193,7 +191,6 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 
   // Submit without filling any fields to trigger required-field validation errors.
   await submitContactCreateFormAction({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -201,7 +198,6 @@ test('@functional A11Y-C3: contact creation form — validation errors visible',
 test('@functional A11Y-C4: contact detail page', async ({ page, restClient, testData }) => {
   const contact = await createTestContact(testData, restClient);
   await navigateToContactDetail(contact.id, { page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -218,7 +214,6 @@ test('@functional A11Y-D1: pipeline board — Kanban with a deal card', async ({
   const account = await createTestAccount(testData, restClient);
   await createTestDeal(testData, restClient, { account_id: account.id });
   await navigateToPipelineBoard({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });
@@ -231,7 +226,6 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   const account = await createTestAccount(testData, restClient);
   const deal = await createTestDeal(testData, restClient, { account_id: account.id });
   await navigateToPipelineBoard({ page });
-  await page.waitForLoadState('networkidle');
 
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
@@ -260,7 +254,6 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
 }) => {
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
-  await page.waitForLoadState('networkidle');
   // Filter to the unique contact so it appears on page 1 regardless of DB volume.
   await filterContactsByTerm(contact.email, { page });
 
@@ -288,7 +281,6 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
 }) => {
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
-  await page.waitForLoadState('networkidle');
   // Filter to the unique contact so it appears on page 1 regardless of DB volume.
   await filterContactsByTerm(contact.email, { page });
 
@@ -320,7 +312,6 @@ test('@functional A11Y-ADM1: user invite form', async ({ page, restClient, testD
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToUsers({ page });
-  await page.waitForLoadState('networkidle');
 
   await assertNoBlockingViolations(page);
 });

@@ -85,6 +85,7 @@ import {
   saveContact,
   isContactDetailLoaded,
   getContactsBulkActionBarLocator,
+  waitForContactDetailReadMode,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   navigateToDealDetail,
@@ -380,7 +381,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // The key assertion here is that the save succeeds and the modal is dismissed
       await clickConflictSaveResolved({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // Conflict modal should be dismissed
       expect(
@@ -425,7 +426,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       // Click "Discard my changes" — abandons pending edits, accepts server state
       await clickConflictDiscard({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // Conflict modal should be dismissed
       expect(
@@ -559,7 +560,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await selectConflictTheirs('first_name', { page });
       await clickConflictSaveResolved({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // Modal should be dismissed, page back in read mode
       expect(
@@ -581,7 +582,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await fillContactDetailField('contact-first-name', 'First name', 'CC7-PostResolve', { page });
       await saveContact({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // No conflict modal should appear
       expect(
@@ -627,7 +628,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await selectConflictMine('first_name', { page });
       await clickConflictSaveResolved({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // Modal should be dismissed, page back in read mode
       expect(
@@ -649,7 +650,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await fillContactDetailField('contact-first-name', 'First name', 'CC8-PostResolve', { page });
       await saveContact({ page });
 
-      await page.waitForLoadState('networkidle');
+      await waitForContactDetailReadMode({ page });
 
       // No conflict modal should appear
       expect(
