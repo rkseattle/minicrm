@@ -69,8 +69,18 @@ async function assertStaleDataGuard(): Promise<void> {
           "run 'npm run e2e:setup' to reset before testing locally.",
       );
     }
+  } catch (err) {
+    // The guard is advisory — a down DB or missing table should not kill the run.
+    // Re-throw only for the intentional abort-threshold error; swallow everything else.
+    if (err instanceof Error && err.message.startsWith('[globalSetup]')) throw err;
+    console.warn(
+      '[globalSetup] Stale-data guard skipped — could not query E2E database:',
+      err instanceof Error ? err.message : String(err),
+    );
   } finally {
-    await client.end();
+    await client.end().catch(() => {
+      // Ignore end() errors on an unconnected client.
+    });
   }
 }
 

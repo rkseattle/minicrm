@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:e2e": "API_URL=http://localhost:3002 vite",
+    "dev:e2e": "cross-env API_URL=http://localhost:3002 vite",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -56,6 +56,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.1",
     "autoprefixer": "^10.4.27",
+    "cross-env": "^10.1.0",
     "eslint-plugin-i18next": "^6.1.3",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",

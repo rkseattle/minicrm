@@ -45,12 +45,13 @@ export default defineConfig({
   // In CI, default to 4 workers; override via PW_WORKERS env var for future tuning.
   // MINCRM-217: sharded runs pass --workers=4 on the CLI which takes precedence,
   // but this value drives non-sharded local CI invocations via the config.
-  // MINCRM-557: cap local runs at 2 workers to match CI per-shard concurrency.
-  // Playwright defaults to half the available logical CPUs when workers is undefined
-  // (e.g. 6 on a 12-thread machine). With 2 Playwright projects (desktop + mobile-web)
-  // that means up to 12 concurrent test contexts sharing the same minicrm_e2e database.
-  // LPT file partitioning prevents this in CI (one shard owns each file), but locally
-  // all files are available to every worker — global-settings-mutating specs race.
+  // MINCRM-557: cap local runs at 2 workers (CI uses 4 per shard; local machines get
+  // half to reduce concurrency on shared state). Playwright defaults to half the
+  // available logical CPUs when workers is undefined (e.g. 6 on a 12-thread machine).
+  // With 2 Playwright projects (desktop + mobile-web) that means up to 12 concurrent
+  // test contexts sharing the same minicrm_e2e database. LPT file partitioning prevents
+  // this in CI (one shard owns each file), but locally all files are available to every
+  // worker — global-settings-mutating specs race.
   workers: IS_CI ? parseInt(process.env['PW_WORKERS'] ?? '4', 10) : 2,
 
   reporter: [
