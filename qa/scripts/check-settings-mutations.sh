@@ -80,6 +80,9 @@ MUTATION_PATTERNS=(
   "setNavLayoutViaAPI\([^)]*'hamburger'"
   "setNavLayoutViaUI"
   "setCurrencySettings"
+  # Feature flag mutations — updateFeatureFlag with enabled:false disables a
+  # global flag that affects all users; requires @serial + afterEach restore.
+  "updateFeatureFlag\(.*enabled.*false"
 )
 
 FOUND=0
@@ -115,7 +118,8 @@ while IFS= read -r -d '' spec_file; do
   # returned to a known good state between tests.
   if grep -qP "(?<!//)\bensureSystemDefaults\s*\(" "$spec_file" 2>/dev/null || \
      grep -qE "^\s+await ensureSystemDefaults" "$spec_file" 2>/dev/null || \
-     grep -qE "^\s+await reset[A-Z][a-zA-Z]*Settings" "$spec_file" 2>/dev/null; then
+     grep -qE "^\s+await reset[A-Z][a-zA-Z]*Settings" "$spec_file" 2>/dev/null || \
+     grep -qE "updateFeatureFlag\(.*enabled.*true" "$spec_file" 2>/dev/null; then
     has_ensure_defaults=true
   fi
 

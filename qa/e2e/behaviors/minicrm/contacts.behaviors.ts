@@ -1357,8 +1357,12 @@ export async function performGdprErasure(
     { intent: 'button to open GDPR erasure confirmation modal' },
   );
 
+  // gdpr-erase-modal-overlay (the fixed backdrop div) is listed first because
+  // mobile Chrome's UA stylesheet can affect <dialog> element visibility
+  // detection even when the element is rendered (MINCRM-554).
   await context.page.waitFor(
     [
+      { type: 'testId', value: 'gdpr-erase-modal-overlay' },
       { type: 'testId', value: 'gdpr-erase-modal' },
       { type: 'role', value: 'dialog', options: { name: /erase/i } },
     ],
@@ -1385,6 +1389,7 @@ export async function performGdprErasure(
 
   await context.page.waitFor(
     [
+      { type: 'testId', value: 'gdpr-erase-modal-overlay' },
       { type: 'testId', value: 'gdpr-erase-modal' },
       { type: 'role', value: 'dialog', options: { name: /erase/i } },
     ],
