@@ -256,8 +256,13 @@ test('@functional WH-06: create contact via API → contact.created log appears 
   const contactId = contact.id;
   testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
-  // Poll until a delivery log entry for contact.created appears
-  const log = await pollForWebhookDelivery(restClient, sub.id, 'contact.created');
+  // Poll until a delivery log entry for contact.created appears.
+  // maxMs must exceed DELIVERY_TIMEOUT_MS (10 s) + dispatch overhead: the log is
+  // written after attemptDelivery() returns (success or timeout), so 8 s is too
+  // tight when httpbin.org is slow under CI load (MINCRM-554).
+  const log = await pollForWebhookDelivery(restClient, sub.id, 'contact.created', {
+    maxMs: 20_000,
+  });
 
   expect(log.event_type, 'delivery log should record event type').toBe('contact.created');
   // A log entry was written (status_code may be null if target was unreachable — that's OK)
