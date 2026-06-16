@@ -73,7 +73,7 @@ test('@functional F-FF1: admin can navigate to the Features tab and see the flag
 // F-FF2 — Admin toggles a flag off via the confirmation dialog
 // ---------------------------------------------------------------------------
 
-test('@functional F-FF2: admin can disable a flag via the confirmation dialog', async ({
+test('@functional @serial F-FF2: admin can disable a flag via the confirmation dialog', async ({
   page,
   restClient,
   testData,
@@ -121,7 +121,7 @@ test('@functional F-FF2: admin can disable a flag via the confirmation dialog', 
 // F-FF3 — Flag toggle writes an audit log entry
 // ---------------------------------------------------------------------------
 
-test('@functional F-FF3: toggling a flag writes a feature_flag audit entry', async ({
+test('@functional @serial F-FF3: toggling a flag writes a feature_flag audit entry', async ({
   restClient,
   grpcClient,
 }) => {
@@ -145,7 +145,7 @@ test('@functional F-FF3: toggling a flag writes a feature_flag audit entry', asy
 // F-FF4 — Disabled feature flag returns 403 on the guarded API route
 // ---------------------------------------------------------------------------
 
-test('@functional F-FF4: API route guarded by requireFeatureEnabled returns 403 when flag is disabled', async ({
+test('@functional @serial F-FF4: API route guarded by requireFeatureEnabled returns 403 when flag is disabled', async ({
   restClient,
 }) => {
   await loginAsAdmin(restClient);

@@ -30,8 +30,9 @@ export interface LayoutBehaviorContext {
 /** Result returned by assertEmptyStateContainerFills. */
 export interface EmptyStateContainerFillResult {
   /**
-   * Rendered clientHeight in pixels of the nearest overflow-auto ancestor of
-   * the empty-state element. Zero means the ancestor was not found.
+   * Rendered height in pixels (via getBoundingClientRect) of the nearest
+   * overflow-auto ancestor of the empty-state element. Zero means the ancestor
+   * was not found or its flex layout had not resolved within the polling window.
    */
   containerHeight: number;
   /** True when the empty-state element itself has a positive bounding rect. */
@@ -61,27 +62,30 @@ export async function assertEmptyStateContainerFills(
   await page.waitForPresent(`[data-testid="${emptyStateTestId}"]`);
 
   // Walk up from the empty-state element to find the nearest overflow-auto
-  // ancestor that PagedListLayout applies to the list container, then return
-  // its clientHeight. Poll until the container has a positive height so that
-  // a deferred flex layout pass in CI does not return 0 prematurely.
+  // ancestor that PagedListLayout applies to the list container, then measure
+  // its rendered height. Use getBoundingClientRect().height rather than
+  // clientHeight because mobile Chrome's flex-1+min-h-0 layout can resolve
+  // correctly in the render tree while clientHeight still reports 0 (the
+  // scrollport size is derived from the containing block, not the scroll
+  // container itself, in certain Chromium mobile rendering paths).
   const getHeight = `(() => {
     const el = document.querySelector('[data-testid="${emptyStateTestId}"]');
     if (!el) return 0;
     let node = el.parentElement;
     while (node) {
       if (node.classList.contains('overflow-auto') || node.classList.contains('overflow-hidden')) {
-        return node.clientHeight;
+        return node.getBoundingClientRect().height;
       }
       node = node.parentElement;
     }
     return 0;
   })()`;
 
-  // Wait up to 5 s for the flex chain to resolve before taking the measurement.
-  await page.waitForFunction(getHeight + ' > 0').catch(() => {
-    // If the container never grows, fall through and return 0 so the caller's
-    // assertion produces a clear failure message rather than a timeout.
-  });
+  // Poll until the flex chain has resolved and the container has a positive
+  // rendered height. Falls through with 0 on timeout so the spec assertion
+  // produces a clear failure message rather than a generic waitForFunction
+  // timeout error.
+  await page.waitForFunction(getHeight + ' > 0').catch(() => {});
 
   const containerHeight = (await page.evaluate(getHeight)) as number;
 
