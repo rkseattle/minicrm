@@ -239,6 +239,33 @@ export class RestClient {
   }
 
   /**
+   * Retries a network call on transient connection errors (ECONNRESET,
+   * ECONNREFUSED, ETIMEDOUT, ENOTFOUND). These occur under CI shard load when
+   * the server is momentarily busy. Safe to retry because the call hasn't
+   * produced a response yet — no double-mutation risk.
+   *
+   * Backoff: 250 ms after attempt 1, 500 ms after attempt 2 (3 attempts total).
+   */
+  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    const TRANSIENT = /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/;
+    const DELAYS = [250, 500];
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= DELAYS.length; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!TRANSIENT.test(msg)) throw err;
+        lastErr = err;
+        if (attempt < DELAYS.length) {
+          await new Promise((r) => setTimeout(r, DELAYS[attempt]));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  /**
    * Parses a Playwright APIResponse into an ApiResponse<T>, throwing
    * RestClientError on 4xx/5xx or on Zod validation failure.
    *
@@ -311,10 +338,12 @@ export class RestClient {
     path: string,
     options?: RequestOptions & { headers?: Record<string, string>; timeout?: number },
   ): Promise<ApiResponse<T>> {
-    const response = await this.request.get(this.url(path), {
-      headers: this.buildHeaders(options?.headers),
-      timeout: options?.timeout,
-    });
+    const response = await this.withRetry(() =>
+      this.request.get(this.url(path), {
+        headers: this.buildHeaders(options?.headers),
+        timeout: options?.timeout,
+      }),
+    );
     return this.parseResponse<T>(response, 'GET', path, options);
   }
 
@@ -332,10 +361,12 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.request.post(this.url(path), {
-      data: body,
-      headers: this.buildHeaders(options?.headers),
-    });
+    const response = await this.withRetry(() =>
+      this.request.post(this.url(path), {
+        data: body,
+        headers: this.buildHeaders(options?.headers),
+      }),
+    );
     return this.parseResponse<T>(response, 'POST', path, options);
   }
 
@@ -353,10 +384,12 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.request.put(this.url(path), {
-      data: body,
-      headers: this.buildHeaders(options?.headers),
-    });
+    const response = await this.withRetry(() =>
+      this.request.put(this.url(path), {
+        data: body,
+        headers: this.buildHeaders(options?.headers),
+      }),
+    );
     return this.parseResponse<T>(response, 'PUT', path, options);
   }
 
@@ -374,10 +407,12 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.request.patch(this.url(path), {
-      data: body,
-      headers: this.buildHeaders(options?.headers),
-    });
+    const response = await this.withRetry(() =>
+      this.request.patch(this.url(path), {
+        data: body,
+        headers: this.buildHeaders(options?.headers),
+      }),
+    );
     return this.parseResponse<T>(response, 'PATCH', path, options);
   }
 
@@ -393,9 +428,11 @@ export class RestClient {
     path: string,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.request.delete(this.url(path), {
-      headers: this.buildHeaders(options?.headers),
-    });
+    const response = await this.withRetry(() =>
+      this.request.delete(this.url(path), {
+        headers: this.buildHeaders(options?.headers),
+      }),
+    );
     return this.parseResponse<T>(response, 'DELETE', path, options);
   }
 }
