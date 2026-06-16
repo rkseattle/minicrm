@@ -80,6 +80,13 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 const server = http.createServer(app);
 
+// Disable Nagle's algorithm for all connections so that small streaming frames
+// (e.g. the ConnectRPC stream-ready sentinel) are delivered immediately rather
+// than being buffered until the TCP send buffer fills (MINCRM-554).
+server.on('connection', (socket) => {
+  socket.setNoDelay(true);
+});
+
 /**
  * Gracefully shuts down the HTTP server.
  * Stops accepting new connections, waits up to SHUTDOWN_TIMEOUT_MS for in-flight

@@ -617,6 +617,24 @@ export async function isNavLinkHidden(
 // ---------------------------------------------------------------------------
 
 /**
+ * Waits for the browser to receive a successful GET /api/v1/settings/nav-layout
+ * response. Use after navigating to a new page to confirm the nav-layout React
+ * Query fetch has completed before asserting nav link visibility (MINCRM-554).
+ *
+ * @param context - Behavior context with page.
+ * @param timeout - Maximum ms to wait. Default 10 000.
+ */
+export async function waitForNavLayoutFetched(
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitForResponse(
+    (res) => res.url().includes('/api/v1/settings/nav-layout') && res.status() === 200,
+    { timeout },
+  );
+}
+
+/**
  * Waits for a nav link with the given testId to become visible.
  */
 export async function waitForNavLink(

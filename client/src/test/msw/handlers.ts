@@ -390,7 +390,7 @@ export const MY_TASK_1: MyTaskResponse = {
   type: 'Task',
   subject: 'Send proposal to client',
   notes: null,
-  due_date: '2026-06-15',
+  due_date: '2027-06-15',
   status: 'open',
   direction: null,
   outcome: null,

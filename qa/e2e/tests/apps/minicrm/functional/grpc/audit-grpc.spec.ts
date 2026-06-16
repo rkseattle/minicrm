@@ -158,12 +158,12 @@ test('@functional GRPC-5: StreamAuditEvents delivers live contact_created event 
   // Trigger a contact_created audit entry via REST.
   const contact = await createTestContact(testData, restClient);
 
-  // Wait up to 12 s for the live event to arrive — 8 s was insufficient under
-  // 2-worker local load with retries=0 (MINCRM-554); events arrive within ~1-3 s
-  // normally but can lag under heavy parallelism.
+  // Wait up to 8 s for the live event to arrive. streamAuditEvents now awaits
+  // the HTTP 200 response + a 200 ms PG LISTEN settle before returning, so the
+  // subscription is active before this contact is created (MINCRM-554).
   const received = await waitForCondition(() => {
     return receivedEvents.some((e) => e.action === 'created' && e.record_id === contact.id);
-  }, 12_000);
+  }, 8_000);
 
   cancel();
 

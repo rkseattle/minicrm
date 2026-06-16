@@ -704,21 +704,23 @@ describe('listChildAccounts', () => {
 
 describe('searchAccounts', () => {
   it('returns accounts matching the name query (case-insensitive)', async () => {
-    await createAccount({ name: 'Alpha Pharma', owner_id: ownerId });
-    await createAccount({ name: 'Beta Labs', owner_id: ownerId });
+    // Use FILE_PREFIX in names so that concurrent accountController.test.ts
+    // runs do not pollute search results (both create "Alpha" accounts in the shared DB).
+    await createAccount({ name: `${FILE_PREFIX}-Alpha Pharma`, owner_id: ownerId });
+    await createAccount({ name: `${FILE_PREFIX}-Beta Labs`, owner_id: ownerId });
 
-    const results = await searchAccounts('alpha');
+    const results = await searchAccounts(`${FILE_PREFIX}-alpha`);
     expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Alpha Pharma');
+    expect(results[0].name).toBe(`${FILE_PREFIX}-Alpha Pharma`);
   });
 
   it('excludes the account with excludeId', async () => {
-    const alpha = await createAccount({ name: 'Alpha Excluded', owner_id: ownerId });
-    await createAccount({ name: 'Alpha Included', owner_id: ownerId });
+    const alpha = await createAccount({ name: `${FILE_PREFIX}-Alpha Excluded`, owner_id: ownerId });
+    await createAccount({ name: `${FILE_PREFIX}-Alpha Included`, owner_id: ownerId });
 
-    const results = await searchAccounts('alpha', alpha.id);
+    const results = await searchAccounts(`${FILE_PREFIX}-alpha`, alpha.id);
     expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Alpha Included');
+    expect(results[0].name).toBe(`${FILE_PREFIX}-Alpha Included`);
   });
 
   it('returns at most the limit number of results', async () => {

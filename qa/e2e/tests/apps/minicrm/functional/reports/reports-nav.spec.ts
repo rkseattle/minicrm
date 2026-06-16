@@ -21,6 +21,7 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   navigateViaNavLink,
   setNavLayoutViaAPI,
+  waitForNavLayoutFetched,
   waitForNavLink,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToPath } from '@behaviors/minicrm/layout.behaviors.js';
@@ -70,12 +71,16 @@ test('reports nav: clicking Reports nav link lands on /reports @functional @seri
     // fetch completes first. Then navigate to a page that will trigger a
     // React Query refetch of the (now-left) layout.
     await setNavLayoutViaAPI('left', restClient);
-    await navigateToPath('/', { page });
 
-    // The left-nav layout is applied via a React Query setting; the nav link may
-    // not be in the DOM immediately after networkidle if the setting fetch is still
-    // in flight. Wait explicitly before attempting the click.
-    await waitForNavLink('nav-left-reports', { page }, 10_000);
+    // Await the nav-layout API response AFTER navigating so we know the browser
+    // has received the updated layout before asserting nav link visibility (MINCRM-554).
+    const navLayoutReady = waitForNavLayoutFetched({ page }, 10_000);
+    await navigateToPath('/', { page });
+    await navLayoutReady;
+
+    // waitForNavLink provides an additional guard in case React state propagation
+    // lags behind the network response under heavy 2-worker load.
+    await waitForNavLink('nav-left-reports', { page }, 5_000);
     const result = await navigateViaNavLink('left', 'reports', { page });
     expect(result.linkClicked).toBe(true);
     expect(new URL(result.finalUrl).pathname).toBe('/reports');

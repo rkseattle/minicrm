@@ -232,6 +232,21 @@ export async function streamAuditEvents(
   const url = `${apiBase()}/api/minicrm.audit.v1.AuditService/StreamAuditEvents`;
   const abortController = new AbortController();
 
+  // Resolves when the server's '__stream_ready__' sentinel frame arrives,
+  // confirming that the EventEmitter listener is registered and the stream is
+  // ready to deliver live NOTIFYs. Rejects if the connection fails before the
+  // sentinel is received. This eliminates the race between the caller creating
+  // a resource (which fires a NOTIFY) and the server registering its listener
+  // (MINCRM-554).
+  let resolveReady!: () => void;
+  let rejectReady!: (err: unknown) => void;
+  const readyPromise = new Promise<void>((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+
+  const STREAM_READY_SENTINEL = '__stream_ready__';
+
   const drainLoop = async (): Promise<void> => {
     try {
       const body = encodeConnectFrame(toConnectRequest(request));
@@ -248,6 +263,7 @@ export async function streamAuditEvents(
 
       if (!res.ok || res.body === null) {
         await throwOnConnectError(res);
+        rejectReady(new Error(`StreamAuditEvents: server returned ${res.status}`));
         return;
       }
 
@@ -285,6 +301,14 @@ export async function streamAuditEvents(
           try {
             const text = new TextDecoder().decode(payload);
             const msg = JSON.parse(text) as ConnectAuditEvent;
+
+            // Server-sent ready sentinel — resolve the caller's await and
+            // discard; do not forward to onEvent.
+            if (msg.action === STREAM_READY_SENTINEL) {
+              resolveReady();
+              continue;
+            }
+
             // Skip Connect end-stream envelope frames that carry trailers.
             if (msg.id || msg.recordType || msg.action) {
               onEvent(fromConnectEvent(msg));
@@ -296,14 +320,20 @@ export async function streamAuditEvents(
       }
 
       onEnd?.();
-    } catch {
+    } catch (err) {
       if (!abortController.signal.aborted) {
+        rejectReady(err);
         onEnd?.();
       }
     }
   };
 
   void drainLoop();
+
+  // Block until the server's sentinel arrives, confirming the subscription is
+  // active. The server yields the sentinel as its very first frame, so this
+  // resolves as soon as the HTTP response begins streaming (MINCRM-554).
+  await readyPromise;
 
   return (): void => {
     abortController.abort();

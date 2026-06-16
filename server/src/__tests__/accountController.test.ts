@@ -252,14 +252,22 @@ describe('DELETE /api/accounts/:id — ownership', () => {
 
 describe('GET /api/accounts — ?search filter', () => {
   it('returns only accounts matching the search term', async () => {
-    await createAccount({ name: 'Alpha Corp', industry: 'Technology', owner_id: repId });
-    await createAccount({ name: 'Beta Inc', industry: 'Finance', owner_id: repId });
+    // Use FILE_PREFIX in names to avoid collision with accountService.test.ts which
+    // also creates "Alpha Pharma" in the same DB when tests run concurrently.
+    await createAccount({
+      name: `${FILE_PREFIX}-Alpha Corp`,
+      industry: 'Technology',
+      owner_id: repId,
+    });
+    await createAccount({ name: `${FILE_PREFIX}-Beta Inc`, industry: 'Finance', owner_id: repId });
 
-    const res = await request(app).get('/api/v1/accounts?search=alpha').set('Cookie', repCookie);
+    const res = await request(app)
+      .get(`/api/v1/accounts?search=${FILE_PREFIX}-alpha`)
+      .set('Cookie', repCookie);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
-    expect(res.body.data[0].name).toBe('Alpha Corp');
+    expect(res.body.data[0].name).toBe(`${FILE_PREFIX}-Alpha Corp`);
   });
 
   it('returns empty array when search matches nothing', async () => {
