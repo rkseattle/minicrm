@@ -184,6 +184,12 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 
   // Fill in the custom field value
   const fieldInput = await getCustomFieldInputLocator(definitionId, { page });
+  // Wait for the controlled input to be visible and scroll it into the viewport
+  // before filling — on mobile the custom-fields section can be below the fold
+  // and Playwright's fill() may not trigger React's onChange if the element
+  // hasn't rendered in the visual viewport yet. (MINCRM-554)
+  await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+  await fieldInput.scrollIntoViewIfNeeded();
   await fieldInput.fill('Test Value 123');
 
   // Press Tab to move focus away from the input, which triggers a blur event and

@@ -307,6 +307,12 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
   await expect(table).toBeVisible({ timeout: 10_000 });
 
   const deleteEl = await getPipelineStageDeleteButtonLocator(stageId, { page });
+  // On mobile the delete button may be in a horizontally-tight table below the
+  // fold. Ensure it is visible and scrolled into the viewport before clicking so
+  // the click registers and triggers the React state update that shows the dialog.
+  // (MINCRM-554)
+  await expect(deleteEl).toBeVisible({ timeout: 5_000 });
+  await deleteEl.scrollIntoViewIfNeeded();
   await deleteEl.click();
 
   await waitForDeleteStageDialog('visible', { page }, 5_000);
