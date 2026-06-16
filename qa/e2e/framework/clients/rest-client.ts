@@ -309,10 +309,11 @@ export class RestClient {
    */
   async get<T>(
     path: string,
-    options?: RequestOptions & { headers?: Record<string, string> },
+    options?: RequestOptions & { headers?: Record<string, string>; timeout?: number },
   ): Promise<ApiResponse<T>> {
     const response = await this.request.get(this.url(path), {
       headers: this.buildHeaders(options?.headers),
+      timeout: options?.timeout,
     });
     return this.parseResponse<T>(response, 'GET', path, options);
   }

@@ -191,7 +191,10 @@ bash qa/scripts/check-networkidle.sh
 # 6. E2E — always, no exceptions
 date
 rm -rf qa/e2e/test-results/
-cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep @functional
+# Non-serial: --workers=1 matches CI's LPT file-per-shard isolation (no cross-file races)
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
+# Serial: always single-worker (matches e2e-serial CI job)
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional @serial" --workers=1
 ```
 
 Read `qa/e2e/test-results/results.xml` for pass/fail — never rely on console output or exit code.
@@ -207,7 +210,7 @@ npm run e2e:client  # separate terminal — hardcodes API_URL=http://localhost:3
 
 `E2E_API_URL=http://localhost:3002`, `E2E_BASE_URL=http://localhost:5173` in `qa/e2e/.env`.
 
-**Worker limit (MINCRM-557):** Local runs are capped at 2 Playwright workers to match CI per-shard concurrency. Higher values cause global-state races between specs that mutate shared settings, because LPT file partitioning only applies in CI.
+**Worker isolation (MINCRM-557):** Run non-serial and serial tests separately with `--workers=1` each. CI uses LPT file partitioning (one file per shard) so each spec file runs in complete isolation — no cross-file global-state races. `--workers=1` locally replicates that isolation. Running with multiple workers causes cascade failures where a long-running test (concurrency, deals) blocks a worker and starves queued tests of time.
 
 ---
 

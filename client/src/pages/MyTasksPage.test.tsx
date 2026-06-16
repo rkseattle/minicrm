@@ -58,7 +58,7 @@ describe('MyTasksPage', () => {
     });
 
     expect(screen.getByTestId(`task-subject-${MY_TASK_1.id}`)).toHaveTextContent(MY_TASK_1.subject);
-    expect(screen.getByTestId(`task-due-date-${MY_TASK_1.id}`)).toHaveTextContent('Jun 15, 2026');
+    expect(screen.getByTestId(`task-due-date-${MY_TASK_1.id}`)).toHaveTextContent('Jun 15, 2027');
   });
 
   it('shows the linked record name as a link', async () => {

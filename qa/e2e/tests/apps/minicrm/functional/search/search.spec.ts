@@ -476,16 +476,22 @@ test('@functional @search F9-EC3: query with special characters is handled grace
       await clearSearchQuery({ page });
     }
     const query = specialQueries[i] as string;
-    const panelResult = await typeSearchQueryAndCheckPanel(query, { page });
+    // panelTimeout: 3 s — these are graceful-degradation checks; whether the
+    // panel appears is not the assertion. The full 10 s default would exhaust
+    // the test timeout across two iterations under 2-worker load (MINCRM-554).
+    const panelResult = await typeSearchQueryAndCheckPanel(query, { page }, 3_000);
     expect(
       panelResult.noErrorAlert,
       `no error alert should appear for special-char query "${query}"`,
     ).toBe(true);
 
     // Also verify via API — must not return a 500 (4xx is acceptable for validation).
+    // timeout: 10 s so a slow/hung response fails fast rather than burning the
+    // remaining test budget (MINCRM-554).
     try {
       const apiResult = await restClient.get<GlobalSearchResult>(
         `/api/v1/search?q=${encodeURIComponent(query)}`,
+        { timeout: 10_000 },
       );
       expect(apiResult.status, `API must not 500 for special-char query "${query}"`).toBeLessThan(
         500,
@@ -511,13 +517,17 @@ test('@functional @search F9-EC4: very long query string is handled gracefully',
 
   // 500-character query — well beyond any realistic search term.
   const longQuery = 'a'.repeat(500);
-  const result = await typeSearchQueryAndCheckPanel(longQuery, { page });
+  // panelTimeout: 3 s — graceful-degradation check; whether the panel appears
+  // for a 500-char query is not the assertion (MINCRM-554).
+  const result = await typeSearchQueryAndCheckPanel(longQuery, { page }, 3_000);
   expect(result.noErrorAlert, 'no error alert for very long query').toBe(true);
 
   // API must also handle gracefully (4xx is fine — 500 is not).
+  // timeout: 10 s so a slow/hung response fails fast (MINCRM-554).
   try {
     const apiResult = await restClient.get<GlobalSearchResult>(
       `/api/v1/search?q=${encodeURIComponent(longQuery)}`,
+      { timeout: 10_000 },
     );
     expect(apiResult.status, 'API must not 500 for very long query').toBeLessThan(500);
   } catch (err: unknown) {

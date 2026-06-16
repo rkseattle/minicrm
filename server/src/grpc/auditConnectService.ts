@@ -163,13 +163,23 @@ export function registerAuditService(router: ConnectRouter): void {
      * Subscribes to auditEventBus and yields matching live events. Auth is
      * validated before the first yield. The ctx.signal aborts iteration when
      * the client disconnects or cancels.
+     *
+     * A sentinel event with action '__stream_ready__' is yielded immediately
+     * after the EventEmitter listener is registered. This gives the client a
+     * concrete signal that the subscription is active before it creates
+     * resources that fire NOTIFYs, eliminating the race between HTTP response
+     * headers and listener registration (MINCRM-554).
      */
     async *streamAuditEvents(req, ctx) {
       await requireAdminFromCookie(ctx);
 
-      // Wrap the EventEmitter in an async iterator so we can use for-await
-      // and respect ctx.signal for clean cancellation.
+      // Register the listener BEFORE yielding the sentinel so the subscription
+      // is guaranteed to be active when the client receives the ready signal.
       const events = auditEventBus.asyncIterator(ctx.signal);
+
+      // Sentinel: signals to the client that the stream is ready to receive
+      // NOTIFYs. The client identifies and discards this by action value.
+      yield new AuditEvent({ action: '__stream_ready__' });
 
       for await (const notification of events) {
         if (!matchesStreamFilter(notification, req)) continue;
