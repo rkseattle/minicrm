@@ -239,15 +239,10 @@ export class RestClient {
   }
 
   /**
-   * Retries a network call on transient connection errors (ECONNRESET,
-   * ECONNREFUSED, ETIMEDOUT, ENOTFOUND). These occur under CI shard load when
-   * the server is momentarily busy. Safe to retry because the call hasn't
-   * produced a response yet — no double-mutation risk.
-   *
-   * Backoff: 250 ms after attempt 1, 500 ms after attempt 2 (3 attempts total).
+   * Shared retry loop. Retries fn() when the thrown error message matches
+   * the supplied pattern. Backoff: 250 ms after attempt 1, 500 ms after attempt 2.
    */
-  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
-    const TRANSIENT = /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/;
+  private async retryOn<T>(fn: () => Promise<T>, pattern: RegExp): Promise<T> {
     const DELAYS = [250, 500];
     let lastErr: unknown;
     for (let attempt = 0; attempt <= DELAYS.length; attempt++) {
@@ -255,7 +250,7 @@ export class RestClient {
         return await fn();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (!TRANSIENT.test(msg)) throw err;
+        if (!pattern.test(msg)) throw err;
         lastErr = err;
         if (attempt < DELAYS.length) {
           await new Promise((r) => setTimeout(r, DELAYS[attempt]));
@@ -263,6 +258,27 @@ export class RestClient {
       }
     }
     throw lastErr;
+  }
+
+  /**
+   * Retries an idempotent network call (GET, DELETE) on any transient
+   * connection error. ECONNRESET and ETIMEDOUT are included because a
+   * repeated read or delete cannot produce duplicate side-effects.
+   */
+  private withRetryIdempotent<T>(fn: () => Promise<T>): Promise<T> {
+    return this.retryOn(fn, /ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/);
+  }
+
+  /**
+   * Retries a mutating network call (POST, PUT, PATCH) only on errors that
+   * guarantee the server never received the request. ECONNREFUSED means the
+   * TCP handshake was refused before any bytes were sent; ENOTFOUND means DNS
+   * failed before a connection was even attempted. ECONNRESET and ETIMEDOUT
+   * are intentionally excluded: they can fire after the server has already
+   * committed a write, so retrying would create duplicate resources.
+   */
+  private withRetrySafe<T>(fn: () => Promise<T>): Promise<T> {
+    return this.retryOn(fn, /ECONNREFUSED|ENOTFOUND/);
   }
 
   /**
@@ -338,7 +354,7 @@ export class RestClient {
     path: string,
     options?: RequestOptions & { headers?: Record<string, string>; timeout?: number },
   ): Promise<ApiResponse<T>> {
-    const response = await this.withRetry(() =>
+    const response = await this.withRetryIdempotent(() =>
       this.request.get(this.url(path), {
         headers: this.buildHeaders(options?.headers),
         timeout: options?.timeout,
@@ -361,7 +377,7 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.withRetry(() =>
+    const response = await this.withRetrySafe(() =>
       this.request.post(this.url(path), {
         data: body,
         headers: this.buildHeaders(options?.headers),
@@ -384,7 +400,7 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.withRetry(() =>
+    const response = await this.withRetrySafe(() =>
       this.request.put(this.url(path), {
         data: body,
         headers: this.buildHeaders(options?.headers),
@@ -407,7 +423,7 @@ export class RestClient {
     body?: unknown,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.withRetry(() =>
+    const response = await this.withRetrySafe(() =>
       this.request.patch(this.url(path), {
         data: body,
         headers: this.buildHeaders(options?.headers),
@@ -428,7 +444,7 @@ export class RestClient {
     path: string,
     options?: RequestOptions & { headers?: Record<string, string> },
   ): Promise<ApiResponse<T>> {
-    const response = await this.withRetry(() =>
+    const response = await this.withRetryIdempotent(() =>
       this.request.delete(this.url(path), {
         headers: this.buildHeaders(options?.headers),
       }),
