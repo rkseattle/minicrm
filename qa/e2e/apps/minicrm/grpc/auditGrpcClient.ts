@@ -319,6 +319,8 @@ export async function streamAuditEvents(
         }
       }
 
+      // Stream ended without sentinel — server regression or proxy dropped body.
+      rejectReady(new Error('Stream ended before __stream_ready__ sentinel'));
       onEnd?.();
     } catch (err) {
       if (!abortController.signal.aborted) {
