@@ -1235,33 +1235,49 @@ jobs:
     # the PR comment is built from merged outputs covering all shards.
     # Job dependency chain:
     #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
-    needs: e2e-aggregate
+    #                                            → e2e-serial ────────────┘
+    needs: [e2e-aggregate, e2e-serial]
     runs-on: ubuntu-latest
-    if: always() && (needs.e2e-aggregate.result == 'success' || needs.e2e-aggregate.result == 'failure') && github.event_name == 'pull_request'
+    if: |
+      always() &&
+      (needs.e2e-aggregate.result == 'success' || needs.e2e-aggregate.result == 'failure' ||
+       needs.e2e-serial.result == 'success' || needs.e2e-serial.result == 'failure') &&
+      github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
       - name: Download desktop merged artifacts
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: e2e-merged-desktop
           path: artifacts/desktop
 
       - name: Download mobile-web merged artifacts
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: e2e-merged-mobile-web
           path: artifacts/mobile-web
+
+      - name: Download serial test artifacts
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-serial-results
+          path: artifacts/serial
 
       - name: Build combined PR comment (MINCRM-135)
         id: comment
         run: |
           DESKTOP=$(python3 .github/scripts/parse-junit.py summary artifacts/desktop/merged-results.xml)
           MOBILE=$(python3 .github/scripts/parse-junit.py summary artifacts/mobile-web/merged-results.xml)
+          SERIAL=$(python3 .github/scripts/parse-junit.py summary artifacts/serial/results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
           IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
+          IFS='|' read -r s_status s_tests s_passed s_failed s_skipped <<< "$SERIAL"
 
           HEAL_NOTE=""
           HEAL_LINK=""
@@ -1312,6 +1328,7 @@ jobs:
             echo "|---------|--------|-------|--------|--------|---------|"
             echo "| desktop | $d_status | $d_tests | $d_passed | $d_failed | $d_skipped |"
             echo "| mobile-web | $m_status | $m_tests | $m_passed | $m_failed | $m_skipped |"
+            echo "| serial (desktop) | $s_status | $s_tests | $s_passed | $s_failed | $s_skipped |"
             if [ -n "$HEAL_NOTE" ]; then
               echo ""
               echo "$HEAL_NOTE"
@@ -1330,6 +1347,9 @@ jobs:
             fi
             if [ "$m_failed" -gt 0 ] 2>/dev/null; then
               python3 .github/scripts/parse-junit.py failures artifacts/mobile-web/merged-results.xml mobile-web
+            fi
+            if [ "$s_failed" -gt 0 ] 2>/dev/null; then
+              python3 .github/scripts/parse-junit.py failures artifacts/serial/results.xml "serial (desktop)"
             fi
             # Flaky test report (MINCRM-355)
             if [ "$TOTAL_FLAKY" -gt 0 ]; then
