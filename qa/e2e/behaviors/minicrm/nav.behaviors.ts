@@ -298,12 +298,22 @@ export async function navigateViaNavLink(
   // the stability wait — visibility has already been confirmed above.
   await link.click({ force: layout === 'hamburger' });
 
-  // Wait for the URL to change from its pre-click value. Falls back to a short
-  // domcontentloaded wait if waitForURL times out (e.g. clicking the already-active
-  // link on dashboard, where the URL stays '/').
-  await context.page
-    .waitForURL((url) => url.href !== urlBefore, { timeout: 10_000 })
-    .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
+  // Wait for the URL to change from its pre-click value. If the first click
+  // was swallowed by a React re-render mid-paint (the link DOM node is briefly
+  // replaced during a state update), retry the click once before giving up.
+  // Falls back to domcontentloaded if the link navigates to the already-active
+  // route (URL won't change, e.g. clicking Dashboard when already on '/').
+  const urlChanged = await context.page
+    .waitForURL((url) => url.href !== urlBefore, { timeout: 6_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!urlChanged && context.page.url() === urlBefore) {
+    await link.click({ force: layout === 'hamburger' });
+    await context.page
+      .waitForURL((url) => url.href !== urlBefore, { timeout: 8_000 })
+      .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
+  }
 
   return { linkClicked: true, finalUrl: context.page.url() };
 }
