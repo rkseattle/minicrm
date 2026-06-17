@@ -221,6 +221,8 @@ export default function AuditLogPage() {
           const stream = auditClient.streamAuditEvents({}, { signal: abortController.signal });
           retryDelay = 1_000; // reset backoff on a successful connection
           for await (const event of stream) {
+            // Discard the stream-ready sentinel emitted by the server on subscribe (MINCRM-554)
+            if (event.action === '__stream_ready__') continue;
             setLiveEventsRef.current((prev) => [grpcEventToEntry(event), ...prev]);
           }
           // Server closed the stream cleanly — reconnect immediately.

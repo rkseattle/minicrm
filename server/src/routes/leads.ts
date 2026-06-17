@@ -19,6 +19,7 @@ import {
   searchAccountsHandler,
 } from '../controllers/leadsController.js';
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
+import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
 
 const router = Router();
 
@@ -121,6 +122,70 @@ router.post(
   authenticate,
   requireCapability(Capability.ContactsCreate),
   asyncHandler(createLeadHandler),
+);
+
+// ── Bulk V2 routes (MINCRM-562) — must be registered before /:id routes ───────
+
+/**
+ * @openapi
+ * /api/v1/leads/bulk:
+ *   patch:
+ *     tags: [Leads]
+ *     operationId: bulkPatchLeads
+ *     summary: Bulk patch leads — reassign owner (MINCRM-562)
+ *     description: >
+ *       Requires bulk:operations + contacts:edit. Non-admin actors can only
+ *       reassign leads they own; records outside visibility are reported in
+ *       failed[]. Always returns 200 with { succeeded, failed }.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Bulk patch result
+ *       400:
+ *         description: Validation error or ids over limit
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Missing bulk:operations or contacts:edit capability
+ */
+router.patch(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(bulkPatchLeadsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/leads/bulk:
+ *   delete:
+ *     tags: [Leads]
+ *     operationId: bulkDeleteLeads
+ *     summary: Bulk delete leads (MINCRM-562)
+ *     description: >
+ *       Requires bulk:operations + contacts:delete. Non-admin actors can only
+ *       delete leads they own; records outside visibility are reported in
+ *       failed[]. Always returns 200 with { succeeded, failed }.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Bulk delete result
+ *       400:
+ *         description: Validation error or ids over limit
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Missing bulk:operations or contacts:delete capability
+ */
+router.delete(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ContactsDelete),
+  asyncHandler(bulkDeleteLeadsHandler),
 );
 
 /**

@@ -491,7 +491,10 @@ describe('ContactsPage', () => {
     });
 
     it('bulk delete calls the API and clears selection on success', async () => {
-      vi.spyOn(bulkApi, 'bulkContacts').mockResolvedValue({ affected: 1 });
+      vi.spyOn(bulkApi, 'bulkDeleteContacts').mockResolvedValue({
+        succeeded: [CONTACT_1.id],
+        failed: [],
+      });
       const user = userEvent.setup();
       renderWithProviders(<ContactsPage />);
       await waitFor(() => {
@@ -507,9 +510,8 @@ describe('ContactsPage', () => {
       await user.click(screen.getByTestId('confirm-delete-confirm'));
 
       await waitFor(() => {
-        expect(bulkApi.bulkContacts).toHaveBeenCalledWith(
-          expect.objectContaining({ action: 'delete', ids: [CONTACT_1.id] }),
-          expect.anything(),
+        expect(bulkApi.bulkDeleteContacts).toHaveBeenCalledWith(
+          expect.objectContaining({ ids: [CONTACT_1.id] }),
         );
       });
       await waitFor(() => {

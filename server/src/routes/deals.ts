@@ -204,6 +204,113 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/deals/bulk:
+ *   patch:
+ *     tags: [Deals]
+ *     operationId: bulkPatchDeals
+ *     summary: Bulk patch deals — reassign owner or change stage (MINCRM-562)
+ *     description: >
+ *       Reassigns owner_id and/or changes stage on each listed deal individually.
+ *       Requires bulk:operations + deals:edit. Non-admin actors can only
+ *       act on deals they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, patch]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *               patch:
+ *                 type: object
+ *                 properties:
+ *                   owner_id:
+ *                     type: string
+ *                     format: uuid
+ *                   stage:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+// Registered here (before /:id) to prevent Express matching 'bulk' as a UUID param
+router.patch(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.DealsEdit),
+  asyncHandler(bulkPatchDealsHandler),
+);
+/**
+ * @openapi
+ * /api/v1/deals/bulk:
+ *   delete:
+ *     tags: [Deals]
+ *     operationId: bulkDeleteDeals
+ *     summary: Bulk delete deals (MINCRM-562)
+ *     description: >
+ *       Deletes each listed deal individually.
+ *       Requires bulk:operations + deals:delete. Non-admin actors can only
+ *       delete deals they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+// Registered here (before /:id) to prevent Express matching 'bulk' as a UUID param
+router.delete(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.DealsDelete),
+  asyncHandler(bulkDeleteDealsHandler),
+);
+
+/**
+ * @openapi
  * /api/v1/deals:
  *   post:
  *     tags: [Deals]
@@ -648,114 +755,6 @@ router.delete(
   requireCapability(Capability.DealsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(detachDealTagHandler),
-);
-
-// ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────
-
-/**
- * @openapi
- * /api/v1/deals/bulk:
- *   patch:
- *     tags: [Deals]
- *     operationId: bulkPatchDeals
- *     summary: Bulk patch deals — reassign owner or change stage (MINCRM-562)
- *     description: >
- *       Reassigns owner_id and/or changes stage on each listed deal individually.
- *       Requires bulk:operations + deals:edit. Non-admin actors can only
- *       act on deals they own. Max 500 IDs per request.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids, patch]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 maxItems: 500
- *               patch:
- *                 type: object
- *                 properties:
- *                   owner_id:
- *                     type: string
- *                     format: uuid
- *                   stage:
- *                     type: string
- *     responses:
- *       200:
- *         description: Partial or full success
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BulkV2Result'
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.patch(
-  '/bulk',
-  authenticate,
-  requireCapability(Capability.BulkOperations),
-  requireCapability(Capability.DealsEdit),
-  asyncHandler(bulkPatchDealsHandler),
-);
-
-/**
- * @openapi
- * /api/v1/deals/bulk:
- *   delete:
- *     tags: [Deals]
- *     operationId: bulkDeleteDeals
- *     summary: Bulk delete deals (MINCRM-562)
- *     description: >
- *       Deletes each listed deal individually.
- *       Requires bulk:operations + deals:delete. Non-admin actors can only
- *       delete deals they own. Max 500 IDs per request.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 maxItems: 500
- *     responses:
- *       200:
- *         description: Partial or full success
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BulkV2Result'
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.delete(
-  '/bulk',
-  authenticate,
-  requireCapability(Capability.BulkOperations),
-  requireCapability(Capability.DealsDelete),
-  asyncHandler(bulkDeleteDealsHandler),
 );
 
 export default router;

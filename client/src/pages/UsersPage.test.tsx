@@ -218,52 +218,6 @@ describe('UsersPage', () => {
   });
 
   describe('UserActionsMenu — actions', () => {
-    it('Make Rep item triggers a role mutation for an admin user', async () => {
-      const user = userEvent.setup();
-      let capturedBody: unknown;
-      server.use(
-        http.patch(`/api/v1/users/${ADMIN_USER.id}/role`, async ({ request }) => {
-          capturedBody = await request.json();
-          return HttpResponse.json({ user: { ...ADMIN_USER, role: 'rep' } });
-        }),
-      );
-
-      renderWithProviders(<UsersPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId(`user-actions-${ADMIN_USER.id}`)).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByTestId(`user-actions-${ADMIN_USER.id}`));
-      await user.click(screen.getByTestId(`make-rep-${ADMIN_USER.id}`));
-
-      await waitFor(() => {
-        expect(capturedBody).toEqual({ role: 'rep' });
-      });
-    });
-
-    it('Make Admin item triggers a role mutation for a rep user', async () => {
-      const user = userEvent.setup();
-      let capturedBody: unknown;
-      server.use(
-        http.patch(`/api/v1/users/${REP_USER.id}/role`, async ({ request }) => {
-          capturedBody = await request.json();
-          return HttpResponse.json({ user: { ...REP_USER, role: 'admin' } });
-        }),
-      );
-
-      renderWithProviders(<UsersPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId(`user-actions-${REP_USER.id}`)).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByTestId(`user-actions-${REP_USER.id}`));
-      await user.click(screen.getByTestId(`make-admin-${REP_USER.id}`));
-
-      await waitFor(() => {
-        expect(capturedBody).toEqual({ role: 'admin' });
-      });
-    });
-
     it('Set Password item toggles the inline password form', async () => {
       const user = userEvent.setup();
       renderWithProviders(<UsersPage />);

@@ -1387,6 +1387,7 @@
       "sequence_enrollment": "Sequence Enrollment",
       "feature_flag": "Feature Flag",
       "ai_settings": "AI Settings",
+      "team": "Team",
       "all": "All"
     },
     "filters": {

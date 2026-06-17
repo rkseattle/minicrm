@@ -8,7 +8,7 @@
  * Implements MINCRM-20.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -27,6 +27,12 @@ import { Pagination } from '@/components/ui/Pagination.js';
 import { usePagination } from '@/hooks/usePagination.js';
 import type { ActivityType } from '@shared/schemas/activitySchema.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
+import { bulkDeleteActivities } from '@/api/bulk.js';
+import type { BulkFailure } from '@/api/bulk.js';
+import { useAuth } from '@/hooks/useAuth.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 
 /** Returns today's date string in YYYY-MM-DD format, recomputed on each call so overnight sessions stay accurate */
 function getToday(): string {
@@ -76,12 +82,22 @@ export default function MyTasksPage() {
   const { t, i18n } = useTranslation();
   const { isDesktop } = useBreakpoint();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   /** When navigated from the dashboard overdue link, pre-filter to overdue tasks only */
   const overdueFilter = searchParams.get('filter') === 'overdue';
   const [showCompleted, setShowCompleted] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const { page, limit, setPage, handleLimitChange } = usePagination();
+
+  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
+
+  // Bulk selection state (MINCRM-562)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
+  const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [...MY_TASKS_QUERY_KEY, page, limit],
@@ -107,6 +123,50 @@ export default function MyTasksPage() {
   // When the overdue filter is active (navigated from dashboard), show only overdue open tasks
   const overdueTasks = openTasks.filter(isOverdue);
   const visibleTasks = overdueFilter ? overdueTasks : showCompleted ? allTasks : openTasks;
+
+  // Clear selection when page or filters change (MINCRM-562)
+  useEffect(() => {
+    setSelectedIds(new Set()); // eslint-disable-line react-hooks/set-state-in-effect -- mirrors ContactsPage/DealsPage/ActivitiesPage pattern
+  }, [page, overdueFilter, showCompleted]);
+
+  const allVisibleIds = visibleTasks.map((t) => t.id);
+  const allVisibleSelected =
+    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  }
+
+  function toggleRow(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: () => bulkDeleteActivities({ ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
+      setShowBulkDelete(false);
+      if (result.failed.length > 0 && result.succeeded.length > 0) {
+        setBulkPartialFailures(result.failed);
+        setSelectedIds(new Set(result.failed.map((f) => f.id)));
+      } else if (result.failed.length === 0) {
+        setSelectedIds(new Set());
+        setBulkPartialFailures([]);
+      }
+    },
+  });
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -138,6 +198,39 @@ export default function MyTasksPage() {
             </Button>
           )}
         </div>
+
+        {/* Bulk action bar (MINCRM-562) */}
+        {canBulkOp && selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            isPending={bulkMutation.isPending}
+            onSeeDetails={
+              bulkPartialFailures.length > 0 ? () => setShowBulkFailedDetails(true) : undefined
+            }
+            actions={[
+              {
+                key: 'delete',
+                labelKey: 'bulk.deleteButton',
+                testId: 'tasks-bulk-delete-button',
+                variant: 'danger',
+              },
+            ]}
+            onAction={() => setShowBulkDelete(true)}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
+        )}
+        <ConfirmDeleteModal
+          isOpen={showBulkDelete}
+          message={t('bulk.deleteMessage', { count: selectedIds.size })}
+          isDeleting={bulkMutation.isPending}
+          onConfirm={() => bulkMutation.mutate()}
+          onCancel={() => setShowBulkDelete(false)}
+        />
+        <BulkFailedDetailsModal
+          isOpen={showBulkFailedDetails}
+          failures={bulkPartialFailures}
+          onClose={() => setShowBulkFailedDetails(false)}
+        />
 
         {isLoading ? (
           <p className="text-sm text-gray-500" data-testid="my-tasks-loading">
@@ -227,6 +320,18 @@ export default function MyTasksPage() {
                   >
                     <thead className="sticky top-0 z-10 bg-gray-50">
                       <tr>
+                        {canBulkOp && (
+                          <th className="w-10 ps-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={allVisibleSelected}
+                              onChange={toggleSelectAll}
+                              aria-label={t('bulk.selectAll')}
+                              data-testid="tasks-select-all"
+                              className="rounded border-gray-300"
+                            />
+                          </th>
+                        )}
                         <th
                           scope="col"
                           className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -266,6 +371,18 @@ export default function MyTasksPage() {
 
                         return (
                           <tr key={task.id} data-testid={`task-row-${task.id}`}>
+                            {canBulkOp && (
+                              <td className="w-10 ps-4 py-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedIds.has(task.id)}
+                                  onChange={() => toggleRow(task.id)}
+                                  aria-label={t('bulk.selectRow')}
+                                  data-testid={`bulk-select-${task.id}`}
+                                  className="rounded border-gray-300"
+                                />
+                              </td>
+                            )}
                             <td className="px-6 py-4 text-sm text-gray-900">
                               <span
                                 data-testid={`task-subject-${task.id}`}
@@ -366,85 +483,99 @@ export default function MyTasksPage() {
 
                       return (
                         <li key={task.id} className="px-4 py-3" data-testid={`task-row-${task.id}`}>
-                          {/* min-w-0: prevents flex child overflow for long subject strings */}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-500' : ' text-gray-900'}`}
-                              data-testid={`task-subject-${task.id}`}
-                            >
-                              {task.subject}
-                            </p>
-                            <div className="flex items-center gap-2 flex-wrap mt-1">
-                              <Badge
-                                variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
-                                data-testid={`task-type-${task.id}`}
+                          <div className="flex items-start gap-3">
+                            {canBulkOp && (
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(task.id)}
+                                onChange={() => toggleRow(task.id)}
+                                data-testid={`bulk-select-${task.id}`}
+                                className="mt-1 rounded border-gray-300 shrink-0"
+                              />
+                            )}
+                            {/* min-w-0: prevents flex child overflow for long subject strings */}
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-sm font-medium mb-1${task.status === 'complete' ? ' line-through text-gray-500' : ' text-gray-900'}`}
+                                data-testid={`task-subject-${task.id}`}
                               >
-                                {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
-                              </Badge>
-                              {task.due_date ? (
-                                <span
-                                  data-testid={`task-due-date-${task.id}`}
-                                  className={`text-xs whitespace-nowrap${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
+                                {task.subject}
+                              </p>
+                              <div className="flex items-center gap-2 flex-wrap mt-1">
+                                <Badge
+                                  variant={TYPE_BADGE_VARIANT[task.type as ActivityType]}
+                                  data-testid={`task-type-${task.id}`}
                                 >
-                                  {formatLocalDate(task.due_date, i18n.language)}
-                                  {overdue && (
-                                    <span
-                                      className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
-                                      data-testid={`task-overdue-badge-${task.id}`}
-                                    >
-                                      {t('myTasks.overdue')}
-                                    </span>
-                                  )}
-                                </span>
+                                  {t(`activities.${TYPE_KEY_MAP[task.type as ActivityType]}`)}
+                                </Badge>
+                                {task.due_date ? (
+                                  <span
+                                    data-testid={`task-due-date-${task.id}`}
+                                    className={`text-xs whitespace-nowrap${overdue ? ' text-red-600 font-medium' : ' text-gray-500'}`}
+                                  >
+                                    {formatLocalDate(task.due_date, i18n.language)}
+                                    {overdue && (
+                                      <span
+                                        className="ms-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap shrink-0"
+                                        data-testid={`task-overdue-badge-${task.id}`}
+                                      >
+                                        {t('myTasks.overdue')}
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="text-xs text-gray-500"
+                                    data-testid={`task-due-date-${task.id}`}
+                                  >
+                                    {t('myTasks.noDueDate')}
+                                  </span>
+                                )}
+                              </div>
+                              {recordPath && task.linked_record_name ? (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  <Link
+                                    to={recordPath}
+                                    className="text-primary-600 hover:underline"
+                                    data-testid={`task-record-link-${task.id}`}
+                                  >
+                                    {task.linked_record_name}
+                                  </Link>
+                                </p>
                               ) : (
-                                <span
-                                  className="text-xs text-gray-500"
-                                  data-testid={`task-due-date-${task.id}`}
-                                >
-                                  {t('myTasks.noDueDate')}
-                                </span>
-                              )}
-                            </div>
-                            {recordPath && task.linked_record_name ? (
-                              <p className="text-xs text-gray-500 mt-1">
-                                <Link
-                                  to={recordPath}
-                                  className="text-primary-600 hover:underline"
+                                <p
+                                  className="text-xs text-gray-500 mt-1"
                                   data-testid={`task-record-link-${task.id}`}
                                 >
-                                  {task.linked_record_name}
-                                </Link>
-                              </p>
-                            ) : (
-                              <p
-                                className="text-xs text-gray-500 mt-1"
-                                data-testid={`task-record-link-${task.id}`}
-                              >
-                                {t('myTasks.noRecord')}
-                              </p>
-                            )}
-                            {task.status === 'open' && (
-                              <div className="mt-2">
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  size="sm"
-                                  data-testid={`mark-complete-${task.id}`}
-                                  onClick={() =>
-                                    completeMutation.mutate({ id: task.id, version: task.version })
-                                  }
-                                  disabled={
-                                    completeMutation.isPending &&
+                                  {t('myTasks.noRecord')}
+                                </p>
+                              )}
+                              {task.status === 'open' && (
+                                <div className="mt-2">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    data-testid={`mark-complete-${task.id}`}
+                                    onClick={() =>
+                                      completeMutation.mutate({
+                                        id: task.id,
+                                        version: task.version,
+                                      })
+                                    }
+                                    disabled={
+                                      completeMutation.isPending &&
+                                      completeMutation.variables?.id === task.id
+                                    }
+                                  >
+                                    {completeMutation.isPending &&
                                     completeMutation.variables?.id === task.id
-                                  }
-                                >
-                                  {completeMutation.isPending &&
-                                  completeMutation.variables?.id === task.id
-                                    ? t('myTasks.markingComplete')
-                                    : t('myTasks.markComplete')}
-                                </Button>
-                              </div>
-                            )}
+                                      ? t('myTasks.markingComplete')
+                                      : t('myTasks.markComplete')}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </li>
                       );

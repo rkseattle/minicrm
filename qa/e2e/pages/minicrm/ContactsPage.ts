@@ -497,9 +497,16 @@ export class ContactsPage {
   }
 
   /**
-   * Clicks the Confirm button in the bulk-reassign modal.
+   * Clicks the Confirm button in the bulk-reassign modal and waits for the
+   * PATCH /api/v1/contacts/bulk response before returning, so callers can
+   * immediately assert on selection-cleared state. (MINCRM-562)
    */
   async confirmBulkReassign(): Promise<void> {
+    // Register before click so the PATCH response is never missed. (MINCRM-562)
+    const reassignDone = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contacts/bulk') && response.request().method() === 'PATCH',
+    );
     await this.page.click(
       [
         { type: 'testId', value: 'bulk-reassign-confirm' },
@@ -507,6 +514,7 @@ export class ContactsPage {
       ],
       { intent: 'confirm button in the bulk reassign modal' },
     );
+    await reassignDone;
   }
 
   /**
@@ -547,10 +555,11 @@ export class ContactsPage {
       .resolve();
     await el.waitFor({ state: 'visible', timeout: 8_000 });
     // Register the response listener before clicking so the DELETE is always
-    // captured and fully awaited before control returns. (MINCRM-418)
+    // captured and fully awaited before control returns. (MINCRM-418, MINCRM-562)
     const deleteDone = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/contacts/bulk') && response.request().method() === 'POST',
+        response.url().includes('/api/v1/contacts/bulk') &&
+        response.request().method() === 'DELETE',
     );
     await el.click({ force });
     await deleteDone;
