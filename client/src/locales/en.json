@@ -146,7 +146,25 @@
     "apiTokenRevoked": "API token revoked.",
     "badgeServiceAccount": "Service account",
     "copyToken": "Copy token",
-    "done": "Done"
+    "done": "Done",
+    "roleSelectLabel": "Change role for {{name}}",
+    "serviceAccountRoleTooltip": "Service account role cannot be changed here",
+    "customRoleLinkLabel": "View custom role {{name}}",
+    "statusSelectLabel": "Change status for {{name}}",
+    "invitedBadgeTooltip": "Awaiting first login",
+    "deactivateSelfTitle": "Deactivate your own account?",
+    "deactivateSelfConfirm": "You are about to deactivate your own account. You will be logged out immediately. Are you sure?",
+    "deactivateSelfButton": "Deactivate",
+    "inlineRoleError": "Failed to update role. Change rolled back.",
+    "inlineStatusError": "Failed to update status. Change rolled back.",
+    "bulkActivateButton": "Activate",
+    "bulkDeactivateButton": "Deactivate",
+    "bulkChangeRoleButton": "Change role",
+    "bulkAssignCustomRoleButton": "Assign custom role",
+    "bulkRemoveCustomRoleButton": "Remove custom role",
+    "bulkDeleteButton": "Delete",
+    "bulkSelectRolePlaceholder": "— Select role —",
+    "bulkSelectCustomRolePlaceholder": "— Select custom role —"
   },
   "changePassword": {
     "title": "Change your password",
@@ -1207,7 +1225,24 @@
     "changingStagePending": "Changing…",
     "deleteMessage": "This will permanently delete {{count}} record. This cannot be undone.",
     "deleteMessage_other": "This will permanently delete {{count}} records. This cannot be undone.",
-    "errorGeneric": "Bulk operation failed. Please try again."
+    "errorGeneric": "Bulk operation failed. Please try again.",
+    "activateButton": "Activate",
+    "changeRoleButton": "Change role",
+    "assignCustomRoleButton": "Assign custom role",
+    "removeCustomRoleButton": "Remove custom role",
+    "selectRolePlaceholder": "— Select role —",
+    "selectCustomRolePlaceholder": "— Select custom role —",
+    "successCount": "{{count}} updated",
+    "successCount_other": "{{count}} updated",
+    "partialSuccess": "{{succeeded}} updated, {{failed}} failed",
+    "seeDetails": "See details",
+    "failedDetailsTitle": "Failed operations",
+    "failedDetailsId": "ID",
+    "failedDetailsReason": "Reason",
+    "selfDeactivationSkipped": "Your own account was skipped from deactivation.",
+    "pendingSpinner": "Working…",
+    "exportButton": "Export CSV",
+    "changeStageTitle2": "Change pipeline stage"
   },
   "common": {
     "ownerToggle": {
@@ -2046,6 +2081,7 @@
       "activities": "Activities",
       "pipelines": "Pipelines",
       "reports": "Reports",
+      "bulk": "Bulk",
       "data": "Data",
       "users": "Users",
       "teams": "Teams",
@@ -2067,7 +2103,8 @@
       "access": "Access",
       "schedule": "Schedule",
       "enroll": "Enroll",
-      "activate": "Activate"
+      "activate": "Activate",
+      "operations": "Operations"
     }
   },
   "teamsSettings": {

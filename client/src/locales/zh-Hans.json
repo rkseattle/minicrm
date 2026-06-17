@@ -146,7 +146,25 @@
     "apiTokenRevoked": "API 令牌已撤销。",
     "badgeServiceAccount": "服务账户",
     "copyToken": "复制令牌",
-    "done": "完成"
+    "done": "完成",
+    "roleSelectLabel": "更改 {{name}} 的角色",
+    "serviceAccountRoleTooltip": "服务账户角色无法在此处更改",
+    "customRoleLinkLabel": "查看自定义角色 {{name}}",
+    "statusSelectLabel": "更改 {{name}} 的状态",
+    "invitedBadgeTooltip": "等待首次登录",
+    "deactivateSelfTitle": "停用您自己的账户？",
+    "deactivateSelfConfirm": "您即将停用自己的账户，系统将立即注销您。确定吗？",
+    "deactivateSelfButton": "停用",
+    "inlineRoleError": "更新角色失败，更改已回滚。",
+    "inlineStatusError": "更新状态失败，更改已回滚。",
+    "bulkActivateButton": "激活",
+    "bulkDeactivateButton": "停用",
+    "bulkChangeRoleButton": "更改角色",
+    "bulkAssignCustomRoleButton": "分配自定义角色",
+    "bulkRemoveCustomRoleButton": "移除自定义角色",
+    "bulkDeleteButton": "删除",
+    "bulkSelectRolePlaceholder": "— 选择角色 —",
+    "bulkSelectCustomRolePlaceholder": "— 选择自定义角色 —"
   },
   "changePassword": {
     "title": "修改密码",
@@ -1242,7 +1260,24 @@
     "changingStagePending": "正在更改…",
     "deleteMessage": "这将永久删除 {{count}} 条记录，无法撤销。",
     "deleteMessage_other": "这将永久删除 {{count}} 条记录，无法撤销。",
-    "errorGeneric": "批量操作失败，请重试。"
+    "errorGeneric": "批量操作失败，请重试。",
+    "activateButton": "激活",
+    "changeRoleButton": "更改角色",
+    "assignCustomRoleButton": "分配自定义角色",
+    "removeCustomRoleButton": "移除自定义角色",
+    "selectRolePlaceholder": "— 选择角色 —",
+    "selectCustomRolePlaceholder": "— 选择自定义角色 —",
+    "successCount": "已更新 {{count}} 条",
+    "successCount_other": "已更新 {{count}} 条",
+    "partialSuccess": "已更新 {{succeeded}} 条，{{failed}} 条失败",
+    "seeDetails": "查看详情",
+    "failedDetailsTitle": "失败的操作",
+    "failedDetailsId": "ID",
+    "failedDetailsReason": "原因",
+    "selfDeactivationSkipped": "您自己的账户已从停用列表中跳过。",
+    "pendingSpinner": "处理中…",
+    "exportButton": "导出 CSV",
+    "changeStageTitle2": "更改销售管道阶段"
   },
   "common": {
     "ownerToggle": {
@@ -2046,6 +2081,7 @@
       "activities": "活动",
       "pipelines": "销售管道",
       "reports": "报告",
+      "bulk": "批量操作",
       "data": "数据",
       "users": "用户",
       "teams": "团队",
@@ -2067,7 +2103,8 @@
       "access": "访问",
       "schedule": "计划",
       "enroll": "注册",
-      "activate": "激活"
+      "activate": "激活",
+      "operations": "操作"
     }
   },
   "teamsSettings": {
