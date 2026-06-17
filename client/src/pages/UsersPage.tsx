@@ -1,26 +1,27 @@
 /**
  * UsersPage component — Admin only.
  * Lists all users and provides controls to invite new users,
- * change roles, and deactivate/reactivate accounts.
+ * change roles inline, change status inline, and perform bulk actions.
+ * (MINCRM-560, MINCRM-561, MINCRM-562)
  */
 
-import { useState, Fragment, useCallback } from 'react';
+import { useState, Fragment, useCallback, useMemo } from 'react';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import { Button } from '@/components/ui/Button.js';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
-import { Badge } from '@/components/ui/Badge.js';
 import { UserActionsMenu } from '@/components/ui/UserActionsMenu.js';
+import { InlineRoleSelect } from '@/components/ui/InlineRoleSelect.js';
+import { InlineStatusSelect } from '@/components/ui/InlineStatusSelect.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import {
   listUsers,
   inviteUser,
-  updateUserRole,
   deactivateUser,
   reactivateUser,
   adminSetPassword,
@@ -28,20 +29,15 @@ import {
   issueApiToken,
   revokeApiToken,
 } from '@/api/users.js';
+import { listUserRoles } from '@/api/customRoles.js';
+import type { CustomRoleResponse } from '@/api/customRoles.js';
 import type { IssueApiTokenResponse } from '@shared/schemas/userSchema.js';
-import type { UserResponse, UserStatus, UserRole } from '@shared/schemas/userSchema.js';
+import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 /** React Query cache key for the users list */
 const USERS_QUERY_KEY = ['users'] as const;
-
-/** Maps a user status to a Badge variant */
-const STATUS_BADGE_VARIANT: Record<UserStatus, 'success' | 'warning' | 'neutral'> = {
-  active: 'success',
-  invited: 'warning',
-  inactive: 'neutral',
-};
 
 interface InviteUserFormProps {
   onSuccess?: () => void;
@@ -406,10 +402,28 @@ export default function UsersPage() {
     queryFn: () => listUsers({ page, limit: PAGINATION_DEFAULT_LIMIT }),
   });
 
-  const roleMutation = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUserRole(id, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }),
+  const users: UserResponse[] = useMemo(() => data?.data ?? [], [data]);
+
+  // Fetch assigned custom roles for each user on the current page (MINCRM-560)
+  const userRoleQueries = useQueries({
+    queries: users.map((u) => ({
+      queryKey: ['users', u.id, 'roles'] as const,
+      queryFn: () => listUserRoles(u.id),
+      staleTime: 5 * 60 * 1000,
+    })),
   });
+
+  // Build a map from userId → assigned custom roles for the current page
+  const userCustomRolesMap = useMemo<Map<string, CustomRoleResponse[]>>(() => {
+    const map = new Map<string, CustomRoleResponse[]>();
+    users.forEach((u, idx) => {
+      map.set(u.id, userRoleQueries[idx]?.data ?? []);
+    });
+    return map;
+  }, [users, userRoleQueries]);
+
+  // Error toast for inline role/status failures
+  const [inlineErrorMessage, setInlineErrorMessage] = useState<string | null>(null);
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => deactivateUser(id),
@@ -444,7 +458,8 @@ export default function UsersPage() {
     },
   });
 
-  const users: UserResponse[] = data?.data ?? [];
+  // canEditUsers: admins have users:edit capability by definition (MINCRM-560, MINCRM-561)
+  const canEditUsers = currentUser?.role === 'admin';
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -526,37 +541,32 @@ export default function UsersPage() {
                         >
                           <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
                           <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                          <td className="px-4 py-3 text-gray-700">
-                            {user.role === 'admin'
-                              ? t('users.roleAdmin')
-                              : user.role === 'manager'
-                                ? t('users.roleManager')
-                                : user.role === 'viewer'
-                                  ? t('users.roleViewer')
-                                  : user.role === 'service_account'
-                                    ? t('users.roleServiceAccount')
-                                    : t('users.roleRep')}
+                          <td className="px-4 py-3">
+                            <InlineRoleSelect
+                              user={user}
+                              canEdit={canEditUsers}
+                              assignedCustomRoles={userCustomRolesMap.get(user.id) ?? []}
+                              usersQueryKey={USERS_QUERY_KEY}
+                              onRoleError={setInlineErrorMessage}
+                            />
                           </td>
                           <td className="px-4 py-3">
-                            <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                              {user.status === 'active'
-                                ? t('users.statusActive')
-                                : user.status === 'invited'
-                                  ? t('users.statusInvited')
-                                  : t('users.statusInactive')}
-                            </Badge>
+                            <InlineStatusSelect
+                              user={user}
+                              canEdit={canEditUsers}
+                              currentUserId={currentUser?.id ?? ''}
+                              usersQueryKey={USERS_QUERY_KEY}
+                              onStatusError={setInlineErrorMessage}
+                            />
                           </td>
                           <td className="px-4 py-3">
                             <UserActionsMenu
                               user={user}
                               isPending={
-                                roleMutation.isPending ||
-                                deactivateMutation.isPending ||
-                                reactivateMutation.isPending
+                                deactivateMutation.isPending || reactivateMutation.isPending
                               }
                               isOpen={openMenuUserId === user.id}
                               onToggle={handleMenuToggle}
-                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
                               onSetPassword={(id) =>
                                 setSetPasswordUserId(setPasswordUserId === id ? null : id)
                               }
@@ -595,38 +605,31 @@ export default function UsersPage() {
                               {user.name}
                             </p>
                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-600">
-                                {user.role === 'admin'
-                                  ? t('users.roleAdmin')
-                                  : user.role === 'manager'
-                                    ? t('users.roleManager')
-                                    : user.role === 'viewer'
-                                      ? t('users.roleViewer')
-                                      : user.role === 'service_account'
-                                        ? t('users.roleServiceAccount')
-                                        : t('users.roleRep')}
-                              </span>
-                              <Badge variant={STATUS_BADGE_VARIANT[user.status]}>
-                                {user.status === 'active'
-                                  ? t('users.statusActive')
-                                  : user.status === 'invited'
-                                    ? t('users.statusInvited')
-                                    : t('users.statusInactive')}
-                              </Badge>
+                            <div className="flex flex-col gap-1 mt-1">
+                              <InlineRoleSelect
+                                user={user}
+                                canEdit={canEditUsers}
+                                assignedCustomRoles={userCustomRolesMap.get(user.id) ?? []}
+                                usersQueryKey={USERS_QUERY_KEY}
+                                onRoleError={setInlineErrorMessage}
+                              />
+                              <InlineStatusSelect
+                                user={user}
+                                canEdit={canEditUsers}
+                                currentUserId={currentUser?.id ?? ''}
+                                usersQueryKey={USERS_QUERY_KEY}
+                                onStatusError={setInlineErrorMessage}
+                              />
                             </div>
                           </div>
                           <div className="shrink-0">
                             <UserActionsMenu
                               user={user}
                               isPending={
-                                roleMutation.isPending ||
-                                deactivateMutation.isPending ||
-                                reactivateMutation.isPending
+                                deactivateMutation.isPending || reactivateMutation.isPending
                               }
                               isOpen={openMobileMenuUserId === user.id}
                               onToggle={handleMobileMenuToggle}
-                              onRoleChange={(id, role) => roleMutation.mutate({ id, role })}
                               onSetPassword={(id) =>
                                 setSetMobilePasswordUserId(
                                   setMobilePasswordUserId === id ? null : id,
@@ -734,6 +737,26 @@ export default function UsersPage() {
             </button>
           </div>
         )}
+        {/* Inline role/status error toast (MINCRM-560, MINCRM-561) */}
+        {inlineErrorMessage && (
+          <div
+            role="alert"
+            data-testid="inline-error-toast"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700 shadow-md"
+          >
+            {inlineErrorMessage}
+            <button
+              type="button"
+              data-testid="inline-error-dismiss"
+              className="ms-3 text-red-500 hover:text-red-700 font-medium"
+              onClick={() => setInlineErrorMessage(null)}
+              aria-label={t('users.cancel')}
+            >
+              {t('common.dismiss')}
+            </button>
+          </div>
+        )}
+
         {/* Issued API token modal — shown exactly once after Issue API Token action (MINCRM-536) */}
         {issuedTokenResult && (
           <div

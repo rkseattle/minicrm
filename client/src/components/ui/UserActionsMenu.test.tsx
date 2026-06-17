@@ -1,13 +1,12 @@
 /**
  * Tests for UserActionsMenu — meatball menu for per-row user admin actions.
+ * Role changes are now handled by InlineRoleSelect (MINCRM-560); this menu
+ * covers password, onboarding-reset, activation, and service-account token actions.
  *
  * Verifies:
  * - Trigger button renders with correct aria attributes
  * - Menu is closed by default
  * - Clicking trigger calls onToggle
- * - When open, Make Admin shown for rep; Make Rep shown for admin
- * - Clicking Make Admin calls onRoleChange with 'admin'
- * - Clicking Make Rep calls onRoleChange with 'rep'
  * - Set Password shown for active/invited users; absent for inactive
  * - Clicking Set Password calls onSetPassword
  * - Deactivate shown for active users; Reactivate shown for inactive
@@ -15,6 +14,7 @@
  * - Clicking Reactivate calls onReactivate
  * - isPending disables the trigger button
  * - Escape key closes the menu via onToggle
+ * - Make Admin / Make Rep items are NOT present (removed by MINCRM-560)
  */
 
 import { screen, fireEvent } from '@testing-library/react';
@@ -53,7 +53,6 @@ function defaultProps(overrides: Partial<Parameters<typeof UserActionsMenu>[0]> 
   return {
     user: ACTIVE_REP,
     isPending: false,
-    onRoleChange: vi.fn(),
     onSetPassword: vi.fn(),
     onDeactivate: vi.fn(),
     onReactivate: vi.fn(),
@@ -108,25 +107,25 @@ describe('UserActionsMenu', () => {
   it('does not render menu items when closed', () => {
     renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: false })} />);
 
+    expect(screen.queryByTestId(`set-password-toggle-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
+  });
+
+  it('does not render Make Admin or Make Rep items (removed by MINCRM-560)', () => {
+    renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true })} />);
+
     expect(screen.queryByTestId(`make-admin-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`make-rep-${ACTIVE_REP.id}`)).not.toBeInTheDocument();
+  });
+
+  it('does not render Make Rep for admin user (removed by MINCRM-560)', () => {
+    renderWithProviders(
+      <UserActionsMenu {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true })} />,
+    );
+
+    expect(screen.queryByTestId(`make-rep-${ACTIVE_ADMIN.id}`)).not.toBeInTheDocument();
   });
 
   describe('when open with a rep user', () => {
-    it('shows Make Admin option', () => {
-      renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true })} />);
-
-      expect(screen.getByTestId(`make-admin-${ACTIVE_REP.id}`)).toBeInTheDocument();
-    });
-
-    it('clicking Make Admin calls onRoleChange with admin', () => {
-      const onRoleChange = vi.fn();
-      renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true, onRoleChange })} />);
-
-      fireEvent.click(screen.getByTestId(`make-admin-${ACTIVE_REP.id}`));
-
-      expect(onRoleChange).toHaveBeenCalledWith(ACTIVE_REP.id, 'admin');
-    });
-
     it('shows Set Password option for active rep', () => {
       renderWithProviders(<UserActionsMenu {...defaultProps({ isOpen: true })} />);
 
@@ -155,27 +154,6 @@ describe('UserActionsMenu', () => {
       fireEvent.click(screen.getByTestId(`deactivate-${ACTIVE_REP.id}`));
 
       expect(onDeactivate).toHaveBeenCalledWith(ACTIVE_REP.id);
-    });
-  });
-
-  describe('when open with an admin user', () => {
-    it('shows Make Rep option', () => {
-      renderWithProviders(
-        <UserActionsMenu {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true })} />,
-      );
-
-      expect(screen.getByTestId(`make-rep-${ACTIVE_ADMIN.id}`)).toBeInTheDocument();
-    });
-
-    it('clicking Make Rep calls onRoleChange with rep', () => {
-      const onRoleChange = vi.fn();
-      renderWithProviders(
-        <UserActionsMenu {...defaultProps({ user: ACTIVE_ADMIN, isOpen: true, onRoleChange })} />,
-      );
-
-      fireEvent.click(screen.getByTestId(`make-rep-${ACTIVE_ADMIN.id}`));
-
-      expect(onRoleChange).toHaveBeenCalledWith(ACTIVE_ADMIN.id, 'rep');
     });
   });
 

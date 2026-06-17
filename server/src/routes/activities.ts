@@ -17,6 +17,10 @@ import {
   updateActivityHandler,
   deleteActivityHandler,
 } from '../controllers/activityController.js';
+import {
+  bulkPatchActivitiesHandler,
+  bulkDeleteActivitiesHandler,
+} from '../controllers/bulkV2Controller.js';
 
 const router = Router();
 
@@ -529,6 +533,113 @@ router.delete(
   requireCapability(Capability.ActivitiesDelete),
   requireFeatureEnabled('activities'),
   asyncHandler(deleteActivityHandler),
+);
+
+// ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/activities/bulk:
+ *   patch:
+ *     tags: [Activities]
+ *     operationId: bulkPatchActivities
+ *     summary: Bulk patch activities — reassign owner (MINCRM-562)
+ *     description: >
+ *       Reassigns owner_id on each listed activity individually.
+ *       Requires bulk:operations + activities:edit. Non-admin actors can only
+ *       act on activities they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, patch]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *               patch:
+ *                 type: object
+ *                 required: [owner_id]
+ *                 properties:
+ *                   owner_id:
+ *                     type: string
+ *                     format: uuid
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ActivitiesEdit),
+  asyncHandler(bulkPatchActivitiesHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/activities/bulk:
+ *   delete:
+ *     tags: [Activities]
+ *     operationId: bulkDeleteActivities
+ *     summary: Bulk delete activities (MINCRM-562)
+ *     description: >
+ *       Deletes each listed activity individually.
+ *       Requires bulk:operations + activities:delete. Non-admin actors can only
+ *       delete activities they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.delete(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ActivitiesDelete),
+  asyncHandler(bulkDeleteActivitiesHandler),
 );
 
 export default router;

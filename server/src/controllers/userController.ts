@@ -6,6 +6,7 @@
 
 import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import {
   inviteUserSchema,
   setPasswordSchema,
@@ -14,6 +15,14 @@ import {
   updatePreferredLanguageSchema,
   updateNotificationPrefsSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
+
+/** Zod schema for PATCH /users/:id/status body (MINCRM-561) */
+const updateStatusSchema = z.object({
+  active: z.boolean({
+    required_error: 'active is required',
+    invalid_type_error: 'active must be a boolean',
+  }),
+});
 import * as userService from '../services/userService.js';
 import type { ActiveUserRow } from '../services/userService.js';
 import type { JwtTokenPayload } from '../types/express.js';
@@ -178,6 +187,51 @@ export async function reactivateUser(req: Request, res: Response): Promise<void>
   const id = String(req.params['id']);
 
   const user = await userService.updateUserStatus(id, 'active', {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
+  if (!user) {
+    res.status(404).json({
+      error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+    });
+    return;
+  }
+
+  res.status(200).json({ user: sanitizeUser(user) });
+}
+
+/**
+ * PATCH /api/users/:id/status
+ * Sets user status via { active: boolean }. Admin only.
+ * Rejects self-deactivation with 409. (MINCRM-561)
+ */
+export async function updateUserStatusHandler(req: Request, res: Response): Promise<void> {
+  const parseResult = updateStatusSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parseResult.error.errors[0].message,
+      },
+    });
+    return;
+  }
+
+  const id = String(req.params['id']);
+  const { active } = parseResult.data;
+
+  if (!active && id === req.user!.id) {
+    res.status(409).json({
+      error: {
+        code: 'SELF_DEACTIVATION_NOT_ALLOWED',
+        message: 'Cannot deactivate your own account',
+      },
+    });
+    return;
+  }
+
+  const newStatus = active ? 'active' : 'inactive';
+  const user = await userService.updateUserStatus(id, newStatus, {
     id: req.user!.id,
     name: req.user!.name,
   });

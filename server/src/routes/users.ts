@@ -12,6 +12,7 @@ import {
   listActiveUsersHandler,
   listUsers,
   updateUserRole,
+  updateUserStatusHandler,
   deactivateUser,
   reactivateUser,
   setPassword,
@@ -30,6 +31,7 @@ import {
   assignUserRoleHandler,
   removeUserRoleHandler,
 } from '../controllers/customRolesController.js';
+import { bulkPatchUsersHandler, bulkDeleteUsersHandler } from '../controllers/bulkV2Controller.js';
 
 const router = Router();
 
@@ -760,6 +762,85 @@ router.patch('/:id/reactivate', asyncHandler(reactivateUser));
 
 /**
  * @openapi
+ * /api/v1/users/{id}/status:
+ *   patch:
+ *     tags: [Users]
+ *     operationId: updateUserStatus
+ *     summary: Set a user's active/inactive status (admin only)
+ *     description: >
+ *       Activates or deactivates a user via { active: boolean }.
+ *       Deactivating the currently authenticated user returns 409.
+ *       invited users can be deactivated (sets status to inactive). (MINCRM-561)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [active]
+ *             properties:
+ *               active:
+ *                 type: boolean
+ *                 description: true to activate, false to deactivate
+ *     responses:
+ *       200:
+ *         description: User status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Insufficient role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Self-deactivation not allowed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: SELF_DEACTIVATION_NOT_ALLOWED
+ *                 message: Cannot deactivate your own account
+ */
+router.patch('/:id/status', asyncHandler(updateUserStatusHandler));
+
+/**
+ * @openapi
  * /api/v1/users/{id}/admin-set-password:
  *   post:
  *     tags: [Users]
@@ -1088,6 +1169,111 @@ router.delete(
   '/:id/roles/:roleId',
   requireCapability(Capability.UsersEdit),
   asyncHandler(removeUserRoleHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/users/bulk:
+ *   patch:
+ *     tags: [Users]
+ *     operationId: bulkPatchUsers
+ *     summary: Bulk patch users — activate/deactivate or change role (MINCRM-562)
+ *     description: >
+ *       Applies a status or role change to each listed user individually.
+ *       Requires admin role + bulk:operations + users:edit.
+ *       Returns partial success: each ID appears in either succeeded or failed.
+ *       Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, patch]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *               patch:
+ *                 type: object
+ *                 properties:
+ *                   active:
+ *                     type: boolean
+ *                   role:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/bulk',
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.UsersEdit),
+  asyncHandler(bulkPatchUsersHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/users/bulk:
+ *   delete:
+ *     tags: [Users]
+ *     operationId: bulkDeleteUsers
+ *     summary: Bulk delete users (MINCRM-562)
+ *     description: >
+ *       Deletes each listed user individually.
+ *       Requires admin role + bulk:operations + users:delete.
+ *       Returns partial success; service accounts and self-delete are rejected per-record.
+ *       Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.delete(
+  '/bulk',
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.UsersDelete),
+  asyncHandler(bulkDeleteUsersHandler),
 );
 
 export default router;

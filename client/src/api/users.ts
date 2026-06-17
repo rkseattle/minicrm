@@ -131,6 +131,18 @@ export async function reactivateUser(id: string): Promise<UserSingleResponse> {
 }
 
 /**
+ * Sets the active/inactive status of a user via a single endpoint. Admin only.
+ * Replaces the separate deactivate/reactivate endpoints for the inline status cell (MINCRM-561).
+ *
+ * @param id - User UUID
+ * @param active - true to activate, false to deactivate
+ */
+export async function updateUserStatus(id: string, active: boolean): Promise<UserSingleResponse> {
+  const response = await apiClient.patch<UserSingleResponse>(`/users/${id}/status`, { active });
+  return response.data;
+}
+
+/**
  * Sets the password for an invited user using their invite token.
  * This is an unauthenticated endpoint.
  *
