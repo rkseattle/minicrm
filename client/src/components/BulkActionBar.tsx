@@ -29,6 +29,10 @@ interface BulkActionBarProps {
   onAction: (key: string) => void;
   /** Called when the user clears the selection */
   onClearSelection: () => void;
+  /** When true, replaces action buttons with a spinner and disables clear */
+  isPending?: boolean;
+  /** If provided, shows a "See details" link after the count (e.g. to view partial failures) */
+  onSeeDetails?: () => void;
 }
 
 /**
@@ -43,6 +47,8 @@ export default function BulkActionBar({
   actions,
   onAction,
   onClearSelection,
+  isPending = false,
+  onSeeDetails,
 }: BulkActionBarProps) {
   const { t } = useTranslation();
 
@@ -59,28 +65,65 @@ export default function BulkActionBar({
         {t('bulk.selectedCount', { count: selectedCount })}
       </span>
 
-      {/* Action buttons */}
+      {/* See details link — shown when partial failures are available */}
+      {onSeeDetails && (
+        <button
+          type="button"
+          onClick={onSeeDetails}
+          className="text-xs text-primary-600 hover:underline"
+          data-testid="bulk-see-details"
+        >
+          {t('bulk.seeDetails')}
+        </button>
+      )}
+
+      {/* Action buttons or spinner when pending */}
       <div className="flex flex-wrap items-center gap-2 min-w-0">
-        {actions.map((action) => (
-          <Button
-            key={action.key}
-            type="button"
-            variant={action.variant ?? 'secondary'}
-            data-testid={action.testId}
-            onClick={() => onAction(action.key)}
-            className="shrink-0"
+        {isPending ? (
+          <svg
+            className="animate-spin h-5 w-5 text-primary-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-label={t('bulk.pendingSpinner')}
           >
-            {t(action.labelKey)}
-          </Button>
-        ))}
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+        ) : (
+          actions.map((action) => (
+            <Button
+              key={action.key}
+              type="button"
+              variant={action.variant ?? 'secondary'}
+              data-testid={action.testId}
+              onClick={() => onAction(action.key)}
+              className="shrink-0"
+            >
+              {t(action.labelKey)}
+            </Button>
+          ))
+        )}
       </div>
 
-      {/* Clear selection */}
+      {/* Clear selection — disabled while an operation is in flight */}
       <button
         type="button"
         onClick={onClearSelection}
+        disabled={isPending}
         data-testid="bulk-clear-selection"
-        className="ms-auto text-xs text-gray-600 hover:text-gray-700 underline shrink-0"
+        className="ms-auto text-xs text-gray-600 hover:text-gray-700 underline shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
         aria-label={t('bulk.clearSelection')}
       >
         {t('bulk.clearSelection')}

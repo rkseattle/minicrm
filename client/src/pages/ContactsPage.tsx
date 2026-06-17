@@ -21,10 +21,12 @@ import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { listContacts, createContact, exportContactsCsv } from '@/api/contacts.js';
-import { bulkContacts } from '@/api/bulk.js';
+import { bulkPatchContacts, bulkDeleteContacts } from '@/api/bulk.js';
+import type { BulkFailure } from '@/api/bulk.js';
 import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
 import TagBadge from '@/components/TagBadge.js';
 import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
 import BulkReassignModal from '@/components/BulkReassignModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import type { DuplicateContactInfo } from '@/api/contacts.js';
@@ -51,6 +53,8 @@ export default function ContactsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  // Bulk ops are available to anyone with write permission (MINCRM-562)
+  const canBulkOp = isAdmin;
   const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -226,10 +230,13 @@ export default function ContactsPage() {
     ownerFilter !== 'all' ||
     selectedTagIds.length > 0;
 
-  // ── Bulk selection state (MINCRM-188) ─────────────────────────────────────
+  // ── Bulk selection state (MINCRM-188, MINCRM-562) ─────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkReassign, setShowBulkReassign] = useState(false);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+  const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
+  const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
 
   const selectedTagKey = selectedTagIds.join(',');
   // Clear selection whenever filters or page change
@@ -279,13 +286,34 @@ export default function ContactsPage() {
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   const bulkMutation = useMutation({
-    mutationFn: bulkContacts,
-    onSuccess: () => {
+    mutationFn: (args: { type: 'patch'; owner_id: string } | { type: 'delete' }) => {
+      const ids = Array.from(selectedIds);
+      if (args.type === 'delete') {
+        return bulkDeleteContacts({ ids });
+      }
+      return bulkPatchContacts({ ids, patch: { owner_id: args.owner_id } });
+    },
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: CONTACTS_QUERY_KEY });
-      setSelectedIds(new Set());
       setShowBulkReassign(false);
       setShowBulkDelete(false);
       setBulkError(null);
+      if (result.failed.length > 0 && result.succeeded.length > 0) {
+        // Partial success — keep selection on failed IDs so admin can retry
+        setBulkPartialFailures(result.failed);
+        setBulkSuccessMessage(
+          t('bulk.partialSuccess', {
+            succeeded: result.succeeded.length,
+            failed: result.failed.length,
+          }),
+        );
+        setSelectedIds(new Set(result.failed.map((f) => f.id)));
+      } else if (result.failed.length === 0) {
+        setBulkPartialFailures([]);
+        setBulkSuccessMessage(t('bulk.successCount', { count: result.succeeded.length }));
+        setSelectedIds(new Set());
+      }
+      // Total failure: do not clear selection so user can retry
     },
     onError: () => {
       setBulkError(t('bulk.errorGeneric'));
@@ -444,6 +472,17 @@ export default function ContactsPage() {
           </div>
         )}
 
+        {/* Bulk success message (MINCRM-562) */}
+        {bulkSuccessMessage && (
+          <p
+            role="status"
+            className="mb-2 text-sm text-green-700"
+            data-testid="bulk-success-message"
+          >
+            {bulkSuccessMessage}
+          </p>
+        )}
+
         {/* Bulk error message (MINCRM-188) */}
         {bulkError && (
           <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
@@ -451,10 +490,14 @@ export default function ContactsPage() {
           </p>
         )}
 
-        {/* Bulk action bar (MINCRM-188) */}
-        {canWrite && selectedIds.size > 0 && (
+        {/* Bulk action bar (MINCRM-188, MINCRM-562) */}
+        {canBulkOp && selectedIds.size > 0 && (
           <BulkActionBar
             selectedCount={selectedIds.size}
+            isPending={bulkMutation.isPending}
+            onSeeDetails={
+              bulkPartialFailures.length > 0 ? () => setShowBulkFailedDetails(true) : undefined
+            }
             actions={[
               {
                 key: 'reassign',
@@ -484,11 +527,7 @@ export default function ContactsPage() {
           users={activeUsers}
           isPending={bulkMutation.isPending}
           onConfirm={(ownerId) => {
-            bulkMutation.mutate({
-              action: 'reassign',
-              ids: Array.from(selectedIds),
-              owner_id: ownerId,
-            });
+            bulkMutation.mutate({ type: 'patch', owner_id: ownerId });
           }}
           onCancel={() => setShowBulkReassign(false)}
         />
@@ -499,9 +538,16 @@ export default function ContactsPage() {
           message={t('bulk.deleteMessage', { count: selectedIds.size })}
           isDeleting={bulkMutation.isPending}
           onConfirm={() => {
-            bulkMutation.mutate({ action: 'delete', ids: Array.from(selectedIds) });
+            bulkMutation.mutate({ type: 'delete' });
           }}
           onCancel={() => setShowBulkDelete(false)}
+        />
+
+        {/* Bulk failed details modal (MINCRM-562) */}
+        <BulkFailedDetailsModal
+          isOpen={showBulkFailedDetails}
+          failures={bulkPartialFailures}
+          onClose={() => setShowBulkFailedDetails(false)}
         />
 
         {/* Contacts list */}
@@ -639,17 +685,19 @@ export default function ContactsPage() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr className="border-b border-gray-200">
-                    {/* Bulk select-all checkbox (MINCRM-188) */}
-                    <th className="w-10 ps-4 py-3">
-                      <input
-                        type="checkbox"
-                        data-testid="bulk-select-all"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={t('bulk.selectAll')}
-                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </th>
+                    {/* Bulk select-all checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                    {canBulkOp && (
+                      <th className="w-10 ps-4 py-3">
+                        <input
+                          type="checkbox"
+                          data-testid="bulk-select-all"
+                          checked={allVisibleSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t('bulk.selectAll')}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </th>
+                    )}
                     <th
                       className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
                       aria-sort={sortCol === 'first_name' ? sortDir : 'none'}
@@ -728,17 +776,19 @@ export default function ContactsPage() {
                       data-selected={selectedIds.has(contact.id) || undefined}
                       className={`group hover:bg-gray-50 transition-colors${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                     >
-                      {/* Row checkbox (MINCRM-188) */}
-                      <td className="w-10 ps-4 py-3">
-                        <input
-                          type="checkbox"
-                          data-testid={`bulk-select-${contact.id}`}
-                          checked={selectedIds.has(contact.id)}
-                          onChange={() => toggleRow(contact.id)}
-                          aria-label={`${contact.first_name} ${contact.last_name}`}
-                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                      </td>
+                      {/* Row checkbox — admins only (MINCRM-188, MINCRM-562) */}
+                      {canBulkOp && (
+                        <td className="w-10 ps-4 py-3">
+                          <input
+                            type="checkbox"
+                            data-testid={`bulk-select-${contact.id}`}
+                            checked={selectedIds.has(contact.id)}
+                            onChange={() => toggleRow(contact.id)}
+                            aria-label={`${contact.first_name} ${contact.last_name}`}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 font-medium text-primary-600">
                         <Link
                           to={`/contacts/${contact.id}`}
@@ -786,19 +836,22 @@ export default function ContactsPage() {
             ) : (
               /* Mobile card view */
               <>
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
-                  <input
-                    type="checkbox"
-                    data-testid="bulk-select-all"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAll}
-                    aria-label={t('bulk.selectAll')}
-                    className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-xs text-gray-500">
-                    {t('bulk.selectedCount', { count: selectedIds.size })}
-                  </span>
-                </div>
+                {/* Select-all bar — admins only (MINCRM-562) */}
+                {canBulkOp && (
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50">
+                    <input
+                      type="checkbox"
+                      data-testid="bulk-select-all"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t('bulk.selectAll')}
+                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {t('bulk.selectedCount', { count: selectedIds.size })}
+                    </span>
+                  </div>
+                )}
                 <ul className="divide-y divide-gray-100">
                   {contacts.map((contact) => (
                     <li
@@ -807,14 +860,17 @@ export default function ContactsPage() {
                       className={`group px-4 py-3 flex items-start gap-3${selectedIds.has(contact.id) ? ' bg-primary-50' : ''}`}
                       data-testid={`contact-card-${contact.id}`}
                     >
-                      <input
-                        type="checkbox"
-                        data-testid={`bulk-select-${contact.id}`}
-                        checked={selectedIds.has(contact.id)}
-                        onChange={() => toggleRow(contact.id)}
-                        aria-label={`${contact.first_name} ${contact.last_name}`}
-                        className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
+                      {/* Row checkbox — admins only (MINCRM-562) */}
+                      {canBulkOp && (
+                        <input
+                          type="checkbox"
+                          data-testid={`bulk-select-${contact.id}`}
+                          checked={selectedIds.has(contact.id)}
+                          onChange={() => toggleRow(contact.id)}
+                          aria-label={`${contact.first_name} ${contact.last_name}`}
+                          className="mt-1 h-5 w-5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/contacts/${contact.id}`}
