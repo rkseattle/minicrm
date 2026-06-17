@@ -1252,6 +1252,7 @@
       "myTeam": "My Team"
     },
     "loading": "Loading…",
+    "dismiss": "Dismiss",
     "sortAsc": "sorted ascending",
     "sortDesc": "sorted descending",
     "backToContacts": "Back to contacts",

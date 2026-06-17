@@ -1287,6 +1287,7 @@
       "myTeam": "我的团队"
     },
     "loading": "加载中…",
+    "dismiss": "关闭",
     "sortAsc": "升序排列",
     "sortDesc": "降序排列",
     "backToContacts": "返回联系人列表",

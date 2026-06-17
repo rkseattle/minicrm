@@ -1,8 +1,9 @@
 /**
  * UserActionsMenu component.
  * Renders a meatball (⋯) trigger button that opens a dropdown context menu
- * with role, password, and activation actions for a single user row.
- * Service accounts show Issue/Revoke API token actions instead of role/password controls.
+ * with password, onboarding-reset, and activation actions for a single user row.
+ * Role changes are handled by the InlineRoleSelect cell (MINCRM-560).
+ * Service accounts show Issue/Revoke API token actions instead of password controls.
  * (MINCRM-535, MINCRM-536)
  */
 
@@ -10,15 +11,13 @@ import { useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
 import { useOnClickOutside } from '@/hooks/useOnClickOutside.js';
-import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
+import type { UserResponse } from '@shared/schemas/userSchema.js';
 
 export interface UserActionsMenuProps {
   /** The user this menu controls. */
   user: UserResponse;
   /** Whether any mutation for this user is pending. Disables the trigger while true. */
   isPending: boolean;
-  /** Called when the admin selects Make Admin or Make Rep. */
-  onRoleChange: (id: string, role: UserRole) => void;
   /** Called when the admin selects Set Password. Toggles the inline password form. */
   onSetPassword: (id: string) => void;
   /** Called when the admin selects Deactivate. */
@@ -53,7 +52,6 @@ export interface UserActionsMenuProps {
 export function UserActionsMenu({
   user,
   isPending,
-  onRoleChange,
   onSetPassword,
   onDeactivate,
   onReactivate,
@@ -144,28 +142,6 @@ export function UserActionsMenu({
           {/* Non-destructive actions — hidden for service accounts */}
           {!isServiceAccount && (
             <div className="py-1">
-              {user.role === 'rep' ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  data-testid={`${testIdPrefix}make-admin-${user.id}`}
-                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => closeAndRun(() => onRoleChange(user.id, 'admin'))}
-                >
-                  {t('users.actionMakeAdmin')}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  role="menuitem"
-                  data-testid={`${testIdPrefix}make-rep-${user.id}`}
-                  className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
-                  onClick={() => closeAndRun(() => onRoleChange(user.id, 'rep'))}
-                >
-                  {t('users.actionMakeRep')}
-                </button>
-              )}
-
               {user.status !== 'inactive' && (
                 <button
                   type="button"
