@@ -5,7 +5,7 @@
  * (MINCRM-560, MINCRM-561, MINCRM-562)
  */
 
-import { useState, Fragment, useCallback, useMemo } from 'react';
+import { useState, Fragment, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -29,12 +29,16 @@ import {
   issueApiToken,
   revokeApiToken,
 } from '@/api/users.js';
+import { bulkPatchUsers, bulkDeleteUsers, type BulkFailure } from '@/api/bulk.js';
 import { listUserRoles } from '@/api/customRoles.js';
 import type { CustomRoleResponse } from '@/api/customRoles.js';
 import type { IssueApiTokenResponse } from '@shared/schemas/userSchema.js';
 import type { UserResponse, UserRole } from '@shared/schemas/userSchema.js';
 import { PASSWORD_MIN_LENGTH } from '@shared/schemas/userSchema.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 
 /** React Query cache key for the users list */
 const USERS_QUERY_KEY = ['users'] as const;
@@ -461,6 +465,111 @@ export default function UsersPage() {
   // canEditUsers: admins have users:edit capability by definition (MINCRM-560, MINCRM-561)
   const canEditUsers = currentUser?.role === 'admin';
 
+  // canBulkOp: bulk:operations capability is seeded for admins only on UsersPage
+  const canBulkOp = currentUser?.role === 'admin';
+
+  // ── Bulk selection state (MINCRM-562) ────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastClickedIndexRef = useRef<number | null>(null);
+
+  // Reset selection when page changes; call through updater fn to satisfy react-hooks/set-state-in-effect
+  useEffect(() => {
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
+  }, [page]);
+
+  const allVisibleIds = users.map((u) => u.id);
+  const allVisibleSelected =
+    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  }
+
+  function toggleRow(id: string, index: number, shiftKey: boolean): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (shiftKey && lastClickedIndexRef.current !== null) {
+        const from = Math.min(lastClickedIndexRef.current, index);
+        const to = Math.max(lastClickedIndexRef.current, index);
+        const isSelecting = !prev.has(id);
+        for (let i = from; i <= to; i++) {
+          const rangeId = allVisibleIds[i];
+          if (rangeId !== undefined) {
+            if (isSelecting) {
+              next.add(rangeId);
+            } else {
+              next.delete(rangeId);
+            }
+          }
+        }
+      } else {
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      }
+      return next;
+    });
+    lastClickedIndexRef.current = index;
+  }
+
+  // Bulk dialog visibility
+  const [showBulkChangeRole, setShowBulkChangeRole] = useState(false);
+  const [showBulkActivate, setShowBulkActivate] = useState(false);
+  const [showBulkDeactivate, setShowBulkDeactivate] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkSelectedRole, setBulkSelectedRole] = useState<string>('');
+
+  // Partial-failure tracking
+  const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+  const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
+  const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
+
+  const bulkOpMutation = useMutation({
+    mutationFn: (
+      args: { type: 'patch'; patch: { active?: boolean; role?: string } } | { type: 'delete' },
+    ) => {
+      const ids = Array.from(selectedIds);
+      if (args.type === 'delete') {
+        return bulkDeleteUsers({ ids });
+      }
+      return bulkPatchUsers({ ids, patch: args.patch });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
+      setShowBulkChangeRole(false);
+      setShowBulkActivate(false);
+      setShowBulkDeactivate(false);
+      setShowBulkDelete(false);
+      if (result.failed.length > 0 && result.succeeded.length > 0) {
+        setBulkPartialFailures(result.failed);
+        setBulkSuccessMessage(
+          t('bulk.partialSuccess', {
+            succeeded: result.succeeded.length,
+            failed: result.failed.length,
+          }),
+        );
+        setSelectedIds(new Set());
+      } else if (result.failed.length === 0) {
+        setBulkPartialFailures([]);
+        setBulkSuccessMessage(t('bulk.successCount', { count: result.succeeded.length }));
+        setSelectedIds(new Set());
+      }
+      // Total failure: do not clear selection so admin can retry
+    },
+    onError: () => {
+      setBulkSuccessMessage(null);
+    },
+  });
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
@@ -486,6 +595,50 @@ export default function UsersPage() {
           >
             {t('errors.generic')}
           </div>
+        )}
+
+        {/* Bulk action bar (MINCRM-562) */}
+        {canBulkOp && selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            isPending={bulkOpMutation.isPending}
+            onSeeDetails={
+              bulkPartialFailures.length > 0 ? () => setShowBulkFailedDetails(true) : undefined
+            }
+            actions={[
+              {
+                key: 'activate',
+                labelKey: 'users.bulkActivateButton',
+                testId: 'bulk-activate-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'deactivate',
+                labelKey: 'users.bulkDeactivateButton',
+                testId: 'bulk-deactivate-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'change_role',
+                labelKey: 'users.bulkChangeRoleButton',
+                testId: 'bulk-change-role-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'delete',
+                labelKey: 'users.bulkDeleteButton',
+                testId: 'bulk-delete-button',
+                variant: 'danger',
+              },
+            ]}
+            onAction={(key) => {
+              if (key === 'activate') setShowBulkActivate(true);
+              if (key === 'deactivate') setShowBulkDeactivate(true);
+              if (key === 'change_role') setShowBulkChangeRole(true);
+              if (key === 'delete') setShowBulkDelete(true);
+            }}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
         )}
 
         {/* Users table */}
@@ -515,6 +668,18 @@ export default function UsersPage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-gray-50">
                     <tr className="border-b border-gray-200">
+                      {canBulkOp && (
+                        <th className="w-10 ps-4 py-3">
+                          <input
+                            type="checkbox"
+                            data-testid="bulk-select-all"
+                            checked={allVisibleSelected}
+                            onChange={toggleSelectAll}
+                            aria-label={t('bulk.selectAll')}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </th>
+                      )}
                       <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide rounded-ss-lg">
                         {t('users.columnName')}
                       </th>
@@ -533,12 +698,31 @@ export default function UsersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {users.map((user) => (
+                    {users.map((user, index) => (
                       <Fragment key={user.id}>
                         <tr
                           className="hover:bg-gray-50 transition-colors"
                           data-testid={`user-card-${user.id}`}
                         >
+                          {canBulkOp && (
+                            <td className="w-10 ps-4 py-3">
+                              <input
+                                type="checkbox"
+                                data-testid={`bulk-select-${user.id}`}
+                                checked={selectedIds.has(user.id)}
+                                onChange={(e) =>
+                                  toggleRow(
+                                    user.id,
+                                    index,
+                                    e.nativeEvent instanceof MouseEvent &&
+                                      (e.nativeEvent as MouseEvent).shiftKey,
+                                  )
+                                }
+                                aria-label={t('bulk.selectAll')}
+                                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              />
+                            </td>
+                          )}
                           <td className="px-4 py-3 font-medium text-gray-900">{user.name}</td>
                           <td className="px-4 py-3 text-gray-500">{user.email}</td>
                           <td className="px-4 py-3">
@@ -581,7 +765,7 @@ export default function UsersPage() {
                         </tr>
                         {setPasswordUserId === user.id && (
                           <tr>
-                            <td colSpan={5} className="px-4 pb-4">
+                            <td colSpan={canBulkOp ? 6 : 5} className="px-4 pb-4">
                               <SetPasswordForm
                                 userId={user.id}
                                 onClose={() => setSetPasswordUserId(null)}
@@ -756,6 +940,215 @@ export default function UsersPage() {
             </button>
           </div>
         )}
+
+        {/* Bulk change role dialog (MINCRM-562) */}
+        {showBulkChangeRole && (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            data-testid="bulk-change-role-overlay"
+            onClick={() => setShowBulkChangeRole(false)}
+          >
+            <dialog
+              open
+              aria-modal="true"
+              aria-labelledby="bulk-change-role-title"
+              data-testid="bulk-change-role-dialog"
+              className="relative w-full max-w-sm mx-4 p-0"
+            >
+              <div
+                role="presentation"
+                className="rounded-lg bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2
+                  id="bulk-change-role-title"
+                  className="text-base font-semibold text-gray-900 mb-4"
+                >
+                  {t('users.bulkChangeRoleButton')}
+                </h2>
+                <Select
+                  id="bulk-change-role-select"
+                  data-testid="bulk-change-role-select"
+                  label={t('users.roleLabel')}
+                  value={bulkSelectedRole}
+                  onChange={(e) => setBulkSelectedRole(e.target.value)}
+                >
+                  <option value="" disabled>
+                    {t('bulk.selectRolePlaceholder')}
+                  </option>
+                  <option value="admin">{t('users.roleAdmin')}</option>
+                  <option value="manager">{t('users.roleManager')}</option>
+                  <option value="rep">{t('users.roleRep')}</option>
+                  <option value="viewer">{t('users.roleViewer')}</option>
+                </Select>
+                <div className="flex items-center gap-3 mt-4">
+                  <Button
+                    type="button"
+                    data-testid="bulk-change-role-confirm"
+                    disabled={bulkOpMutation.isPending || !bulkSelectedRole}
+                    onClick={() => {
+                      if (bulkSelectedRole) {
+                        bulkOpMutation.mutate({ type: 'patch', patch: { role: bulkSelectedRole } });
+                      }
+                    }}
+                  >
+                    {t('users.bulkChangeRoleButton')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="bulk-change-role-cancel"
+                    onClick={() => setShowBulkChangeRole(false)}
+                  >
+                    {t('users.cancel')}
+                  </Button>
+                </div>
+              </div>
+            </dialog>
+          </div>
+        )}
+
+        {/* Bulk activate confirmation (MINCRM-562) */}
+        {showBulkActivate && (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            data-testid="bulk-activate-overlay"
+            onClick={() => setShowBulkActivate(false)}
+          >
+            <dialog
+              open
+              aria-modal="true"
+              aria-labelledby="bulk-activate-title"
+              data-testid="bulk-activate-dialog"
+              className="relative w-full max-w-sm mx-4 p-0"
+            >
+              <div
+                role="presentation"
+                className="rounded-lg bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 id="bulk-activate-title" className="text-base font-semibold text-gray-900 mb-2">
+                  {t('users.bulkActivateButton')}
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  {t('bulk.selectedCount', { count: selectedIds.size })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    data-testid="bulk-activate-confirm"
+                    disabled={bulkOpMutation.isPending}
+                    onClick={() =>
+                      bulkOpMutation.mutate({ type: 'patch', patch: { active: true } })
+                    }
+                  >
+                    {t('users.bulkActivateButton')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="bulk-activate-cancel"
+                    onClick={() => setShowBulkActivate(false)}
+                  >
+                    {t('users.cancel')}
+                  </Button>
+                </div>
+              </div>
+            </dialog>
+          </div>
+        )}
+
+        {/* Bulk deactivate confirmation (MINCRM-562) */}
+        {showBulkDeactivate && (
+          <div
+            role="presentation"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            data-testid="bulk-deactivate-overlay"
+            onClick={() => setShowBulkDeactivate(false)}
+          >
+            <dialog
+              open
+              aria-modal="true"
+              aria-labelledby="bulk-deactivate-title"
+              data-testid="bulk-deactivate-dialog"
+              className="relative w-full max-w-sm mx-4 p-0"
+            >
+              <div
+                role="presentation"
+                className="rounded-lg bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2
+                  id="bulk-deactivate-title"
+                  className="text-base font-semibold text-gray-900 mb-2"
+                >
+                  {t('users.bulkDeactivateButton')}
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  {t('bulk.selectedCount', { count: selectedIds.size })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="danger"
+                    data-testid="bulk-deactivate-confirm"
+                    disabled={bulkOpMutation.isPending}
+                    onClick={() =>
+                      bulkOpMutation.mutate({ type: 'patch', patch: { active: false } })
+                    }
+                  >
+                    {t('users.bulkDeactivateButton')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="bulk-deactivate-cancel"
+                    onClick={() => setShowBulkDeactivate(false)}
+                  >
+                    {t('users.cancel')}
+                  </Button>
+                </div>
+              </div>
+            </dialog>
+          </div>
+        )}
+
+        {/* Bulk delete confirmation (MINCRM-562) */}
+        <ConfirmDeleteModal
+          isOpen={showBulkDelete}
+          message={t('bulk.deleteMessage', { count: selectedIds.size })}
+          isDeleting={bulkOpMutation.isPending}
+          onConfirm={() => bulkOpMutation.mutate({ type: 'delete' })}
+          onCancel={() => setShowBulkDelete(false)}
+        />
+
+        {/* Bulk success toast (MINCRM-562) */}
+        {bulkSuccessMessage && (
+          <div
+            role="status"
+            data-testid="bulk-success-toast"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-md bg-emerald-50 border border-emerald-200 px-4 py-2 text-sm text-emerald-800 shadow-md"
+          >
+            {bulkSuccessMessage}
+            <button
+              type="button"
+              className="ms-3 text-emerald-600 hover:text-emerald-800 font-medium"
+              data-testid="bulk-success-dismiss"
+              onClick={() => setBulkSuccessMessage(null)}
+            >
+              {t('common.dismiss')}
+            </button>
+          </div>
+        )}
+
+        {/* Bulk failed details modal (MINCRM-562) */}
+        <BulkFailedDetailsModal
+          isOpen={showBulkFailedDetails}
+          failures={bulkPartialFailures}
+          onClose={() => setShowBulkFailedDetails(false)}
+        />
 
         {/* Issued API token modal — shown exactly once after Issue API Token action (MINCRM-536) */}
         {issuedTokenResult && (

@@ -13,17 +13,25 @@
  * Implements MINCRM-181, MINCRM-185, MINCRM-345.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { Pagination } from '@/components/ui/Pagination.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
+import BulkReassignModal from '@/components/BulkReassignModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActivities, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import type { ListActivitiesFilters } from '@/api/activities.js';
+import { bulkPatchActivities, bulkDeleteActivities } from '@/api/bulk.js';
+import type { BulkFailure } from '@/api/bulk.js';
+import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
+import type { ActiveUser } from '@/api/users.js';
 import type { ActivityResponse } from '@shared/schemas/activitySchema.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { PAGINATION_DEFAULT_LIMIT } from '@shared/schemas/paginationSchema.js';
@@ -64,7 +72,10 @@ export default function ActivitiesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const isAdmin = user?.role === 'admin';
+  // Bulk ops are available to admins only (MINCRM-562)
+  const canBulkOp = isAdmin;
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
 
@@ -101,7 +112,91 @@ export default function ActivitiesPage() {
       }),
   });
 
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+    enabled: canBulkOp,
+  });
+
+  const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
+
   const activities = data?.data ?? [];
+
+  // ── Bulk selection state (MINCRM-562) ─────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+  const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
+  const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+
+  // Clear selection when page or filters change; call through updater fn to satisfy react-hooks/set-state-in-effect
+  useEffect(() => {
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
+  }, [page, ownerFilter, typeParam, startParam, endParam]);
+
+  const allVisibleIds = activities.map((a) => a.id);
+  const allVisibleSelected =
+    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  }
+
+  function toggleRow(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: (args: { type: 'patch'; owner_id: string } | { type: 'delete' }) => {
+      const ids = Array.from(selectedIds);
+      if (args.type === 'delete') {
+        return bulkDeleteActivities({ ids });
+      }
+      return bulkPatchActivities({ ids, patch: { owner_id: args.owner_id } });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ACTIVITIES_QUERY_KEY });
+      setShowBulkReassign(false);
+      setShowBulkDelete(false);
+      setBulkError(null);
+      if (result.failed.length > 0 && result.succeeded.length > 0) {
+        // Partial success — keep selection on failed IDs so admin can retry
+        setBulkPartialFailures(result.failed);
+        setBulkSuccessMessage(
+          t('bulk.partialSuccess', {
+            succeeded: result.succeeded.length,
+            failed: result.failed.length,
+          }),
+        );
+        setSelectedIds(new Set(result.failed.map((f) => f.id)));
+      } else if (result.failed.length === 0) {
+        setBulkPartialFailures([]);
+        setBulkSuccessMessage(t('bulk.successCount', { count: result.succeeded.length }));
+        setSelectedIds(new Set());
+      }
+      // Total failure: do not clear selection so user can retry
+    },
+    onError: () => {
+      setBulkError(t('bulk.errorGeneric'));
+    },
+  });
 
   const hasActiveFilters = !!(
     typeParam ??
@@ -149,6 +244,84 @@ export default function ActivitiesPage() {
             {t('activitiesPage.errorLoad')}
           </p>
         )}
+
+        {/* Bulk success message (MINCRM-562) */}
+        {bulkSuccessMessage && (
+          <p
+            role="status"
+            className="mb-2 text-sm text-green-700"
+            data-testid="bulk-success-message"
+          >
+            {bulkSuccessMessage}
+          </p>
+        )}
+
+        {/* Bulk error message (MINCRM-562) */}
+        {bulkError && (
+          <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
+            {bulkError}
+          </p>
+        )}
+
+        {/* Bulk action bar — admins only (MINCRM-562) */}
+        {canBulkOp && selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            isPending={bulkMutation.isPending}
+            onSeeDetails={
+              bulkPartialFailures.length > 0 ? () => setShowBulkFailedDetails(true) : undefined
+            }
+            actions={[
+              {
+                key: 'reassign',
+                labelKey: 'bulk.reassignButton',
+                testId: 'bulk-reassign-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'delete',
+                labelKey: 'bulk.deleteButton',
+                testId: 'bulk-delete-button',
+                variant: 'danger',
+              },
+            ]}
+            onAction={(key) => {
+              if (key === 'reassign') setShowBulkReassign(true);
+              if (key === 'delete') setShowBulkDelete(true);
+            }}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
+        )}
+
+        {/* Bulk reassign modal (MINCRM-562) */}
+        <BulkReassignModal
+          isOpen={showBulkReassign}
+          selectedCount={selectedIds.size}
+          users={activeUsers}
+          isPending={bulkMutation.isPending}
+          onConfirm={(ownerId) => {
+            bulkMutation.mutate({ type: 'patch', owner_id: ownerId });
+          }}
+          onCancel={() => setShowBulkReassign(false)}
+        />
+
+        {/* Bulk delete confirmation modal (MINCRM-562) */}
+        <ConfirmDeleteModal
+          isOpen={showBulkDelete}
+          message={t('bulk.deleteMessage', { count: selectedIds.size })}
+          isDeleting={bulkMutation.isPending}
+          onConfirm={() => {
+            bulkMutation.mutate({ type: 'delete' });
+          }}
+          onCancel={() => setShowBulkDelete(false)}
+        />
+
+        {/* Bulk failed details modal (MINCRM-562) */}
+        <BulkFailedDetailsModal
+          isOpen={showBulkFailedDetails}
+          failures={bulkPartialFailures}
+          onClose={() => setShowBulkFailedDetails(false)}
+        />
 
         {!isLoading && !isError && (
           <PagedListLayout
@@ -210,6 +383,18 @@ export default function ActivitiesPage() {
             >
               <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr>
+                  {canBulkOp && (
+                    <th scope="col" className="w-10 ps-4 py-3">
+                      <input
+                        type="checkbox"
+                        data-testid="bulk-select-all"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        aria-label={t('bulk.selectAll')}
+                        className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    </th>
+                  )}
                   <th
                     scope="col"
                     className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
@@ -242,7 +427,23 @@ export default function ActivitiesPage() {
                   const recordPath = linkedRecordPath(activity);
 
                   return (
-                    <tr key={activity.id} data-testid={`activity-row-${activity.id}`}>
+                    <tr
+                      key={activity.id}
+                      data-testid={`activity-row-${activity.id}`}
+                      className={selectedIds.has(activity.id) ? 'bg-primary-50' : undefined}
+                    >
+                      {canBulkOp && (
+                        <td className="w-10 ps-4 py-4">
+                          <input
+                            type="checkbox"
+                            data-testid={`bulk-select-${activity.id}`}
+                            checked={selectedIds.has(activity.id)}
+                            onChange={() => toggleRow(activity.id)}
+                            aria-label={activity.subject}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </td>
+                      )}
                       {/* Type badge */}
                       <td className="px-6 py-4">
                         <span
