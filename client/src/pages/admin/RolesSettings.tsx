@@ -74,7 +74,7 @@ const CAPABILITY_GROUPS: Array<{ groupKey: string; caps: Capability[] }> = [
   },
   {
     groupKey: 'data',
-    caps: [Capability.DataImport, Capability.DataExport],
+    caps: [Capability.BulkOperations, Capability.DataImport, Capability.DataExport],
   },
   {
     groupKey: 'usersAdmin',

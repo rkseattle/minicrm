@@ -146,7 +146,25 @@
     "apiTokenRevoked": "Token de API revocado.",
     "badgeServiceAccount": "Cuenta de servicio",
     "copyToken": "Copiar token",
-    "done": "Listo"
+    "done": "Listo",
+    "roleSelectLabel": "Cambiar rol de {{name}}",
+    "serviceAccountRoleTooltip": "El rol de cuenta de servicio no se puede cambiar aquí",
+    "customRoleLinkLabel": "Ver rol personalizado {{name}}",
+    "statusSelectLabel": "Cambiar estado de {{name}}",
+    "invitedBadgeTooltip": "Esperando primer inicio de sesión",
+    "deactivateSelfTitle": "¿Desactivar su propia cuenta?",
+    "deactivateSelfConfirm": "Está a punto de desactivar su propia cuenta. Cerrará sesión inmediatamente. ¿Está seguro?",
+    "deactivateSelfButton": "Desactivar",
+    "inlineRoleError": "Error al actualizar el rol. Cambio revertido.",
+    "inlineStatusError": "Error al actualizar el estado. Cambio revertido.",
+    "bulkActivateButton": "Activar",
+    "bulkDeactivateButton": "Desactivar",
+    "bulkChangeRoleButton": "Cambiar rol",
+    "bulkAssignCustomRoleButton": "Asignar rol personalizado",
+    "bulkRemoveCustomRoleButton": "Eliminar rol personalizado",
+    "bulkDeleteButton": "Eliminar",
+    "bulkSelectRolePlaceholder": "— Seleccionar rol —",
+    "bulkSelectCustomRolePlaceholder": "— Seleccionar rol personalizado —"
   },
   "changePassword": {
     "title": "Cambia tu contraseña",
@@ -1242,7 +1260,24 @@
     "changingStagePending": "Cambiando…",
     "deleteMessage": "Esto eliminará permanentemente {{count}} registro. Esta acción no se puede deshacer.",
     "deleteMessage_other": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
-    "errorGeneric": "La operación masiva falló. Por favor, inténtelo de nuevo."
+    "errorGeneric": "La operación masiva falló. Por favor, inténtelo de nuevo.",
+    "activateButton": "Activar",
+    "changeRoleButton": "Cambiar rol",
+    "assignCustomRoleButton": "Asignar rol personalizado",
+    "removeCustomRoleButton": "Eliminar rol personalizado",
+    "selectRolePlaceholder": "— Seleccionar rol —",
+    "selectCustomRolePlaceholder": "— Seleccionar rol personalizado —",
+    "successCount": "{{count}} actualizado",
+    "successCount_other": "{{count}} actualizados",
+    "partialSuccess": "{{succeeded}} actualizado(s), {{failed}} fallido(s)",
+    "seeDetails": "Ver detalles",
+    "failedDetailsTitle": "Operaciones fallidas",
+    "failedDetailsId": "ID",
+    "failedDetailsReason": "Razón",
+    "selfDeactivationSkipped": "Su propia cuenta fue excluida de la desactivación.",
+    "pendingSpinner": "Trabajando…",
+    "exportButton": "Exportar CSV",
+    "changeStageTitle2": "Cambiar etapa del pipeline"
   },
   "common": {
     "ownerToggle": {
@@ -2046,6 +2081,7 @@
       "activities": "Actividades",
       "pipelines": "Canalizaciones",
       "reports": "Informes",
+      "bulk": "Operaciones masivas",
       "data": "Datos",
       "users": "Usuarios",
       "teams": "Equipos",
@@ -2067,7 +2103,8 @@
       "access": "Acceder",
       "schedule": "Programar",
       "enroll": "Inscribir",
-      "activate": "Activar"
+      "activate": "Activar",
+      "operations": "Operaciones"
     }
   },
   "teamsSettings": {

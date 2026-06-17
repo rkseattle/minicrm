@@ -146,7 +146,25 @@
     "apiTokenRevoked": "API-Token widerrufen.",
     "badgeServiceAccount": "Dienstkonto",
     "copyToken": "Token kopieren",
-    "done": "Fertig"
+    "done": "Fertig",
+    "roleSelectLabel": "Rolle für {{name}} ändern",
+    "serviceAccountRoleTooltip": "Dienstkontorolle kann hier nicht geändert werden",
+    "customRoleLinkLabel": "Benutzerdefinierte Rolle {{name}} anzeigen",
+    "statusSelectLabel": "Status für {{name}} ändern",
+    "invitedBadgeTooltip": "Wartet auf erste Anmeldung",
+    "deactivateSelfTitle": "Eigenes Konto deaktivieren?",
+    "deactivateSelfConfirm": "Sie sind dabei, Ihr eigenes Konto zu deaktivieren. Sie werden sofort abgemeldet. Sind Sie sicher?",
+    "deactivateSelfButton": "Deaktivieren",
+    "inlineRoleError": "Rollenaktualisierung fehlgeschlagen. Änderung zurückgesetzt.",
+    "inlineStatusError": "Statusaktualisierung fehlgeschlagen. Änderung zurückgesetzt.",
+    "bulkActivateButton": "Aktivieren",
+    "bulkDeactivateButton": "Deaktivieren",
+    "bulkChangeRoleButton": "Rolle ändern",
+    "bulkAssignCustomRoleButton": "Benutzerdefinierte Rolle zuweisen",
+    "bulkRemoveCustomRoleButton": "Benutzerdefinierte Rolle entfernen",
+    "bulkDeleteButton": "Löschen",
+    "bulkSelectRolePlaceholder": "— Rolle auswählen —",
+    "bulkSelectCustomRolePlaceholder": "— Benutzerdefinierte Rolle auswählen —"
   },
   "changePassword": {
     "title": "Passwort ändern",
@@ -1242,7 +1260,24 @@
     "changingStagePending": "Wird geändert…",
     "deleteMessage": "Dadurch wird {{count}} Datensatz dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
     "deleteMessage_other": "Dadurch werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
-    "errorGeneric": "Massenvorgang fehlgeschlagen. Bitte versuchen Sie es erneut."
+    "errorGeneric": "Massenvorgang fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "activateButton": "Aktivieren",
+    "changeRoleButton": "Rolle ändern",
+    "assignCustomRoleButton": "Benutzerdefinierte Rolle zuweisen",
+    "removeCustomRoleButton": "Benutzerdefinierte Rolle entfernen",
+    "selectRolePlaceholder": "— Rolle auswählen —",
+    "selectCustomRolePlaceholder": "— Benutzerdefinierte Rolle auswählen —",
+    "successCount": "{{count}} aktualisiert",
+    "successCount_other": "{{count}} aktualisiert",
+    "partialSuccess": "{{succeeded}} aktualisiert, {{failed}} fehlgeschlagen",
+    "seeDetails": "Details anzeigen",
+    "failedDetailsTitle": "Fehlgeschlagene Vorgänge",
+    "failedDetailsId": "ID",
+    "failedDetailsReason": "Grund",
+    "selfDeactivationSkipped": "Ihr eigenes Konto wurde von der Deaktivierung ausgeschlossen.",
+    "pendingSpinner": "Arbeitet…",
+    "exportButton": "CSV exportieren",
+    "changeStageTitle2": "Pipeline-Phase ändern"
   },
   "common": {
     "ownerToggle": {
@@ -2046,6 +2081,7 @@
       "activities": "Aktivitäten",
       "pipelines": "Pipelines",
       "reports": "Berichte",
+      "bulk": "Massenaktionen",
       "data": "Daten",
       "users": "Benutzer",
       "teams": "Teams",
@@ -2067,7 +2103,8 @@
       "access": "Zugreifen",
       "schedule": "Planen",
       "enroll": "Einschreiben",
-      "activate": "Aktivieren"
+      "activate": "Aktivieren",
+      "operations": "Vorgänge"
     }
   },
   "teamsSettings": {

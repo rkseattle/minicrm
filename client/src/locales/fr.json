@@ -146,7 +146,25 @@
     "apiTokenRevoked": "Jeton API révoqué.",
     "badgeServiceAccount": "Compte de service",
     "copyToken": "Copier le jeton",
-    "done": "Terminé"
+    "done": "Terminé",
+    "roleSelectLabel": "Modifier le rôle de {{name}}",
+    "serviceAccountRoleTooltip": "Le rôle du compte de service ne peut pas être modifié ici",
+    "customRoleLinkLabel": "Voir le rôle personnalisé {{name}}",
+    "statusSelectLabel": "Modifier le statut de {{name}}",
+    "invitedBadgeTooltip": "En attente de la première connexion",
+    "deactivateSelfTitle": "Désactiver votre propre compte ?",
+    "deactivateSelfConfirm": "Vous êtes sur le point de désactiver votre propre compte. Vous serez déconnecté immédiatement. Êtes-vous sûr ?",
+    "deactivateSelfButton": "Désactiver",
+    "inlineRoleError": "Échec de la mise à jour du rôle. Modification annulée.",
+    "inlineStatusError": "Échec de la mise à jour du statut. Modification annulée.",
+    "bulkActivateButton": "Activer",
+    "bulkDeactivateButton": "Désactiver",
+    "bulkChangeRoleButton": "Modifier le rôle",
+    "bulkAssignCustomRoleButton": "Attribuer un rôle personnalisé",
+    "bulkRemoveCustomRoleButton": "Supprimer un rôle personnalisé",
+    "bulkDeleteButton": "Supprimer",
+    "bulkSelectRolePlaceholder": "— Sélectionner un rôle —",
+    "bulkSelectCustomRolePlaceholder": "— Sélectionner un rôle personnalisé —"
   },
   "changePassword": {
     "title": "Changer votre mot de passe",
@@ -1242,7 +1260,24 @@
     "changingStagePending": "Modification…",
     "deleteMessage": "Cela supprimera définitivement {{count}} enregistrement. Cette action est irréversible.",
     "deleteMessage_other": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
-    "errorGeneric": "L'opération en masse a échoué. Veuillez réessayer."
+    "errorGeneric": "L'opération en masse a échoué. Veuillez réessayer.",
+    "activateButton": "Activer",
+    "changeRoleButton": "Modifier le rôle",
+    "assignCustomRoleButton": "Attribuer un rôle personnalisé",
+    "removeCustomRoleButton": "Supprimer un rôle personnalisé",
+    "selectRolePlaceholder": "— Sélectionner un rôle —",
+    "selectCustomRolePlaceholder": "— Sélectionner un rôle personnalisé —",
+    "successCount": "{{count}} mis à jour",
+    "successCount_other": "{{count}} mis à jour",
+    "partialSuccess": "{{succeeded}} mis à jour, {{failed}} échoué(s)",
+    "seeDetails": "Voir les détails",
+    "failedDetailsTitle": "Opérations échouées",
+    "failedDetailsId": "ID",
+    "failedDetailsReason": "Raison",
+    "selfDeactivationSkipped": "Votre propre compte a été exclu de la désactivation.",
+    "pendingSpinner": "En cours…",
+    "exportButton": "Exporter CSV",
+    "changeStageTitle2": "Modifier l'étape du pipeline"
   },
   "common": {
     "ownerToggle": {
@@ -2046,6 +2081,7 @@
       "activities": "Activités",
       "pipelines": "Pipelines",
       "reports": "Rapports",
+      "bulk": "Actions en masse",
       "data": "Données",
       "users": "Utilisateurs",
       "teams": "Équipes",
@@ -2067,7 +2103,8 @@
       "access": "Accéder",
       "schedule": "Planifier",
       "enroll": "Inscrire",
-      "activate": "Activer"
+      "activate": "Activer",
+      "operations": "Opérations"
     }
   },
   "teamsSettings": {

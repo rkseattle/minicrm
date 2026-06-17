@@ -72,6 +72,9 @@ export enum Capability {
   ForecastingView = 'forecasting:view',
   ForecastingEdit = 'forecasting:edit',
 
+  // Bulk operations gate — required for all bulk endpoints and bulk selection UI (MINCRM-562)
+  BulkOperations = 'bulk:operations',
+
   // Bulk Data
   DataImport = 'data:import',
   DataExport = 'data:export',
