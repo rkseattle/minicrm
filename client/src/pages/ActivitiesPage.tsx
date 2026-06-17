@@ -74,8 +74,8 @@ export default function ActivitiesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === 'admin';
-  // Bulk ops are available to admins only (MINCRM-562)
-  const canBulkOp = isAdmin;
+  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
   const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
 

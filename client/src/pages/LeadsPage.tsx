@@ -5,7 +5,7 @@
  * (MINCRM-173, MINCRM-174)
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,12 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { usePagination } from '@/hooks/usePagination.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
+import { bulkPatchLeads, bulkDeleteLeads } from '@/api/bulk.js';
+import type { BulkFailure } from '@/api/bulk.js';
+import BulkActionBar from '@/components/BulkActionBar.js';
+import BulkFailedDetailsModal from '@/components/BulkFailedDetailsModal.js';
+import BulkReassignModal from '@/components/BulkReassignModal.js';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 
 /** React Query cache key for the leads list */
 export const LEADS_QUERY_KEY = ['leads'] as const;
@@ -49,6 +55,8 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { canWrite } = usePermissions();
+  // bulk:operations capability is seeded for admin and manager roles (MINCRM-562)
+  const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
 
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -96,6 +104,13 @@ export default function LeadsPage() {
   // Inline status editing
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
 
+  // Bulk selection state (MINCRM-562)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkReassign, setShowBulkReassign] = useState(false);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
+  const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+
   const queryParams = {
     owner: ownerApiParam,
     status: statusFilter || undefined,
@@ -119,6 +134,55 @@ export default function LeadsPage() {
 
   const leads: LeadResponse[] = data?.data ?? [];
   const total = data?.total ?? 0;
+
+  // Clear selection whenever filters or page change (MINCRM-562)
+  useEffect(() => {
+    setSelectedIds(new Set()); // eslint-disable-line react-hooks/set-state-in-effect -- mirrors ContactsPage/DealsPage/ActivitiesPage pattern
+  }, [page, ownerFilter, statusFilter, sourceFilter, includeDisqualified, includeConverted]);
+
+  const allVisibleIds = leads.map((l) => l.id);
+  const allVisibleSelected =
+    allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelectAll(): void {
+    if (allVisibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleIds));
+    }
+  }
+
+  function toggleRow(id: string): void {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: (args: { type: 'patch'; owner_id: string } | { type: 'delete' }) => {
+      const ids = Array.from(selectedIds);
+      if (args.type === 'delete') return bulkDeleteLeads({ ids });
+      return bulkPatchLeads({ ids, patch: { owner_id: args.owner_id } });
+    },
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
+      setShowBulkReassign(false);
+      setShowBulkDelete(false);
+      if (result.failed.length > 0 && result.succeeded.length > 0) {
+        setBulkPartialFailures(result.failed);
+        setSelectedIds(new Set(result.failed.map((f) => f.id)));
+      } else if (result.failed.length === 0) {
+        setSelectedIds(new Set());
+        setBulkPartialFailures([]);
+      }
+    },
+  });
 
   const hasActiveFilters =
     ownerFilter !== 'all' ||
@@ -307,6 +371,58 @@ export default function LeadsPage() {
           </div>
         )}
 
+        {/* Bulk action bar (MINCRM-562) */}
+        {canBulkOp && selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            isPending={bulkMutation.isPending}
+            onSeeDetails={
+              bulkPartialFailures.length > 0 ? () => setShowBulkFailedDetails(true) : undefined
+            }
+            actions={[
+              {
+                key: 'reassign',
+                labelKey: 'bulk.reassignButton',
+                testId: 'leads-bulk-reassign-button',
+                variant: 'secondary',
+              },
+              {
+                key: 'delete',
+                labelKey: 'bulk.deleteButton',
+                testId: 'leads-bulk-delete-button',
+                variant: 'danger',
+              },
+            ]}
+            onAction={(key) => {
+              if (key === 'reassign') setShowBulkReassign(true);
+              if (key === 'delete') setShowBulkDelete(true);
+            }}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
+        )}
+
+        {/* Bulk modals (MINCRM-562) */}
+        <BulkReassignModal
+          isOpen={showBulkReassign}
+          selectedCount={selectedIds.size}
+          users={activeUsers}
+          isPending={bulkMutation.isPending}
+          onConfirm={(ownerId) => bulkMutation.mutate({ type: 'patch', owner_id: ownerId })}
+          onCancel={() => setShowBulkReassign(false)}
+        />
+        <ConfirmDeleteModal
+          isOpen={showBulkDelete}
+          message={t('bulk.deleteMessage', { count: selectedIds.size })}
+          isDeleting={bulkMutation.isPending}
+          onConfirm={() => bulkMutation.mutate({ type: 'delete' })}
+          onCancel={() => setShowBulkDelete(false)}
+        />
+        <BulkFailedDetailsModal
+          isOpen={showBulkFailedDetails}
+          failures={bulkPartialFailures}
+          onClose={() => setShowBulkFailedDetails(false)}
+        />
+
         {/* Table */}
         {isLoading && (
           <p className="text-gray-500" data-testid="leads-loading">
@@ -442,6 +558,18 @@ export default function LeadsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr>
+                  {canBulkOp && (
+                    <th className="w-10 ps-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        aria-label={t('bulk.selectAll')}
+                        data-testid="leads-select-all"
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
                     {t('leads.columnName')}
                   </th>
@@ -474,6 +602,17 @@ export default function LeadsPage() {
                       className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
                       data-testid={`lead-row-${lead.id}`}
                     >
+                      {canBulkOp && (
+                        <td className="w-10 ps-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(lead.id)}
+                            onChange={() => toggleRow(lead.id)}
+                            data-testid={`bulk-select-${lead.id}`}
+                            className="rounded border-gray-300"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm font-medium text-primary-600">
                         <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
                           {lead.first_name}

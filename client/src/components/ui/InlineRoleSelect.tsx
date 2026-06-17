@@ -107,11 +107,13 @@ export function InlineRoleSelect({
           ].join(' ')}
           onChange={handleChange}
         >
-          {(USER_ROLES as readonly UserRole[]).map((role) => (
-            <option key={role} value={role}>
-              {t(ROLE_LABEL_KEYS[role])}
-            </option>
-          ))}
+          {(USER_ROLES as readonly UserRole[])
+            .filter((role) => role !== 'service_account')
+            .map((role) => (
+              <option key={role} value={role}>
+                {t(ROLE_LABEL_KEYS[role])}
+              </option>
+            ))}
         </select>
       )}
 

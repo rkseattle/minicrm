@@ -57,6 +57,12 @@ export interface BulkActivityPatch {
   patch: { owner_id?: string };
 }
 
+/** PATCH body for bulk lead updates (MINCRM-562) */
+export interface BulkLeadPatch {
+  ids: string[];
+  patch: { owner_id: string };
+}
+
 /** Payload for a bulk contact or account operation */
 export interface BulkContactAccountPayload {
   action: 'reassign' | 'delete';
@@ -183,5 +189,25 @@ export async function bulkDeleteActivities(body: BulkDeleteBody): Promise<BulkOp
   const response = await apiClient.delete<BulkOperationResult>('/activities/bulk', {
     data: body,
   });
+  return response.data;
+}
+
+/**
+ * Bulk PATCH for leads (reassign owner). (MINCRM-562)
+ *
+ * @param body - ids and patch fields
+ */
+export async function bulkPatchLeads(body: BulkLeadPatch): Promise<BulkOperationResult> {
+  const response = await apiClient.patch<BulkOperationResult>('/leads/bulk', body);
+  return response.data;
+}
+
+/**
+ * Bulk DELETE for leads. (MINCRM-562)
+ *
+ * @param body - ids to delete
+ */
+export async function bulkDeleteLeads(body: BulkDeleteBody): Promise<BulkOperationResult> {
+  const response = await apiClient.delete<BulkOperationResult>('/leads/bulk', { data: body });
   return response.data;
 }

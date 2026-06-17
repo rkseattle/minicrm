@@ -234,6 +234,112 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/contacts/bulk:
+ *   patch:
+ *     tags: [Contacts]
+ *     operationId: bulkPatchContacts
+ *     summary: Bulk patch contacts — reassign owner (MINCRM-562)
+ *     description: >
+ *       Reassigns owner_id on each listed contact individually.
+ *       Requires bulk:operations + contacts:edit. Non-admin actors can only
+ *       act on contacts they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, patch]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *               patch:
+ *                 type: object
+ *                 required: [owner_id]
+ *                 properties:
+ *                   owner_id:
+ *                     type: string
+ *                     format: uuid
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+// Registered here (before /:id) to prevent Express matching 'bulk' as a UUID param
+router.patch(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ContactsEdit),
+  asyncHandler(bulkPatchContactsHandler),
+);
+/**
+ * @openapi
+ * /api/v1/contacts/bulk:
+ *   delete:
+ *     tags: [Contacts]
+ *     operationId: bulkDeleteContacts
+ *     summary: Bulk delete contacts (MINCRM-562)
+ *     description: >
+ *       Deletes each listed contact individually.
+ *       Requires bulk:operations + contacts:delete. Non-admin actors can only
+ *       delete contacts they own. Max 500 IDs per request.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 maxItems: 500
+ *     responses:
+ *       200:
+ *         description: Partial or full success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkV2Result'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+// Registered here (before /:id) to prevent Express matching 'bulk' as a UUID param
+router.delete(
+  '/bulk',
+  authenticate,
+  requireCapability(Capability.BulkOperations),
+  requireCapability(Capability.ContactsDelete),
+  asyncHandler(bulkDeleteContactsHandler),
+);
+
+/**
+ * @openapi
  * /api/v1/contacts:
  *   post:
  *     tags: [Contacts]
@@ -816,113 +922,6 @@ router.get(
   authenticate,
   requireFeatureEnabled('sequencing'),
   asyncHandler(listContactEnrollmentsHandler),
-);
-
-// ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────
-
-/**
- * @openapi
- * /api/v1/contacts/bulk:
- *   patch:
- *     tags: [Contacts]
- *     operationId: bulkPatchContacts
- *     summary: Bulk patch contacts — reassign owner (MINCRM-562)
- *     description: >
- *       Reassigns owner_id on each listed contact individually.
- *       Requires bulk:operations + contacts:edit. Non-admin actors can only
- *       act on contacts they own. Max 500 IDs per request.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids, patch]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 maxItems: 500
- *               patch:
- *                 type: object
- *                 required: [owner_id]
- *                 properties:
- *                   owner_id:
- *                     type: string
- *                     format: uuid
- *     responses:
- *       200:
- *         description: Partial or full success
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BulkV2Result'
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.patch(
-  '/bulk',
-  authenticate,
-  requireCapability(Capability.BulkOperations),
-  requireCapability(Capability.ContactsEdit),
-  asyncHandler(bulkPatchContactsHandler),
-);
-
-/**
- * @openapi
- * /api/v1/contacts/bulk:
- *   delete:
- *     tags: [Contacts]
- *     operationId: bulkDeleteContacts
- *     summary: Bulk delete contacts (MINCRM-562)
- *     description: >
- *       Deletes each listed contact individually.
- *       Requires bulk:operations + contacts:delete. Non-admin actors can only
- *       delete contacts they own. Max 500 IDs per request.
- *     security:
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [ids]
- *             properties:
- *               ids:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: uuid
- *                 maxItems: 500
- *     responses:
- *       200:
- *         description: Partial or full success
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BulkV2Result'
- *       400:
- *         $ref: '#/components/responses/BadRequest'
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       403:
- *         $ref: '#/components/responses/Forbidden'
- */
-router.delete(
-  '/bulk',
-  authenticate,
-  requireCapability(Capability.BulkOperations),
-  requireCapability(Capability.ContactsDelete),
-  asyncHandler(bulkDeleteContactsHandler),
 );
 
 // ── GDPR routes (admin only) — MINCRM-364 ─────────────────────────────────────

@@ -49,6 +49,7 @@ import {
   createTestLead,
   createTestUser,
   createTestRep,
+  createTestAdmin,
 } from '@apps/minicrm/helpers.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -458,7 +459,9 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
     async ({ page, testData, restClient }) => {
       const uniqueSuffix = `cc6-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const rep = await createTestRep(testData, restClient);
+      // Bulk ops require admin — create an ephemeral admin for the browser session.
+      // (MINCRM-562)
+      const admin = await createTestAdmin(testData, restClient);
 
       // Create the reassignment target while still admin-authed (MINCRM-415)
       const newOwner = await createTestUser(restClient, {
@@ -467,8 +470,8 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
         role: 'rep',
       });
 
-      await loginViaBrowser(rep.email, rep.password, { page });
-      await loginAs(restClient, rep.email, rep.password);
+      await loginViaBrowser(admin.email, admin.password, { page });
+      await loginAsAdmin(restClient);
 
       // Create 3 contacts
       const c1 = await createTestContact(testData, restClient, {
@@ -529,8 +532,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(r3.body.contact.owner_id, 'c3 should have new owner').toBe(newOwner.id);
       expect(r3.body.contact.version, 'c3 version unchanged by bulk op').toBe(1);
 
-      // Deactivate the temp user (users cannot be hard-deleted); re-auth as admin first (MINCRM-415)
-      await loginAsAdmin(restClient);
+      // Deactivate the temp user (users cannot be hard-deleted).
       await deactivateUser(restClient, newOwner.id);
     },
   );

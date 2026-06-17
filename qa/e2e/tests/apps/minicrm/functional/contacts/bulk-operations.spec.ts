@@ -5,13 +5,16 @@
  *   - Select multiple contacts → bulk reassign → verify new owner via API
  *   - Select multiple contacts → bulk delete → verify 404 via API
  *
+ * Bulk operations require admin (or manager) role — updated in MINCRM-562 to
+ * restrict the UI to users with the bulk:operations capability.
+ *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls — all through behaviors
  *   - All test data managed via restClient + TestDataManager (auto teardown)
  *
- * MINCRM-188
+ * MINCRM-188, MINCRM-562
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -28,9 +31,9 @@ import {
   isBulkActionBarHidden,
   type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
-import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
-import { createTestContact, createTestUser, createTestRep } from '@apps/minicrm/helpers.js';
+import { createTestContact, createTestUser, createTestAdmin } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
@@ -46,18 +49,13 @@ type ContactWithOwner = ContactRow & { owner_id: string };
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Shared rep credentials, populated by beforeEach, consumed by tests that need
-// to re-auth restClient as the rep after an intervening admin operation. (MINCRM-415)
-let repEmail = '';
-let repPassword = '';
-
 test.beforeEach(async ({ restClient, testData, page }) => {
+  // Bulk operations require admin (or manager) role — log in as an ephemeral
+  // admin so the checkbox column and bulk-action-bar are visible. (MINCRM-562)
   await loginAsAdmin(restClient);
-  const rep = await createTestRep(testData, restClient);
-  repEmail = rep.email;
-  repPassword = rep.password;
-  await loginViaBrowser(rep.email, rep.password, { page });
-  await loginAs(restClient, rep.email, rep.password);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await loginAsAdmin(restClient);
 });
 
 test('@functional F2-BK1: select multiple contacts → bulk reassign → new owner reflected via API', async ({
@@ -65,24 +63,16 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   restClient,
   testData,
 }) => {
-  // restClient is currently authenticated as rep (from beforeEach). We need admin
-  // to call createTestUser, then re-auth as rep so the contacts are rep-owned and
-  // the browser session (rep) has permission to bulk-reassign them. (MINCRM-415)
-  await loginAsAdmin(restClient);
-
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  // Create a second rep to reassign to (admin-only operation).
+  // Create a second rep to reassign to.
   const newOwner = await createTestUser(restClient, {
     name: `BK1 Owner ${uniqueSuffix}`,
     email: `bk1-owner-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
 
-  // Re-auth as the ephemeral rep so contacts are created with the rep as owner.
-  await loginAs(restClient, repEmail, repPassword);
-
-  // Create two contacts owned by the rep.
+  // Create two contacts (owned by the admin restClient).
   const c1 = await createTestContact(testData, restClient, {
     first_name: 'BK1A',
     last_name: `Bulk-${uniqueSuffix}`,
@@ -109,7 +99,6 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   await clickBulkCheckbox(c2.id, { page });
 
   // Bulk action bar should be visible.
-
   await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
 
   await bulkReassignContacts(newOwner.id, newOwner.name, { page });
@@ -127,8 +116,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   const c2Updated = (await getContactById(restClient, c2.id)) as ContactWithOwner;
   expect(c2Updated.owner_id, 'c2 should have new owner').toBe(newOwner.id);
 
-  // Deactivate the temp user (users cannot be hard-deleted); re-auth as admin first. (MINCRM-415)
-  await loginAsAdmin(restClient);
+  // Deactivate the temp user (users cannot be hard-deleted).
   await deactivateUser(restClient, newOwner.id);
 });
 

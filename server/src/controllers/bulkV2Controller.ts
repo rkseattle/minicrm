@@ -17,6 +17,8 @@ import {
   bulkDeleteDeals,
   bulkPatchActivities,
   bulkDeleteActivities,
+  bulkPatchLeads,
+  bulkDeleteLeads,
 } from '../services/bulkV2Service.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { updateRoleSchema } from '@minicrm/shared/schemas/userSchema.js';
@@ -124,7 +126,7 @@ export async function bulkDeleteUsersHandler(req: Request, res: Response): Promi
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name };
+  const actor = { id: req.user!.id, name: req.user!.name }; // safe: authenticate middleware ran
   const result = await bulkDeleteUsers(parsed.data, actor);
   res.json(result);
 }
@@ -144,7 +146,7 @@ export async function bulkPatchContactsHandler(req: Request, res: Response): Pro
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   const result = await bulkPatchContacts(parsed.data, actor);
   res.json(result);
 }
@@ -162,7 +164,7 @@ export async function bulkDeleteContactsHandler(req: Request, res: Response): Pr
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   const result = await bulkDeleteContacts(parsed.data, actor);
   res.json(result);
 }
@@ -182,7 +184,7 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   try {
     const result = await bulkPatchDeals(parsed.data, actor);
     res.json(result);
@@ -211,7 +213,7 @@ export async function bulkDeleteDealsHandler(req: Request, res: Response): Promi
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   const result = await bulkDeleteDeals(parsed.data, actor);
   res.json(result);
 }
@@ -231,7 +233,7 @@ export async function bulkPatchActivitiesHandler(req: Request, res: Response): P
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   const result = await bulkPatchActivities(parsed.data, actor);
   res.json(result);
 }
@@ -249,7 +251,52 @@ export async function bulkDeleteActivitiesHandler(req: Request, res: Response): 
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role };
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
   const result = await bulkDeleteActivities(parsed.data, actor);
+  res.json(result);
+}
+
+// ── Leads ─────────────────────────────────────────────────────────────────────
+
+const bulkLeadPatchSchema = z.object({
+  ids: idsSchema,
+  patch: z.object({
+    owner_id: z.string().uuid('owner_id must be a valid UUID'),
+  }),
+});
+
+/**
+ * PATCH /api/leads/bulk
+ * Bulk patch leads (reassign owner). Requires bulk:operations + contacts:edit.
+ */
+export async function bulkPatchLeadsHandler(req: Request, res: Response): Promise<void> {
+  const parsed = bulkLeadPatchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0].message;
+    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
+    sendValidationError(res, message, isOverLimit);
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
+  const result = await bulkPatchLeads(parsed.data, actor);
+  res.json(result);
+}
+
+/**
+ * DELETE /api/leads/bulk
+ * Bulk delete leads. Requires bulk:operations + contacts:delete.
+ */
+export async function bulkDeleteLeadsHandler(req: Request, res: Response): Promise<void> {
+  const parsed = bulkDeleteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const message = parsed.error.errors[0].message;
+    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
+    sendValidationError(res, message, isOverLimit);
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name, role: req.user!.role }; // safe: authenticate middleware ran
+  const result = await bulkDeleteLeads(parsed.data, actor);
   res.json(result);
 }

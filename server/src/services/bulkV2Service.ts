@@ -56,6 +56,11 @@ export interface BulkActivityPatchInput {
   patch: { owner_id?: string };
 }
 
+export interface BulkLeadPatchInput {
+  ids: string[];
+  patch: { owner_id?: string };
+}
+
 export interface BulkDeleteInput {
   ids: string[];
 }
@@ -851,6 +856,192 @@ export async function bulkDeleteActivities(
       } catch (err) {
         await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
         logger.warn({ err, id }, 'bulkDeleteActivities: per-record failure');
+        failed.push({ id, reason: 'internal_error' });
+      }
+    }
+
+    await client.query('COMMIT');
+    return { succeeded, failed };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ── Leads ─────────────────────────────────────────────────────────────────────
+
+/** Minimal lead row for bulk operations */
+interface LeadBulkRow {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  owner_id: string;
+}
+
+/**
+ * Bulk PATCH leads: reassign owner_id.
+ *
+ * Leads share their capability namespace with contacts (ContactsEdit / ContactsDelete).
+ *
+ * @param input - Validated bulk patch input
+ * @param actor - User performing the action
+ */
+export async function bulkPatchLeads(
+  input: BulkLeadPatchInput,
+  actor: AuditActor & { role: string },
+): Promise<BulkV2Result> {
+  const { ids, patch } = input;
+  const succeeded: string[] = [];
+  const failed: Array<{ id: string; reason: string }> = [];
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const fetchResult = await client.query<LeadBulkRow>(
+      `SELECT id, first_name, last_name, owner_id FROM leads WHERE id = ANY($1)`,
+      [ids],
+    );
+    const rowMap = new Map(fetchResult.rows.map((r) => [r.id, r]));
+
+    const reassignedIds: string[] = [];
+
+    for (const id of ids) {
+      const row = rowMap.get(id);
+      if (!row) {
+        failed.push({ id, reason: 'not_found' });
+        continue;
+      }
+
+      if (actor.role !== 'admin' && row.owner_id !== actor.id) {
+        failed.push({ id, reason: 'forbidden' });
+        continue;
+      }
+
+      const sp = savepointName(id);
+      try {
+        await client.query(`SAVEPOINT ${sp}`);
+
+        if (patch.owner_id !== undefined) {
+          await client.query(`UPDATE leads SET owner_id = $1, updated_at = now() WHERE id = $2`, [
+            patch.owner_id,
+            id,
+          ]);
+          const recordName = row.last_name ? `${row.first_name} ${row.last_name}` : row.first_name;
+          await writeAuditEntry(client, {
+            recordType: 'lead',
+            recordId: id,
+            recordName,
+            eventType: 'ownership_reassigned',
+            oldValue: row.owner_id,
+            newValue: patch.owner_id,
+            changedById: actor.id,
+            changedByName: actor.name,
+          });
+          reassignedIds.push(id);
+        }
+
+        await client.query(`RELEASE SAVEPOINT ${sp}`);
+        succeeded.push(id);
+      } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+        logger.warn({ err, id }, 'bulkPatchLeads: per-record failure');
+        failed.push({ id, reason: 'internal_error' });
+      }
+    }
+
+    await client.query('COMMIT');
+
+    if (patch.owner_id && reassignedIds.length > 0) {
+      const newOwner = await findUserById(patch.owner_id);
+      if (newOwner) {
+        for (const id of reassignedIds) {
+          const row = rowMap.get(id);
+          const recordName = row?.last_name
+            ? `${row.first_name} ${row.last_name}`
+            : (row?.first_name ?? '');
+          queueAssignmentNotification(newOwner.id, newOwner.email, newOwner.name, {
+            recordType: 'lead',
+            recordName,
+            recordPath: `/leads/${id}`,
+            assignedByName: actor.name,
+          });
+        }
+      }
+    }
+
+    return { succeeded, failed };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Bulk DELETE leads.
+ *
+ * Also soft-deletes associated notes in the same savepoint, matching the
+ * single-record deleteLead pattern. (MINCRM-523)
+ *
+ * @param input - Validated bulk delete input
+ * @param actor - User performing the action
+ */
+export async function bulkDeleteLeads(
+  input: BulkDeleteInput,
+  actor: AuditActor & { role: string },
+): Promise<BulkV2Result> {
+  const { ids } = input;
+  const succeeded: string[] = [];
+  const failed: Array<{ id: string; reason: string }> = [];
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const fetchResult = await client.query<LeadBulkRow>(
+      `SELECT id, first_name, last_name, owner_id FROM leads WHERE id = ANY($1)`,
+      [ids],
+    );
+    const rowMap = new Map(fetchResult.rows.map((r) => [r.id, r]));
+
+    for (const id of ids) {
+      const row = rowMap.get(id);
+      if (!row) {
+        failed.push({ id, reason: 'not_found' });
+        continue;
+      }
+
+      if (actor.role !== 'admin' && row.owner_id !== actor.id) {
+        failed.push({ id, reason: 'forbidden' });
+        continue;
+      }
+
+      const sp = savepointName(id);
+      try {
+        await client.query(`SAVEPOINT ${sp}`);
+
+        await softDeleteNotesByEntity(client, 'lead', id);
+        await client.query(`DELETE FROM leads WHERE id = $1`, [id]);
+
+        const recordName = row.last_name ? `${row.first_name} ${row.last_name}` : row.first_name;
+        await writeAuditEntry(client, {
+          recordType: 'lead',
+          recordId: id,
+          recordName,
+          eventType: 'deleted',
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
+
+        await client.query(`RELEASE SAVEPOINT ${sp}`);
+        succeeded.push(id);
+      } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+        logger.warn({ err, id }, 'bulkDeleteLeads: per-record failure');
         failed.push({ id, reason: 'internal_error' });
       }
     }

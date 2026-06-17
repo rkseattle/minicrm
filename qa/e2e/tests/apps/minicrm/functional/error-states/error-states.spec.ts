@@ -28,6 +28,7 @@ import {
   createTestAccount,
   createTestDeal,
   createTestRep,
+  createTestAdmin,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
@@ -202,6 +203,12 @@ test('@functional ES-1-3: bulk delete → server 500 → contacts remain, bulk-e
   restClient,
   testData,
 }) => {
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await loginAsAdmin(restClient);
+
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const contact = await createTestContact(testData, restClient, {

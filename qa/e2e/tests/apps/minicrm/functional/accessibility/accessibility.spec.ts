@@ -261,6 +261,12 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   restClient,
   testData,
 }) => {
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await loginAsAdmin(restClient);
+
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
   // Filter to the unique contact so it appears on page 1 regardless of DB volume.
@@ -288,6 +294,12 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   restClient,
   testData,
 }) => {
+  // Bulk ops require admin — re-login as ephemeral admin to see checkboxes. (MINCRM-562)
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await loginAsAdmin(restClient);
+
   const contact = await createTestContact(testData, restClient);
   await navigateToContacts({ page });
   // Filter to the unique contact so it appears on page 1 regardless of DB volume.

@@ -698,7 +698,10 @@ describe('DealsPage', () => {
     });
 
     it('bulk delete calls the API and clears selection on success', async () => {
-      vi.spyOn(bulkApi, 'bulkDeals').mockResolvedValue({ affected: 1 });
+      vi.spyOn(bulkApi, 'bulkDeleteDeals').mockResolvedValue({
+        succeeded: [DEAL_1.id],
+        failed: [],
+      });
       const user = userEvent.setup();
       renderWithProviders(<DealsPage />);
       await switchToListView(user);
@@ -714,9 +717,8 @@ describe('DealsPage', () => {
       await user.click(screen.getByTestId('confirm-delete-confirm'));
 
       await waitFor(() => {
-        expect(bulkApi.bulkDeals).toHaveBeenCalledWith(
-          expect.objectContaining({ action: 'delete', ids: [DEAL_1.id] }),
-          expect.anything(),
+        expect(bulkApi.bulkDeleteDeals).toHaveBeenCalledWith(
+          expect.objectContaining({ ids: [DEAL_1.id] }),
         );
       });
       await waitFor(() => {
