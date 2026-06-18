@@ -13,7 +13,7 @@
  */
 
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
@@ -400,5 +400,28 @@ describe('WebhookSettings — error state', () => {
     await waitFor(() => {
       expect(screen.getByTestId('webhook-load-error')).toBeInTheDocument();
     });
+  });
+});
+
+describe('WebhookSettings — secret copy button', () => {
+  it('copies the secret to clipboard when copy button is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    mockWebhookList([]);
+    mockWebhookCreate('supersecretvalue');
+    renderWithProviders(<WebhookSettings />);
+
+    await waitFor(() => expect(screen.getByTestId('webhook-url-input')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('webhook-url-input'), {
+      target: { value: 'https://example.com/hook' },
+    });
+    fireEvent.click(screen.getByTestId('webhook-event-contact.created'));
+    fireEvent.click(screen.getByTestId('webhook-add-button'));
+
+    await waitFor(() => expect(screen.getByTestId('webhook-secret-reveal')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('webhook-secret-copy-button'));
+
+    expect(writeText).toHaveBeenCalledWith('supersecretvalue');
   });
 });
