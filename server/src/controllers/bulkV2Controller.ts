@@ -93,6 +93,11 @@ function sendValidationError(res: Response, message: string, isOverLimit: boolea
   });
 }
 
+/** Returns true when the Zod failure is specifically the ids array exceeding BULK_MAX_IDS. */
+function isIdsOverLimit(err: z.ZodError): boolean {
+  return err.issues[0].code === 'too_big';
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -103,8 +108,7 @@ export async function bulkPatchUsersHandler(req: Request, res: Response): Promis
   const parsed = bulkUserPatchSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -121,8 +125,7 @@ export async function bulkDeleteUsersHandler(req: Request, res: Response): Promi
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -141,8 +144,7 @@ export async function bulkPatchContactsHandler(req: Request, res: Response): Pro
   const parsed = bulkContactPatchSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -159,8 +161,7 @@ export async function bulkDeleteContactsHandler(req: Request, res: Response): Pr
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -179,8 +180,7 @@ export async function bulkPatchDealsHandler(req: Request, res: Response): Promis
   const parsed = bulkDealPatchSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -208,8 +208,7 @@ export async function bulkDeleteDealsHandler(req: Request, res: Response): Promi
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -228,8 +227,7 @@ export async function bulkPatchActivitiesHandler(req: Request, res: Response): P
   const parsed = bulkActivityPatchSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -246,8 +244,7 @@ export async function bulkDeleteActivitiesHandler(req: Request, res: Response): 
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -273,8 +270,7 @@ export async function bulkPatchLeadsHandler(req: Request, res: Response): Promis
   const parsed = bulkLeadPatchSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
@@ -291,8 +287,7 @@ export async function bulkDeleteLeadsHandler(req: Request, res: Response): Promi
   const parsed = bulkDeleteSchema.safeParse(req.body);
   if (!parsed.success) {
     const message = parsed.error.errors[0].message;
-    const isOverLimit = message.includes(`${BULK_MAX_IDS}`);
-    sendValidationError(res, message, isOverLimit);
+    sendValidationError(res, message, isIdsOverLimit(parsed.error));
     return;
   }
 
