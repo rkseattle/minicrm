@@ -1836,6 +1836,28 @@ export const handlers = [
     return HttpResponse.json({ affected: 1 });
   }),
 
+  // ── Bulk V2 operations (MINCRM-562) ───────────────────────────────────────────
+
+  /** Bulk V2: PATCH /api/leads/bulk — reassign owner */
+  http.patch('/api/v1/leads/bulk', () => {
+    return HttpResponse.json({ succeeded: [], failed: [] });
+  }),
+
+  /** Bulk V2: DELETE /api/leads/bulk — delete leads */
+  http.delete('/api/v1/leads/bulk', () => {
+    return HttpResponse.json({ succeeded: [], failed: [] });
+  }),
+
+  /** Bulk V2: PATCH /api/activities/bulk — reassign owner */
+  http.patch('/api/v1/activities/bulk', () => {
+    return HttpResponse.json({ succeeded: [], failed: [] });
+  }),
+
+  /** Bulk V2: DELETE /api/activities/bulk — delete activities */
+  http.delete('/api/v1/activities/bulk', () => {
+    return HttpResponse.json({ succeeded: [], failed: [] });
+  }),
+
   // ── Tags (MINCRM-186) ─────────────────────────────────────────────────────────
 
   /** Tags: GET /api/tags — returns paginated empty list by default */
