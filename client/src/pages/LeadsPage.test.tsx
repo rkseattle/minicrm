@@ -11,6 +11,7 @@ import LeadsPage from './LeadsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { LEAD_1 } from '../test/msw/handlers.js';
+import * as bulkApi from '../api/bulk.js';
 
 describe('LeadsPage', () => {
   it('renders the page heading', async () => {
@@ -421,6 +422,82 @@ describe('inline status update', () => {
     // Badge should now show the new status (MINCRM-388)
     await waitFor(() => {
       expect(screen.getByTestId(`status-badge-${LEAD_1.id}`)).toHaveTextContent('Contacted');
+    });
+  });
+});
+
+// ── Bulk selection (MINCRM-562) ───────────────────────────────────────────────
+
+describe('bulk selection', () => {
+  it('does not show the bulk action bar before any rows are selected', async () => {
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`bulk-select-${LEAD_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+  });
+
+  it('shows the bulk action bar after selecting a row', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`bulk-select-${LEAD_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId(`bulk-select-${LEAD_1.id}`));
+    expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('1');
+  });
+
+  it('select-all checkbox selects all rows and shows bulk action bar', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`bulk-select-${LEAD_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('leads-select-all'));
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('1');
+  });
+
+  it('clear selection hides the bulk action bar', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`bulk-select-${LEAD_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId(`bulk-select-${LEAD_1.id}`));
+    expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+    await user.click(screen.getByTestId('bulk-clear-selection'));
+    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+  });
+
+  it('bulk delete calls the API and clears selection on success', async () => {
+    vi.spyOn(bulkApi, 'bulkDeleteLeads').mockResolvedValue({
+      succeeded: [LEAD_1.id],
+      failed: [],
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`bulk-select-${LEAD_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId(`bulk-select-${LEAD_1.id}`));
+    await user.click(screen.getByTestId('leads-bulk-delete-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+    await waitFor(() => {
+      expect(bulkApi.bulkDeleteLeads).toHaveBeenCalledWith({ ids: [LEAD_1.id] });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
     });
   });
 });

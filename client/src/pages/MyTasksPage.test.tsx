@@ -3,12 +3,14 @@
  */
 
 import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import MyTasksPage from './MyTasksPage.js';
 import { MY_TASK_1, MY_TASK_OVERDUE, MY_TASK_COMPLETE } from '@/test/msw/handlers.js';
+import * as bulkApi from '@/api/bulk.js';
 
 describe('MyTasksPage', () => {
   it('shows the loading state while fetching', () => {
@@ -447,6 +449,81 @@ describe('MyTasksPage', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('completed-tasks-empty')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('bulk selection (MINCRM-562)', () => {
+    it('does not show the bulk action bar before any rows are selected', async () => {
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('shows the bulk action bar after selecting a row', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      expect(screen.getByTestId('bulk-action-count')).toHaveTextContent('1');
+    });
+
+    it('select-all checkbox selects all rows and shows bulk action bar', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('tasks-select-all'));
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      });
+    });
+
+    it('clear selection hides the bulk action bar', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`));
+      expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument();
+      await user.click(screen.getByTestId('bulk-clear-selection'));
+      expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
+    });
+
+    it('bulk delete calls the API and clears selection on success', async () => {
+      vi.spyOn(bulkApi, 'bulkDeleteActivities').mockResolvedValue({
+        succeeded: [MY_TASK_1.id],
+        failed: [],
+      });
+
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`));
+      await user.click(screen.getByTestId('tasks-bulk-delete-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+      await waitFor(() => {
+        expect(bulkApi.bulkDeleteActivities).toHaveBeenCalledWith({
+          ids: [MY_TASK_1.id],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
       });
     });
   });
