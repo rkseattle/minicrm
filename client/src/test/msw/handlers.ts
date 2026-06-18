@@ -2193,6 +2193,20 @@ export const handlers = [
     return HttpResponse.json({ success: true, erasedAt: new Date().toISOString() });
   }),
 
+  /** GDPR export contact: GET /api/v1/contacts/:id/gdpr-export */
+  http.get('/api/v1/contacts/:id/gdpr-export', () => {
+    return new HttpResponse('{}', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }),
+
+  /** GDPR export lead: GET /api/v1/leads/:id/gdpr-export */
+  http.get('/api/v1/leads/:id/gdpr-export', () => {
+    return new HttpResponse('{}', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }),
+
   // ── MFA (MINCRM-392) ─────────────────────────────────────────────────────────
 
   /** MFA: GET /api/auth/mfa/status — MFA disabled by default */

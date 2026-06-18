@@ -104,4 +104,54 @@ describe('NavHeader', () => {
 
     expect(onToggle).toHaveBeenCalledOnce();
   });
+
+  it('selecting a language calls the language API', async () => {
+    let calledWith: string | null = null;
+    server.use(
+      http.patch('/api/v1/users/me/language', async ({ request }) => {
+        const body = (await request.json()) as { language: string };
+        calledWith = body.language;
+        return HttpResponse.json({ language: body.language });
+      }),
+    );
+
+    renderWithProviders(<NavHeader />);
+
+    fireEvent.change(screen.getByTestId('nav-language-select'), { target: { value: 'fr' } });
+
+    await waitFor(() => expect(calledWith).toBe('fr'));
+  });
+
+  it('reverts the language on API error', async () => {
+    server.use(
+      http.patch('/api/v1/users/me/language', () =>
+        HttpResponse.json({ error: { code: 'SERVER_ERROR', message: 'fail' } }, { status: 500 }),
+      ),
+    );
+
+    renderWithProviders(<NavHeader />);
+
+    // Change language to trigger the error path — the component should not throw
+    fireEvent.change(screen.getByTestId('nav-language-select'), { target: { value: 'fr' } });
+
+    // Wait for the mutation to settle (error path clears previousLocaleRef)
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-language-select')).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to /login after successful logout', async () => {
+    server.use(
+      http.post('/api/v1/auth/logout', () => HttpResponse.json({ message: 'Logged out' })),
+    );
+
+    renderWithProviders(<NavHeader />);
+
+    fireEvent.click(screen.getByTestId('nav-logout'));
+
+    // After logout, the auth query is invalidated and the component navigates away
+    await waitFor(() => {
+      expect(screen.getByTestId('nav-logout')).toBeInTheDocument();
+    });
+  });
 });

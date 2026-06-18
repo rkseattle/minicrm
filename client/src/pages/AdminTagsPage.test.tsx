@@ -319,3 +319,100 @@ describe('AdminTagsPage restrict-creation toggle', () => {
     });
   });
 });
+
+describe('AdminTagsPage — create tag flow', () => {
+  it('shows the create form from the empty state action and submits successfully', async () => {
+    server.use(
+      http.get('/api/v1/tags', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 })),
+    );
+
+    let createdName: string | null = null;
+    server.use(
+      http.post('/api/v1/tags', async ({ request }) => {
+        const body = (await request.json()) as { name: string };
+        createdName = body.name;
+        return HttpResponse.json(
+          {
+            tag: {
+              id: '00000000-0000-0000-0000-000000001099',
+              name: body.name,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTagsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-empty-state')).toBeInTheDocument();
+    });
+
+    // Click the empty-state action to show the create form
+    await user.click(screen.getByRole('button', { name: /add tag/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-create-form')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByTestId('admin-tags-create-input'), 'newtag');
+    await user.click(screen.getByTestId('admin-tags-create-save'));
+
+    await waitFor(() => expect(createdName).toBe('newtag'));
+  });
+
+  it('shows validation error when create is submitted with an empty name', async () => {
+    server.use(
+      http.get('/api/v1/tags', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 })),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTagsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-empty-state')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /add tag/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-create-form')).toBeInTheDocument();
+    });
+
+    // Submit without entering a name
+    await user.click(screen.getByTestId('admin-tags-create-save'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-create-input')).toBeInTheDocument();
+    });
+  });
+
+  it('hides the create form when cancel is clicked', async () => {
+    server.use(
+      http.get('/api/v1/tags', () => HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 })),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTagsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-empty-state')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /add tag/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin-tags-create-form')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('admin-tags-create-cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('admin-tags-create-form')).not.toBeInTheDocument();
+    });
+  });
+});

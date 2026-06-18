@@ -497,6 +497,39 @@ describe('MyTasksPage', () => {
       expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument();
     });
 
+    it('shows the bulk failed details modal on partial failure and hides it on close', async () => {
+      vi.spyOn(bulkApi, 'bulkDeleteActivities').mockResolvedValue({
+        succeeded: [MY_TASK_1.id],
+        failed: [{ id: MY_TASK_OVERDUE.id, reason: 'Permission denied' }],
+      });
+
+      const user = userEvent.setup();
+      renderWithProviders(<MyTasksPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId(`bulk-select-${MY_TASK_1.id}`)).toBeInTheDocument();
+      });
+
+      // Select both tasks then trigger bulk delete
+      await user.click(screen.getByTestId('tasks-select-all'));
+      await waitFor(() => expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument());
+      await user.click(screen.getByTestId('tasks-bulk-delete-button'));
+      await waitFor(() => expect(screen.getByTestId('confirm-delete-confirm')).toBeInTheDocument());
+      await user.click(screen.getByTestId('confirm-delete-confirm'));
+
+      // BulkActionBar shows "see details" after partial failure
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-see-details')).toBeInTheDocument();
+      });
+
+      // Click see details to open the modal
+      await user.click(screen.getByTestId('bulk-see-details'));
+      expect(screen.getByTestId('bulk-failed-details-modal')).toBeInTheDocument();
+
+      // Close the modal
+      await user.click(screen.getByTestId('bulk-failed-details-close'));
+      expect(screen.queryByTestId('bulk-failed-details-modal')).not.toBeInTheDocument();
+    });
+
     it('bulk delete calls the API and clears selection on success', async () => {
       vi.spyOn(bulkApi, 'bulkDeleteActivities').mockResolvedValue({
         succeeded: [MY_TASK_1.id],

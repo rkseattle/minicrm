@@ -115,3 +115,61 @@ describe('GdprPrivacySection — erase error', () => {
     await waitFor(() => expect(screen.getByTestId('gdpr-erase-error')).toBeInTheDocument());
   });
 });
+
+describe('GdprPrivacySection — erase success', () => {
+  it('calls onErased and closes the modal when erase succeeds', async () => {
+    const onErased = vi.fn();
+    server.use(
+      http.post('/api/v1/contacts/:id/gdpr-erase', () => {
+        return HttpResponse.json({ success: true, erasedAt: '2026-06-18T00:00:00.000Z' });
+      }),
+    );
+
+    renderWithProviders(
+      <GdprPrivacySection recordType="contact" recordId={RECORD_ID} onErased={onErased} />,
+    );
+
+    await waitFor(() => screen.getByTestId('gdpr-erase-button'));
+    fireEvent.click(screen.getByTestId('gdpr-erase-button'));
+    await waitFor(() => screen.getByTestId('gdpr-erase-modal'));
+
+    fireEvent.change(screen.getByTestId('gdpr-erase-confirm-input'), {
+      target: { value: 'ERASE' },
+    });
+    fireEvent.click(screen.getByTestId('gdpr-erase-confirm-button'));
+
+    await waitFor(() => expect(onErased).toHaveBeenCalled());
+  });
+
+  it('closes the erase modal when cancel is clicked', async () => {
+    renderWithProviders(
+      <GdprPrivacySection recordType="contact" recordId={RECORD_ID} onErased={vi.fn()} />,
+    );
+
+    await waitFor(() => screen.getByTestId('gdpr-erase-button'));
+    fireEvent.click(screen.getByTestId('gdpr-erase-button'));
+    await waitFor(() => screen.getByTestId('gdpr-erase-modal'));
+
+    fireEvent.click(screen.getByTestId('gdpr-erase-cancel-button'));
+
+    expect(screen.queryByTestId('gdpr-erase-modal')).not.toBeInTheDocument();
+  });
+});
+
+describe('GdprPrivacySection — export download', () => {
+  it('calls the download function when export button is clicked', async () => {
+    const mockCreateObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+    const mockRevokeObjectURL = vi.fn();
+    window.URL.createObjectURL = mockCreateObjectURL;
+    window.URL.revokeObjectURL = mockRevokeObjectURL;
+
+    renderWithProviders(
+      <GdprPrivacySection recordType="contact" recordId={RECORD_ID} onErased={vi.fn()} />,
+    );
+
+    await waitFor(() => screen.getByTestId('gdpr-export-button'));
+    fireEvent.click(screen.getByTestId('gdpr-export-button'));
+
+    await waitFor(() => expect(mockCreateObjectURL).toHaveBeenCalled());
+  });
+});

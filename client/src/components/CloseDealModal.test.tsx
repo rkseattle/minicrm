@@ -166,4 +166,39 @@ describe('CloseDealModal', () => {
     const dateInput = screen.getByTestId('close-deal-date-input') as HTMLInputElement;
     expect(dateInput.max).toBe(TODAY);
   });
+
+  it('calls onCancel when Escape key is pressed on the backdrop', () => {
+    const onCancel = vi.fn();
+    renderWithProviders(
+      <CloseDealModal
+        isOpen={true}
+        targetStage="Closed Won"
+        initialCloseDate={TODAY}
+        isSubmitting={false}
+        onConfirm={noop}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.keyDown(screen.getByTestId('close-deal-modal-overlay'), { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('updates the close date when the date input is changed', () => {
+    const onConfirm = vi.fn();
+    renderWithProviders(
+      <CloseDealModal
+        isOpen={true}
+        targetStage="Closed Won"
+        initialCloseDate={TODAY}
+        isSubmitting={false}
+        onConfirm={onConfirm}
+        onCancel={noop}
+      />,
+    );
+    fireEvent.change(screen.getByTestId('close-deal-date-input'), {
+      target: { value: '2026-03-15' },
+    });
+    fireEvent.click(screen.getByTestId('close-deal-confirm'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-03-15', '');
+  });
 });
