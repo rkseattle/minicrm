@@ -50,6 +50,7 @@ export function InlineRoleSelect({
   canEdit,
   assignedCustomRoles,
   usersQueryKey,
+  onRoleChanged,
   onRoleError,
 }: InlineRoleSelectProps) {
   const { t } = useTranslation();
@@ -60,8 +61,9 @@ export function InlineRoleSelect({
 
   const mutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUserRole(id, role),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: usersQueryKey });
+      onRoleChanged?.(variables.id, variables.role);
     },
     onError: () => {
       // Roll back optimistic value and notify parent

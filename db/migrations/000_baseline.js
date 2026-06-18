@@ -1540,6 +1540,7 @@ exports.up = (pgm) => {
       ('admin','users:delete'),('admin','teams:manage'),('admin','integrations:manage'),
       ('admin','settings:manage'),('admin','feature_flags:manage'),
       ('admin','audit_log:view'),
+      ('admin','bulk:operations'),('manager','bulk:operations'),
       ('service_account','api:access'),
       ('service_account','contacts:view'),('service_account','contacts:create'),
       ('service_account','contacts:edit'),('service_account','contacts:export'),

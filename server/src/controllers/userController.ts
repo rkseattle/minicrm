@@ -15,6 +15,13 @@ import {
   updatePreferredLanguageSchema,
   updateNotificationPrefsSchema,
 } from '@minicrm/shared/schemas/userSchema.js';
+import * as userService from '../services/userService.js';
+import type { ActiveUserRow } from '../services/userService.js';
+import type { JwtTokenPayload } from '../types/express.js';
+import { sanitizeUser } from '../utils/userUtils.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { countActiveNotificationRecipients } from '../services/userService.js';
+import { sendInviteEmail } from '../services/emailService.js';
 
 /** Zod schema for PATCH /users/:id/status body (MINCRM-561) */
 const updateStatusSchema = z.object({
@@ -23,13 +30,6 @@ const updateStatusSchema = z.object({
     invalid_type_error: 'active must be a boolean',
   }),
 });
-import * as userService from '../services/userService.js';
-import type { ActiveUserRow } from '../services/userService.js';
-import type { JwtTokenPayload } from '../types/express.js';
-import { sanitizeUser } from '../utils/userUtils.js';
-import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
-import { countActiveNotificationRecipients } from '../services/userService.js';
-import { sendInviteEmail } from '../services/emailService.js';
 
 /** Invite token expiry — 72 hours */
 const INVITE_TOKEN_EXPIRY = '72h';
