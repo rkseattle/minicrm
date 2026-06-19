@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "prepare": "husky || true",
+    "unit_test": "npm test --workspace=minicrm-server && npm test --workspace=minicrm-client",
     "typecheck": "npm run typecheck --workspace=minicrm-server && npm run typecheck --workspace=minicrm-client && npm run typecheck --workspace=minicrm-qa",
     "lint": "eslint .",
     "format": "prettier --write .",

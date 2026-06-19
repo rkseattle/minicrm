@@ -515,6 +515,19 @@ export class ContactsPage {
       { intent: 'confirm button in the bulk reassign modal' },
     );
     await reassignDone;
+    // Wait for React onSuccess to clear selectedIds and hide the bar. The network
+    // response lands before React processes the mutation callback, so a point-in-
+    // time isNotVisible() check immediately after reassignDone races.
+    // Use waitForFunction with a DOM query instead of locate().resolve() so this
+    // succeeds even if the bar has already been removed before we get here. (MINCRM-562)
+    await this.page
+      .waitForFunction(
+        `!document.querySelector('[data-testid="bulk-action-bar"]') || ` +
+          `getComputedStyle(document.querySelector('[data-testid="bulk-action-bar"]')).display === 'none'`,
+        undefined,
+        { timeout: 10_000 },
+      )
+      .catch(() => {});
   }
 
   /**

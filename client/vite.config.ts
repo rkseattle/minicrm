@@ -26,6 +26,10 @@ export default defineConfig({
     // JUnit XML for dorny/test-reporter in CI; 'default' keeps console output.
     reporters: ['default', 'junit'],
     outputFile: { junit: 'test-results/junit.xml' },
+    // Cap at 2 workers: parallel jsdom forks on a loaded dev Mac starve each
+    // other and cause random 5s test timeouts. CI shards (2 workers × 4 shards)
+    // so this does not affect CI. Increase for faster local iteration if needed.
+    maxWorkers: 2,
     coverage: {
       provider: 'v8',
       include: ['src/components/**', 'src/pages/**'],

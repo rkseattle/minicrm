@@ -110,6 +110,7 @@ export default function LeadsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
   const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const queryParams = {
     owner: ownerApiParam,
@@ -174,6 +175,7 @@ export default function LeadsPage() {
       void queryClient.invalidateQueries({ queryKey: LEADS_QUERY_KEY });
       setShowBulkReassign(false);
       setShowBulkDelete(false);
+      setBulkError(null);
       if (result.failed.length > 0 && result.succeeded.length > 0) {
         setBulkPartialFailures(result.failed);
         setSelectedIds(new Set(result.failed.map((f) => f.id)));
@@ -181,6 +183,9 @@ export default function LeadsPage() {
         setSelectedIds(new Set());
         setBulkPartialFailures([]);
       }
+    },
+    onError: () => {
+      setBulkError(t('bulk.errorGeneric'));
     },
   });
 
@@ -369,6 +374,12 @@ export default function LeadsPage() {
               onCancel={handleFormClose}
             />
           </div>
+        )}
+
+        {bulkError && (
+          <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
+            {bulkError}
+          </p>
         )}
 
         {/* Bulk action bar (MINCRM-562) */}

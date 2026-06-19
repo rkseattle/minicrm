@@ -98,6 +98,7 @@ export default function MyTasksPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [showBulkFailedDetails, setShowBulkFailedDetails] = useState(false);
   const [bulkPartialFailures, setBulkPartialFailures] = useState<BulkFailure[]>([]);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [...MY_TASKS_QUERY_KEY, page, limit],
@@ -158,6 +159,7 @@ export default function MyTasksPage() {
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
       setShowBulkDelete(false);
+      setBulkError(null);
       if (result.failed.length > 0 && result.succeeded.length > 0) {
         setBulkPartialFailures(result.failed);
         setSelectedIds(new Set(result.failed.map((f) => f.id)));
@@ -165,6 +167,9 @@ export default function MyTasksPage() {
         setSelectedIds(new Set());
         setBulkPartialFailures([]);
       }
+    },
+    onError: () => {
+      setBulkError(t('bulk.errorGeneric'));
     },
   });
 
@@ -198,6 +203,12 @@ export default function MyTasksPage() {
             </Button>
           )}
         </div>
+
+        {bulkError && (
+          <p role="alert" className="mb-2 text-sm text-red-600" data-testid="bulk-error-message">
+            {bulkError}
+          </p>
+        )}
 
         {/* Bulk action bar (MINCRM-562) */}
         {canBulkOp && selectedIds.size > 0 && (

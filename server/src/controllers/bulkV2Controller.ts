@@ -95,7 +95,7 @@ function sendValidationError(res: Response, message: string, isOverLimit: boolea
 
 /** Returns true when the Zod failure is specifically the ids array exceeding BULK_MAX_IDS. */
 function isIdsOverLimit(err: z.ZodError): boolean {
-  return err.issues[0].code === 'too_big';
+  return err.issues.some((e) => e.code === 'too_big' && e.path[0] === 'ids');
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
