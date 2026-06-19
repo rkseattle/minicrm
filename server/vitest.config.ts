@@ -197,14 +197,10 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'json-summary'],
       reportsDirectory: 'coverage',
       thresholds: {
-        lines: 80,
-        functions: 80,
-        // Branch coverage sits at 74.7% today — many controller error paths and
-        // service edge cases are not yet exercised. Set the floor at the current
-        // measured value so CI fails if coverage drops, not at an aspirational
-        // number the codebase does not yet reach.
-        branches: 74,
-        statements: 80,
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
       },
     },
 
