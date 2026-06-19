@@ -798,6 +798,21 @@ export const handlers = [
     });
   }),
 
+  /** Custom roles: GET /api/v1/users/:id/roles — list roles assigned to a user (MINCRM-560) */
+  http.get('/api/v1/users/:id/roles', () => {
+    return HttpResponse.json({ data: [] });
+  }),
+
+  /** Custom roles: POST /api/v1/users/:id/roles — assign a role to a user (MINCRM-560) */
+  http.post('/api/v1/users/:id/roles', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  /** Custom roles: DELETE /api/v1/users/:id/roles/:roleId — remove a role from a user (MINCRM-560) */
+  http.delete('/api/v1/users/:id/roles/:roleId', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   /** Auth: POST /api/auth/change-password */
   http.post('/api/v1/auth/change-password', () => {
     return HttpResponse.json({ message: 'Password changed successfully' });
