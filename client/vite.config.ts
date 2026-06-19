@@ -26,10 +26,15 @@ export default defineConfig({
     // JUnit XML for dorny/test-reporter in CI; 'default' keeps console output.
     reporters: ['default', 'junit'],
     outputFile: { junit: 'test-results/junit.xml' },
-    // Cap at 2 workers: parallel jsdom forks on a loaded dev Mac starve each
-    // other and cause random 5s test timeouts. CI shards (2 workers × 4 shards)
-    // so this does not affect CI. Increase for faster local iteration if needed.
-    maxWorkers: 2,
+    // Single worker: parallel jsdom forks on a loaded dev Mac exhaust memory and
+    // cause random timeouts and worker-start failures. CI shards (1 worker × 4 shards)
+    // so this does not affect CI throughput. Increase for faster local iteration
+    // if the machine is not under load.
+    maxWorkers: 1,
+    // 30s per test: single-worker serialization means each test waits for all
+    // prior tests in the same file; complex pages (DealsPage, etc.) with multiple
+    // MSW calls can take 10-20s on a loaded machine. CI runs on dedicated runners.
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       include: ['src/components/**', 'src/pages/**'],

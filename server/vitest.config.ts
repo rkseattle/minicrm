@@ -226,8 +226,10 @@ export default defineConfig({
           name: 'serial',
           include: SERIAL_FILES,
           fileParallelism: false,
-          // seedDemo() is heavier now — notes, custom fields, webhooks, currencies
-          testTimeout: 30000,
+          // seedDemo() is heavier now — notes, custom fields, webhooks, currencies.
+          // removeDemo tests call seedDemo()+removeDemo() four times in sequence; 60s
+          // allows each call up to ~15s on a loaded machine.
+          testTimeout: 60000,
         },
         resolve: sharedResolve,
       },
