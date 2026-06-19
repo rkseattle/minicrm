@@ -175,7 +175,11 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # @rolldown/binding-linux-x64-gnu is a platform-specific optional dep omitted from
+        # the macOS-generated lockfile. Running npm install from within client/ bypasses
+        # the root workspace lockfile and forces fresh resolution of platform-specific
+        # optional binaries (npm workspace optional-deps bug: https://github.com/npm/cli/issues/4828).
+        run: npm ci && npm install --prefix client
 
       - name: Run server tests with coverage
         run: npm run test:coverage --workspace=minicrm-server
