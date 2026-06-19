@@ -8,6 +8,7 @@ import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
 import GdprPrivacySection from './GdprPrivacySection.js';
+import * as gdprApi from '@/api/gdpr.js';
 
 const RECORD_ID = '11111111-1111-1111-1111-111111111111';
 const ERASE_DATE = '2026-05-14T12:00:00.000Z';
@@ -158,10 +159,7 @@ describe('GdprPrivacySection — erase success', () => {
 
 describe('GdprPrivacySection — export download', () => {
   it('calls the download function when export button is clicked', async () => {
-    const mockCreateObjectURL = vi.fn().mockReturnValue('blob:mock-url');
-    const mockRevokeObjectURL = vi.fn();
-    window.URL.createObjectURL = mockCreateObjectURL;
-    window.URL.revokeObjectURL = mockRevokeObjectURL;
+    const downloadSpy = vi.spyOn(gdprApi, 'downloadContactGdprExport').mockResolvedValue(undefined);
 
     renderWithProviders(
       <GdprPrivacySection recordType="contact" recordId={RECORD_ID} onErased={vi.fn()} />,
@@ -170,6 +168,8 @@ describe('GdprPrivacySection — export download', () => {
     await waitFor(() => screen.getByTestId('gdpr-export-button'));
     fireEvent.click(screen.getByTestId('gdpr-export-button'));
 
-    await waitFor(() => expect(mockCreateObjectURL).toHaveBeenCalled());
+    await waitFor(() => expect(downloadSpy).toHaveBeenCalledWith(RECORD_ID));
+
+    downloadSpy.mockRestore();
   });
 });

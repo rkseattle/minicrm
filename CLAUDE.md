@@ -160,9 +160,11 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 
 ## Testing
 
-**Server** (`server/src/__tests__/`) — Vitest against real `minicrm_test` DB. `npm test --workspace=minicrm-server`. 80% coverage on `services/` (CI). `beforeEach` truncates tables. Required: `auth-boundaries.test.ts`, `auditService.test.ts`, `notificationService.test.ts`.
+**Server** (`server/src/__tests__/`) — Vitest against real `minicrm_test` DB. 80% coverage on `services/` (CI). `beforeEach` truncates tables. Required: `auth-boundaries.test.ts`, `auditService.test.ts`, `notificationService.test.ts`.
 
-**Client** (`client/src/`) — Vitest + RTL + MSW (`onUnhandledRequest: 'error'`). `npm test --workspace=minicrm-client`. 70% lines / 80% branches (CI). Co-locate `Component.test.tsx`. Every async component tests loading + error + empty. Every conditional branch gets a test.
+**Client** (`client/src/`) — Vitest + RTL + MSW (`onUnhandledRequest: 'error'`). 70% lines / 80% branches (CI). Co-locate `Component.test.tsx`. Every async component tests loading + error + empty. Every conditional branch gets a test.
+
+Run both suites sequentially with `npm run unit_test` — never run the two workspaces in parallel (CPU contention causes random 5s timeouts in jsdom).
 
 ---
 
@@ -178,9 +180,8 @@ npm run lint
 # 3. Audit
 npm audit
 
-# 4. Unit tests
-npm test --workspace=minicrm-server
-npm test --workspace=minicrm-client
+# 4. Unit tests (sequential — never run these workspaces in parallel)
+npm run unit_test
 
 # 5. QA static checks
 bash qa/scripts/check-framework-purity.sh
