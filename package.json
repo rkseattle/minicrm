@@ -44,8 +44,10 @@
     ]
   },
   "overrides": {
-    "@connectrpc/connect-node": {
-      "undici": "6.25.0"
+    "undici": "6.27.0",
+    "markdownlint-cli2": {
+      "js-yaml": "4.2.0",
+      "markdown-it": "14.2.0"
     }
   },
   "devDependencies": {
