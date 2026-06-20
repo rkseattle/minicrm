@@ -179,7 +179,9 @@ jobs:
         # the macOS-generated lockfile. Running npm install from within client/ bypasses
         # the root workspace lockfile and forces fresh resolution of platform-specific
         # optional binaries (npm workspace optional-deps bug: https://github.com/npm/cli/issues/4828).
-        run: npm ci && npm install --prefix client
+        # Running npm install at root also picks up the Linux rolldown binding used by
+        # the root-level vite/vitest that the server test runner depends on.
+        run: npm ci && npm install --prefix client && npm install
 
       - name: Run server tests with coverage
         run: npm run test:coverage --workspace=minicrm-server
