@@ -5,7 +5,6 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUserRole } from '@/api/users.js';
@@ -27,6 +26,8 @@ export interface InlineRoleSelectProps {
   user: UserResponse;
   /** Whether the viewing admin has users:edit capability (controls disabled state). */
   canEdit: boolean;
+  /** UUID of the current authenticated user — prevents self-role-change. */
+  currentUserId: string;
   /**
    * Custom roles assigned to this user — supplied by the parent page which
    * fetches them once and passes them down (no per-row requests).
@@ -48,6 +49,7 @@ export interface InlineRoleSelectProps {
 export function InlineRoleSelect({
   user,
   canEdit,
+  currentUserId,
   assignedCustomRoles,
   usersQueryKey,
   onRoleChanged,
@@ -58,6 +60,8 @@ export function InlineRoleSelect({
 
   // Optimistic local state — tracks the displayed value before server confirmation
   const [optimisticRole, setOptimisticRole] = useState<UserRole>(user.role);
+
+  const isSelf = user.id === currentUserId;
 
   const mutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUserRole(id, role),
@@ -82,7 +86,7 @@ export function InlineRoleSelect({
   );
 
   const isServiceAccount = user.role === 'service_account';
-  const isDisabled = !canEdit || isServiceAccount || mutation.isPending;
+  const isDisabled = !canEdit || isServiceAccount || isSelf || mutation.isPending;
 
   return (
     <div className="flex flex-col gap-1 min-w-0">
@@ -101,6 +105,7 @@ export function InlineRoleSelect({
           disabled={isDisabled}
           aria-label={t('users.roleSelectLabel', { name: user.name })}
           data-testid={`role-select-${user.id}`}
+          title={isSelf ? t('users.selfRoleChangeBlocked') : undefined}
           className={[
             'rounded border text-sm bg-white px-2 py-1 leading-tight',
             'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
@@ -119,19 +124,19 @@ export function InlineRoleSelect({
         </select>
       )}
 
-      {/* Read-only custom role chips — informational only */}
+      {/* Read-only custom role chips — link to the roles admin tab */}
       {assignedCustomRoles.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {assignedCustomRoles.map((cr) => (
-            <Link
+            <a
               key={cr.id}
-              to={`/settings/roles/${cr.id}`}
+              href={`/admin/settings?tab=roles`}
               aria-label={t('users.customRoleLinkLabel', { name: cr.name })}
               data-testid={`custom-role-chip-${user.id}-${cr.id}`}
               className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
               {cr.name}
-            </Link>
+            </a>
           ))}
         </div>
       )}

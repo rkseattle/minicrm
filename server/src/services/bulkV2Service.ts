@@ -601,14 +601,14 @@ export async function bulkPatchDeals(
         });
         void dispatchWebhookEvent(
           'deal.stage_changed',
-          { id, name: row.name },
+          { id, name: row.name, stage },
           { stage: row.stage },
         );
         if (stage === 'Closed Won') {
-          void dispatchWebhookEvent('deal.won', { id, name: row.name });
+          void dispatchWebhookEvent('deal.won', { id, name: row.name, stage });
         }
         if (stage === 'Closed Lost') {
-          void dispatchWebhookEvent('deal.lost', { id, name: row.name });
+          void dispatchWebhookEvent('deal.lost', { id, name: row.name, stage });
         }
       }
     }

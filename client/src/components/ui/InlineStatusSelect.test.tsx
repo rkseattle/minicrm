@@ -139,26 +139,7 @@ describe('InlineStatusSelect', () => {
     expect(screen.getByTestId('deactivate-self-dialog')).toBeInTheDocument();
   });
 
-  it('clicking confirm in self-deactivation dialog fires the PATCH', async () => {
-    useStatusPatchSuccess();
-    renderWithProviders(
-      <InlineStatusSelect
-        {...defaultProps({ user: ACTIVE_USER, currentUserId: ACTIVE_USER.id })}
-      />,
-    );
-
-    const select = screen.getByTestId(`status-select-${ACTIVE_USER.id}`);
-    fireEvent.change(select, { target: { value: 'inactive' } });
-
-    fireEvent.click(screen.getByTestId('deactivate-self-confirm'));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('deactivate-self-dialog')).not.toBeInTheDocument();
-    });
-    expect(screen.getByTestId(`status-select-${ACTIVE_USER.id}`)).toHaveValue('inactive');
-  });
-
-  it('clicking cancel in self-deactivation dialog does NOT fire PATCH', async () => {
+  it('clicking close in self-deactivation blocked dialog dismisses it without firing PATCH', async () => {
     const onStatusError = vi.fn();
     renderWithProviders(
       <InlineStatusSelect
@@ -172,7 +153,7 @@ describe('InlineStatusSelect', () => {
 
     const select = screen.getByTestId(`status-select-${ACTIVE_USER.id}`);
     fireEvent.change(select, { target: { value: 'inactive' } });
-    fireEvent.click(screen.getByTestId('deactivate-self-cancel'));
+    fireEvent.click(screen.getByTestId('deactivate-self-close'));
 
     await waitFor(() => {
       expect(screen.queryByTestId('deactivate-self-dialog')).not.toBeInTheDocument();

@@ -812,242 +812,251 @@ export default function CustomisationSettings() {
 
         {!stagesLoading && !stagesError && (
           <>
-            <table className="w-full text-sm mb-4" data-testid="pipeline-stages-table">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-8">
-                    {/* reorder buttons */}
-                  </th>
-                  <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {t('deals.stageLabel')}
-                  </th>
-                  <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">
-                    {t('settings.pipelineStages.probabilityLabel')}
-                  </th>
-                  <th className="pb-2 text-end text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">
-                    {/* actions */}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {stages.map((stage, index) => (
-                  // Fragment needed to emit two <tr> elements per stage row when editing (MINCRM-527)
-                  <Fragment key={stage.id}>
-                    <tr data-testid={`pipeline-stage-row-${stage.id}`}>
-                      <td className="py-2 pe-2">
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            aria-label={`Move ${stage.name} up`}
-                            data-testid={`pipeline-stage-move-up-${stage.id}`}
-                            disabled={index === 0 || reorderStageMutation.isPending}
-                            onClick={() => handleMoveUp(index)}
-                            className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              viewBox="0 0 24 24"
-                              aria-hidden="true"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M5 15l7-7 7 7"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Move ${stage.name} down`}
-                            data-testid={`pipeline-stage-move-down-${stage.id}`}
-                            disabled={index === stages.length - 1 || reorderStageMutation.isPending}
-                            onClick={() => handleMoveDown(index)}
-                            className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
-                          >
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              viewBox="0 0 24 24"
-                              aria-hidden="true"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M19 9l-7 7-7-7"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-
-                      <td className="py-2 pe-3">
-                        {editingStageId === stage.id ? (
-                          <input
-                            type="text"
-                            data-testid={`pipeline-stage-name-input-${stage.id}`}
-                            value={editDraft.name}
-                            disabled={stage.is_fixed || updateStageMutation.isPending}
-                            onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
-                            maxLength={100}
-                          />
-                        ) : (
-                          <span className="font-medium text-gray-800">
-                            {stage.name}
-                            {stage.is_fixed && (
-                              <span className="ms-2 text-xs text-gray-500 font-normal">
-                                {t('settings.pipelineStages.fixedBadge')}
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-2 pe-3">
-                        {editingStageId === stage.id ? (
-                          <input
-                            type="number"
-                            data-testid={`pipeline-stage-prob-input-${stage.id}`}
-                            value={editDraft.probability}
-                            min="0"
-                            max="100"
-                            onChange={(e) =>
-                              setEditDraft((d) => ({ ...d, probability: e.target.value }))
-                            }
-                            disabled={updateStageMutation.isPending}
-                            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        ) : (
-                          <span className="text-gray-600">
-                            {t('settings.pipelineStages.probabilityValue', {
-                              value: stage.probability,
-                            })}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-2 text-end">
-                        {editingStageId === stage.id ? (
-                          <div className="flex justify-end gap-2">
-                            <Button
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm mb-4" data-testid="pipeline-stages-table">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-8">
+                      {/* reorder buttons */}
+                    </th>
+                    <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {t('deals.stageLabel')}
+                    </th>
+                    <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">
+                      {t('settings.pipelineStages.probabilityLabel')}
+                    </th>
+                    <th className="pb-2 text-end text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">
+                      {/* actions */}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {stages.map((stage, index) => (
+                    // Fragment needed to emit two <tr> elements per stage row when editing (MINCRM-527)
+                    <Fragment key={stage.id}>
+                      <tr data-testid={`pipeline-stage-row-${stage.id}`}>
+                        <td className="py-2 pe-2">
+                          <div className="flex flex-col gap-0.5">
+                            <button
                               type="button"
-                              variant="primary"
-                              size="sm"
-                              data-testid={`pipeline-stage-save-${stage.id}`}
-                              disabled={updateStageMutation.isPending}
-                              onClick={() => saveEdit(stage)}
+                              aria-label={`Move ${stage.name} up`}
+                              data-testid={`pipeline-stage-move-up-${stage.id}`}
+                              disabled={index === 0 || reorderStageMutation.isPending}
+                              onClick={() => handleMoveUp(index)}
+                              className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
                             >
-                              {t('settings.pipelineStages.saveButton')}
-                            </Button>
-                            <Button
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 15l7-7 7 7"
+                                />
+                              </svg>
+                            </button>
+                            <button
                               type="button"
-                              variant="secondary"
-                              size="sm"
-                              data-testid={`pipeline-stage-cancel-${stage.id}`}
-                              onClick={() => {
-                                setEditingStageId(null);
-                                setEditRowError(null);
-                              }}
+                              aria-label={`Move ${stage.name} down`}
+                              data-testid={`pipeline-stage-move-down-${stage.id}`}
+                              disabled={
+                                index === stages.length - 1 || reorderStageMutation.isPending
+                              }
+                              onClick={() => handleMoveDown(index)}
+                              className="p-0.5 rounded text-gray-500 hover:text-gray-600 disabled:opacity-30"
                             >
-                              {t('settings.pipelineStages.cancelButton')}
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              data-testid={`pipeline-stage-edit-${stage.id}`}
-                              onClick={() => startEditing(stage)}
-                            >
-                              {t('settings.pipelineStages.editButton')}
-                            </Button>
-                            {!stage.is_fixed && (
-                              <Button
-                                type="button"
-                                variant="danger"
-                                size="sm"
-                                data-testid={`pipeline-stage-delete-${stage.id}`}
-                                onClick={() => {
-                                  setDeletingStageId(stage.id);
-                                  setDeleteBlockedMessage(null);
-                                }}
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
                               >
-                                {t('settings.pipelineStages.deleteButton')}
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                    {editingStageId === stage.id && (
-                      <tr data-testid={`pipeline-stage-exit-requirements-${stage.id}`}>
-                        <td />
-                        <td colSpan={3} className="pb-3 pt-1">
-                          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-xs space-y-3">
-                            <p className="font-medium text-gray-700">
-                              {t('settings.pipelineStages.exitRequirementsLabel')}
-                            </p>
-                            <p className="text-gray-500">
-                              {t('settings.pipelineStages.exitRequirementsHint')}
-                            </p>
-                            <div className="space-y-2">
-                              <label
-                                htmlFor={`exit-required-${stage.id}`}
-                                className="block font-medium text-gray-600"
-                              >
-                                {t('settings.pipelineStages.exitRequiredFieldsLabel')}
-                              </label>
-                              <input
-                                id={`exit-required-${stage.id}`}
-                                type="text"
-                                data-testid={`pipeline-stage-exit-required-${stage.id}`}
-                                value={editDraft.exitRequiredFields}
-                                onChange={(e) =>
-                                  setEditDraft((d) => ({
-                                    ...d,
-                                    exitRequiredFields: e.target.value,
-                                  }))
-                                }
-                                disabled={updateStageMutation.isPending}
-                                placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label
-                                htmlFor={`exit-warning-${stage.id}`}
-                                className="block font-medium text-gray-600"
-                              >
-                                {t('settings.pipelineStages.exitWarningFieldsLabel')}
-                              </label>
-                              <input
-                                id={`exit-warning-${stage.id}`}
-                                type="text"
-                                data-testid={`pipeline-stage-exit-warning-${stage.id}`}
-                                value={editDraft.exitWarningFields}
-                                onChange={(e) =>
-                                  setEditDraft((d) => ({ ...d, exitWarningFields: e.target.value }))
-                                }
-                                disabled={updateStageMutation.isPending}
-                                placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-                              />
-                            </div>
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 9l-7 7-7-7"
+                                />
+                              </svg>
+                            </button>
                           </div>
                         </td>
+
+                        <td className="py-2 pe-3">
+                          {editingStageId === stage.id ? (
+                            <input
+                              type="text"
+                              data-testid={`pipeline-stage-name-input-${stage.id}`}
+                              value={editDraft.name}
+                              disabled={stage.is_fixed || updateStageMutation.isPending}
+                              onChange={(e) =>
+                                setEditDraft((d) => ({ ...d, name: e.target.value }))
+                              }
+                              className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
+                              maxLength={100}
+                            />
+                          ) : (
+                            <span className="font-medium text-gray-800">
+                              {stage.name}
+                              {stage.is_fixed && (
+                                <span className="ms-2 text-xs text-gray-500 font-normal">
+                                  {t('settings.pipelineStages.fixedBadge')}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-2 pe-3">
+                          {editingStageId === stage.id ? (
+                            <input
+                              type="number"
+                              data-testid={`pipeline-stage-prob-input-${stage.id}`}
+                              value={editDraft.probability}
+                              min="0"
+                              max="100"
+                              onChange={(e) =>
+                                setEditDraft((d) => ({ ...d, probability: e.target.value }))
+                              }
+                              disabled={updateStageMutation.isPending}
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                          ) : (
+                            <span className="text-gray-600">
+                              {t('settings.pipelineStages.probabilityValue', {
+                                value: stage.probability,
+                              })}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-2 text-end">
+                          {editingStageId === stage.id ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
+                                data-testid={`pipeline-stage-save-${stage.id}`}
+                                disabled={updateStageMutation.isPending}
+                                onClick={() => saveEdit(stage)}
+                              >
+                                {t('settings.pipelineStages.saveButton')}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`pipeline-stage-cancel-${stage.id}`}
+                                onClick={() => {
+                                  setEditingStageId(null);
+                                  setEditRowError(null);
+                                }}
+                              >
+                                {t('settings.pipelineStages.cancelButton')}
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                data-testid={`pipeline-stage-edit-${stage.id}`}
+                                onClick={() => startEditing(stage)}
+                              >
+                                {t('settings.pipelineStages.editButton')}
+                              </Button>
+                              {!stage.is_fixed && (
+                                <Button
+                                  type="button"
+                                  variant="danger"
+                                  size="sm"
+                                  data-testid={`pipeline-stage-delete-${stage.id}`}
+                                  onClick={() => {
+                                    setDeletingStageId(stage.id);
+                                    setDeleteBlockedMessage(null);
+                                  }}
+                                >
+                                  {t('settings.pipelineStages.deleteButton')}
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </td>
                       </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+                      {editingStageId === stage.id && (
+                        <tr data-testid={`pipeline-stage-exit-requirements-${stage.id}`}>
+                          <td />
+                          <td colSpan={3} className="pb-3 pt-1">
+                            <div className="rounded border border-gray-200 bg-gray-50 p-3 text-xs space-y-3">
+                              <p className="font-medium text-gray-700">
+                                {t('settings.pipelineStages.exitRequirementsLabel')}
+                              </p>
+                              <p className="text-gray-500">
+                                {t('settings.pipelineStages.exitRequirementsHint')}
+                              </p>
+                              <div className="space-y-2">
+                                <label
+                                  htmlFor={`exit-required-${stage.id}`}
+                                  className="block font-medium text-gray-600"
+                                >
+                                  {t('settings.pipelineStages.exitRequiredFieldsLabel')}
+                                </label>
+                                <input
+                                  id={`exit-required-${stage.id}`}
+                                  type="text"
+                                  data-testid={`pipeline-stage-exit-required-${stage.id}`}
+                                  value={editDraft.exitRequiredFields}
+                                  onChange={(e) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      exitRequiredFields: e.target.value,
+                                    }))
+                                  }
+                                  disabled={updateStageMutation.isPending}
+                                  placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
+                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label
+                                  htmlFor={`exit-warning-${stage.id}`}
+                                  className="block font-medium text-gray-600"
+                                >
+                                  {t('settings.pipelineStages.exitWarningFieldsLabel')}
+                                </label>
+                                <input
+                                  id={`exit-warning-${stage.id}`}
+                                  type="text"
+                                  data-testid={`pipeline-stage-exit-warning-${stage.id}`}
+                                  value={editDraft.exitWarningFields}
+                                  onChange={(e) =>
+                                    setEditDraft((d) => ({
+                                      ...d,
+                                      exitWarningFields: e.target.value,
+                                    }))
+                                  }
+                                  disabled={updateStageMutation.isPending}
+                                  placeholder={t('settings.pipelineStages.exitFieldsPlaceholder')}
+                                  className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {editRowError && (
               <p
