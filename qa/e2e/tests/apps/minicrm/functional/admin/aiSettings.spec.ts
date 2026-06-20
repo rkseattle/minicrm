@@ -164,7 +164,7 @@ test('@functional F-AI4: DPA warning banner is visible when DPA has not been ack
 });
 
 // ---------------------------------------------------------------------------
-// F-AI5 — DPA warning banner disappears after acknowledgment via REST
+// F-AI5 — DPA warning banner disappears after acknowledgment via UI
 // ---------------------------------------------------------------------------
 
 test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged', async ({
@@ -175,28 +175,26 @@ test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Acknowledge the DPA via REST before navigating so the page loads in the
-  // acknowledged state, avoiding a checkbox-click flow that depends on the UI
-  // completing the PATCH before the assertion.
-  await loginAsAdmin(restClient);
-  await restClient.post('/api/v1/admin/ai/dpa-acknowledgment', {
-    acknowledged: true,
-    custom_dpa_url: '',
-  });
-
   await navigateToAdminSettings({ page }, 'ai');
   await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
 
-  // DPA checkbox should not be present (acknowledged state shows static text instead).
-  const checkbox = await getAiDpaCheckboxLocator({ page }).catch(() => null);
-  if (checkbox) {
-    await expect(checkbox).not.toBeVisible();
-  }
+  // Click the DPA checkbox to acknowledge — fires a PATCH and invalidates the
+  // AI config query, causing the checkbox and warning banner to disappear.
+  // Using the UI instead of a pre-navigation REST call avoids a --workers=2
+  // race where afterEach from a concurrent test resets acknowledged:false
+  // between our POST and the page.goto().
+  const checkbox = await getAiDpaCheckboxLocator({ page });
+  await expect(checkbox).toBeVisible({ timeout: 5_000 });
+  await checkbox.click();
+
+  // After clicking, the query invalidates and re-renders — checkbox should
+  // disappear (the acknowledged state renders static text instead).
+  await expect(checkbox).not.toBeVisible({ timeout: 10_000 });
 
   // Warning banner should not be visible when DPA is acknowledged.
   const banner = await getAiDpaWarningBannerLocator({ page }).catch(() => null);
   if (banner) {
-    await expect(banner).not.toBeVisible();
+    await expect(banner).not.toBeVisible({ timeout: 5_000 });
   }
 });
 
