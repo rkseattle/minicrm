@@ -729,6 +729,7 @@ export default function UsersPage() {
                             <InlineRoleSelect
                               user={user}
                               canEdit={canEditUsers}
+                              currentUserId={currentUser?.id ?? ''}
                               assignedCustomRoles={userCustomRolesMap.get(user.id) ?? []}
                               usersQueryKey={USERS_QUERY_KEY}
                               onRoleError={setInlineErrorMessage}
@@ -793,6 +794,7 @@ export default function UsersPage() {
                               <InlineRoleSelect
                                 user={user}
                                 canEdit={canEditUsers}
+                                currentUserId={currentUser?.id ?? ''}
                                 assignedCustomRoles={userCustomRolesMap.get(user.id) ?? []}
                                 usersQueryKey={USERS_QUERY_KEY}
                                 onRoleError={setInlineErrorMessage}

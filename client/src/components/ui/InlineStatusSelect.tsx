@@ -39,8 +39,7 @@ export function InlineStatusSelect({
   const queryClient = useQueryClient();
 
   const [optimisticActive, setOptimisticActive] = useState<boolean>(user.status === 'active');
-  const [showSelfDeactivateConfirm, setShowSelfDeactivateConfirm] = useState(false);
-  const [pendingActive, setPendingActive] = useState<boolean | null>(null);
+  const [showSelfDeactivateBlock, setShowSelfDeactivateBlock] = useState(false);
 
   const mutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) => updateUserStatus(id, active),
@@ -66,10 +65,10 @@ export function InlineStatusSelect({
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const newActive = event.target.value === 'active';
 
-      // Block self-deactivation client-side — show confirmation instead
+      // Server unconditionally rejects self-deactivation (SELF_DEACTIVATION_NOT_ALLOWED).
+      // Show an informational dialog instead of firing a request that will always fail.
       if (!newActive && user.id === currentUserId) {
-        setPendingActive(false);
-        setShowSelfDeactivateConfirm(true);
+        setShowSelfDeactivateBlock(true);
         return;
       }
 
@@ -78,17 +77,8 @@ export function InlineStatusSelect({
     [commitStatusChange, currentUserId, user.id],
   );
 
-  const handleSelfDeactivateConfirm = useCallback(() => {
-    setShowSelfDeactivateConfirm(false);
-    if (pendingActive !== null) {
-      commitStatusChange(pendingActive);
-    }
-    setPendingActive(null);
-  }, [commitStatusChange, pendingActive]);
-
-  const handleSelfDeactivateCancel = useCallback(() => {
-    setShowSelfDeactivateConfirm(false);
-    setPendingActive(null);
+  const handleSelfDeactivateClose = useCallback(() => {
+    setShowSelfDeactivateBlock(false);
   }, []);
 
   // Invited users: read-only badge with tooltip
@@ -126,13 +116,13 @@ export function InlineStatusSelect({
         <option value="inactive">{t('users.statusInactive')}</option>
       </select>
 
-      {/* Self-deactivation confirmation dialog */}
-      {showSelfDeactivateConfirm && (
+      {/* Self-deactivation blocked dialog — server rejects this unconditionally */}
+      {showSelfDeactivateBlock && (
         <div
           role="presentation"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           data-testid="deactivate-self-overlay"
-          onClick={handleSelfDeactivateCancel}
+          onClick={handleSelfDeactivateClose}
         >
           <dialog
             open
@@ -149,21 +139,13 @@ export function InlineStatusSelect({
               <h2 id="deactivate-self-title" className="text-base font-semibold text-gray-900 mb-2">
                 {t('users.deactivateSelfTitle')}
               </h2>
-              <p className="text-sm text-gray-600 mb-6">{t('users.deactivateSelfConfirm')}</p>
+              <p className="text-sm text-gray-600 mb-6">{t('users.deactivateSelfBlocked')}</p>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  data-testid="deactivate-self-confirm"
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  onClick={handleSelfDeactivateConfirm}
-                >
-                  {t('users.deactivateSelfButton')}
-                </button>
-                <button
-                  type="button"
-                  data-testid="deactivate-self-cancel"
+                  data-testid="deactivate-self-close"
                   className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  onClick={handleSelfDeactivateCancel}
+                  onClick={handleSelfDeactivateClose}
                 >
                   {t('users.cancel')}
                 </button>

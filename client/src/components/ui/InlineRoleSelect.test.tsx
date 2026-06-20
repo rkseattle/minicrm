@@ -43,6 +43,7 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof InlineRoleS
   return {
     user: ACTIVE_REP,
     canEdit: true,
+    currentUserId: 'other-user-id',
     assignedCustomRoles: [],
     usersQueryKey: ['users'] as const,
     onRoleChanged: vi.fn(),
@@ -122,13 +123,21 @@ describe('InlineRoleSelect', () => {
     expect(screen.getByText('Billing Admin')).toBeInTheDocument();
   });
 
-  it('custom role chip is a Link to /settings/roles/:id', () => {
+  it('custom role chip links to the roles admin tab', () => {
     renderWithProviders(
       <InlineRoleSelect {...defaultProps({ assignedCustomRoles: [CUSTOM_ROLE] })} />,
     );
 
     const chip = screen.getByTestId(`custom-role-chip-${ACTIVE_REP.id}-${CUSTOM_ROLE.id}`);
     expect(chip.tagName).toBe('A');
-    expect(chip).toHaveAttribute('href', `/settings/roles/${CUSTOM_ROLE.id}`);
+    expect(chip).toHaveAttribute('href', '/admin/settings?tab=roles');
+  });
+
+  it('select is disabled and has tooltip when currentUserId matches the user row', () => {
+    renderWithProviders(<InlineRoleSelect {...defaultProps({ currentUserId: ACTIVE_REP.id })} />);
+
+    const select = screen.getByTestId(`role-select-${ACTIVE_REP.id}`);
+    expect(select).toBeDisabled();
+    expect(select).toHaveAttribute('title');
   });
 });
