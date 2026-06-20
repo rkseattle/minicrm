@@ -25,29 +25,16 @@
  * This script is idempotent: if 000_baseline has already been applied, step 1 is a no-op.
  * If run against a database that already has 001–101 applied, step 2 is also a no-op.
  *
+ * The startup migration path in migrate.ts now uses the same two-step strategy, so
+ * `docker compose up` on a fresh database works without running this script first.
+ * This script is kept for CI and for explicit fresh-bootstrap use cases.
+ *
  * MINCRM-528
  */
 
 import 'dotenv/config';
-import { readdirSync } from 'fs';
-import { resolve } from 'path';
 import { runner as migrationRunner } from 'node-pg-migrate';
-
-/** CWD is server/ when run via npm --workspace=minicrm-server */
-const MIGRATIONS_DIR = resolve(process.cwd(), '../db/migrations');
-
-/**
- * Count migration files that the baseline covers: all *.js files in the
- * migrations directory EXCLUDING 000_baseline itself. This bounds the fake
- * step so that any migration added after the baseline (102, 103, …) is NOT
- * fake-marked — it will run for real on the next `npm run migrate`.
- */
-function countBaselineCoveredMigrations(): number {
-  const files = readdirSync(MIGRATIONS_DIR).filter(
-    (f) => f.endsWith('.js') && f !== '000_baseline.js',
-  );
-  return files.length;
-}
+import { MIGRATIONS_DIR, countBaselineCoveredMigrations } from '../migrate.js';
 
 const databaseUrl =
   process.env.DATABASE_URL ??
