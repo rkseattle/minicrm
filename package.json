@@ -65,6 +65,9 @@
     "prettier": "^3.8.1",
     "typescript": "^5.9.3"
   },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.0.3"
+  },
   "dependencies": {
     "@node-saml/node-saml": "^5.1.0"
   }
