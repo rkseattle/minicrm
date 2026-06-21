@@ -12,10 +12,12 @@ import {
   setMfaRequiredSetting,
   MFA_REQUIRED_SETTING_QUERY_KEY,
 } from '@/api/mfa.js';
+import { useAuth } from '@/hooks/useAuth.js';
 
 export default function MfaSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: mfaRequiredData } = useQuery({
     queryKey: MFA_REQUIRED_SETTING_QUERY_KEY,
@@ -37,6 +39,10 @@ export default function MfaSettings() {
       setMfaRequiredSuccess(false);
     },
   });
+
+  if (user?.role !== 'admin') {
+    return null;
+  }
 
   return (
     <div

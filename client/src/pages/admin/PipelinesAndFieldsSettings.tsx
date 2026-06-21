@@ -249,6 +249,70 @@ function TagManagementSection() {
         </div>
       )}
 
+      {!isLoading && !isError && tags.length > 0 && !showCreateForm && (
+        <div className="mb-4 flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowCreateForm(true)}
+            data-testid="admin-tags-add-button"
+          >
+            {t('tags.emptyAction')}
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && tags.length > 0 && showCreateForm && (
+        <div
+          className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-4"
+          data-testid="admin-tags-create-form"
+        >
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateSubmit();
+            }}
+          >
+            <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              aria-label={t('tags.emptyAction')}
+              placeholder={t('tags.emptyAction')}
+              data-testid="admin-tags-create-input"
+            />
+            {createError && (
+              <span className="text-xs text-red-600" role="alert">
+                {createError}
+              </span>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={createMutation.isPending}
+              data-testid="admin-tags-create-save"
+            >
+              {createMutation.isPending ? t('tags.saving') : t('tags.save')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowCreateForm(false);
+                setNewTagName('');
+                setCreateError(null);
+              }}
+              data-testid="admin-tags-create-cancel"
+            >
+              {t('tags.cancel')}
+            </Button>
+          </form>
+        </div>
+      )}
+
       {!isLoading && !isError && tags.length === 0 && !showCreateForm && (
         <EmptyState
           data-testid="admin-tags-empty-state"

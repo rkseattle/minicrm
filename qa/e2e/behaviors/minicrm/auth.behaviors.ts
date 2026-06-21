@@ -1075,12 +1075,13 @@ export async function loginWithRecoveryCode(
 // ---------------------------------------------------------------------------
 
 /**
- * Navigates to the admin settings general page and waits for network idle.
+ * Navigates to the admin settings Security & Identity tab and waits for network
+ * idle. MFA enforcement was moved from the General tab to Security (MINCRM-563).
  */
 export async function navigateToAdminSettingsGeneralPage(
   context: AuthBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings', { waitUntil: 'networkidle' });
+  await context.page.goto('/admin/settings?tab=security', { waitUntil: 'networkidle' });
 }
 
 /**

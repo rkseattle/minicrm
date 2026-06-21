@@ -233,8 +233,10 @@ test('@functional F-FF7: AI tab is disabled in admin settings when ai_features i
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'flags');
 
+  // On mobile the tab renders as a hidden <option> inside a <select> — toBeAttached
+  // confirms presence in the DOM without requiring it to be visually visible.
   const aiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(aiTab).toBeVisible({ timeout: 5_000 });
+  await expect(aiTab).toBeAttached({ timeout: 5_000 });
   await expect(aiTab).toBeDisabled();
 });
 
@@ -254,8 +256,9 @@ test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'flags');
 
+  // On mobile the tab renders as a hidden <option> inside a <select>.
   const aiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(aiTab).toBeVisible({ timeout: 5_000 });
+  await expect(aiTab).toBeAttached({ timeout: 5_000 });
   await expect(aiTab).not.toBeDisabled();
 });
 
