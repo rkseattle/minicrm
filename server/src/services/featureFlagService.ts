@@ -79,7 +79,10 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
        ff.system_flag
      FROM feature_flags ff
      LEFT JOIN users u ON u.id = ff.updated_by
-     ORDER BY ff.category, ff.label`,
+     ORDER BY ff.category,
+              -- 'ai_features' is the master toggle; always list it first in the AI category.
+              CASE WHEN ff.flag_key = 'ai_features' THEN 0 ELSE 1 END,
+              ff.label`,
   );
 
   cache = { rows: result.rows, expiresAt: Date.now() + CACHE_TTL_MS };

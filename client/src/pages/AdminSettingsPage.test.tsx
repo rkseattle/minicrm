@@ -2,7 +2,8 @@
  * Tests for the AdminSettingsPage component.
  * Covers: loading state, load error state, default language display, save action,
  * validation rejection (400), success/error feedback, demo data section (MINCRM-103),
- * MFA enforcement toggle (MINCRM-392), and 10-tab structure (MINCRM-563).
+ * MFA enforcement toggle (MINCRM-392), 10-tab structure (MINCRM-563), and AI tab
+ * visibility gated on the ai_features feature flag (MINCRM-563).
  */
 
 import { screen, waitFor, act } from '@testing-library/react';
@@ -14,9 +15,15 @@ import AdminSettingsPage from './AdminSettingsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 
+// Per-flag override map: tests can control individual flag states.
+const flagOverrides: Record<string, boolean> = {};
+
 // Resolve feature flags synchronously so flag-gated sections render without waitFor.
 vi.mock('@/hooks/useFeatureFlag.js', () => ({
-  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
+  useFeatureFlag: (key: string) => ({
+    enabled: key in flagOverrides ? flagOverrides[key] : true,
+    isLoading: false,
+  }),
   useFeatureFlags: () => ({ flags: {}, isLoading: false }),
 }));
 
@@ -809,6 +816,41 @@ describe('AdminSettingsPage', () => {
           'Failed to remove demo data. Please try again.',
         );
       });
+    });
+  });
+
+  // ── AI tab visibility — gated on ai_features flag (MINCRM-563) ────────────
+
+  describe('AI tab visibility', () => {
+    afterEach(() => {
+      delete flagOverrides['ai_features'];
+    });
+
+    it('shows the AI tab when ai_features flag is enabled', () => {
+      flagOverrides['ai_features'] = true;
+      renderWithProviders(<AdminSettingsPage />);
+      expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
+    });
+
+    it('hides the AI tab when ai_features flag is disabled', () => {
+      flagOverrides['ai_features'] = false;
+      renderWithProviders(<AdminSettingsPage />);
+      expect(screen.queryByTestId('settings-tab-ai')).not.toBeInTheDocument();
+    });
+
+    it('falls back to workspace tab when navigating to ?tab=ai with ai_features disabled', async () => {
+      flagOverrides['ai_features'] = false;
+      renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
+      expect(screen.getByTestId('settings-tab-workspace')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('default-language-select')).toBeInTheDocument();
+      });
+    });
+
+    it('shows the Feature Flags tab last in the tab list', () => {
+      renderWithProviders(<AdminSettingsPage />);
+      const tabs = screen.getAllByRole('tab');
+      expect(tabs[tabs.length - 1]).toHaveAttribute('data-testid', 'settings-tab-flags');
     });
   });
 
