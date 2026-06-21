@@ -826,16 +826,18 @@ describe('AdminSettingsPage', () => {
       delete flagOverrides['ai_features'];
     });
 
-    it('shows the AI tab when ai_features flag is enabled', () => {
+    it('shows the AI tab enabled when ai_features flag is on', () => {
       flagOverrides['ai_features'] = true;
       renderWithProviders(<AdminSettingsPage />);
       expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
     });
 
-    it('hides the AI tab when ai_features flag is disabled', () => {
+    it('shows the AI tab disabled when ai_features flag is off', () => {
       flagOverrides['ai_features'] = false;
       renderWithProviders(<AdminSettingsPage />);
-      expect(screen.queryByTestId('settings-tab-ai')).not.toBeInTheDocument();
+      expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-tab-ai')).toBeDisabled();
     });
 
     it('falls back to workspace tab when navigating to ?tab=ai with ai_features disabled', async () => {

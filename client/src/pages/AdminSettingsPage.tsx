@@ -41,7 +41,7 @@ type TabKey =
   | 'flags';
 
 /** Canonical tab order — Feature Flags is last (admin-only housekeeping). */
-const ALL_TAB_KEYS: TabKey[] = [
+const TAB_KEYS: TabKey[] = [
   'workspace',
   'branding',
   'pipelines',
@@ -68,7 +68,7 @@ const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
 };
 
 function isValidTab(value: string | null): value is TabKey {
-  return ALL_TAB_KEYS.includes(value as TabKey);
+  return TAB_KEYS.includes(value as TabKey);
 }
 
 export default function AdminSettingsPage() {
@@ -78,12 +78,10 @@ export default function AdminSettingsPage() {
   const { layout: navLayout } = useNavLayout();
   const { enabled: aiEnabled } = useFeatureFlag('ai_features');
 
-  // Exclude the AI tab when the ai_features flag is disabled.
-  const TAB_KEYS = ALL_TAB_KEYS.filter((tab) => tab !== 'ai' || aiEnabled);
-
   const rawTab = searchParams.get('tab');
-  // Fall back to 'workspace' for unknown tabs or if 'ai' tab is hidden.
-  const activeTab: TabKey = isValidTab(rawTab) && TAB_KEYS.includes(rawTab) ? rawTab : 'workspace';
+  // Fall back to 'workspace' when the tab is unknown or the ai tab is disabled.
+  const activeTab: TabKey =
+    isValidTab(rawTab) && !(rawTab === 'ai' && !aiEnabled) ? rawTab : 'workspace';
 
   function selectTab(key: string): void {
     setSearchParams({ tab: key }, { replace: false });
@@ -94,6 +92,7 @@ export default function AdminSettingsPage() {
   const navItems = TAB_KEYS.map((tab) => ({
     key: tab,
     label: t(`settings.tabs.${tab}`),
+    disabled: tab === 'ai' && !aiEnabled,
     'data-testid': `settings-tab-${tab}`,
   }));
 
