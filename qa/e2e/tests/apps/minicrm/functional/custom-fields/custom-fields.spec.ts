@@ -89,7 +89,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   await loginViaBrowser(admin.email, admin.password, { page });
 
   // Navigate to Admin Settings → Customisation tab
-  await navigateToPath('/admin/settings?tab=customisation', { page });
+  await navigateToPath('/admin/settings?tab=pipelines', { page });
 
   const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });
@@ -260,7 +260,7 @@ test('admin deletes a custom field definition; it disappears from the contact de
   await expect(readGridBefore).toContainText('Temp Value');
 
   // Navigate to Admin Settings → Customisation tab
-  await navigateToPath('/admin/settings?tab=customisation', { page });
+  await navigateToPath('/admin/settings?tab=pipelines', { page });
 
   const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
   await expect(section).toBeVisible({ timeout: 10_000 });

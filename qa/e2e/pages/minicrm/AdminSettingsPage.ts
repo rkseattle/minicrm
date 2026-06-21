@@ -23,20 +23,18 @@ export interface AdminSettingsPageContext {
   page: PageFacade;
 }
 
-/** Valid tab keys for the Admin Settings page (MINCRM-259). */
+/** Valid tab keys for the Admin Settings page (MINCRM-259, MINCRM-563). */
 export type AdminSettingsTab =
-  | 'general'
-  | 'notifications'
-  | 'currency'
-  | 'customisation'
+  | 'workspace'
   | 'branding'
-  | 'data'
+  | 'pipelines'
+  | 'users'
+  | 'security'
+  | 'notifications'
   | 'integrations'
-  | 'features'
   | 'ai'
-  | 'visibility'
-  | 'roles'
-  | 'teams';
+  | 'flags'
+  | 'platform';
 
 // ---------------------------------------------------------------------------
 // AdminSettingsPage

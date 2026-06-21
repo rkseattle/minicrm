@@ -1,13 +1,15 @@
 /**
- * AdminTagsPage — Page Object for the MiniCRM admin tags management screen.
+ * AdminTagsPage — Page Object for tag management within the Pipelines & Fields
+ * settings tab (MINCRM-186). The standalone /admin/tags route was absorbed into
+ * /admin/settings?tab=pipelines (MINCRM-563); /admin/tags now redirects there.
  *
- * Encapsulates all UI interactions on `/admin/tags`. Every element uses a
- * HealingLocator with at least 2 strategies.
+ * Encapsulates all UI interactions on the tags section of the Pipelines & Fields
+ * tab. Every element uses a HealingLocator with at least 2 strategies.
  *
  * Page Objects interact with UI only — no business logic, no API calls,
  * no assertions.
  *
- * MINCRM-186
+ * MINCRM-186, MINCRM-563
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -19,41 +21,44 @@ export interface AdminTagsPageContext {
 }
 
 /**
- * Page Object for the MiniCRM admin tags management screen.
+ * Page Object for tag management embedded in the Pipelines & Fields settings tab.
  */
 export class AdminTagsPage {
   private readonly page: PageFacade;
 
-  /** The URL path for this page. */
-  static readonly PATH = '/admin/tags';
+  /**
+   * The canonical URL path for tag management (MINCRM-563).
+   * /admin/tags redirects here via a client-side Navigate component.
+   */
+  static readonly PATH = '/admin/settings?tab=pipelines';
 
   constructor(context: AdminTagsPageContext) {
     this.page = context.page;
   }
 
   /**
-   * Navigates directly to the admin tags management URL.
+   * Navigates to the Pipelines & Fields settings tab where tags are managed.
    */
   async navigate(): Promise<void> {
     await this.page.goto(AdminTagsPage.PATH);
   }
 
   /**
-   * Returns whether the admin tags page has loaded (heading present).
+   * Returns whether the tags section has loaded (section title present).
    */
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
         .locate(
           [
-            { type: 'testId', value: 'admin-tags-heading' },
+            { type: 'testId', value: 'tags-section-title' },
             {
               type: 'role',
               value: 'heading',
               options: { name: t('tags.pageTitle'), exact: false },
             },
           ],
-          { intent: 'admin tags page heading indicating page is loaded' },
+          { intent: 'tags section title in Pipelines & Fields tab indicating section is loaded' },
         )
         .resolve();
       return true;

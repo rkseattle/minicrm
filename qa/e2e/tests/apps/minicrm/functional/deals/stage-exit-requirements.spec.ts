@@ -168,7 +168,7 @@ test('@functional SEQ-3: Admin can update stage_exit_requirements in Customisati
   const stageId = tempStage.id;
 
   try {
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     // Open the edit panel for the temp stage
     const editButton = await getPipelineStageEditButtonLocator(stageId, { page });

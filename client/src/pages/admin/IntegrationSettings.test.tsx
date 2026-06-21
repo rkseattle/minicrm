@@ -1,5 +1,6 @@
 /**
  * Tests for IntegrationSettings — File Storage + Webhooks panels.
+ * SSO and SCIM moved to SecuritySettings (MINCRM-563).
  *
  * Verifies:
  * - Storage panel and webhook panel each render as separate sections
@@ -19,16 +20,23 @@ import { renderWithProviders } from '../../test/renderWithProviders.js';
 import IntegrationSettings from './IntegrationSettings.js';
 
 describe('IntegrationSettings', () => {
-  it('renders the storage section, SSO section, SCIM section, and webhooks section as separate panels', async () => {
+  it('renders the storage section and webhooks section as separate panels', async () => {
     renderWithProviders(<IntegrationSettings />);
 
     await waitFor(() => {
       expect(screen.getByTestId('storage-section')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('sso-settings-wrapper')).toBeInTheDocument();
-    expect(screen.getByTestId('scim-settings-wrapper')).toBeInTheDocument();
     expect(screen.getByTestId('webhooks-section')).toBeInTheDocument();
     expect(screen.getByTestId('webhook-settings-section')).toBeInTheDocument();
+  });
+
+  it('does not render SSO or SCIM sections (moved to Security tab)', async () => {
+    renderWithProviders(<IntegrationSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('storage-section')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('sso-settings-wrapper')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('scim-settings-wrapper')).not.toBeInTheDocument();
   });
 
   it('renders storage form when not configured', async () => {

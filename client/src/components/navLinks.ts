@@ -59,7 +59,6 @@ export const NAV_LINKS: NavLinkDef[] = [
     featureFlag: 'automation_rules',
   },
   { to: '/admin/sequences', labelKey: 'nav.sequences', adminOnly: true, featureFlag: 'sequencing' },
-  { to: '/admin/tags', labelKey: 'nav.tags', adminOnly: true, featureFlag: 'tags' },
   { to: '/admin/settings', labelKey: 'nav.adminSettings', adminOnly: true },
 ];
 
@@ -79,6 +78,5 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/reports': 'reports',
   '/admin/automation': 'automation',
   '/admin/sequences': 'sequences',
-  '/admin/tags': 'tags',
   '/admin/settings': 'settings',
 };

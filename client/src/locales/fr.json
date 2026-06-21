@@ -560,18 +560,16 @@
   "settings": {
     "pageTitle": "Paramètres administrateur",
     "tabs": {
-      "general": "Général",
-      "notifications": "Notifications",
-      "currency": "Devise",
-      "customisation": "Personnalisation",
+      "workspace": "Espace de travail",
       "branding": "Identité visuelle",
-      "data": "Données",
+      "pipelines": "Pipelines & champs",
+      "users": "Utilisateurs & accès",
+      "security": "Sécurité & identité",
+      "notifications": "Notifications",
       "integrations": "Intégrations",
-      "features": "Fonctionnalités",
       "ai": "IA",
-      "visibility": "Visibilité",
-      "roles": "Rôles",
-      "teams": "Équipes"
+      "flags": "Indicateurs de fonctionnalité",
+      "platform": "Données & plateforme"
     },
     "defaultLanguageLabel": "Langue par défaut",
     "defaultLanguageHint": "Définit la langue pour tous les utilisateurs n'ayant pas configuré de préférence personnelle.",

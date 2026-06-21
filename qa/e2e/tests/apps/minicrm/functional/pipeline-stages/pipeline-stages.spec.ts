@@ -105,7 +105,7 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -138,7 +138,7 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -176,7 +176,7 @@ test('@functional MINCRM-381-3: move-up button is disabled for the first stage',
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -199,7 +199,7 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -241,7 +241,7 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });
@@ -301,7 +301,7 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'customisation');
+  await navigateToAdminSettings({ page }, 'pipelines');
 
   const table = await getPipelineStagesTableLocator({ page });
   await expect(table).toBeVisible({ timeout: 10_000 });

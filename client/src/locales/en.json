@@ -560,18 +560,16 @@
   "settings": {
     "pageTitle": "Admin Settings",
     "tabs": {
-      "general": "General",
-      "notifications": "Notifications",
-      "currency": "Currency",
-      "customisation": "Customisation",
+      "workspace": "Workspace",
       "branding": "Branding",
-      "data": "Data",
+      "pipelines": "Pipelines & Fields",
+      "users": "Users & Access",
+      "security": "Security & Identity",
+      "notifications": "Notifications",
       "integrations": "Integrations",
-      "features": "Features",
       "ai": "AI",
-      "visibility": "Visibility",
-      "roles": "Roles",
-      "teams": "Teams"
+      "flags": "Feature Flags",
+      "platform": "Data & Platform"
     },
     "defaultLanguageLabel": "Default language",
     "defaultLanguageHint": "Sets the fallback language for all users who have not configured a personal language preference. Does not override a user's browser or OS language setting.",

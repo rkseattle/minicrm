@@ -87,7 +87,7 @@ test(
     const pipelineName = `E2E-Pipeline-Create-${Date.now()}`;
     let createdId: string | undefined;
 
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     const addButton = await getPipelineAddButtonLocator({ page });
     await addButton.click();
@@ -128,7 +128,7 @@ test(
     const pipeline = await createPipelineViaApi(restClient, originalName);
     testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
 
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     const editButton = await getPipelineEditButtonLocator(pipeline.id, { page });
     await editButton.click();
@@ -161,7 +161,7 @@ test(
     const pipeline = await createPipelineViaApi(restClient, pipelineName);
     // No testData.register — we expect the test itself to delete it
 
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
     await deleteButton.click();
@@ -202,7 +202,7 @@ test(
     testData.register('pipelineStage', stageId, `/api/v1/settings/pipeline-stages/${stageId}`);
 
     // Switch to the new pipeline in settings and verify stage appears
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     const pipelineSelector = await getPipelineStagesPipelineSelectorLocator({ page });
     await pipelineSelector.selectOption(pipeline.id);
@@ -315,7 +315,7 @@ test(
     });
     testData.register('deal', deal.id, `/api/v1/deals/${deal.id}`);
 
-    await navigateToAdminSettings({ page }, 'customisation');
+    await navigateToAdminSettings({ page }, 'pipelines');
 
     const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
     await deleteButton.click();

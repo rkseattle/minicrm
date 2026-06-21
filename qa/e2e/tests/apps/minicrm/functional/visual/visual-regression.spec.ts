@@ -432,12 +432,12 @@ test.describe('Admin', () => {
       await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
-      await navigateToPath('/admin/settings?tab=general', { page });
+      await navigateToPath('/admin/settings?tab=workspace', { page });
 
       const settingsHeading = await getAdminSettingsHeadingLocator({ page });
       await settingsHeading.waitFor({ state: 'visible' });
 
-      // Wait for the general tab panel content to finish loading.
+      // Wait for the workspace tab panel content to finish loading.
       const saveButton = await getAdminSettingsSaveLocator({ page });
       await saveButton.waitFor({ state: 'visible' });
 

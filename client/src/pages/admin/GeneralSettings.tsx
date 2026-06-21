@@ -1,5 +1,7 @@
 /**
- * GeneralSettings — Language and Navigation Layout settings.
+ * GeneralSettings — Default language and navigation layout settings.
+ * MFA enforcement moved to MfaSettings (MINCRM-563).
+ * Setup checklist reset moved to SetupChecklistSettings (MINCRM-563).
  * Extracted from AdminSettingsPage.tsx (MINCRM-259).
  */
 
@@ -11,22 +13,14 @@ import {
   setDefaultLanguage,
   DEFAULT_LANGUAGE_QUERY_KEY,
 } from '@/api/settings.js';
-import { setOnboardingCompleted, ONBOARDING_STATUS_QUERY_KEY } from '@/api/onboarding.js';
-import {
-  getMfaRequiredSetting,
-  setMfaRequiredSetting,
-  MFA_REQUIRED_SETTING_QUERY_KEY,
-} from '@/api/mfa.js';
 import { SUPPORTED_LOCALES, NAV_LAYOUTS } from '@shared/schemas/settingsSchema.js';
 import type { SupportedLocale, NavLayout } from '@shared/schemas/settingsSchema.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
-import { useAuth } from '@/hooks/useAuth.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
 
 export default function GeneralSettings() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -43,43 +37,6 @@ export default function GeneralSettings() {
   const [navLayoutSaving, setNavLayoutSaving] = useState(false);
   const [navLayoutSuccess, setNavLayoutSuccess] = useState(false);
   const [navLayoutError, setNavLayoutError] = useState(false);
-
-  const [resetOnboardingSuccess, setResetOnboardingSuccess] = useState(false);
-  const [resetOnboardingError, setResetOnboardingError] = useState(false);
-
-  // MFA enforcement setting (MINCRM-392)
-  const { data: mfaRequiredData } = useQuery({
-    queryKey: MFA_REQUIRED_SETTING_QUERY_KEY,
-    queryFn: getMfaRequiredSetting,
-  });
-  const [mfaRequiredSuccess, setMfaRequiredSuccess] = useState(false);
-  const [mfaRequiredError, setMfaRequiredError] = useState(false);
-
-  const mfaRequiredMutation = useMutation({
-    mutationFn: (required: boolean) => setMfaRequiredSetting(required),
-    onSuccess: (data) => {
-      queryClient.setQueryData(MFA_REQUIRED_SETTING_QUERY_KEY, data);
-      setMfaRequiredSuccess(true);
-      setMfaRequiredError(false);
-    },
-    onError: () => {
-      setMfaRequiredError(true);
-      setMfaRequiredSuccess(false);
-    },
-  });
-
-  const resetOnboardingMutation = useMutation({
-    mutationFn: () => setOnboardingCompleted(false),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ONBOARDING_STATUS_QUERY_KEY });
-      setResetOnboardingSuccess(true);
-      setResetOnboardingError(false);
-    },
-    onError: () => {
-      setResetOnboardingError(true);
-      setResetOnboardingSuccess(false);
-    },
-  });
 
   async function handleNavLayoutChange(newLayout: NavLayout): Promise<void> {
     if (newLayout === activeLayout) return;
@@ -241,98 +198,6 @@ export default function GeneralSettings() {
           </p>
         )}
       </div>
-
-      {/* MFA enforcement — admin only (MINCRM-392) */}
-      {user?.role === 'admin' && (
-        <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
-          data-testid="mfa-required-section"
-        >
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('mfa.sectionTitle')}</h2>
-          <p className="text-xs text-gray-500 mb-4">{t('mfa.adminSetting.hint')}</p>
-
-          <label
-            className="flex items-center gap-3 cursor-pointer"
-            data-testid="mfa-required-toggle-label"
-          >
-            <input
-              type="checkbox"
-              checked={mfaRequiredData?.mfa_required ?? false}
-              disabled={mfaRequiredMutation.isPending}
-              onChange={(e) => {
-                setMfaRequiredSuccess(false);
-                setMfaRequiredError(false);
-                mfaRequiredMutation.mutate(e.target.checked);
-              }}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              data-testid="mfa-required-checkbox"
-            />
-            <span className="text-sm text-gray-700">{t('mfa.adminSetting.label')}</span>
-          </label>
-
-          {mfaRequiredSuccess && (
-            <p
-              role="status"
-              className="mt-3 text-sm text-green-700"
-              data-testid="mfa-required-success"
-            >
-              {t('mfa.adminSetting.saveSuccess')}
-            </p>
-          )}
-          {mfaRequiredError && (
-            <p role="alert" className="mt-3 text-sm text-red-600" data-testid="mfa-required-error">
-              {t('mfa.adminSetting.saveError')}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Reset setup checklist — admin only (MINCRM-256, MINCRM-379) */}
-      {user?.role === 'admin' && (
-        <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
-          data-testid="reset-onboarding-section"
-        >
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            {t('settings.setupChecklist.resetTitle')}
-          </h2>
-          <p className="text-xs text-gray-500 mb-4">{t('settings.setupChecklist.resetHint')}</p>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            data-testid="reset-onboarding-button"
-            disabled={resetOnboardingMutation.isPending}
-            onClick={() => {
-              setResetOnboardingSuccess(false);
-              setResetOnboardingError(false);
-              resetOnboardingMutation.mutate();
-            }}
-          >
-            {t('settings.setupChecklist.resetButton')}
-          </Button>
-
-          {resetOnboardingSuccess && (
-            <p
-              role="status"
-              className="mt-3 text-sm text-green-700"
-              data-testid="reset-onboarding-success"
-            >
-              {t('settings.setupChecklist.resetSuccess')}
-            </p>
-          )}
-          {resetOnboardingError && (
-            <p
-              role="alert"
-              className="mt-3 text-sm text-red-600"
-              data-testid="reset-onboarding-error"
-            >
-              {t('settings.setupChecklist.resetError')}
-            </p>
-          )}
-        </div>
-      )}
     </>
   );
 }

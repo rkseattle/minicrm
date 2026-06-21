@@ -560,18 +560,16 @@
   "settings": {
     "pageTitle": "管理设置",
     "tabs": {
-      "general": "常规",
-      "notifications": "通知",
-      "currency": "货币",
-      "customisation": "自定义",
+      "workspace": "工作区",
       "branding": "品牌",
-      "data": "数据",
+      "pipelines": "流水线与字段",
+      "users": "用户与访问",
+      "security": "安全与身份",
+      "notifications": "通知",
       "integrations": "集成",
-      "features": "功能",
       "ai": "AI",
-      "visibility": "可见性",
-      "roles": "角色",
-      "teams": "团队"
+      "flags": "功能标志",
+      "platform": "数据与平台"
     },
     "defaultLanguageLabel": "默认语言",
     "defaultLanguageHint": "为所有未设置个人偏好的用户设置语言。",
