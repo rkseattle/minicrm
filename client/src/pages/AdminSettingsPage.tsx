@@ -16,6 +16,7 @@ import NavBar from '@/components/NavBar.js';
 import SubPageNav from '@/components/SubPageNav.js';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import WorkspaceSettings from '@/pages/admin/WorkspaceSettings.js';
 import BrandingSettings from '@/pages/admin/BrandingSettings.js';
 import PipelinesAndFieldsSettings from '@/pages/admin/PipelinesAndFieldsSettings.js';
@@ -36,10 +37,11 @@ type TabKey =
   | 'notifications'
   | 'integrations'
   | 'ai'
-  | 'flags'
-  | 'platform';
+  | 'platform'
+  | 'flags';
 
-const TAB_KEYS: TabKey[] = [
+/** Canonical tab order — Feature Flags is last (admin-only housekeeping). */
+const ALL_TAB_KEYS: TabKey[] = [
   'workspace',
   'branding',
   'pipelines',
@@ -48,8 +50,8 @@ const TAB_KEYS: TabKey[] = [
   'notifications',
   'integrations',
   'ai',
-  'flags',
   'platform',
+  'flags',
 ];
 
 const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
@@ -66,7 +68,7 @@ const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
 };
 
 function isValidTab(value: string | null): value is TabKey {
-  return TAB_KEYS.includes(value as TabKey);
+  return ALL_TAB_KEYS.includes(value as TabKey);
 }
 
 export default function AdminSettingsPage() {
@@ -74,9 +76,14 @@ export default function AdminSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isMobile } = useBreakpoint();
   const { layout: navLayout } = useNavLayout();
+  const { enabled: aiEnabled } = useFeatureFlag('ai_features');
+
+  // Exclude the AI tab when the ai_features flag is disabled.
+  const TAB_KEYS = ALL_TAB_KEYS.filter((tab) => tab !== 'ai' || aiEnabled);
 
   const rawTab = searchParams.get('tab');
-  const activeTab: TabKey = isValidTab(rawTab) ? rawTab : 'workspace';
+  // Fall back to 'workspace' for unknown tabs or if 'ai' tab is hidden.
+  const activeTab: TabKey = isValidTab(rawTab) && TAB_KEYS.includes(rawTab) ? rawTab : 'workspace';
 
   function selectTab(key: string): void {
     setSearchParams({ tab: key }, { replace: false });
