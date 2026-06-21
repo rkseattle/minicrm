@@ -70,9 +70,9 @@ import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   simulateConcurrentEdit,
   isConflictModalVisible,
-  getConflictModalTitleLocator,
-  getConflictSaveResolvedButtonLocator,
-  getConflictDiscardButtonLocator,
+  isConflictModalTitleVisible,
+  isConflictSaveResolvedButtonVisible,
+  isConflictDiscardButtonVisible,
   clickConflictSaveResolved,
   clickConflictDiscard,
   selectConflictTheirs,
@@ -85,13 +85,13 @@ import {
   fillContactDetailField,
   saveContact,
   isContactDetailLoaded,
-  getContactsBulkActionBarLocator,
+  waitForContactsBulkActionBar,
   waitForContactDetailReadMode,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   navigateToDealDetail,
   openDealEditForm,
-  getDealStageSelectOnFormLocator,
+  selectDealStageOnForm,
   submitDealForm,
 } from '@behaviors/minicrm/deals.behaviors.js';
 import {
@@ -256,17 +256,20 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(isVisible, 'conflict modal should be visible after stale save').toBe(true);
 
       // Title heading must be present
-      const title = await getConflictModalTitleLocator({ page });
-      expect(await title.isVisible(), 'modal title should be visible').toBe(true);
-
-      // Both action buttons must be present
-      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
-      expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
-
-      const discardBtn = await getConflictDiscardButtonLocator({ page });
-      expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
+      expect(await isConflictModalTitleVisible({ page }), 'modal title should be visible').toBe(
         true,
       );
+
+      // Both action buttons must be present
+      expect(
+        await isConflictSaveResolvedButtonVisible({ page }),
+        '"Save resolved" button should be visible',
+      ).toBe(true);
+
+      expect(
+        await isConflictDiscardButtonVisible({ page }),
+        '"Discard my changes" button should be visible',
+      ).toBe(true);
     },
   );
 
@@ -291,8 +294,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await openDealEditForm({ page });
 
       // Change stage in the UI to Qualification (do not save yet)
-      const stageSelect = await getDealStageSelectOnFormLocator({ page });
-      await stageSelect.selectOption('Qualification');
+      await selectDealStageOnForm('Qualification', { page });
 
       // Background write: move stage to Negotiation — this increments version to 2
       const { newVersion } = await simulateConcurrentEdit(
@@ -505,7 +507,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       await waitForBulkCheckbox(c3.id, { page });
       await clickBulkCheckbox(c3.id, { page });
 
-      await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
+      await waitForContactsBulkActionBar({ page });
 
       // Bulk reassign — no version required, no conflict expected
       await bulkReassignContacts(newOwner.id, newOwner.name, { page });
@@ -742,17 +744,20 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(isVisible, 'conflict modal should be visible after stale account save').toBe(true);
 
       // Title heading must be present
-      const title = await getConflictModalTitleLocator({ page });
-      expect(await title.isVisible(), 'modal title should be visible').toBe(true);
-
-      // Both action buttons must be present
-      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
-      expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
-
-      const discardBtn = await getConflictDiscardButtonLocator({ page });
-      expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
+      expect(await isConflictModalTitleVisible({ page }), 'modal title should be visible').toBe(
         true,
       );
+
+      // Both action buttons must be present
+      expect(
+        await isConflictSaveResolvedButtonVisible({ page }),
+        '"Save resolved" button should be visible',
+      ).toBe(true);
+
+      expect(
+        await isConflictDiscardButtonVisible({ page }),
+        '"Discard my changes" button should be visible',
+      ).toBe(true);
 
       // Verify the account is still at version 2 in the DB — the stale save was rejected
       const dbAccount = await getAccountById(restClient, account.id);
@@ -803,17 +808,20 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       expect(isVisible, 'conflict modal should be visible after stale lead save').toBe(true);
 
       // Title heading must be present
-      const title = await getConflictModalTitleLocator({ page });
-      expect(await title.isVisible(), 'modal title should be visible').toBe(true);
-
-      // Both action buttons must be present
-      const saveBtn = await getConflictSaveResolvedButtonLocator({ page });
-      expect(await saveBtn.isVisible(), '"Save resolved" button should be visible').toBe(true);
-
-      const discardBtn = await getConflictDiscardButtonLocator({ page });
-      expect(await discardBtn.isVisible(), '"Discard my changes" button should be visible').toBe(
+      expect(await isConflictModalTitleVisible({ page }), 'modal title should be visible').toBe(
         true,
       );
+
+      // Both action buttons must be present
+      expect(
+        await isConflictSaveResolvedButtonVisible({ page }),
+        '"Save resolved" button should be visible',
+      ).toBe(true);
+
+      expect(
+        await isConflictDiscardButtonVisible({ page }),
+        '"Discard my changes" button should be visible',
+      ).toBe(true);
 
       // Verify the lead is still at version 2 in the DB — the stale save was rejected
       const dbLead = await getLeadById(restClient, lead.id);

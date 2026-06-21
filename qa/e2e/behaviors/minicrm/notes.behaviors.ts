@@ -362,42 +362,148 @@ export async function getRecordAuditLog(
 // so spec files never import @pages/* directly. (MINCRM-367)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns a resolved locator for the notes section container on an entity detail page.
- */
-export async function getNotesSectionLocator(context: NotesBehaviorContext) {
-  const notes = new NotesPage(context);
-  return notes.sectionLocator();
+/** Waits for the notes section container to become visible on an entity detail page. */
+export async function waitForNotesSection(context: NotesBehaviorContext): Promise<void> {
+  const locator = await new NotesPage(context).sectionLocator();
+  await locator.waitFor({ state: 'visible' });
 }
 
 /**
- * Returns a resolved locator for a specific note card by note ID (null if absent).
+ * Waits for the note card for the given ID to become visible, with an optional timeout (ms).
+ * The card may not be immediately in the DOM after navigation.
  */
-export async function getNoteCardLocator(noteId: string, context: NotesBehaviorContext) {
-  const notes = new NotesPage(context);
-  return notes.noteCardLocator(noteId);
+export async function waitForNoteCard(
+  noteId: string,
+  context: NotesBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new NotesPage(context).noteCardLocator(noteId);
+  await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
 /**
- * Returns a resolved locator for a masked (private) note card (null if absent).
+ * Waits for the note card for the given ID to be removed from the DOM.
+ * Used after a delete to confirm the list has refreshed.
  */
-export async function getMaskedNoteCardLocator(noteId: string, context: NotesBehaviorContext) {
-  const notes = new NotesPage(context);
-  return notes.maskedNoteCardLocator(noteId);
+export async function waitForNoteCardDetached(
+  noteId: string,
+  context: NotesBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new NotesPage(context).noteCardLocator(noteId);
+  await locator
+    ?.waitFor({ state: 'detached', ...(timeout !== undefined ? { timeout } : {}) })
+    .catch(() => undefined);
+}
+
+/** Asserts the note card for the given ID is visible. */
+export async function expectNoteCardVisible(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NotesPage(context).noteCardLocator(noteId);
+  // noteCardLocator is nullable; null means the card is absent, which fails visibility.
+  if (locator === null) throw new Error(`note card for ${noteId} not found`);
+  await expect(locator).toBeVisible();
+}
+
+/** Waits for the masked (private) note card for the given ID to become visible. */
+export async function waitForMaskedNoteCard(
+  noteId: string,
+  context: NotesBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new NotesPage(context).maskedNoteCardLocator(noteId);
+  await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
+}
+
+/** Asserts the masked (private) note card for the given ID is visible. */
+export async function expectMaskedNoteCardVisible(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NotesPage(context).maskedNoteCardLocator(noteId);
+  // maskedNoteCardLocator is nullable; if it resolves to null the masked element
+  // is absent from the page which would fail the visibility assertion anyway.
+  if (locator === null) throw new Error(`masked note card for ${noteId} not found`);
+  await expect(locator).toBeVisible();
+}
+
+/** Returns true when the masked note card for the given ID is absent or hidden. */
+export async function isMaskedNoteCardHidden(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<boolean> {
+  const locator = await new NotesPage(context).maskedNoteCardLocator(noteId);
+  return locator === null || !(await locator.isVisible().catch(() => false));
+}
+
+/** Returns true when the note card for the given ID is absent or hidden. */
+export async function isNoteCardHidden(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<boolean> {
+  const locator = await new NotesPage(context).noteCardLocator(noteId);
+  return locator === null || !(await locator.isVisible().catch(() => false));
 }
 
 /**
- * Returns a resolved locator for the title element inside a note card.
+ * Waits for the note title to become visible and asserts it has the expected text.
+ * Used after editing a note to confirm the updated title is rendered.
  */
-export async function getNoteTitleLocator(noteId: string, context: NotesBehaviorContext) {
-  const notes = new NotesPage(context);
-  return notes.noteTitleLocator(noteId);
+export async function expectNoteTitleText(
+  noteId: string,
+  expectedText: string,
+  context: NotesBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NotesPage(context).noteTitleLocator(noteId);
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
+  await expect(locator).toHaveText(expectedText);
+}
+
+/** Returns the text content of the title element inside a note card. */
+export async function getNoteCardTitle(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<string | null> {
+  const locator = await new NotesPage(context).noteTitleLocator(noteId);
+  return locator.textContent();
+}
+
+/** Returns the text content of the body element inside a note card (null if absent). */
+export async function getNoteCardBody(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<string | null> {
+  const locator = await new NotesPage(context).noteBodyLocator(noteId);
+  if (!locator) return null;
+  return locator.textContent();
 }
 
 /**
- * Returns a resolved locator for the body element inside a note card (null if absent).
+ * Returns true when the note is team-visible (either the card is visible, or it is not masked).
+ * Used to assert that a note changed from private to team is accessible in the UI.
  */
-export async function getNoteBodyLocator(noteId: string, context: NotesBehaviorContext) {
-  const notes = new NotesPage(context);
-  return notes.noteBodyLocator(noteId);
+export async function isNoteTeamVisible(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<boolean> {
+  const noteCard = await new NotesPage(context).noteCardLocator(noteId);
+  const maskedCard = await new NotesPage(context).maskedNoteCardLocator(noteId);
+  const isNoteVisible = noteCard ? await noteCard.isVisible().catch(() => false) : false;
+  const isMasked = maskedCard ? await maskedCard.isVisible().catch(() => false) : false;
+  return isNoteVisible || !isMasked;
+}
+
+/** Returns true when the note body element is absent (null locator) — used to verify rep B cannot see a private note's body. */
+export async function isNoteBodyAbsent(
+  noteId: string,
+  context: NotesBehaviorContext,
+): Promise<boolean> {
+  const locator = await new NotesPage(context).noteBodyLocator(noteId);
+  return locator === null;
 }

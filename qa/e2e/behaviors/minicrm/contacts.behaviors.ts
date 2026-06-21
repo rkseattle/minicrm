@@ -12,7 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import type { PageFacade } from '@framework/fixtures/index.js';
+import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
 
@@ -892,32 +892,13 @@ export async function getContactAccountLink(context: ContactsBehaviorContext) {
   return detailPage.accountLinkLocator();
 }
 
-/**
- * Returns a resolved locator for the contact name heading on the detail page.
- */
-export async function getContactNameLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.contactNameLocator();
-}
-
-/**
- * Returns a resolved locator for the "not found" alert on a contact detail page.
- * @param timeout - Optional timeout passed to the locator.
- */
-export async function getContactNotFoundLocator(
+/** Asserts the contact not-found back-to-contacts link is visible. */
+export async function expectContactNotFoundBackLinkVisible(
   context: ContactsBehaviorContext,
-  timeout?: number,
-) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.notFoundAlertLocator(timeout);
-}
-
-/**
- * Returns a resolved locator for the "back to contacts" link on the 404 page.
- */
-export async function getContactNotFoundBackLink(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.notFoundBackLinkLocator();
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactDetailPage(context).notFoundBackLinkLocator();
+  await expect(locator).toBeVisible();
 }
 
 /**
@@ -939,44 +920,53 @@ export async function navigateToContactNotFound(
   await context.page.waitForPresent('p[role="alert"]');
 }
 
-/**
- * Returns a resolved locator for the Edit button on the contact detail page.
- */
-export async function getContactEditButtonLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.editButtonLocator();
+/** Asserts the Edit button is visible on the contact detail page. */
+export async function expectContactEditButtonVisible(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactDetailPage(context).editButtonLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the pagination container on the contacts list page.
- */
-export async function getContactsPaginationLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.paginationLocator();
+/** Asserts the pagination container is visible on the contacts list page. */
+export async function expectContactsPaginationVisible(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).paginationLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the bulk action bar on the contacts list page.
- */
-export async function getContactsBulkActionBarLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.bulkActionBarLocator();
+/** Waits for the bulk action bar to become visible, with an optional timeout (ms). */
+export async function waitForContactsBulkActionBar(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new ContactsPage(context).bulkActionBarLocator();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
-/**
- * Returns a resolved locator for the bulk operation error banner.
- */
-export async function getContactsBulkErrorLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.bulkErrorLocator();
+/** Waits for the bulk error banner to attach and asserts it is visible. */
+export async function waitForContactsBulkError(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).bulkErrorLocator();
+  await locator.waitFor({ state: 'attached', ...(timeout !== undefined ? { timeout } : {}) });
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Returns a resolved locator for a contact row link by contact ID.
- */
-export async function getContactRowLocator(id: string, context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.contactLinkLocator(id);
+/** Asserts a contact row link is visible by contact ID, with an optional timeout (ms). */
+export async function expectContactRowVisible(
+  id: string,
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).contactLinkLocator(id);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
 /**
@@ -997,28 +987,40 @@ export async function getContactsLoadingIndicator(context: ContactsBehaviorConte
   return contactsPage.loadingIndicatorLocator();
 }
 
-/**
- * Returns a resolved locator for the send email button on a contact detail page.
- */
-export async function getContactSendEmailButtonLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.sendEmailButtonLocator();
+/** Waits for the send email button to become visible. */
+export async function waitForContactSendEmailButton(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).sendEmailButtonLocator();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
-/**
- * Returns a resolved locator for the send email compose modal.
- */
-export async function getContactSendEmailModalLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.sendEmailModalLocator();
+/** Returns true when the send email button is visible. */
+export async function isContactSendEmailButtonVisible(
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const locator = await new ContactDetailPage(context).sendEmailButtonLocator();
+  return locator.isVisible();
 }
 
-/**
- * Returns a resolved locator for the send email success message.
- */
-export async function getContactSendEmailSuccessLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.sendEmailSuccessLocator();
+/** Waits for the send email modal to detach (auto-close after submission). */
+export async function waitForContactSendEmailModalDetached(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).sendEmailModalLocator();
+  await locator.waitFor({ state: 'detached', ...(timeout !== undefined ? { timeout } : {}) });
+}
+
+/** Waits for the send email success message to become visible and returns its text. */
+export async function waitForContactSendEmailSuccessAndGetText(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<string> {
+  const locator = await new ContactDetailPage(context).sendEmailSuccessLocator();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
+  return (await locator.textContent()) ?? '';
 }
 
 /**
@@ -1097,47 +1099,48 @@ export async function waitForContactDetailReadMode(
   );
 }
 
-/**
- * Returns a resolved locator for the attachments section on the contact detail page.
- */
-export async function getContactAttachmentsSectionLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.attachmentsSectionLocator();
+/** Waits for the attachments section to appear on the contact detail page. */
+export async function waitForContactAttachmentsSection(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).attachmentsSectionLocator();
+  await locator?.waitFor({ state: 'visible' });
 }
 
-/**
- * Returns a resolved locator for the attachments file input on the contact detail page.
- */
-export async function getContactAttachmentsFileInputLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.attachmentsFileInputLocator();
+/** Uploads a file via the contact detail page attachments file input. */
+export async function uploadContactAttachment(
+  context: ContactsBehaviorContext,
+  file: Parameters<SafeLocator['setInputFiles']>[0],
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).attachmentsFileInputLocator();
+  await locator.setInputFiles(file);
 }
 
-/**
- * Returns a resolved locator for the attachments list on the contact detail page.
- */
-export async function getContactAttachmentsListLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.attachmentsListLocator();
+/** Waits for the attachments list to become visible on the contact detail page. */
+export async function waitForContactAttachmentsList(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).attachmentsListLocator();
+  await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
-/**
- * Returns a resolved locator for an attachment's delete button by attachment ID.
- */
-export async function getContactAttachmentDeleteLocator(
+/** Clicks the delete button for a specific attachment on the contact detail page. */
+export async function clickContactAttachmentDelete(
   attachmentId: string,
   context: ContactsBehaviorContext,
-) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.attachmentDeleteLocator(attachmentId);
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).attachmentDeleteLocator(attachmentId);
+  await locator.click();
 }
 
-/**
- * Returns a resolved locator for the attachments upload error on the contact detail page.
- */
-export async function getContactAttachmentsUploadErrorLocator(context: ContactsBehaviorContext) {
-  const detailPage = new ContactDetailPage(context);
-  return detailPage.attachmentsUploadErrorLocator();
+/** Waits for the upload error to become visible on the contact detail page. */
+export async function waitForContactAttachmentsUploadError(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new ContactDetailPage(context).attachmentsUploadErrorLocator();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
 /**
@@ -1172,20 +1175,23 @@ export async function submitContactCreateFormAction(
   await contactsPage.submitCreateForm();
 }
 
-/**
- * Returns a resolved locator for the contact create form.
- */
-export async function getContactsCreateFormLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.createFormLocator();
+/** Asserts the contact create form is visible. */
+export async function expectContactsCreateFormVisible(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).createFormLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the first-name input in the contact create form.
- */
-export async function getContactsFirstNameInputLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.firstNameInputLocator();
+/** Asserts the first-name input in the create form has the given value. */
+export async function expectContactsFirstNameInputHasValue(
+  value: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).firstNameInputLocator();
+  await expect(locator).toHaveValue(value);
 }
 
 /**
@@ -1196,12 +1202,12 @@ export async function clickContactsBulkDelete(context: ContactsBehaviorContext):
   await contactsPage.clickBulkDelete();
 }
 
-/**
- * Returns a resolved locator for the confirm-delete modal on the contacts list.
- */
-export async function getContactsConfirmDeleteModalLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.confirmDeleteModalLocator();
+/** Waits for the confirm-delete modal to become visible on the contacts list. */
+export async function waitForContactsConfirmDeleteModal(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const locator = await new ContactsPage(context).confirmDeleteModalLocator();
+  await locator.waitFor({ state: 'visible' });
 }
 
 /**
@@ -1220,12 +1226,12 @@ export async function clickContactsBulkReassign(context: ContactsBehaviorContext
   await contactsPage.clickBulkReassign();
 }
 
-/**
- * Returns a resolved locator for the bulk-reassign modal on the contacts list.
- */
-export async function getContactsBulkReassignModalLocator(context: ContactsBehaviorContext) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.bulkReassignModalLocator();
+/** Waits for the bulk-reassign modal to become visible on the contacts list. */
+export async function waitForContactsBulkReassignModal(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const locator = await new ContactsPage(context).bulkReassignModalLocator();
+  await locator.waitFor({ state: 'visible' });
 }
 
 /**
@@ -1236,15 +1242,15 @@ export async function cancelContactsBulkReassign(context: ContactsBehaviorContex
   await contactsPage.cancelBulkReassign();
 }
 
-/**
- * Returns a resolved locator for a contact link in the contacts list by contact ID.
- */
-export async function getContactsContactLinkLocator(
+/** Asserts a contact link is visible in the contacts list by contact ID. */
+export async function expectContactsContactLinkVisible(
   contactId: string,
   context: ContactsBehaviorContext,
-) {
-  const contactsPage = new ContactsPage(context);
-  return contactsPage.contactLinkLocator(contactId);
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new ContactsPage(context).contactLinkLocator(contactId);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
 /**
@@ -1401,11 +1407,10 @@ export async function performGdprErasure(
   return { modalDismissed: true };
 }
 
-/**
- * Resolves the contact name heading locator after GDPR erasure.
- */
-export async function getContactNameHeadingLocator(context: ContactsBehaviorContext) {
-  return context.page
+/** Asserts the contact name heading is visible on the detail page. */
+export async function expectContactNameVisible(context: ContactsBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'contact-name' },
@@ -1414,13 +1419,41 @@ export async function getContactNameHeadingLocator(context: ContactsBehaviorCont
       { intent: 'contact name heading on the detail page' },
     )
     .resolve();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Resolves the contact email field locator on the detail page.
- */
-export async function getContactEmailFieldLocator(context: ContactsBehaviorContext) {
-  return context.page
+/** Asserts the contact name heading contains the given text. */
+export async function expectContactNameContainsText(
+  text: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'contact-name' },
+        { type: 'role', value: 'heading', options: { level: 1 } },
+      ],
+      { intent: 'contact name heading on the detail page' },
+    )
+    .resolve();
+  await expect(locator).toContainText(text);
+}
+
+/** Asserts the contact not-found alert is visible, with an optional timeout (ms). */
+export async function expectContactNotFoundVisible(
+  context: ContactsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detailPage = new ContactDetailPage(context);
+  const locator = await detailPage.notFoundAlertLocator(timeout);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Returns the text content of the email field on the contact detail page. */
+export async function getContactEmailFieldText(context: ContactsBehaviorContext): Promise<string> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'detail-email' },
@@ -1429,6 +1462,7 @@ export async function getContactEmailFieldLocator(context: ContactsBehaviorConte
       { intent: 'email value field on the contact detail page' },
     )
     .resolve();
+  return (await locator.textContent()) ?? '';
 }
 
 // ---------------------------------------------------------------------------

@@ -62,11 +62,11 @@ import {
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
-  getPipelineBoardLocator,
-  getPipelineMobileStageNameLocator,
-  getDealNameHeadingLocator,
+  waitForPipelineBoard,
+  waitForPipelineMobileStageName,
+  waitForDealNameHeading,
 } from '@behaviors/minicrm/deals.behaviors.js';
-import { getContactEditButtonLocator } from '@behaviors/minicrm/contacts.behaviors.js';
+import { expectContactEditButtonVisible } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
   getReportsWinLossHeadingLocator,
   getReportsStatCardsLocator,
@@ -86,12 +86,12 @@ import {
   navigateToLeadsPage,
   navigateToTasksPage,
   navigateToPath,
-  getDashboardStatCardsLocator,
-  getMyTasksHeadingLocator,
-  getNewContactButtonLocator,
-  getNewAccountButtonLocator,
-  getNewLeadButtonLocator,
-  getAccountNameHeadingLocator,
+  waitForDashboardStatCards,
+  waitForMyTasksHeading,
+  waitForNewContactButton,
+  waitForNewAccountButton,
+  waitForNewLeadButton,
+  waitForAccountNameHeading,
   resolveTimestampMasks,
 } from '@behaviors/minicrm/layout.behaviors.js';
 import {
@@ -220,8 +220,7 @@ test.describe('Core Layout', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToPath('/deals', { page });
 
-      const board = await getPipelineBoardLocator({ page });
-      await board.waitFor({ state: 'visible' });
+      await waitForPipelineBoard({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('pipeline-board-desktop.png', { mask: masks });
@@ -266,8 +265,7 @@ test.describe('Core Layout', () => {
       await navigateToPath('/deals', { page });
 
       // Mobile board shows single column with prev/next navigation — wait for it
-      const mobileStage = await getPipelineMobileStageNameLocator({ page });
-      await mobileStage.waitFor({ state: 'visible' });
+      await waitForPipelineMobileStageName({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('pipeline-board-mobile.png', { mask: masks });
@@ -310,8 +308,7 @@ test.describe('Core Layout', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToDashboard(page);
 
-      const statCards = await getDashboardStatCardsLocator({ page });
-      await statCards.waitFor({ state: 'visible' });
+      await waitForDashboardStatCards({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('dashboard.png', { mask: masks });
@@ -353,8 +350,7 @@ test.describe('Core Layout', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToContactDetailPage(contact.id, { page });
 
-      const editButton = await getContactEditButtonLocator({ page });
-      await editButton.waitFor({ state: 'visible' });
+      await expectContactEditButtonVisible({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contact-detail.png', { mask: masks });
@@ -477,8 +473,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToContactsPage({ page });
 
-      const newBtn = await getNewContactButtonLocator({ page });
-      await newBtn.waitFor({ state: 'visible' });
+      await waitForNewContactButton({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('contacts-list-desktop.png', { mask: masks });
@@ -505,8 +500,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToAccountsPage({ page });
 
-      const newBtn = await getNewAccountButtonLocator({ page });
-      await newBtn.waitFor({ state: 'visible' });
+      await waitForNewAccountButton({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('accounts-list-desktop.png', { mask: masks });
@@ -542,8 +536,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToLeadsPage({ page });
 
-      const newBtn = await getNewLeadButtonLocator({ page });
-      await newBtn.waitFor({ state: 'visible' });
+      await waitForNewLeadButton({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('leads-list-desktop.png', { mask: masks });
@@ -576,8 +569,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToTasksPage({ page });
 
-      const heading = await getMyTasksHeadingLocator({ page });
-      await heading.waitFor({ state: 'visible' });
+      await waitForMyTasksHeading({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('tasks-list-desktop.png', { mask: masks });
@@ -599,8 +591,7 @@ test.describe('Key Pages', () => {
       // Navigate to dashboard to show the left sidebar in context with page content
       await navigateToDashboard(page);
 
-      const statCards = await getDashboardStatCardsLocator({ page });
-      await statCards.waitFor({ state: 'visible' });
+      await waitForDashboardStatCards({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('nav-left-desktop.png', { mask: masks });
@@ -624,8 +615,7 @@ test.describe('Key Pages', () => {
       await navigateToPath('/', { page });
 
       // Wait for the page to be interactive before opening the drawer
-      const statCards = await getDashboardStatCardsLocator({ page });
-      await statCards.waitFor({ state: 'visible' });
+      await waitForDashboardStatCards({ page });
 
       // Click the hamburger toggle to open the drawer
       const { drawerVisible } = await openHamburgerMenu({ page });
@@ -648,8 +638,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(MOBILE_VIEWPORT);
       await navigateToDashboard(page);
 
-      const statCards = await getDashboardStatCardsLocator({ page });
-      await statCards.waitFor({ state: 'visible' });
+      await waitForDashboardStatCards({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('nav-top-mobile.png', { mask: masks });
@@ -692,8 +681,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToDealDetailPage(deal.id, { page });
 
-      const dealHeading = await getDealNameHeadingLocator({ page });
-      await dealHeading.waitFor({ state: 'visible' });
+      await waitForDealNameHeading({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('deal-detail-desktop.png', { mask: masks });
@@ -726,8 +714,7 @@ test.describe('Key Pages', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToAccountDetailPage(account.id, { page });
 
-      const accountName = await getAccountNameHeadingLocator({ page });
-      await accountName.waitFor({ state: 'visible' });
+      await waitForAccountNameHeading({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('account-detail-desktop.png', { mask: masks });
