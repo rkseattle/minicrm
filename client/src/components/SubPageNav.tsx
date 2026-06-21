@@ -16,6 +16,7 @@ import { useNavLayout } from '@/components/NavLayoutContext.js';
 export interface SubPageNavItem {
   key: string;
   label: string;
+  disabled?: boolean;
   'data-testid'?: string;
 }
 
@@ -70,7 +71,12 @@ export default function SubPageNav({
           data-testid={listTestId ? `${listTestId}-select` : undefined}
         >
           {items.map((item) => (
-            <option key={item.key} value={item.key} data-testid={itemTestId(item)}>
+            <option
+              key={item.key}
+              value={item.key}
+              disabled={item.disabled}
+              data-testid={itemTestId(item)}
+            >
               {item.label}
             </option>
           ))}
@@ -93,17 +99,21 @@ export default function SubPageNav({
             type="button"
             role="tab"
             aria-selected={activeKey === item.key}
+            aria-disabled={item.disabled}
             aria-controls={panelTestidPrefix ? `${panelTestidPrefix}-${item.key}` : undefined}
             id={itemTestidPrefix ? `${itemTestidPrefix}-${item.key}` : undefined}
             data-testid={itemTestId(item)}
+            disabled={item.disabled}
             onClick={() => {
-              if (item.key !== activeKey) onChange(item.key);
+              if (item.key !== activeKey && !item.disabled) onChange(item.key);
             }}
             className={[
               'px-4 py-3 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
-              activeKey === item.key
-                ? 'border-primary-600 text-primary-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              item.disabled
+                ? 'border-transparent text-gray-300 cursor-not-allowed'
+                : activeKey === item.key
+                  ? 'border-primary-600 text-primary-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
             ].join(' ')}
           >
             {item.label}
@@ -128,17 +138,21 @@ export default function SubPageNav({
             type="button"
             role="tab"
             aria-selected={activeKey === item.key}
+            aria-disabled={item.disabled}
             aria-controls={panelTestidPrefix ? `${panelTestidPrefix}-${item.key}` : undefined}
             id={itemTestidPrefix ? `${itemTestidPrefix}-${item.key}` : undefined}
             data-testid={itemTestId(item)}
+            disabled={item.disabled}
             onClick={() => {
-              if (item.key !== activeKey) onChange(item.key);
+              if (item.key !== activeKey && !item.disabled) onChange(item.key);
             }}
             className={[
               'w-full text-start px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 mb-0.5',
-              activeKey === item.key
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+              item.disabled
+                ? 'text-gray-300 cursor-not-allowed'
+                : activeKey === item.key
+                  ? 'bg-primary-50 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
             ].join(' ')}
           >
             {item.label}

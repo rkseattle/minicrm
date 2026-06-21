@@ -13,6 +13,7 @@ import {
   listFeatureFlags,
   updateFeatureFlag,
   FEATURE_FLAGS_QUERY_KEY,
+  MY_FEATURE_FLAGS_QUERY_KEY,
 } from '@/api/featureFlags.js';
 import {
   FEATURE_FLAG_CATEGORIES,
@@ -215,6 +216,9 @@ export default function FeatureFlagsSettings() {
       updateFeatureFlag(key, patch),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: FEATURE_FLAGS_QUERY_KEY });
+      // Invalidate the user-facing resolved flag map so tab visibility (e.g. AI tab
+      // gated on ai_features) updates immediately without a page refresh.
+      void queryClient.invalidateQueries({ queryKey: MY_FEATURE_FLAGS_QUERY_KEY });
       setPendingKey(null);
       setSaveError(null);
     },
