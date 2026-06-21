@@ -1159,6 +1159,19 @@ export async function getFeatureFlagConfirmOkLocator(context: AdminSettingsBehav
     .resolve();
 }
 
+/** Resolves the AI Features tab button in the admin settings nav (MINCRM-563). */
+export async function getAdminSettingsAiTabLocator(context: AdminSettingsBehaviorContext) {
+  return context.page
+    .locate(
+      [
+        { type: 'testId', value: 'settings-tab-ai' },
+        { type: 'role', value: 'tab', options: { name: /ai/i } },
+      ],
+      { intent: 'AI Features tab in the admin settings navigation' },
+    )
+    .resolve();
+}
+
 // ---------------------------------------------------------------------------
 // AI Settings behaviors (MINCRM-457)
 // ---------------------------------------------------------------------------

@@ -11,6 +11,9 @@
  *   F-FF4 — Disabled feature flag returns 403 on the guarded API route
  *   F-FF5 — withFlags() hides a nav link when its flag is intercepted as off
  *   F-FF6 — withFlags() shows a nav link when its flag is intercepted as on
+ *   F-FF7 — AI tab is disabled when ai_features flag is intercepted as off
+ *   F-FF8 — AI tab is enabled when ai_features flag is intercepted as on
+ *   F-FF9 — Toggling ai_features off disables the AI tab without a page refresh
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -30,6 +33,7 @@ import {
   getFeatureFlagToggleLocator,
   getFeatureFlagConfirmDialogLocator,
   getFeatureFlagConfirmOkLocator,
+  getAdminSettingsAiTabLocator,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { listFeatureFlags, updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
@@ -49,6 +53,7 @@ test.afterEach(async ({ restClient }) => {
   // Restore any flags that tests may have toggled.
   await updateFeatureFlag(restClient, 'notes', { enabled: true }).catch(() => {});
   await updateFeatureFlag(restClient, 'tags', { enabled: true }).catch(() => {});
+  await updateFeatureFlag(restClient, 'ai_features', { enabled: true }).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------
@@ -209,4 +214,89 @@ test('@functional F-FF6: withFlags() shows the Reports nav link when reporting f
   // On mobile the link lives inside the hamburger drawer; assertNavLinkIsVisible
   // opens the drawer first so the correct element is checked. (mobile fix)
   await assertNavLinkIsVisible('reports', { page }, 10_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF7 — AI tab is disabled when ai_features flag is intercepted as off
+// ---------------------------------------------------------------------------
+
+test('@functional F-FF7: AI tab is disabled in admin settings when ai_features is intercepted as off', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Intercept before login so the flag map is resolved before the page renders.
+  await withFlags(page, { ai_features: false });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+
+  const aiTab = await getAdminSettingsAiTabLocator({ page });
+  await expect(aiTab).toBeVisible({ timeout: 5_000 });
+  await expect(aiTab).toBeDisabled();
+});
+
+// ---------------------------------------------------------------------------
+// F-FF8 — AI tab is enabled when ai_features flag is intercepted as on
+// ---------------------------------------------------------------------------
+
+test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is intercepted as on', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  await withFlags(page, { ai_features: true });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+
+  const aiTab = await getAdminSettingsAiTabLocator({ page });
+  await expect(aiTab).toBeVisible({ timeout: 5_000 });
+  await expect(aiTab).not.toBeDisabled();
+});
+
+// ---------------------------------------------------------------------------
+// F-FF9 — Toggling ai_features off disables the AI tab without a page refresh
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in real time', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Ensure ai_features starts enabled so the toggle goes off→on direction.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'ai_features', { enabled: true });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+
+  const list = await getFeatureFlagsListLocator({ page });
+  await expect(list).toBeVisible({ timeout: 10_000 });
+
+  // AI tab should be enabled before toggling.
+  const aiTab = await getAdminSettingsAiTabLocator({ page });
+  await expect(aiTab).not.toBeDisabled();
+
+  // Toggle ai_features off via the confirmation dialog.
+  const toggle = await getFeatureFlagToggleLocator('ai_features', { page });
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await toggle.click();
+
+  const confirmDialog = await getFeatureFlagConfirmDialogLocator({ page });
+  await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+
+  const confirmOk = await getFeatureFlagConfirmOkLocator({ page });
+  await confirmOk.click();
+  await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
+
+  // The AI tab must become disabled without any page navigation.
+  const refreshedAiTab = await getAdminSettingsAiTabLocator({ page });
+  await expect(refreshedAiTab).toBeDisabled({ timeout: 5_000 });
 });
