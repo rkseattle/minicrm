@@ -12,7 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import type { PageFacade } from '@framework/fixtures/index.js';
+import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
 
@@ -542,47 +542,52 @@ export async function createAccountViaApi(
 // so spec files never import @pages/* directly. (MINCRM-367)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns a resolved locator for a linked contact row by contact ID on the account detail page.
- */
-export async function getAccountLinkedContactLocator(
+/** Asserts a linked contact row by contact ID is visible on the account detail page. */
+export async function expectAccountLinkedContactVisible(
   contactId: string,
   context: AccountsBehaviorContext,
-) {
-  const detail = new AccountDetailPage(context);
-  return detail.linkedContactLocator(contactId);
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AccountDetailPage(context).linkedContactLocator(contactId);
+  await expect(locator).toBeVisible();
+}
+
+/** Asserts the empty-state message is visible when no contacts are linked to the account. */
+export async function expectAccountLinkedContactsEmptyVisible(
+  context: AccountsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AccountDetailPage(context).linkedContactsEmptyLocator();
+  await expect(locator).toBeVisible();
+}
+
+/** Waits for the attachments section to become visible on the account detail page. */
+export async function waitForAccountAttachmentsSection(
+  context: AccountsBehaviorContext,
+): Promise<void> {
+  const locator = await new AccountDetailPage(context).attachmentsSectionLocator();
+  await locator?.waitFor({ state: 'visible' });
 }
 
 /**
- * Returns a resolved locator for the empty state when no contacts are linked to the account.
+ * Sets the given files on the file input for the attachments section on the account detail page.
+ * Equivalent to the upload interaction a user performs by selecting files.
  */
-export async function getAccountLinkedContactsEmptyLocator(context: AccountsBehaviorContext) {
-  const detail = new AccountDetailPage(context);
-  return detail.linkedContactsEmptyLocator();
+export async function uploadAccountAttachment(
+  context: AccountsBehaviorContext,
+  file: Parameters<SafeLocator['setInputFiles']>[0],
+): Promise<void> {
+  const locator = await new AccountDetailPage(context).attachmentsFileInputLocator();
+  await locator.setInputFiles(file);
 }
 
-/**
- * Returns a resolved locator for the attachments section on the account detail page.
- */
-export async function getAccountAttachmentsSectionLocator(context: AccountsBehaviorContext) {
-  const detail = new AccountDetailPage(context);
-  return detail.attachmentsSectionLocator();
-}
-
-/**
- * Returns a resolved locator for the attachments file input on the account detail page.
- */
-export async function getAccountAttachmentsFileInputLocator(context: AccountsBehaviorContext) {
-  const detail = new AccountDetailPage(context);
-  return detail.attachmentsFileInputLocator();
-}
-
-/**
- * Returns a resolved locator for the attachments list on the account detail page.
- */
-export async function getAccountAttachmentsListLocator(context: AccountsBehaviorContext) {
-  const detail = new AccountDetailPage(context);
-  return detail.attachmentsListLocator();
+/** Waits for the attachments list to become visible on the account detail page, with an optional timeout (ms). */
+export async function waitForAccountAttachmentsList(
+  context: AccountsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await new AccountDetailPage(context).attachmentsListLocator();
+  await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
 /**

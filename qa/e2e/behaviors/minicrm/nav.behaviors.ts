@@ -441,91 +441,128 @@ export async function navigateViaMobileNavLink(
 }
 
 // ---------------------------------------------------------------------------
-// Locator-accessor behaviors — wrap NavPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// Intent-bearing nav behaviors — replace get*Locator exports so spec files
+// express user-intent rather than holding raw DOM handle references. (MINCRM-564)
 // ---------------------------------------------------------------------------
 
-/** Fixture context accepted by nav locator behaviors. */
+/** Fixture context accepted by nav behaviors. */
 export interface NavBehaviorContext {
   page: PageFacade;
 }
 
-/**
- * Returns a resolved locator for a nav link by layout and destination.
- */
-export async function getNavLinkLocator(
+/** Asserts a nav link by layout and destination carries the given CSS class. */
+export async function expectNavLinkHasClass(
+  layout: string,
+  destination: string,
+  classPattern: string | RegExp,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).navLinkLocator(layout, destination);
+  await expect(locator).toHaveClass(classPattern);
+}
+
+/** Asserts a nav link by layout and destination does NOT carry the given CSS class. */
+export async function expectNavLinkNotHasClass(
+  layout: string,
+  destination: string,
+  classPattern: string | RegExp,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).navLinkLocator(layout, destination);
+  await expect(locator).not.toHaveClass(classPattern);
+}
+
+/** Asserts a nav link by layout and destination is visible. */
+export async function expectNavLinkVisible(
   layout: string,
   destination: string,
   context: NavBehaviorContext,
-) {
-  const navPage = new NavPage(context);
-  return navPage.navLinkLocator(layout, destination);
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).navLinkLocator(layout, destination);
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the admin section divider in a given nav layout.
- */
-export async function getAdminSectionDividerLocator(
+/** Asserts the admin section divider is visible in the given nav layout. */
+export async function expectAdminSectionDividerVisible(
   layout: 'left' | 'top' | 'hamburger' | 'top-mobile',
   context: NavBehaviorContext,
-) {
-  const navPage = new NavPage(context);
-  return navPage.adminSectionDividerLocator(layout);
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).adminSectionDividerLocator(layout);
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the hamburger nav drawer.
- * Throws if the drawer is not in the DOM.
- */
-export async function getHamburgerDrawerLocator(context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.requireHamburgerDrawerLocator();
+/** Asserts the hamburger nav drawer is visible. */
+export async function expectHamburgerDrawerVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).requireHamburgerDrawerLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the mobile nav drawer.
- * Throws if the drawer is not in the DOM.
- */
-export async function getMobileNavDrawerLocator(context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.requireMobileNavDrawerLocator();
+/** Asserts the hamburger nav drawer is not visible. */
+export async function expectHamburgerDrawerNotVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).requireHamburgerDrawerLocator();
+  await expect(locator).not.toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the hamburger/mobile menu toggle button.
- */
-export async function getMenuToggleLocator(context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.menuToggleLocator();
+/** Asserts the mobile nav drawer is visible. */
+export async function expectMobileNavDrawerVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).requireMobileNavDrawerLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for a mobile nav link by destination key.
- */
-export async function getMobileNavLinkLocator(destination: string, context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.mobileNavLinkLocator(destination);
+/** Asserts the mobile nav drawer is not visible. */
+export async function expectMobileNavDrawerNotVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).requireMobileNavDrawerLocator();
+  await expect(locator).not.toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the mobile logout button in the nav drawer.
- */
-export async function getMobileLogoutButtonLocator(context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.mobileLogoutButtonLocator();
+/** Asserts the hamburger/mobile menu toggle button is visible. */
+export async function expectMenuToggleVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).menuToggleLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the mobile language select in the nav drawer.
- */
-export async function getMobileLanguageSelectLocator(context: NavBehaviorContext) {
-  const navPage = new NavPage(context);
-  return navPage.mobileLanguageSelectLocator();
+/** Moves keyboard focus to the hamburger/mobile menu toggle button. */
+export async function focusMenuToggle(context: NavBehaviorContext): Promise<void> {
+  const locator = await new NavPage(context).menuToggleLocator();
+  await locator.focus();
 }
 
-/**
- * Returns a resolved locator for the desktop language select in the nav header.
- */
+/** Asserts a mobile nav link by destination is visible. */
+export async function expectMobileNavLinkVisible(
+  destination: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).mobileNavLinkLocator(destination);
+  await expect(locator).toBeVisible();
+}
+
+/** Asserts the mobile logout button is visible in the nav drawer. */
+export async function expectMobileLogoutButtonVisible(context: NavBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).mobileLogoutButtonLocator();
+  await expect(locator).toBeVisible();
+}
+
+/** Asserts the mobile language select is visible in the nav drawer. */
+export async function expectMobileLanguageSelectVisible(
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).mobileLanguageSelectLocator();
+  await expect(locator).toBeVisible();
+}
+
+/** Returns a resolved locator for the desktop language select in the nav header. */
 export async function getDesktopLanguageSelectLocator(context: NavBehaviorContext) {
   const navPage = new NavPage(context);
   return navPage.desktopLanguageSelectLocator();
@@ -787,4 +824,90 @@ export async function selectLanguageAndWaitForPatch(
   );
   await locator.selectOption(locale);
   await patchDone;
+}
+
+/**
+ * Asserts that a desktop nav link for the given destination has a specific text value.
+ */
+export async function expectNavLinkHasText(
+  layout: NavLayout,
+  destination: string,
+  text: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).navLinkLocator(layout, destination);
+  await expect(locator).toHaveText(text);
+}
+
+/**
+ * Asserts that a desktop nav link for the given destination does NOT have the specified text.
+ */
+export async function expectNavLinkNotHasText(
+  layout: NavLayout,
+  destination: string,
+  text: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).navLinkLocator(layout, destination);
+  await expect(locator).not.toHaveText(text);
+}
+
+/**
+ * Asserts that a mobile nav link for the given destination has a specific text value.
+ */
+export async function expectMobileNavLinkHasText(
+  destination: string,
+  text: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).mobileNavLinkLocator(destination);
+  await expect(locator).toHaveText(text);
+}
+
+/**
+ * Asserts that a mobile nav link for the given destination does NOT have the specified text.
+ */
+export async function expectMobileNavLinkNotHasText(
+  destination: string,
+  text: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new NavPage(context).mobileNavLinkLocator(destination);
+  await expect(locator).not.toHaveText(text);
+}
+
+/**
+ * Selects a language via the mobile nav drawer's language select and waits for
+ * the PATCH /api/v1/users/me/language response to settle.
+ */
+export async function selectMobileLanguageAndWaitForPatch(
+  locale: string,
+  context: NavBehaviorContext,
+): Promise<void> {
+  const locator = await new NavPage(context).mobileLanguageSelectLocator();
+  const patchDone = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/me/language') &&
+      response.request().method() === 'PATCH',
+  );
+  await locator.selectOption(locale);
+  await patchDone;
+}
+
+/**
+ * Asserts the mobile nav drawer is visible and the mobile language select is present.
+ */
+export async function expectMobileNavDrawerVisibleWithLanguageSelect(
+  context: NavBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const drawer = await new NavPage(context).mobileNavDrawerLocator();
+  if (drawer === null) throw new Error('mobile nav drawer not found');
+  await expect(drawer).toBeVisible();
+  const langSelect = await new NavPage(context).mobileLanguageSelectLocator();
+  await expect(langSelect, 'language selector must be present in mobile nav drawer').toBeVisible();
 }

@@ -41,10 +41,10 @@ import {
   waitForBulkCheckbox,
   clickBulkCheckbox,
   clickContactsBulkDelete,
-  getContactsConfirmDeleteModalLocator,
+  waitForContactsConfirmDeleteModal,
   cancelContactsBulkDelete,
   clickContactsBulkReassign,
-  getContactsBulkReassignModalLocator,
+  waitForContactsBulkReassignModal,
   cancelContactsBulkReassign,
   filterContactsByTerm,
   waitForContactDetailReadMode,
@@ -62,8 +62,8 @@ import {
 import {
   navigateToPipelineBoard,
   waitForDealCardOnBoard,
-  getDealStageSelectOnBoardLocator,
-  getPipelineBoardCloseDealModalLocator,
+  selectDealStageOnBoard,
+  waitForPipelineBoardCloseDealModal,
   cancelCloseDealModal,
 } from '@behaviors/minicrm/deals.behaviors.js';
 import { navigateToUsers } from '@behaviors/minicrm/users.behaviors.js';
@@ -239,12 +239,10 @@ test('@functional A11Y-D2: CloseDealModal — open while modal is visible', asyn
   // Mobile board starts at stage 0 (Prospecting) where a new deal is seeded.
   // No stage navigation needed before selecting — deal is already in view.
   // Select a terminal stage to open CloseDealModal — audit while modal is open.
-  const stageSelect = await getDealStageSelectOnBoardLocator(deal.id, { page });
-  await stageSelect.selectOption('Closed Won');
+  await selectDealStageOnBoard(deal.id, 'Closed Won', { page });
 
   // Wait for the modal to become visible before auditing.
-  const modalLocator = await getPipelineBoardCloseDealModalLocator({ page });
-  await modalLocator?.waitFor({ state: 'visible' });
+  await waitForPipelineBoardCloseDealModal({ page });
 
   await assertNoBlockingViolations(page);
 
@@ -280,8 +278,7 @@ test('@functional A11Y-M1: ConfirmDeleteModal — bulk delete flow', async ({
   await clickContactsBulkDelete({ page });
 
   // Wait for the modal to be visible before auditing.
-  const deleteModal = await getContactsConfirmDeleteModalLocator({ page });
-  await deleteModal.waitFor({ state: 'visible' });
+  await waitForContactsConfirmDeleteModal({ page });
 
   await assertNoBlockingViolations(page);
 
@@ -313,8 +310,7 @@ test('@functional A11Y-M2: BulkReassignModal — bulk reassign flow', async ({
   await clickContactsBulkReassign({ page });
 
   // Wait for the modal to be visible before auditing.
-  const reassignModal = await getContactsBulkReassignModalLocator({ page });
-  await reassignModal.waitFor({ state: 'visible' });
+  await waitForContactsBulkReassignModal({ page });
 
   await assertNoBlockingViolations(page);
 

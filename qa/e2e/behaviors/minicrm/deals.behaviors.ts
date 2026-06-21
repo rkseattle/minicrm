@@ -452,8 +452,7 @@ export async function exportDealsAsCsv(restClient: RestClient): Promise<string> 
 }
 
 // ---------------------------------------------------------------------------
-// Locator-accessor behaviors — wrap PipelineBoardPage / DealDetailPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// Navigation / board behaviors
 // ---------------------------------------------------------------------------
 
 /**
@@ -473,19 +472,29 @@ export async function pipelineBoardIsLoaded(context: DealsBehaviorContext): Prom
 }
 
 /**
- * Returns a resolved locator for the main pipeline board container.
+ * Waits for the pipeline board container to be visible.
  */
-export async function getPipelineBoardLocator(context: DealsBehaviorContext) {
+export async function waitForPipelineBoard(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
   const board = new PipelineBoardPage(context);
-  return board.boardLocator();
+  const locator = await board.boardLocator();
+  await locator.waitFor({ state: 'visible', timeout });
 }
 
 /**
- * Returns a resolved locator for a deal card by deal ID (desktop or mobile variant).
+ * Asserts a deal card is visible on the pipeline board.
  */
-export async function getDealCardLocator(dealId: string, context: DealsBehaviorContext) {
+export async function expectDealCardVisible(
+  dealId: string,
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const board = new PipelineBoardPage(context);
-  return board.dealCardLocator(dealId);
+  const locator = await board.dealCardLocator(dealId);
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
@@ -568,30 +577,44 @@ export async function waitForDealCardOnBoard(
 }
 
 /**
- * Returns a resolved locator for the stage select dropdown on a deal card.
+ * Selects a stage option on a deal card's stage dropdown on the pipeline board.
+ *
+ * Used when the spec needs to trigger a stage change (and possibly open the
+ * CloseDealModal) rather than assert a value.
  */
-export async function getDealStageSelectOnBoardLocator(
+export async function selectDealStageOnBoard(
   dealId: string,
+  stage: string,
   context: DealsBehaviorContext,
-) {
+): Promise<void> {
   const board = new PipelineBoardPage(context);
-  return board.dealStageSelectLocator(dealId);
+  const locator = await board.dealStageSelectLocator(dealId);
+  await locator.selectOption(stage);
 }
 
 /**
- * Returns a resolved locator for the stage update error banner.
+ * Waits for the stage update error banner to be visible on the pipeline board.
  */
-export async function getPipelineBoardStageUpdateErrorLocator(context: DealsBehaviorContext) {
+export async function waitForPipelineBoardStageUpdateError(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const board = new PipelineBoardPage(context);
-  return board.stageUpdateErrorLocator();
+  const locator = await board.stageUpdateErrorLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the close deal modal (null if absent).
+ * Waits for the close deal modal to be visible on the pipeline board.
  */
-export async function getPipelineBoardCloseDealModalLocator(context: DealsBehaviorContext) {
+export async function waitForPipelineBoardCloseDealModal(
+  context: DealsBehaviorContext,
+  timeout = 8_000,
+): Promise<void> {
   const board = new PipelineBoardPage(context);
-  return board.closeDealModalLocator();
+  const locator = await board.closeDealModalLocator();
+  await locator?.waitFor({ state: 'visible', timeout });
 }
 
 /**
@@ -611,11 +634,15 @@ export async function clickNewDealOnBoard(context: DealsBehaviorContext): Promis
 }
 
 /**
- * Returns a resolved locator for the mobile stage name heading on the board.
+ * Waits for the mobile stage name heading to be visible on the pipeline board.
  */
-export async function getPipelineMobileStageNameLocator(context: DealsBehaviorContext) {
+export async function waitForPipelineMobileStageName(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
   const board = new PipelineBoardPage(context);
-  return board.mobileStageNameLocator();
+  const locator = await board.mobileStageNameLocator();
+  await locator.waitFor({ state: 'visible', timeout });
 }
 
 /**
@@ -638,51 +665,76 @@ export async function openDealEditForm(context: DealsBehaviorContext): Promise<v
 }
 
 /**
- * Returns a resolved locator for the deal name input on the deal form.
+ * Fills the deal name input on the deal form.
  */
-export async function getDealNameInputLocator(context: DealsBehaviorContext) {
+export async function fillDealNameInput(
+  value: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.nameInputLocator();
+  const locator = await detail.nameInputLocator();
+  await locator.fill(value);
 }
 
 /**
- * Returns a resolved locator for the deal stage select on the deal form.
+ * Selects a stage option on the deal form's stage select.
  */
-export async function getDealStageSelectOnFormLocator(context: DealsBehaviorContext) {
+export async function selectDealStageOnForm(
+  stage: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.stageSelectLocator();
+  const locator = await detail.stageSelectLocator();
+  await locator.selectOption(stage);
 }
 
 /**
- * Returns a resolved locator for the deal value input on the deal form.
+ * Fills the deal value input on the deal form.
  */
-export async function getDealValueInputLocator(context: DealsBehaviorContext) {
+export async function fillDealValueInput(
+  value: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.valueInputLocator();
+  const locator = await detail.valueInputLocator();
+  await locator.fill(value);
 }
 
 /**
- * Returns a resolved locator for the deal close date input on the deal form.
+ * Fills the deal close date input on the deal form.
  */
-export async function getDealCloseDateInputLocator(context: DealsBehaviorContext) {
+export async function fillDealCloseDateInput(
+  date: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.closeDateInputLocator();
+  const locator = await detail.closeDateInputLocator();
+  await locator.fill(date);
 }
 
 /**
- * Returns a resolved locator for the deal account select on the deal form.
+ * Selects an account on the deal form's account select.
  */
-export async function getDealAccountSelectLocator(context: DealsBehaviorContext) {
+export async function selectDealAccount(
+  accountId: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.accountSelectLocator();
+  const locator = await detail.accountSelectLocator();
+  await locator.selectOption(accountId);
 }
 
 /**
- * Returns a resolved locator for the deal form submit button.
+ * Clicks the deal form submit button and waits for the button to detach from DOM.
  */
-export async function getDealFormSubmitLocator(context: DealsBehaviorContext) {
+export async function clickDealFormSubmitAndWaitForDetach(
+  context: DealsBehaviorContext,
+  timeout = 15_000,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.submitLocator();
+  const locator = await detail.submitLocator();
+  await locator.click();
+  await locator.waitFor({ state: 'detached', timeout });
 }
 
 /**
@@ -694,11 +746,56 @@ export async function submitDealForm(context: DealsBehaviorContext): Promise<voi
 }
 
 /**
- * Returns a resolved locator for the deal name heading on the detail page.
+ * Waits for the deal name heading to be visible on the deal detail page.
  */
-export async function getDealNameHeadingLocator(context: DealsBehaviorContext) {
+export async function waitForDealNameHeading(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.dealNameLocator();
+  const locator = await detail.dealNameLocator();
+  await locator.waitFor({ state: 'visible', timeout });
+}
+
+/**
+ * Asserts the deal name heading is visible on the deal detail page.
+ */
+export async function expectDealNameHeadingVisible(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.dealNameLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts the deal name heading contains the given text.
+ */
+export async function expectDealNameHeadingContainsText(
+  text: string,
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.dealNameLocator();
+  await expect(locator).toContainText(text, { timeout });
+}
+
+/**
+ * Asserts the deal name heading has exactly the given text.
+ */
+export async function expectDealNameHeadingHasText(
+  text: string,
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.dealNameLocator();
+  await expect(locator).toHaveText(text, { timeout });
 }
 
 /**
@@ -718,73 +815,102 @@ export async function confirmDeleteDeal(context: DealsBehaviorContext): Promise<
 }
 
 /**
- * Returns a resolved locator for the linked contacts heading on the deal detail page.
+ * Waits for the linked contacts heading to be visible on the deal detail page.
  */
-export async function getDealLinkedContactsHeadingLocator(context: DealsBehaviorContext) {
+export async function waitForDealLinkedContactsHeading(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  return detail.linkedContactsHeadingLocator();
+  const locator = await detail.linkedContactsHeadingLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the link contact select dropdown.
+ * Selects a contact in the link contact dropdown on the deal detail page.
  */
-export async function getDealLinkContactSelectLocator(context: DealsBehaviorContext) {
-  const detail = new DealDetailPage(context);
-  return detail.linkContactSelectLocator();
-}
-
-/**
- * Returns a resolved locator for the link contact button.
- */
-export async function getDealLinkContactButtonLocator(context: DealsBehaviorContext) {
-  const detail = new DealDetailPage(context);
-  return detail.linkContactButtonLocator();
-}
-
-/**
- * Returns a resolved locator for a specific linked contact entry by contact ID.
- */
-export async function getDealLinkedContactLocator(
+export async function selectDealLinkContact(
   contactId: string,
   context: DealsBehaviorContext,
-) {
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.linkedContactLocator(contactId);
+  const locator = await detail.linkContactSelectLocator();
+  await locator.selectOption(contactId);
 }
 
 /**
- * Returns a resolved locator for the unlink button for a specific contact.
+ * Clicks the link contact button on the deal detail page.
  */
-export async function getDealUnlinkContactLocator(
+export async function clickDealLinkContactButton(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.linkContactButtonLocator();
+  await locator.click();
+}
+
+/**
+ * Asserts a linked contact entry is visible on the deal detail page.
+ */
+export async function expectDealLinkedContactVisible(
   contactId: string,
   context: DealsBehaviorContext,
-) {
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  return detail.unlinkContactLocator(contactId);
+  const locator = await detail.linkedContactLocator(contactId);
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the empty state when no contacts are linked to a deal.
+ * Clicks the unlink button for a specific contact on the deal detail page.
  */
-export async function getDealLinkedContactsEmptyLocator(context: DealsBehaviorContext) {
+export async function clickDealUnlinkContact(
+  contactId: string,
+  context: DealsBehaviorContext,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.linkedContactsEmptyLocator();
+  const locator = await detail.unlinkContactLocator(contactId);
+  await locator.click();
 }
 
 /**
- * Returns a resolved locator for the not-found alert on a deal detail page.
+ * Asserts the empty state is visible when no contacts are linked to a deal.
  */
-export async function getDealNotFoundLocator(context: DealsBehaviorContext) {
+export async function expectDealLinkedContactsEmptyVisible(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  return detail.notFoundAlertLocator();
+  const locator = await detail.linkedContactsEmptyLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the back-to-deals link on the deal not-found page.
+ * Asserts the not-found alert is visible on a deal detail page.
  */
-export async function getDealNotFoundBackLink(context: DealsBehaviorContext) {
+export async function expectDealNotFoundVisible(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  return detail.notFoundBackLinkLocator();
+  const locator = await detail.notFoundAlertLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts the back-to-deals link is visible on the deal not-found page.
+ */
+export async function expectDealNotFoundBackLinkVisible(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.notFoundBackLinkLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
 /**
@@ -803,27 +929,39 @@ export async function navigateToDealNotFound(
 }
 
 /**
- * Returns a resolved locator for the attachments section on a deal detail page.
+ * Waits for the attachments section to be visible on a deal detail page.
  */
-export async function getDealAttachmentsSectionLocator(context: DealsBehaviorContext) {
+export async function waitForDealAttachmentsSection(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.attachmentsSectionLocator();
+  const locator = await detail.attachmentsSectionLocator();
+  await locator?.waitFor({ state: 'visible', timeout });
 }
 
 /**
- * Returns a resolved locator for the attachments file input on a deal detail page.
+ * Uploads a file to a deal via the deal detail page attachments file input.
  */
-export async function getDealAttachmentsFileInputLocator(context: DealsBehaviorContext) {
+export async function uploadDealAttachment(
+  context: DealsBehaviorContext,
+  file: { name: string; mimeType: string; buffer: Buffer },
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.attachmentsFileInputLocator();
+  const locator = await detail.attachmentsFileInputLocator();
+  await locator.setInputFiles(file);
 }
 
 /**
- * Returns a resolved locator for the attachments list on a deal detail page.
+ * Waits for the attachments list to be visible on a deal detail page.
  */
-export async function getDealAttachmentsListLocator(context: DealsBehaviorContext) {
+export async function waitForDealAttachmentsList(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
   const detail = new DealDetailPage(context);
-  return detail.attachmentsListLocator();
+  const locator = await detail.attachmentsListLocator();
+  await locator?.waitFor({ state: 'visible', timeout });
 }
 
 // ---------------------------------------------------------------------------

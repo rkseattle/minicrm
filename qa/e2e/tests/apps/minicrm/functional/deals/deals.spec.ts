@@ -35,24 +35,24 @@ import {
   listDealsViaApi,
   navigateToPipelineBoard,
   clickNewDealOnBoard,
-  getDealCardLocator,
-  getDealNameInputLocator,
-  getDealStageSelectOnFormLocator,
-  getDealValueInputLocator,
-  getDealCloseDateInputLocator,
-  getDealAccountSelectLocator,
-  getDealFormSubmitLocator,
+  expectDealCardVisible,
+  fillDealNameInput,
+  selectDealStageOnForm,
+  fillDealValueInput,
+  fillDealCloseDateInput,
+  selectDealAccount,
+  clickDealFormSubmitAndWaitForDetach,
   openDealEditForm,
   submitDealForm,
-  getDealNameHeadingLocator,
+  expectDealNameHeadingHasText,
   clickDeleteDeal,
   confirmDeleteDeal,
-  getDealLinkedContactsHeadingLocator,
-  getDealLinkContactSelectLocator,
-  getDealLinkContactButtonLocator,
-  getDealLinkedContactLocator,
-  getDealUnlinkContactLocator,
-  getDealLinkedContactsEmptyLocator,
+  waitForDealLinkedContactsHeading,
+  selectDealLinkContact,
+  clickDealLinkContactButton,
+  expectDealLinkedContactVisible,
+  clickDealUnlinkContact,
+  expectDealLinkedContactsEmptyVisible,
   waitForDealsListUrl,
   type DealRow,
 } from '@behaviors/minicrm/deals.behaviors.js';
@@ -86,33 +86,24 @@ test(
     // Open the new deal form using the board's new-deal button
     await clickNewDealOnBoard({ page });
 
-    // Fill in the deal form via DealDetailPage locators
+    // Fill in the deal form via DealDetailPage behaviors
 
-    const dealNameInput = await getDealNameInputLocator({ page });
     const dealName = `D1-Deal ${Date.now()}`;
-    await dealNameInput.fill(dealName);
+    await fillDealNameInput(dealName, { page });
 
-    const stageSelect = await getDealStageSelectOnFormLocator({ page });
-    await stageSelect.selectOption('Prospecting');
+    await selectDealStageOnForm('Prospecting', { page });
 
-    const valueInput = await getDealValueInputLocator({ page });
-    await valueInput.fill('15000');
+    await fillDealValueInput('15000', { page });
 
-    const closeDateInput = await getDealCloseDateInputLocator({ page });
     const closeDate = new Date();
     closeDate.setMonth(closeDate.getMonth() + 1);
     const closeDateStr = closeDate.toISOString().split('T')[0]!;
-    await closeDateInput.fill(closeDateStr);
+    await fillDealCloseDateInput(closeDateStr, { page });
 
-    const accountSelect = await getDealAccountSelectLocator({ page });
-    await accountSelect.selectOption(account.id);
+    await selectDealAccount(account.id, { page });
 
-    // Submit the form
-    const submitBtn = await getDealFormSubmitLocator({ page });
-    await submitBtn.click();
-
-    // Wait for the form submit button to detach (form closed) before querying the API.
-    await submitBtn.waitFor({ state: 'detached', timeout: 15_000 });
+    // Submit the form and wait for the button to detach (form closed).
+    await clickDealFormSubmitAndWaitForDetach({ page }, 15_000);
 
     const listResponse = await listDealsViaApi(restClient, {
       sort: 'created_at',
@@ -130,8 +121,7 @@ test(
       testData.register('deal', createdDeal.id, `/api/v1/deals/${createdDeal.id}`);
 
       // Assert the deal card appears on the board in the Prospecting column.
-      const dealCard = await getDealCardLocator(createdDeal.id, { page });
-      await expect(dealCard).toBeVisible({ timeout: 10_000 });
+      await expectDealCardVisible(createdDeal.id, { page }, 10_000);
 
       // Verify via API
       const fetchedDeal = await getDealById(restClient, createdDeal.id);
@@ -165,19 +155,15 @@ test(
     await openDealEditForm({ page });
 
     // Change name and value
-    const nameInput = await getDealNameInputLocator({ page });
     const updatedName = `D2-Deal-Updated ${test.info().title}`;
-    await nameInput.fill(updatedName);
+    await fillDealNameInput(updatedName, { page });
 
-    const valueInput = await getDealValueInputLocator({ page });
-    await valueInput.fill('9999');
+    await fillDealValueInput('9999', { page });
 
     await submitDealForm({ page });
 
-    // UI assertion — deal name heading shows updated value; wait directly for it
-    // since it reflects the exact mutation result the test cares about.
-    const dealNameEl = await getDealNameHeadingLocator({ page });
-    await expect(dealNameEl).toHaveText(updatedName, { timeout: 10_000 });
+    // UI assertion — deal name heading shows updated value.
+    await expectDealNameHeadingHasText(updatedName, { page }, 10_000);
 
     // API assertion — GET returns updated fields
     const fetched = await getDealById(restClient, deal.id);
@@ -273,26 +259,19 @@ test(
     await navigateToDeal(page, deal.id);
 
     // Wait for linked contacts section to be visible
-    const contactsHeading = await getDealLinkedContactsHeadingLocator({ page });
-    await expect(contactsHeading).toBeVisible({ timeout: 10_000 });
+    await waitForDealLinkedContactsHeading({ page }, 10_000);
 
-    // Select contact from the link form dropdown
-    const linkSelect = await getDealLinkContactSelectLocator({ page });
-    await linkSelect.selectOption(contact.id);
-
-    const linkBtn = await getDealLinkContactButtonLocator({ page });
-    await linkBtn.click();
+    // Select contact from the link form dropdown and submit
+    await selectDealLinkContact(contact.id, { page });
+    await clickDealLinkContactButton({ page });
 
     // Assert contact appears in the linked contacts list
-    const linkedContactEl = await getDealLinkedContactLocator(contact.id, { page });
-    await expect(linkedContactEl).toBeVisible({ timeout: 10_000 });
+    await expectDealLinkedContactVisible(contact.id, { page }, 10_000);
 
     // Unlink the contact
-    const unlinkBtn = await getDealUnlinkContactLocator(contact.id, { page });
-    await unlinkBtn.click();
+    await clickDealUnlinkContact(contact.id, { page });
 
     // After unlinking, the empty state should appear
-    const emptyState = await getDealLinkedContactsEmptyLocator({ page });
-    await expect(emptyState).toBeVisible({ timeout: 10_000 });
+    await expectDealLinkedContactsEmptyVisible({ page }, 10_000);
   },
 );
