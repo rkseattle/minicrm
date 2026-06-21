@@ -9,10 +9,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { setOnboardingCompleted, ONBOARDING_STATUS_QUERY_KEY } from '@/api/onboarding.js';
 import { Button } from '@/components/ui/Button.js';
+import { useAuth } from '@/hooks/useAuth.js';
 
 export default function SetupChecklistSettings() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [resetOnboardingSuccess, setResetOnboardingSuccess] = useState(false);
   const [resetOnboardingError, setResetOnboardingError] = useState(false);
@@ -29,6 +31,10 @@ export default function SetupChecklistSettings() {
       setResetOnboardingSuccess(false);
     },
   });
+
+  if (user?.role !== 'admin') {
+    return null;
+  }
 
   return (
     <div

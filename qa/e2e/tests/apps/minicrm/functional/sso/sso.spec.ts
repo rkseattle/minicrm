@@ -75,8 +75,8 @@ test('admin can configure OIDC SSO and see the enabled badge @functional @serial
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Navigate to Settings → Integrations tab
-  await navigateToAdminSettings({ page }, 'integrations');
+  // Navigate to Settings → Security & Identity tab (SSO moved from Integrations, MINCRM-563)
+  await navigateToAdminSettings({ page }, 'security');
 
   // Wait for the SSO section to load
   const ssoSection = await getSsoSectionLocator({ page });
@@ -137,10 +137,11 @@ test('admin can disable SSO via the confirmation flow @functional @serial', asyn
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  // Navigate to Settings → Integrations tab first, then configure SSO via API
+  // Navigate to Settings → Security & Identity tab first, then configure SSO via API
   // and reload. Setting SSO before login risks another parallel worker's
   // ensureSystemDefaults() wiping the config during the login round-trip.
-  await navigateToAdminSettings({ page }, 'integrations');
+  // (SSO moved from Integrations to Security & Identity, MINCRM-563)
+  await navigateToAdminSettings({ page }, 'security');
 
   await restClient.put('/api/v1/settings/sso', {
     protocol: 'oidc',
