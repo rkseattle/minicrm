@@ -566,147 +566,149 @@ export default function LeadsPage() {
               />
             }
           >
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr>
-                  {canBulkOp && (
-                    <th className="w-10 ps-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={t('bulk.selectAll')}
-                        data-testid="leads-select-all"
-                        className="rounded border-gray-300"
-                      />
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="sticky top-0 z-10 bg-gray-50">
+                  <tr>
+                    {canBulkOp && (
+                      <th className="w-10 ps-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t('bulk.selectAll')}
+                          data-testid="leads-select-all"
+                          className="rounded border-gray-300"
+                        />
+                      </th>
+                    )}
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnName')}
                     </th>
-                  )}
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnName')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnCompany')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnSource')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnStatus')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnOwner')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnCreated')}
-                  </th>
-                  <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
-                    {t('leads.columnActions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                {leads.map((lead) => {
-                  const isConverted = Boolean(lead.converted_at);
-                  return (
-                    <tr
-                      key={lead.id}
-                      className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
-                      data-testid={`lead-row-${lead.id}`}
-                    >
-                      {canBulkOp && (
-                        <td className="w-10 ps-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(lead.id)}
-                            onChange={() => toggleRow(lead.id)}
-                            data-testid={`bulk-select-${lead.id}`}
-                            className="rounded border-gray-300"
-                          />
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnCompany')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnSource')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnStatus')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnOwner')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnCreated')}
+                    </th>
+                    <th className="px-4 py-3 text-start text-xs font-medium uppercase tracking-wide text-gray-500 whitespace-nowrap">
+                      {t('leads.columnActions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {leads.map((lead) => {
+                    const isConverted = Boolean(lead.converted_at);
+                    return (
+                      <tr
+                        key={lead.id}
+                        className={`hover:bg-gray-50 ${lead.status === 'Qualified' && !isConverted ? 'bg-green-50' : ''}`}
+                        data-testid={`lead-row-${lead.id}`}
+                      >
+                        {canBulkOp && (
+                          <td className="w-10 ps-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(lead.id)}
+                              onChange={() => toggleRow(lead.id)}
+                              data-testid={`bulk-select-${lead.id}`}
+                              className="rounded border-gray-300"
+                            />
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-sm font-medium text-primary-600">
+                          <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
+                            {lead.first_name}
+                            {lead.last_name ? ` ${lead.last_name}` : ''}
+                          </Link>
                         </td>
-                      )}
-                      <td className="px-4 py-3 text-sm font-medium text-primary-600">
-                        <Link to={`/leads/${lead.id}`} data-testid={`view-lead-${lead.id}`}>
-                          {lead.first_name}
-                          {lead.last_name ? ` ${lead.last_name}` : ''}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {lead.company_name ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {lead.lead_source
-                          ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {isConverted ? (
-                          <span
-                            className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
-                            data-testid={`badge-converted-${lead.id}`}
-                          >
-                            {t('leads.statusConverted')}
-                          </span>
-                        ) : editingStatusId === lead.id ? (
-                          <select
-                            ref={(el) => {
-                              el?.focus();
-                            }}
-                            defaultValue={lead.status}
-                            onChange={(e) => {
-                              updateStatusMutation.mutate({
-                                id: lead.id,
-                                status: e.target.value,
-                                version: lead.version,
-                              });
-                            }}
-                            className="rounded border border-gray-300 py-0.5 text-xs"
-                            data-testid={`status-select-${lead.id}`}
-                          >
-                            {LEAD_STATUSES.map((s) => (
-                              <option key={s} value={s}>
-                                {t(`leads.status${s}`)}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {lead.company_name ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {lead.lead_source
+                            ? t(`leads.source${lead.lead_source.replace(/\s+/g, '')}`)
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {isConverted ? (
+                            <span
+                              className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 whitespace-nowrap shrink-0"
+                              data-testid={`badge-converted-${lead.id}`}
+                            >
+                              {t('leads.statusConverted')}
+                            </span>
+                          ) : editingStatusId === lead.id ? (
+                            <select
+                              ref={(el) => {
+                                el?.focus();
+                              }}
+                              defaultValue={lead.status}
+                              onChange={(e) => {
+                                updateStatusMutation.mutate({
+                                  id: lead.id,
+                                  status: e.target.value,
+                                  version: lead.version,
+                                });
+                              }}
+                              className="rounded border border-gray-300 py-0.5 text-xs"
+                              data-testid={`status-select-${lead.id}`}
+                            >
+                              {LEAD_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {t(`leads.status${s}`)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingStatusId(lead.id)}
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
+                              data-testid={`status-badge-${lead.id}`}
+                              title={t('leads.clickToUpdateStatus')}
+                            >
+                              {t(`leads.status${lead.status}`)}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
                           <button
                             type="button"
-                            onClick={() => setEditingStatusId(lead.id)}
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap shrink-0 ${STATUS_BADGE[lead.status] ?? 'bg-gray-100 text-gray-600'}`}
-                            data-testid={`status-badge-${lead.id}`}
-                            title={t('leads.clickToUpdateStatus')}
+                            onClick={() => {
+                              if (window.confirm(t('leads.confirmDelete'))) {
+                                deleteMutation.mutate(lead.id);
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                            disabled={deleteMutation.isPending}
+                            data-testid={`delete-lead-${lead.id}`}
+                            aria-label={t('leads.delete')}
                           >
-                            {t(`leads.status${lead.status}`)}
+                            {t('leads.delete')}
                           </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {resolveOwnerName(lead.owner_id, activeUsers, t('leads.ownerUnknown'))}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {new Date(lead.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (window.confirm(t('leads.confirmDelete'))) {
-                              deleteMutation.mutate(lead.id);
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                          disabled={deleteMutation.isPending}
-                          data-testid={`delete-lead-${lead.id}`}
-                          aria-label={t('leads.delete')}
-                        >
-                          {t('leads.delete')}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </PagedListLayout>
         )}
       </main>
