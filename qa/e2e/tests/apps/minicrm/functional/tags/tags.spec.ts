@@ -80,7 +80,8 @@ test(
     const result = await navigateToAdminTags({ page });
 
     expect(result.loaded).toBe(true);
-    expect(result.finalUrl).toContain('/admin/tags');
+    // Tags section is now embedded in the Pipelines & Fields tab (MINCRM-563)
+    expect(result.finalUrl).toContain('/admin/settings');
   },
 );
 

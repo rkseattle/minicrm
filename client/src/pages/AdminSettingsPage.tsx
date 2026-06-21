@@ -7,6 +7,7 @@
  *   - Desktop + top/hamburger nav: vertical tab list on the left
  *
  * Navigation chrome is provided by SubPageNav (MINCRM-294).
+ * Tab structure reorganized from 12+1 → 10 grouped tabs (MINCRM-563).
  */
 
 import { useTranslation } from 'react-i18next';
@@ -15,61 +16,53 @@ import NavBar from '@/components/NavBar.js';
 import SubPageNav from '@/components/SubPageNav.js';
 import { useBreakpoint } from '@/context/BreakpointContext.js';
 import { useNavLayout } from '@/components/NavLayoutContext.js';
-import GeneralSettings from '@/pages/admin/GeneralSettings.js';
-import NotificationSettings from '@/pages/admin/NotificationSettings.js';
-import CurrencySettings from '@/pages/admin/CurrencySettings.js';
-import CustomisationSettings from '@/pages/admin/CustomisationSettings.js';
-import DataSettings from '@/pages/admin/DataSettings.js';
-import IntegrationSettings from '@/pages/admin/IntegrationSettings.js';
+import WorkspaceSettings from '@/pages/admin/WorkspaceSettings.js';
 import BrandingSettings from '@/pages/admin/BrandingSettings.js';
-import FeatureFlagsSettings from '@/pages/admin/FeatureFlagsSettings.js';
+import PipelinesAndFieldsSettings from '@/pages/admin/PipelinesAndFieldsSettings.js';
+import UsersAndAccessSettings from '@/pages/admin/UsersAndAccessSettings.js';
+import SecuritySettings from '@/pages/admin/SecuritySettings.js';
+import NotificationSettings from '@/pages/admin/NotificationSettings.js';
+import IntegrationSettings from '@/pages/admin/IntegrationSettings.js';
 import AiSettings from '@/pages/admin/AiSettings.js';
-import VisibilitySettings from '@/pages/admin/VisibilitySettings.js';
-import RolesSettings from '@/pages/admin/RolesSettings.js';
-import TeamsSettings from '@/pages/admin/TeamsSettings.js';
+import FeatureFlagsSettings from '@/pages/admin/FeatureFlagsSettings.js';
+import DataAndPlatformSettings from '@/pages/admin/DataAndPlatformSettings.js';
 
 type TabKey =
-  | 'general'
-  | 'notifications'
-  | 'currency'
-  | 'customisation'
+  | 'workspace'
   | 'branding'
-  | 'data'
+  | 'pipelines'
+  | 'users'
+  | 'security'
+  | 'notifications'
   | 'integrations'
-  | 'features'
   | 'ai'
-  | 'visibility'
-  | 'roles'
-  | 'teams';
+  | 'flags'
+  | 'platform';
 
 const TAB_KEYS: TabKey[] = [
-  'general',
-  'notifications',
-  'currency',
-  'customisation',
+  'workspace',
   'branding',
-  'data',
+  'pipelines',
+  'users',
+  'security',
+  'notifications',
   'integrations',
-  'features',
   'ai',
-  'visibility',
-  'roles',
-  'teams',
+  'flags',
+  'platform',
 ];
 
 const TAB_CONTENT: Record<TabKey, React.ComponentType> = {
-  general: GeneralSettings,
-  notifications: NotificationSettings,
-  currency: CurrencySettings,
-  customisation: CustomisationSettings,
+  workspace: WorkspaceSettings,
   branding: BrandingSettings,
-  data: DataSettings,
+  pipelines: PipelinesAndFieldsSettings,
+  users: UsersAndAccessSettings,
+  security: SecuritySettings,
+  notifications: NotificationSettings,
   integrations: IntegrationSettings,
-  features: FeatureFlagsSettings,
   ai: AiSettings,
-  visibility: VisibilitySettings,
-  roles: RolesSettings,
-  teams: TeamsSettings,
+  flags: FeatureFlagsSettings,
+  platform: DataAndPlatformSettings,
 };
 
 function isValidTab(value: string | null): value is TabKey {
@@ -83,7 +76,7 @@ export default function AdminSettingsPage() {
   const { layout: navLayout } = useNavLayout();
 
   const rawTab = searchParams.get('tab');
-  const activeTab: TabKey = isValidTab(rawTab) ? rawTab : 'general';
+  const activeTab: TabKey = isValidTab(rawTab) ? rawTab : 'workspace';
 
   function selectTab(key: string): void {
     setSearchParams({ tab: key }, { replace: false });

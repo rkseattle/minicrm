@@ -72,7 +72,7 @@ test('@functional @serial F-VIS1: admin can navigate to the visibility tab and s
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await navigateToAdminSettings({ page }, 'visibility');
+  await navigateToAdminSettings({ page }, 'users');
 
   const panel = await getVisibilitySettingsPanelLocator({ page });
   await expect(panel).toBeVisible({ timeout: 10_000 });
@@ -93,7 +93,7 @@ test('@functional @serial F-VIS2: admin can change a visibility policy and see t
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await navigateToAdminSettings({ page }, 'visibility');
+  await navigateToAdminSettings({ page }, 'users');
 
   const contactsSelect = await getVisibilityContactsSelectLocator({ page });
   await expect(contactsSelect).toBeVisible({ timeout: 10_000 });

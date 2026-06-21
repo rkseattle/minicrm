@@ -560,18 +560,16 @@
   "settings": {
     "pageTitle": "Admin-Einstellungen",
     "tabs": {
-      "general": "Allgemein",
-      "notifications": "Benachrichtigungen",
-      "currency": "Währung",
-      "customisation": "Anpassung",
+      "workspace": "Arbeitsbereich",
       "branding": "Erscheinungsbild",
-      "data": "Daten",
+      "pipelines": "Pipelines & Felder",
+      "users": "Benutzer & Zugriff",
+      "security": "Sicherheit & Identität",
+      "notifications": "Benachrichtigungen",
       "integrations": "Integrationen",
-      "features": "Funktionen",
       "ai": "KI",
-      "visibility": "Sichtbarkeit",
-      "roles": "Rollen",
-      "teams": "Teams"
+      "flags": "Feature-Flags",
+      "platform": "Daten & Plattform"
     },
     "defaultLanguageLabel": "Standardsprache",
     "defaultLanguageHint": "Legt die Sprache für alle Benutzer fest, die keine persönliche Präferenz konfiguriert haben.",

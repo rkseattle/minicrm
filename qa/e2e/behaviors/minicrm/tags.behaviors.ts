@@ -72,7 +72,7 @@ export interface RenameTagViaUIResult {
  * On the admin tags page, clicks Rename for the given tag, clears the input,
  * types the new name, and saves.
  *
- * Assumes the browser is already on /admin/tags and the tag row is visible.
+ * Assumes the browser is already on the Pipelines & Fields tab and the tag row is visible.
  *
  * @param tagId - UUID of the tag to rename.
  * @param newName - Replacement name to type.
@@ -119,7 +119,7 @@ export interface DeleteTagViaUIResult {
  * On the admin tags page, clicks Delete for the given tag and waits for the
  * row to disappear from the list.
  *
- * Assumes the browser is already on /admin/tags and the tag row is visible.
+ * Assumes the browser is already on the Pipelines & Fields tab and the tag row is visible.
  *
  * @param tagId - UUID of the tag to delete.
  * @param context - Playwright fixture context.

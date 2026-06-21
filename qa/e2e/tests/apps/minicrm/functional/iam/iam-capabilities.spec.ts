@@ -415,7 +415,7 @@ test('@functional built-in role View button expands read-only capability panel',
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await navigateToAdminSettings({ page }, 'roles');
+  await navigateToAdminSettings({ page }, 'users');
 
   // View button is present on the built-in role card
   const viewBtn = await getRoleViewButtonLocator({ page }, adminRole.id);

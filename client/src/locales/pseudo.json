@@ -790,8 +790,16 @@
       "tokenMutationError": "Failed to update SCIM token. Please try again."
     },
     "tabs": {
-      "features": "Ƒéàŧůŗéş",
-      "roles": "[Ŕöĺéš]"
+      "workspace": "[Ŵöŗkŝpäĉë~~~]",
+      "branding": "[Bŗäñdïñg~~~]",
+      "pipelines": "[Pïpëlïñëŝ & Fïëldŝ~~~~~]",
+      "users": "[Üŝëŗŝ & Äĉĉëŝŝ~~~~~]",
+      "security": "[Ŝëĉürïty & Ïdëñtïty~~~~~~]",
+      "notifications": "[Ñötïfïĉätïöñŝ~~~~~]",
+      "integrations": "[Ïñtëgŗätïöñŝ~~~~]",
+      "ai": "[ÄÏ~]",
+      "flags": "[Ƒëätüŗë Ƒläğŝ~~~~~]",
+      "platform": "[Dätä & Plätföŗm~~~~~~]"
     }
   },
   "profileSettings": {

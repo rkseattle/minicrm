@@ -44,7 +44,6 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage.js'));
 const AuditLogPage = lazy(() => import('@/pages/AuditLogPage.js'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage.js'));
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
-const AdminTagsPage = lazy(() => import('@/pages/AdminTagsPage.js'));
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
@@ -129,7 +128,11 @@ function AppRoutes() {
           <Route element={<LayoutShell />}>
             <Route path="/users" element={<UsersPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
-            <Route path="/admin/tags" element={<AdminTagsPage />} />
+            {/* Redirect old /admin/tags route to the Pipelines & Fields tab (MINCRM-563) */}
+            <Route
+              path="/admin/tags"
+              element={<Navigate to="/admin/settings?tab=pipelines" replace />}
+            />
             <Route path="/admin/audit-log" element={<AuditLogPage />} />
             <Route path="/admin/automation" element={<AutomationRulesPage />} />
             <Route path="/admin/sequences" element={<SequencesPage />} />

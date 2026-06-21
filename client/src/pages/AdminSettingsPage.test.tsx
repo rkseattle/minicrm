@@ -2,7 +2,7 @@
  * Tests for the AdminSettingsPage component.
  * Covers: loading state, load error state, default language display, save action,
  * validation rejection (400), success/error feedback, demo data section (MINCRM-103),
- * and MFA enforcement toggle (MINCRM-392).
+ * MFA enforcement toggle (MINCRM-392), and 10-tab structure (MINCRM-563).
  */
 
 import { screen, waitFor, act } from '@testing-library/react';
@@ -224,14 +224,14 @@ describe('AdminSettingsPage', () => {
 
   describe('demo data section', () => {
     it('renders the demo section', async () => {
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-section')).toBeInTheDocument();
       });
     });
 
     it('shows "No demo data" status badge when demo is inactive', async () => {
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-status-badge')).toHaveTextContent('No demo data');
       });
@@ -239,7 +239,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows "Demo data active" status badge when demo is active', async () => {
       server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-status-badge')).toHaveTextContent('Demo data active');
       });
@@ -251,7 +251,7 @@ describe('AdminSettingsPage', () => {
           HttpResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 }),
         ),
       );
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-status-error')).toBeInTheDocument();
       });
@@ -259,14 +259,14 @@ describe('AdminSettingsPage', () => {
 
     it('seed button is disabled when demo data is active', async () => {
       server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeDisabled();
       });
     });
 
     it('remove button is disabled when no demo data is present', async () => {
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).toBeDisabled();
       });
@@ -274,7 +274,7 @@ describe('AdminSettingsPage', () => {
 
     it('remove button is enabled when demo data is active', async () => {
       server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
       });
@@ -282,7 +282,7 @@ describe('AdminSettingsPage', () => {
 
     it('seed button opens confirmation dialog', async () => {
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeInTheDocument();
       });
@@ -293,7 +293,7 @@ describe('AdminSettingsPage', () => {
 
     it('reset button opens confirmation dialog', async () => {
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-reset-button')).toBeInTheDocument();
       });
@@ -305,7 +305,7 @@ describe('AdminSettingsPage', () => {
     it('remove button opens confirmation dialog when demo is active', async () => {
       server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
       });
@@ -316,7 +316,7 @@ describe('AdminSettingsPage', () => {
 
     it('cancel closes the confirmation dialog without acting', async () => {
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeInTheDocument();
       });
@@ -329,7 +329,7 @@ describe('AdminSettingsPage', () => {
 
     it('confirming seed shows success feedback', async () => {
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeInTheDocument();
       });
@@ -344,7 +344,7 @@ describe('AdminSettingsPage', () => {
 
     it('confirming reset shows success feedback', async () => {
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-reset-button')).toBeInTheDocument();
       });
@@ -360,7 +360,7 @@ describe('AdminSettingsPage', () => {
     it('confirming remove shows success feedback', async () => {
       server.use(http.get('/api/v1/admin/demo/status', () => HttpResponse.json({ active: true })));
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
       });
@@ -380,7 +380,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-seed-button')).toBeInTheDocument();
       });
@@ -400,7 +400,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-reset-button')).toBeInTheDocument();
       });
@@ -418,7 +418,7 @@ describe('AdminSettingsPage', () => {
 
   describe('pipeline stage section', () => {
     it('renders the pipeline stages table with seed stage names', async () => {
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       await waitFor(() => {
         // Wait for stages to load (requires both pipelines and stages queries to resolve)
         expect(screen.getByText('Prospecting')).toBeInTheDocument();
@@ -441,7 +441,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
         expect(screen.getByText('Prospecting')).toBeInTheDocument();
@@ -456,7 +456,7 @@ describe('AdminSettingsPage', () => {
 
     it('disables the name input for fixed stages', async () => {
       const user = userEvent.setup();
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       await waitFor(() => {
         // Wait for stages to load (requires both pipelines and stages queries to resolve)
         expect(screen.getByTestId('pipeline-stage-edit-ps-5')).toBeInTheDocument();
@@ -485,7 +485,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       await waitFor(() => {
         expect(screen.getByTestId('pipeline-stage-delete-ps-1')).toBeInTheDocument();
       });
@@ -498,7 +498,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows success feedback after successfully adding a stage', async () => {
       const user = userEvent.setup();
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
         expect(screen.getByText('Prospecting')).toBeInTheDocument();
@@ -518,7 +518,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('customisation');
+      renderOnTab('pipelines');
       // Wait for stages to fully load (requires both pipelines and stages queries to resolve)
       await waitFor(() => {
         expect(screen.getByText('Prospecting')).toBeInTheDocument();
@@ -536,14 +536,14 @@ describe('AdminSettingsPage', () => {
 
   describe('default currency section', () => {
     it('renders the currency section', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('currency-section')).toBeInTheDocument();
       });
     });
 
     it('renders the currency select with USD pre-selected', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         const select = screen.getByTestId('default-currency-select') as HTMLSelectElement;
         expect(select).toBeInTheDocument();
@@ -553,7 +553,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows success message after a successful currency save', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
 
       await waitFor(() => {
         expect(screen.getByTestId('default-currency-select')).toBeInTheDocument();
@@ -575,7 +575,7 @@ describe('AdminSettingsPage', () => {
       );
 
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
 
       await waitFor(() => {
         expect(screen.getByTestId('default-currency-select')).toBeInTheDocument();
@@ -593,14 +593,14 @@ describe('AdminSettingsPage', () => {
 
   describe('exchange rates section', () => {
     it('renders the exchange rates section for admin users', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rates-section')).toBeInTheDocument();
       });
     });
 
     it('renders the home currency select with USD pre-selected', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         const select = screen.getByTestId('home-currency-select') as HTMLSelectElement;
         expect(select).toBeInTheDocument();
@@ -609,14 +609,14 @@ describe('AdminSettingsPage', () => {
     });
 
     it('renders the exchange rate table', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-table')).toBeInTheDocument();
       });
     });
 
     it('shows the home currency row as read-only with rate 1.000000', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-row-USD')).toBeInTheDocument();
       });
@@ -626,7 +626,7 @@ describe('AdminSettingsPage', () => {
     });
 
     it('shows the Add Currency button when no form is open', async () => {
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
       });
@@ -634,7 +634,7 @@ describe('AdminSettingsPage', () => {
 
     it('clicking Add Currency button shows the add currency form', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
       });
@@ -646,7 +646,7 @@ describe('AdminSettingsPage', () => {
 
     it('clicking Add in the add form appends a new row to the table', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
       });
@@ -662,7 +662,7 @@ describe('AdminSettingsPage', () => {
 
     it('clicking Cancel in the add form hides it without adding a row', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-add-button')).toBeInTheDocument();
       });
@@ -699,7 +699,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-row-EUR')).toBeInTheDocument();
       });
@@ -709,7 +709,7 @@ describe('AdminSettingsPage', () => {
 
     it('changing home currency shows the recalculated banner', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('home-currency-select')).toBeInTheDocument();
       });
@@ -746,7 +746,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         // EUR starts as a non-home row with an editable input
         expect(screen.getByTestId('exchange-rate-input-EUR')).toBeInTheDocument();
@@ -760,7 +760,7 @@ describe('AdminSettingsPage', () => {
 
     it('clicking Save calls PUT /api/settings/currencies and shows success', async () => {
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-save-button')).toBeInTheDocument();
       });
@@ -777,7 +777,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('currency');
+      renderOnTab('workspace');
       await waitFor(() => {
         expect(screen.getByTestId('exchange-rate-save-button')).toBeInTheDocument();
       });
@@ -798,7 +798,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderOnTab('data');
+      renderOnTab('platform');
       await waitFor(() => {
         expect(screen.getByTestId('demo-remove-button')).not.toBeDisabled();
       });
@@ -812,16 +812,18 @@ describe('AdminSettingsPage', () => {
     });
   });
 
-  describe('MFA enforcement (MINCRM-392)', () => {
-    it('renders the MFA required section for admin users', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+  // MFA enforcement tests live in MfaSettings.test.tsx and SecuritySettings.test.tsx
+  // since the MFA section moved to the Security & Identity tab (MINCRM-563).
+  describe('MFA enforcement — security tab (MINCRM-392)', () => {
+    it('renders the MFA required section on the security tab', async () => {
+      renderOnTab('security');
       await waitFor(() => {
         expect(screen.getByTestId('mfa-required-section')).toBeInTheDocument();
       });
     });
 
     it('shows the MFA checkbox unchecked by default', async () => {
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnTab('security');
       await waitFor(() => {
         expect(screen.getByTestId('mfa-required-checkbox')).not.toBeChecked();
       });
@@ -831,7 +833,7 @@ describe('AdminSettingsPage', () => {
       server.use(
         http.get('/api/v1/settings/mfa-required', () => HttpResponse.json({ mfa_required: true })),
       );
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnTab('security');
       await waitFor(() => {
         expect(screen.getByTestId('mfa-required-checkbox')).toBeChecked();
       });
@@ -839,7 +841,7 @@ describe('AdminSettingsPage', () => {
 
     it('shows success message after toggling the MFA checkbox', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnTab('security');
       await waitFor(() => expect(screen.getByTestId('mfa-required-checkbox')).toBeInTheDocument());
       await user.click(screen.getByTestId('mfa-required-checkbox'));
       await waitFor(() => {
@@ -854,7 +856,7 @@ describe('AdminSettingsPage', () => {
         ),
       );
       const user = userEvent.setup();
-      renderWithProviders(<AdminSettingsPage />);
+      renderOnTab('security');
       await waitFor(() => expect(screen.getByTestId('mfa-required-checkbox')).toBeInTheDocument());
       await user.click(screen.getByTestId('mfa-required-checkbox'));
       await waitFor(() => {

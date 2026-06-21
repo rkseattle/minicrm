@@ -452,21 +452,23 @@ export async function navigateToUrl(
 }
 
 /**
- * Navigates directly to the Admin Settings customisation tab (shorthand).
+ * Navigates directly to the Admin Settings pipelines tab (shorthand).
+ * Formerly navigated to the 'customisation' tab; renamed to 'pipelines' (MINCRM-563).
  */
 export async function navigateToAdminSettingsCustomisation(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=customisation', { waitUntil: 'networkidle' });
+  await context.page.goto('/admin/settings?tab=pipelines', { waitUntil: 'networkidle' });
 }
 
 /**
- * Navigates directly to the Admin Settings general tab (shorthand).
+ * Navigates directly to the Admin Settings workspace tab (shorthand).
+ * Formerly navigated to the 'general' tab; renamed to 'workspace' (MINCRM-563).
  */
 export async function navigateToAdminSettingsGeneral(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=general', { waitUntil: 'networkidle' });
+  await context.page.goto('/admin/settings?tab=workspace', { waitUntil: 'networkidle' });
 }
 
 // ---------------------------------------------------------------------------
@@ -726,6 +728,7 @@ export async function getSsoLoginButtonLocator(context: AdminSettingsBehaviorCon
 
 /**
  * Navigates to the admin settings integrations tab and waits for network idle.
+ * The integrations tab retains its key; SSO/SCIM moved to security tab (MINCRM-563).
  */
 export async function navigateToAdminSettingsIntegrations(
   context: AdminSettingsBehaviorContext,
@@ -754,7 +757,7 @@ export async function navigateToAdminSettingsCurrency(
   // overwriting any selectOption() call made in between. waitUntil:'networkidle'
   // after the first response ensures both the initial fetch and any background
   // refetch have landed before the caller interacts with the form. (MINCRM-418)
-  await context.page.goto('/admin/settings?tab=currency', { waitUntil: 'networkidle' });
+  await context.page.goto('/admin/settings?tab=workspace', { waitUntil: 'networkidle' });
   // Settle any pending re-renders after the network quietens.
   await context.page.waitForFunction(
     `document.querySelector('[data-testid="home-currency-select"]') !== null`,

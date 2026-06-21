@@ -63,7 +63,7 @@ test('@functional F-FF1: admin can navigate to the Features tab and see the flag
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
-  await navigateToAdminSettings({ page }, 'features');
+  await navigateToAdminSettings({ page }, 'flags');
 
   const list = await getFeatureFlagsListLocator({ page });
   await expect(list).toBeVisible({ timeout: 10_000 });
@@ -85,7 +85,7 @@ test('@functional @serial F-FF2: admin can disable a flag via the confirmation d
   await loginAsAdmin(restClient);
   await updateFeatureFlag(restClient, 'notes', { enabled: true });
 
-  await navigateToAdminSettings({ page }, 'features');
+  await navigateToAdminSettings({ page }, 'flags');
 
   const list = await getFeatureFlagsListLocator({ page });
   await expect(list).toBeVisible({ timeout: 10_000 });
