@@ -26,8 +26,8 @@
 | ---- | ---------- |
 | automation_rule_logs_pkey | CREATE UNIQUE INDEX automation_rule_logs_pkey ON public.automation_rule_logs USING btree (id) |
 | automation_rule_logs_rule_id_triggered_at_index | CREATE INDEX automation_rule_logs_rule_id_triggered_at_index ON public.automation_rule_logs USING btree (rule_id, triggered_at) |
-| automation_rule_logs_outcome_idx | CREATE INDEX automation_rule_logs_outcome_idx ON public.automation_rule_logs USING btree (outcome) WHERE (outcome = 'error'::automation_log_outcome) |
 | automation_rule_logs_triggered_at_idx | CREATE INDEX automation_rule_logs_triggered_at_idx ON public.automation_rule_logs USING btree (triggered_at) |
+| automation_rule_logs_outcome_idx | CREATE INDEX automation_rule_logs_outcome_idx ON public.automation_rule_logs USING btree (outcome) WHERE (outcome = 'error'::automation_log_outcome) |
 
 ## Relations
 

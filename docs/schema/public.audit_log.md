@@ -32,16 +32,16 @@ Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid r
 | ---- | ---------- |
 | audit_log_pkey | CREATE UNIQUE INDEX audit_log_pkey ON ONLY public.audit_log USING btree (id, created_at) |
 | audit_log_record_type_record_id_index | CREATE INDEX audit_log_record_type_record_id_index ON ONLY public.audit_log USING btree (record_type, record_id) |
-| audit_log_changed_by_id_index | CREATE INDEX audit_log_changed_by_id_index ON ONLY public.audit_log USING btree (changed_by_id) |
-| audit_log_created_at_index | CREATE INDEX audit_log_created_at_index ON ONLY public.audit_log USING btree (created_at) |
 | audit_log_event_type_index | CREATE INDEX audit_log_event_type_index ON ONLY public.audit_log USING btree (event_type) |
+| audit_log_created_at_index | CREATE INDEX audit_log_created_at_index ON ONLY public.audit_log USING btree (created_at) |
+| audit_log_changed_by_id_index | CREATE INDEX audit_log_changed_by_id_index ON ONLY public.audit_log USING btree (changed_by_id) |
 
 ## Triggers
 
 | Name | Definition |
 | ---- | ---------- |
-| audit_log_after_insert | CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify() |
 | audit_log_no_modify | CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable() |
+| audit_log_after_insert | CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify() |
 
 ## Relations
 

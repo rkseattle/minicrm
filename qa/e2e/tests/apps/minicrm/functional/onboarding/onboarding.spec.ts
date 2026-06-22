@@ -134,7 +134,9 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      await expectSetupChecklistWidgetVisible({ page }, 10_000);
+      // 15 s: pipeline_stages_reviewed is reset above so allDone=false and the 3 s
+      // auto-dismiss does not fire — safe to exceed the 10 s F-OB1 limit here.
+      await expectSetupChecklistWidgetVisible({ page }, 15_000);
 
       await dismissSetupChecklist({ page });
 

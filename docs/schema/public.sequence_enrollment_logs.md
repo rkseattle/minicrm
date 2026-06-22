@@ -16,7 +16,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| sequence_enrollment_logs_outcome_check | CHECK | CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'skipped'::character varying, 'error'::character varying])::text[]))) |
+| sequence_enrollment_logs_outcome_check | CHECK | CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('skipped'::character varying)::text, ('error'::character varying)::text]))) |
 | sequence_enrollment_logs_step_id_fkey | FOREIGN KEY | FOREIGN KEY (step_id) REFERENCES sales_sequence_steps(id) ON DELETE SET NULL |
 | sequence_enrollment_logs_enrollment_id_fkey | FOREIGN KEY | FOREIGN KEY (enrollment_id) REFERENCES sequence_enrollments(id) ON DELETE CASCADE |
 | sequence_enrollment_logs_pkey | PRIMARY KEY | PRIMARY KEY (id) |

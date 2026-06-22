@@ -17,7 +17,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| sales_sequence_steps_action_type_check | CHECK | CHECK (((action_type)::text = ANY ((ARRAY['send_email'::character varying, 'log_call_reminder'::character varying, 'create_task'::character varying])::text[]))) |
+| sales_sequence_steps_action_type_check | CHECK | CHECK (((action_type)::text = ANY (ARRAY[('send_email'::character varying)::text, ('log_call_reminder'::character varying)::text, ('create_task'::character varying)::text]))) |
 | sales_sequence_steps_delay_days_check | CHECK | CHECK ((delay_days >= 0)) |
 | sales_sequence_steps_sequence_id_fkey | FOREIGN KEY | FOREIGN KEY (sequence_id) REFERENCES sales_sequences(id) ON DELETE CASCADE |
 | sales_sequence_steps_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -28,8 +28,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | sales_sequence_steps_pkey | CREATE UNIQUE INDEX sales_sequence_steps_pkey ON public.sales_sequence_steps USING btree (id) |
-| sales_sequence_steps_sequence_id_index | CREATE INDEX sales_sequence_steps_sequence_id_index ON public.sales_sequence_steps USING btree (sequence_id) |
 | uq_sequence_sort_order | CREATE UNIQUE INDEX uq_sequence_sort_order ON public.sales_sequence_steps USING btree (sequence_id, sort_order) |
+| sales_sequence_steps_sequence_id_index | CREATE INDEX sales_sequence_steps_sequence_id_index ON public.sales_sequence_steps USING btree (sequence_id) |
 
 ## Triggers
 

@@ -1,25 +1,25 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–113 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541)
+ * Migration 000: Schema baseline — squash of migrations 001–116 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 109 migrations (001–109), so
+ * Captures the full schema as it exists after all 116 migrations (001–116), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 113 individual migrations.
+ * replaying all 116 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
- * Do NOT use `npm run migrate` on a brand-new database — it will run all 102
- * files (000_baseline + 001–101) and fail because 001–101 re-create objects
+ * Do NOT use `npm run migrate` on a brand-new database — it will run all 117
+ * files (000_baseline + 001–116) and fail because 001–116 re-create objects
  * that 000_baseline already created. Use the two-step bootstrap instead:
  *
  *   npm run migrate:fresh --workspace=minicrm-server
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–113 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–116 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (114+) run normally via `npm run migrate`
+ *   3. Future migrations (117+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–105 fully applied.
+ * with migrations 001–116 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -847,6 +847,7 @@ exports.up = (pgm) => {
       category    character varying(50) NOT NULL,
       enabled     boolean DEFAULT true NOT NULL,
       role_overrides jsonb,
+      enable_at   timestamp with time zone,
       updated_by  uuid,
       updated_at  timestamp with time zone DEFAULT now() NOT NULL,
       system_flag boolean DEFAULT true NOT NULL,
@@ -855,6 +856,7 @@ exports.up = (pgm) => {
     )
   `);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.role_overrides IS 'Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live.'`);
+  pgm.sql(`COMMENT ON COLUMN public.feature_flags.enable_at IS 'When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)'`);
 
   // feature_flag_usage — per-user flag usage tracking
   pgm.sql(`
@@ -865,6 +867,20 @@ exports.up = (pgm) => {
       CONSTRAINT pk_feature_flag_usage PRIMARY KEY (flag_key, user_id)
     )
   `);
+
+  // feature_flag_beta_users — user-level targeting for feature flags (MINCRM-489)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.feature_flag_beta_users (
+      id        uuid DEFAULT gen_random_uuid() NOT NULL,
+      flag_key  character varying(100) NOT NULL,
+      user_id   uuid NOT NULL,
+      added_by  uuid,
+      added_at  timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT feature_flag_beta_users_pkey PRIMARY KEY (id),
+      CONSTRAINT feature_flag_beta_users_flag_key_user_id_unique UNIQUE (flag_key, user_id)
+    )
+  `);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)`);
 
   // ai_configuration — singleton AI provider config (MINCRM-519 key versioning)
   pgm.sql(`
@@ -1009,6 +1025,9 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.feature_flags ADD CONSTRAINT feature_flags_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.feature_flag_usage ADD CONSTRAINT feature_flag_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_dpa_acknowledged_by_fkey FOREIGN KEY (dpa_acknowledged_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_token_budgets ADD CONSTRAINT ai_token_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,

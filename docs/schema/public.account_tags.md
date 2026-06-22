@@ -12,8 +12,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| account_tags_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE |
 | account_tags_tag_id_fkey | FOREIGN KEY | FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE |
+| account_tags_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE |
 | account_tags_pkey | PRIMARY KEY | PRIMARY KEY (account_id, tag_id) |
 
 ## Indexes

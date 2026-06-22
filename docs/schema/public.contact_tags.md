@@ -12,8 +12,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| contact_tags_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE |
 | contact_tags_tag_id_fkey | FOREIGN KEY | FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE |
+| contact_tags_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE |
 | contact_tags_pkey | PRIMARY KEY | PRIMARY KEY (contact_id, tag_id) |
 
 ## Indexes
@@ -50,6 +50,12 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""

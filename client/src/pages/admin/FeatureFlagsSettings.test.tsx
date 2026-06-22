@@ -1,11 +1,11 @@
 /**
- * Tests for FeatureFlagsSettings — admin feature flag registry UI. (MINCRM-463)
- *
- * Verifies: loading state, error state, empty state, flag list rendering,
- * toggle confirmation dialog, role override matrix, and mutation success/error paths.
+ * Tests for FeatureFlagsSettings — admin feature flag registry UI.
+ * Covers: loading/error/empty states, flag list rendering, toggle confirmation dialog,
+ * role override matrix, save error, scheduled enable_at (MINCRM-488), beta users panel (MINCRM-489).
+ * (MINCRM-463, MINCRM-488, MINCRM-489)
  */
 
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/setup.js';
@@ -256,11 +256,180 @@ describe('FeatureFlagsSettings', () => {
       expect(screen.queryByTestId('feature-flag-confirm-dialog')).not.toBeInTheDocument();
     });
 
-    // The mutation error causes a save error message to appear
-    // The error message is shown inline (not a testid — check by the i18n key fallback text)
-    // Since i18n is set up in tests, the translated text will be rendered
     await waitFor(() => {
       expect(screen.getByText(/save|error/i)).toBeInTheDocument();
     });
+  });
+
+  // ── Scheduled enable_at (MINCRM-488) ────────────────────────────────────────
+
+  it('shows Scheduled badge when enable_at is set and flag is disabled', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'mobile_access' ? { ...f, enabled: false, enable_at: futureDate } : f,
+          ),
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-badge-scheduled-mobile_access')).toBeInTheDocument();
+    });
+
+    // Off badge must NOT be shown when Scheduled badge is shown
+    expect(screen.queryByTestId('feature-flag-badge-off-mobile_access')).not.toBeInTheDocument();
+  });
+
+  it('does not show Scheduled badge when enable_at is null', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-row-mobile_access')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('feature-flag-badge-scheduled-mobile_access'),
+    ).not.toBeInTheDocument();
+    // Off badge should be present since enabled=false and no schedule
+    expect(screen.getByTestId('feature-flag-badge-off-mobile_access')).toBeInTheDocument();
+  });
+
+  it('shows datetime picker for disabled flags', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-enable-at-input-mobile_access')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show datetime picker for enabled flags', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-row-notes')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('feature-flag-enable-at-input-notes')).not.toBeInTheDocument();
+  });
+
+  it('shows Clear schedule button when enable_at is set', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'mobile_access' ? { ...f, enabled: false, enable_at: futureDate } : f,
+          ),
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-enable-at-clear-mobile_access')).toBeInTheDocument();
+    });
+  });
+
+  it('sends enable_at: null when Clear schedule is clicked', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    let patchBody: Record<string, unknown> | null = null;
+
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'mobile_access' ? { ...f, enabled: false, enable_at: futureDate } : f,
+          ),
+        }),
+      ),
+      http.patch('/api/v1/admin/feature-flags/:key', async ({ request }) => {
+        patchBody = (await request.json()) as Record<string, unknown>;
+        const flag = FEATURE_FLAGS_FIXTURE.find((f) => f.flag_key === 'mobile_access')!;
+        return HttpResponse.json({ flag: { ...flag, enable_at: null } });
+      }),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-enable-at-clear-mobile_access')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('feature-flag-enable-at-clear-mobile_access'));
+
+    await waitFor(() => {
+      expect(patchBody).not.toBeNull();
+    });
+    expect(patchBody!['enable_at']).toBeNull();
+  });
+
+  // ── Beta users panel (MINCRM-489) ────────────────────────────────────────────
+
+  it('shows beta user count badge when beta_user_count > 0', async () => {
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'mobile_access' ? { ...f, beta_user_count: 2 } : f,
+          ),
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-beta-count-mobile_access')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show beta count badge when beta_user_count is 0', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-row-mobile_access')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('feature-flag-beta-count-mobile_access')).not.toBeInTheDocument();
+  });
+
+  it('shows empty beta panel with search box', async () => {
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('beta-user-search-mobile_access')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('feature-flag-beta-panel-mobile_access')).toBeInTheDocument();
+  });
+
+  it('shows enrolled users returned from GET beta-users', async () => {
+    server.use(
+      http.get('/api/v1/admin/feature-flags/:key/beta-users', () =>
+        HttpResponse.json({
+          users: [
+            {
+              id: 'entry-1',
+              user_id: 'user-uuid-1',
+              name: 'Alice Beta',
+              email: 'alice@example.com',
+              added_at: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    const betaRow = await screen.findByTestId('beta-user-row-mobile_access-user-uuid-1');
+    expect(betaRow).toBeInTheDocument();
+    expect(within(betaRow).getByText('Alice Beta')).toBeInTheDocument();
   });
 });

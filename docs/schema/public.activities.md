@@ -28,8 +28,8 @@
 | ---- | ---- | ---------- |
 | activities_has_parent | CHECK | CHECK (((contact_id IS NOT NULL) OR (account_id IS NOT NULL) OR (deal_id IS NOT NULL))) |
 | activities_owner_id_fkey | FOREIGN KEY | FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT |
-| activities_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE |
 | activities_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE |
+| activities_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE |
 | activities_deal_id_fkey | FOREIGN KEY | FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE |
 | activities_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -38,10 +38,10 @@
 | Name | Definition |
 | ---- | ---------- |
 | activities_pkey | CREATE UNIQUE INDEX activities_pkey ON public.activities USING btree (id) |
+| activities_owner_id_index | CREATE INDEX activities_owner_id_index ON public.activities USING btree (owner_id) |
 | activities_contact_id_index | CREATE INDEX activities_contact_id_index ON public.activities USING btree (contact_id) |
 | activities_account_id_index | CREATE INDEX activities_account_id_index ON public.activities USING btree (account_id) |
 | activities_deal_id_index | CREATE INDEX activities_deal_id_index ON public.activities USING btree (deal_id) |
-| activities_owner_id_index | CREATE INDEX activities_owner_id_index ON public.activities USING btree (owner_id) |
 | activities_is_demo_index | CREATE INDEX activities_is_demo_index ON public.activities USING btree (is_demo) |
 
 ## Triggers
@@ -98,6 +98,12 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
@@ -164,6 +170,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

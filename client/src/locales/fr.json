@@ -1903,7 +1903,20 @@
     "roles": {
       "admin": "Admin",
       "rep": "Commercial"
-    }
+    },
+    "scheduledBadge": "Planifié",
+    "scheduledLabel": "Activation planifiée le {{date}}",
+    "enableAt": "Planifier l'activation automatique",
+    "enableAtClear": "Supprimer la planification",
+    "enableAtPast": "La date de planification doit être dans le futur",
+    "betaUsers": "Utilisateurs bêta",
+    "betaUserCount_one": "{{count}} utilisateur bêta",
+    "betaUserCount_other": "{{count}} utilisateurs bêta",
+    "betaUserAdd": "Ajouter un utilisateur",
+    "betaUserRemove": "Supprimer",
+    "betaUserSearch": "Rechercher des utilisateurs par nom ou e-mail",
+    "betaUserEmpty": "Aucun utilisateur inscrit en bêta.",
+    "betaUserAlreadyEnrolled": "L'utilisateur est déjà inscrit en bêta."
   },
   "aiSettings": {
     "loadError": "Échec du chargement des paramètres IA. Veuillez réessayer.",

@@ -17,8 +17,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| custom_field_definitions_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying])::text[]))) |
-| custom_field_definitions_field_type_check | CHECK | CHECK (((field_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'date'::character varying, 'boolean'::character varying, 'select'::character varying])::text[]))) |
+| custom_field_definitions_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text]))) |
+| custom_field_definitions_field_type_check | CHECK | CHECK (((field_type)::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('date'::character varying)::text, ('boolean'::character varying)::text, ('select'::character varying)::text]))) |
 | custom_field_definitions_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | custom_field_definitions_entity_type_name_key | UNIQUE | UNIQUE (entity_type, name) |
 

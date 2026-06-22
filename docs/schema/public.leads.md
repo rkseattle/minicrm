@@ -31,21 +31,21 @@
 | leads_lead_source_check | CHECK | CHECK ((lead_source = ANY (ARRAY['Web'::text, 'Referral'::text, 'Trade Show'::text, 'Cold Outreach'::text, 'Other'::text]))) |
 | leads_status_check | CHECK | CHECK ((status = ANY (ARRAY['New'::text, 'Contacted'::text, 'Qualified'::text, 'Disqualified'::text]))) |
 | leads_owner_id_fkey | FOREIGN KEY | FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT |
-| leads_converted_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL |
-| leads_converted_account_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL |
-| leads_converted_deal_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL |
 | leads_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| leads_converted_account_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL |
+| leads_converted_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL |
+| leads_converted_deal_id_fkey | FOREIGN KEY | FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | leads_pkey | CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id) |
-| leads_email_index | CREATE INDEX leads_email_index ON public.leads USING btree (email) |
 | leads_owner_id_index | CREATE INDEX leads_owner_id_index ON public.leads USING btree (owner_id) |
+| leads_email_index | CREATE INDEX leads_email_index ON public.leads USING btree (email) |
 | leads_status_index | CREATE INDEX leads_status_index ON public.leads USING btree (status) |
-| leads_created_at_index | CREATE INDEX leads_created_at_index ON public.leads USING btree (created_at) |
 | leads_is_demo_index | CREATE INDEX leads_is_demo_index ON public.leads USING btree (is_demo) |
+| leads_created_at_index | CREATE INDEX leads_created_at_index ON public.leads USING btree (created_at) |
 | leads_converted_at_idx | CREATE INDEX leads_converted_at_idx ON public.leads USING btree (converted_at) WHERE (converted_at IS NOT NULL) |
 
 ## Triggers
@@ -102,6 +102,12 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
@@ -162,6 +168,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 "public.accounts" {
   uuid id ""

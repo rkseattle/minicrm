@@ -1903,7 +1903,20 @@
     "roles": {
       "admin": "Admin",
       "rep": "Rep"
-    }
+    },
+    "scheduledBadge": "Scheduled",
+    "scheduledLabel": "Scheduled to enable on {{date}}",
+    "enableAt": "Schedule auto-enable",
+    "enableAtClear": "Clear schedule",
+    "enableAtPast": "Schedule date must be in the future",
+    "betaUsers": "Beta Users",
+    "betaUserCount_one": "{{count}} beta user",
+    "betaUserCount_other": "{{count}} beta users",
+    "betaUserAdd": "Add user",
+    "betaUserRemove": "Remove",
+    "betaUserSearch": "Search users by name or email",
+    "betaUserEmpty": "No users enrolled in beta.",
+    "betaUserAlreadyEnrolled": "User is already enrolled in the beta."
   },
   "aiSettings": {
     "loadError": "Failed to load AI settings. Please try again.",

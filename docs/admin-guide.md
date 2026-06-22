@@ -437,6 +437,53 @@ Every flag change is written to the audit log with the name of the admin who mad
 change, the previous value, and the new value. You can review this history in
 **Admin Settings → Data → Audit Log**.
 
+### Scheduled enablement (MINCRM-488)
+
+You can schedule a disabled flag to automatically enable at a specific date and time — no
+manual action required at the scheduled moment.
+
+When a flag has a scheduled enable time:
+
+- A **Scheduled** badge replaces the **Off** badge next to the flag name.
+- A note shows the planned enable date/time (displayed in your local timezone).
+- The flag remains off for all users until the scheduled moment arrives.
+
+**To set a schedule:**
+
+1. Make sure the flag is disabled (toggle is off).
+2. A date-and-time picker appears below the flag. Choose the future date and time when
+   the flag should automatically enable.
+3. The schedule is saved immediately — no confirmation step.
+
+**To clear a schedule:**
+
+1. Click **Clear schedule** next to the picker. The flag reverts to simply **Off** with no
+   automatic enablement planned.
+
+> **How it works:** The server caches flag state for 60 seconds. When a scheduled enable
+> time exists, the cache is shortened to expire exactly when `enable_at` arrives, so the
+> flag activates within one server-side cache cycle (at most a few seconds late).
+
+### Beta users (MINCRM-489)
+
+Each flag has a **Beta Users** panel that lets you grant individual users access to a
+_disabled_ feature. Beta enrollment bypasses the org-wide disabled state — the enrolled
+user sees the feature as enabled even while it is off for everyone else.
+
+**To enroll a user in beta:**
+
+1. Open the **Beta Users** panel under a flag (always visible, below the flag row).
+2. Type the user's name in the search box.
+3. Select them from the dropdown. They are enrolled immediately.
+
+**To remove a user from beta:**
+
+1. Find the user in the enrolled list under the flag.
+2. Click **Remove** next to their name.
+
+> **Note:** Beta enrollment does not affect users when the flag is globally enabled —
+> enrollment is only meaningful for disabled flags.
+
 ### Notes
 
 - Disabling a flag does not delete any data — it only gates access to the feature.

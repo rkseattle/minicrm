@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-11T21:58:46.541Z",
+  "updatedAt": "2026-06-22T19:51:37.793Z",
   "entries": {
     "Unknown::unknown::testId::settings-heading": {
       "pageObject": "Unknown",
@@ -882,6 +882,24 @@
       "count": 2,
       "firstSeenAt": "2026-06-11T21:51:40.597Z",
       "lastSeenAt": "2026-06-11T21:51:42.690Z"
+    },
+    "Unknown::unknown::testId::filter-owner-all": {
+      "pageObject": "Unknown",
+      "method": "unknown",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "filter-owner-all",
+      "count": 6,
+      "firstSeenAt": "2026-06-22T18:01:15.057Z",
+      "lastSeenAt": "2026-06-22T18:01:15.057Z"
+    },
+    "LoginPage::fillEmail::testId::login-email": {
+      "pageObject": "LoginPage",
+      "method": "fillEmail",
+      "originalStrategyType": "testId",
+      "originalStrategyValue": "login-email",
+      "count": 2,
+      "firstSeenAt": "2026-06-22T19:06:20.692Z",
+      "lastSeenAt": "2026-06-22T19:06:20.692Z"
     }
   }
 }

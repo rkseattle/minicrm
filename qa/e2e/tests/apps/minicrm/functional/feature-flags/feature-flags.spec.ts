@@ -25,7 +25,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, createTestRep, withFlags } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
@@ -39,10 +39,23 @@ import {
   expectAdminSettingsAiTabAttached,
   expectAdminSettingsAiTabDisabled,
   expectAdminSettingsAiTabEnabled,
+  expectFeatureFlagScheduledBadgeVisible,
+  expectFeatureFlagOffBadgeNotVisible,
+  clickFeatureFlagClearSchedule,
+  expectFeatureFlagScheduledBadgeNotVisible,
+  expectBetaUserRowVisible,
+  expandBetaUsersPanel,
 } from '@behaviors/minicrm/settings.behaviors.js';
-import { listFeatureFlags, updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
+import {
+  listFeatureFlags,
+  updateFeatureFlag,
+  enrollBetaUser,
+  removeBetaUser,
+  getMyFeatureFlags,
+} from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { isNavLinkHidden, assertNavLinkIsVisible } from '@behaviors/minicrm/nav.behaviors.js';
+import { loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -56,9 +69,15 @@ test.beforeEach(async ({ restClient }) => {
 
 test.afterEach(async ({ restClient }) => {
   // Restore any flags that tests may have toggled.
-  await updateFeatureFlag(restClient, 'notes', { enabled: true }).catch(() => {});
-  await updateFeatureFlag(restClient, 'tags', { enabled: true }).catch(() => {});
-  await updateFeatureFlag(restClient, 'ai_features', { enabled: true }).catch(() => {});
+  await updateFeatureFlag(restClient, 'notes', { enabled: true, enable_at: null }).catch(() => {});
+  await updateFeatureFlag(restClient, 'tags', { enabled: true, enable_at: null }).catch(() => {});
+  await updateFeatureFlag(restClient, 'ai_features', { enabled: true, enable_at: null }).catch(
+    () => {},
+  );
+  await updateFeatureFlag(restClient, 'mobile_access', {
+    enabled: false,
+    enable_at: null,
+  }).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------
@@ -293,4 +312,129 @@ test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in
 
   // The AI tab must become disabled without any page navigation.
   await expectAdminSettingsAiTabDisabled({ page }, 5_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF10 — Scheduled enable_at shows Scheduled badge in admin UI (MINCRM-488)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF10: admin sets enable_at and the Scheduled badge appears; clearing it removes the badge', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Schedule mobile_access to enable 2 hours from now via REST (flag must be disabled).
+  await loginAsAdmin(restClient);
+  const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false, enable_at: futureDate });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+
+  // Scheduled badge must be visible; Off badge must be absent.
+  await expectFeatureFlagScheduledBadgeVisible('mobile_access', { page }, 8_000);
+  await expectFeatureFlagOffBadgeNotVisible('mobile_access', { page });
+
+  // Clearing the schedule removes the Scheduled badge.
+  await clickFeatureFlagClearSchedule('mobile_access', { page });
+  await expectFeatureFlagScheduledBadgeNotVisible('mobile_access', { page }, 8_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF11 — Scheduled flag auto-enables when enable_at passes (MINCRM-488)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF11: a scheduled flag is seen as enabled by an ordinary user once enable_at passes', async ({
+  restClient,
+  testData,
+}) => {
+  // Create a rep user who will be used to check flag visibility.
+  const rep = await createTestRep(testData, restClient);
+
+  // Schedule mobile_access to enable 2 seconds from now.
+  await loginAsAdmin(restClient);
+  const soonDate = new Date(Date.now() + 2_000).toISOString();
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false, enable_at: soonDate });
+
+  // Authenticate as the rep and confirm the flag is still disabled before time.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsBefore = await getMyFeatureFlags(restClient);
+  expect(flagsBefore['mobile_access']).toBe(false);
+
+  // Wait for enable_at to pass and the service cache to expire (TTL capped to ~2s).
+  await new Promise((resolve) => setTimeout(resolve, 4_000));
+
+  // After the TTL expires the flag reloads from DB and is auto-enabled.
+  const flagsAfter = await getMyFeatureFlags(restClient);
+  expect(flagsAfter['mobile_access']).toBe(true);
+
+  // Re-auth as admin for afterEach cleanup.
+  await loginAsAdmin(restClient);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF12 — Beta-enrolled user sees a disabled flag as enabled (MINCRM-489)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF12: beta-enrolled rep sees a globally-disabled flag as enabled via /me', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+
+  // Ensure mobile_access is disabled globally.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false });
+
+  // Rep should see it as disabled before enrollment.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsBefore = await getMyFeatureFlags(restClient);
+  expect(flagsBefore['mobile_access']).toBe(false);
+
+  // Enroll the rep in beta (requires admin).
+  await loginAsAdmin(restClient);
+  await enrollBetaUser(restClient, 'mobile_access', rep.userId);
+
+  // Rep now sees it as enabled (beta bypass — isFlagEnabledForUser is always fresh).
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsAfter = await getMyFeatureFlags(restClient);
+  expect(flagsAfter['mobile_access']).toBe(true);
+
+  // Cleanup: remove beta enrollment (requires admin).
+  await loginAsAdmin(restClient);
+  await removeBetaUser(restClient, 'mobile_access', rep.userId).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF13 — Beta user panel shows enrolled user in admin UI (MINCRM-489)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF13: enrolled beta user appears in the admin feature flags beta panel', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const rep = await createTestRep(testData, restClient);
+
+  // Enroll the rep in the mobile_access beta.
+  await loginAsAdmin(restClient);
+  await enrollBetaUser(restClient, 'mobile_access', rep.userId);
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+
+  // The panel is collapsed (beta_user_count > 0) — expand it first. (MINCRM-489)
+  await expandBetaUsersPanel('mobile_access', { page });
+
+  // The enrolled rep must appear in the beta panel for mobile_access.
+  await expectBetaUserRowVisible('mobile_access', rep.userId, { page }, 8_000);
+
+  // Cleanup: remove beta enrollment.
+  await loginAsAdmin(restClient);
+  await removeBetaUser(restClient, 'mobile_access', rep.userId).catch(() => {});
 });

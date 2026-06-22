@@ -1903,7 +1903,20 @@
     "roles": {
       "admin": "Admin",
       "rep": "Representante"
-    }
+    },
+    "scheduledBadge": "Programado",
+    "scheduledLabel": "Programado para activarse el {{date}}",
+    "enableAt": "Programar activación automática",
+    "enableAtClear": "Borrar programación",
+    "enableAtPast": "La fecha programada debe ser en el futuro",
+    "betaUsers": "Usuarios beta",
+    "betaUserCount_one": "{{count}} usuario beta",
+    "betaUserCount_other": "{{count}} usuarios beta",
+    "betaUserAdd": "Agregar usuario",
+    "betaUserRemove": "Eliminar",
+    "betaUserSearch": "Buscar usuarios por nombre o correo",
+    "betaUserEmpty": "No hay usuarios inscritos en la beta.",
+    "betaUserAlreadyEnrolled": "El usuario ya está inscrito en la beta."
   },
   "aiSettings": {
     "loadError": "Error al cargar la configuración de IA. Inténtalo de nuevo.",

@@ -9,7 +9,7 @@
  */
 
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import { isFlagEnabledForRole } from '../services/featureFlagService.js';
+import { isFlagEnabledForUser } from '../services/featureFlagService.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 
 /**
@@ -28,7 +28,7 @@ export function requireFeatureEnabled(flagKey: string): RequestHandler {
         return;
       }
       const role = req.user.role as UserRole;
-      const enabled = await isFlagEnabledForRole(flagKey, role);
+      const enabled = await isFlagEnabledForUser(flagKey, req.user.id, role);
 
       if (!enabled) {
         res.status(403).json({

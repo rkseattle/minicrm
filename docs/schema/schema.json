@@ -151,6 +151,11 @@
           "name": "api_token_issued_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "scim_external_id",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -168,6 +173,14 @@
           "table": "public.users",
           "columns": [
             "email"
+          ]
+        },
+        {
+          "name": "users_scim_external_id_key",
+          "def": "CREATE UNIQUE INDEX users_scim_external_id_key ON public.users USING btree (scim_external_id)",
+          "table": "public.users",
+          "columns": [
+            "scim_external_id"
           ]
         },
         {
@@ -208,7 +221,7 @@
         {
           "name": "users_role_check",
           "type": "CHECK",
-          "def": "CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[])))",
+          "def": "CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('rep'::character varying)::text, ('manager'::character varying)::text, ('viewer'::character varying)::text, ('service_account'::character varying)::text])))",
           "table": "public.users",
           "referenced_table": "",
           "columns": [
@@ -239,7 +252,7 @@
         {
           "name": "users_status_check",
           "type": "CHECK",
-          "def": "CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'invited'::character varying, 'inactive'::character varying])::text[])))",
+          "def": "CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('invited'::character varying)::text, ('inactive'::character varying)::text])))",
           "table": "public.users",
           "referenced_table": "",
           "columns": [
@@ -265,6 +278,16 @@
           "columns": [
             "email"
           ]
+        },
+        {
+          "name": "users_scim_external_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (scim_external_id)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "scim_external_id"
+          ]
         }
       ],
       "triggers": [
@@ -275,7 +298,7 @@
       ]
     },
     {
-      "name": "public.contacts",
+      "name": "public.tags",
       "type": "BASE TABLE",
       "columns": [
         {
@@ -285,39 +308,357 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "first_name",
-          "type": "varchar(255)",
+          "name": "name",
+          "type": "varchar(100)",
           "nullable": false
         },
         {
-          "name": "last_name",
-          "type": "varchar(255)",
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "tags_pkey",
+          "def": "CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (id)",
+          "table": "public.tags",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "tags_name_key",
+          "def": "CREATE UNIQUE INDEX tags_name_key ON public.tags USING btree (name)",
+          "table": "public.tags",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.tags",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "tags_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.tags",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "tags_set_updated_at",
+          "def": "CREATE TRIGGER tags_set_updated_at BEFORE UPDATE ON public.tags FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.system_settings",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "key",
+          "type": "text",
           "nullable": false
         },
         {
-          "name": "email",
-          "type": "varchar(255)",
+          "name": "value",
+          "type": "text",
           "nullable": false
         },
         {
-          "name": "phone",
-          "type": "varchar(50)",
-          "nullable": true
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
         },
         {
-          "name": "title",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "department",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "owner_id",
+          "name": "updated_by",
           "type": "uuid",
+          "nullable": true,
+          "comment": "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "system_settings_pkey",
+          "def": "CREATE UNIQUE INDEX system_settings_pkey ON public.system_settings USING btree (key)",
+          "table": "public.system_settings",
+          "columns": [
+            "key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "system_settings_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.system_settings",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "system_settings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (key)",
+          "table": "public.system_settings",
+          "referenced_table": "",
+          "columns": [
+            "key"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "system_settings_set_updated_at",
+          "def": "CREATE TRIGGER system_settings_set_updated_at BEFORE UPDATE ON public.system_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.currencies",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "code",
+          "type": "varchar(3)",
           "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
+          "name": "symbol",
+          "type": "varchar(8)",
+          "nullable": false
+        },
+        {
+          "name": "rate_to_home",
+          "type": "numeric(18,6)",
+          "nullable": false
+        },
+        {
+          "name": "is_home",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "currencies_pkey",
+          "def": "CREATE UNIQUE INDEX currencies_pkey ON public.currencies USING btree (code)",
+          "table": "public.currencies",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "currencies_home_idx",
+          "def": "CREATE UNIQUE INDEX currencies_home_idx ON public.currencies USING btree (is_home) WHERE (is_home = true)",
+          "table": "public.currencies",
+          "columns": [
+            "is_home"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "currencies_rate_to_home_positive",
+          "type": "CHECK",
+          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
+          "table": "public.currencies",
+          "referenced_table": "",
+          "columns": [
+            "rate_to_home"
+          ]
+        },
+        {
+          "name": "currencies_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (code)",
+          "table": "public.currencies",
+          "referenced_table": "",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "currencies_set_updated_at",
+          "def": "CREATE TRIGGER currencies_set_updated_at BEFORE UPDATE ON public.currencies FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.pipelines",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "pipelines_pkey",
+          "def": "CREATE UNIQUE INDEX pipelines_pkey ON public.pipelines USING btree (id)",
+          "table": "public.pipelines",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "pipelines_name_lower_unique",
+          "def": "CREATE UNIQUE INDEX pipelines_name_lower_unique ON public.pipelines USING btree (lower((name)::text))",
+          "table": "public.pipelines",
+          "columns": [
+            "lower"
+          ]
+        },
+        {
+          "name": "pipelines_single_default_idx",
+          "def": "CREATE UNIQUE INDEX pipelines_single_default_idx ON public.pipelines USING btree (is_default) WHERE (is_default = true)",
+          "table": "public.pipelines",
+          "columns": [
+            "is_default"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pipelines_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.pipelines",
+          "referenced_table": "public.users",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "pipelines_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.pipelines",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "pipelines_set_updated_at",
+          "def": "CREATE TRIGGER pipelines_set_updated_at BEFORE UPDATE ON public.pipelines FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.pipeline_stages",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "probability",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "is_terminal",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "is_fixed",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         },
         {
           "name": "created_at",
@@ -332,35 +673,185 @@
           "default": "now()"
         },
         {
-          "name": "account_id",
+          "name": "pipeline_id",
           "type": "uuid",
           "nullable": true
+        },
+        {
+          "name": "stage_exit_requirements",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "pipeline_stages_pkey",
+          "def": "CREATE UNIQUE INDEX pipeline_stages_pkey ON public.pipeline_stages USING btree (id)",
+          "table": "public.pipeline_stages",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "pipeline_stages_pipeline_name_lower_unique",
+          "def": "CREATE UNIQUE INDEX pipeline_stages_pipeline_name_lower_unique ON public.pipeline_stages USING btree (pipeline_id, lower((name)::text))",
+          "table": "public.pipeline_stages",
+          "columns": [
+            "pipeline_id",
+            "lower"
+          ]
+        },
+        {
+          "name": "pipeline_stages_pipeline_sort_order_unique",
+          "def": "CREATE UNIQUE INDEX pipeline_stages_pipeline_sort_order_unique ON public.pipeline_stages USING btree (pipeline_id, sort_order)",
+          "table": "public.pipeline_stages",
+          "columns": [
+            "pipeline_id",
+            "sort_order"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pipeline_stages_probability_check",
+          "type": "CHECK",
+          "def": "CHECK (((probability \u003e= 0) AND (probability \u003c= 100)))",
+          "table": "public.pipeline_stages",
+          "referenced_table": "",
+          "columns": [
+            "probability"
+          ]
+        },
+        {
+          "name": "pipeline_stages_pipeline_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE",
+          "table": "public.pipeline_stages",
+          "referenced_table": "public.pipelines",
+          "columns": [
+            "pipeline_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "pipeline_stages_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.pipeline_stages",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "pipeline_stages_set_updated_at",
+          "def": "CREATE TRIGGER pipeline_stages_set_updated_at BEFORE UPDATE ON public.pipeline_stages FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.leads",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "first_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "last_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "company_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "lead_source",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'New'::text"
+        },
+        {
+          "name": "disqualification_reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "converted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "converted_contact_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "converted_account_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "converted_deal_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
         },
         {
           "name": "is_demo",
           "type": "boolean",
           "nullable": false,
           "default": "false"
-        },
-        {
-          "name": "source_lead_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "linkedin_url",
-          "type": "varchar(500)",
-          "nullable": true
-        },
-        {
-          "name": "twitter_x_url",
-          "type": "varchar(500)",
-          "nullable": true
-        },
-        {
-          "name": "other_url",
-          "type": "varchar(500)",
-          "nullable": true
         },
         {
           "name": "version",
@@ -371,76 +862,88 @@
       ],
       "indexes": [
         {
-          "name": "contacts_pkey",
-          "def": "CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id)",
-          "table": "public.contacts",
+          "name": "leads_pkey",
+          "def": "CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)",
+          "table": "public.leads",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "contacts_owner_id_index",
-          "def": "CREATE INDEX contacts_owner_id_index ON public.contacts USING btree (owner_id)",
-          "table": "public.contacts",
+          "name": "leads_owner_id_index",
+          "def": "CREATE INDEX leads_owner_id_index ON public.leads USING btree (owner_id)",
+          "table": "public.leads",
           "columns": [
             "owner_id"
           ]
         },
         {
-          "name": "contacts_account_id_index",
-          "def": "CREATE INDEX contacts_account_id_index ON public.contacts USING btree (account_id)",
-          "table": "public.contacts",
+          "name": "leads_email_index",
+          "def": "CREATE INDEX leads_email_index ON public.leads USING btree (email)",
+          "table": "public.leads",
           "columns": [
-            "account_id"
+            "email"
           ]
         },
         {
-          "name": "contacts_is_demo_index",
-          "def": "CREATE INDEX contacts_is_demo_index ON public.contacts USING btree (is_demo)",
-          "table": "public.contacts",
+          "name": "leads_status_index",
+          "def": "CREATE INDEX leads_status_index ON public.leads USING btree (status)",
+          "table": "public.leads",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "leads_is_demo_index",
+          "def": "CREATE INDEX leads_is_demo_index ON public.leads USING btree (is_demo)",
+          "table": "public.leads",
           "columns": [
             "is_demo"
           ]
         },
         {
-          "name": "contacts_email_unique_index",
-          "def": "CREATE UNIQUE INDEX contacts_email_unique_index ON public.contacts USING btree (email)",
-          "table": "public.contacts",
+          "name": "leads_created_at_index",
+          "def": "CREATE INDEX leads_created_at_index ON public.leads USING btree (created_at)",
+          "table": "public.leads",
           "columns": [
-            "email"
+            "created_at"
           ]
         },
         {
-          "name": "contacts_first_name_trgm_idx",
-          "def": "CREATE INDEX contacts_first_name_trgm_idx ON public.contacts USING gin (first_name gin_trgm_ops)",
-          "table": "public.contacts",
+          "name": "leads_converted_at_idx",
+          "def": "CREATE INDEX leads_converted_at_idx ON public.leads USING btree (converted_at) WHERE (converted_at IS NOT NULL)",
+          "table": "public.leads",
           "columns": [
-            "first_name"
-          ]
-        },
-        {
-          "name": "contacts_last_name_trgm_idx",
-          "def": "CREATE INDEX contacts_last_name_trgm_idx ON public.contacts USING gin (last_name gin_trgm_ops)",
-          "table": "public.contacts",
-          "columns": [
-            "last_name"
-          ]
-        },
-        {
-          "name": "contacts_email_trgm_idx",
-          "def": "CREATE INDEX contacts_email_trgm_idx ON public.contacts USING gin (email gin_trgm_ops)",
-          "table": "public.contacts",
-          "columns": [
-            "email"
+            "converted_at"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "contacts_owner_id_fkey",
+          "name": "leads_lead_source_check",
+          "type": "CHECK",
+          "def": "CHECK ((lead_source = ANY (ARRAY['Web'::text, 'Referral'::text, 'Trade Show'::text, 'Cold Outreach'::text, 'Other'::text])))",
+          "table": "public.leads",
+          "referenced_table": "",
+          "columns": [
+            "lead_source"
+          ]
+        },
+        {
+          "name": "leads_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['New'::text, 'Contacted'::text, 'Qualified'::text, 'Disqualified'::text])))",
+          "table": "public.leads",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "leads_owner_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT",
-          "table": "public.contacts",
+          "table": "public.leads",
           "referenced_table": "public.users",
           "columns": [
             "owner_id"
@@ -450,36 +953,49 @@
           ]
         },
         {
-          "name": "contacts_pkey",
+          "name": "leads_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
-          "table": "public.contacts",
+          "table": "public.leads",
           "referenced_table": "",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "contacts_account_id_fkey",
+          "name": "leads_converted_account_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL",
-          "table": "public.contacts",
+          "def": "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL",
+          "table": "public.leads",
           "referenced_table": "public.accounts",
           "columns": [
-            "account_id"
+            "converted_account_id"
           ],
           "referenced_columns": [
             "id"
           ]
         },
         {
-          "name": "contacts_source_lead_id_fkey",
+          "name": "leads_converted_contact_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL",
-          "table": "public.contacts",
-          "referenced_table": "public.leads",
+          "def": "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL",
+          "table": "public.leads",
+          "referenced_table": "public.contacts",
           "columns": [
-            "source_lead_id"
+            "converted_contact_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "leads_converted_deal_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL",
+          "table": "public.leads",
+          "referenced_table": "public.deals",
+          "columns": [
+            "converted_deal_id"
           ],
           "referenced_columns": [
             "id"
@@ -488,8 +1004,8 @@
       ],
       "triggers": [
         {
-          "name": "contacts_set_updated_at",
-          "def": "CREATE TRIGGER contacts_set_updated_at BEFORE UPDATE ON public.contacts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+          "name": "leads_set_updated_at",
+          "def": "CREATE TRIGGER leads_set_updated_at BEFORE UPDATE ON public.leads FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -606,7 +1122,7 @@
         {
           "name": "accounts_account_type_check",
           "type": "CHECK",
-          "def": "CHECK (((account_type IS NULL) OR ((account_type)::text = ANY ((ARRAY['Prospect'::character varying, 'Customer'::character varying, 'Partner'::character varying, 'Vendor'::character varying, 'Competitor'::character varying, 'Other'::character varying])::text[]))))",
+          "def": "CHECK (((account_type IS NULL) OR ((account_type)::text = ANY (ARRAY[('Prospect'::character varying)::text, ('Customer'::character varying)::text, ('Partner'::character varying)::text, ('Vendor'::character varying)::text, ('Competitor'::character varying)::text, ('Other'::character varying)::text]))))",
           "table": "public.accounts",
           "referenced_table": "",
           "columns": [
@@ -654,6 +1170,382 @@
         {
           "name": "accounts_set_updated_at",
           "def": "CREATE TRIGGER accounts_set_updated_at BEFORE UPDATE ON public.accounts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.contacts",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "first_name",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "last_name",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "phone",
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        {
+          "name": "title",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "department",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "account_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "is_demo",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "source_lead_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "address_line2",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "city",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "state_region",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "postal_code",
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "linkedin_url",
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        {
+          "name": "twitter_x_url",
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        {
+          "name": "other_url",
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "contacts_pkey",
+          "def": "CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id)",
+          "table": "public.contacts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contacts_email_unique_index",
+          "def": "CREATE UNIQUE INDEX contacts_email_unique_index ON public.contacts USING btree (email)",
+          "table": "public.contacts",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "contacts_owner_id_index",
+          "def": "CREATE INDEX contacts_owner_id_index ON public.contacts USING btree (owner_id)",
+          "table": "public.contacts",
+          "columns": [
+            "owner_id"
+          ]
+        },
+        {
+          "name": "contacts_account_id_index",
+          "def": "CREATE INDEX contacts_account_id_index ON public.contacts USING btree (account_id)",
+          "table": "public.contacts",
+          "columns": [
+            "account_id"
+          ]
+        },
+        {
+          "name": "contacts_is_demo_index",
+          "def": "CREATE INDEX contacts_is_demo_index ON public.contacts USING btree (is_demo)",
+          "table": "public.contacts",
+          "columns": [
+            "is_demo"
+          ]
+        },
+        {
+          "name": "contacts_first_name_trgm_idx",
+          "def": "CREATE INDEX contacts_first_name_trgm_idx ON public.contacts USING gin (first_name gin_trgm_ops)",
+          "table": "public.contacts",
+          "columns": [
+            "first_name"
+          ]
+        },
+        {
+          "name": "contacts_last_name_trgm_idx",
+          "def": "CREATE INDEX contacts_last_name_trgm_idx ON public.contacts USING gin (last_name gin_trgm_ops)",
+          "table": "public.contacts",
+          "columns": [
+            "last_name"
+          ]
+        },
+        {
+          "name": "contacts_email_trgm_idx",
+          "def": "CREATE INDEX contacts_email_trgm_idx ON public.contacts USING gin (email gin_trgm_ops)",
+          "table": "public.contacts",
+          "columns": [
+            "email"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "contacts_owner_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT",
+          "table": "public.contacts",
+          "referenced_table": "public.users",
+          "columns": [
+            "owner_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contacts_source_lead_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+          "table": "public.contacts",
+          "referenced_table": "public.leads",
+          "columns": [
+            "source_lead_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contacts_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL",
+          "table": "public.contacts",
+          "referenced_table": "public.accounts",
+          "columns": [
+            "account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contacts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.contacts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "contacts_set_updated_at",
+          "def": "CREATE TRIGGER contacts_set_updated_at BEFORE UPDATE ON public.contacts FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.contact_addresses",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "contact_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        {
+          "name": "address_line1",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "address_line2",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "city",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "state_region",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "postal_code",
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "contact_addresses_pkey",
+          "def": "CREATE UNIQUE INDEX contact_addresses_pkey ON public.contact_addresses USING btree (id)",
+          "table": "public.contact_addresses",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_addresses_contact_id_index",
+          "def": "CREATE INDEX contact_addresses_contact_id_index ON public.contact_addresses USING btree (contact_id)",
+          "table": "public.contact_addresses",
+          "columns": [
+            "contact_id"
+          ]
+        },
+        {
+          "name": "contact_addresses_one_default_per_contact",
+          "def": "CREATE UNIQUE INDEX contact_addresses_one_default_per_contact ON public.contact_addresses USING btree (contact_id) WHERE (is_default = true)",
+          "table": "public.contact_addresses",
+          "columns": [
+            "contact_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "contact_addresses_contact_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
+          "table": "public.contact_addresses",
+          "referenced_table": "public.contacts",
+          "columns": [
+            "contact_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_addresses_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.contact_addresses",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "contact_addresses_set_updated_at",
+          "def": "CREATE TRIGGER contact_addresses_set_updated_at BEFORE UPDATE ON public.contact_addresses FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -861,6 +1753,45 @@
           ]
         },
         {
+          "name": "deals_pipeline_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT",
+          "table": "public.deals",
+          "referenced_table": "public.pipelines",
+          "columns": [
+            "pipeline_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deals_pipeline_stage_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT",
+          "table": "public.deals",
+          "referenced_table": "public.pipeline_stages",
+          "columns": [
+            "pipeline_stage_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deals_source_lead_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL",
+          "table": "public.deals",
+          "referenced_table": "public.leads",
+          "columns": [
+            "source_lead_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
           "name": "deals_account_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL",
@@ -882,131 +1813,12 @@
           "columns": [
             "id"
           ]
-        },
-        {
-          "name": "deals_source_lead_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL",
-          "table": "public.deals",
-          "referenced_table": "public.leads",
-          "columns": [
-            "source_lead_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deals_pipeline_stage_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT",
-          "table": "public.deals",
-          "referenced_table": "public.pipeline_stages",
-          "columns": [
-            "pipeline_stage_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deals_pipeline_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT",
-          "table": "public.deals",
-          "referenced_table": "public.pipelines",
-          "columns": [
-            "pipeline_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
         }
       ],
       "triggers": [
         {
           "name": "deals_set_updated_at",
           "def": "CREATE TRIGGER deals_set_updated_at BEFORE UPDATE ON public.deals FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.deal_contacts",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "deal_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "contact_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "deal_contacts_pkey",
-          "def": "CREATE UNIQUE INDEX deal_contacts_pkey ON public.deal_contacts USING btree (deal_id, contact_id)",
-          "table": "public.deal_contacts",
-          "columns": [
-            "deal_id",
-            "contact_id"
-          ]
-        },
-        {
-          "name": "deal_contacts_contact_id_index",
-          "def": "CREATE INDEX deal_contacts_contact_id_index ON public.deal_contacts USING btree (contact_id)",
-          "table": "public.deal_contacts",
-          "columns": [
-            "contact_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "deal_contacts_contact_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
-          "table": "public.deal_contacts",
-          "referenced_table": "public.contacts",
-          "columns": [
-            "contact_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deal_contacts_deal_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE",
-          "table": "public.deal_contacts",
-          "referenced_table": "public.deals",
-          "columns": [
-            "deal_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deal_contacts_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (deal_id, contact_id)",
-          "table": "public.deal_contacts",
-          "referenced_table": "",
-          "columns": [
-            "deal_id",
-            "contact_id"
-          ]
         }
       ]
     },
@@ -1116,6 +1928,14 @@
           ]
         },
         {
+          "name": "activities_owner_id_index",
+          "def": "CREATE INDEX activities_owner_id_index ON public.activities USING btree (owner_id)",
+          "table": "public.activities",
+          "columns": [
+            "owner_id"
+          ]
+        },
+        {
           "name": "activities_contact_id_index",
           "def": "CREATE INDEX activities_contact_id_index ON public.activities USING btree (contact_id)",
           "table": "public.activities",
@@ -1137,14 +1957,6 @@
           "table": "public.activities",
           "columns": [
             "deal_id"
-          ]
-        },
-        {
-          "name": "activities_owner_id_index",
-          "def": "CREATE INDEX activities_owner_id_index ON public.activities USING btree (owner_id)",
-          "table": "public.activities",
-          "columns": [
-            "owner_id"
           ]
         },
         {
@@ -1183,19 +1995,6 @@
           ]
         },
         {
-          "name": "activities_contact_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
-          "table": "public.activities",
-          "referenced_table": "public.contacts",
-          "columns": [
-            "contact_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
           "name": "activities_account_id_fkey",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE",
@@ -1203,6 +2002,19 @@
           "referenced_table": "public.accounts",
           "columns": [
             "account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activities_contact_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
+          "table": "public.activities",
+          "referenced_table": "public.contacts",
+          "columns": [
+            "contact_id"
           ],
           "referenced_columns": [
             "id"
@@ -1236,75 +2048,6 @@
         {
           "name": "activities_set_updated_at",
           "def": "CREATE TRIGGER activities_set_updated_at BEFORE UPDATE ON public.activities FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.system_settings",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "key",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "value",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_by",
-          "type": "uuid",
-          "nullable": true,
-          "comment": "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "system_settings_pkey",
-          "def": "CREATE UNIQUE INDEX system_settings_pkey ON public.system_settings USING btree (key)",
-          "table": "public.system_settings",
-          "columns": [
-            "key"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "system_settings_updated_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.system_settings",
-          "referenced_table": "public.users",
-          "columns": [
-            "updated_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "system_settings_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (key)",
-          "table": "public.system_settings",
-          "referenced_table": "",
-          "columns": [
-            "key"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "system_settings_set_updated_at",
-          "def": "CREATE TRIGGER system_settings_set_updated_at BEFORE UPDATE ON public.system_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -1385,19 +2128,19 @@
           ]
         },
         {
-          "name": "automation_rules_trigger_type_index",
-          "def": "CREATE INDEX automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type)",
-          "table": "public.automation_rules",
-          "columns": [
-            "trigger_type"
-          ]
-        },
-        {
           "name": "automation_rules_enabled_index",
           "def": "CREATE INDEX automation_rules_enabled_index ON public.automation_rules USING btree (enabled)",
           "table": "public.automation_rules",
           "columns": [
             "enabled"
+          ]
+        },
+        {
+          "name": "automation_rules_trigger_type_index",
+          "def": "CREATE INDEX automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type)",
+          "table": "public.automation_rules",
+          "columns": [
+            "trigger_type"
           ]
         },
         {
@@ -1508,19 +2251,19 @@
           ]
         },
         {
-          "name": "automation_rule_logs_outcome_idx",
-          "def": "CREATE INDEX automation_rule_logs_outcome_idx ON public.automation_rule_logs USING btree (outcome) WHERE (outcome = 'error'::automation_log_outcome)",
-          "table": "public.automation_rule_logs",
-          "columns": [
-            "outcome"
-          ]
-        },
-        {
           "name": "automation_rule_logs_triggered_at_idx",
           "def": "CREATE INDEX automation_rule_logs_triggered_at_idx ON public.automation_rule_logs USING btree (triggered_at)",
           "table": "public.automation_rule_logs",
           "columns": [
             "triggered_at"
+          ]
+        },
+        {
+          "name": "automation_rule_logs_outcome_idx",
+          "def": "CREATE INDEX automation_rule_logs_outcome_idx ON public.automation_rule_logs USING btree (outcome) WHERE (outcome = 'error'::automation_log_outcome)",
+          "table": "public.automation_rule_logs",
+          "columns": [
+            "outcome"
           ]
         }
       ],
@@ -1546,58 +2289,6 @@
           "referenced_table": "",
           "columns": [
             "id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.overdue_task_notifications",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "activity_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "notified_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "overdue_task_notifications_pkey",
-          "def": "CREATE UNIQUE INDEX overdue_task_notifications_pkey ON public.overdue_task_notifications USING btree (activity_id)",
-          "table": "public.overdue_task_notifications",
-          "columns": [
-            "activity_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "overdue_task_notifications_activity_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
-          "table": "public.overdue_task_notifications",
-          "referenced_table": "public.activities",
-          "columns": [
-            "activity_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "overdue_task_notifications_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (activity_id)",
-          "table": "public.overdue_task_notifications",
-          "referenced_table": "",
-          "columns": [
-            "activity_id"
           ]
         }
       ]
@@ -1729,8 +2420,9 @@
       ]
     },
     {
-      "name": "public.leads",
+      "name": "public.audit_log",
       "type": "BASE TABLE",
+      "comment": "Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions().",
       "columns": [
         {
           "name": "id",
@@ -1739,274 +2431,39 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "first_name",
+          "name": "record_type",
           "type": "text",
           "nullable": false
         },
         {
-          "name": "last_name",
+          "name": "record_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "record_name",
           "type": "text",
           "nullable": true
         },
         {
-          "name": "email",
+          "name": "event_type",
           "type": "text",
           "nullable": false
         },
         {
-          "name": "phone",
+          "name": "field_name",
           "type": "text",
           "nullable": true
         },
         {
-          "name": "company_name",
+          "name": "old_value",
           "type": "text",
           "nullable": true
         },
         {
-          "name": "lead_source",
+          "name": "new_value",
           "type": "text",
           "nullable": true
-        },
-        {
-          "name": "status",
-          "type": "text",
-          "nullable": false,
-          "default": "'New'::text"
-        },
-        {
-          "name": "disqualification_reason",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "notes",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "owner_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "converted_at",
-          "type": "timestamp with time zone",
-          "nullable": true
-        },
-        {
-          "name": "converted_contact_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "converted_account_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "converted_deal_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "is_demo",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "version",
-          "type": "integer",
-          "nullable": false,
-          "default": "1"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "leads_pkey",
-          "def": "CREATE UNIQUE INDEX leads_pkey ON public.leads USING btree (id)",
-          "table": "public.leads",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "leads_email_index",
-          "def": "CREATE INDEX leads_email_index ON public.leads USING btree (email)",
-          "table": "public.leads",
-          "columns": [
-            "email"
-          ]
-        },
-        {
-          "name": "leads_owner_id_index",
-          "def": "CREATE INDEX leads_owner_id_index ON public.leads USING btree (owner_id)",
-          "table": "public.leads",
-          "columns": [
-            "owner_id"
-          ]
-        },
-        {
-          "name": "leads_status_index",
-          "def": "CREATE INDEX leads_status_index ON public.leads USING btree (status)",
-          "table": "public.leads",
-          "columns": [
-            "status"
-          ]
-        },
-        {
-          "name": "leads_created_at_index",
-          "def": "CREATE INDEX leads_created_at_index ON public.leads USING btree (created_at)",
-          "table": "public.leads",
-          "columns": [
-            "created_at"
-          ]
-        },
-        {
-          "name": "leads_is_demo_index",
-          "def": "CREATE INDEX leads_is_demo_index ON public.leads USING btree (is_demo)",
-          "table": "public.leads",
-          "columns": [
-            "is_demo"
-          ]
-        },
-        {
-          "name": "leads_converted_at_idx",
-          "def": "CREATE INDEX leads_converted_at_idx ON public.leads USING btree (converted_at) WHERE (converted_at IS NOT NULL)",
-          "table": "public.leads",
-          "columns": [
-            "converted_at"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "leads_lead_source_check",
-          "type": "CHECK",
-          "def": "CHECK ((lead_source = ANY (ARRAY['Web'::text, 'Referral'::text, 'Trade Show'::text, 'Cold Outreach'::text, 'Other'::text])))",
-          "table": "public.leads",
-          "referenced_table": "",
-          "columns": [
-            "lead_source"
-          ]
-        },
-        {
-          "name": "leads_status_check",
-          "type": "CHECK",
-          "def": "CHECK ((status = ANY (ARRAY['New'::text, 'Contacted'::text, 'Qualified'::text, 'Disqualified'::text])))",
-          "table": "public.leads",
-          "referenced_table": "",
-          "columns": [
-            "status"
-          ]
-        },
-        {
-          "name": "leads_owner_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT",
-          "table": "public.leads",
-          "referenced_table": "public.users",
-          "columns": [
-            "owner_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "leads_converted_contact_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL",
-          "table": "public.leads",
-          "referenced_table": "public.contacts",
-          "columns": [
-            "converted_contact_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "leads_converted_account_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL",
-          "table": "public.leads",
-          "referenced_table": "public.accounts",
-          "columns": [
-            "converted_account_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "leads_converted_deal_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL",
-          "table": "public.leads",
-          "referenced_table": "public.deals",
-          "columns": [
-            "converted_deal_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "leads_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.leads",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "leads_set_updated_at",
-          "def": "CREATE TRIGGER leads_set_updated_at BEFORE UPDATE ON public.leads FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.lead_status_history",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "lead_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "from_status",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "to_status",
-          "type": "text",
-          "nullable": false
         },
         {
           "name": "changed_by_id",
@@ -2027,51 +2484,128 @@
       ],
       "indexes": [
         {
-          "name": "lead_status_history_pkey",
-          "def": "CREATE UNIQUE INDEX lead_status_history_pkey ON public.lead_status_history USING btree (id)",
-          "table": "public.lead_status_history",
+          "name": "audit_log_pkey",
+          "def": "CREATE UNIQUE INDEX audit_log_pkey ON ONLY public.audit_log USING btree (id, created_at)",
+          "table": "public.audit_log",
           "columns": [
-            "id"
+            "id",
+            "created_at"
           ]
         },
         {
-          "name": "lead_status_history_lead_id_index",
-          "def": "CREATE INDEX lead_status_history_lead_id_index ON public.lead_status_history USING btree (lead_id)",
-          "table": "public.lead_status_history",
+          "name": "audit_log_record_type_record_id_index",
+          "def": "CREATE INDEX audit_log_record_type_record_id_index ON ONLY public.audit_log USING btree (record_type, record_id)",
+          "table": "public.audit_log",
           "columns": [
-            "lead_id"
+            "record_type",
+            "record_id"
+          ]
+        },
+        {
+          "name": "audit_log_event_type_index",
+          "def": "CREATE INDEX audit_log_event_type_index ON ONLY public.audit_log USING btree (event_type)",
+          "table": "public.audit_log",
+          "columns": [
+            "event_type"
+          ]
+        },
+        {
+          "name": "audit_log_created_at_index",
+          "def": "CREATE INDEX audit_log_created_at_index ON ONLY public.audit_log USING btree (created_at)",
+          "table": "public.audit_log",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "audit_log_changed_by_id_index",
+          "def": "CREATE INDEX audit_log_changed_by_id_index ON ONLY public.audit_log USING btree (changed_by_id)",
+          "table": "public.audit_log",
+          "columns": [
+            "changed_by_id"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "lead_status_history_lead_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE",
-          "table": "public.lead_status_history",
-          "referenced_table": "public.leads",
+          "name": "audit_log_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id, created_at)",
+          "table": "public.audit_log",
+          "referenced_table": "",
           "columns": [
-            "lead_id"
+            "id",
+            "created_at"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "audit_log_no_modify",
+          "def": "CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable()"
+        },
+        {
+          "name": "audit_log_after_insert",
+          "def": "CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify()"
+        }
+      ]
+    },
+    {
+      "name": "public.overdue_task_notifications",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "activity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "notified_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "overdue_task_notifications_pkey",
+          "def": "CREATE UNIQUE INDEX overdue_task_notifications_pkey ON public.overdue_task_notifications USING btree (activity_id)",
+          "table": "public.overdue_task_notifications",
+          "columns": [
+            "activity_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "overdue_task_notifications_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
+          "table": "public.overdue_task_notifications",
+          "referenced_table": "public.activities",
+          "columns": [
+            "activity_id"
           ],
           "referenced_columns": [
             "id"
           ]
         },
         {
-          "name": "lead_status_history_pkey",
+          "name": "overdue_task_notifications_pkey",
           "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.lead_status_history",
+          "def": "PRIMARY KEY (activity_id)",
+          "table": "public.overdue_task_notifications",
           "referenced_table": "",
           "columns": [
-            "id"
+            "activity_id"
           ]
         }
       ]
     },
     {
-      "name": "public.pipeline_stages",
+      "name": "public.notes",
       "type": "BASE TABLE",
+      "comment": "Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: 'contact', 'account', 'deal', 'lead'. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application's responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510)",
       "columns": [
         {
           "name": "id",
@@ -2080,721 +2614,50 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "name",
-          "type": "varchar(100)",
-          "nullable": false
-        },
-        {
-          "name": "sort_order",
-          "type": "integer",
-          "nullable": false
-        },
-        {
-          "name": "probability",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "is_terminal",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "is_fixed",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "pipeline_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "stage_exit_requirements",
-          "type": "jsonb",
-          "nullable": false,
-          "default": "'{}'::jsonb"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "pipeline_stages_pkey",
-          "def": "CREATE UNIQUE INDEX pipeline_stages_pkey ON public.pipeline_stages USING btree (id)",
-          "table": "public.pipeline_stages",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "pipeline_stages_pipeline_sort_order_unique",
-          "def": "CREATE UNIQUE INDEX pipeline_stages_pipeline_sort_order_unique ON public.pipeline_stages USING btree (pipeline_id, sort_order)",
-          "table": "public.pipeline_stages",
-          "columns": [
-            "pipeline_id",
-            "sort_order"
-          ]
-        },
-        {
-          "name": "pipeline_stages_pipeline_name_lower_unique",
-          "def": "CREATE UNIQUE INDEX pipeline_stages_pipeline_name_lower_unique ON public.pipeline_stages USING btree (pipeline_id, lower((name)::text))",
-          "table": "public.pipeline_stages",
-          "columns": [
-            "pipeline_id",
-            "lower"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "pipeline_stages_probability_check",
-          "type": "CHECK",
-          "def": "CHECK (((probability \u003e= 0) AND (probability \u003c= 100)))",
-          "table": "public.pipeline_stages",
-          "referenced_table": "",
-          "columns": [
-            "probability"
-          ]
-        },
-        {
-          "name": "pipeline_stages_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.pipeline_stages",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "pipeline_stages_pipeline_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE",
-          "table": "public.pipeline_stages",
-          "referenced_table": "public.pipelines",
-          "columns": [
-            "pipeline_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "pipeline_stages_set_updated_at",
-          "def": "CREATE TRIGGER pipeline_stages_set_updated_at BEFORE UPDATE ON public.pipeline_stages FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.contact_addresses",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "contact_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "label",
-          "type": "varchar(50)",
-          "nullable": true
-        },
-        {
-          "name": "address_line1",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "address_line2",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "city",
-          "type": "varchar(100)",
-          "nullable": true
-        },
-        {
-          "name": "state_region",
-          "type": "varchar(100)",
-          "nullable": true
-        },
-        {
-          "name": "postal_code",
-          "type": "varchar(20)",
-          "nullable": true
-        },
-        {
-          "name": "country",
-          "type": "varchar(100)",
-          "nullable": true
-        },
-        {
-          "name": "is_default",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "contact_addresses_pkey",
-          "def": "CREATE UNIQUE INDEX contact_addresses_pkey ON public.contact_addresses USING btree (id)",
-          "table": "public.contact_addresses",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "contact_addresses_contact_id_index",
-          "def": "CREATE INDEX contact_addresses_contact_id_index ON public.contact_addresses USING btree (contact_id)",
-          "table": "public.contact_addresses",
-          "columns": [
-            "contact_id"
-          ]
-        },
-        {
-          "name": "contact_addresses_one_default_per_contact",
-          "def": "CREATE UNIQUE INDEX contact_addresses_one_default_per_contact ON public.contact_addresses USING btree (contact_id) WHERE (is_default = true)",
-          "table": "public.contact_addresses",
-          "columns": [
-            "contact_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "contact_addresses_contact_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
-          "table": "public.contact_addresses",
-          "referenced_table": "public.contacts",
-          "columns": [
-            "contact_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "contact_addresses_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.contact_addresses",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "contact_addresses_set_updated_at",
-          "def": "CREATE TRIGGER contact_addresses_set_updated_at BEFORE UPDATE ON public.contact_addresses FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.tags",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "name",
-          "type": "varchar(100)",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "tags_pkey",
-          "def": "CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (id)",
-          "table": "public.tags",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "tags_name_key",
-          "def": "CREATE UNIQUE INDEX tags_name_key ON public.tags USING btree (name)",
-          "table": "public.tags",
-          "columns": [
-            "name"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "tags_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.tags",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "tags_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.tags",
-          "referenced_table": "",
-          "columns": [
-            "name"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "tags_set_updated_at",
-          "def": "CREATE TRIGGER tags_set_updated_at BEFORE UPDATE ON public.tags FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.contact_tags",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "contact_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "tag_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "contact_tags_pkey",
-          "def": "CREATE UNIQUE INDEX contact_tags_pkey ON public.contact_tags USING btree (contact_id, tag_id)",
-          "table": "public.contact_tags",
-          "columns": [
-            "contact_id",
-            "tag_id"
-          ]
-        },
-        {
-          "name": "contact_tags_tag_id_index",
-          "def": "CREATE INDEX contact_tags_tag_id_index ON public.contact_tags USING btree (tag_id)",
-          "table": "public.contact_tags",
-          "columns": [
-            "tag_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "contact_tags_contact_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
-          "table": "public.contact_tags",
-          "referenced_table": "public.contacts",
-          "columns": [
-            "contact_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "contact_tags_tag_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
-          "table": "public.contact_tags",
-          "referenced_table": "public.tags",
-          "columns": [
-            "tag_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "contact_tags_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (contact_id, tag_id)",
-          "table": "public.contact_tags",
-          "referenced_table": "",
-          "columns": [
-            "contact_id",
-            "tag_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.account_tags",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "account_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "tag_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "account_tags_pkey",
-          "def": "CREATE UNIQUE INDEX account_tags_pkey ON public.account_tags USING btree (account_id, tag_id)",
-          "table": "public.account_tags",
-          "columns": [
-            "account_id",
-            "tag_id"
-          ]
-        },
-        {
-          "name": "account_tags_tag_id_index",
-          "def": "CREATE INDEX account_tags_tag_id_index ON public.account_tags USING btree (tag_id)",
-          "table": "public.account_tags",
-          "columns": [
-            "tag_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "account_tags_account_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE",
-          "table": "public.account_tags",
-          "referenced_table": "public.accounts",
-          "columns": [
-            "account_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "account_tags_tag_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
-          "table": "public.account_tags",
-          "referenced_table": "public.tags",
-          "columns": [
-            "tag_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "account_tags_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (account_id, tag_id)",
-          "table": "public.account_tags",
-          "referenced_table": "",
-          "columns": [
-            "account_id",
-            "tag_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.deal_tags",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "deal_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "tag_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "deal_tags_pkey",
-          "def": "CREATE UNIQUE INDEX deal_tags_pkey ON public.deal_tags USING btree (deal_id, tag_id)",
-          "table": "public.deal_tags",
-          "columns": [
-            "deal_id",
-            "tag_id"
-          ]
-        },
-        {
-          "name": "deal_tags_tag_id_index",
-          "def": "CREATE INDEX deal_tags_tag_id_index ON public.deal_tags USING btree (tag_id)",
-          "table": "public.deal_tags",
-          "columns": [
-            "tag_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "deal_tags_deal_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE",
-          "table": "public.deal_tags",
-          "referenced_table": "public.deals",
-          "columns": [
-            "deal_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deal_tags_tag_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
-          "table": "public.deal_tags",
-          "referenced_table": "public.tags",
-          "columns": [
-            "tag_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "deal_tags_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (deal_id, tag_id)",
-          "table": "public.deal_tags",
-          "referenced_table": "",
-          "columns": [
-            "deal_id",
-            "tag_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.currencies",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "code",
-          "type": "varchar(3)",
-          "nullable": false
-        },
-        {
-          "name": "name",
-          "type": "varchar(64)",
-          "nullable": false
-        },
-        {
-          "name": "symbol",
-          "type": "varchar(8)",
-          "nullable": false
-        },
-        {
-          "name": "rate_to_home",
-          "type": "numeric(18,6)",
-          "nullable": false
-        },
-        {
-          "name": "is_home",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "currencies_pkey",
-          "def": "CREATE UNIQUE INDEX currencies_pkey ON public.currencies USING btree (code)",
-          "table": "public.currencies",
-          "columns": [
-            "code"
-          ]
-        },
-        {
-          "name": "currencies_home_idx",
-          "def": "CREATE UNIQUE INDEX currencies_home_idx ON public.currencies USING btree (is_home) WHERE (is_home = true)",
-          "table": "public.currencies",
-          "columns": [
-            "is_home"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "currencies_rate_to_home_positive",
-          "type": "CHECK",
-          "def": "CHECK ((rate_to_home \u003e (0)::numeric))",
-          "table": "public.currencies",
-          "referenced_table": "",
-          "columns": [
-            "rate_to_home"
-          ]
-        },
-        {
-          "name": "currencies_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (code)",
-          "table": "public.currencies",
-          "referenced_table": "",
-          "columns": [
-            "code"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "currencies_set_updated_at",
-          "def": "CREATE TRIGGER currencies_set_updated_at BEFORE UPDATE ON public.currencies FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.import_jobs",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "type",
+          "name": "entity_type",
           "type": "varchar(16)",
           "nullable": false
         },
         {
-          "name": "status",
-          "type": "varchar(16)",
-          "nullable": false,
-          "default": "'pending'::character varying"
+          "name": "entity_id",
+          "type": "uuid",
+          "nullable": false
         },
         {
-          "name": "total_rows",
-          "type": "integer",
+          "name": "title",
+          "type": "varchar(255)",
           "nullable": true
         },
         {
-          "name": "processed_rows",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
+          "name": "body",
+          "type": "text",
+          "nullable": false
         },
         {
-          "name": "created_count",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "skipped_count",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "failed_count",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "error_csv",
+          "name": "body_text",
           "type": "text",
           "nullable": true
         },
         {
+          "name": "visibility",
+          "type": "varchar(8)",
+          "nullable": false,
+          "default": "'team'::character varying"
+        },
+        {
+          "name": "tags",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'::text[]"
+        },
+        {
           "name": "created_by",
           "type": "uuid",
-          "nullable": true
+          "nullable": false
         },
         {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "nullable": true
-        },
-        {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
+          "name": "updated_by",
+          "type": "uuid",
           "nullable": true
         },
         {
@@ -2808,32 +2671,83 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
         {
-          "name": "import_jobs_pkey",
-          "def": "CREATE UNIQUE INDEX import_jobs_pkey ON public.import_jobs USING btree (id)",
-          "table": "public.import_jobs",
+          "name": "notes_pkey",
+          "def": "CREATE UNIQUE INDEX notes_pkey ON public.notes USING btree (id)",
+          "table": "public.notes",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "import_jobs_status_idx",
-          "def": "CREATE INDEX import_jobs_status_idx ON public.import_jobs USING btree (status)",
-          "table": "public.import_jobs",
+          "name": "notes_entity_idx",
+          "def": "CREATE INDEX notes_entity_idx ON public.notes USING btree (entity_type, entity_id)",
+          "table": "public.notes",
           "columns": [
-            "status"
+            "entity_type",
+            "entity_id"
+          ]
+        },
+        {
+          "name": "notes_entity_active_idx",
+          "def": "CREATE INDEX notes_entity_active_idx ON public.notes USING btree (entity_type, entity_id) WHERE (deleted_at IS NULL)",
+          "table": "public.notes",
+          "columns": [
+            "entity_type",
+            "entity_id"
+          ]
+        },
+        {
+          "name": "notes_created_by_idx",
+          "def": "CREATE INDEX notes_created_by_idx ON public.notes USING btree (created_by)",
+          "table": "public.notes",
+          "columns": [
+            "created_by"
+          ]
+        },
+        {
+          "name": "notes_body_text_trgm_idx",
+          "def": "CREATE INDEX notes_body_text_trgm_idx ON public.notes USING gin (body_text gin_trgm_ops) WHERE (deleted_at IS NULL)",
+          "table": "public.notes",
+          "columns": [
+            "body_text"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "import_jobs_created_by_fkey",
+          "name": "notes_entity_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text, ('lead'::character varying)::text])))",
+          "table": "public.notes",
+          "referenced_table": "",
+          "columns": [
+            "entity_type"
+          ]
+        },
+        {
+          "name": "notes_visibility_check",
+          "type": "CHECK",
+          "def": "CHECK (((visibility)::text = ANY (ARRAY[('private'::character varying)::text, ('team'::character varying)::text, ('public'::character varying)::text])))",
+          "table": "public.notes",
+          "referenced_table": "",
+          "columns": [
+            "visibility"
+          ]
+        },
+        {
+          "name": "notes_created_by_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.import_jobs",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id)",
+          "table": "public.notes",
           "referenced_table": "public.users",
           "columns": [
             "created_by"
@@ -2843,10 +2757,23 @@
           ]
         },
         {
-          "name": "import_jobs_pkey",
+          "name": "notes_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+          "table": "public.notes",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notes_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
-          "table": "public.import_jobs",
+          "table": "public.notes",
           "referenced_table": "",
           "columns": [
             "id"
@@ -2855,8 +2782,82 @@
       ],
       "triggers": [
         {
-          "name": "import_jobs_set_updated_at",
-          "def": "CREATE TRIGGER import_jobs_set_updated_at BEFORE UPDATE ON public.import_jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+          "name": "notes_set_updated_at",
+          "def": "CREATE TRIGGER notes_set_updated_at BEFORE UPDATE ON public.notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.note_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "note_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "note_tags_pkey",
+          "def": "CREATE UNIQUE INDEX note_tags_pkey ON public.note_tags USING btree (note_id, tag_id)",
+          "table": "public.note_tags",
+          "columns": [
+            "note_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "note_tags_tag_id_index",
+          "def": "CREATE INDEX note_tags_tag_id_index ON public.note_tags USING btree (tag_id)",
+          "table": "public.note_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "note_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "table": "public.note_tags",
+          "referenced_table": "public.tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "note_tags_note_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE",
+          "table": "public.note_tags",
+          "referenced_table": "public.notes",
+          "columns": [
+            "note_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "note_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (note_id, tag_id)",
+          "table": "public.note_tags",
+          "referenced_table": "",
+          "columns": [
+            "note_id",
+            "tag_id"
+          ]
         }
       ]
     },
@@ -2932,7 +2933,7 @@
         {
           "name": "custom_field_definitions_entity_type_check",
           "type": "CHECK",
-          "def": "CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))",
+          "def": "CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text])))",
           "table": "public.custom_field_definitions",
           "referenced_table": "",
           "columns": [
@@ -2942,7 +2943,7 @@
         {
           "name": "custom_field_definitions_field_type_check",
           "type": "CHECK",
-          "def": "CHECK (((field_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'date'::character varying, 'boolean'::character varying, 'select'::character varying])::text[])))",
+          "def": "CHECK (((field_type)::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('date'::character varying)::text, ('boolean'::character varying)::text, ('select'::character varying)::text])))",
           "table": "public.custom_field_definitions",
           "referenced_table": "",
           "columns": [
@@ -3144,7 +3145,7 @@
         {
           "name": "webhook_subscriptions_status_check",
           "type": "CHECK",
-          "def": "CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'failed'::character varying, 'disabled'::character varying])::text[])))",
+          "def": "CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('failed'::character varying)::text, ('disabled'::character varying)::text])))",
           "table": "public.webhook_subscriptions",
           "referenced_table": "",
           "columns": [
@@ -3290,9 +3291,8 @@
       ]
     },
     {
-      "name": "public.notes",
+      "name": "public.import_jobs",
       "type": "BASE TABLE",
-      "comment": "Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: 'contact', 'account', 'deal', 'lead'. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application's responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510)",
       "columns": [
         {
           "name": "id",
@@ -3301,44 +3301,63 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "entity_type",
+          "name": "type",
           "type": "varchar(16)",
           "nullable": false
         },
         {
-          "name": "entity_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "title",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "body",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "body_text",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "visibility",
-          "type": "varchar(8)",
+          "name": "status",
+          "type": "varchar(16)",
           "nullable": false,
-          "default": "'team'::character varying"
+          "default": "'pending'::character varying"
+        },
+        {
+          "name": "total_rows",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "processed_rows",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_count",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "skipped_count",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "failed_count",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "error_csv",
+          "type": "text",
+          "nullable": true
         },
         {
           "name": "created_by",
           "type": "uuid",
-          "nullable": false
+          "nullable": true
         },
         {
-          "name": "updated_by",
-          "type": "uuid",
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
           "nullable": true
         },
         {
@@ -3352,83 +3371,32 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
-        },
-        {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "nullable": true
         }
       ],
       "indexes": [
         {
-          "name": "notes_pkey",
-          "def": "CREATE UNIQUE INDEX notes_pkey ON public.notes USING btree (id)",
-          "table": "public.notes",
+          "name": "import_jobs_pkey",
+          "def": "CREATE UNIQUE INDEX import_jobs_pkey ON public.import_jobs USING btree (id)",
+          "table": "public.import_jobs",
           "columns": [
             "id"
           ]
         },
         {
-          "name": "notes_entity_idx",
-          "def": "CREATE INDEX notes_entity_idx ON public.notes USING btree (entity_type, entity_id)",
-          "table": "public.notes",
+          "name": "import_jobs_status_idx",
+          "def": "CREATE INDEX import_jobs_status_idx ON public.import_jobs USING btree (status)",
+          "table": "public.import_jobs",
           "columns": [
-            "entity_type",
-            "entity_id"
-          ]
-        },
-        {
-          "name": "notes_created_by_idx",
-          "def": "CREATE INDEX notes_created_by_idx ON public.notes USING btree (created_by)",
-          "table": "public.notes",
-          "columns": [
-            "created_by"
-          ]
-        },
-        {
-          "name": "notes_entity_active_idx",
-          "def": "CREATE INDEX notes_entity_active_idx ON public.notes USING btree (entity_type, entity_id) WHERE (deleted_at IS NULL)",
-          "table": "public.notes",
-          "columns": [
-            "entity_type",
-            "entity_id"
-          ]
-        },
-        {
-          "name": "notes_body_text_trgm_idx",
-          "def": "CREATE INDEX notes_body_text_trgm_idx ON public.notes USING gin (body_text gin_trgm_ops) WHERE (deleted_at IS NULL)",
-          "table": "public.notes",
-          "columns": [
-            "body_text"
+            "status"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "notes_entity_type_check",
-          "type": "CHECK",
-          "def": "CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying, 'lead'::character varying])::text[])))",
-          "table": "public.notes",
-          "referenced_table": "",
-          "columns": [
-            "entity_type"
-          ]
-        },
-        {
-          "name": "notes_visibility_check",
-          "type": "CHECK",
-          "def": "CHECK (((visibility)::text = ANY ((ARRAY['private'::character varying, 'team'::character varying, 'public'::character varying])::text[])))",
-          "table": "public.notes",
-          "referenced_table": "",
-          "columns": [
-            "visibility"
-          ]
-        },
-        {
-          "name": "notes_created_by_fkey",
+          "name": "import_jobs_created_by_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (created_by) REFERENCES users(id)",
-          "table": "public.notes",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.import_jobs",
           "referenced_table": "public.users",
           "columns": [
             "created_by"
@@ -3438,23 +3406,10 @@
           ]
         },
         {
-          "name": "notes_updated_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (updated_by) REFERENCES users(id)",
-          "table": "public.notes",
-          "referenced_table": "public.users",
-          "columns": [
-            "updated_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "notes_pkey",
+          "name": "import_jobs_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
-          "table": "public.notes",
+          "table": "public.import_jobs",
           "referenced_table": "",
           "columns": [
             "id"
@@ -3463,8 +3418,8 @@
       ],
       "triggers": [
         {
-          "name": "notes_set_updated_at",
-          "def": "CREATE TRIGGER notes_set_updated_at BEFORE UPDATE ON public.notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+          "name": "import_jobs_set_updated_at",
+          "def": "CREATE TRIGGER import_jobs_set_updated_at BEFORE UPDATE ON public.import_jobs FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -3563,7 +3518,7 @@
       ]
     },
     {
-      "name": "public.pipelines",
+      "name": "public.lead_status_history",
       "type": "BASE TABLE",
       "columns": [
         {
@@ -3573,19 +3528,28 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "name",
-          "type": "varchar(100)",
+          "name": "lead_id",
+          "type": "uuid",
           "nullable": false
         },
         {
-          "name": "is_default",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
+          "name": "from_status",
+          "type": "text",
+          "nullable": true
         },
         {
-          "name": "created_by",
+          "name": "to_status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "changed_by_id",
           "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "changed_by_name",
+          "type": "text",
           "nullable": true
         },
         {
@@ -3593,9 +3557,68 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "lead_status_history_pkey",
+          "def": "CREATE UNIQUE INDEX lead_status_history_pkey ON public.lead_status_history USING btree (id)",
+          "table": "public.lead_status_history",
+          "columns": [
+            "id"
+          ]
         },
         {
-          "name": "updated_at",
+          "name": "lead_status_history_lead_id_index",
+          "def": "CREATE INDEX lead_status_history_lead_id_index ON public.lead_status_history USING btree (lead_id)",
+          "table": "public.lead_status_history",
+          "columns": [
+            "lead_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "lead_status_history_lead_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE",
+          "table": "public.lead_status_history",
+          "referenced_table": "public.leads",
+          "columns": [
+            "lead_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_status_history_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.lead_status_history",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.contact_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "contact_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
@@ -3603,59 +3626,300 @@
       ],
       "indexes": [
         {
-          "name": "pipelines_pkey",
-          "def": "CREATE UNIQUE INDEX pipelines_pkey ON public.pipelines USING btree (id)",
-          "table": "public.pipelines",
+          "name": "contact_tags_pkey",
+          "def": "CREATE UNIQUE INDEX contact_tags_pkey ON public.contact_tags USING btree (contact_id, tag_id)",
+          "table": "public.contact_tags",
           "columns": [
-            "id"
+            "contact_id",
+            "tag_id"
           ]
         },
         {
-          "name": "pipelines_single_default_idx",
-          "def": "CREATE UNIQUE INDEX pipelines_single_default_idx ON public.pipelines USING btree (is_default) WHERE (is_default = true)",
-          "table": "public.pipelines",
+          "name": "contact_tags_tag_id_index",
+          "def": "CREATE INDEX contact_tags_tag_id_index ON public.contact_tags USING btree (tag_id)",
+          "table": "public.contact_tags",
           "columns": [
-            "is_default"
-          ]
-        },
-        {
-          "name": "pipelines_name_lower_unique",
-          "def": "CREATE UNIQUE INDEX pipelines_name_lower_unique ON public.pipelines USING btree (lower((name)::text))",
-          "table": "public.pipelines",
-          "columns": [
-            "lower"
+            "tag_id"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "pipelines_created_by_fkey",
+          "name": "contact_tags_tag_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.pipelines",
-          "referenced_table": "public.users",
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "table": "public.contact_tags",
+          "referenced_table": "public.tags",
           "columns": [
-            "created_by"
+            "tag_id"
           ],
           "referenced_columns": [
             "id"
           ]
         },
         {
-          "name": "pipelines_pkey",
+          "name": "contact_tags_contact_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
+          "table": "public.contact_tags",
+          "referenced_table": "public.contacts",
+          "columns": [
+            "contact_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_tags_pkey",
           "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.pipelines",
+          "def": "PRIMARY KEY (contact_id, tag_id)",
+          "table": "public.contact_tags",
           "referenced_table": "",
           "columns": [
-            "id"
+            "contact_id",
+            "tag_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.account_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "account_tags_pkey",
+          "def": "CREATE UNIQUE INDEX account_tags_pkey ON public.account_tags USING btree (account_id, tag_id)",
+          "table": "public.account_tags",
+          "columns": [
+            "account_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "account_tags_tag_id_index",
+          "def": "CREATE INDEX account_tags_tag_id_index ON public.account_tags USING btree (tag_id)",
+          "table": "public.account_tags",
+          "columns": [
+            "tag_id"
           ]
         }
       ],
-      "triggers": [
+      "constraints": [
         {
-          "name": "pipelines_set_updated_at",
-          "def": "CREATE TRIGGER pipelines_set_updated_at BEFORE UPDATE ON public.pipelines FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+          "name": "account_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "table": "public.account_tags",
+          "referenced_table": "public.tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_tags_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE",
+          "table": "public.account_tags",
+          "referenced_table": "public.accounts",
+          "columns": [
+            "account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (account_id, tag_id)",
+          "table": "public.account_tags",
+          "referenced_table": "",
+          "columns": [
+            "account_id",
+            "tag_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.deal_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "deal_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "deal_tags_pkey",
+          "def": "CREATE UNIQUE INDEX deal_tags_pkey ON public.deal_tags USING btree (deal_id, tag_id)",
+          "table": "public.deal_tags",
+          "columns": [
+            "deal_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "deal_tags_tag_id_index",
+          "def": "CREATE INDEX deal_tags_tag_id_index ON public.deal_tags USING btree (tag_id)",
+          "table": "public.deal_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "deal_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "table": "public.deal_tags",
+          "referenced_table": "public.tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_tags_deal_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE",
+          "table": "public.deal_tags",
+          "referenced_table": "public.deals",
+          "columns": [
+            "deal_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (deal_id, tag_id)",
+          "table": "public.deal_tags",
+          "referenced_table": "",
+          "columns": [
+            "deal_id",
+            "tag_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.deal_contacts",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "deal_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "contact_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "deal_contacts_pkey",
+          "def": "CREATE UNIQUE INDEX deal_contacts_pkey ON public.deal_contacts USING btree (deal_id, contact_id)",
+          "table": "public.deal_contacts",
+          "columns": [
+            "deal_id",
+            "contact_id"
+          ]
+        },
+        {
+          "name": "deal_contacts_contact_id_index",
+          "def": "CREATE INDEX deal_contacts_contact_id_index ON public.deal_contacts USING btree (contact_id)",
+          "table": "public.deal_contacts",
+          "columns": [
+            "contact_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "deal_contacts_contact_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
+          "table": "public.deal_contacts",
+          "referenced_table": "public.contacts",
+          "columns": [
+            "contact_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_contacts_deal_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE",
+          "table": "public.deal_contacts",
+          "referenced_table": "public.deals",
+          "columns": [
+            "deal_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_contacts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (deal_id, contact_id)",
+          "table": "public.deal_contacts",
+          "referenced_table": "",
+          "columns": [
+            "deal_id",
+            "contact_id"
+          ]
         }
       ]
     },
@@ -3738,7 +4002,7 @@
         {
           "name": "custom_reports_entity_type_check",
           "type": "CHECK",
-          "def": "CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying, 'lead'::character varying, 'activity'::character varying])::text[])))",
+          "def": "CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text, ('lead'::character varying)::text, ('activity'::character varying)::text])))",
           "table": "public.custom_reports",
           "referenced_table": "",
           "columns": [
@@ -3748,7 +4012,7 @@
         {
           "name": "custom_reports_visibility_check",
           "type": "CHECK",
-          "def": "CHECK (((visibility)::text = ANY ((ARRAY['private'::character varying, 'public_read_only'::character varying, 'public'::character varying])::text[])))",
+          "def": "CHECK (((visibility)::text = ANY (ARRAY[('private'::character varying)::text, ('public_read_only'::character varying)::text, ('public'::character varying)::text])))",
           "table": "public.custom_reports",
           "referenced_table": "",
           "columns": [
@@ -3956,14 +4220,6 @@
           ]
         },
         {
-          "name": "sales_sequence_steps_sequence_id_index",
-          "def": "CREATE INDEX sales_sequence_steps_sequence_id_index ON public.sales_sequence_steps USING btree (sequence_id)",
-          "table": "public.sales_sequence_steps",
-          "columns": [
-            "sequence_id"
-          ]
-        },
-        {
           "name": "uq_sequence_sort_order",
           "def": "CREATE UNIQUE INDEX uq_sequence_sort_order ON public.sales_sequence_steps USING btree (sequence_id, sort_order)",
           "table": "public.sales_sequence_steps",
@@ -3971,13 +4227,21 @@
             "sequence_id",
             "sort_order"
           ]
+        },
+        {
+          "name": "sales_sequence_steps_sequence_id_index",
+          "def": "CREATE INDEX sales_sequence_steps_sequence_id_index ON public.sales_sequence_steps USING btree (sequence_id)",
+          "table": "public.sales_sequence_steps",
+          "columns": [
+            "sequence_id"
+          ]
         }
       ],
       "constraints": [
         {
           "name": "sales_sequence_steps_action_type_check",
           "type": "CHECK",
-          "def": "CHECK (((action_type)::text = ANY ((ARRAY['send_email'::character varying, 'log_call_reminder'::character varying, 'create_task'::character varying])::text[])))",
+          "def": "CHECK (((action_type)::text = ANY (ARRAY[('send_email'::character varying)::text, ('log_call_reminder'::character varying)::text, ('create_task'::character varying)::text])))",
           "table": "public.sales_sequence_steps",
           "referenced_table": "",
           "columns": [
@@ -4135,6 +4399,14 @@
           ]
         },
         {
+          "name": "sequence_enrollments_status_next_action_idx",
+          "def": "CREATE INDEX sequence_enrollments_status_next_action_idx ON public.sequence_enrollments USING btree (next_action_at) WHERE ((status)::text = 'active'::text)",
+          "table": "public.sequence_enrollments",
+          "columns": [
+            "next_action_at"
+          ]
+        },
+        {
           "name": "uq_active_enrollment",
           "def": "CREATE UNIQUE INDEX uq_active_enrollment ON public.sequence_enrollments USING btree (sequence_id, contact_id) WHERE ((status)::text = 'active'::text)",
           "table": "public.sequence_enrollments",
@@ -4142,21 +4414,13 @@
             "sequence_id",
             "contact_id"
           ]
-        },
-        {
-          "name": "sequence_enrollments_status_next_action_idx",
-          "def": "CREATE INDEX sequence_enrollments_status_next_action_idx ON public.sequence_enrollments USING btree (next_action_at) WHERE ((status)::text = 'active'::text)",
-          "table": "public.sequence_enrollments",
-          "columns": [
-            "next_action_at"
-          ]
         }
       ],
       "constraints": [
         {
           "name": "sequence_enrollments_status_check",
           "type": "CHECK",
-          "def": "CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'completed'::character varying, 'unenrolled'::character varying])::text[])))",
+          "def": "CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('completed'::character varying)::text, ('unenrolled'::character varying)::text])))",
           "table": "public.sequence_enrollments",
           "referenced_table": "",
           "columns": [
@@ -4305,7 +4569,7 @@
         {
           "name": "sequence_enrollment_logs_outcome_check",
           "type": "CHECK",
-          "def": "CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'skipped'::character varying, 'error'::character varying])::text[])))",
+          "def": "CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('skipped'::character varying)::text, ('error'::character varying)::text])))",
           "table": "public.sequence_enrollment_logs",
           "referenced_table": "",
           "columns": [
@@ -4402,6 +4666,12 @@
           "type": "boolean",
           "nullable": false,
           "default": "true"
+        },
+        {
+          "name": "enable_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "When set and \u003c= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
         }
       ],
       "indexes": [
@@ -4496,19 +4766,19 @@
           ]
         },
         {
-          "name": "feature_flag_usage_used_at_index",
-          "def": "CREATE INDEX feature_flag_usage_used_at_index ON public.feature_flag_usage USING btree (used_at)",
-          "table": "public.feature_flag_usage",
-          "columns": [
-            "used_at"
-          ]
-        },
-        {
           "name": "feature_flag_usage_flag_key_used_at_idx",
           "def": "CREATE INDEX feature_flag_usage_flag_key_used_at_idx ON public.feature_flag_usage USING btree (flag_key, used_at)",
           "table": "public.feature_flag_usage",
           "columns": [
             "flag_key",
+            "used_at"
+          ]
+        },
+        {
+          "name": "feature_flag_usage_used_at_index",
+          "def": "CREATE INDEX feature_flag_usage_used_at_index ON public.feature_flag_usage USING btree (used_at)",
+          "table": "public.feature_flag_usage",
+          "columns": [
             "used_at"
           ]
         }
@@ -4550,182 +4820,6 @@
             "flag_key",
             "user_id"
           ]
-        }
-      ]
-    },
-    {
-      "name": "public.ai_token_budgets",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "monthly_limit",
-          "type": "bigint",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "ai_token_budgets_pkey",
-          "def": "CREATE UNIQUE INDEX ai_token_budgets_pkey ON public.ai_token_budgets USING btree (id)",
-          "table": "public.ai_token_budgets",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_token_budgets_user_id_idx",
-          "def": "CREATE UNIQUE INDEX ai_token_budgets_user_id_idx ON public.ai_token_budgets USING btree (user_id) WHERE (user_id IS NOT NULL)",
-          "table": "public.ai_token_budgets",
-          "columns": [
-            "user_id"
-          ]
-        },
-        {
-          "name": "ai_token_budgets_org_default_idx",
-          "def": "CREATE UNIQUE INDEX ai_token_budgets_org_default_idx ON public.ai_token_budgets USING btree (((user_id IS NULL))) WHERE (user_id IS NULL)",
-          "table": "public.ai_token_budgets",
-          "columns": [
-            "expr"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "ai_token_budgets_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.ai_token_budgets",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_token_budgets_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.ai_token_budgets",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "ai_token_budgets_set_updated_at",
-          "def": "CREATE TRIGGER ai_token_budgets_set_updated_at BEFORE UPDATE ON public.ai_token_budgets FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.ai_token_usage",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "year_month",
-          "type": "character(7)",
-          "nullable": false
-        },
-        {
-          "name": "input_tokens",
-          "type": "bigint",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "output_tokens",
-          "type": "bigint",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "ai_token_usage_pkey",
-          "def": "CREATE UNIQUE INDEX ai_token_usage_pkey ON public.ai_token_usage USING btree (user_id, year_month)",
-          "table": "public.ai_token_usage",
-          "columns": [
-            "user_id",
-            "year_month"
-          ]
-        },
-        {
-          "name": "ai_token_usage_year_month_index",
-          "def": "CREATE INDEX ai_token_usage_year_month_index ON public.ai_token_usage USING btree (year_month)",
-          "table": "public.ai_token_usage",
-          "columns": [
-            "year_month"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "ai_token_usage_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.ai_token_usage",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_token_usage_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (user_id, year_month)",
-          "table": "public.ai_token_usage",
-          "referenced_table": "",
-          "columns": [
-            "user_id",
-            "year_month"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "ai_token_usage_set_updated_at",
-          "def": "CREATE TRIGGER ai_token_usage_set_updated_at BEFORE UPDATE ON public.ai_token_usage FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -4974,9 +5068,8 @@
       ]
     },
     {
-      "name": "public.audit_log",
+      "name": "public.ai_token_budgets",
       "type": "BASE TABLE",
-      "comment": "Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions().",
       "columns": [
         {
           "name": "id",
@@ -4985,52 +5078,23 @@
           "default": "gen_random_uuid()"
         },
         {
-          "name": "record_type",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "record_id",
+          "name": "user_id",
           "type": "uuid",
           "nullable": true
         },
         {
-          "name": "record_name",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "event_type",
-          "type": "text",
+          "name": "monthly_limit",
+          "type": "bigint",
           "nullable": false
-        },
-        {
-          "name": "field_name",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "old_value",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "new_value",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "changed_by_id",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "changed_by_name",
-          "type": "text",
-          "nullable": true
         },
         {
           "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
@@ -5038,88 +5102,90 @@
       ],
       "indexes": [
         {
-          "name": "audit_log_pkey",
-          "def": "CREATE UNIQUE INDEX audit_log_pkey ON ONLY public.audit_log USING btree (id, created_at)",
-          "table": "public.audit_log",
+          "name": "ai_token_budgets_pkey",
+          "def": "CREATE UNIQUE INDEX ai_token_budgets_pkey ON public.ai_token_budgets USING btree (id)",
+          "table": "public.ai_token_budgets",
           "columns": [
-            "id",
-            "created_at"
+            "id"
           ]
         },
         {
-          "name": "audit_log_record_type_record_id_index",
-          "def": "CREATE INDEX audit_log_record_type_record_id_index ON ONLY public.audit_log USING btree (record_type, record_id)",
-          "table": "public.audit_log",
+          "name": "ai_token_budgets_user_id_idx",
+          "def": "CREATE UNIQUE INDEX ai_token_budgets_user_id_idx ON public.ai_token_budgets USING btree (user_id) WHERE (user_id IS NOT NULL)",
+          "table": "public.ai_token_budgets",
           "columns": [
-            "record_type",
-            "record_id"
+            "user_id"
           ]
         },
         {
-          "name": "audit_log_changed_by_id_index",
-          "def": "CREATE INDEX audit_log_changed_by_id_index ON ONLY public.audit_log USING btree (changed_by_id)",
-          "table": "public.audit_log",
+          "name": "ai_token_budgets_org_default_idx",
+          "def": "CREATE UNIQUE INDEX ai_token_budgets_org_default_idx ON public.ai_token_budgets USING btree (((user_id IS NULL))) WHERE (user_id IS NULL)",
+          "table": "public.ai_token_budgets",
           "columns": [
-            "changed_by_id"
-          ]
-        },
-        {
-          "name": "audit_log_created_at_index",
-          "def": "CREATE INDEX audit_log_created_at_index ON ONLY public.audit_log USING btree (created_at)",
-          "table": "public.audit_log",
-          "columns": [
-            "created_at"
-          ]
-        },
-        {
-          "name": "audit_log_event_type_index",
-          "def": "CREATE INDEX audit_log_event_type_index ON ONLY public.audit_log USING btree (event_type)",
-          "table": "public.audit_log",
-          "columns": [
-            "event_type"
+            "expr"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "audit_log_pkey",
+          "name": "ai_token_budgets_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.ai_token_budgets",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_token_budgets_pkey",
           "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id, created_at)",
-          "table": "public.audit_log",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.ai_token_budgets",
           "referenced_table": "",
           "columns": [
-            "id",
-            "created_at"
+            "id"
           ]
         }
       ],
       "triggers": [
         {
-          "name": "audit_log_after_insert",
-          "def": "CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify()"
-        },
-        {
-          "name": "audit_log_no_modify",
-          "def": "CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable()"
+          "name": "ai_token_budgets_set_updated_at",
+          "def": "CREATE TRIGGER ai_token_budgets_set_updated_at BEFORE UPDATE ON public.ai_token_budgets FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
     {
-      "name": "public.note_tags",
+      "name": "public.ai_token_usage",
       "type": "BASE TABLE",
       "columns": [
         {
-          "name": "note_id",
+          "name": "user_id",
           "type": "uuid",
           "nullable": false
         },
         {
-          "name": "tag_id",
-          "type": "uuid",
+          "name": "year_month",
+          "type": "character(7)",
           "nullable": false
         },
         {
-          "name": "created_at",
+          "name": "input_tokens",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "output_tokens",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
@@ -5127,60 +5193,53 @@
       ],
       "indexes": [
         {
-          "name": "note_tags_pkey",
-          "def": "CREATE UNIQUE INDEX note_tags_pkey ON public.note_tags USING btree (note_id, tag_id)",
-          "table": "public.note_tags",
+          "name": "ai_token_usage_pkey",
+          "def": "CREATE UNIQUE INDEX ai_token_usage_pkey ON public.ai_token_usage USING btree (user_id, year_month)",
+          "table": "public.ai_token_usage",
           "columns": [
-            "note_id",
-            "tag_id"
+            "user_id",
+            "year_month"
           ]
         },
         {
-          "name": "note_tags_tag_id_index",
-          "def": "CREATE INDEX note_tags_tag_id_index ON public.note_tags USING btree (tag_id)",
-          "table": "public.note_tags",
+          "name": "ai_token_usage_year_month_index",
+          "def": "CREATE INDEX ai_token_usage_year_month_index ON public.ai_token_usage USING btree (year_month)",
+          "table": "public.ai_token_usage",
           "columns": [
-            "tag_id"
+            "year_month"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "note_tags_tag_id_fkey",
+          "name": "ai_token_usage_user_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
-          "table": "public.note_tags",
-          "referenced_table": "public.tags",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.ai_token_usage",
+          "referenced_table": "public.users",
           "columns": [
-            "tag_id"
+            "user_id"
           ],
           "referenced_columns": [
             "id"
           ]
         },
         {
-          "name": "note_tags_note_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE",
-          "table": "public.note_tags",
-          "referenced_table": "public.notes",
-          "columns": [
-            "note_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "note_tags_pkey",
+          "name": "ai_token_usage_pkey",
           "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (note_id, tag_id)",
-          "table": "public.note_tags",
+          "def": "PRIMARY KEY (user_id, year_month)",
+          "table": "public.ai_token_usage",
           "referenced_table": "",
           "columns": [
-            "note_id",
-            "tag_id"
+            "user_id",
+            "year_month"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "ai_token_usage_set_updated_at",
+          "def": "CREATE TRIGGER ai_token_usage_set_updated_at BEFORE UPDATE ON public.ai_token_usage FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -5206,11 +5265,6 @@
         },
         {
           "name": "effective_from",
-          "type": "timestamp with time zone",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
@@ -5284,6 +5338,11 @@
           "nullable": true
         },
         {
+          "name": "scim_group_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
@@ -5311,6 +5370,14 @@
           "table": "public.teams",
           "columns": [
             "name"
+          ]
+        },
+        {
+          "name": "teams_scim_group_id_key",
+          "def": "CREATE UNIQUE INDEX teams_scim_group_id_key ON public.teams USING btree (scim_group_id)",
+          "table": "public.teams",
+          "columns": [
+            "scim_group_id"
           ]
         },
         {
@@ -5368,12 +5435,22 @@
           "columns": [
             "name"
           ]
+        },
+        {
+          "name": "teams_scim_group_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (scim_group_id)",
+          "table": "public.teams",
+          "referenced_table": "",
+          "columns": [
+            "scim_group_id"
+          ]
         }
       ],
       "triggers": [
         {
-          "name": "set_teams_updated_at",
-          "def": "CREATE TRIGGER set_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+          "name": "teams_set_updated_at",
+          "def": "CREATE TRIGGER teams_set_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -5552,7 +5629,7 @@
     {
       "name": "public.custom_roles",
       "type": "BASE TABLE",
-      "comment": "Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles (admin, manager, rep, viewer, service_account) and cannot be deleted or renamed via the REST API. Custom roles (is_builtin = false) are admin-configurable.",
+      "comment": "Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles and cannot be deleted or renamed via the REST API.",
       "columns": [
         {
           "name": "id",
@@ -5639,7 +5716,7 @@
     {
       "name": "public.role_capabilities",
       "type": "BASE TABLE",
-      "comment": "Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum in shared/schemas/capabilitySchema.ts is the source of truth for valid capability strings — the DB stores assignments only. A capability absent from this table means the role does not have it.",
+      "comment": "Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum is the source of truth for valid strings; the DB stores assignments only.",
       "columns": [
         {
           "name": "role_id",
@@ -5701,7 +5778,7 @@
     {
       "name": "public.user_custom_roles",
       "type": "BASE TABLE",
-      "comment": "Assignment of custom roles to users (MINCRM-542). A user may hold multiple roles; effective capabilities are the union of all capabilities from all assigned roles. At least one built-in role row is inserted for every user by this migration; additional custom roles are additive.",
+      "comment": "Assignment of custom roles to users (MINCRM-542). Effective capabilities are the union of all capabilities from all assigned roles.",
       "columns": [
         {
           "name": "user_id",
@@ -5780,11 +5857,344 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.scim_tokens",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "last_used_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "scim_tokens_pkey",
+          "def": "CREATE UNIQUE INDEX scim_tokens_pkey ON public.scim_tokens USING btree (id)",
+          "table": "public.scim_tokens",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_tokens_token_hash_key",
+          "def": "CREATE UNIQUE INDEX scim_tokens_token_hash_key ON public.scim_tokens USING btree (token_hash)",
+          "table": "public.scim_tokens",
+          "columns": [
+            "token_hash"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "scim_tokens_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.scim_tokens",
+          "referenced_table": "public.users",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_tokens_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.scim_tokens",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_tokens_token_hash_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (token_hash)",
+          "table": "public.scim_tokens",
+          "referenced_table": "",
+          "columns": [
+            "token_hash"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.scim_group_role_mappings",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "scim_group_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "group_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "role_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "scim_group_role_mappings_pkey",
+          "def": "CREATE UNIQUE INDEX scim_group_role_mappings_pkey ON public.scim_group_role_mappings USING btree (id)",
+          "table": "public.scim_group_role_mappings",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_group_role_mappings_scim_group_id_key",
+          "def": "CREATE UNIQUE INDEX scim_group_role_mappings_scim_group_id_key ON public.scim_group_role_mappings USING btree (scim_group_id)",
+          "table": "public.scim_group_role_mappings",
+          "columns": [
+            "scim_group_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "scim_group_role_mappings_role_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT",
+          "table": "public.scim_group_role_mappings",
+          "referenced_table": "public.custom_roles",
+          "columns": [
+            "role_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_group_role_mappings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.scim_group_role_mappings",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "scim_group_role_mappings_scim_group_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (scim_group_id)",
+          "table": "public.scim_group_role_mappings",
+          "referenced_table": "",
+          "columns": [
+            "scim_group_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.feature_flag_beta_users",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "flag_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "added_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_beta_users_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_user_id_unique",
+          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_index",
+          "def": "CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "flag_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_beta_users_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.feature_flags",
+          "columns": [
+            "flag_key"
+          ],
+          "referenced_columns": [
+            "flag_key"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_user_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (flag_key, user_id)",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
     {
-      "table": "public.contacts",
+      "table": "public.system_settings",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.pipelines",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.pipeline_stages",
+      "columns": [
+        "pipeline_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.pipelines",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.leads",
       "columns": [
         "owner_id"
       ],
@@ -5797,9 +6207,9 @@
       "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
     },
     {
-      "table": "public.contacts",
+      "table": "public.leads",
       "columns": [
-        "account_id"
+        "converted_account_id"
       ],
       "cardinality": "zero_or_more",
       "parent_table": "public.accounts",
@@ -5807,20 +6217,33 @@
         "id"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+      "def": "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.contacts",
+      "table": "public.leads",
       "columns": [
-        "source_lead_id"
+        "converted_contact_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.leads",
+      "parent_table": "public.contacts",
       "parent_columns": [
         "id"
       ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+      "def": "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.leads",
+      "columns": [
+        "converted_deal_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.deals",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL"
     },
     {
       "table": "public.accounts",
@@ -5849,6 +6272,58 @@
       "def": "FOREIGN KEY (parent_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
     },
     {
+      "table": "public.contacts",
+      "columns": [
+        "owner_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+    },
+    {
+      "table": "public.contacts",
+      "columns": [
+        "source_lead_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.leads",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.contacts",
+      "columns": [
+        "account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.contact_addresses",
+      "columns": [
+        "contact_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.contacts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
       "table": "public.deals",
       "columns": [
         "owner_id"
@@ -5864,28 +6339,15 @@
     {
       "table": "public.deals",
       "columns": [
-        "account_id"
+        "pipeline_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.accounts",
+      "parent_table": "public.pipelines",
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.deals",
-      "columns": [
-        "source_lead_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.leads",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
     },
     {
       "table": "public.deals",
@@ -5903,41 +6365,28 @@
     {
       "table": "public.deals",
       "columns": [
-        "pipeline_id"
+        "source_lead_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.pipelines",
+      "parent_table": "public.leads",
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.deal_contacts",
+      "table": "public.deals",
       "columns": [
-        "contact_id"
+        "account_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.contacts",
+      "parent_table": "public.accounts",
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.deal_contacts",
-      "columns": [
-        "deal_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.deals",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
     },
     {
       "table": "public.activities",
@@ -5955,19 +6404,6 @@
     {
       "table": "public.activities",
       "columns": [
-        "contact_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.contacts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.activities",
-      "columns": [
         "account_id"
       ],
       "cardinality": "zero_or_more",
@@ -5981,6 +6417,19 @@
     {
       "table": "public.activities",
       "columns": [
+        "contact_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.contacts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.activities",
+      "columns": [
         "deal_id"
       ],
       "cardinality": "zero_or_more",
@@ -5990,19 +6439,6 @@
       ],
       "parent_cardinality": "zero_or_one",
       "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.system_settings",
-      "columns": [
-        "updated_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.automation_rules",
@@ -6031,19 +6467,6 @@
       "def": "FOREIGN KEY (rule_id) REFERENCES automation_rules(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.overdue_task_notifications",
-      "columns": [
-        "activity_id"
-      ],
-      "cardinality": "zero_or_one",
-      "parent_table": "public.activities",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
-    },
-    {
       "table": "public.attachments",
       "columns": [
         "uploader_id"
@@ -6057,176 +6480,20 @@
       "def": "FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.leads",
+      "table": "public.overdue_task_notifications",
       "columns": [
-        "owner_id"
+        "activity_id"
       ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
+      "cardinality": "zero_or_one",
+      "parent_table": "public.activities",
       "parent_columns": [
         "id"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.leads",
-      "columns": [
-        "converted_contact_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.contacts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.leads",
-      "columns": [
-        "converted_account_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.accounts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.leads",
-      "columns": [
-        "converted_deal_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.deals",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.lead_status_history",
-      "columns": [
-        "lead_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.leads",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.pipeline_stages",
-      "columns": [
-        "pipeline_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.pipelines",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.contact_addresses",
-      "columns": [
-        "contact_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.contacts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.contact_tags",
-      "columns": [
-        "contact_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.contacts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.contact_tags",
-      "columns": [
-        "tag_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.tags",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.account_tags",
-      "columns": [
-        "account_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.accounts",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.account_tags",
-      "columns": [
-        "tag_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.tags",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.deal_tags",
-      "columns": [
-        "deal_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.deals",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.deal_tags",
-      "columns": [
-        "tag_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.tags",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.import_jobs",
+      "table": "public.notes",
       "columns": [
         "created_by"
       ],
@@ -6235,8 +6502,47 @@
       "parent_columns": [
         "id"
       ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id)"
+    },
+    {
+      "table": "public.notes",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id)"
+    },
+    {
+      "table": "public.note_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.note_tags",
+      "columns": [
+        "note_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.notes",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
     },
     {
       "table": "public.custom_field_values",
@@ -6278,7 +6584,7 @@
       "def": "FOREIGN KEY (subscription_id) REFERENCES webhook_subscriptions(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.notes",
+      "table": "public.import_jobs",
       "columns": [
         "created_by"
       ],
@@ -6287,21 +6593,8 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (created_by) REFERENCES users(id)"
-    },
-    {
-      "table": "public.notes",
-      "columns": [
-        "updated_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
       "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (updated_by) REFERENCES users(id)"
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.gdpr_deletion_log",
@@ -6317,17 +6610,121 @@
       "def": "FOREIGN KEY (requested_by) REFERENCES users(id)"
     },
     {
-      "table": "public.pipelines",
+      "table": "public.lead_status_history",
       "columns": [
-        "created_by"
+        "lead_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.users",
+      "parent_table": "public.leads",
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.contact_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.contact_tags",
+      "columns": [
+        "contact_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.contacts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.account_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.account_tags",
+      "columns": [
+        "account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_tags",
+      "columns": [
+        "deal_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.deals",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_contacts",
+      "columns": [
+        "contact_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.contacts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_contacts",
+      "columns": [
+        "deal_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.deals",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
     },
     {
       "table": "public.custom_reports",
@@ -6486,32 +6883,6 @@
       "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
     },
     {
-      "table": "public.ai_token_budgets",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.ai_token_usage",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
       "table": "public.ai_configuration",
       "columns": [
         "dpa_acknowledged_by"
@@ -6538,30 +6909,30 @@
       "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
-      "table": "public.note_tags",
+      "table": "public.ai_token_budgets",
       "columns": [
-        "tag_id"
+        "user_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.tags",
+      "parent_table": "public.users",
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
     },
     {
-      "table": "public.note_tags",
+      "table": "public.ai_token_usage",
       "columns": [
-        "note_id"
+        "user_id"
       ],
       "cardinality": "zero_or_more",
-      "parent_table": "public.notes",
+      "parent_table": "public.users",
       "parent_columns": [
         "id"
       ],
       "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
     },
     {
       "table": "public.teams",
@@ -6666,15 +7037,74 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.scim_tokens",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.scim_group_role_mappings",
+      "columns": [
+        "role_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.custom_roles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT"
+    },
+    {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "flag_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flags",
+      "parent_columns": [
+        "flag_key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
     }
   ],
   "functions": [
-    {
-      "name": "public.audit_log_immutable",
-      "return_type": "trigger",
-      "arguments": "",
-      "type": "FUNCTION"
-    },
     {
       "name": "public.set_limit",
       "return_type": "float4",
@@ -6862,13 +7292,79 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.audit_log_notify",
+      "name": "public.uuid_nil",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_dns",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_url",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_oid",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_ns_x500",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v1",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v1mc",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v3",
+      "return_type": "uuid",
+      "arguments": "namespace uuid, name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v4",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.uuid_generate_v5",
+      "return_type": "uuid",
+      "arguments": "namespace uuid, name text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.app_current_user_id",
+      "return_type": "uuid",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.audit_log_immutable",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_updated_at",
+      "name": "public.audit_log_notify",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
@@ -6880,8 +7376,8 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.app_current_user_id",
-      "return_type": "uuid",
+      "name": "public.set_updated_at",
+      "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
     }

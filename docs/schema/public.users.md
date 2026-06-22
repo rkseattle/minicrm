@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.system_settings](public.system_settings.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.leads](public.leads.md) [public.import_jobs](public.import_jobs.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.notes](public.notes.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.pipelines](public.pipelines.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
@@ -30,17 +30,19 @@
 | sso_subject | text |  | true |  |  | Stable external identity: SAML nameID or OIDC sub claim |
 | api_token_hash | text |  | true |  |  |  |
 | api_token_issued_at | timestamp with time zone |  | true |  |  |  |
+| scim_external_id | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| users_role_check | CHECK | CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'rep'::character varying, 'manager'::character varying, 'viewer'::character varying, 'service_account'::character varying])::text[]))) |
+| users_role_check | CHECK | CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('rep'::character varying)::text, ('manager'::character varying)::text, ('viewer'::character varying)::text, ('service_account'::character varying)::text]))) |
 | users_sso_provider_requires_subject | CHECK | CHECK (((sso_provider IS NULL) OR (sso_subject IS NOT NULL))) |
 | users_sso_subject_max_length | CHECK | CHECK (((sso_subject IS NULL) OR (length(sso_subject) <= 1024))) |
-| users_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'invited'::character varying, 'inactive'::character varying])::text[]))) |
+| users_status_check | CHECK | CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('invited'::character varying)::text, ('inactive'::character varying)::text]))) |
 | users_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | users_email_key | UNIQUE | UNIQUE (email) |
+| users_scim_external_id_key | UNIQUE | UNIQUE (scim_external_id) |
 
 ## Indexes
 
@@ -48,6 +50,7 @@
 | ---- | ---------- |
 | users_pkey | CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id) |
 | users_email_key | CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email) |
+| users_scim_external_id_key | CREATE UNIQUE INDEX users_scim_external_id_key ON public.users USING btree (scim_external_id) |
 | users_email_index | CREATE INDEX users_email_index ON public.users USING btree (email) |
 | users_password_reset_token_hash_idx | CREATE INDEX users_password_reset_token_hash_idx ON public.users USING btree (password_reset_token_hash) WHERE (password_reset_token_hash IS NOT NULL) |
 | users_sso_provider_sso_subject_unique | CREATE UNIQUE INDEX users_sso_provider_sso_subject_unique ON public.users USING btree (sso_provider, sso_subject) WHERE (sso_subject IS NOT NULL) |
@@ -64,33 +67,36 @@
 ```mermaid
 erDiagram
 
-"public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.system_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.accounts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.deals" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.activities" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.system_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.automation_rules" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT"
 "public.attachments" }o--o| "public.users" : "FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL"
-"public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.import_jobs" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.webhook_subscriptions" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.notes" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
 "public.notes" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id)"
+"public.webhook_subscriptions" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.import_jobs" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.gdpr_deletion_log" }o--|| "public.users" : "FOREIGN KEY (requested_by) REFERENCES users(id)"
-"public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.custom_reports" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.sales_sequences" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.sequence_enrollments" }o--o| "public.users" : "FOREIGN KEY (enrolled_by_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.org_visibility_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.user_custom_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.scim_tokens" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -119,24 +125,41 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
-"public.contacts" {
+"public.system_settings" {
+  text key ""
+  text value ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
+}
+"public.pipelines" {
   uuid id ""
-  varchar_255_ first_name ""
-  varchar_255_ last_name ""
-  varchar_255_ email ""
-  varchar_50_ phone ""
-  varchar_255_ title ""
-  varchar_255_ department ""
-  uuid owner_id FK ""
+  varchar_100_ name ""
+  boolean is_default ""
+  uuid created_by FK ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  uuid account_id FK ""
+}
+"public.leads" {
+  uuid id ""
+  text first_name ""
+  text last_name ""
+  text email ""
+  text phone ""
+  text company_name ""
+  text lead_source ""
+  text status ""
+  text disqualification_reason ""
+  text notes ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone converted_at ""
+  uuid converted_contact_id FK ""
+  uuid converted_account_id FK ""
+  uuid converted_deal_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
   boolean is_demo ""
-  uuid source_lead_id FK ""
-  varchar_500_ linkedin_url ""
-  varchar_500_ twitter_x_url ""
-  varchar_500_ other_url ""
   integer version ""
 }
 "public.accounts" {
@@ -152,6 +175,31 @@ erDiagram
   boolean is_demo ""
   varchar_20_ account_type ""
   uuid parent_account_id FK ""
+  integer version ""
+}
+"public.contacts" {
+  uuid id ""
+  varchar_255_ first_name ""
+  varchar_255_ last_name ""
+  varchar_255_ email ""
+  varchar_50_ phone ""
+  varchar_255_ title ""
+  varchar_255_ department ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  uuid account_id FK ""
+  boolean is_demo ""
+  uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
+  varchar_500_ linkedin_url ""
+  varchar_500_ twitter_x_url ""
+  varchar_500_ other_url ""
   integer version ""
 }
 "public.deals" {
@@ -192,12 +240,6 @@ erDiagram
   integer version ""
   jsonb metadata ""
 }
-"public.system_settings" {
-  text key ""
-  text value ""
-  timestamp_with_time_zone updated_at ""
-  uuid updated_by FK "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
-}
 "public.automation_rules" {
   uuid id ""
   varchar_255_ name ""
@@ -222,26 +264,29 @@ erDiagram
   uuid uploader_id FK ""
   timestamp_with_time_zone uploaded_at ""
 }
-"public.leads" {
+"public.notes" {
   uuid id ""
-  text first_name ""
-  text last_name ""
-  text email ""
-  text phone ""
-  text company_name ""
-  text lead_source ""
-  text status ""
-  text disqualification_reason ""
-  text notes ""
-  uuid owner_id FK ""
-  timestamp_with_time_zone converted_at ""
-  uuid converted_contact_id FK ""
-  uuid converted_account_id FK ""
-  uuid converted_deal_id FK ""
+  varchar_16_ entity_type ""
+  uuid entity_id ""
+  varchar_255_ title ""
+  text body ""
+  text body_text ""
+  varchar_8_ visibility ""
+  text__ tags ""
+  uuid created_by FK ""
+  uuid updated_by FK ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  boolean is_demo ""
-  integer version ""
+  timestamp_with_time_zone deleted_at ""
+}
+"public.webhook_subscriptions" {
+  uuid id ""
+  text url ""
+  text__ events ""
+  text secret_hash ""
+  varchar_16_ status ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
 }
 "public.import_jobs" {
   uuid id ""
@@ -259,29 +304,6 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
-"public.webhook_subscriptions" {
-  uuid id ""
-  text url ""
-  text__ events ""
-  text secret_hash ""
-  varchar_16_ status ""
-  uuid created_by FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.notes" {
-  uuid id ""
-  varchar_16_ entity_type ""
-  uuid entity_id ""
-  varchar_255_ title ""
-  text body ""
-  text body_text ""
-  varchar_8_ visibility ""
-  uuid created_by FK ""
-  uuid updated_by FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  timestamp_with_time_zone deleted_at ""
-}
 "public.gdpr_deletion_log" {
   uuid id ""
   text record_type ""
@@ -291,14 +313,6 @@ erDiagram
   timestamp_with_time_zone completed_at ""
   text__ erasure_scope ""
   text notes ""
-}
-"public.pipelines" {
-  uuid id ""
-  varchar_100_ name ""
-  boolean is_default ""
-  uuid created_by FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
 }
 "public.custom_reports" {
   uuid id ""
@@ -343,25 +357,12 @@ erDiagram
   uuid updated_by FK ""
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
+  timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
   timestamp_with_time_zone used_at ""
-}
-"public.ai_token_budgets" {
-  uuid id ""
-  uuid user_id FK ""
-  bigint monthly_limit ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.ai_token_usage" {
-  uuid user_id FK ""
-  character_7_ year_month ""
-  bigint input_tokens ""
-  bigint output_tokens ""
-  timestamp_with_time_zone updated_at ""
 }
 "public.ai_configuration" {
   boolean singleton ""
@@ -381,11 +382,26 @@ erDiagram
   uuid updated_by FK ""
   smallint api_key_key_version "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
 }
+"public.ai_token_budgets" {
+  uuid id ""
+  uuid user_id FK ""
+  bigint monthly_limit ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.ai_token_usage" {
+  uuid user_id FK ""
+  character_7_ year_month ""
+  bigint input_tokens ""
+  bigint output_tokens ""
+  timestamp_with_time_zone updated_at ""
+}
 "public.teams" {
   uuid id ""
   text name ""
   uuid manager_id FK ""
   uuid parent_team_id FK ""
+  text scim_group_id ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
@@ -403,6 +419,20 @@ erDiagram
 "public.user_custom_roles" {
   uuid user_id FK ""
   uuid role_id FK ""
+}
+"public.scim_tokens" {
+  uuid id ""
+  text token_hash ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone last_used_at ""
+}
+"public.feature_flag_beta_users" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 ```
 

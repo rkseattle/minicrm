@@ -20,16 +20,16 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | pipeline_stages_probability_check | CHECK | CHECK (((probability >= 0) AND (probability <= 100))) |
-| pipeline_stages_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | pipeline_stages_pipeline_id_fkey | FOREIGN KEY | FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE |
+| pipeline_stages_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | pipeline_stages_pkey | CREATE UNIQUE INDEX pipeline_stages_pkey ON public.pipeline_stages USING btree (id) |
-| pipeline_stages_pipeline_sort_order_unique | CREATE UNIQUE INDEX pipeline_stages_pipeline_sort_order_unique ON public.pipeline_stages USING btree (pipeline_id, sort_order) |
 | pipeline_stages_pipeline_name_lower_unique | CREATE UNIQUE INDEX pipeline_stages_pipeline_name_lower_unique ON public.pipeline_stages USING btree (pipeline_id, lower((name)::text)) |
+| pipeline_stages_pipeline_sort_order_unique | CREATE UNIQUE INDEX pipeline_stages_pipeline_sort_order_unique ON public.pipeline_stages USING btree (pipeline_id, sort_order) |
 
 ## Triggers
 

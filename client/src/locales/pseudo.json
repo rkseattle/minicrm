@@ -1719,7 +1719,20 @@
     "roles": {
       "admin": "[Àðmïñ]",
       "rep": "[Ŕéƥ]"
-    }
+    },
+    "scheduledBadge": "[Šçhéðùléð]",
+    "scheduledLabel": "[Šçhéðùléð ŧö éñàƀlé öñ {{date}}]",
+    "enableAt": "[Šçhéðùlé àùŧö-éñàƀlé]",
+    "enableAtClear": "[Çléàŗ šçhéðùlé]",
+    "enableAtPast": "[Šçhéðùlé ðàŧé mùšŧ ƀé ïñ ŧhé ƒùŧùŗé]",
+    "betaUsers": "[Béŧà Ùšéŗš]",
+    "betaUserCount_one": "[{{count}} ƀéŧà ùšéŗ]",
+    "betaUserCount_other": "[{{count}} ƀéŧà ùšéŗš]",
+    "betaUserAdd": "[Àðð ùšéŗ]",
+    "betaUserRemove": "[Ŕémövé]",
+    "betaUserSearch": "[Šéàŗçh ùšéŗš ƀÿ ñàmé öŗ émàïl]",
+    "betaUserEmpty": "[Ñö ùšéŗš éñŗölléð ïñ ƀéŧà.]",
+    "betaUserAlreadyEnrolled": "[Ùšéŗ ïš àlŗéàðÿ éñŗölléð ïñ ƀéŧà.]"
   },
   "visibilitySettings": {
     "tabLabel": "[Vïšïƀïlïŧÿ]",

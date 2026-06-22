@@ -2,7 +2,7 @@
 
 ## Description
 
-Assignment of custom roles to users (MINCRM-542). A user may hold multiple roles; effective capabilities are the union of all capabilities from all assigned roles. At least one built-in role row is inserted for every user by this migration; additional custom roles are additive.
+Assignment of custom roles to users (MINCRM-542). Effective capabilities are the union of all capabilities from all assigned roles.
 
 ## Columns
 
@@ -66,6 +66,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 "public.custom_roles" {
   uuid id ""
