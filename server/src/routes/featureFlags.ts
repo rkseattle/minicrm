@@ -1,5 +1,6 @@
 /**
- * Feature flag routes — all endpoints require authentication and admin role. (MINCRM-463)
+ * Feature flag routes — all endpoints require authentication and admin role.
+ * (MINCRM-463, MINCRM-490, MINCRM-492)
  */
 
 import { Router } from 'express';
@@ -13,6 +14,9 @@ import {
   listBetaUsersHandler,
   enrollBetaUserHandler,
   removeBetaUserHandler,
+  listUserOverridesHandler,
+  upsertUserOverrideHandler,
+  deleteUserOverrideHandler,
 } from '../controllers/featureFlagController.js';
 
 const router = Router();
@@ -262,6 +266,143 @@ router.delete(
   authenticate,
   requireRole('admin'),
   asyncHandler(removeBetaUserHandler),
+);
+
+// ── Per-user overrides (MINCRM-492) ────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/overrides:
+ *   get:
+ *     tags: [FeatureFlags]
+ *     operationId: listUserOverrides
+ *     summary: List per-user overrides for a flag
+ *     description: >
+ *       Returns all per-user forced overrides (force_enabled and force_disabled) for
+ *       the given flag, including user details, direction, reason, and date added.
+ *       These overrides are evaluated before all other targeting rules. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of per-user overrides
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/:key/overrides',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listUserOverridesHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/overrides/{userId}:
+ *   put:
+ *     tags: [FeatureFlags]
+ *     operationId: upsertUserOverride
+ *     summary: Upsert a per-user override for a flag
+ *     description: >
+ *       Forces a flag on (force_enabled) or off (force_disabled) for a specific user,
+ *       unconditionally overriding all other targeting rules including group gates,
+ *       beta enrollment, and rollout bucketing. If an override already exists for this
+ *       user+flag combination, it is replaced (upsert). Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [override]
+ *             properties:
+ *               override:
+ *                 type: string
+ *                 enum: [force_enabled, force_disabled]
+ *               reason:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Override upserted
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.put(
+  '/:key/overrides/:userId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(upsertUserOverrideHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/overrides/{userId}:
+ *   delete:
+ *     tags: [FeatureFlags]
+ *     operationId: deleteUserOverride
+ *     summary: Remove a per-user override for a flag
+ *     description: >
+ *       Removes the forced override for the given user. After removal, the user's
+ *       flag resolution returns to normal evaluation (beta → rollout → org-wide). Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Override removed
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete(
+  '/:key/overrides/:userId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(deleteUserOverrideHandler),
 );
 
 export default router;
