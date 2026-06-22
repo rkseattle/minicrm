@@ -1906,11 +1906,12 @@ export async function expectRoleCapabilityPanelVisible(
 export async function expectRoleCapabilityPanelNotVisible(
   roleId: string,
   context: AdminSettingsBehaviorContext,
-  timeout?: number,
+  timeout = 5_000,
 ): Promise<void> {
-  const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).roleCapabilityPanelLocator(roleId);
-  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+  // The capability panel is fully unmounted from the DOM when collapsed — resolve()
+  // would throw StrategyExhaustedError because there is nothing to probe. Use
+  // waitForAbsent to poll document.querySelector until the element is gone.
+  await context.page.waitForAbsent(`[data-testid="role-capability-panel-${roleId}"]`, timeout);
 }
 
 // ---------------------------------------------------------------------------

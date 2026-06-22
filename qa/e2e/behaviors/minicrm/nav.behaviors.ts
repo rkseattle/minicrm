@@ -503,10 +503,13 @@ export async function expectHamburgerDrawerVisible(context: NavBehaviorContext):
 }
 
 /** Asserts the hamburger nav drawer is not visible. */
-export async function expectHamburgerDrawerNotVisible(context: NavBehaviorContext): Promise<void> {
-  const { expect } = await import('@playwright/test');
-  const locator = await new NavPage(context).requireHamburgerDrawerLocator();
-  await expect(locator).not.toBeVisible();
+export async function expectHamburgerDrawerNotVisible(
+  context: NavBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // The hamburger drawer is fully unmounted from the DOM when closed — resolve()
+  // would throw StrategyExhaustedError. Use waitForAbsent to poll until gone.
+  await context.page.waitForAbsent('[data-testid="nav-hamburger-drawer"]', timeout);
 }
 
 /** Asserts the mobile nav drawer is visible. */
@@ -517,10 +520,13 @@ export async function expectMobileNavDrawerVisible(context: NavBehaviorContext):
 }
 
 /** Asserts the mobile nav drawer is not visible. */
-export async function expectMobileNavDrawerNotVisible(context: NavBehaviorContext): Promise<void> {
-  const { expect } = await import('@playwright/test');
-  const locator = await new NavPage(context).requireMobileNavDrawerLocator();
-  await expect(locator).not.toBeVisible();
+export async function expectMobileNavDrawerNotVisible(
+  context: NavBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // The mobile nav drawer is fully unmounted from the DOM when closed — resolve()
+  // would throw StrategyExhaustedError. Use waitForAbsent to poll until gone.
+  await context.page.waitForAbsent('[data-testid="mobile-nav-drawer"]', timeout);
 }
 
 /** Asserts the hamburger/mobile menu toggle button is visible. */
@@ -842,10 +848,11 @@ export async function expectNavLinkHasText(
   destination: string,
   text: string,
   context: NavBehaviorContext,
+  message?: string,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const locator = await new NavPage(context).navLinkLocator(layout, destination);
-  await expect(locator).toHaveText(text);
+  await expect(locator, message).toHaveText(text);
 }
 
 /**
@@ -869,10 +876,11 @@ export async function expectMobileNavLinkHasText(
   destination: string,
   text: string,
   context: NavBehaviorContext,
+  message?: string,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const locator = await new NavPage(context).mobileNavLinkLocator(destination);
-  await expect(locator).toHaveText(text);
+  await expect(locator, message).toHaveText(text);
 }
 
 /**

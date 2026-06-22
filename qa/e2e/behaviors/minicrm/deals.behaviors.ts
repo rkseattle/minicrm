@@ -612,9 +612,14 @@ export async function waitForPipelineBoardCloseDealModal(
   context: DealsBehaviorContext,
   timeout = 8_000,
 ): Promise<void> {
+  // waitForPresent polls document.querySelector before resolve() so we don't hit
+  // the 2s HealingLocator probe timeout while the modal is still mounting.
+  await context.page.waitForPresent('[data-testid="close-deal-modal"]', timeout);
   const board = new PipelineBoardPage(context);
   const locator = await board.closeDealModalLocator();
-  await locator?.waitFor({ state: 'visible', timeout });
+  if (locator) {
+    await locator.waitFor({ state: 'visible', timeout });
+  }
 }
 
 /**

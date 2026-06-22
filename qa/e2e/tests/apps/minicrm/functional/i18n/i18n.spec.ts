@@ -193,12 +193,11 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       const assertFrenchNavLabel = async (contextMsg: string) => {
         if (isMobile) await openMobileNav({ page });
         if (isMobile) {
-          await expectMobileNavLinkHasText('deals', dealsLabel, { page });
+          await expectMobileNavLinkHasText('deals', dealsLabel, { page }, contextMsg);
         } else {
-          await expectNavLinkHasText('top', 'deals', dealsLabel, { page });
+          await expectNavLinkHasText('top', 'deals', dealsLabel, { page }, contextMsg);
         }
         if (isMobile) await closeMobileNavViaToggle({ page });
-        void contextMsg; // contextMsg used implicitly via the assertion label above
       };
 
       // First check — UI should show French after the initial load.
