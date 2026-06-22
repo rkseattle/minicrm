@@ -1,7 +1,7 @@
 /**
  * Feature flag controller — request/response shaping only.
  * All business logic lives in featureFlagService.
- * (MINCRM-463)
+ * (MINCRM-463, MINCRM-490, MINCRM-492)
  */
 
 import type { Request, Response } from 'express';
@@ -12,11 +12,15 @@ import {
   getBetaUsersForFlag,
   enrollBetaUser,
   removeBetaUser,
+  listUserOverrides,
+  upsertUserOverride,
+  deleteUserOverride,
 } from '../services/featureFlagService.js';
 import { removeDemo } from '../services/demoService.js';
 import {
   updateFeatureFlagSchema,
   enrollBetaUserSchema,
+  upsertUserOverrideSchema,
   FEATURE_FLAG_KEYS,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { MyFeatureFlagsResponse } from '@minicrm/shared/schemas/featureFlagSchema.js';
@@ -197,6 +201,113 @@ export async function removeBetaUserHandler(req: Request, res: Response): Promis
       error: {
         code: 'BETA_USER_NOT_ENROLLED',
         message: `User is not enrolled in the beta for '${key}'`,
+      },
+    });
+    return;
+  }
+
+  res.status(204).send();
+}
+
+// ── Per-user overrides (MINCRM-492) ────────────────────────────────────────────
+
+/**
+ * GET /api/v1/admin/feature-flags/:key/overrides
+ * Returns all per-user overrides for this flag. Admin only.
+ */
+export async function listUserOverridesHandler(req: Request, res: Response): Promise<void> {
+  const key = req.params['key'] as string;
+  const overrides = await listUserOverrides(key);
+  res.json({ overrides });
+}
+
+/**
+ * PUT /api/v1/admin/feature-flags/:key/overrides/:userId
+ * Upserts a per-user override (force_enabled or force_disabled). Admin only.
+ * Body: { override: 'force_enabled' | 'force_disabled', reason?: string }
+ */
+export async function upsertUserOverrideHandler(req: Request, res: Response): Promise<void> {
+  const key = req.params['key'] as string;
+  const userId = req.params['userId'] as string;
+
+  if (!UUID_REGEX.test(userId)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
+    });
+    return;
+  }
+
+  const parsed = upsertUserOverrideSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
+      },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  let entry: Awaited<ReturnType<typeof upsertUserOverride>>;
+  try {
+    entry = await upsertUserOverride(
+      key,
+      userId,
+      parsed.data.override,
+      parsed.data.reason ?? null,
+      actor,
+    );
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'FEATURE_FLAG_NOT_FOUND') {
+      res.status(404).json({
+        error: {
+          code: 'FEATURE_FLAG_NOT_FOUND',
+          message: err instanceof Error ? err.message : 'Flag not found',
+        },
+      });
+      return;
+    }
+    if (code === 'USER_NOT_FOUND') {
+      res.status(404).json({
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: err instanceof Error ? err.message : 'User not found',
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+
+  res.json({ override: entry });
+}
+
+/**
+ * DELETE /api/v1/admin/feature-flags/:key/overrides/:userId
+ * Removes a per-user override. Admin only.
+ */
+export async function deleteUserOverrideHandler(req: Request, res: Response): Promise<void> {
+  const key = req.params['key'] as string;
+  const userId = req.params['userId'] as string;
+
+  if (!UUID_REGEX.test(userId)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  const removed = await deleteUserOverride(key, userId, actor);
+  if (!removed) {
+    res.status(404).json({
+      error: {
+        code: 'USER_OVERRIDE_NOT_FOUND',
+        message: `No override exists for this user on flag '${key}'`,
       },
     });
     return;
