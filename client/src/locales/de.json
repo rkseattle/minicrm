@@ -1904,8 +1904,10 @@
       "admin": "Admin",
       "rep": "Vertrieb"
     },
+    "onBadge": "An",
     "scheduledBadge": "Geplant",
     "scheduledLabel": "Automatische Aktivierung am {{date}}",
+    "scheduledFiredLabel": "Automatisch aktiviert am {{date}}",
     "enableAt": "Automatische Aktivierung planen",
     "enableAtClear": "Planung löschen",
     "enableAtPast": "Das Planungsdatum muss in der Zukunft liegen",

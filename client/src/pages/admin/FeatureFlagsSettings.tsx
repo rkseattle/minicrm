@@ -52,6 +52,11 @@ function formatEnableAt(iso: string): string {
   });
 }
 
+/** Returns true when an ISO enable_at string is in the future relative to a given timestamp. */
+function isEnableAtPending(enableAt: string, nowMs: number): boolean {
+  return new Date(enableAt).getTime() > nowMs;
+}
+
 /** Converts a UTC ISO string to the local datetime-local input value (YYYY-MM-DDTHH:mm). */
 function isoToDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -285,20 +290,35 @@ interface FlagRowProps {
   onRoleOverride: (flag: FeatureFlagRow, role: 'admin' | 'rep', value: boolean) => void;
   onEnableAtChange: (flag: FeatureFlagRow, isoValue: string | null) => void;
   isPending: boolean;
+  nowMs: number;
 }
 
-function FlagRow({ flag, onToggle, onRoleOverride, onEnableAtChange, isPending }: FlagRowProps) {
+function FlagRow({
+  flag,
+  onToggle,
+  onRoleOverride,
+  onEnableAtChange,
+  isPending,
+  nowMs,
+}: FlagRowProps) {
   const { t } = useTranslation();
   const [showBetaPanel, setShowBetaPanel] = useState(false);
   const supportsRoleOverrides = (ROLE_OVERRIDE_FLAG_KEYS as readonly string[]).includes(
     flag.flag_key,
   );
 
-  const isScheduled = !flag.enabled && flag.enable_at !== null;
+  // isPendingSchedule: enable_at is set and still in the future — flag not yet live.
+  // isScheduleFired: enable_at is set but already in the past — flag is effectively on
+  //   (the server evaluates it as enabled once the cache refreshes). Show "On" so admins
+  //   can tell the flag is already active. (MINCRM-488, fixes greptile P1)
+  const isPendingSchedule =
+    !flag.enabled && flag.enable_at !== null && isEnableAtPending(flag.enable_at, nowMs);
+  const isScheduleFired =
+    !flag.enabled && flag.enable_at !== null && !isEnableAtPending(flag.enable_at, nowMs);
 
   return (
     <div
-      className={`py-4 border-b border-gray-100 last:border-0 ${!flag.enabled && !isScheduled ? 'opacity-60' : ''}`}
+      className={`py-4 border-b border-gray-100 last:border-0 ${!flag.enabled && !isPendingSchedule && !isScheduleFired ? 'opacity-60' : ''}`}
       data-testid={`feature-flag-row-${flag.flag_key}`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -320,8 +340,8 @@ function FlagRow({ flag, onToggle, onRoleOverride, onEnableAtChange, isPending }
               </button>
             )}
 
-            {/* Scheduled badge — takes priority over Off badge */}
-            {isScheduled && flag.enable_at !== null && (
+            {/* Scheduled badge — future enable_at, flag not yet live */}
+            {isPendingSchedule && flag.enable_at !== null && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
                 data-testid={`feature-flag-badge-scheduled-${flag.flag_key}`}
@@ -331,8 +351,21 @@ function FlagRow({ flag, onToggle, onRoleOverride, onEnableAtChange, isPending }
               </span>
             )}
 
-            {/* Off badge — only when not scheduled */}
-            {!flag.enabled && !isScheduled && (
+            {/* On badge — schedule already fired; cache will reflect this within 60s */}
+            {isScheduleFired && flag.enable_at !== null && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
+                data-testid={`feature-flag-badge-on-${flag.flag_key}`}
+                title={t('featureFlags.scheduledFiredLabel', {
+                  date: formatEnableAt(flag.enable_at),
+                })}
+              >
+                {t('featureFlags.onBadge')}
+              </span>
+            )}
+
+            {/* Off badge — only when not scheduled and not fired */}
+            {!flag.enabled && !isPendingSchedule && !isScheduleFired && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500"
                 data-testid={`feature-flag-badge-off-${flag.flag_key}`}
@@ -344,10 +377,17 @@ function FlagRow({ flag, onToggle, onRoleOverride, onEnableAtChange, isPending }
 
           <p className="text-xs text-gray-500 mt-0.5 break-words">{flag.description}</p>
 
-          {/* Scheduled enable date/time display */}
-          {isScheduled && flag.enable_at !== null && (
+          {/* Scheduled enable date/time display — future only */}
+          {isPendingSchedule && flag.enable_at !== null && (
             <p className="text-xs text-amber-600 mt-0.5">
               {t('featureFlags.scheduledLabel', { date: formatEnableAt(flag.enable_at) })}
+            </p>
+          )}
+
+          {/* Fired schedule display — past enable_at */}
+          {isScheduleFired && flag.enable_at !== null && (
+            <p className="text-xs text-green-600 mt-0.5">
+              {t('featureFlags.scheduledFiredLabel', { date: formatEnableAt(flag.enable_at) })}
             </p>
           )}
 
@@ -508,11 +548,7 @@ export default function FeatureFlagsSettings() {
   }
 
   function handleEnableAtChange(flag: FeatureFlagRow, isoValue: string | null) {
-    setPendingKey(flag.flag_key);
-    mutation.mutate({
-      key: flag.flag_key,
-      patch: { enabled: flag.enabled, enable_at: isoValue },
-    });
+    setConfirmPending({ flag, patch: { enabled: flag.enabled, enable_at: isoValue } });
   }
 
   function handleConfirm() {
@@ -527,6 +563,9 @@ export default function FeatureFlagsSettings() {
   }
 
   const flags = data?.flags ?? [];
+  // Initialized once on mount via useState — useState initializers are exempt from the purity
+  // rule. Used to classify enable_at as pending (future) vs. fired (past). (MINCRM-488)
+  const [nowMs] = useState<number>(() => Date.now());
 
   const byCategory = FEATURE_FLAG_CATEGORIES.reduce<Record<FeatureFlagCategory, FeatureFlagRow[]>>(
     (acc, cat) => {
@@ -571,9 +610,13 @@ export default function FeatureFlagsSettings() {
         <ConfirmDialog
           flagLabel={confirmPending.flag.label}
           enabling={
-            'enabled' in confirmPending.patch
-              ? (confirmPending.patch.enabled as boolean)
-              : confirmPending.flag.enabled
+            // enable_at being set (non-null) means scheduling an enable — treat as enabling.
+            // enable_at: null means clearing the schedule — treat as the current enabled state.
+            'enable_at' in confirmPending.patch
+              ? confirmPending.patch.enable_at !== null
+              : 'enabled' in confirmPending.patch
+                ? (confirmPending.patch.enabled as boolean)
+                : confirmPending.flag.enabled
           }
           activeUsers={confirmPending.flag.active_user_count}
           onConfirm={handleConfirm}
@@ -612,6 +655,7 @@ export default function FeatureFlagsSettings() {
                     onRoleOverride={handleRoleOverride}
                     onEnableAtChange={handleEnableAtChange}
                     isPending={pendingKey === flag.flag_key}
+                    nowMs={nowMs}
                   />
                 ))}
               </div>

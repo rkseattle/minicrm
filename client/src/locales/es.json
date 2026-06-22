@@ -1904,8 +1904,10 @@
       "admin": "Admin",
       "rep": "Representante"
     },
+    "onBadge": "Activado",
     "scheduledBadge": "Programado",
     "scheduledLabel": "Programado para activarse el {{date}}",
+    "scheduledFiredLabel": "Activado automáticamente el {{date}}",
     "enableAt": "Programar activación automática",
     "enableAtClear": "Borrar programación",
     "enableAtPast": "La fecha programada debe ser en el futuro",

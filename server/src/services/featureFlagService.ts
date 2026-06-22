@@ -496,14 +496,13 @@ export async function enrollBetaUser(
 ): Promise<BetaUserEntry> {
   const client: PoolClient = await pool.connect();
   try {
-    await client.query('BEGIN');
-
+    // Pre-flight checks outside the transaction — avoids a double-ROLLBACK when
+    // the outer catch unconditionally rolls back after an inner throw.
     const flagRow = await client.query<{ label: string }>(
       `SELECT label FROM feature_flags WHERE flag_key = $1`,
       [flagKey],
     );
     if (!flagRow.rows[0]) {
-      await client.query('ROLLBACK');
       throw Object.assign(new Error(`Feature flag '${flagKey}' not found`), {
         code: 'FEATURE_FLAG_NOT_FOUND',
       });
@@ -514,11 +513,12 @@ export async function enrollBetaUser(
       [userId],
     );
     if (!userRow.rows[0]) {
-      await client.query('ROLLBACK');
       throw Object.assign(new Error(`User '${userId}' not found`), {
         code: 'USER_NOT_FOUND',
       });
     }
+
+    await client.query('BEGIN');
 
     const insertResult = await client.query<{ id: string; added_at: Date }>(
       `INSERT INTO feature_flag_beta_users (flag_key, user_id, added_by)
