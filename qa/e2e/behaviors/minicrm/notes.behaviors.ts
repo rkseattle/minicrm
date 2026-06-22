@@ -375,10 +375,15 @@ export async function waitForNotesSection(context: NotesBehaviorContext): Promis
 export async function waitForNoteCard(
   noteId: string,
   context: NotesBehaviorContext,
-  timeout?: number,
+  timeout = 8_000,
 ): Promise<void> {
+  // waitForPresent polls document.querySelector before resolve() so we don't hit
+  // the 2s HealingLocator probe timeout while the note card is still mounting.
+  await context.page.waitForPresent(`[data-testid="note-card-${noteId}"]`, timeout);
   const locator = await new NotesPage(context).noteCardLocator(noteId);
-  await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
+  if (locator) {
+    await locator.waitFor({ state: 'visible', timeout });
+  }
 }
 
 /**
@@ -388,12 +393,11 @@ export async function waitForNoteCard(
 export async function waitForNoteCardDetached(
   noteId: string,
   context: NotesBehaviorContext,
-  timeout?: number,
+  timeout = 8_000,
 ): Promise<void> {
-  const locator = await new NotesPage(context).noteCardLocator(noteId);
-  await locator
-    ?.waitFor({ state: 'detached', ...(timeout !== undefined ? { timeout } : {}) })
-    .catch(() => undefined);
+  // The note card is fully removed from the DOM after deletion — use waitForAbsent
+  // to poll document.querySelector rather than resolve() which would throw.
+  await context.page.waitForAbsent(`[data-testid="note-card-${noteId}"]`, timeout);
 }
 
 /** Asserts the note card for the given ID is visible. */

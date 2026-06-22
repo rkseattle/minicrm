@@ -258,13 +258,19 @@ export class NavPage {
    */
   async navLinkLocator(layout: string, destination: string) {
     const testId = `nav-${layout}-${destination}`;
+    // Both strategies target the same testId. The css fallback avoids the old
+    // role("link", {name: /destination/i}) fallback which could match unrelated
+    // page-content links and cause navigateViaNavLink to click the wrong element
+    // (returning linkClicked:true but landing on the wrong URL).
+    // fallbackTimeout of 8s allows admin-only links (users, automation, settings)
+    // time to render after the auth query confirms role on slow CI machines.
     return this.page
       .locate(
         [
           { type: 'testId', value: testId },
-          { type: 'role', value: 'link', options: { name: new RegExp(destination, 'i') } },
+          { type: 'css', value: `[data-testid="${testId}"]` },
         ],
-        { intent: `${layout} nav link for ${destination}` },
+        { intent: `${layout} nav link for ${destination}`, fallbackTimeout: 8_000 },
       )
       .resolve();
   }
