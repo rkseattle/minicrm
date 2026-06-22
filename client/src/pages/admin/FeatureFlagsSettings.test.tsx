@@ -336,7 +336,7 @@ describe('FeatureFlagsSettings', () => {
     });
   });
 
-  it('sends enable_at: null when Clear schedule is clicked', async () => {
+  it('sends enable_at: null when Clear schedule is clicked and confirmed', async () => {
     const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
     let patchBody: Record<string, unknown> | null = null;
 
@@ -363,10 +363,42 @@ describe('FeatureFlagsSettings', () => {
 
     fireEvent.click(screen.getByTestId('feature-flag-enable-at-clear-mobile_access'));
 
+    // enable_at changes now route through the confirm dialog
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-confirm-dialog')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('feature-flag-confirm-ok'));
+
     await waitFor(() => {
       expect(patchBody).not.toBeNull();
     });
     expect(patchBody!['enable_at']).toBeNull();
+  });
+
+  it('shows Fired badge and On state when enable_at is in the past', async () => {
+    const pastDate = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'mobile_access' ? { ...f, enabled: false, enable_at: pastDate } : f,
+          ),
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-badge-on-mobile_access')).toBeInTheDocument();
+    });
+
+    // Scheduled badge must NOT appear for a fired schedule
+    expect(
+      screen.queryByTestId('feature-flag-badge-scheduled-mobile_access'),
+    ).not.toBeInTheDocument();
+    // Off badge must NOT appear
+    expect(screen.queryByTestId('feature-flag-badge-off-mobile_access')).not.toBeInTheDocument();
   });
 
   // ── Beta users panel (MINCRM-489) ────────────────────────────────────────────

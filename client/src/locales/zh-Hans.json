@@ -1904,8 +1904,10 @@
       "admin": "管理员",
       "rep": "销售代表"
     },
+    "onBadge": "已开启",
     "scheduledBadge": "已计划",
     "scheduledLabel": "计划于 {{date}} 启用",
+    "scheduledFiredLabel": "已于 {{date}} 自动启用",
     "enableAt": "设置自动启用时间",
     "enableAtClear": "清除计划",
     "enableAtPast": "计划日期必须是未来的时间",

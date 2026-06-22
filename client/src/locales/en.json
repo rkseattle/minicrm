@@ -1904,8 +1904,10 @@
       "admin": "Admin",
       "rep": "Rep"
     },
+    "onBadge": "On",
     "scheduledBadge": "Scheduled",
     "scheduledLabel": "Scheduled to enable on {{date}}",
+    "scheduledFiredLabel": "Auto-enabled on {{date}}",
     "enableAt": "Schedule auto-enable",
     "enableAtClear": "Clear schedule",
     "enableAtPast": "Schedule date must be in the future",

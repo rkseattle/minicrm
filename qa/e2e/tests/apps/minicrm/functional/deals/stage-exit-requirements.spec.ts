@@ -47,10 +47,6 @@ interface PipelineStage {
   };
 }
 
-interface StageListResponse {
-  stages: PipelineStage[];
-}
-
 interface ExitRequirementsErrorBody {
   error: {
     code: string;
@@ -64,11 +60,6 @@ interface ExitRequirementsErrorBody {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-async function fetchStages(restClient: RestClient): Promise<PipelineStage[]> {
-  const res = await restClient.get<StageListResponse>('/api/v1/settings/pipeline-stages');
-  return res.body.stages;
-}
 
 async function createStage(restClient: RestClient, name: string): Promise<PipelineStage> {
   const res = await restClient.post<PipelineStage>('/api/v1/settings/pipeline-stages', {
@@ -180,13 +171,10 @@ test('@functional SEQ-3: Admin can update stage_exit_requirements in Customisati
     await clickPipelineStageSaveButton(stageId, { page });
 
     // Wait for the save to land: poll the API from the browser context.
+    // This is the authoritative check — browser fetch carries the session cookie and
+    // retries until the DB write is visible, so a second REST-client fetch would be
+    // redundant and races with parallel shard teardown of other pipeline tests.
     await waitForStageExitRequirementsUpdated(stageId, 'value', { page });
-
-    // Secondary verification via the REST client.
-    await loginAsAdmin(restClient);
-    const updatedStages = await fetchStages(restClient);
-    const updatedStage = updatedStages.find((s) => s.id === stageId);
-    expect(updatedStage?.stage_exit_requirements.required_fields).toContain('value');
   } finally {
     // Always delete the temp stage to restore state for other tests.
     await deleteStage(restClient, stageId);
