@@ -31,15 +31,16 @@ import {
   getOnboardingStatus,
   resetUserOnboardingViaApi,
   resetPipelineStagesReviewed,
-  getSetupChecklistWidgetLocator,
+  expectSetupChecklistWidgetVisible,
   dismissSetupChecklist,
-  getSetupChecklistPillLocator,
+  expectSetupChecklistPillVisible,
   clickSetupChecklistCollapse,
   navigateToDashboardAndWait,
   waitForDashboardHeading,
   isSetupChecklistWidgetHidden,
   isSetupChecklistPillHidden,
-  getSetupChecklistTaskListLocator,
+  expectSetupChecklistTaskListVisible,
+  getSetupChecklistTaskListHtml,
 } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   inviteUserViaApi,
@@ -101,8 +102,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       // wait for the heading and allDone=true the 3 s auto-dismiss may have already
       // fired before we look. The 10 s timeout gives enough time for the initial
       // React render without extending past the auto-dismiss window. (MINCRM-410)
-      const widget = await getSetupChecklistWidgetLocator({ page });
-      await expect(widget).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistWidgetVisible({ page }, 10_000);
     } finally {
       await loginAsAdmin(restClient);
       await setOnboardingCompleted(restClient, true);
@@ -134,8 +134,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      const widget = await getSetupChecklistWidgetLocator({ page });
-      await expect(widget).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistWidgetVisible({ page }, 10_000);
 
       await dismissSetupChecklist({ page });
 
@@ -162,13 +161,11 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await setOnboardingCompleted(restClient, false);
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
-      const widget = await getSetupChecklistWidgetLocator({ page });
-      await expect(widget).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistWidgetVisible({ page }, 10_000);
 
       await clickSetupChecklistCollapse({ page });
 
-      const pill = await getSetupChecklistPillLocator({ page });
-      await expect(pill).toBeVisible({ timeout: 5_000 });
+      await expectSetupChecklistPillVisible({ page }, 5_000);
       expect(await isSetupChecklistWidgetHidden({ page })).toBe(true);
     } finally {
       await loginAsAdmin(restClient);
@@ -185,14 +182,12 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       await resetPipelineStagesReviewed(restClient);
       await login({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD! }, { page });
 
-      await getSetupChecklistWidgetLocator({ page });
+      await expectSetupChecklistWidgetVisible({ page });
 
-      const taskList = await getSetupChecklistTaskListLocator({ page });
-
-      await expect(taskList).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistTaskListVisible({ page }, 10_000);
 
       // Count li elements via innerHTML — SafeLocator.locator() is forbidden
-      const html = await taskList.innerHTML();
+      const html = await getSetupChecklistTaskListHtml({ page });
       const liCount = (html.match(/<li/g) ?? []).length;
       expect(liCount).toBe(5);
     } finally {
@@ -231,15 +226,12 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       // Rep's onboarding_completed starts false by default — no API reset needed.
       await login({ email: repEmail, password: repPassword }, { page });
 
-      const widget = await getSetupChecklistWidgetLocator({ page });
-      await expect(widget).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistWidgetVisible({ page }, 10_000);
 
-      const taskList = await getSetupChecklistTaskListLocator({ page });
-
-      await expect(taskList).toBeVisible({ timeout: 10_000 });
+      await expectSetupChecklistTaskListVisible({ page }, 10_000);
 
       // Count li elements via innerHTML — SafeLocator.locator() is forbidden
-      const html = await taskList.innerHTML();
+      const html = await getSetupChecklistTaskListHtml({ page });
       const liCount = (html.match(/<li/g) ?? []).length;
       expect(liCount, 'rep checklist should show exactly four tasks').toBe(4);
     } finally {

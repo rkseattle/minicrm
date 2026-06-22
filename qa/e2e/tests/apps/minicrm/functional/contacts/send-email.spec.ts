@@ -19,9 +19,10 @@ import { createTestContact, createTestRep, navigateToContact } from '@apps/minic
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
 import {
-  getContactSendEmailButtonLocator,
-  getContactSendEmailModalLocator,
-  getContactSendEmailSuccessLocator,
+  waitForContactSendEmailButton,
+  isContactSendEmailButtonVisible,
+  waitForContactSendEmailModalDetached,
+  waitForContactSendEmailSuccessAndGetText,
   sendEmailFromContact,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 
@@ -57,8 +58,7 @@ test(
     await navigateToContact(page, contact.id);
 
     // Send Email button should be visible for a contact with an email address
-    const sendEmailButton = await getContactSendEmailButtonLocator({ page });
-    await sendEmailButton.waitFor({ state: 'visible', timeout: 10_000 });
+    await waitForContactSendEmailButton({ page }, 10_000);
 
     // Open the compose modal, fill subject/body, and submit
     await sendEmailFromContact(
@@ -67,20 +67,14 @@ test(
       { page },
     );
 
-    // sendEmailFromContact clicks open, fills, and submits; get the modal locator
-    // after submission to assert it auto-closes.
-    const modal = await getContactSendEmailModalLocator({ page });
-
     // Success message appears; must say "sent to" not "logged" — confirms SMTP delivered.
-    const successMsg = await getContactSendEmailSuccessLocator({ page });
-    await successMsg.waitFor({ state: 'visible', timeout: 10_000 });
-    const successText = (await successMsg.textContent()) ?? '';
+    const successText = await waitForContactSendEmailSuccessAndGetText({ page }, 10_000);
     expect(successText, 'success message should confirm SMTP delivery, not log fallback').toContain(
       'Email sent to',
     );
 
     // Modal should auto-close
-    await modal.waitFor({ state: 'detached', timeout: 5_000 });
+    await waitForContactSendEmailModalDetached({ page }, 5_000);
 
     // Poll Mailhog — the server sends email asynchronously after responding
     const messages = await mailhog.waitForMessagesTo(contact.email);
@@ -119,8 +113,10 @@ test(
 
     await navigateToContact(page, contact.id);
 
-    const button = await getContactSendEmailButtonLocator({ page });
-    await button.waitFor({ state: 'visible', timeout: 10_000 });
-    expect(await button.isVisible(), 'Send Email button should be visible').toBe(true);
+    await waitForContactSendEmailButton({ page }, 10_000);
+    expect(
+      await isContactSendEmailButtonVisible({ page }),
+      'Send Email button should be visible',
+    ).toBe(true);
   },
 );

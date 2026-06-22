@@ -46,13 +46,14 @@ import {
 } from '@behaviors/minicrm/leads.behaviors.js';
 import {
   navigateToAuditLog,
-  getAuditLogHeadingLocator,
-  getAuditLogListLocator,
-  getAuditLogPaginationLocator,
-  getAuditLogPaginationPrevLocator,
+  expectAuditLogHeadingVisible,
+  expectAuditLogListVisible,
+  expectAuditLogPaginationVisible,
+  expectAuditLogPaginationPrevDisabled,
   collapseAuditLogFilters,
-  getAuditLogRowButtonLocator,
-  getAuditLogDetailPanelLocator,
+  isAuditLogRowButtonVisible,
+  clickAuditLogRowButton,
+  expectAuditLogDetailPanelVisible,
 } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { listAuditEvents } from '@apps/minicrm/grpc/auditGrpcClient.js';
 import { GrpcClientError } from '@framework/clients/grpc-client.js';
@@ -93,13 +94,13 @@ test('@functional F12-AL1: Perform a tracked action — audit log shows entry wi
   // Navigate to audit log
 
   await navigateToAuditLog({ page });
-  await expect(await getAuditLogHeadingLocator({ page })).toBeVisible();
+  await expectAuditLogHeadingVisible({ page });
 
   // Filter by record type = contact so the list is manageable
   await filterAuditLog('contact', { page });
 
   // The audit list should show at least one entry
-  await expect(await getAuditLogListLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAuditLogListVisible({ page }, 10_000);
 
   // Verify via gRPC that the entry exists
   const { entries, total } = await getAuditLog(restClient, grpcClient, { recordType: 'contact' });
@@ -126,12 +127,12 @@ test('@functional F12-AL2: Audit log — filter by record type shows only that t
   void account;
 
   await navigateToAuditLog({ page });
-  await expect(await getAuditLogHeadingLocator({ page })).toBeVisible();
+  await expectAuditLogHeadingVisible({ page });
 
   // Filter to account only
   await filterAuditLog('account', { page });
 
-  await expect(await getAuditLogListLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAuditLogListVisible({ page }, 10_000);
 
   // Check via gRPC that the filtered results only contain account entries
   const { entries } = await getAuditLog(restClient, grpcClient, { recordType: 'account' });
@@ -185,23 +186,21 @@ test('@functional F12-AL3: Audit log — field-level change detail recorded for 
   // Navigate to the audit log page and verify the entry is renderable in the UI
 
   await navigateToAuditLog({ page });
-  await expect(await getAuditLogHeadingLocator({ page })).toBeVisible();
+  await expectAuditLogHeadingVisible({ page });
 
   // Filter by contact and apply
   await filterAuditLog('contact', { page });
-  await expect(await getAuditLogListLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAuditLogListVisible({ page }, 10_000);
 
   // If the specific row is on the first page, expand it and verify the detail section.
   // Collapse the filter panel first — on mobile its open body overlaps the data rows
   // and intercepts pointer events, causing the row-button click to time out.
   await collapseAuditLogFilters({ page });
 
-  const expandButton = await getAuditLogRowButtonLocator(firstNameEntry.id, { page });
-  const isVisible = await expandButton.isVisible().catch(() => false);
+  const isVisible = await isAuditLogRowButtonVisible(firstNameEntry.id, { page });
   if (isVisible) {
-    await expandButton.click();
-    const detailPanel = await getAuditLogDetailPanelLocator(firstNameEntry.id, { page });
-    await expect(detailPanel).toBeVisible({ timeout: 3_000 });
+    await clickAuditLogRowButton(firstNameEntry.id, { page });
+    await expectAuditLogDetailPanelVisible(firstNameEntry.id, { page }, 3_000);
   }
 });
 
@@ -217,15 +216,13 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
   void contact;
 
   await navigateToAuditLog({ page });
-  await expect(await getAuditLogHeadingLocator({ page })).toBeVisible();
+  await expectAuditLogHeadingVisible({ page });
 
   // Pagination bar should always be visible once data loads
-  const pagination = await getAuditLogPaginationLocator({ page });
-  await expect(pagination).toBeVisible({ timeout: 10_000 });
+  await expectAuditLogPaginationVisible({ page }, 10_000);
 
   // Prev is disabled on first page
-  const prevButton = await getAuditLogPaginationPrevLocator({ page });
-  await expect(prevButton).toBeDisabled();
+  await expectAuditLogPaginationPrevDisabled({ page });
 });
 
 test('@functional F12-AL5: Rep accessing audit log via gRPC is blocked with PERMISSION_DENIED', async ({

@@ -36,10 +36,11 @@ import {
 } from '@behaviors/minicrm/users.behaviors.js';
 import {
   navigateToAdminSettings,
-  getVisibilitySettingsPanelLocator,
-  getVisibilityContactsSelectLocator,
-  getVisibilitySaveButtonLocator,
-  getVisibilitySaveSuccessLocator,
+  expectVisibilitySettingsPanelVisible,
+  expectVisibilityContactsSelectVisible,
+  selectVisibilityContacts,
+  clickVisibilitySaveButton,
+  expectVisibilitySaveSuccessVisible,
   resetVisibilitySettings,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createContactViaApi, listContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
@@ -74,11 +75,9 @@ test('@functional @serial F-VIS1: admin can navigate to the visibility tab and s
 
   await navigateToAdminSettings({ page }, 'users');
 
-  const panel = await getVisibilitySettingsPanelLocator({ page });
-  await expect(panel).toBeVisible({ timeout: 10_000 });
+  await expectVisibilitySettingsPanelVisible({ page }, 10_000);
 
-  const contactsSelect = await getVisibilityContactsSelectLocator({ page });
-  await expect(contactsSelect).toBeVisible();
+  await expectVisibilityContactsSelectVisible({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -95,16 +94,13 @@ test('@functional @serial F-VIS2: admin can change a visibility policy and see t
 
   await navigateToAdminSettings({ page }, 'users');
 
-  const contactsSelect = await getVisibilityContactsSelectLocator({ page });
-  await expect(contactsSelect).toBeVisible({ timeout: 10_000 });
+  await expectVisibilityContactsSelectVisible({ page }, 10_000);
 
-  await contactsSelect.selectOption('private');
+  await selectVisibilityContacts('private', { page });
 
-  const saveButton = await getVisibilitySaveButtonLocator({ page });
-  await saveButton.click();
+  await clickVisibilitySaveButton({ page });
 
-  const successMessage = await getVisibilitySaveSuccessLocator({ page });
-  await expect(successMessage).toBeVisible({ timeout: 5_000 });
+  await expectVisibilitySaveSuccessVisible({ page }, 5_000);
 });
 
 // ---------------------------------------------------------------------------

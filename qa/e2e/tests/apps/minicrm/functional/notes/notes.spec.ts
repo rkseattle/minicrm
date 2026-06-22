@@ -55,11 +55,13 @@ import {
 } from '@behaviors/minicrm/index.js';
 import { loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
-  getNotesSectionLocator,
-  getNoteCardLocator,
-  getMaskedNoteCardLocator,
-  getNoteTitleLocator,
-  getNoteBodyLocator,
+  waitForNotesSection,
+  waitForNoteCard,
+  waitForNoteCardDetached,
+  waitForMaskedNoteCard,
+  expectNoteTitleText,
+  isNoteTeamVisible,
+  isNoteBodyAbsent,
 } from '@behaviors/minicrm/notes.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -92,7 +94,7 @@ test('@functional F14-C1: Create a team note on a contact — note appears in UI
 
   await navigateToContact(page, contact.id);
 
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
   const result = await createNoteViaUI(
     { page },
@@ -128,7 +130,7 @@ test('@functional F14-C2: Create a note with tags — tags are persisted', async
 
   await navigateToContact(page, contact.id);
 
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
   await createNoteViaUI(
     { page },
@@ -167,11 +169,10 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
 
   await navigateToContact(page, contact.id);
 
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
   // Wait for the note card to appear
-  const card = await getNoteCardLocator(noteId, { page });
-  await card?.waitFor({ state: 'visible', timeout: 8_000 });
+  await waitForNoteCard(noteId, { page }, 8_000);
 
   const editResult = await editNoteViaUI(
     { page },
@@ -184,9 +185,7 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   expect(editResult.saved, 'composer should close after edit save').toBe(true);
 
   // The card should now show the updated title
-  const titleEl = await getNoteTitleLocator(noteId, { page });
-  await titleEl.waitFor({ state: 'visible', timeout: 5_000 });
-  await expect(titleEl).toHaveText('Updated title F14-E1');
+  await expectNoteTitleText(noteId, 'Updated title F14-E1', { page }, 5_000);
 
   // Verify via API
   const updatedNote = await getNoteById(restClient, contact.id, noteId);
@@ -216,17 +215,16 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
 
   await navigateToContact(page, contact.id);
 
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
-  const card = await getNoteCardLocator(noteId, { page });
-  await card?.waitFor({ state: 'visible', timeout: 8_000 });
+  await waitForNoteCard(noteId, { page }, 8_000);
 
   const deleteResult = await deleteNoteViaUI({ page }, noteId);
   expect(deleteResult.confirmed, 'delete modal should close after confirm').toBe(true);
 
   // Wait for the note list to refetch after the delete — the card is removed when the
   // invalidateQueries refetch completes, which is async relative to modal close.
-  await card?.waitFor({ state: 'detached', timeout: 8_000 }).catch(() => undefined);
+  await waitForNoteCardDetached(noteId, { page }, 8_000);
 
   // Card should no longer be visible
   const stillVisible = await noteCardIsVisible({ page }, noteId);
@@ -283,18 +281,19 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
 
     await navigateToContact(page, contact.id);
 
-    await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+    await waitForNotesSection({ page });
 
     // Wait for the masked placeholder (rep B cannot see the body)
-    const maskedCard = await getMaskedNoteCardLocator(noteId, { page });
-    await maskedCard?.waitFor({ state: 'visible', timeout: 8_000 });
+    await waitForMaskedNoteCard(noteId, { page }, 8_000);
 
     const masked = await maskedNoteCardIsVisible({ page }, noteId);
     expect(masked, 'rep B should see a masked placeholder for rep A private note').toBe(true);
 
     // The actual note body element must not exist
-    const bodyEl = await getNoteBodyLocator(noteId, { page });
-    expect(bodyEl, 'note body should not be accessible to rep B').toBeNull();
+    expect(
+      await isNoteBodyAbsent(noteId, { page }),
+      'note body should not be accessible to rep B',
+    ).toBe(true);
   } finally {
     // Restore admin session so subsequent tests are not affected
     await loginAsAdmin(restClient);
@@ -387,7 +386,7 @@ test('@functional F14-C3: Create a team note on a deal — note appears in the A
   await navigateToDeal(page, deal.id);
 
   // Wait for the notes section to load before interacting with it
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
   // Create the note using the notes section on the deal detail page
   const result = await createNoteViaUI(
@@ -444,15 +443,11 @@ test('@functional F14-V2: Admin changes note visibility from private to team; no
   );
   await navigateToContact(page, contact.id);
 
-  await (await getNotesSectionLocator({ page })).waitFor({ state: 'visible' });
+  await waitForNotesSection({ page });
 
-  const noteCard = await getNoteCardLocator(note.id, { page });
-  const maskedCard = await getMaskedNoteCardLocator(note.id, { page });
-
-  const isNoteVisible = noteCard ? await noteCard.isVisible().catch(() => false) : false;
-  const isMasked = maskedCard ? await maskedCard.isVisible().catch(() => false) : false;
-
-  expect(isNoteVisible || !isMasked, 'team note must not be masked in the UI').toBe(true);
+  expect(await isNoteTeamVisible(note.id, { page }), 'team note must not be masked in the UI').toBe(
+    true,
+  );
 });
 
 // ---------------------------------------------------------------------------

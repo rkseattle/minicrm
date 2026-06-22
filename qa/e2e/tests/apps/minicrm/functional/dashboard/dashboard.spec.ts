@@ -23,11 +23,11 @@ import {
 } from '@apps/minicrm/helpers.js';
 import {
   navigateToPath,
-  getDashboardStatCardsLocator,
-  getRecentActivityFeedLocator,
-  getDashboardStatCardLocator,
-  getDashboardStatCardValueLocator,
-  getRecentActivityEntryLocator,
+  waitForDashboardStatCards,
+  expectRecentActivityFeedVisible,
+  expectDashboardStatCardVisible,
+  getDashboardStatCardValue,
+  isRecentActivityEntryVisible,
   countElements,
 } from '@behaviors/minicrm/layout.behaviors.js';
 
@@ -62,11 +62,8 @@ test(
   async ({ page }) => {
     await navigateToPath('/', { page });
 
-    const statCardsRegion = await getDashboardStatCardsLocator({ page });
-    await expect(statCardsRegion).toBeVisible({ timeout: 10_000 });
-
-    const activityFeed = await getRecentActivityFeedLocator({ page });
-    await expect(activityFeed).toBeVisible({ timeout: 10_000 });
+    await waitForDashboardStatCards({ page });
+    await expectRecentActivityFeedVisible({ page }, 10_000);
   },
 );
 
@@ -91,11 +88,9 @@ test(
 
     await navigateToDashboard(page);
 
-    const pipelineValueCard = await getDashboardStatCardLocator('pipeline-value', { page });
-    await expect(pipelineValueCard).toBeVisible({ timeout: 10_000 });
+    await expectDashboardStatCardVisible('pipeline-value', { page }, 10_000);
 
-    const pipelineValueEl = await getDashboardStatCardValueLocator('pipeline-value', { page });
-    const text = await pipelineValueEl.textContent();
+    const text = await getDashboardStatCardValue('pipeline-value', { page });
     // The value includes currency formatting but must not be "0" or empty
     expect(text?.trim(), 'pipeline value must be non-empty').toBeTruthy();
   },
@@ -124,11 +119,9 @@ test(
 
     await navigateToDashboard(page);
 
-    const overdueCard = await getDashboardStatCardLocator('overdue-tasks', { page });
-    await expect(overdueCard).toBeVisible({ timeout: 10_000 });
+    await expectDashboardStatCardVisible('overdue-tasks', { page }, 10_000);
 
-    const overdueValueEl = await getDashboardStatCardValueLocator('overdue-tasks', { page });
-    const text = await overdueValueEl.textContent();
+    const text = await getDashboardStatCardValue('overdue-tasks', { page });
     const count = parseInt(text?.trim() ?? '0', 10);
     expect(
       count,
@@ -158,11 +151,9 @@ test(
 
     await navigateToDashboard(page);
 
-    const activityFeed = await getRecentActivityFeedLocator({ page });
-    await expect(activityFeed).toBeVisible({ timeout: 10_000 });
+    await expectRecentActivityFeedVisible({ page }, 10_000);
 
-    const activityEntry = await getRecentActivityEntryLocator(activity.id, { page });
-    const isVisible = await activityEntry.isVisible().catch(() => false);
+    const isVisible = await isRecentActivityEntryVisible(activity.id, { page });
 
     if (!isVisible) {
       const listItemCount = await countElements(
@@ -176,8 +167,6 @@ test(
       expect(listItemCount, 'recent activity list must contain at least one entry').toBeGreaterThan(
         0,
       );
-    } else {
-      await expect(activityEntry).toBeVisible();
     }
   },
 );

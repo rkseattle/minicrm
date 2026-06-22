@@ -1084,11 +1084,12 @@ export async function navigateToAdminSettingsGeneralPage(
   await context.page.goto('/admin/settings?tab=security', { waitUntil: 'networkidle' });
 }
 
-/**
- * Returns a resolved locator for the MFA enforcement checkbox in admin settings.
- */
-export async function getMfaRequiredCheckboxLocator(context: AuthBehaviorContext) {
-  return context.page
+/** Waits for the MFA enforcement checkbox to become visible, with an optional timeout (ms). */
+export async function waitForMfaRequiredCheckbox(
+  context: AuthBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'mfa-required-checkbox' },
@@ -1097,13 +1098,43 @@ export async function getMfaRequiredCheckboxLocator(context: AuthBehaviorContext
       { intent: 'MFA enforcement checkbox in admin general settings' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
-/**
- * Returns a resolved locator for the MFA enforcement success message.
- */
-export async function getMfaRequiredSuccessLocator(context: AuthBehaviorContext) {
-  return context.page
+/** Returns true when the MFA enforcement checkbox is currently checked. */
+export async function isMfaRequiredChecked(context: AuthBehaviorContext): Promise<boolean> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-required-checkbox' },
+        { type: 'css', value: '[data-testid="mfa-required-checkbox"]' },
+      ],
+      { intent: 'MFA enforcement checkbox in admin general settings' },
+    )
+    .resolve();
+  return locator.isChecked();
+}
+
+/** Clicks the MFA enforcement checkbox in admin settings. */
+export async function clickMfaRequiredCheckbox(context: AuthBehaviorContext): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-required-checkbox' },
+        { type: 'css', value: '[data-testid="mfa-required-checkbox"]' },
+      ],
+      { intent: 'MFA enforcement checkbox in admin general settings' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Waits for the MFA enforcement success message to become visible, with an optional timeout (ms). */
+export async function waitForMfaRequiredSuccess(
+  context: AuthBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'mfa-required-success' },
@@ -1112,4 +1143,23 @@ export async function getMfaRequiredSuccessLocator(context: AuthBehaviorContext)
       { intent: 'success confirmation after toggling MFA enforcement setting' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
+}
+
+/** Asserts the MFA enforcement success message is visible, with an optional timeout (ms). */
+export async function expectMfaRequiredSuccessVisible(
+  context: AuthBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'mfa-required-success' },
+        { type: 'role', value: 'status' },
+      ],
+      { intent: 'success confirmation after toggling MFA enforcement setting' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

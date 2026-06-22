@@ -562,7 +562,15 @@ export async function expectMobileLanguageSelectVisible(
   await expect(locator).toBeVisible();
 }
 
-/** Returns a resolved locator for the desktop language select in the nav header. */
+/**
+ * Returns a resolved locator for the desktop language select in the nav header.
+ *
+ * Intentionally kept as a raw-locator accessor (MINCRM-564 exception): this locator
+ * is passed as an argument to selectLanguageAndWaitForPatch, which requires a
+ * SafeLocator handle to drive both the select interaction and the waitForResponse
+ * racing. Splitting it into separate behaviors would lose the ability to race the
+ * click with the response wait in the same Promise.all call.
+ */
 export async function getDesktopLanguageSelectLocator(context: NavBehaviorContext) {
   const navPage = new NavPage(context);
   return navPage.desktopLanguageSelectLocator();

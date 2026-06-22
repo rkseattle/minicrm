@@ -32,8 +32,8 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 test.use({ storageState: { cookies: [], origins: [] } });
 import {
   navigateToAutomation,
-  getAutomationHeadingLocator,
-  getAutomationPaginationLocator,
+  expectAutomationHeadingVisible,
+  expectAutomationPaginationVisible,
 } from '@behaviors/minicrm/setup.behaviors.js';
 import { createAutomationRule } from '@behaviors/minicrm/setup.behaviors.js';
 import { getActivities, getActivityById } from '@behaviors/minicrm/activities.behaviors.js';
@@ -283,7 +283,6 @@ test('@functional F13-PAG1: Automation rules page — pagination controls always
 
   await navigateToAutomation({ page });
 
-  await expect(await getAutomationHeadingLocator({ page })).toBeVisible();
-  const automationPagination = await getAutomationPaginationLocator({ page });
-  await expect(automationPagination).toBeVisible({ timeout: 10_000 });
+  await expectAutomationHeadingVisible({ page });
+  await expectAutomationPaginationVisible({ page }, 10_000);
 });

@@ -26,8 +26,10 @@ import {
   enableMfa,
   disableMfa,
   navigateToAdminSettingsGeneralPage,
-  getMfaRequiredCheckboxLocator,
-  getMfaRequiredSuccessLocator,
+  waitForMfaRequiredCheckbox,
+  isMfaRequiredChecked,
+  clickMfaRequiredCheckbox,
+  waitForMfaRequiredSuccess,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestUser } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -189,28 +191,29 @@ test('@functional F8-A1: admin can toggle org-wide MFA enforcement in General Se
   try {
     await navigateToAdminSettingsGeneralPage({ page });
 
-    const checkbox = await getMfaRequiredCheckboxLocator({ page });
-    await checkbox.waitFor({ state: 'visible', timeout: 10_000 });
+    await waitForMfaRequiredCheckbox({ page }, 10_000);
 
     // Ensure we start from a known-false state so the test is deterministic.
-    if (await checkbox.isChecked()) {
-      await checkbox.click();
-      const successMsg = await getMfaRequiredSuccessLocator({ page });
-      await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
+    if (await isMfaRequiredChecked({ page })) {
+      await clickMfaRequiredCheckbox({ page });
+      await waitForMfaRequiredSuccess({ page }, 5_000);
     }
 
     // Toggle on.
-    await checkbox.click();
-    const successMsg = await getMfaRequiredSuccessLocator({ page });
-    await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
-    expect(await checkbox.isChecked(), 'checkbox should be enabled after first click').toBe(true);
+    await clickMfaRequiredCheckbox({ page });
+    await waitForMfaRequiredSuccess({ page }, 5_000);
+    expect(
+      await isMfaRequiredChecked({ page }),
+      'checkbox should be enabled after first click',
+    ).toBe(true);
 
     // Toggle off.
-    await checkbox.click();
-    await successMsg.waitFor({ state: 'visible', timeout: 5_000 });
-    expect(await checkbox.isChecked(), 'checkbox should be disabled after second click').toBe(
-      false,
-    );
+    await clickMfaRequiredCheckbox({ page });
+    await waitForMfaRequiredSuccess({ page }, 5_000);
+    expect(
+      await isMfaRequiredChecked({ page }),
+      'checkbox should be disabled after second click',
+    ).toBe(false);
   } finally {
     // Always reset via API — UI-based restore is unreliable across dirty runs.
     await resetMfaRequired(restClient);

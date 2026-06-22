@@ -305,10 +305,12 @@ export async function getDealTags(restClient: RestClient, dealId: string): Promi
 // so spec files never import @pages/* directly. (MINCRM-367)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns a resolved locator for the pagination container on the admin tags page.
- */
-export async function getAdminTagsPaginationLocator(context: TagsBehaviorContext) {
-  const adminTagsPage = new AdminTagsPage(context);
-  return adminTagsPage.paginationLocator();
+/** Asserts the pagination container on the admin tags page is visible, with an optional timeout (ms). */
+export async function expectAdminTagsPaginationVisible(
+  context: TagsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminTagsPage(context).paginationLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

@@ -41,8 +41,8 @@ import {
   getAccountById,
   searchAccountsViaApi,
   listAccountsViaApi,
-  getAccountLinkedContactLocator,
-  getAccountLinkedContactsEmptyLocator,
+  expectAccountLinkedContactVisible,
+  expectAccountLinkedContactsEmptyVisible,
   noAlertExists,
   isLinkedContactAbsent,
 } from '@behaviors/minicrm/accounts.behaviors.js';
@@ -369,11 +369,7 @@ test('@functional F3-A1: linked contacts appear on account detail page', async (
 
   // The linked contacts list should contain the contact.
 
-  const linkedContactLocator = await getAccountLinkedContactLocator(contact.id, { page });
-  await expect(
-    linkedContactLocator,
-    'linked contact should be visible on account detail',
-  ).toBeVisible();
+  await expectAccountLinkedContactVisible(contact.id, { page });
 });
 
 test('@functional F3-A2: account with zero contacts shows empty contacts section, not an error', async ({
@@ -389,8 +385,7 @@ test('@functional F3-A2: account with zero contacts shows empty contacts section
 
   // Empty state should be visible, no error.
 
-  const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
-  await expect(emptyLocator, 'empty contacts message should be visible').toBeVisible();
+  await expectAccountLinkedContactsEmptyVisible({ page });
 
   expect(await noAlertExists({ page }), 'no error alerts should be present').toBe(true);
 });
@@ -415,8 +410,7 @@ test('@functional F3-A3: unlinking contact from contact side is reflected on acc
 
   // After unlinking, the linked contacts list should be empty.
 
-  const emptyLocator = await getAccountLinkedContactsEmptyLocator({ page });
-  await expect(emptyLocator, 'empty contacts message should be visible after unlink').toBeVisible();
+  await expectAccountLinkedContactsEmptyVisible({ page });
 
   expect(
     await isLinkedContactAbsent(contact.id, { page }),

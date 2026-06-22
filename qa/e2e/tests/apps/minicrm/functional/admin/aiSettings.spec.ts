@@ -28,17 +28,26 @@ import { createTestAdmin, createTestRep } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
-  getAiSettingsPanelLocator,
-  getAiMasterToggleLocator,
-  getAiToggleConfirmDialogLocator,
-  getAiToggleConfirmButtonLocator,
-  getAiToggleCancelButtonLocator,
-  getAiDpaCheckboxLocator,
-  getAiDpaWarningBannerLocator,
-  getAiDataPostureBadgeLocator,
-  getAiModelSelectLocator,
-  getAiTestConnectionButtonLocator,
-  getAiTestConnectionResultLocator,
+  expectAiSettingsPanelVisible,
+  expectAiMasterToggleVisible,
+  clickAiMasterToggle,
+  expectAiMasterToggleUnchecked,
+  expectAiMasterToggleChecked,
+  expectAiToggleConfirmDialogVisible,
+  expectAiToggleConfirmDialogNotVisible,
+  clickAiToggleConfirmButton,
+  clickAiToggleCancelButton,
+  expectAiDpaCheckboxVisible,
+  expectAiDpaCheckboxNotVisible,
+  clickAiDpaCheckbox,
+  expectAiDpaWarningBannerVisible,
+  expectAiDpaWarningBannerNotVisible,
+  expectAiDataPostureBadgeVisible,
+  expectAiModelSelectVisible,
+  getAiModelOptionCount,
+  expectAiTestConnectionButtonVisible,
+  clickAiTestConnectionButton,
+  expectAiTestConnectionResultVisible,
   resetAiSettings,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
@@ -72,11 +81,8 @@ test('@functional F-AI1: admin can navigate to the AI tab and see the AI setting
 
   await navigateToAdminSettings({ page }, 'ai');
 
-  const panel = await getAiSettingsPanelLocator({ page });
-  await expect(panel).toBeVisible({ timeout: 10_000 });
-
-  const toggle = await getAiMasterToggleLocator({ page });
-  await expect(toggle).toBeVisible();
+  await expectAiSettingsPanelVisible({ page }, 10_000);
+  await expectAiMasterToggleVisible({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -92,23 +98,19 @@ test('@functional F-AI2: clicking the master toggle shows a confirmation dialog 
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const toggle = await getAiMasterToggleLocator({ page });
-  await toggle.click();
+  await clickAiMasterToggle({ page });
 
-  const dialog = await getAiToggleConfirmDialogLocator({ page });
-  await expect(dialog).toBeVisible({ timeout: 5_000 });
+  await expectAiToggleConfirmDialogVisible({ page }, 5_000);
 
   // Cancel dismisses the dialog without changing the toggle state.
-  const cancelButton = await getAiToggleCancelButtonLocator({ page });
-  await cancelButton.click();
+  await clickAiToggleCancelButton({ page });
 
-  await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+  await expectAiToggleConfirmDialogNotVisible({ page }, 5_000);
 
   // Toggle should still show disabled (aria-checked=false) after cancel.
-  const refreshedToggle = await getAiMasterToggleLocator({ page });
-  await expect(refreshedToggle).toHaveAttribute('aria-checked', 'false');
+  await expectAiMasterToggleUnchecked({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -124,24 +126,20 @@ test('@functional F-AI3: confirming the toggle dialog enables AI and updates tog
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const toggle = await getAiMasterToggleLocator({ page });
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  await toggle.click();
+  await expectAiMasterToggleUnchecked({ page });
+  await clickAiMasterToggle({ page });
 
-  const dialog = await getAiToggleConfirmDialogLocator({ page });
-  await expect(dialog).toBeVisible({ timeout: 5_000 });
+  await expectAiToggleConfirmDialogVisible({ page }, 5_000);
 
-  const confirmButton = await getAiToggleConfirmButtonLocator({ page });
-  await confirmButton.click();
+  await clickAiToggleConfirmButton({ page });
 
   // Dialog closes after confirmation.
-  await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+  await expectAiToggleConfirmDialogNotVisible({ page }, 5_000);
 
   // Toggle should now reflect enabled state.
-  const refreshedToggle = await getAiMasterToggleLocator({ page });
-  await expect(refreshedToggle).toHaveAttribute('aria-checked', 'true', { timeout: 8_000 });
+  await expectAiMasterToggleChecked({ page }, 8_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -157,10 +155,9 @@ test('@functional F-AI4: DPA warning banner is visible when DPA has not been ack
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const banner = await getAiDpaWarningBannerLocator({ page });
-  await expect(banner).toBeVisible({ timeout: 5_000 });
+  await expectAiDpaWarningBannerVisible({ page }, 5_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -176,26 +173,22 @@ test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
   // Click the DPA checkbox to acknowledge — fires a PATCH and invalidates the
   // AI config query, causing the checkbox and warning banner to disappear.
   // Using the UI instead of a pre-navigation REST call avoids a --workers=2
   // race where afterEach from a concurrent test resets acknowledged:false
   // between our POST and the page.goto().
-  const checkbox = await getAiDpaCheckboxLocator({ page });
-  await expect(checkbox).toBeVisible({ timeout: 5_000 });
-  await checkbox.click();
+  await expectAiDpaCheckboxVisible({ page }, 5_000);
+  await clickAiDpaCheckbox({ page });
 
   // After clicking, the query invalidates and re-renders — checkbox should
   // disappear (the acknowledged state renders static text instead).
-  await expect(checkbox).not.toBeVisible({ timeout: 10_000 });
+  await expectAiDpaCheckboxNotVisible({ page }, 10_000);
 
   // Warning banner should not be visible when DPA is acknowledged.
-  const banner = await getAiDpaWarningBannerLocator({ page }).catch(() => null);
-  if (banner) {
-    await expect(banner).not.toBeVisible({ timeout: 5_000 });
-  }
+  await expectAiDpaWarningBannerNotVisible({ page }, 5_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -211,10 +204,9 @@ test('@functional F-AI6: data posture badge is visible on the AI settings page',
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const badge = await getAiDataPostureBadgeLocator({ page });
-  await expect(badge).toBeVisible({ timeout: 5_000 });
+  await expectAiDataPostureBadgeVisible({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -230,16 +222,12 @@ test('@functional F-AI7: model selector is present and lists available models', 
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const modelSelect = await getAiModelSelectLocator({ page });
-  await expect(modelSelect).toBeVisible({ timeout: 5_000 });
+  await expectAiModelSelectVisible({ page }, 5_000);
 
-  // The select should have at least one option; cast via unknown to avoid dom-lib dependency.
-  const optionCount = await modelSelect.evaluate(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (el: Element) => (el as unknown as any).options.length as number,
-  );
+  // The select should have at least one option.
+  const optionCount = await getAiModelOptionCount({ page });
   expect(optionCount).toBeGreaterThan(0);
 });
 
@@ -256,16 +244,14 @@ test('@functional F-AI8: Test Connection button is visible and shows a result on
   await loginViaBrowser(admin.email, admin.password, { page });
 
   await navigateToAdminSettings({ page }, 'ai');
-  await expect(await getAiSettingsPanelLocator({ page })).toBeVisible({ timeout: 10_000 });
+  await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  const button = await getAiTestConnectionButtonLocator({ page });
-  await expect(button).toBeVisible({ timeout: 5_000 });
-  await button.click();
+  await expectAiTestConnectionButtonVisible({ page }, 5_000);
+  await clickAiTestConnectionButton({ page });
 
   // After clicking, a result message should appear (success or failure — we do
   // not have a valid API key in the E2E environment, so it will report failure).
-  const result = await getAiTestConnectionResultLocator({ page });
-  await expect(result).toBeVisible({ timeout: 15_000 });
+  await expectAiTestConnectionResultVisible({ page });
 });
 
 // ---------------------------------------------------------------------------

@@ -68,12 +68,12 @@ import {
 } from '@behaviors/minicrm/deals.behaviors.js';
 import { expectContactEditButtonVisible } from '@behaviors/minicrm/contacts.behaviors.js';
 import {
-  getReportsWinLossHeadingLocator,
-  getReportsStatCardsLocator,
+  expectReportsWinLossHeadingVisible,
+  expectReportsStatCardsVisible,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import {
-  getAdminSettingsHeadingLocator,
-  getAdminSettingsSaveLocator,
+  expectAdminSettingsHeadingVisible,
+  expectAdminSettingsSaveVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { setNavLayoutViaAPI, openHamburgerMenu } from '@behaviors/minicrm/nav.behaviors.js';
 import { createLeadViaApi } from '@behaviors/minicrm/leads.behaviors.js';
@@ -401,12 +401,10 @@ test.describe('Core Layout', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToPath('/reports', { page });
 
-      const reportHeading = await getReportsWinLossHeadingLocator({ page });
-      await reportHeading.waitFor({ state: 'visible' });
+      await expectReportsWinLossHeadingVisible({ page });
 
       // Confirm stat cards are rendered before snapshotting.
-      const statCards = await getReportsStatCardsLocator({ page });
-      await statCards.waitFor({ state: 'visible' });
+      await expectReportsStatCardsVisible({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('win-loss-report.png', { mask: masks });
@@ -430,12 +428,10 @@ test.describe('Admin', () => {
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToPath('/admin/settings?tab=workspace', { page });
 
-      const settingsHeading = await getAdminSettingsHeadingLocator({ page });
-      await settingsHeading.waitFor({ state: 'visible' });
+      await expectAdminSettingsHeadingVisible({ page });
 
       // Wait for the workspace tab panel content to finish loading.
-      const saveButton = await getAdminSettingsSaveLocator({ page });
-      await saveButton.waitFor({ state: 'visible' });
+      await expectAdminSettingsSaveVisible({ page });
 
       const masks = await resolveTimestampMasks({ page });
       await page.checkScreenshot('admin-settings-general.png', { mask: masks });

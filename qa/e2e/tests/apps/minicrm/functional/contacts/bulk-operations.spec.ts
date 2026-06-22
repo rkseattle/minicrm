@@ -27,7 +27,7 @@ import {
   bulkReassignContacts,
   bulkDeleteContacts,
   getContactById,
-  getContactsBulkActionBarLocator,
+  waitForContactsBulkActionBar,
   isBulkActionBarHidden,
   type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
@@ -99,7 +99,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   await clickBulkCheckbox(c2.id, { page });
 
   // Bulk action bar should be visible.
-  await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
+  await waitForContactsBulkActionBar({ page });
 
   await bulkReassignContacts(newOwner.id, newOwner.name, { page });
 
@@ -153,7 +153,7 @@ test('@functional F2-BK2: select multiple contacts → bulk delete → contacts 
   await waitForBulkCheckbox(c2.id, { page });
   await clickBulkCheckbox(c2.id, { page });
 
-  await expect(await getContactsBulkActionBarLocator({ page })).toBeVisible();
+  await waitForContactsBulkActionBar({ page });
 
   await bulkDeleteContacts({ page }, false, [c1.id, c2.id]);
 

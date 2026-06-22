@@ -31,8 +31,8 @@ import {
   navigateToContactDetail,
   getContactById,
   performGdprErasure,
-  getContactNameHeadingLocator,
-  getContactEmailFieldLocator,
+  expectContactNameContainsText,
+  getContactEmailFieldText,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getRecordAuditLog } from '@behaviors/minicrm/notes.behaviors.js';
 
@@ -65,11 +65,9 @@ test(
 
     await performGdprErasure(CONFIRM_WORD, { page });
 
-    const nameEl = await getContactNameHeadingLocator({ page });
-    await expect(nameEl).toContainText('[GDPR deleted]');
+    await expectContactNameContainsText('[GDPR deleted]', { page });
 
-    const emailEl = await getContactEmailFieldLocator({ page });
-    const emailText = (await emailEl.textContent()) ?? '';
+    const emailText = await getContactEmailFieldText({ page });
     expect(emailText, 'erased email must use the gdpr.invalid sentinel domain').toMatch(
       /gdpr-deleted-.+@gdpr\.invalid/,
     );

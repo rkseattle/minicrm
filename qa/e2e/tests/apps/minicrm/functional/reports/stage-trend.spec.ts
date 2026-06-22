@@ -19,11 +19,12 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
-  getReportsLoadingLocator,
-  getReportsStageTrendTableLocator,
-  getReportsStageTrendEmptyLocator,
-  getReportsDaysSelectLocator,
   navigateToStageTrendReport,
+  waitForReportsLoadingHidden,
+  isReportsStageTrendTableVisible,
+  isReportsStageTrendEmptyVisible,
+  selectReportsDays,
+  expectReportsDaysSelectHasValue,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
@@ -49,14 +50,9 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
   tableVisible: boolean;
   emptyVisible: boolean;
 }> {
-  const loadingEl = await getReportsLoadingLocator({ page });
-  await loadingEl?.waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => null);
-
-  const tableEl = await getReportsStageTrendTableLocator({ page });
-  const emptyEl = await getReportsStageTrendEmptyLocator({ page });
-
-  const tableVisible = (await tableEl?.isVisible().catch(() => false)) ?? false;
-  const emptyVisible = (await emptyEl?.isVisible().catch(() => false)) ?? false;
+  await waitForReportsLoadingHidden({ page }, 15_000);
+  const tableVisible = await isReportsStageTrendTableVisible({ page });
+  const emptyVisible = await isReportsStageTrendEmptyVisible({ page });
   return { tableVisible, emptyVisible };
 }
 
@@ -86,9 +82,8 @@ test('stage trend report: changing date range to 60 days re-fetches and still sh
   await waitForReportLoaded(page);
 
   // Switch to 60-day window
-  const daysSelect = await getReportsDaysSelectLocator({ page });
-  await daysSelect.selectOption('60');
-  await expect(daysSelect).toHaveValue('60');
+  await selectReportsDays('60', { page });
+  await expectReportsDaysSelectHasValue('60', { page });
 
   // Wait for the new fetch to complete
   const { tableVisible, emptyVisible } = await waitForReportLoaded(page);
@@ -103,7 +98,6 @@ test('stage trend report: changing date range to 90 days updates the select @fun
 }) => {
   await navigateToStageTrendReport({ page });
 
-  const daysSelect = await getReportsDaysSelectLocator({ page });
-  await daysSelect.selectOption('90');
-  await expect(daysSelect).toHaveValue('90');
+  await selectReportsDays('90', { page });
+  await expectReportsDaysSelectHasValue('90', { page });
 });

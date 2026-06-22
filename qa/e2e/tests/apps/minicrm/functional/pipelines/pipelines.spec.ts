@@ -26,20 +26,21 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
-  getPipelineAddButtonLocator,
-  getNewPipelineNameInputLocator,
-  getCreatePipelineSubmitLocator,
-  getPipelinesFeedbackLocator,
-  getPipelineEditButtonLocator,
-  getPipelineEditInputLocator,
-  getPipelineSaveButtonLocator,
-  getPipelineDeleteButtonLocator,
-  getPipelineDeleteConfirmLocator,
-  getPipelineDeleteConfirmButtonLocator,
-  getPipelineStagesPipelineSelectorLocator,
-  getPipelineStageRowLocator,
-  getPipelineBoardSelectorLocator,
-  getPipelineBoardContainerLocator,
+  clickPipelineAddButton,
+  fillNewPipelineName,
+  clickCreatePipelineSubmit,
+  expectPipelinesFeedbackVisible,
+  clickPipelineEditButton,
+  fillPipelineEditInput,
+  clickPipelineSaveButton,
+  clickPipelineDeleteButton,
+  waitForPipelineDeleteConfirm,
+  clickPipelineDeleteConfirmButton,
+  expectPipelineDeleteConfirmContainsText,
+  selectPipelineStagesPipeline,
+  expectPipelineStageRowVisible,
+  selectPipelineBoardPipeline,
+  expectPipelineBoardContainerVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { navigateToPipelineBoard, createDealViaApi } from '@behaviors/minicrm/deals.behaviors.js';
 import { createTestAccount, createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
@@ -89,17 +90,13 @@ test(
 
     await navigateToAdminSettings({ page }, 'pipelines');
 
-    const addButton = await getPipelineAddButtonLocator({ page });
-    await addButton.click();
+    await clickPipelineAddButton({ page });
 
-    const nameInput = await getNewPipelineNameInputLocator({ page });
-    await nameInput.fill(pipelineName);
+    await fillNewPipelineName(pipelineName, { page });
 
-    const submitButton = await getCreatePipelineSubmitLocator({ page });
-    await submitButton.click();
+    await clickCreatePipelineSubmit({ page });
 
-    const feedback = await getPipelinesFeedbackLocator({ page });
-    await feedback.waitFor({ state: 'visible' });
+    await expectPipelinesFeedbackVisible({ page });
 
     // Pipeline appears in the list (via API verification)
     const pipelines = await listPipelinesViaApi(restClient);
@@ -130,17 +127,13 @@ test(
 
     await navigateToAdminSettings({ page }, 'pipelines');
 
-    const editButton = await getPipelineEditButtonLocator(pipeline.id, { page });
-    await editButton.click();
+    await clickPipelineEditButton(pipeline.id, { page });
 
-    const editInput = await getPipelineEditInputLocator(pipeline.id, { page });
-    await editInput.fill(renamedName);
+    await fillPipelineEditInput(pipeline.id, renamedName, { page });
 
-    const saveButton = await getPipelineSaveButtonLocator(pipeline.id, { page });
-    await saveButton.click();
+    await clickPipelineSaveButton(pipeline.id, { page });
 
-    const feedback = await getPipelinesFeedbackLocator({ page });
-    await feedback.waitFor({ state: 'visible' });
+    await expectPipelinesFeedbackVisible({ page });
 
     // Verify via API
     const pipelines = await listPipelinesViaApi(restClient);
@@ -163,17 +156,13 @@ test(
 
     await navigateToAdminSettings({ page }, 'pipelines');
 
-    const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
-    await deleteButton.click();
+    await clickPipelineDeleteButton(pipeline.id, { page });
 
-    const confirmDialog = await getPipelineDeleteConfirmLocator({ page });
-    await confirmDialog.waitFor({ state: 'visible' });
+    await waitForPipelineDeleteConfirm('visible', { page });
 
-    const confirmButton = await getPipelineDeleteConfirmButtonLocator({ page });
-    await confirmButton.click();
+    await clickPipelineDeleteConfirmButton({ page });
 
-    const feedback = await getPipelinesFeedbackLocator({ page });
-    await feedback.waitFor({ state: 'visible' });
+    await expectPipelinesFeedbackVisible({ page });
 
     // Verify deleted via API
     const pipelines = await listPipelinesViaApi(restClient);
@@ -204,11 +193,9 @@ test(
     // Switch to the new pipeline in settings and verify stage appears
     await navigateToAdminSettings({ page }, 'pipelines');
 
-    const pipelineSelector = await getPipelineStagesPipelineSelectorLocator({ page });
-    await pipelineSelector.selectOption(pipeline.id);
+    await selectPipelineStagesPipeline(pipeline.id, { page });
 
-    const stageRow = await getPipelineStageRowLocator(stageId, { page });
-    await stageRow.waitFor({ state: 'visible' });
+    await expectPipelineStageRowVisible(stageId, { page });
   },
 );
 
@@ -272,13 +259,9 @@ test(
 
     await navigateToPipelineBoard({ page });
 
-    const selector = await getPipelineBoardSelectorLocator({ page });
-    await selector.waitFor({ state: 'visible' });
+    await selectPipelineBoardPipeline(pipeline.id, { page });
 
-    await selector.selectOption(pipeline.id);
-
-    const board = await getPipelineBoardContainerLocator({ page });
-    await board.waitFor({ state: 'visible' });
+    await expectPipelineBoardContainerVisible({ page });
   },
 );
 
@@ -317,16 +300,13 @@ test(
 
     await navigateToAdminSettings({ page }, 'pipelines');
 
-    const deleteButton = await getPipelineDeleteButtonLocator(pipeline.id, { page });
-    await deleteButton.click();
+    await clickPipelineDeleteButton(pipeline.id, { page });
 
-    const confirmDialog = await getPipelineDeleteConfirmLocator({ page });
-    await confirmDialog.waitFor({ state: 'visible' });
+    await waitForPipelineDeleteConfirm('visible', { page });
 
-    const confirmButton = await getPipelineDeleteConfirmButtonLocator({ page });
-    await confirmButton.click();
+    await clickPipelineDeleteConfirmButton({ page });
 
-    // confirmDialog re-resolves same container showing the blocked-by-deals error message
-    await expect(confirmDialog).toContainText(/deal/i);
+    // The confirm panel re-renders with a blocked-by-deals error message
+    await expectPipelineDeleteConfirmContainsText(/deal/i, { page });
   },
 );

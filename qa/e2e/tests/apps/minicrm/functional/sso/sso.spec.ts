@@ -30,17 +30,20 @@ import { reloadCurrentPage } from '@behaviors/minicrm/nav.behaviors.js';
 import {
   ensureSystemDefaults,
   navigateToAdminSettings,
-  getSsoSectionLocator,
-  getSsoProtocolSelectLocator,
-  getSsoIdpMetadataUrlInputLocator,
-  getSsoEntityIdInputLocator,
-  getSsoSaveButtonLocator,
-  getSsoEnabledBadgeLocator,
-  getSsoDisableButtonLocator,
-  getSsoDisableConfirmButtonLocator,
-  getSsoSaveSuccessLocator,
+  expectSsoSectionVisible,
+  selectSsoProtocol,
+  fillSsoIdpMetadataUrl,
+  fillSsoEntityId,
+  clickSsoSaveButton,
+  expectSsoEnabledBadgeVisible,
+  expectSsoEnabledBadgeNotVisible,
+  clickSsoDisableButton,
+  expectSsoDisableConfirmVisible,
+  clickSsoDisableConfirmButton,
+  expectSsoSaveSuccessVisible,
   navigateToLoginPageForSso as navigateToLoginPage,
-  getSsoLoginButtonLocator,
+  expectSsoLoginButtonVisible,
+  expectSsoLoginButtonNotVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 // Use fresh browser context for each test — SSO tests must verify the login
@@ -79,32 +82,23 @@ test('admin can configure OIDC SSO and see the enabled badge @functional @serial
   await navigateToAdminSettings({ page }, 'security');
 
   // Wait for the SSO section to load
-  const ssoSection = await getSsoSectionLocator({ page });
-  await expect(ssoSection).toBeVisible({ timeout: 10_000 });
+  await expectSsoSectionVisible({ page });
 
   // Select OIDC protocol (default is OIDC so this just verifies the selector)
-  const protocolSelect = await getSsoProtocolSelectLocator({ page });
-  await protocolSelect.selectOption('oidc');
+  await selectSsoProtocol('oidc', { page });
 
   // Fill in the IdP metadata URL and client ID
-  const metadataUrlInput = await getSsoIdpMetadataUrlInputLocator({ page });
-  await metadataUrlInput.fill(OIDC_METADATA_URL);
+  await fillSsoIdpMetadataUrl(OIDC_METADATA_URL, { page });
+  await fillSsoEntityId(OIDC_CLIENT_ID, { page });
 
-  const entityIdInput = await getSsoEntityIdInputLocator({ page });
-  await entityIdInput.fill(OIDC_CLIENT_ID);
-
-  // Save
-  const saveButton = await getSsoSaveButtonLocator({ page });
-  await expect(saveButton).not.toBeDisabled();
-  await saveButton.click();
+  // Save (asserts not disabled before clicking)
+  await clickSsoSaveButton({ page });
 
   // Verify save success message
-  const saveSuccess = await getSsoSaveSuccessLocator({ page });
-  await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
+  await expectSsoSaveSuccessVisible({ page });
 
   // Verify enabled badge appears
-  const badge = await getSsoEnabledBadgeLocator({ page });
-  await expect(badge).toBeVisible({ timeout: 5_000 });
+  await expectSsoEnabledBadgeVisible({ page });
 });
 
 test('SSO login button appears on the login page when SSO is enabled @functional @serial', async ({
@@ -125,8 +119,7 @@ test('SSO login button appears on the login page when SSO is enabled @functional
   // so the login page renders fully without redirecting away.
   await navigateToLoginPage({ page });
 
-  const ssoButton = await getSsoLoginButtonLocator({ page });
-  await expect(ssoButton).toBeVisible({ timeout: 8_000 });
+  await expectSsoLoginButtonVisible({ page });
 });
 
 test('admin can disable SSO via the confirmation flow @functional @serial', async ({
@@ -151,22 +144,19 @@ test('admin can disable SSO via the confirmation flow @functional @serial', asyn
   await reloadCurrentPage({ page });
 
   // Wait for SSO section and verify enabled badge is present
-  const badge = await getSsoEnabledBadgeLocator({ page });
-  await expect(badge).toBeVisible({ timeout: 10_000 });
+  await expectSsoEnabledBadgeVisible({ page }, 10_000);
 
   // Click Disable SSO — first click shows confirmation
-  const disableButton = await getSsoDisableButtonLocator({ page });
-  await disableButton.click();
+  await clickSsoDisableButton({ page });
 
   // Confirmation UI should appear
-  const confirmButton = await getSsoDisableConfirmButtonLocator({ page });
-  await expect(confirmButton).toBeVisible({ timeout: 5_000 });
+  await expectSsoDisableConfirmVisible({ page });
 
   // Confirm disable
-  await confirmButton.click();
+  await clickSsoDisableConfirmButton({ page });
 
   // Enabled badge should disappear
-  await expect(badge).not.toBeVisible({ timeout: 8_000 });
+  await expectSsoEnabledBadgeNotVisible({ page });
 });
 
 test('SSO login button disappears from the login page after SSO is disabled @functional @serial', async ({
@@ -184,13 +174,12 @@ test('SSO login button disappears from the login page after SSO is disabled @fun
 
   // Navigate as unauthenticated user (no session cookie in this context).
   await navigateToLoginPage({ page });
-  const ssoButton = await getSsoLoginButtonLocator({ page });
-  await expect(ssoButton).toBeVisible({ timeout: 8_000 });
+  await expectSsoLoginButtonVisible({ page }, 8_000);
 
   await restClient.delete('/api/v1/settings/sso');
 
   await reloadCurrentPage({ page });
-  await expect(ssoButton).not.toBeVisible({ timeout: 5_000 });
+  await expectSsoLoginButtonNotVisible({ page }, 5_000);
 });
 
 test('SSO status API returns correct state after configure and disable cycle @functional @serial', async ({

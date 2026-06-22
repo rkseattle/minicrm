@@ -26,10 +26,12 @@ import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import {
   navigateToAdminSettings,
-  getRoleViewButtonLocator,
-  getRoleCapabilityPanelLocator,
-  getRoleCapabilityReadOnlyListLocator,
-  getRoleReadOnlyCapabilityCheckboxLocator,
+  expectRoleViewButtonVisible,
+  clickRoleViewButton,
+  expectRoleCapabilityPanelVisible,
+  expectRoleCapabilityPanelNotVisible,
+  expectRoleCapabilityReadOnlyListVisible,
+  expectRoleReadOnlyCapabilityCheckboxDisabled,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -418,27 +420,20 @@ test('@functional built-in role View button expands read-only capability panel',
   await navigateToAdminSettings({ page }, 'users');
 
   // View button is present on the built-in role card
-  const viewBtn = await getRoleViewButtonLocator({ page }, adminRole.id);
-  await expect(viewBtn).toBeVisible({ timeout: 10_000 });
+  await expectRoleViewButtonVisible(adminRole.id, { page }, 10_000);
 
   // Click View — panel expands
-  await viewBtn.click();
+  await clickRoleViewButton(adminRole.id, { page });
 
-  const panel = await getRoleCapabilityPanelLocator({ page }, adminRole.id);
-  await expect(panel).toBeVisible({ timeout: 5_000 });
+  await expectRoleCapabilityPanelVisible(adminRole.id, { page }, 5_000);
 
   // The read-only list is inside the panel
-  const readOnlyList = await getRoleCapabilityReadOnlyListLocator({ page });
-  await expect(readOnlyList).toBeVisible();
+  await expectRoleCapabilityReadOnlyListVisible({ page });
 
   // A known capability checkbox is present and disabled (admin role always has contacts:view)
-  const contactsViewCheckbox = await getRoleReadOnlyCapabilityCheckboxLocator(
-    { page },
-    'contacts:view',
-  );
-  await expect(contactsViewCheckbox).toBeDisabled();
+  await expectRoleReadOnlyCapabilityCheckboxDisabled({ page }, 'contacts:view');
 
   // Click View again — panel collapses
-  await viewBtn.click();
-  await expect(panel).not.toBeVisible({ timeout: 5_000 });
+  await clickRoleViewButton(adminRole.id, { page });
+  await expectRoleCapabilityPanelNotVisible(adminRole.id, { page }, 5_000);
 });

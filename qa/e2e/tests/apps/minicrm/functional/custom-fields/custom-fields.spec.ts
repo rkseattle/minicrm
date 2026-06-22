@@ -28,10 +28,11 @@ import {
   getCustomFieldDefinitions,
   createCustomFieldDefinition,
   setContactCustomFields,
-  getCustomFieldsEditGridLocator,
-  getCustomFieldDeleteButtonLocator,
-  getCustomFieldInputLocator,
-  getCustomFieldLabelLocator,
+  expectCustomFieldsEditGridVisible,
+  clickCustomFieldDeleteButton,
+  fillCustomFieldInput,
+  expectCustomFieldInputVisible,
+  expectCustomFieldLabelVisible,
 } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   navigateToContactDetailPage,
@@ -42,14 +43,15 @@ import {
 import { openDealEditForm } from '@behaviors/minicrm/deals.behaviors.js';
 import { clickAccountEditButton } from '@behaviors/minicrm/accounts.behaviors.js';
 import {
-  getAdminSettingsCustomFieldsSectionLocator,
-  getAdminSettingsCustomFieldsEntitySelectLocator,
+  expectAdminSettingsCustomFieldsSectionVisible,
+  selectAdminSettingsCustomFieldsEntity,
   clickAdminSettingsAddField,
-  getAdminSettingsAddFieldFormLocator,
-  getAdminSettingsAddFieldNameInputLocator,
+  expectAdminSettingsAddFieldFormVisible,
+  fillAdminSettingsAddFieldName,
   submitAdminSettingsAddField,
-  getAdminSettingsCustomFieldsFeedbackLocator,
-  getAdminSettingsDeleteFieldConfirmLocator,
+  expectAdminSettingsCustomFieldsFeedbackVisible,
+  expectAdminSettingsDeleteFieldConfirmVisible,
+  clickAdminSettingsDeleteFieldConfirm,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   getContactCustomFieldsReadGrid,
@@ -91,23 +93,19 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   // Navigate to Admin Settings → Customisation tab
   await navigateToPath('/admin/settings?tab=pipelines', { page });
 
-  const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
-  await expect(section).toBeVisible({ timeout: 10_000 });
+  await expectAdminSettingsCustomFieldsSectionVisible({ page }, 10_000);
 
   // Ensure entity selector shows "contact" (default)
-  const entitySelect = await getAdminSettingsCustomFieldsEntitySelectLocator({ page });
-  await entitySelect.selectOption('contact');
+  await selectAdminSettingsCustomFieldsEntity('contact', { page });
 
   // Click Add Field
   await clickAdminSettingsAddField({ page });
 
-  const addForm = await getAdminSettingsAddFieldFormLocator({ page });
-  await expect(addForm).toBeVisible();
+  await expectAdminSettingsAddFieldFormVisible({ page });
 
   // Fill in field name
   const fieldName = `E2E Test Field ${Date.now()}`;
-  const nameInput = await getAdminSettingsAddFieldNameInputLocator({ page });
-  await nameInput.fill(fieldName);
+  await fillAdminSettingsAddFieldName(fieldName, { page });
 
   // field_type defaults to text — no change needed
 
@@ -115,8 +113,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
   await submitAdminSettingsAddField({ page });
 
   // Success feedback appears
-  const feedback = await getAdminSettingsCustomFieldsFeedbackLocator({ page });
-  await expect(feedback).toBeVisible({ timeout: 5_000 });
+  await expectAdminSettingsCustomFieldsFeedbackVisible({ page }, 5_000);
 
   // The field appears in the table
   // Resolve the created definition id via REST for cleanup
@@ -182,23 +179,9 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   const editGrid = await getContactCustomFieldsEditGrid({ page });
   await expect(editGrid).toBeVisible({ timeout: 5_000 });
 
-  // Fill in the custom field value
-  const fieldInput = await getCustomFieldInputLocator(definitionId, { page });
-  // Wait for the controlled input to be visible and scroll it into the viewport
-  // before filling — on mobile the custom-fields section can be below the fold
-  // and Playwright's fill() may not trigger React's onChange if the element
-  // hasn't rendered in the visual viewport yet. (MINCRM-554)
-  await expect(fieldInput).toBeVisible({ timeout: 5_000 });
-  await fieldInput.scrollIntoViewIfNeeded();
-  await fieldInput.fill('Test Value 123');
-
-  // Press Tab to move focus away from the input, which triggers a blur event and
-  // allows React to flush pending useEffect updates. The useEffect in
-  // CustomFieldsSection propagates editValues → onValuesChange → parent
-  // customFieldValues; without this flush the parent state may still be stale
-  // when the save handler fires. Confirm the value is set before continuing. (MINCRM-415)
-  await fieldInput.press('Tab');
-  await expect(fieldInput).toHaveValue('Test Value 123');
+  // Fill in the custom field value — fillCustomFieldInput scrolls into view, fills,
+  // presses Tab to flush React state, and confirms the value (MINCRM-554, MINCRM-415)
+  await fillCustomFieldInput(definitionId, 'Test Value 123', { page });
 
   // Save the contact and wait for the page to return to read mode. (MINCRM-418)
   await saveContact({ page });
@@ -212,8 +195,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
   if (!readGrid) throw new Error('custom-fields-read-grid not found after save');
   await expect(readGrid).toBeVisible({ timeout: 5_000 });
 
-  const fieldLabel = await getCustomFieldLabelLocator(definitionId, { page });
-  await expect(fieldLabel).toBeVisible();
+  await expectCustomFieldLabelVisible(definitionId, { page });
   await expect(readGrid).toContainText('Test Value 123');
 
   // Deactivate the rep user — users cannot be hard-deleted, so deactivate via
@@ -262,25 +244,19 @@ test('admin deletes a custom field definition; it disappears from the contact de
   // Navigate to Admin Settings → Customisation tab
   await navigateToPath('/admin/settings?tab=pipelines', { page });
 
-  const section = await getAdminSettingsCustomFieldsSectionLocator({ page });
-  await expect(section).toBeVisible({ timeout: 10_000 });
+  await expectAdminSettingsCustomFieldsSectionVisible({ page }, 10_000);
 
   // Select "contact" entity type
-  const entitySelect = await getAdminSettingsCustomFieldsEntitySelectLocator({ page });
-  await entitySelect.selectOption('contact');
+  await selectAdminSettingsCustomFieldsEntity('contact', { page });
 
-  const deleteBtn = await getCustomFieldDeleteButtonLocator(definitionId, { page });
-  await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
-  await deleteBtn.click();
+  await clickCustomFieldDeleteButton(definitionId, { page });
 
   // Confirm the deletion dialog.
-  const confirmDeleteBtn = await getAdminSettingsDeleteFieldConfirmLocator({ page });
-  await expect(confirmDeleteBtn).toBeVisible({ timeout: 3_000 });
-  await confirmDeleteBtn.click();
+  await expectAdminSettingsDeleteFieldConfirmVisible({ page }, 3_000);
+  await clickAdminSettingsDeleteFieldConfirm({ page });
 
   // Success feedback
-  const feedback = await getAdminSettingsCustomFieldsFeedbackLocator({ page });
-  await expect(feedback).toBeVisible({ timeout: 5_000 });
+  await expectAdminSettingsCustomFieldsFeedbackVisible({ page }, 5_000);
 
   // Navigate back to the contact — custom fields section should not appear
   await navigateToContactDetailPage(contact.id, { page });
@@ -331,11 +307,8 @@ test('CF-4: select custom field for deals renders as a select input in the deal 
 
     await openDealEditForm({ page });
 
-    const editGrid = await getCustomFieldsEditGridLocator({ page });
-    await expect(editGrid).toBeVisible({ timeout: 8_000 });
-
-    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
-    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+    await expectCustomFieldsEditGridVisible({ page }, 8_000);
+    await expectCustomFieldInputVisible(def.id, { page }, 5_000);
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
   }
@@ -368,11 +341,8 @@ test('CF-5: text custom field for accounts renders in the account edit form @fun
 
     await clickAccountEditButton({ page });
 
-    const editGrid = await getCustomFieldsEditGridLocator({ page });
-    await expect(editGrid).toBeVisible({ timeout: 8_000 });
-
-    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
-    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+    await expectCustomFieldsEditGridVisible({ page }, 8_000);
+    await expectCustomFieldInputVisible(def.id, { page }, 5_000);
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
   }
@@ -415,11 +385,8 @@ test('CF-6: second text custom field for deals renders in the deal edit form @fu
 
     await openDealEditForm({ page });
 
-    const editGrid = await getCustomFieldsEditGridLocator({ page });
-    await expect(editGrid).toBeVisible({ timeout: 8_000 });
-
-    const fieldInput = await getCustomFieldInputLocator(def.id, { page });
-    await expect(fieldInput).toBeVisible({ timeout: 5_000 });
+    await expectCustomFieldsEditGridVisible({ page }, 8_000);
+    await expectCustomFieldInputVisible(def.id, { page }, 5_000);
   } finally {
     await restClient.delete(`/api/v1/custom-fields/definitions/${def.id}`).catch(() => undefined);
   }

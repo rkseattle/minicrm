@@ -20,15 +20,16 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   navigateToCustomReports,
   navigateToReportsPage,
-  getCustomReportsTabLocator,
-  getCustomReportBuilderLocator,
-  getRunReportButtonLocator,
+  expectCustomReportsTabVisible,
+  expectCustomReportBuilderVisible,
+  expectRunReportButtonVisible,
   saveCustomReport,
   runCustomReport,
   waitForSaveDialogClosed,
-  getSavedReportByNameLocator,
+  expectSavedReportByNameVisible,
   waitForSavedReportByName,
-  getEntityTypeSelectLocator,
+  clickSavedReportByName,
+  getReportsEntityTypeSelectValue,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 
@@ -52,8 +53,7 @@ test('custom reports: Custom Reports tab appears in reports navigation @function
 
   await navigateToReportsPage({ page });
 
-  const tabLocator = await getCustomReportsTabLocator({ page });
-  expect(await tabLocator.isVisible()).toBe(true);
+  await expectCustomReportsTabVisible({ page });
 });
 
 test('custom reports: navigating to custom-reports view renders the builder @functional', async ({
@@ -61,8 +61,7 @@ test('custom reports: navigating to custom-reports view renders the builder @fun
 }) => {
   await navigateToCustomReports({ page });
 
-  const builder = await getCustomReportBuilderLocator({ page });
-  expect(await builder.isVisible()).toBe(true);
+  await expectCustomReportBuilderVisible({ page });
 });
 
 // ── Run report ────────────────────────────────────────────────────────────────
@@ -70,8 +69,7 @@ test('custom reports: navigating to custom-reports view renders the builder @fun
 test('custom reports: running a report shows the results area @functional', async ({ page }) => {
   await navigateToCustomReports({ page });
 
-  const runBtn = await getRunReportButtonLocator({ page });
-  expect(await runBtn.isVisible()).toBe(true);
+  await expectRunReportButtonVisible({ page });
 
   // runCustomReport returns true when either results-table or results-empty appears
   const resultsVisible = await runCustomReport({ page });
@@ -89,8 +87,7 @@ test('custom reports: saving a report adds it to the saved list @functional', as
 
   // Wait specifically for the new report name to appear — avoids stale list from prior runs
   await waitForSavedReportByName(reportName, { page });
-  const reportBtn = await getSavedReportByNameLocator(reportName, { page });
-  expect(await reportBtn.isVisible()).toBe(true);
+  await expectSavedReportByNameVisible(reportName, { page });
 });
 
 // ── Load saved report ─────────────────────────────────────────────────────────
@@ -114,11 +111,9 @@ test('custom reports: clicking a saved report loads its config into the builder 
   await navigateToCustomReports({ page });
 
   // Wait for the specific report we created — avoids clicking stale reports from prior runs
-  const reportItem = await getSavedReportByNameLocator(reportName, { page });
-  await reportItem.click();
+  await clickSavedReportByName(reportName, { page });
 
   // Entity type selector should switch to 'deal'
-  const entitySelect = await getEntityTypeSelectLocator({ page });
-  const selectedValue = await entitySelect.inputValue();
+  const selectedValue = await getReportsEntityTypeSelectValue({ page });
   expect(selectedValue).toBe('deal');
 });
