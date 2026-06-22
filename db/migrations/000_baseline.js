@@ -1,25 +1,25 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–116 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489)
+ * Migration 000: Schema baseline — squash of migrations 001–118 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 116 migrations (001–116), so
+ * Captures the full schema as it exists after all 118 migrations (001–118), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 116 individual migrations.
+ * replaying all 118 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
- * Do NOT use `npm run migrate` on a brand-new database — it will run all 117
- * files (000_baseline + 001–116) and fail because 001–116 re-create objects
+ * Do NOT use `npm run migrate` on a brand-new database — it will run all 119
+ * files (000_baseline + 001–118) and fail because 001–118 re-create objects
  * that 000_baseline already created. Use the two-step bootstrap instead:
  *
  *   npm run migrate:fresh --workspace=minicrm-server
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–116 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–118 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (117+) run normally via `npm run migrate`
+ *   3. Future migrations (119+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–116 fully applied.
+ * with migrations 001–118 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -841,22 +841,27 @@ exports.up = (pgm) => {
   // feature_flags — feature gating with per-role overrides (MINCRM-511)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.feature_flags (
-      flag_key    character varying(100) NOT NULL,
-      label       character varying(100) NOT NULL,
-      description text NOT NULL,
-      category    character varying(50) NOT NULL,
-      enabled     boolean DEFAULT true NOT NULL,
-      role_overrides jsonb,
-      enable_at   timestamp with time zone,
-      updated_by  uuid,
-      updated_at  timestamp with time zone DEFAULT now() NOT NULL,
-      system_flag boolean DEFAULT true NOT NULL,
+      flag_key           character varying(100) NOT NULL,
+      label              character varying(100) NOT NULL,
+      description        text NOT NULL,
+      category           character varying(50) NOT NULL,
+      enabled            boolean DEFAULT true NOT NULL,
+      role_overrides     jsonb,
+      enable_at          timestamp with time zone,
+      rollout_percentage smallint,
+      rollout_stages     jsonb,
+      updated_by         uuid,
+      updated_at         timestamp with time zone DEFAULT now() NOT NULL,
+      system_flag        boolean DEFAULT true NOT NULL,
       CONSTRAINT feature_flags_pkey PRIMARY KEY (flag_key),
-      CONSTRAINT feature_flags_role_overrides_valid_shape CHECK (public.is_valid_role_overrides(role_overrides))
+      CONSTRAINT feature_flags_role_overrides_valid_shape CHECK (public.is_valid_role_overrides(role_overrides)),
+      CONSTRAINT feature_flags_rollout_percentage_range CHECK (rollout_percentage BETWEEN 0 AND 100)
     )
   `);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.role_overrides IS 'Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live.'`);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.enable_at IS 'When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)'`);
+  pgm.sql(`COMMENT ON COLUMN public.feature_flags.rollout_percentage IS 'When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)'`);
+  pgm.sql(`COMMENT ON COLUMN public.feature_flags.rollout_stages IS 'Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)'`);
 
   // feature_flag_usage — per-user flag usage tracking
   pgm.sql(`
@@ -881,6 +886,23 @@ exports.up = (pgm) => {
     )
   `);
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)`);
+
+  // feature_flag_user_overrides — absolute per-user force-on / force-off overrides (MINCRM-492)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.feature_flag_user_overrides (
+      id        uuid DEFAULT gen_random_uuid() NOT NULL,
+      flag_key  character varying(100) NOT NULL,
+      user_id   uuid NOT NULL,
+      override  character varying(20) NOT NULL,
+      reason    text,
+      added_by  uuid,
+      added_at  timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT feature_flag_user_overrides_pkey PRIMARY KEY (id),
+      CONSTRAINT feature_flag_user_overrides_flag_key_user_id_unique UNIQUE (flag_key, user_id),
+      CONSTRAINT feature_flag_user_overrides_override_check CHECK (override IN ('force_enabled', 'force_disabled'))
+    )
+  `);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key)`);
 
   // ai_configuration — singleton AI provider config (MINCRM-519 key versioning)
   pgm.sql(`
@@ -1028,6 +1050,9 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.feature_flag_beta_users ADD CONSTRAINT feature_flag_beta_users_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL`,
+    `ALTER TABLE ONLY public.feature_flag_user_overrides ADD CONSTRAINT feature_flag_user_overrides_flag_key_fkey FOREIGN KEY (flag_key) REFERENCES public.feature_flags(flag_key) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_user_overrides ADD CONSTRAINT feature_flag_user_overrides_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.feature_flag_user_overrides ADD CONSTRAINT feature_flag_user_overrides_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_dpa_acknowledged_by_fkey FOREIGN KEY (dpa_acknowledged_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_token_budgets ADD CONSTRAINT ai_token_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
@@ -1195,7 +1220,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS sequence_enrollment_logs_enrollment_id_index ON public.sequence_enrollment_logs USING btree (enrollment_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS sequence_enrollment_logs_executed_at_idx ON public.sequence_enrollment_logs USING btree (executed_at)`);
 
-  // feature_flags / feature_flag_usage
+  // feature_flags / feature_flag_usage / feature_flag_user_overrides
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flags_category_index ON public.feature_flags USING btree (category)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_usage_flag_key_used_at_idx ON public.feature_flag_usage USING btree (flag_key, used_at)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS feature_flag_usage_used_at_index ON public.feature_flag_usage USING btree (used_at)`);
