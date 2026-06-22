@@ -563,9 +563,12 @@ export default function FeatureFlagsSettings() {
   }
 
   const flags = data?.flags ?? [];
-  // Initialized once on mount via useState — useState initializers are exempt from the purity
-  // rule. Used to classify enable_at as pending (future) vs. fired (past). (MINCRM-488)
-  const [nowMs] = useState<number>(() => Date.now());
+  // Recomputed on every render so enable_at classification stays accurate after React Query
+  // refetches. A frozen mount-time snapshot keeps isPendingSchedule=true after the schedule
+  // fires until the user navigates away. eslint-disable-next-line is intentional — Date.now()
+  // here is safe because this component is not called inside another hook. (MINCRM-488)
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   const byCategory = FEATURE_FLAG_CATEGORIES.reduce<Record<FeatureFlagCategory, FeatureFlagRow[]>>(
     (acc, cat) => {
