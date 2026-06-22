@@ -338,8 +338,9 @@ test('@functional @serial F-FF10: admin sets enable_at and the Scheduled badge a
   await expectFeatureFlagScheduledBadgeVisible('mobile_access', { page }, 8_000);
   await expectFeatureFlagOffBadgeNotVisible('mobile_access', { page });
 
-  // Clearing the schedule removes the Scheduled badge.
+  // Clearing the schedule now routes through ConfirmDialog — confirm it.
   await clickFeatureFlagClearSchedule('mobile_access', { page });
+  await clickFeatureFlagConfirmOk({ page });
   await expectFeatureFlagScheduledBadgeNotVisible('mobile_access', { page }, 8_000);
 });
 

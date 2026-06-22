@@ -165,7 +165,9 @@ export async function createLeadViaUIThenCreateAnyway(
   await leadsPage.submitForm();
   await leadsPage.clickCreateAnyway();
 
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the form to close rather than networkidle — networkidle is non-deterministic
+  // under CI load and causes false negatives when the response is slightly delayed.
+  await context.page.waitForAbsent('[data-testid="lead-form"]', 15_000);
 
   const finalUrl = leadsPage.url();
   const formStillVisible = await leadsPage.formIsVisible();
