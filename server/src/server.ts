@@ -17,6 +17,7 @@ import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
 import { runRetentionPurge } from './services/retentionService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
+import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 
@@ -217,4 +218,9 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => auditPartitionCron.stop());
   process.once('SIGINT', () => auditPartitionCron.stop());
+
+  // Rollout stage advancement — checks every 60 seconds for flags with due stages (MINCRM-490).
+  startRolloutScheduler();
+  process.once('SIGTERM', () => stopRolloutScheduler());
+  process.once('SIGINT', () => stopRolloutScheduler());
 }

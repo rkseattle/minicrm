@@ -1,7 +1,7 @@
 /**
  * Feature flag service — all database operations and caching for the feature flag registry.
  * Business logic belongs here. Controllers must not query the database directly.
- * (MINCRM-463)
+ * (MINCRM-463, MINCRM-490, MINCRM-492)
  */
 
 import type { PoolClient } from 'pg';
@@ -14,6 +14,10 @@ import type {
   UpdateFeatureFlagInput,
   RoleOverrides,
   BetaUserEntry,
+  RolloutStage,
+  OverrideDirection,
+  UserOverrideEntry,
+  OverrideCount,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { USER_ROLES } from '@minicrm/shared/schemas/userSchema.js';
@@ -29,10 +33,34 @@ interface FeatureFlagDbRow {
   enabled: boolean;
   role_overrides: RoleOverrides;
   enable_at: Date | null;
+  rollout_percentage: number | null;
+  rollout_stages: RolloutStage[] | null;
   updated_by: string | null;
   updated_by_name: string | null;
   updated_at: Date;
   system_flag: boolean;
+}
+
+// ── Stable hash (MINCRM-490) ──────────────────────────────────────────────────
+
+/**
+ * FNV-1a 32-bit hash — produces a deterministic unsigned integer for a string.
+ * Used to assign users to stable rollout cohorts: bucket = stableHash(userId + flagKey) % 100.
+ * The same input always produces the same output across server restarts and deployments.
+ */
+export function stableHash(input: string): number {
+  // FNV-1a offset basis and prime for 32-bit variant.
+  const FNV_OFFSET_BASIS = 0x811c9dc5;
+  const FNV_PRIME = 0x01000193;
+
+  let hash = FNV_OFFSET_BASIS;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    // Multiply modulo 2^32 using bit manipulation to stay within JS 32-bit int range.
+    hash = Math.imul(hash, FNV_PRIME);
+  }
+  // >>> 0 converts to an unsigned 32-bit integer (0 to 4294967295).
+  return hash >>> 0;
 }
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
@@ -76,6 +104,8 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
        ff.enabled,
        ff.role_overrides,
        ff.enable_at,
+       ff.rollout_percentage,
+       ff.rollout_stages,
        ff.updated_by,
        u.name AS updated_by_name,
        ff.updated_at,
@@ -117,10 +147,11 @@ function isScheduledEnabled(row: Pick<FeatureFlagDbRow, 'enable_at'>): boolean {
  * Returns all feature flags with their active user counts for the last 30 days.
  */
 export async function listFeatureFlags(): Promise<FeatureFlagRow[]> {
-  const [rows, usageCounts, betaCounts] = await Promise.all([
+  const [rows, usageCounts, betaCounts, overrideCounts] = await Promise.all([
     getCachedRows(),
     getActiveUserCounts(),
     getBetaUserCounts(),
+    getOverrideCounts(),
   ]);
 
   return rows.map((row) => ({
@@ -129,6 +160,7 @@ export async function listFeatureFlags(): Promise<FeatureFlagRow[]> {
     updated_at: row.updated_at.toISOString(),
     active_user_count: usageCounts.get(row.flag_key) ?? 0,
     beta_user_count: betaCounts.get(row.flag_key) ?? 0,
+    override_count: overrideCounts.get(row.flag_key) ?? { force_enabled: 0, force_disabled: 0 },
   })) as FeatureFlagRow[];
 }
 
@@ -140,9 +172,10 @@ export async function getFeatureFlag(key: string): Promise<FeatureFlagRow | null
   const row = rows.find((r) => r.flag_key === key);
   if (!row) return null;
 
-  const [count, betaCount] = await Promise.all([
+  const [count, betaCount, overrideCount] = await Promise.all([
     getActiveUserCountForFlag(key),
     getBetaUserCountForFlag(key),
+    getOverrideCountForFlag(key),
   ]);
   return {
     ...row,
@@ -150,6 +183,7 @@ export async function getFeatureFlag(key: string): Promise<FeatureFlagRow | null
     updated_at: row.updated_at.toISOString(),
     active_user_count: count,
     beta_user_count: betaCount,
+    override_count: overrideCount,
   } as FeatureFlagRow;
 }
 
@@ -240,7 +274,8 @@ export async function updateFeatureFlag(
     await client.query('BEGIN');
 
     const existing = await client.query<FeatureFlagDbRow>(
-      `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides, ff.enable_at
+      `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides, ff.enable_at,
+              ff.rollout_percentage, ff.rollout_stages
        FROM feature_flags ff
        WHERE ff.flag_key = $1
        FOR UPDATE`,
@@ -257,19 +292,34 @@ export async function updateFeatureFlag(
     // undefined means "not in request body, keep existing"; null means "clear the schedule"
     const newEnableAt =
       patch.enable_at !== undefined ? patch.enable_at : (before.enable_at?.toISOString() ?? null);
+    const newRolloutPercentage =
+      patch.rollout_percentage !== undefined ? patch.rollout_percentage : before.rollout_percentage;
+    const newRolloutStages =
+      patch.rollout_stages !== undefined ? patch.rollout_stages : before.rollout_stages;
 
     const result = await client.query<FeatureFlagDbRow>(
       `UPDATE feature_flags
-       SET enabled        = $1,
-           role_overrides = $2,
-           enable_at      = $3,
-           updated_by     = $4,
-           updated_at     = now()
-       WHERE flag_key = $5
+       SET enabled            = $1,
+           role_overrides     = $2,
+           enable_at          = $3,
+           rollout_percentage = $4,
+           rollout_stages     = $5,
+           updated_by         = $6,
+           updated_at         = now()
+       WHERE flag_key = $7
        RETURNING
          flag_key, label, description, category, enabled,
-         role_overrides, enable_at, updated_by, updated_at, system_flag`,
-      [patch.enabled, newRoleOverrides, newEnableAt ?? null, actor.id, key],
+         role_overrides, enable_at, rollout_percentage, rollout_stages,
+         updated_by, updated_at, system_flag`,
+      [
+        patch.enabled,
+        newRoleOverrides,
+        newEnableAt ?? null,
+        newRolloutPercentage ?? null,
+        newRolloutStages ? JSON.stringify(newRolloutStages) : null,
+        actor.id,
+        key,
+      ],
     );
     const updated = result.rows[0];
 
@@ -320,6 +370,42 @@ export async function updateFeatureFlag(
       });
     }
 
+    // Audit rollout_percentage changes. (MINCRM-490)
+    if (
+      patch.rollout_percentage !== undefined &&
+      patch.rollout_percentage !== before.rollout_percentage
+    ) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'rollout_percentage',
+        oldValue: before.rollout_percentage === null ? 'null' : String(before.rollout_percentage),
+        newValue: patch.rollout_percentage === null ? 'null' : String(patch.rollout_percentage),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    // Audit rollout_stages changes. (MINCRM-490)
+    if (
+      patch.rollout_stages !== undefined &&
+      JSON.stringify(patch.rollout_stages) !== JSON.stringify(before.rollout_stages)
+    ) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'rollout_stages',
+        oldValue: JSON.stringify(before.rollout_stages ?? null),
+        newValue: JSON.stringify(patch.rollout_stages ?? null),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
     await client.query('COMMIT');
     invalidateCache();
 
@@ -329,9 +415,10 @@ export async function updateFeatureFlag(
       });
     }
 
-    const [activeCount, betaCount] = await Promise.all([
+    const [activeCount, betaCount, overrideCount] = await Promise.all([
       getActiveUserCountForFlag(key),
       getBetaUserCountForFlag(key),
+      getOverrideCountForFlag(key),
     ]);
 
     return {
@@ -341,6 +428,7 @@ export async function updateFeatureFlag(
       updated_at: updated.updated_at.toISOString(),
       active_user_count: activeCount,
       beta_user_count: betaCount,
+      override_count: overrideCount,
     } as FeatureFlagRow;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -397,6 +485,46 @@ async function getActiveUserCounts(): Promise<Map<string, number>> {
   return new Map(result.rows.map((r) => [r.flag_key, parseInt(r.count, 10)]));
 }
 
+// ── Override counts (MINCRM-492) ──────────────────────────────────────────────
+
+/**
+ * Returns the override count (force_enabled + force_disabled) for a single flag.
+ * Always queries fresh — override membership is never served from the flag cache.
+ */
+async function getOverrideCountForFlag(key: string): Promise<OverrideCount> {
+  const result = await pool.query<{ override: OverrideDirection; count: string }>(
+    `SELECT override, COUNT(*)::text AS count
+     FROM feature_flag_user_overrides
+     WHERE flag_key = $1
+     GROUP BY override`,
+    [key],
+  );
+  const counts: OverrideCount = { force_enabled: 0, force_disabled: 0 };
+  for (const row of result.rows) {
+    counts[row.override] = parseInt(row.count, 10);
+  }
+  return counts;
+}
+
+/**
+ * Returns a map of flag_key → OverrideCount for all flags.
+ * Used by listFeatureFlags to avoid N+1 queries. Always queries fresh.
+ */
+async function getOverrideCounts(): Promise<Map<string, OverrideCount>> {
+  const result = await pool.query<{ flag_key: string; override: OverrideDirection; count: string }>(
+    `SELECT flag_key, override, COUNT(*)::text AS count
+     FROM feature_flag_user_overrides
+     GROUP BY flag_key, override`,
+  );
+  const map = new Map<string, OverrideCount>();
+  for (const row of result.rows) {
+    const existing = map.get(row.flag_key) ?? { force_enabled: 0, force_disabled: 0 };
+    existing[row.override] = parseInt(row.count, 10);
+    map.set(row.flag_key, existing);
+  }
+  return map;
+}
+
 // ── Beta user counts ──────────────────────────────────────────────────────────
 // Full beta enrollment CRUD (isFlagEnabledForUser, enrollBetaUser, removeBetaUser, getBetaUsersForFlag)
 // is implemented below in the Beta Users section (MINCRM-489). These count helpers are used
@@ -438,15 +566,30 @@ interface BetaUserDbRow {
 
 /**
  * Returns true if the flag is enabled for a specific user.
- * Checks beta membership first (always fresh, no cache); if enrolled, returns true
- * regardless of enabled/enable_at state. Otherwise falls back to isFlagEnabledForRole.
- * (MINCRM-489)
+ *
+ * Evaluation order (MINCRM-492, MINCRM-490, MINCRM-489):
+ *   1. User override (force_enabled → true; force_disabled → false) — unconditional.
+ *   2. Beta membership → true.
+ *   3. Rollout bucketing: stableHash(userId + key) % 100 < rollout_percentage → result.
+ *   4. Org-wide enabled / enable_at / role overrides.
+ *
+ * Steps 1 and 2 always query fresh — never served from the flag cache.
  */
 export async function isFlagEnabledForUser(
   key: string,
   userId: string,
   role: UserRole,
 ): Promise<boolean> {
+  // Step 1: absolute per-user override (MINCRM-492).
+  const overrideResult = await pool.query<{ override: OverrideDirection }>(
+    `SELECT override FROM feature_flag_user_overrides WHERE flag_key = $1 AND user_id = $2`,
+    [key, userId],
+  );
+  const userOverride = overrideResult.rows[0]?.override;
+  if (userOverride === 'force_enabled') return true;
+  if (userOverride === 'force_disabled') return false;
+
+  // Step 2: beta membership → always enabled for beta users (MINCRM-489).
   const betaResult = await pool.query<{ exists: boolean }>(
     `SELECT EXISTS(
        SELECT 1 FROM feature_flag_beta_users
@@ -455,6 +598,17 @@ export async function isFlagEnabledForUser(
     [key, userId],
   );
   if (betaResult.rows[0]?.exists) return true;
+
+  // Step 3: rollout bucketing (MINCRM-490).
+  // Only consult the cache for the rollout_percentage value — beta/override are always fresh.
+  const rows = await getCachedRows();
+  const row = rows.find((r) => r.flag_key === key);
+  if (row && row.rollout_percentage !== null) {
+    const bucket = stableHash(userId + key) % 100;
+    return bucket < row.rollout_percentage;
+  }
+
+  // Step 4: org-wide enabled / enable_at / role overrides.
   return isFlagEnabledForRole(key, role);
 }
 
@@ -615,5 +769,310 @@ export async function removeBetaUser(
     throw err;
   } finally {
     client.release();
+  }
+}
+
+// ── Per-user override CRUD (MINCRM-492) ──────────────────────────────────────
+
+/** Raw DB row from feature_flag_user_overrides joined with user details. */
+interface UserOverrideDbRow {
+  id: string;
+  flag_key: string;
+  user_id: string;
+  name: string;
+  email: string;
+  override: OverrideDirection;
+  reason: string | null;
+  added_at: Date;
+}
+
+/**
+ * Returns all per-user overrides for a feature flag, ordered by added_at ASC.
+ * Always queries fresh — override membership is never served from the flag cache.
+ * (MINCRM-492)
+ */
+export async function listUserOverrides(flagKey: string): Promise<UserOverrideEntry[]> {
+  const result = await pool.query<UserOverrideDbRow>(
+    `SELECT
+       o.id,
+       o.flag_key,
+       o.user_id,
+       u.name,
+       u.email,
+       o.override,
+       o.reason,
+       o.added_at
+     FROM feature_flag_user_overrides o
+     JOIN users u ON u.id = o.user_id
+     WHERE o.flag_key = $1
+     ORDER BY o.added_at ASC`,
+    [flagKey],
+  );
+  return result.rows.map((r) => ({ ...r, added_at: r.added_at.toISOString() }));
+}
+
+/**
+ * Upserts a per-user override for a feature flag.
+ * A user may have at most one override per flag — an existing override is replaced (MINCRM-492).
+ * Writes an audit entry in the same transaction.
+ *
+ * @throws FEATURE_FLAG_NOT_FOUND if the flag does not exist.
+ * @throws USER_NOT_FOUND if the target user does not exist.
+ * @returns The upserted override entry.
+ */
+export async function upsertUserOverride(
+  flagKey: string,
+  userId: string,
+  direction: OverrideDirection,
+  reason: string | null,
+  actor: AuditActor,
+): Promise<UserOverrideEntry> {
+  const client: PoolClient = await pool.connect();
+  try {
+    // Pre-flight checks outside transaction to avoid double-ROLLBACK on pre-check failures.
+    const flagRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flags WHERE flag_key = $1`,
+      [flagKey],
+    );
+    if (!flagRow.rows[0]) {
+      throw Object.assign(new Error(`Feature flag '${flagKey}' not found`), {
+        code: 'FEATURE_FLAG_NOT_FOUND',
+      });
+    }
+
+    const userRow = await client.query<{ name: string; email: string }>(
+      `SELECT name, email FROM users WHERE id = $1`,
+      [userId],
+    );
+    if (!userRow.rows[0]) {
+      throw Object.assign(new Error(`User '${userId}' not found`), { code: 'USER_NOT_FOUND' });
+    }
+
+    await client.query('BEGIN');
+
+    const upsertResult = await client.query<{ id: string; added_at: Date }>(
+      `INSERT INTO feature_flag_user_overrides (flag_key, user_id, override, reason, added_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (flag_key, user_id) DO UPDATE
+         SET override  = EXCLUDED.override,
+             reason    = EXCLUDED.reason,
+             added_by  = EXCLUDED.added_by,
+             added_at  = now()
+       RETURNING id, added_at`,
+      [flagKey, userId, direction, reason ?? null, actor.id],
+    );
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag',
+      recordId: null,
+      recordName: flagRow.rows[0].label,
+      eventType: 'updated',
+      fieldName: 'user_override',
+      oldValue: 'null',
+      newValue: `${direction} for ${userRow.rows[0].name}${reason ? ` (${reason})` : ''}`,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    const row = upsertResult.rows[0];
+    return {
+      id: row.id,
+      flag_key: flagKey,
+      user_id: userId,
+      name: userRow.rows[0].name,
+      email: userRow.rows[0].email,
+      override: direction,
+      reason: reason ?? null,
+      added_at: row.added_at.toISOString(),
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Removes a per-user override for a feature flag.
+ * Returns false if no override existed. Writes an audit entry in the same transaction.
+ * (MINCRM-492)
+ */
+export async function deleteUserOverride(
+  flagKey: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<boolean> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const flagRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flags WHERE flag_key = $1`,
+      [flagKey],
+    );
+    const userRow = await client.query<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [
+      userId,
+    ]);
+    const overrideRow = await client.query<{ override: OverrideDirection }>(
+      `SELECT override FROM feature_flag_user_overrides WHERE flag_key = $1 AND user_id = $2`,
+      [flagKey, userId],
+    );
+    const priorDirection = overrideRow.rows[0]?.override;
+
+    const deleteResult = await client.query(
+      `DELETE FROM feature_flag_user_overrides WHERE flag_key = $1 AND user_id = $2`,
+      [flagKey, userId],
+    );
+
+    if (deleteResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag',
+      recordId: null,
+      recordName: flagRow.rows[0]?.label ?? flagKey,
+      eventType: 'updated',
+      fieldName: 'user_override',
+      oldValue: `${priorDirection ?? 'unknown'} for ${userRow.rows[0]?.name ?? userId}`,
+      newValue: 'null',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ── Rollout scheduler (MINCRM-490) ────────────────────────────────────────────
+
+/**
+ * The rollout scheduler interval handle — stored so callers can stop it on shutdown.
+ */
+let rolloutSchedulerHandle: ReturnType<typeof setInterval> | null = null;
+
+/** Interval between rollout stage advancement checks. */
+const ROLLOUT_SCHEDULER_INTERVAL_MS = 60_000;
+
+/**
+ * Checks all feature flags for pending rollout stages and advances rollout_percentage
+ * when the next stage's scheduled_at is <= now().
+ *
+ * Writes an audit entry per advancement and invalidates the cache after each update.
+ * Called by the scheduler; also exported for direct use in tests with a past scheduled_at.
+ */
+export async function advanceRolloutStages(actor: AuditActor): Promise<void> {
+  // Fetch flags with a non-null rollout_stages array; SKIP_LOCKED avoids lock contention
+  // when multiple instances run (e.g. during rolling deploys). (MINCRM-490)
+  const flagsResult = await pool.query<{
+    flag_key: string;
+    label: string;
+    rollout_percentage: number | null;
+    rollout_stages: RolloutStage[] | null;
+  }>(
+    `SELECT flag_key, label, rollout_percentage, rollout_stages
+     FROM feature_flags
+     WHERE rollout_stages IS NOT NULL
+       AND jsonb_array_length(rollout_stages) > 0
+     FOR UPDATE SKIP LOCKED`,
+  );
+
+  if (flagsResult.rows.length === 0) return;
+
+  const now = new Date();
+  let advanced = false;
+
+  for (const flag of flagsResult.rows) {
+    const stages = flag.rollout_stages ?? [];
+    // Find the last stage whose scheduled_at has passed.
+    const dueStages = stages.filter((s) => new Date(s.scheduled_at) <= now);
+    if (dueStages.length === 0) continue;
+
+    // The most recently due stage wins.
+    const nextStage = dueStages[dueStages.length - 1]!;
+    if (nextStage.percentage === flag.rollout_percentage) continue;
+
+    const client: PoolClient = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `UPDATE feature_flags
+         SET rollout_percentage = $1, updated_at = now()
+         WHERE flag_key = $2`,
+        [nextStage.percentage, flag.flag_key],
+      );
+
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: flag.label,
+        eventType: 'updated',
+        fieldName: 'rollout_percentage',
+        oldValue: flag.rollout_percentage === null ? 'null' : String(flag.rollout_percentage),
+        newValue: String(nextStage.percentage),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+
+      await client.query('COMMIT');
+      advanced = true;
+
+      logger.info(
+        { flagKey: flag.flag_key, from: flag.rollout_percentage, to: nextStage.percentage },
+        'Rollout stage advanced',
+      );
+    } catch (err) {
+      await client.query('ROLLBACK');
+      logger.error({ err, flagKey: flag.flag_key }, 'Failed to advance rollout stage');
+    } finally {
+      client.release();
+    }
+  }
+
+  if (advanced) invalidateCache();
+}
+
+/**
+ * Starts the background rollout scheduler.
+ * Fires every 60 seconds and advances rollout_percentage for any flag with a due stage.
+ * Must not be called in test environments (gate with NODE_ENV !== 'test').
+ * Call stopRolloutScheduler() on process shutdown. (MINCRM-490)
+ */
+export function startRolloutScheduler(): void {
+  if (rolloutSchedulerHandle !== null) {
+    logger.warn('startRolloutScheduler: scheduler is already running — ignoring duplicate call');
+    return;
+  }
+  rolloutSchedulerHandle = setInterval(() => {
+    void advanceRolloutStages({ id: '00000000-0000-0000-0000-000000000000', name: 'System' }).catch(
+      (err: unknown) => {
+        logger.error({ err }, 'Rollout scheduler tick failed');
+      },
+    );
+  }, ROLLOUT_SCHEDULER_INTERVAL_MS);
+
+  logger.info('Rollout scheduler started (60 s interval)');
+}
+
+/**
+ * Stops the background rollout scheduler, releasing the interval timer.
+ * Safe to call even if the scheduler was never started.
+ */
+export function stopRolloutScheduler(): void {
+  if (rolloutSchedulerHandle !== null) {
+    clearInterval(rolloutSchedulerHandle);
+    rolloutSchedulerHandle = null;
+    logger.info('Rollout scheduler stopped');
   }
 }
