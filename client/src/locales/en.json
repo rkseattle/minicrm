@@ -1918,7 +1918,24 @@
     "betaUserRemove": "Remove",
     "betaUserSearch": "Search users by name or email",
     "betaUserEmpty": "No users enrolled in beta.",
-    "betaUserAlreadyEnrolled": "User is already enrolled in the beta."
+    "betaUserAlreadyEnrolled": "User is already enrolled in the beta.",
+    "rolloutBadge": "{{pct}}% rollout",
+    "rolloutPercentage": "Rollout %",
+    "rolloutStages": "Rollout stages",
+    "rolloutStageAdd": "Add stage",
+    "rolloutStageRemove": "Remove",
+    "overrides": {
+      "title": "User Overrides",
+      "absoluteWarning": "Overrides all other targeting rules including group and beta settings",
+      "forcedOn": "Forced On",
+      "forcedOff": "Forced Off",
+      "forceEnabledBadge": "{{count}} forced on",
+      "forceDisabledBadge": "{{count}} forced off",
+      "addUser": "Add user",
+      "reasonPlaceholder": "Reason (optional)",
+      "noOverrides": "No overrides",
+      "removeOverride": "Remove"
+    }
   },
   "aiSettings": {
     "loadError": "Failed to load AI settings. Please try again.",

@@ -1734,7 +1734,24 @@
     "betaUserRemove": "[Ŕémövé]",
     "betaUserSearch": "[Šéàŗçh ùšéŗš ƀÿ ñàmé öŗ émàïl]",
     "betaUserEmpty": "[Ñö ùšéŗš éñŗölléð ïñ ƀéŧà.]",
-    "betaUserAlreadyEnrolled": "[Ùšéŗ ïš àlŗéàðÿ éñŗölléð ïñ ƀéŧà.]"
+    "betaUserAlreadyEnrolled": "[Ùšéŗ ïš àlŗéàðÿ éñŗölléð ïñ ƀéŧà.]",
+    "rolloutBadge": "[{{pct}}% ŗöllöùŧ]",
+    "rolloutPercentage": "[Ŗöllöùŧ %]",
+    "rolloutStages": "[Ŗöllöùŧ šŧàĝéš]",
+    "rolloutStageAdd": "[Àðð šŧàĝé]",
+    "rolloutStageRemove": "[Ŗémövé]",
+    "overrides": {
+      "title": "[Ùšéŗ Övéŗŗïðéš]",
+      "absoluteWarning": "[Övéŗŗïðéš àll öŧhéŗ ŧàŗĝéŧïñĝ ŗùléš ïñçlùðïñĝ ĝŗöùþ àñð ƀéŧà šéŧŧïñĝš]",
+      "forcedOn": "[Föŗçéð Öñ]",
+      "forcedOff": "[Föŗçéð Öff]",
+      "forceEnabledBadge": "[{{count}} föŗçéð öñ]",
+      "forceDisabledBadge": "[{{count}} föŗçéð öff]",
+      "addUser": "[Àðð ùšéŗ]",
+      "reasonPlaceholder": "[Ŗéàšöñ (öþŧïöñàl)]",
+      "noOverrides": "[Ñö övéŗŗïðéš]",
+      "removeOverride": "[Ŗémövé]"
+    }
   },
   "visibilitySettings": {
     "tabLabel": "[Vïšïƀïlïŧÿ]",

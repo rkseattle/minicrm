@@ -1918,7 +1918,24 @@
     "betaUserRemove": "Entfernen",
     "betaUserSearch": "Benutzer nach Name oder E-Mail suchen",
     "betaUserEmpty": "Keine Benutzer im Beta eingeschrieben.",
-    "betaUserAlreadyEnrolled": "Benutzer ist bereits im Beta eingeschrieben."
+    "betaUserAlreadyEnrolled": "Benutzer ist bereits im Beta eingeschrieben.",
+    "rolloutBadge": "{{pct}}% Rollout",
+    "rolloutPercentage": "Rollout %",
+    "rolloutStages": "Rollout-Phasen",
+    "rolloutStageAdd": "Phase hinzufügen",
+    "rolloutStageRemove": "Entfernen",
+    "overrides": {
+      "title": "Benutzer-Überschreibungen",
+      "absoluteWarning": "Überschreibt alle anderen Targeting-Regeln einschließlich Gruppen- und Beta-Einstellungen",
+      "forcedOn": "Erzwungen aktiviert",
+      "forcedOff": "Erzwungen deaktiviert",
+      "forceEnabledBadge": "{{count}} erzwungen aktiviert",
+      "forceDisabledBadge": "{{count}} erzwungen deaktiviert",
+      "addUser": "Benutzer hinzufügen",
+      "reasonPlaceholder": "Grund (optional)",
+      "noOverrides": "Keine Überschreibungen",
+      "removeOverride": "Entfernen"
+    }
   },
   "aiSettings": {
     "loadError": "KI-Einstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
