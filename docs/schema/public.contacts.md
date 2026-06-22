@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.deal_contacts](public.deal_contacts.md) [public.activities](public.activities.md) [public.leads](public.leads.md) [public.contact_addresses](public.contact_addresses.md) [public.contact_tags](public.contact_tags.md) [public.sequence_enrollments](public.sequence_enrollments.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.contact_addresses](public.contact_addresses.md) [public.activities](public.activities.md) [public.contact_tags](public.contact_tags.md) [public.deal_contacts](public.deal_contacts.md) [public.sequence_enrollments](public.sequence_enrollments.md) |  |  |
 | first_name | varchar(255) |  | false |  |  |  |
 | last_name | varchar(255) |  | false |  |  |  |
 | email | varchar(255) |  | false |  |  |  |
@@ -17,6 +17,12 @@
 | account_id | uuid |  | true |  | [public.accounts](public.accounts.md) |  |
 | is_demo | boolean | false | false |  |  |  |
 | source_lead_id | uuid |  | true |  | [public.leads](public.leads.md) |  |
+| address_line1 | varchar(255) |  | true |  |  |  |
+| address_line2 | varchar(255) |  | true |  |  |  |
+| city | varchar(100) |  | true |  |  |  |
+| state_region | varchar(100) |  | true |  |  |  |
+| postal_code | varchar(20) |  | true |  |  |  |
+| country | varchar(100) |  | true |  |  |  |
 | linkedin_url | varchar(500) |  | true |  |  |  |
 | twitter_x_url | varchar(500) |  | true |  |  |  |
 | other_url | varchar(500) |  | true |  |  |  |
@@ -27,19 +33,19 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | contacts_owner_id_fkey | FOREIGN KEY | FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT |
-| contacts_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| contacts_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL |
 | contacts_source_lead_id_fkey | FOREIGN KEY | FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL |
+| contacts_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL |
+| contacts_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | contacts_pkey | CREATE UNIQUE INDEX contacts_pkey ON public.contacts USING btree (id) |
+| contacts_email_unique_index | CREATE UNIQUE INDEX contacts_email_unique_index ON public.contacts USING btree (email) |
 | contacts_owner_id_index | CREATE INDEX contacts_owner_id_index ON public.contacts USING btree (owner_id) |
 | contacts_account_id_index | CREATE INDEX contacts_account_id_index ON public.contacts USING btree (account_id) |
 | contacts_is_demo_index | CREATE INDEX contacts_is_demo_index ON public.contacts USING btree (is_demo) |
-| contacts_email_unique_index | CREATE UNIQUE INDEX contacts_email_unique_index ON public.contacts USING btree (email) |
 | contacts_first_name_trgm_idx | CREATE INDEX contacts_first_name_trgm_idx ON public.contacts USING gin (first_name gin_trgm_ops) |
 | contacts_last_name_trgm_idx | CREATE INDEX contacts_last_name_trgm_idx ON public.contacts USING gin (last_name gin_trgm_ops) |
 | contacts_email_trgm_idx | CREATE INDEX contacts_email_trgm_idx ON public.contacts USING gin (email gin_trgm_ops) |
@@ -55,11 +61,11 @@
 ```mermaid
 erDiagram
 
-"public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-"public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.leads" }o--o| "public.contacts" : "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
 "public.contact_addresses" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.contact_tags" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.sequence_enrollments" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
@@ -79,34 +85,16 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
-}
-"public.deal_contacts" {
-  uuid deal_id FK ""
-  uuid contact_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.activities" {
-  uuid id ""
-  activity_type type ""
-  varchar_255_ subject ""
-  text notes ""
-  date due_date ""
-  activity_status status ""
-  uuid contact_id FK ""
-  uuid account_id FK ""
-  uuid deal_id FK ""
-  uuid owner_id FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  activity_direction direction ""
-  text outcome ""
-  boolean is_demo ""
-  integer version ""
-  jsonb metadata ""
 }
 "public.leads" {
   uuid id ""
@@ -143,9 +131,33 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
+"public.activities" {
+  uuid id ""
+  activity_type type ""
+  varchar_255_ subject ""
+  text notes ""
+  date due_date ""
+  activity_status status ""
+  uuid contact_id FK ""
+  uuid account_id FK ""
+  uuid deal_id FK ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  activity_direction direction ""
+  text outcome ""
+  boolean is_demo ""
+  integer version ""
+  jsonb metadata ""
+}
 "public.contact_tags" {
   uuid contact_id FK ""
   uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.deal_contacts" {
+  uuid deal_id FK ""
+  uuid contact_id FK ""
   timestamp_with_time_zone created_at ""
 }
 "public.sequence_enrollments" {
@@ -188,6 +200,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 "public.accounts" {
   uuid id ""

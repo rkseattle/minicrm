@@ -1967,3 +1967,166 @@ export async function expectAdminSettingsCurrencySectionVisible(
   const locator = await new AdminSettingsPage(context).currencySectionLocator();
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
+
+// ---------------------------------------------------------------------------
+// Feature flag scheduled enable_at behaviors (MINCRM-488)
+// ---------------------------------------------------------------------------
+
+/** Asserts that the Scheduled badge is visible for the given flag key. */
+export async function expectFeatureFlagScheduledBadgeVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-badge-scheduled-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] span:has-text("Scheduled")`,
+        },
+      ],
+      { intent: `Scheduled badge displayed when ${flagKey} has a future enable_at date` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Asserts that the Off badge is NOT visible for the given flag key. */
+export async function expectFeatureFlagOffBadgeNotVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // The Off badge is conditionally rendered — when a flag is scheduled it is removed
+  // from the DOM entirely. isNotVisible() handles both "absent" and "hidden". (MINCRM-488)
+  const notVisible = await context.page.isNotVisible([
+    { type: 'testId', value: `feature-flag-badge-off-${flagKey}` },
+  ]);
+  expect(notVisible).toBe(true);
+}
+
+/** Clicks the Clear schedule button for the given flag key. */
+export async function clickFeatureFlagClearSchedule(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-enable-at-clear-${flagKey}` },
+        { type: 'role', value: 'button', options: { name: /clear schedule/i } },
+      ],
+      { intent: `Clear schedule button to remove the enable_at date for ${flagKey}` },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Asserts that the Scheduled badge is NOT visible for the given flag key. */
+export async function expectFeatureFlagScheduledBadgeNotVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // The Scheduled badge is conditionally rendered — after clearing enable_at it is
+  // removed from the DOM entirely. isNotVisible() handles both "absent" and "hidden". (MINCRM-488)
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `feature-flag-badge-scheduled-${flagKey}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}
+
+// ---------------------------------------------------------------------------
+// Feature flag beta user behaviors (MINCRM-489)
+// ---------------------------------------------------------------------------
+
+/**
+ * Expands the collapsed beta users panel for the given flag key.
+ * When beta_user_count > 0 the panel is hidden behind a "N beta users" button.
+ * This click reveals it; call before any expectBetaUserRow* assertion. (MINCRM-489)
+ */
+export async function expandBetaUsersPanel(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-beta-expand-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="feature-flag-beta-count-"]`,
+        },
+      ],
+      { intent: `expand beta users panel for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Asserts the beta users panel is visible for the given flag key. */
+export async function expectFeatureFlagBetaPanelVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-beta-panel-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="beta-user-search-"]`,
+        },
+      ],
+      { intent: `beta users panel for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Asserts the beta user row is visible for the given flag key and user ID. */
+export async function expectBetaUserRowVisible(
+  flagKey: string,
+  userId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `beta-user-row-${flagKey}-${userId}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-beta-panel-${flagKey}"] li[data-testid*="${userId}"]`,
+        },
+      ],
+      { intent: `enrolled beta user row for user ${userId} on ${flagKey} flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Asserts the beta user row is NOT visible for the given flag key and user ID. */
+export async function expectBetaUserRowNotVisible(
+  flagKey: string,
+  userId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // Beta user rows are conditionally rendered — after removing enrollment the row is
+  // unmounted. isNotVisible() handles both "absent from DOM" and "hidden". (MINCRM-489)
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `beta-user-row-${flagKey}-${userId}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}

@@ -1,49 +1,43 @@
-# public.ai_token_budgets
+# public.scim_tokens
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | uuid | gen_random_uuid() | false |  |  |  |
-| user_id | uuid |  | true |  | [public.users](public.users.md) |  |
-| monthly_limit | bigint |  | false |  |  |  |
+| token_hash | text |  | false |  |  |  |
+| created_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
-| updated_at | timestamp with time zone | now() | false |  |  |  |
+| last_used_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| ai_token_budgets_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| ai_token_budgets_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| scim_tokens_created_by_fkey | FOREIGN KEY | FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL |
+| scim_tokens_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| scim_tokens_token_hash_key | UNIQUE | UNIQUE (token_hash) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| ai_token_budgets_pkey | CREATE UNIQUE INDEX ai_token_budgets_pkey ON public.ai_token_budgets USING btree (id) |
-| ai_token_budgets_user_id_idx | CREATE UNIQUE INDEX ai_token_budgets_user_id_idx ON public.ai_token_budgets USING btree (user_id) WHERE (user_id IS NOT NULL) |
-| ai_token_budgets_org_default_idx | CREATE UNIQUE INDEX ai_token_budgets_org_default_idx ON public.ai_token_budgets USING btree (((user_id IS NULL))) WHERE (user_id IS NULL) |
-
-## Triggers
-
-| Name | Definition |
-| ---- | ---------- |
-| ai_token_budgets_set_updated_at | CREATE TRIGGER ai_token_budgets_set_updated_at BEFORE UPDATE ON public.ai_token_budgets FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| scim_tokens_pkey | CREATE UNIQUE INDEX scim_tokens_pkey ON public.scim_tokens USING btree (id) |
+| scim_tokens_token_hash_key | CREATE UNIQUE INDEX scim_tokens_token_hash_key ON public.scim_tokens USING btree (token_hash) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.scim_tokens" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 
-"public.ai_token_budgets" {
+"public.scim_tokens" {
   uuid id ""
-  uuid user_id FK ""
-  bigint monthly_limit ""
+  text token_hash ""
+  uuid created_by FK ""
   timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
+  timestamp_with_time_zone last_used_at ""
 }
 "public.users" {
   uuid id ""

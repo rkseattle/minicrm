@@ -555,7 +555,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'reporting',
@@ -568,7 +570,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 3,
+    beta_user_count: 0,
   },
   {
     flag_key: 'mobile_access',
@@ -581,7 +585,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   // AI sub-feature flags (MINCRM-460) — all support role overrides
   {
@@ -595,7 +601,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_activity_summarizer',
@@ -608,7 +616,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_email_draft',
@@ -621,7 +631,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_task_suggestions',
@@ -634,7 +646,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_contact_enrichment',
@@ -647,7 +661,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_duplicate_explanation',
@@ -660,7 +676,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_lead_score_narrative',
@@ -673,7 +691,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_deal_health_check',
@@ -686,7 +706,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
   {
     flag_key: 'ai_stage_advancement',
@@ -699,7 +721,9 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     updated_by_name: null,
     updated_at: '2026-01-01T00:00:00.000Z',
     system_flag: true,
+    enable_at: null,
     active_user_count: 0,
+    beta_user_count: 0,
   },
 ];
 
@@ -2439,6 +2463,7 @@ export const handlers = [
     const body = (await request.json()) as {
       enabled: boolean;
       role_overrides?: Record<string, boolean> | null;
+      enable_at?: string | null;
     };
     const existing = FEATURE_FLAGS_FIXTURE.find((f) => f.flag_key === params['key']);
     if (!existing) {
@@ -2453,10 +2478,38 @@ export const handlers = [
         enabled: body.enabled,
         role_overrides:
           body.role_overrides !== undefined ? body.role_overrides : existing.role_overrides,
+        enable_at: body.enable_at !== undefined ? body.enable_at : existing.enable_at,
         updated_by_name: 'Test Admin',
         updated_at: new Date().toISOString(),
       },
     });
+  }),
+
+  /** Feature flags: GET /api/admin/feature-flags/:key/beta-users — returns empty list by default */
+  http.get('/api/v1/admin/feature-flags/:key/beta-users', () => {
+    return HttpResponse.json({ users: [] });
+  }),
+
+  /** Feature flags: POST /api/admin/feature-flags/:key/beta-users — enrolls a user */
+  http.post('/api/v1/admin/feature-flags/:key/beta-users', async ({ request }) => {
+    const body = (await request.json()) as { userId: string };
+    return HttpResponse.json(
+      {
+        user: {
+          id: 'beta-entry-uuid',
+          user_id: body.userId,
+          name: 'Beta Test User',
+          email: 'beta@example.com',
+          added_at: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** Feature flags: DELETE /api/admin/feature-flags/:key/beta-users/:userId — removes enrollment */
+  http.delete('/api/v1/admin/feature-flags/:key/beta-users/:userId', () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 
   // ── AI configuration (MINCRM-457) ─────────────────────────────────────────

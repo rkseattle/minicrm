@@ -7,8 +7,7 @@
 | id | uuid | gen_random_uuid() | false |  |  |  |
 | code | varchar(3) |  | false |  |  |  |
 | rate_to_home | numeric(18,6) |  | false |  |  |  |
-| effective_from | timestamp with time zone |  | false |  |  |  |
-| created_at | timestamp with time zone | now() | false |  |  |  |
+| effective_from | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
@@ -35,7 +34,6 @@ erDiagram
   varchar_3_ code ""
   numeric_18_6_ rate_to_home ""
   timestamp_with_time_zone effective_from ""
-  timestamp_with_time_zone created_at ""
 }
 ```
 

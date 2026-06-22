@@ -8,6 +8,7 @@
 | name | text |  | false |  |  |  |
 | manager_id | uuid |  | true |  | [public.users](public.users.md) |  |
 | parent_team_id | uuid |  | true |  | [public.teams](public.teams.md) |  |
+| scim_group_id | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -19,6 +20,7 @@
 | teams_parent_team_id_fkey | FOREIGN KEY | FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL |
 | teams_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | teams_name_key | UNIQUE | UNIQUE (name) |
+| teams_scim_group_id_key | UNIQUE | UNIQUE (scim_group_id) |
 
 ## Indexes
 
@@ -26,13 +28,14 @@
 | ---- | ---------- |
 | teams_pkey | CREATE UNIQUE INDEX teams_pkey ON public.teams USING btree (id) |
 | teams_name_key | CREATE UNIQUE INDEX teams_name_key ON public.teams USING btree (name) |
+| teams_scim_group_id_key | CREATE UNIQUE INDEX teams_scim_group_id_key ON public.teams USING btree (scim_group_id) |
 | teams_name_lower_idx | CREATE UNIQUE INDEX teams_name_lower_idx ON public.teams USING btree (lower(name)) |
 
 ## Triggers
 
 | Name | Definition |
 | ---- | ---------- |
-| set_teams_updated_at | CREATE TRIGGER set_teams_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| teams_set_updated_at | CREATE TRIGGER teams_set_updated_at BEFORE UPDATE ON public.teams FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
 
@@ -48,6 +51,7 @@ erDiagram
   text name ""
   uuid manager_id FK ""
   uuid parent_team_id FK ""
+  text scim_group_id ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
@@ -83,6 +87,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

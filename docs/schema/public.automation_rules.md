@@ -28,8 +28,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | automation_rules_pkey | CREATE UNIQUE INDEX automation_rules_pkey ON public.automation_rules USING btree (id) |
-| automation_rules_trigger_type_index | CREATE INDEX automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type) |
 | automation_rules_enabled_index | CREATE INDEX automation_rules_enabled_index ON public.automation_rules USING btree (enabled) |
+| automation_rules_trigger_type_index | CREATE INDEX automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type) |
 | automation_rules_is_demo_index | CREATE INDEX automation_rules_is_demo_index ON public.automation_rules USING btree (is_demo) |
 
 ## Triggers
@@ -96,6 +96,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

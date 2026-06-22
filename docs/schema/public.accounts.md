@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.accounts](public.accounts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.leads](public.leads.md) [public.account_tags](public.account_tags.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.account_tags](public.account_tags.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | industry | varchar(255) |  | true |  |  |  |
 | website | varchar(255) |  | true |  |  |  |
@@ -22,7 +22,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| accounts_account_type_check | CHECK | CHECK (((account_type IS NULL) OR ((account_type)::text = ANY ((ARRAY['Prospect'::character varying, 'Customer'::character varying, 'Partner'::character varying, 'Vendor'::character varying, 'Competitor'::character varying, 'Other'::character varying])::text[])))) |
+| accounts_account_type_check | CHECK | CHECK (((account_type IS NULL) OR ((account_type)::text = ANY (ARRAY[('Prospect'::character varying)::text, ('Customer'::character varying)::text, ('Partner'::character varying)::text, ('Vendor'::character varying)::text, ('Competitor'::character varying)::text, ('Other'::character varying)::text])))) |
 | accounts_owner_id_fkey | FOREIGN KEY | FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT |
 | accounts_parent_account_id_fkey | FOREIGN KEY | FOREIGN KEY (parent_account_id) REFERENCES accounts(id) ON DELETE SET NULL |
 | accounts_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -47,11 +47,11 @@
 ```mermaid
 erDiagram
 
-"public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+"public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.accounts" }o--o| "public.accounts" : "FOREIGN KEY (parent_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+"public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
-"public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.accounts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 
@@ -70,6 +70,27 @@ erDiagram
   uuid parent_account_id FK ""
   integer version ""
 }
+"public.leads" {
+  uuid id ""
+  text first_name ""
+  text last_name ""
+  text email ""
+  text phone ""
+  text company_name ""
+  text lead_source ""
+  text status ""
+  text disqualification_reason ""
+  text notes ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone converted_at ""
+  uuid converted_contact_id FK ""
+  uuid converted_account_id FK ""
+  uuid converted_deal_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  boolean is_demo ""
+  integer version ""
+}
 "public.contacts" {
   uuid id ""
   varchar_255_ first_name ""
@@ -84,6 +105,12 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
@@ -127,27 +154,6 @@ erDiagram
   integer version ""
   jsonb metadata ""
 }
-"public.leads" {
-  uuid id ""
-  text first_name ""
-  text last_name ""
-  text email ""
-  text phone ""
-  text company_name ""
-  text lead_source ""
-  text status ""
-  text disqualification_reason ""
-  text notes ""
-  uuid owner_id FK ""
-  timestamp_with_time_zone converted_at ""
-  uuid converted_contact_id FK ""
-  uuid converted_account_id FK ""
-  uuid converted_deal_id FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  boolean is_demo ""
-  integer version ""
-}
 "public.account_tags" {
   uuid account_id FK ""
   uuid tag_id FK ""
@@ -180,6 +186,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

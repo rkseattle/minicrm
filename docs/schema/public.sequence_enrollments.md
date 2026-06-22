@@ -20,7 +20,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| sequence_enrollments_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'completed'::character varying, 'unenrolled'::character varying])::text[]))) |
+| sequence_enrollments_status_check | CHECK | CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('completed'::character varying)::text, ('unenrolled'::character varying)::text]))) |
 | sequence_enrollments_enrolled_by_id_fkey | FOREIGN KEY | FOREIGN KEY (enrolled_by_id) REFERENCES users(id) ON DELETE SET NULL |
 | sequence_enrollments_contact_id_fkey | FOREIGN KEY | FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE |
 | sequence_enrollments_sequence_id_fkey | FOREIGN KEY | FOREIGN KEY (sequence_id) REFERENCES sales_sequences(id) ON DELETE CASCADE |
@@ -35,8 +35,8 @@
 | sequence_enrollments_sequence_id_index | CREATE INDEX sequence_enrollments_sequence_id_index ON public.sequence_enrollments USING btree (sequence_id) |
 | sequence_enrollments_contact_id_index | CREATE INDEX sequence_enrollments_contact_id_index ON public.sequence_enrollments USING btree (contact_id) |
 | sequence_enrollments_next_action_at_index | CREATE INDEX sequence_enrollments_next_action_at_index ON public.sequence_enrollments USING btree (next_action_at) |
-| uq_active_enrollment | CREATE UNIQUE INDEX uq_active_enrollment ON public.sequence_enrollments USING btree (sequence_id, contact_id) WHERE ((status)::text = 'active'::text) |
 | sequence_enrollments_status_next_action_idx | CREATE INDEX sequence_enrollments_status_next_action_idx ON public.sequence_enrollments USING btree (next_action_at) WHERE ((status)::text = 'active'::text) |
+| uq_active_enrollment | CREATE UNIQUE INDEX uq_active_enrollment ON public.sequence_enrollments USING btree (sequence_id, contact_id) WHERE ((status)::text = 'active'::text) |
 
 ## Triggers
 
@@ -101,6 +101,12 @@ erDiagram
   uuid account_id FK ""
   boolean is_demo ""
   uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
   varchar_500_ linkedin_url ""
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
@@ -133,6 +139,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 "public.sales_sequence_steps" {
   uuid id ""

@@ -10,6 +10,9 @@ import {
   listFeatureFlagsHandler,
   updateFeatureFlagHandler,
   getMyFeatureFlagsHandler,
+  listBetaUsersHandler,
+  enrollBetaUserHandler,
+  removeBetaUserHandler,
 } from '../controllers/featureFlagController.js';
 
 const router = Router();
@@ -112,6 +115,14 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listFeatureFlag
  *                     type: boolean
  *                   rep:
  *                     type: boolean
+ *               enable_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 description: >
+ *                   ISO 8601 timestamp at which the flag should automatically enable.
+ *                   Must be a future date when setting. Pass null to clear the schedule.
+ *                   (MINCRM-488)
  *     responses:
  *       200:
  *         description: Feature flag updated
@@ -132,5 +143,125 @@ router.get('/', authenticate, requireRole('admin'), asyncHandler(listFeatureFlag
  *         $ref: '#/components/responses/NotFound'
  */
 router.patch('/:key', authenticate, requireRole('admin'), asyncHandler(updateFeatureFlagHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/beta-users:
+ *   get:
+ *     tags: [FeatureFlags]
+ *     operationId: listBetaUsers
+ *     summary: List beta-enrolled users for a flag
+ *     description: Returns all users enrolled in the beta for the given flag. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of enrolled users
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/:key/beta-users',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listBetaUsersHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/beta-users:
+ *   post:
+ *     tags: [FeatureFlags]
+ *     operationId: enrollBetaUser
+ *     summary: Enroll a user in the beta for a flag
+ *     description: >
+ *       Enrolls the specified user in the beta for this flag. The user will see the flag
+ *       as enabled even if the org-wide state is disabled. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId]
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: User enrolled
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: User already enrolled
+ */
+router.post(
+  '/:key/beta-users',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(enrollBetaUserHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/{key}/beta-users/{userId}:
+ *   delete:
+ *     tags: [FeatureFlags]
+ *     operationId: removeBetaUser
+ *     summary: Remove a user from the beta for a flag
+ *     description: Removes the user's beta enrollment. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Enrollment removed
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete(
+  '/:key/beta-users/:userId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(removeBetaUserHandler),
+);
 
 export default router;

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| flag_key | varchar(100) |  | false | [public.feature_flag_usage](public.feature_flag_usage.md) |  |  |
+| flag_key | varchar(100) |  | false | [public.feature_flag_usage](public.feature_flag_usage.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) |  |  |
 | label | varchar(100) |  | false |  |  |  |
 | description | text |  | false |  |  |  |
 | category | varchar(50) |  | false |  |  |  |
@@ -13,6 +13,7 @@
 | updated_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | system_flag | boolean | true | false |  |  |  |
+| enable_at | timestamp with time zone |  | true |  |  | When set and \<= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488) |
 
 ## Constraints
 
@@ -41,6 +42,7 @@
 erDiagram
 
 "public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.feature_flags" {
@@ -53,11 +55,19 @@ erDiagram
   uuid updated_by FK ""
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
+  timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
   timestamp_with_time_zone used_at ""
+}
+"public.feature_flag_beta_users" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 "public.users" {
   uuid id ""
@@ -86,6 +96,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

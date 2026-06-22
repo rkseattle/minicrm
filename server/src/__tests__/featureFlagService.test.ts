@@ -1,5 +1,5 @@
 /**
- * Integration tests for featureFlagService. (MINCRM-463)
+ * Integration tests for featureFlagService. (MINCRM-463, MINCRM-488, MINCRM-489)
  *
  * Runs against the real PostgreSQL minicrm_test DB.
  * The feature_flags table is seeded by migration 066; tests rely on the seed data.
@@ -14,7 +14,12 @@ import {
   getFeatureFlag,
   isFeatureEnabled,
   isFlagEnabledForRole,
+  isFlagEnabledForUser,
   updateFeatureFlag,
+  enrollBetaUser,
+  removeBetaUser,
+  getBetaUsersForFlag,
+  getBetaUserCountForFlag,
   recordFeatureFlagUsage,
   getActiveUserCountForFlag,
   __clearCacheForTest,
@@ -40,6 +45,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query('TRUNCATE feature_flag_usage RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
   // Reset any flags changed by previous tests back to their seeded defaults.
   await pool.query(
     `UPDATE feature_flags
@@ -51,6 +57,7 @@ beforeEach(async () => {
        WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
        ELSE null
      END,
+     enable_at = null,
      updated_by = null,
      updated_at = now()`,
   );
@@ -338,5 +345,202 @@ describe('getActiveUserCountForFlag', () => {
     );
     const count = await getActiveUserCountForFlag('notes');
     expect(count).toBe(0);
+  });
+});
+
+// ── enable_at (MINCRM-488) ────────────────────────────────────────────────────
+
+describe('enable_at scheduling', () => {
+  it('isFeatureEnabled returns true when enable_at is in the past and enabled=false', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false, enable_at = now() - interval '1 minute'
+       WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    expect(await isFeatureEnabled('mobile_access')).toBe(true);
+  });
+
+  it('isFeatureEnabled returns false when enable_at is in the future and enabled=false', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false, enable_at = now() + interval '1 hour'
+       WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    expect(await isFeatureEnabled('mobile_access')).toBe(false);
+  });
+
+  it('isFlagEnabledForRole treats past enable_at as fully enabled for all roles', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false, enable_at = now() - interval '5 minutes'
+       WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    expect(await isFlagEnabledForRole('mobile_access', 'admin')).toBe(true);
+    expect(await isFlagEnabledForRole('mobile_access', 'rep')).toBe(true);
+  });
+
+  it('updateFeatureFlag persists enable_at and invalidates cache', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    const updated = await updateFeatureFlag(
+      'mobile_access',
+      { enabled: false, enable_at: futureDate },
+      ACTOR(),
+    );
+    expect(updated?.enable_at).toBe(futureDate);
+    // Cache invalidated — fresh read from DB.
+    const flag = await getFeatureFlag('mobile_access');
+    expect(flag?.enable_at).toBe(futureDate);
+  });
+
+  it('updateFeatureFlag clears enable_at when null is passed', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    await updateFeatureFlag('mobile_access', { enabled: false, enable_at: futureDate }, ACTOR());
+    const cleared = await updateFeatureFlag(
+      'mobile_access',
+      { enabled: false, enable_at: null },
+      ACTOR(),
+    );
+    expect(cleared?.enable_at).toBeNull();
+  });
+
+  it('updateFeatureFlag writes an audit entry when enable_at changes', async () => {
+    const futureDate = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    await updateFeatureFlag('mobile_access', { enabled: false, enable_at: futureDate }, ACTOR());
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag'
+         AND changed_by_id = $1
+         AND field_name = 'enable_at'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [actorId],
+    );
+    expect(audit.rows.length).toBe(1);
+    expect(audit.rows[0].new_value).toBe(futureDate);
+    expect(audit.rows[0].old_value).toBe('null');
+  });
+
+  it('cache TTL is capped to nearest future enable_at', async () => {
+    // Set a flag to enable in 5 seconds.
+    const soonMs = Date.now() + 5_000;
+    const soonIso = new Date(soonMs).toISOString();
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false, enable_at = $1 WHERE flag_key = 'mobile_access'`,
+      [soonIso],
+    );
+    // Force a fresh cache load by clearing it.
+    __clearCacheForTest();
+    await isFeatureEnabled('mobile_access'); // primes cache
+    // The cache should expire within 5 seconds, not 60.
+    // We approximate: after 6 seconds the flag should be auto-enabled on next read.
+    await new Promise((resolve) => setTimeout(resolve, 6_000));
+    // No explicit cache clear — TTL should have fired naturally.
+    expect(await isFeatureEnabled('mobile_access')).toBe(true);
+  }, 12_000);
+
+  it('listFeatureFlags includes enable_at per flag', async () => {
+    const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false, enable_at = $1 WHERE flag_key = 'mobile_access'`,
+      [futureDate],
+    );
+    __clearCacheForTest();
+    const flags = await listFeatureFlags();
+    const mobileFlag = flags.find((f) => f.flag_key === 'mobile_access');
+    expect(mobileFlag?.enable_at).toBe(futureDate);
+  });
+});
+
+// ── beta users (MINCRM-489) ───────────────────────────────────────────────────
+
+describe('beta user enrollment', () => {
+  it('enrollBetaUser allows a user to see a disabled flag as enabled', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+  });
+
+  it('non-beta user still sees a disabled flag as disabled', async () => {
+    const otherResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Non Beta User', 'rep', '$2b$12$placeholder', 'active')
+       RETURNING id`,
+      [`${FILE_PREFIX}-nonbeta@example.com`],
+    );
+    const otherId = otherResult.rows[0].id;
+
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', otherId, 'rep')).toBe(false);
+
+    await pool.query('DELETE FROM users WHERE id = $1', [otherId]);
+  });
+
+  it('beta enrollment has no effect when flag is globally enabled', async () => {
+    // notes is seeded as enabled=true.
+    await enrollBetaUser('notes', actorId, ACTOR());
+    // Result is still true — beta does not flip a globally-enabled flag.
+    expect(await isFlagEnabledForUser('notes', actorId, 'admin')).toBe(true);
+  });
+
+  it('removeBetaUser reverts the beta-enrolled user to default resolution', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    await removeBetaUser('mobile_access', actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+  });
+
+  it('enrollBetaUser writes an audit entry', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag'
+         AND changed_by_id = $1
+         AND field_name = 'beta_users'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
+    );
+    expect(audit.rows.length).toBe(1);
+    expect(audit.rows[0].record_name).toBe('Mobile Access');
+  });
+
+  it('removeBetaUser writes an audit entry', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    await removeBetaUser('mobile_access', actorId, ACTOR());
+    const audit = await pool.query(
+      `SELECT field_name, new_value FROM audit_log
+       WHERE record_type = 'feature_flag'
+         AND changed_by_id = $1
+         AND field_name = 'beta_users'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
+    );
+    expect(audit.rows.length).toBe(1);
+  });
+
+  it('getBetaUsersForFlag returns enrolled users', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    const users = await getBetaUsersForFlag('mobile_access');
+    expect(users.length).toBe(1);
+    expect(users[0].user_id).toBe(actorId);
+  });
+
+  it('getBetaUserCountForFlag reflects current enrollment', async () => {
+    expect(await getBetaUserCountForFlag('mobile_access')).toBe(0);
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    expect(await getBetaUserCountForFlag('mobile_access')).toBe(1);
+  });
+
+  it('listFeatureFlags includes beta_user_count', async () => {
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    const flags = await listFeatureFlags();
+    const mobileFlag = flags.find((f) => f.flag_key === 'mobile_access');
+    expect(mobileFlag?.beta_user_count).toBe(1);
+  });
+
+  it('isFlagEnabledForUser does not cache beta membership', async () => {
+    // Enroll, verify, remove, verify again — must reflect live state without explicit clear.
+    await enrollBetaUser('mobile_access', actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+    await removeBetaUser('mobile_access', actorId, ACTOR());
+    // No __clearCacheForTest — beta membership is always queried fresh.
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
   });
 });

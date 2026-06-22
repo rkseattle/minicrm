@@ -16,7 +16,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| webhook_subscriptions_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'failed'::character varying, 'disabled'::character varying])::text[]))) |
+| webhook_subscriptions_status_check | CHECK | CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('failed'::character varying)::text, ('disabled'::character varying)::text]))) |
 | webhook_subscriptions_created_by_fkey | FOREIGN KEY | FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL |
 | webhook_subscriptions_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -81,6 +81,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

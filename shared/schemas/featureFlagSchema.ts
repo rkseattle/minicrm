@@ -94,12 +94,36 @@ export const updateFeatureFlagSchema = z.object({
     invalid_type_error: 'enabled must be a boolean',
   }),
   role_overrides: roleOverridesSchema.optional(),
+  enable_at: z
+    .string()
+    .datetime({ message: 'enable_at must be a valid ISO 8601 datetime string' })
+    .refine((val) => new Date(val) > new Date(), {
+      message: 'enable_at must be a future date',
+    })
+    .nullable()
+    .optional(),
 });
 
 export type UpdateFeatureFlagInput = z.infer<typeof updateFeatureFlagSchema>;
 
 /** Response from GET /api/v1/feature-flags/me — resolved enabled state per calling user's role. */
 export type MyFeatureFlagsResponse = Record<FeatureFlagKey, boolean>;
+
+/** A single enrolled beta user entry from GET /admin/feature-flags/:key/beta-users. */
+export interface BetaUserEntry {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  added_at: string;
+}
+
+/** Request body for POST /admin/feature-flags/:key/beta-users */
+export const enrollBetaUserSchema = z.object({
+  userId: z.string().uuid({ message: 'userId must be a valid UUID' }),
+});
+
+export type EnrollBetaUserInput = z.infer<typeof enrollBetaUserSchema>;
 
 /** Shape of a feature flag row returned from the API. */
 export interface FeatureFlagRow {
@@ -109,10 +133,14 @@ export interface FeatureFlagRow {
   category: FeatureFlagCategory;
   enabled: boolean;
   role_overrides: RoleOverrides;
+  /** ISO 8601 datetime; when set and <= now(), the flag is treated as enabled. */
+  enable_at: string | null;
   updated_by: string | null;
   updated_by_name: string | null;
   updated_at: string;
   system_flag: boolean;
   /** Count of distinct users who used this feature in the last 30 days. */
   active_user_count: number;
+  /** Count of users explicitly enrolled in the beta for this flag. */
+  beta_user_count: number;
 }

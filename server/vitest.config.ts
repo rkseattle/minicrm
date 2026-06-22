@@ -152,6 +152,16 @@ const SERIAL_FILES = [
   // scimController uses the Express app to test /scim/v2/* endpoints with a real bearer
   // token; running in parallel with scimService or teamService causes FK races.
   'src/__tests__/scimController.test.ts',
+  // featureFlagService contains a 6-second TTL cap test that mutates feature_flags directly.
+  // featureFlagController resets feature_flags in beforeEach. Running both in parallel causes
+  // the TTL test's DB state to be clobbered mid-sleep, making mobile_access appear un-scheduled
+  // when the cache reloads after the TTL fires. (MINCRM-488, MINCRM-489)
+  'src/__tests__/featureFlagService.test.ts',
+  'src/__tests__/featureFlagController.test.ts',
+  // sequenceController's duplicate-enrollment test (expect 409) races with other tests'
+  // beforeEach deletes on sequence_enrollments, which can remove the first enrollment
+  // between the two POST calls and let the second POST return 201 instead of 409.
+  'src/__tests__/sequenceController.test.ts',
 ];
 
 const sharedResolve = {

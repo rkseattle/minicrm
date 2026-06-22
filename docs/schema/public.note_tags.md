@@ -6,7 +6,6 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | note_id | uuid |  | false |  | [public.notes](public.notes.md) |  |
 | tag_id | uuid |  | false |  | [public.tags](public.tags.md) |  |
-| created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
@@ -34,7 +33,6 @@ erDiagram
 "public.note_tags" {
   uuid note_id FK ""
   uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
 }
 "public.notes" {
   uuid id ""
@@ -44,6 +42,7 @@ erDiagram
   text body ""
   text body_text ""
   varchar_8_ visibility ""
+  text__ tags ""
   uuid created_by FK ""
   uuid updated_by FK ""
   timestamp_with_time_zone created_at ""

@@ -12,8 +12,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| deal_tags_deal_id_fkey | FOREIGN KEY | FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE |
 | deal_tags_tag_id_fkey | FOREIGN KEY | FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE |
+| deal_tags_deal_id_fkey | FOREIGN KEY | FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE |
 | deal_tags_pkey | PRIMARY KEY | PRIMARY KEY (deal_id, tag_id) |
 
 ## Indexes

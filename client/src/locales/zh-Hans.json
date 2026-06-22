@@ -1903,7 +1903,20 @@
     "roles": {
       "admin": "管理员",
       "rep": "销售代表"
-    }
+    },
+    "scheduledBadge": "已计划",
+    "scheduledLabel": "计划于 {{date}} 启用",
+    "enableAt": "设置自动启用时间",
+    "enableAtClear": "清除计划",
+    "enableAtPast": "计划日期必须是未来的时间",
+    "betaUsers": "测试用户",
+    "betaUserCount_one": "{{count}} 位测试用户",
+    "betaUserCount_other": "{{count}} 位测试用户",
+    "betaUserAdd": "添加用户",
+    "betaUserRemove": "移除",
+    "betaUserSearch": "按姓名或邮箱搜索用户",
+    "betaUserEmpty": "暂无已注册的测试用户。",
+    "betaUserAlreadyEnrolled": "该用户已注册为测试用户。"
   },
   "aiSettings": {
     "loadError": "加载 AI 设置失败，请重试。",

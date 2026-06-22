@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contact_tags](public.contact_tags.md) [public.account_tags](public.account_tags.md) [public.deal_tags](public.deal_tags.md) [public.note_tags](public.note_tags.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.note_tags](public.note_tags.md) [public.contact_tags](public.contact_tags.md) [public.account_tags](public.account_tags.md) [public.deal_tags](public.deal_tags.md) |  |  |
 | name | varchar(100) |  | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
@@ -34,16 +34,20 @@
 ```mermaid
 erDiagram
 
+"public.note_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 "public.contact_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 "public.account_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 "public.deal_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.note_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 
 "public.tags" {
   uuid id ""
   varchar_100_ name ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.note_tags" {
+  uuid note_id FK ""
+  uuid tag_id FK ""
 }
 "public.contact_tags" {
   uuid contact_id FK ""
@@ -57,11 +61,6 @@ erDiagram
 }
 "public.deal_tags" {
   uuid deal_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.note_tags" {
-  uuid note_id FK ""
   uuid tag_id FK ""
   timestamp_with_time_zone created_at ""
 }

@@ -1,41 +1,48 @@
-# public.feature_flag_usage
+# public.feature_flag_beta_users
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| id | uuid | gen_random_uuid() | false |  |  |  |
 | flag_key | varchar(100) |  | false |  | [public.feature_flags](public.feature_flags.md) |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
-| used_at | timestamp with time zone | now() | false |  |  |  |
+| added_by | uuid |  | true |  | [public.users](public.users.md) |  |
+| added_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| feature_flag_usage_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| feature_flag_usage_flag_key_fkey | FOREIGN KEY | FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE |
-| pk_feature_flag_usage | PRIMARY KEY | PRIMARY KEY (flag_key, user_id) |
+| feature_flag_beta_users_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL |
+| feature_flag_beta_users_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
+| feature_flag_beta_users_flag_key_fkey | FOREIGN KEY | FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE |
+| feature_flag_beta_users_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| feature_flag_beta_users_flag_key_user_id_unique | UNIQUE | UNIQUE (flag_key, user_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| pk_feature_flag_usage | CREATE UNIQUE INDEX pk_feature_flag_usage ON public.feature_flag_usage USING btree (flag_key, user_id) |
-| feature_flag_usage_flag_key_used_at_idx | CREATE INDEX feature_flag_usage_flag_key_used_at_idx ON public.feature_flag_usage USING btree (flag_key, used_at) |
-| feature_flag_usage_used_at_index | CREATE INDEX feature_flag_usage_used_at_index ON public.feature_flag_usage USING btree (used_at) |
+| feature_flag_beta_users_pkey | CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id) |
+| feature_flag_beta_users_flag_key_user_id_unique | CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id) |
+| feature_flag_beta_users_flag_key_index | CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 
-"public.feature_flag_usage" {
+"public.feature_flag_beta_users" {
+  uuid id ""
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
-  timestamp_with_time_zone used_at ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 "public.feature_flags" {
   varchar_100_ flag_key ""

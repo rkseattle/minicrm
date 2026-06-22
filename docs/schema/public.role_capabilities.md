@@ -2,7 +2,7 @@
 
 ## Description
 
-Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum in shared/schemas/capabilitySchema.ts is the source of truth for valid capability strings — the DB stores assignments only. A capability absent from this table means the role does not have it.
+Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum is the source of truth for valid strings; the DB stores assignments only.
 
 ## Columns
 

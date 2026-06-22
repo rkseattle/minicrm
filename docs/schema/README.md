@@ -4,60 +4,62 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.users](public.users.md) | 26 |  | BASE TABLE |
-| [public.contacts](public.contacts.md) | 17 |  | BASE TABLE |
-| [public.accounts](public.accounts.md) | 13 |  | BASE TABLE |
-| [public.deals](public.deals.md) | 17 |  | BASE TABLE |
-| [public.deal_contacts](public.deal_contacts.md) | 3 |  | BASE TABLE |
-| [public.activities](public.activities.md) | 17 |  | BASE TABLE |
+| [public.users](public.users.md) | 27 |  | BASE TABLE |
+| [public.tags](public.tags.md) | 4 |  | BASE TABLE |
 | [public.system_settings](public.system_settings.md) | 4 |  | BASE TABLE |
+| [public.currencies](public.currencies.md) | 6 |  | BASE TABLE |
+| [public.pipelines](public.pipelines.md) | 6 |  | BASE TABLE |
+| [public.pipeline_stages](public.pipeline_stages.md) | 10 |  | BASE TABLE |
+| [public.leads](public.leads.md) | 19 |  | BASE TABLE |
+| [public.accounts](public.accounts.md) | 13 |  | BASE TABLE |
+| [public.contacts](public.contacts.md) | 23 |  | BASE TABLE |
+| [public.contact_addresses](public.contact_addresses.md) | 12 |  | BASE TABLE |
+| [public.deals](public.deals.md) | 17 |  | BASE TABLE |
+| [public.activities](public.activities.md) | 17 |  | BASE TABLE |
 | [public.automation_rules](public.automation_rules.md) | 11 |  | BASE TABLE |
 | [public.automation_rule_logs](public.automation_rule_logs.md) | 8 |  | BASE TABLE |
-| [public.overdue_task_notifications](public.overdue_task_notifications.md) | 2 |  | BASE TABLE |
 | [public.attachments](public.attachments.md) | 9 | File attachment metadata for CRM entity records. record_type + record_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid record_type values: 'contact', 'account', 'deal', 'lead' (extended in migration 047). Orphan cleanup is the application's responsibility: rows whose record_id no longer exists in the referenced entity table should be deleted when the parent is removed. The physical file (storage_key) must be deleted from object storage before or alongside the row. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
-| [public.leads](public.leads.md) | 19 |  | BASE TABLE |
-| [public.lead_status_history](public.lead_status_history.md) | 7 |  | BASE TABLE |
-| [public.pipeline_stages](public.pipeline_stages.md) | 10 |  | BASE TABLE |
-| [public.contact_addresses](public.contact_addresses.md) | 12 |  | BASE TABLE |
-| [public.tags](public.tags.md) | 4 |  | BASE TABLE |
-| [public.contact_tags](public.contact_tags.md) | 3 |  | BASE TABLE |
-| [public.account_tags](public.account_tags.md) | 3 |  | BASE TABLE |
-| [public.deal_tags](public.deal_tags.md) | 3 |  | BASE TABLE |
-| [public.currencies](public.currencies.md) | 6 |  | BASE TABLE |
-| [public.import_jobs](public.import_jobs.md) | 14 |  | BASE TABLE |
+| [public.audit_log](public.audit_log.md) | 11 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
+| [public.overdue_task_notifications](public.overdue_task_notifications.md) | 2 |  | BASE TABLE |
+| [public.notes](public.notes.md) | 13 | Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: 'contact', 'account', 'deal', 'lead'. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application's responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
+| [public.note_tags](public.note_tags.md) | 2 |  | BASE TABLE |
 | [public.custom_field_definitions](public.custom_field_definitions.md) | 8 |  | BASE TABLE |
 | [public.custom_field_values](public.custom_field_values.md) | 6 | Values for admin-defined custom fields on CRM entity records. record_id is a polymorphic reference to the entity row identified by the associated custom_field_definitions.entity_type — no FK constraint is possible because the parent table varies per definition. Valid entity_type values (on custom_field_definitions): 'contact', 'account', 'deal'. definition_id has a real FK with ON DELETE CASCADE — deleting a field definition removes all its values automatically. Orphan cleanup: rows whose record_id no longer exists in the parent entity table accumulate silently when the entity is deleted. Application must delete custom_field_values rows alongside entity deletion. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
 | [public.webhook_subscriptions](public.webhook_subscriptions.md) | 7 |  | BASE TABLE |
 | [public.webhook_delivery_logs](public.webhook_delivery_logs.md) | 9 |  | BASE TABLE |
-| [public.notes](public.notes.md) | 12 | Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: 'contact', 'account', 'deal', 'lead'. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application's responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
+| [public.import_jobs](public.import_jobs.md) | 14 |  | BASE TABLE |
 | [public.gdpr_deletion_log](public.gdpr_deletion_log.md) | 8 | Append-only log of GDPR Art. 17 erasure requests (one row per erased record). The UNIQUE index on (record_type, record_id) is safe because all record_id values are UUIDs generated by gen_random_uuid() at row-creation time — re-imports always receive a new UUID. If deterministic external IDs are ever introduced this constraint must be revisited. See migration 084 for full rationale. (MINCRM-517) No FK constraint on record_id — the referenced row is hard-deleted during erasure. Rows are retained indefinitely by design; orphan cleanup does not apply. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
-| [public.pipelines](public.pipelines.md) | 6 |  | BASE TABLE |
+| [public.lead_status_history](public.lead_status_history.md) | 7 |  | BASE TABLE |
+| [public.contact_tags](public.contact_tags.md) | 3 |  | BASE TABLE |
+| [public.account_tags](public.account_tags.md) | 3 |  | BASE TABLE |
+| [public.deal_tags](public.deal_tags.md) | 3 |  | BASE TABLE |
+| [public.deal_contacts](public.deal_contacts.md) | 3 |  | BASE TABLE |
 | [public.custom_reports](public.custom_reports.md) | 8 |  | BASE TABLE |
 | [public.sales_sequences](public.sales_sequences.md) | 8 |  | BASE TABLE |
 | [public.sales_sequence_steps](public.sales_sequence_steps.md) | 8 |  | BASE TABLE |
 | [public.sequence_enrollments](public.sequence_enrollments.md) | 11 |  | BASE TABLE |
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
-| [public.feature_flags](public.feature_flags.md) | 9 |  | BASE TABLE |
+| [public.feature_flags](public.feature_flags.md) | 10 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
-| [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
-| [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
 | [public.ai_configuration](public.ai_configuration.md) | 16 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
-| [public.audit_log](public.audit_log.md) | 11 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
-| [public.note_tags](public.note_tags.md) | 3 |  | BASE TABLE |
-| [public.currency_rate_history](public.currency_rate_history.md) | 5 |  | BASE TABLE |
-| [public.teams](public.teams.md) | 6 |  | BASE TABLE |
+| [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
+| [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
+| [public.currency_rate_history](public.currency_rate_history.md) | 4 |  | BASE TABLE |
+| [public.teams](public.teams.md) | 7 |  | BASE TABLE |
 | [public.team_memberships](public.team_memberships.md) | 3 |  | BASE TABLE |
 | [public.org_visibility_settings](public.org_visibility_settings.md) | 4 |  | BASE TABLE |
-| [public.custom_roles](public.custom_roles.md) | 6 | Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles (admin, manager, rep, viewer, service_account) and cannot be deleted or renamed via the REST API. Custom roles (is_builtin = false) are admin-configurable. | BASE TABLE |
-| [public.role_capabilities](public.role_capabilities.md) | 2 | Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum in shared/schemas/capabilitySchema.ts is the source of truth for valid capability strings — the DB stores assignments only. A capability absent from this table means the role does not have it. | BASE TABLE |
-| [public.user_custom_roles](public.user_custom_roles.md) | 2 | Assignment of custom roles to users (MINCRM-542). A user may hold multiple roles; effective capabilities are the union of all capabilities from all assigned roles. At least one built-in role row is inserted for every user by this migration; additional custom roles are additive. | BASE TABLE |
+| [public.custom_roles](public.custom_roles.md) | 6 | Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles and cannot be deleted or renamed via the REST API. | BASE TABLE |
+| [public.role_capabilities](public.role_capabilities.md) | 2 | Capability strings granted to a role (MINCRM-542). The TypeScript Capability enum is the source of truth for valid strings; the DB stores assignments only. | BASE TABLE |
+| [public.user_custom_roles](public.user_custom_roles.md) | 2 | Assignment of custom roles to users (MINCRM-542). Effective capabilities are the union of all capabilities from all assigned roles. | BASE TABLE |
+| [public.scim_tokens](public.scim_tokens.md) | 5 |  | BASE TABLE |
+| [public.scim_group_role_mappings](public.scim_group_role_mappings.md) | 5 |  | BASE TABLE |
+| [public.feature_flag_beta_users](public.feature_flag_beta_users.md) | 5 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
 | Name | ReturnType | Arguments | Type |
 | ---- | ------- | ------- | ---- |
-| public.audit_log_immutable | trigger |  | FUNCTION |
 | public.set_limit | float4 | real | FUNCTION |
 | public.show_limit | float4 |  | FUNCTION |
 | public.show_trgm | _text | text | FUNCTION |
@@ -89,10 +91,21 @@
 | public.strict_word_similarity_dist_op | float4 | text, text | FUNCTION |
 | public.strict_word_similarity_dist_commutator_op | float4 | text, text | FUNCTION |
 | public.gtrgm_options | void | internal | FUNCTION |
-| public.audit_log_notify | trigger |  | FUNCTION |
-| public.set_updated_at | trigger |  | FUNCTION |
-| public.is_valid_role_overrides | bool | overrides jsonb | FUNCTION |
+| public.uuid_nil | uuid |  | FUNCTION |
+| public.uuid_ns_dns | uuid |  | FUNCTION |
+| public.uuid_ns_url | uuid |  | FUNCTION |
+| public.uuid_ns_oid | uuid |  | FUNCTION |
+| public.uuid_ns_x500 | uuid |  | FUNCTION |
+| public.uuid_generate_v1 | uuid |  | FUNCTION |
+| public.uuid_generate_v1mc | uuid |  | FUNCTION |
+| public.uuid_generate_v3 | uuid | namespace uuid, name text | FUNCTION |
+| public.uuid_generate_v4 | uuid |  | FUNCTION |
+| public.uuid_generate_v5 | uuid | namespace uuid, name text | FUNCTION |
 | public.app_current_user_id | uuid |  | FUNCTION |
+| public.audit_log_immutable | trigger |  | FUNCTION |
+| public.audit_log_notify | trigger |  | FUNCTION |
+| public.is_valid_role_overrides | bool | overrides jsonb | FUNCTION |
+| public.set_updated_at | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -110,48 +123,50 @@
 ```mermaid
 erDiagram
 
-"public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
-"public.contacts" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+"public.system_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.pipeline_stages" }o--o| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
+"public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+"public.leads" }o--o| "public.contacts" : "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
+"public.leads" }o--o| "public.deals" : "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL"
 "public.accounts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.accounts" }o--o| "public.accounts" : "FOREIGN KEY (parent_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+"public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
+"public.contacts" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+"public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+"public.contact_addresses" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.deals" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
-"public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
-"public.deals" }o--|| "public.pipeline_stages" : "FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT"
 "public.deals" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
-"public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-"public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+"public.deals" }o--|| "public.pipeline_stages" : "FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT"
+"public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
+"public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.activities" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-"public.system_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.automation_rules" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT"
 "public.automation_rule_logs" }o--|| "public.automation_rules" : "FOREIGN KEY (rule_id) REFERENCES automation_rules(id) ON DELETE CASCADE"
-"public.overdue_task_notifications" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.attachments" }o--o| "public.users" : "FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL"
-"public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
-"public.leads" }o--o| "public.contacts" : "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
-"public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
-"public.leads" }o--o| "public.deals" : "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL"
-"public.lead_status_history" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
-"public.pipeline_stages" }o--o| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
-"public.contact_addresses" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-"public.contact_tags" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
-"public.contact_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
-"public.account_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.deal_tags" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-"public.deal_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.import_jobs" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.overdue_task_notifications" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.notes" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
+"public.notes" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id)"
+"public.note_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.note_tags" }o--|| "public.notes" : "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
 "public.custom_field_values" }o--|| "public.custom_field_definitions" : "FOREIGN KEY (definition_id) REFERENCES custom_field_definitions(id) ON DELETE CASCADE"
 "public.webhook_subscriptions" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.webhook_delivery_logs" }o--o| "public.webhook_subscriptions" : "FOREIGN KEY (subscription_id) REFERENCES webhook_subscriptions(id) ON DELETE CASCADE"
-"public.notes" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
-"public.notes" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id)"
+"public.import_jobs" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.gdpr_deletion_log" }o--|| "public.users" : "FOREIGN KEY (requested_by) REFERENCES users(id)"
-"public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.lead_status_history" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.contact_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.contact_tags" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.account_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.deal_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.deal_tags" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+"public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.custom_reports" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.sales_sequences" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.sales_sequence_steps" }o--|| "public.sales_sequences" : "FOREIGN KEY (sequence_id) REFERENCES sales_sequences(id) ON DELETE CASCADE"
@@ -164,12 +179,10 @@ erDiagram
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.note_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.note_tags" }o--|| "public.notes" : "FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE"
+"public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
@@ -178,6 +191,11 @@ erDiagram
 "public.role_capabilities" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
 "public.user_custom_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.user_custom_roles" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
+"public.scim_tokens" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.scim_group_role_mappings" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT"
+"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -206,24 +224,67 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
-"public.contacts" {
+"public.tags" {
   uuid id ""
-  varchar_255_ first_name ""
-  varchar_255_ last_name ""
-  varchar_255_ email ""
-  varchar_50_ phone ""
-  varchar_255_ title ""
-  varchar_255_ department ""
-  uuid owner_id FK ""
+  varchar_100_ name ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  uuid account_id FK ""
+}
+"public.system_settings" {
+  text key ""
+  text value ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
+}
+"public.currencies" {
+  varchar_3_ code ""
+  varchar_64_ name ""
+  varchar_8_ symbol ""
+  numeric_18_6_ rate_to_home ""
+  boolean is_home ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.pipelines" {
+  uuid id ""
+  varchar_100_ name ""
+  boolean is_default ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.pipeline_stages" {
+  uuid id ""
+  varchar_100_ name ""
+  integer sort_order ""
+  integer probability ""
+  boolean is_terminal ""
+  boolean is_fixed ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  uuid pipeline_id FK ""
+  jsonb stage_exit_requirements ""
+}
+"public.leads" {
+  uuid id ""
+  text first_name ""
+  text last_name ""
+  text email ""
+  text phone ""
+  text company_name ""
+  text lead_source ""
+  text status ""
+  text disqualification_reason ""
+  text notes ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone converted_at ""
+  uuid converted_contact_id FK ""
+  uuid converted_account_id FK ""
+  uuid converted_deal_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
   boolean is_demo ""
-  uuid source_lead_id FK ""
-  varchar_500_ linkedin_url ""
-  varchar_500_ twitter_x_url ""
-  varchar_500_ other_url ""
   integer version ""
 }
 "public.accounts" {
@@ -240,6 +301,45 @@ erDiagram
   varchar_20_ account_type ""
   uuid parent_account_id FK ""
   integer version ""
+}
+"public.contacts" {
+  uuid id ""
+  varchar_255_ first_name ""
+  varchar_255_ last_name ""
+  varchar_255_ email ""
+  varchar_50_ phone ""
+  varchar_255_ title ""
+  varchar_255_ department ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  uuid account_id FK ""
+  boolean is_demo ""
+  uuid source_lead_id FK ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
+  varchar_500_ linkedin_url ""
+  varchar_500_ twitter_x_url ""
+  varchar_500_ other_url ""
+  integer version ""
+}
+"public.contact_addresses" {
+  uuid id ""
+  uuid contact_id FK ""
+  varchar_50_ label ""
+  varchar_255_ address_line1 ""
+  varchar_255_ address_line2 ""
+  varchar_100_ city ""
+  varchar_100_ state_region ""
+  varchar_20_ postal_code ""
+  varchar_100_ country ""
+  boolean is_default ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 "public.deals" {
   uuid id ""
@@ -260,11 +360,6 @@ erDiagram
   uuid pipeline_id FK ""
   uuid pipeline_stage_id FK ""
 }
-"public.deal_contacts" {
-  uuid deal_id FK ""
-  uuid contact_id FK ""
-  timestamp_with_time_zone created_at ""
-}
 "public.activities" {
   uuid id ""
   activity_type type ""
@@ -283,12 +378,6 @@ erDiagram
   boolean is_demo ""
   integer version ""
   jsonb metadata ""
-}
-"public.system_settings" {
-  text key ""
-  text value ""
-  timestamp_with_time_zone updated_at ""
-  uuid updated_by FK "User who last modified this setting — NULL for system/migration writes (MINCRM-520)"
 }
 "public.automation_rules" {
   uuid id ""
@@ -313,10 +402,6 @@ erDiagram
   text error_message ""
   jsonb action_config_snapshot ""
 }
-"public.overdue_task_notifications" {
-  uuid activity_id FK ""
-  timestamp_with_time_zone notified_at ""
-}
 "public.attachments" {
   uuid id ""
   text record_type ""
@@ -328,106 +413,41 @@ erDiagram
   uuid uploader_id FK ""
   timestamp_with_time_zone uploaded_at ""
 }
-"public.leads" {
+"public.audit_log" {
   uuid id ""
-  text first_name ""
-  text last_name ""
-  text email ""
-  text phone ""
-  text company_name ""
-  text lead_source ""
-  text status ""
-  text disqualification_reason ""
-  text notes ""
-  uuid owner_id FK ""
-  timestamp_with_time_zone converted_at ""
-  uuid converted_contact_id FK ""
-  uuid converted_account_id FK ""
-  uuid converted_deal_id FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  boolean is_demo ""
-  integer version ""
-}
-"public.lead_status_history" {
-  uuid id ""
-  uuid lead_id FK ""
-  text from_status ""
-  text to_status ""
+  text record_type ""
+  uuid record_id ""
+  text record_name ""
+  text event_type ""
+  text field_name ""
+  text old_value ""
+  text new_value ""
   uuid changed_by_id ""
   text changed_by_name ""
   timestamp_with_time_zone created_at ""
 }
-"public.pipeline_stages" {
+"public.overdue_task_notifications" {
+  uuid activity_id FK ""
+  timestamp_with_time_zone notified_at ""
+}
+"public.notes" {
   uuid id ""
-  varchar_100_ name ""
-  integer sort_order ""
-  integer probability ""
-  boolean is_terminal ""
-  boolean is_fixed ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  uuid pipeline_id FK ""
-  jsonb stage_exit_requirements ""
-}
-"public.contact_addresses" {
-  uuid id ""
-  uuid contact_id FK ""
-  varchar_50_ label ""
-  varchar_255_ address_line1 ""
-  varchar_255_ address_line2 ""
-  varchar_100_ city ""
-  varchar_100_ state_region ""
-  varchar_20_ postal_code ""
-  varchar_100_ country ""
-  boolean is_default ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.tags" {
-  uuid id ""
-  varchar_100_ name ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.contact_tags" {
-  uuid contact_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.account_tags" {
-  uuid account_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.deal_tags" {
-  uuid deal_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.currencies" {
-  varchar_3_ code ""
-  varchar_64_ name ""
-  varchar_8_ symbol ""
-  numeric_18_6_ rate_to_home ""
-  boolean is_home ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.import_jobs" {
-  uuid id ""
-  varchar_16_ type ""
-  varchar_16_ status ""
-  integer total_rows ""
-  integer processed_rows ""
-  integer created_count ""
-  integer skipped_count ""
-  integer failed_count ""
-  text error_csv ""
+  varchar_16_ entity_type ""
+  uuid entity_id ""
+  varchar_255_ title ""
+  text body ""
+  text body_text ""
+  varchar_8_ visibility ""
+  text__ tags ""
   uuid created_by FK ""
-  timestamp_with_time_zone started_at ""
-  timestamp_with_time_zone completed_at ""
+  uuid updated_by FK ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  timestamp_with_time_zone deleted_at ""
+}
+"public.note_tags" {
+  uuid note_id FK ""
+  uuid tag_id FK ""
 }
 "public.custom_field_definitions" {
   uuid id ""
@@ -467,19 +487,21 @@ erDiagram
   text error ""
   timestamp_with_time_zone delivered_at ""
 }
-"public.notes" {
+"public.import_jobs" {
   uuid id ""
-  varchar_16_ entity_type ""
-  uuid entity_id ""
-  varchar_255_ title ""
-  text body ""
-  text body_text ""
-  varchar_8_ visibility ""
+  varchar_16_ type ""
+  varchar_16_ status ""
+  integer total_rows ""
+  integer processed_rows ""
+  integer created_count ""
+  integer skipped_count ""
+  integer failed_count ""
+  text error_csv ""
   uuid created_by FK ""
-  uuid updated_by FK ""
+  timestamp_with_time_zone started_at ""
+  timestamp_with_time_zone completed_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  timestamp_with_time_zone deleted_at ""
 }
 "public.gdpr_deletion_log" {
   uuid id ""
@@ -491,13 +513,34 @@ erDiagram
   text__ erasure_scope ""
   text notes ""
 }
-"public.pipelines" {
+"public.lead_status_history" {
   uuid id ""
-  varchar_100_ name ""
-  boolean is_default ""
-  uuid created_by FK ""
+  uuid lead_id FK ""
+  text from_status ""
+  text to_status ""
+  uuid changed_by_id ""
+  text changed_by_name ""
   timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
+}
+"public.contact_tags" {
+  uuid contact_id FK ""
+  uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.account_tags" {
+  uuid account_id FK ""
+  uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.deal_tags" {
+  uuid deal_id FK ""
+  uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.deal_contacts" {
+  uuid deal_id FK ""
+  uuid contact_id FK ""
+  timestamp_with_time_zone created_at ""
 }
 "public.custom_reports" {
   uuid id ""
@@ -561,25 +604,12 @@ erDiagram
   uuid updated_by FK ""
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
+  timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
   timestamp_with_time_zone used_at ""
-}
-"public.ai_token_budgets" {
-  uuid id ""
-  uuid user_id FK ""
-  bigint monthly_limit ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.ai_token_usage" {
-  uuid user_id FK ""
-  character_7_ year_month ""
-  bigint input_tokens ""
-  bigint output_tokens ""
-  timestamp_with_time_zone updated_at ""
 }
 "public.ai_configuration" {
   boolean singleton ""
@@ -609,36 +639,32 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   smallint pass_key_version "Key version used to encrypt pass_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
 }
-"public.audit_log" {
+"public.ai_token_budgets" {
   uuid id ""
-  text record_type ""
-  uuid record_id ""
-  text record_name ""
-  text event_type ""
-  text field_name ""
-  text old_value ""
-  text new_value ""
-  uuid changed_by_id ""
-  text changed_by_name ""
+  uuid user_id FK ""
+  bigint monthly_limit ""
   timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
-"public.note_tags" {
-  uuid note_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
+"public.ai_token_usage" {
+  uuid user_id FK ""
+  character_7_ year_month ""
+  bigint input_tokens ""
+  bigint output_tokens ""
+  timestamp_with_time_zone updated_at ""
 }
 "public.currency_rate_history" {
   uuid id ""
   varchar_3_ code ""
   numeric_18_6_ rate_to_home ""
   timestamp_with_time_zone effective_from ""
-  timestamp_with_time_zone created_at ""
 }
 "public.teams" {
   uuid id ""
   text name ""
   uuid manager_id FK ""
   uuid parent_team_id FK ""
+  text scim_group_id ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
@@ -668,6 +694,27 @@ erDiagram
 "public.user_custom_roles" {
   uuid user_id FK ""
   uuid role_id FK ""
+}
+"public.scim_tokens" {
+  uuid id ""
+  text token_hash ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone last_used_at ""
+}
+"public.scim_group_role_mappings" {
+  uuid id ""
+  text scim_group_id ""
+  text group_name ""
+  uuid role_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.feature_flag_beta_users" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 ```
 

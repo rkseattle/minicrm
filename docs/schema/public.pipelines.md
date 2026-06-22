@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.deals](public.deals.md) [public.pipeline_stages](public.pipeline_stages.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.pipeline_stages](public.pipeline_stages.md) [public.deals](public.deals.md) |  |  |
 | name | varchar(100) |  | false |  |  |  |
 | is_default | boolean | false | false |  |  |  |
 | created_by | uuid |  | true |  | [public.users](public.users.md) |  |
@@ -23,8 +23,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | pipelines_pkey | CREATE UNIQUE INDEX pipelines_pkey ON public.pipelines USING btree (id) |
-| pipelines_single_default_idx | CREATE UNIQUE INDEX pipelines_single_default_idx ON public.pipelines USING btree (is_default) WHERE (is_default = true) |
 | pipelines_name_lower_unique | CREATE UNIQUE INDEX pipelines_name_lower_unique ON public.pipelines USING btree (lower((name)::text)) |
+| pipelines_single_default_idx | CREATE UNIQUE INDEX pipelines_single_default_idx ON public.pipelines USING btree (is_default) WHERE (is_default = true) |
 
 ## Triggers
 
@@ -37,8 +37,8 @@
 ```mermaid
 erDiagram
 
-"public.deals" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
 "public.pipeline_stages" }o--o| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
+"public.deals" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
 "public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.pipelines" {
@@ -48,6 +48,18 @@ erDiagram
   uuid created_by FK ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.pipeline_stages" {
+  uuid id ""
+  varchar_100_ name ""
+  integer sort_order ""
+  integer probability ""
+  boolean is_terminal ""
+  boolean is_fixed ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  uuid pipeline_id FK ""
+  jsonb stage_exit_requirements ""
 }
 "public.deals" {
   uuid id ""
@@ -67,18 +79,6 @@ erDiagram
   integer version ""
   uuid pipeline_id FK ""
   uuid pipeline_stage_id FK ""
-}
-"public.pipeline_stages" {
-  uuid id ""
-  varchar_100_ name ""
-  integer sort_order ""
-  integer probability ""
-  boolean is_terminal ""
-  boolean is_fixed ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  uuid pipeline_id FK ""
-  jsonb stage_exit_requirements ""
 }
 "public.users" {
   uuid id ""
@@ -107,6 +107,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

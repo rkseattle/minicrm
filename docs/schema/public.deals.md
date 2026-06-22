@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.deal_contacts](public.deal_contacts.md) [public.activities](public.activities.md) [public.leads](public.leads.md) [public.deal_tags](public.deal_tags.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.activities](public.activities.md) [public.deal_tags](public.deal_tags.md) [public.deal_contacts](public.deal_contacts.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | stage | varchar(50) |  | false |  |  |  |
 | value | numeric(15,2) |  | true |  |  |  |
@@ -28,11 +28,11 @@
 | ---- | ---- | ---------- |
 | deals_probability_check | CHECK | CHECK (((probability IS NULL) OR ((probability >= 0) AND (probability <= 100)))) |
 | deals_owner_id_fkey | FOREIGN KEY | FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT |
+| deals_pipeline_id_fkey | FOREIGN KEY | FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT |
+| deals_pipeline_stage_id_fkey | FOREIGN KEY | FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT |
+| deals_source_lead_id_fkey | FOREIGN KEY | FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL |
 | deals_account_id_fkey | FOREIGN KEY | FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL |
 | deals_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| deals_source_lead_id_fkey | FOREIGN KEY | FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL |
-| deals_pipeline_stage_id_fkey | FOREIGN KEY | FOREIGN KEY (pipeline_stage_id) REFERENCES pipeline_stages(id) ON DELETE RESTRICT |
-| deals_pipeline_id_fkey | FOREIGN KEY | FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT |
 
 ## Indexes
 
@@ -60,10 +60,10 @@
 ```mermaid
 erDiagram
 
-"public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-"public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.leads" }o--o| "public.deals" : "FOREIGN KEY (converted_deal_id) REFERENCES deals(id) ON DELETE SET NULL"
+"public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.deal_tags" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+"public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.deals" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
@@ -89,30 +89,6 @@ erDiagram
   uuid pipeline_id FK ""
   uuid pipeline_stage_id FK ""
 }
-"public.deal_contacts" {
-  uuid deal_id FK ""
-  uuid contact_id FK ""
-  timestamp_with_time_zone created_at ""
-}
-"public.activities" {
-  uuid id ""
-  activity_type type ""
-  varchar_255_ subject ""
-  text notes ""
-  date due_date ""
-  activity_status status ""
-  uuid contact_id FK ""
-  uuid account_id FK ""
-  uuid deal_id FK ""
-  uuid owner_id FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-  activity_direction direction ""
-  text outcome ""
-  boolean is_demo ""
-  integer version ""
-  jsonb metadata ""
-}
 "public.leads" {
   uuid id ""
   text first_name ""
@@ -134,9 +110,33 @@ erDiagram
   boolean is_demo ""
   integer version ""
 }
+"public.activities" {
+  uuid id ""
+  activity_type type ""
+  varchar_255_ subject ""
+  text notes ""
+  date due_date ""
+  activity_status status ""
+  uuid contact_id FK ""
+  uuid account_id FK ""
+  uuid deal_id FK ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  activity_direction direction ""
+  text outcome ""
+  boolean is_demo ""
+  integer version ""
+  jsonb metadata ""
+}
 "public.deal_tags" {
   uuid deal_id FK ""
   uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.deal_contacts" {
+  uuid deal_id FK ""
+  uuid contact_id FK ""
   timestamp_with_time_zone created_at ""
 }
 "public.accounts" {
@@ -181,6 +181,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 "public.pipelines" {
   uuid id ""

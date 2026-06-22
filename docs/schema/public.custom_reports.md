@@ -17,8 +17,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| custom_reports_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying, 'lead'::character varying, 'activity'::character varying])::text[]))) |
-| custom_reports_visibility_check | CHECK | CHECK (((visibility)::text = ANY ((ARRAY['private'::character varying, 'public_read_only'::character varying, 'public'::character varying])::text[]))) |
+| custom_reports_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text, ('lead'::character varying)::text, ('activity'::character varying)::text]))) |
+| custom_reports_visibility_check | CHECK | CHECK (((visibility)::text = ANY (ARRAY[('private'::character varying)::text, ('public_read_only'::character varying)::text, ('public'::character varying)::text]))) |
 | custom_reports_created_by_fkey | FOREIGN KEY | FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL |
 | custom_reports_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | custom_reports_name_key | UNIQUE | UNIQUE (name) |
@@ -81,6 +81,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

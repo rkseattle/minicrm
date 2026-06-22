@@ -42,6 +42,7 @@ erDiagram
   text name ""
   uuid manager_id FK ""
   uuid parent_team_id FK ""
+  text scim_group_id ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
@@ -72,6 +73,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 

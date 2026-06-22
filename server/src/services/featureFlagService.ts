@@ -13,6 +13,7 @@ import type {
   FeatureFlagRow,
   UpdateFeatureFlagInput,
   RoleOverrides,
+  BetaUserEntry,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { USER_ROLES } from '@minicrm/shared/schemas/userSchema.js';
@@ -27,6 +28,7 @@ interface FeatureFlagDbRow {
   category: string;
   enabled: boolean;
   role_overrides: RoleOverrides;
+  enable_at: Date | null;
   updated_by: string | null;
   updated_by_name: string | null;
   updated_at: Date;
@@ -73,6 +75,7 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
        ff.category,
        ff.enabled,
        ff.role_overrides,
+       ff.enable_at,
        ff.updated_by,
        u.name AS updated_by_name,
        ff.updated_at,
@@ -85,22 +88,47 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
               ff.label`,
   );
 
-  cache = { rows: result.rows, expiresAt: Date.now() + CACHE_TTL_MS };
+  // Cap TTL at the time until the nearest future enable_at so a scheduled enable
+  // fires without waiting for the full 60-second TTL. (MINCRM-488)
+  const now = Date.now();
+  const nearestEnableAt = result.rows
+    .map((r) => r.enable_at?.getTime() ?? null)
+    .filter((t): t is number => t !== null && t > now)
+    .reduce((min, t) => Math.min(min, t), Infinity);
+
+  const effectiveTtl =
+    nearestEnableAt === Infinity ? CACHE_TTL_MS : Math.min(CACHE_TTL_MS, nearestEnableAt - now);
+
+  cache = { rows: result.rows, expiresAt: now + effectiveTtl };
   return result.rows;
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 /**
+ * Returns true if a DB row is considered enabled via the scheduled enable_at column.
+ * A row is schedule-enabled when enable_at is set and is in the past or present. (MINCRM-488)
+ */
+function isScheduledEnabled(row: Pick<FeatureFlagDbRow, 'enable_at'>): boolean {
+  return row.enable_at !== null && row.enable_at.getTime() <= Date.now();
+}
+
+/**
  * Returns all feature flags with their active user counts for the last 30 days.
  */
 export async function listFeatureFlags(): Promise<FeatureFlagRow[]> {
-  const [rows, usageCounts] = await Promise.all([getCachedRows(), getActiveUserCounts()]);
+  const [rows, usageCounts, betaCounts] = await Promise.all([
+    getCachedRows(),
+    getActiveUserCounts(),
+    getBetaUserCounts(),
+  ]);
 
   return rows.map((row) => ({
     ...row,
+    enable_at: row.enable_at?.toISOString() ?? null,
     updated_at: row.updated_at.toISOString(),
     active_user_count: usageCounts.get(row.flag_key) ?? 0,
+    beta_user_count: betaCounts.get(row.flag_key) ?? 0,
   })) as FeatureFlagRow[];
 }
 
@@ -112,17 +140,23 @@ export async function getFeatureFlag(key: string): Promise<FeatureFlagRow | null
   const row = rows.find((r) => r.flag_key === key);
   if (!row) return null;
 
-  const count = await getActiveUserCountForFlag(key);
+  const [count, betaCount] = await Promise.all([
+    getActiveUserCountForFlag(key),
+    getBetaUserCountForFlag(key),
+  ]);
   return {
     ...row,
+    enable_at: row.enable_at?.toISOString() ?? null,
     updated_at: row.updated_at.toISOString(),
     active_user_count: count,
+    beta_user_count: betaCount,
   } as FeatureFlagRow;
 }
 
 /**
- * Returns true if the flag is enabled for the given role (or org-wide if no role given).
- * This is the hot-path check used by requireFeatureEnabled middleware — always cache-backed.
+ * Returns true if the flag is enabled org-wide.
+ * Accounts for enable_at scheduled enables. (MINCRM-488)
+ * This is the hot-path check used by routes not tied to an authenticated user — always cache-backed.
  */
 export async function isFeatureEnabled(key: string): Promise<boolean> {
   const rows = await getCachedRows();
@@ -132,12 +166,13 @@ export async function isFeatureEnabled(key: string): Promise<boolean> {
     logger.warn(`isFeatureEnabled: unknown flag key '${key}' — treating as disabled`);
     return false;
   }
-  return row.enabled;
+  return row.enabled || isScheduledEnabled(row);
 }
 
 /**
  * Returns true if the flag is enabled for a specific user role.
- * Checks role_overrides[role] first; falls back to the org-wide enabled value.
+ * Applies enable_at scheduling check first; then consults role_overrides;
+ * falls back to the org-wide enabled value. (MINCRM-488)
  */
 export async function isFlagEnabledForRole(key: string, role: UserRole): Promise<boolean> {
   const rows = await getCachedRows();
@@ -146,6 +181,9 @@ export async function isFlagEnabledForRole(key: string, role: UserRole): Promise
     logger.warn(`isFlagEnabledForRole: unknown flag key '${key}' — treating as disabled`);
     return false;
   }
+
+  // A scheduled enable supersedes everything — treat as fully enabled. (MINCRM-488)
+  if (isScheduledEnabled(row)) return true;
 
   const overrides = row.role_overrides;
   if (overrides != null && overrides[role] !== undefined) {
@@ -202,7 +240,7 @@ export async function updateFeatureFlag(
     await client.query('BEGIN');
 
     const existing = await client.query<FeatureFlagDbRow>(
-      `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides
+      `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides, ff.enable_at
        FROM feature_flags ff
        WHERE ff.flag_key = $1
        FOR UPDATE`,
@@ -216,18 +254,22 @@ export async function updateFeatureFlag(
     const before = existing.rows[0];
     const newRoleOverrides =
       patch.role_overrides !== undefined ? patch.role_overrides : before.role_overrides;
+    // undefined means "not in request body, keep existing"; null means "clear the schedule"
+    const newEnableAt =
+      patch.enable_at !== undefined ? patch.enable_at : (before.enable_at?.toISOString() ?? null);
 
     const result = await client.query<FeatureFlagDbRow>(
       `UPDATE feature_flags
        SET enabled        = $1,
            role_overrides = $2,
-           updated_by     = $3,
+           enable_at      = $3,
+           updated_by     = $4,
            updated_at     = now()
-       WHERE flag_key = $4
+       WHERE flag_key = $5
        RETURNING
          flag_key, label, description, category, enabled,
-         role_overrides, updated_by, updated_at, system_flag`,
-      [patch.enabled, newRoleOverrides, actor.id, key],
+         role_overrides, enable_at, updated_by, updated_at, system_flag`,
+      [patch.enabled, newRoleOverrides, newEnableAt ?? null, actor.id, key],
     );
     const updated = result.rows[0];
 
@@ -262,6 +304,22 @@ export async function updateFeatureFlag(
       });
     }
 
+    // Audit enable_at changes — compare as ISO strings to normalise timezone representation. (MINCRM-488)
+    const beforeEnableAt = before.enable_at?.toISOString() ?? null;
+    if (patch.enable_at !== undefined && patch.enable_at !== beforeEnableAt) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'enable_at',
+        oldValue: beforeEnableAt ?? 'null',
+        newValue: patch.enable_at ?? 'null',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
     await client.query('COMMIT');
     invalidateCache();
 
@@ -271,11 +329,18 @@ export async function updateFeatureFlag(
       });
     }
 
+    const [activeCount, betaCount] = await Promise.all([
+      getActiveUserCountForFlag(key),
+      getBetaUserCountForFlag(key),
+    ]);
+
     return {
       ...updated,
+      enable_at: updated.enable_at?.toISOString() ?? null,
       updated_by_name: actor.name,
       updated_at: updated.updated_at.toISOString(),
-      active_user_count: await getActiveUserCountForFlag(key),
+      active_user_count: activeCount,
+      beta_user_count: betaCount,
     } as FeatureFlagRow;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -330,4 +395,225 @@ async function getActiveUserCounts(): Promise<Map<string, number>> {
      GROUP BY flag_key`,
   );
   return new Map(result.rows.map((r) => [r.flag_key, parseInt(r.count, 10)]));
+}
+
+// ── Beta user counts ──────────────────────────────────────────────────────────
+// Full beta enrollment CRUD (isFlagEnabledForUser, enrollBetaUser, removeBetaUser, getBetaUsersForFlag)
+// is implemented below in the Beta Users section (MINCRM-489). These count helpers are used
+// by listFeatureFlags/getFeatureFlag above.
+
+/**
+ * Returns the count of users enrolled in the beta for a specific flag.
+ * Always queries fresh — beta membership is never served from the flag cache. (MINCRM-489)
+ */
+export async function getBetaUserCountForFlag(key: string): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM feature_flag_beta_users WHERE flag_key = $1`,
+    [key],
+  );
+  return parseInt(result.rows[0]?.count ?? '0', 10);
+}
+
+/**
+ * Returns a map of flag_key → beta user count for all flags.
+ * Used by listFeatureFlags to avoid N+1 queries. Always queries fresh. (MINCRM-489)
+ */
+async function getBetaUserCounts(): Promise<Map<string, number>> {
+  const result = await pool.query<{ flag_key: string; count: string }>(
+    `SELECT flag_key, COUNT(*)::text AS count FROM feature_flag_beta_users GROUP BY flag_key`,
+  );
+  return new Map(result.rows.map((r) => [r.flag_key, parseInt(r.count, 10)]));
+}
+
+// ── Beta user CRUD (MINCRM-489) ───────────────────────────────────────────────
+
+/** Raw DB row from feature_flag_beta_users joined with user details. */
+interface BetaUserDbRow {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  added_at: Date;
+}
+
+/**
+ * Returns true if the flag is enabled for a specific user.
+ * Checks beta membership first (always fresh, no cache); if enrolled, returns true
+ * regardless of enabled/enable_at state. Otherwise falls back to isFlagEnabledForRole.
+ * (MINCRM-489)
+ */
+export async function isFlagEnabledForUser(
+  key: string,
+  userId: string,
+  role: UserRole,
+): Promise<boolean> {
+  const betaResult = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM feature_flag_beta_users
+       WHERE flag_key = $1 AND user_id = $2
+     ) AS exists`,
+    [key, userId],
+  );
+  if (betaResult.rows[0]?.exists) return true;
+  return isFlagEnabledForRole(key, role);
+}
+
+/**
+ * Returns the list of users enrolled in the beta for a specific flag.
+ * Always queries fresh. (MINCRM-489)
+ */
+export async function getBetaUsersForFlag(key: string): Promise<BetaUserEntry[]> {
+  const result = await pool.query<BetaUserDbRow>(
+    `SELECT
+       ffbu.id,
+       ffbu.user_id,
+       u.name,
+       u.email,
+       ffbu.added_at
+     FROM feature_flag_beta_users ffbu
+     JOIN users u ON u.id = ffbu.user_id
+     WHERE ffbu.flag_key = $1
+     ORDER BY ffbu.added_at ASC`,
+    [key],
+  );
+  return result.rows.map((r) => ({
+    ...r,
+    added_at: r.added_at.toISOString(),
+  }));
+}
+
+/**
+ * Enrolls a user in the beta for a feature flag.
+ * Writes an audit log entry in the same transaction.
+ * Throws a typed BETA_USER_ALREADY_ENROLLED error on duplicate (PG 23505). (MINCRM-489)
+ *
+ * @returns The new enrollment entry.
+ */
+export async function enrollBetaUser(
+  flagKey: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<BetaUserEntry> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const flagRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flags WHERE flag_key = $1`,
+      [flagKey],
+    );
+    if (!flagRow.rows[0]) {
+      await client.query('ROLLBACK');
+      throw Object.assign(new Error(`Feature flag '${flagKey}' not found`), {
+        code: 'FEATURE_FLAG_NOT_FOUND',
+      });
+    }
+
+    const userRow = await client.query<{ name: string; email: string }>(
+      `SELECT name, email FROM users WHERE id = $1`,
+      [userId],
+    );
+    if (!userRow.rows[0]) {
+      await client.query('ROLLBACK');
+      throw Object.assign(new Error(`User '${userId}' not found`), {
+        code: 'USER_NOT_FOUND',
+      });
+    }
+
+    const insertResult = await client.query<{ id: string; added_at: Date }>(
+      `INSERT INTO feature_flag_beta_users (flag_key, user_id, added_by)
+       VALUES ($1, $2, $3)
+       RETURNING id, added_at`,
+      [flagKey, userId, actor.id],
+    );
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag',
+      recordId: null,
+      recordName: flagRow.rows[0].label,
+      eventType: 'updated',
+      fieldName: 'beta_users',
+      oldValue: 'null',
+      newValue: userRow.rows[0].name,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    const row = insertResult.rows[0];
+    return {
+      id: row.id,
+      user_id: userId,
+      name: userRow.rows[0].name,
+      email: userRow.rows[0].email,
+      added_at: row.added_at.toISOString(),
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    const pgErr = err as { code?: string };
+    if (pgErr.code === '23505') {
+      throw Object.assign(new Error(`User is already enrolled in the beta for '${flagKey}'`), {
+        code: 'BETA_USER_ALREADY_ENROLLED',
+      });
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Removes a user's beta enrollment for a feature flag.
+ * Writes an audit log entry in the same transaction.
+ * Returns false if no enrollment existed. (MINCRM-489)
+ */
+export async function removeBetaUser(
+  flagKey: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<boolean> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const flagRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flags WHERE flag_key = $1`,
+      [flagKey],
+    );
+
+    const userRow = await client.query<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [
+      userId,
+    ]);
+
+    const deleteResult = await client.query(
+      `DELETE FROM feature_flag_beta_users WHERE flag_key = $1 AND user_id = $2`,
+      [flagKey, userId],
+    );
+
+    if (deleteResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag',
+      recordId: null,
+      recordName: flagRow.rows[0]?.label ?? flagKey,
+      eventType: 'updated',
+      fieldName: 'beta_users',
+      oldValue: userRow.rows[0]?.name ?? userId,
+      newValue: 'null',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }

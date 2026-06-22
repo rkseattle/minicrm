@@ -2,13 +2,13 @@
 
 ## Description
 
-Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles (admin, manager, rep, viewer, service_account) and cannot be deleted or renamed via the REST API. Custom roles (is_builtin = false) are admin-configurable.
+Named role definitions for capability-based RBAC (MINCRM-542). Rows with is_builtin = true correspond to the five built-in roles and cannot be deleted or renamed via the REST API.
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.role_capabilities](public.role_capabilities.md) [public.user_custom_roles](public.user_custom_roles.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.role_capabilities](public.role_capabilities.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_group_role_mappings](public.scim_group_role_mappings.md) |  |  |
 | name | text |  | false |  |  |  |
 | description | text |  | true |  |  |  |
 | is_builtin | boolean | false | false |  |  |  |
@@ -42,6 +42,7 @@ erDiagram
 
 "public.role_capabilities" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
 "public.user_custom_roles" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
+"public.scim_group_role_mappings" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT"
 
 "public.custom_roles" {
   uuid id ""
@@ -58,6 +59,13 @@ erDiagram
 "public.user_custom_roles" {
   uuid user_id FK ""
   uuid role_id FK ""
+}
+"public.scim_group_role_mappings" {
+  uuid id ""
+  text scim_group_id ""
+  text group_name ""
+  uuid role_id FK ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

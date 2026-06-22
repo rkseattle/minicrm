@@ -15,6 +15,7 @@ Rich notes attached to CRM entity records, with soft-delete support. entity_type
 | body | text |  | false |  |  |  |
 | body_text | text |  | true |  |  |  |
 | visibility | varchar(8) | 'team'::character varying | false |  |  |  |
+| tags | text[] | '{}'::text[] | false |  |  |  |
 | created_by | uuid |  | false |  | [public.users](public.users.md) |  |
 | updated_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -25,8 +26,8 @@ Rich notes attached to CRM entity records, with soft-delete support. entity_type
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| notes_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying, 'lead'::character varying])::text[]))) |
-| notes_visibility_check | CHECK | CHECK (((visibility)::text = ANY ((ARRAY['private'::character varying, 'team'::character varying, 'public'::character varying])::text[]))) |
+| notes_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text, ('lead'::character varying)::text]))) |
+| notes_visibility_check | CHECK | CHECK (((visibility)::text = ANY (ARRAY[('private'::character varying)::text, ('team'::character varying)::text, ('public'::character varying)::text]))) |
 | notes_created_by_fkey | FOREIGN KEY | FOREIGN KEY (created_by) REFERENCES users(id) |
 | notes_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES users(id) |
 | notes_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -37,8 +38,8 @@ Rich notes attached to CRM entity records, with soft-delete support. entity_type
 | ---- | ---------- |
 | notes_pkey | CREATE UNIQUE INDEX notes_pkey ON public.notes USING btree (id) |
 | notes_entity_idx | CREATE INDEX notes_entity_idx ON public.notes USING btree (entity_type, entity_id) |
-| notes_created_by_idx | CREATE INDEX notes_created_by_idx ON public.notes USING btree (created_by) |
 | notes_entity_active_idx | CREATE INDEX notes_entity_active_idx ON public.notes USING btree (entity_type, entity_id) WHERE (deleted_at IS NULL) |
+| notes_created_by_idx | CREATE INDEX notes_created_by_idx ON public.notes USING btree (created_by) |
 | notes_body_text_trgm_idx | CREATE INDEX notes_body_text_trgm_idx ON public.notes USING gin (body_text gin_trgm_ops) WHERE (deleted_at IS NULL) |
 
 ## Triggers
@@ -64,6 +65,7 @@ erDiagram
   text body ""
   text body_text ""
   varchar_8_ visibility ""
+  text__ tags ""
   uuid created_by FK ""
   uuid updated_by FK ""
   timestamp_with_time_zone created_at ""
@@ -73,7 +75,6 @@ erDiagram
 "public.note_tags" {
   uuid note_id FK ""
   uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
 }
 "public.users" {
   uuid id ""
@@ -102,6 +103,7 @@ erDiagram
   text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
 }
 ```
 
