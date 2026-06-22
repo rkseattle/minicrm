@@ -2,7 +2,7 @@
  * Feature flags API module.
  * Wraps the admin feature flag endpoints.
  * All calls require admin authentication.
- * (MINCRM-463, MINCRM-488, MINCRM-489)
+ * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  */
 
 import apiClient from './axiosInstance.js';
@@ -11,6 +11,8 @@ import type {
   MyFeatureFlagsResponse,
   UpdateFeatureFlagInput,
   BetaUserEntry,
+  UserOverrideEntry,
+  UpsertUserOverrideInput,
 } from '@shared/schemas/featureFlagSchema.js';
 
 /** React Query cache key for the feature flags list */
@@ -105,4 +107,51 @@ export async function enrollBetaUser(
  */
 export async function removeBetaUser(flagKey: string, userId: string): Promise<void> {
   await apiClient.delete(`/admin/feature-flags/${flagKey}/beta-users/${userId}`);
+}
+
+// ── Per-user overrides (MINCRM-492) ──────────────────────────────────────────
+
+/** React Query cache key factory for user overrides list; scoped per flag key. */
+export const userOverridesQueryKey = (flagKey: string) =>
+  ['admin', 'feature-flags', flagKey, 'overrides'] as const;
+
+/** Shape of the GET overrides response. */
+export interface ListUserOverridesResponse {
+  overrides: UserOverrideEntry[];
+}
+
+/**
+ * Returns all per-user overrides for a specific flag.
+ * Admin only.
+ */
+export async function listUserOverrides(flagKey: string): Promise<ListUserOverridesResponse> {
+  const response = await apiClient.get<ListUserOverridesResponse>(
+    `/admin/feature-flags/${flagKey}/overrides`,
+  );
+  return response.data;
+}
+
+/**
+ * Upserts a per-user override (force_enabled or force_disabled) for a feature flag.
+ * If an override already exists for this user+flag, it is replaced.
+ * Admin only.
+ */
+export async function upsertUserOverride(
+  flagKey: string,
+  userId: string,
+  body: UpsertUserOverrideInput,
+): Promise<{ override: UserOverrideEntry }> {
+  const response = await apiClient.put<{ override: UserOverrideEntry }>(
+    `/admin/feature-flags/${flagKey}/overrides/${userId}`,
+    body,
+  );
+  return response.data;
+}
+
+/**
+ * Removes a per-user override for a feature flag.
+ * Admin only.
+ */
+export async function deleteUserOverride(flagKey: string, userId: string): Promise<void> {
+  await apiClient.delete(`/admin/feature-flags/${flagKey}/overrides/${userId}`);
 }

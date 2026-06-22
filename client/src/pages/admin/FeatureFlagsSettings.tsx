@@ -5,10 +5,10 @@
  * Supports scheduled auto-enable via enable_at (MINCRM-488).
  * Supports beta user enrollment for user-level targeting (MINCRM-489).
  * Changes require confirmation and write to the audit log.
- * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489)
+ * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,16 +20,24 @@ import {
   betaUsersQueryKey,
   FEATURE_FLAGS_QUERY_KEY,
   MY_FEATURE_FLAGS_QUERY_KEY,
+  listUserOverrides,
+  upsertUserOverride,
+  deleteUserOverride,
+  userOverridesQueryKey,
 } from '@/api/featureFlags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
 import {
   FEATURE_FLAG_CATEGORIES,
   ROLE_OVERRIDE_FLAG_KEYS,
+  OVERRIDE_DIRECTIONS,
 } from '@shared/schemas/featureFlagSchema.js';
 import type {
   FeatureFlagRow,
   FeatureFlagCategory,
   BetaUserEntry,
+  UserOverrideEntry,
+  OverrideDirection,
+  RolloutStage,
 } from '@shared/schemas/featureFlagSchema.js';
 
 const ACTIVE_USER_WARNING_THRESHOLD = 1;
@@ -49,6 +57,14 @@ function formatEnableAt(iso: string): string {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 }
 
@@ -282,6 +298,233 @@ function BetaUsersPanel({ flagKey }: BetaUsersPanelProps) {
   );
 }
 
+// ── User Overrides Panel ──────────────────────────────────────────────────────
+
+interface UserOverridesPanelProps {
+  flagKey: string;
+  flagLabel: string;
+}
+
+function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  // Search state per direction
+  const [searchForceEnabled, setSearchForceEnabled] = useState('');
+  const [searchForceDisabled, setSearchForceDisabled] = useState('');
+
+  // Which user is being added (per direction): userId -> show reason input
+  const [pendingAddForceEnabled, setPendingAddForceEnabled] = useState<string | null>(null);
+  const [pendingAddForceDisabled, setPendingAddForceDisabled] = useState<string | null>(null);
+
+  // useRef for reason inputs to avoid re-renders on every keystroke
+  const reasonForceEnabledRef = useRef<HTMLInputElement>(null);
+  const reasonForceDisabledRef = useRef<HTMLInputElement>(null);
+
+  const { data: overridesData } = useQuery({
+    queryKey: userOverridesQueryKey(flagKey),
+    queryFn: () => listUserOverrides(flagKey),
+  });
+
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const overrides: UserOverrideEntry[] = overridesData?.overrides ?? [];
+  const overrideUserIds = new Set(overrides.map((o) => o.user_id));
+
+  const allActiveUsers = activeUsersData?.users ?? [];
+
+  const invalidateOverrides = () => {
+    void queryClient.invalidateQueries({ queryKey: userOverridesQueryKey(flagKey) });
+    void queryClient.invalidateQueries({ queryKey: FEATURE_FLAGS_QUERY_KEY });
+  };
+
+  const upsertMutation = useMutation({
+    mutationFn: ({
+      userId,
+      direction,
+      reason,
+    }: {
+      userId: string;
+      direction: OverrideDirection;
+      reason: string | undefined;
+    }) => upsertUserOverride(flagKey, userId, { override: direction, reason }),
+    onSuccess: () => {
+      invalidateOverrides();
+      setPendingAddForceEnabled(null);
+      setPendingAddForceDisabled(null);
+      setSearchForceEnabled('');
+      setSearchForceDisabled('');
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => deleteUserOverride(flagKey, userId),
+    onSuccess: () => {
+      invalidateOverrides();
+    },
+  });
+
+  function handleAdd(direction: OverrideDirection, userId: string) {
+    const reasonRef =
+      direction === 'force_enabled' ? reasonForceEnabledRef : reasonForceDisabledRef;
+    const reasonValue = reasonRef.current?.value.trim() || undefined;
+    upsertMutation.mutate({ userId, direction, reason: reasonValue });
+  }
+
+  function renderDirectionSection(direction: OverrideDirection) {
+    const isForceEnabled = direction === 'force_enabled';
+    const sectionLabel = isForceEnabled
+      ? t('featureFlags.overrides.forcedOn')
+      : t('featureFlags.overrides.forcedOff');
+    const search = isForceEnabled ? searchForceEnabled : searchForceDisabled;
+    const setSearch = isForceEnabled ? setSearchForceEnabled : setSearchForceDisabled;
+    const pendingAdd = isForceEnabled ? pendingAddForceEnabled : pendingAddForceDisabled;
+    const setPendingAdd = isForceEnabled ? setPendingAddForceEnabled : setPendingAddForceDisabled;
+    const reasonRef = isForceEnabled ? reasonForceEnabledRef : reasonForceDisabledRef;
+
+    const sectionOverrides = overrides.filter((o) => o.override === direction);
+
+    // Active users not yet overridden in any direction, filtered by search
+    const filteredUsers = allActiveUsers.filter(
+      (u) =>
+        !overrideUserIds.has(u.id) &&
+        (search.trim() === '' || u.name.toLowerCase().includes(search.toLowerCase())),
+    );
+
+    return (
+      <div className="mt-3">
+        <p className="text-xs font-semibold text-gray-700 mb-1">{sectionLabel}</p>
+
+        {sectionOverrides.length === 0 ? (
+          <p className="text-xs text-gray-400 mb-2">{t('featureFlags.overrides.noOverrides')}</p>
+        ) : (
+          <ul className="mb-2 space-y-1">
+            {sectionOverrides.map((entry) => (
+              <li
+                key={entry.user_id}
+                className="flex items-center justify-between gap-2 text-xs text-gray-700"
+                data-testid={`override-row-${flagKey}-${entry.user_id}`}
+              >
+                <span className="min-w-0">
+                  <span className="truncate">{entry.name}</span>
+                  {entry.reason && (
+                    <span className="text-gray-400 ms-1 italic">{entry.reason}</span>
+                  )}
+                  <span className="text-gray-400 ms-1">{formatDate(entry.added_at)}</span>
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                  disabled={removeMutation.isPending}
+                  onClick={() => removeMutation.mutate(entry.user_id)}
+                  data-testid={`override-remove-${flagKey}-${entry.user_id}`}
+                  aria-label={`${t('featureFlags.overrides.removeOverride')} ${entry.name}`}
+                >
+                  {t('featureFlags.overrides.removeOverride')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* User picker */}
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('featureFlags.overrides.addUser')}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid={`override-search-${direction}-${flagKey}`}
+            aria-label={t('featureFlags.overrides.addUser')}
+          />
+          {search.trim() !== '' && filteredUsers.length > 0 && pendingAdd === null && (
+            <ul
+              className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-40 overflow-y-auto"
+              role="listbox"
+              aria-label={t('featureFlags.overrides.addUser')}
+            >
+              {filteredUsers.map((user) => (
+                <li
+                  key={user.id}
+                  role="option"
+                  aria-selected={false}
+                  className="px-3 py-1.5 text-xs text-gray-800 hover:bg-indigo-50 cursor-pointer"
+                  onClick={() => {
+                    setPendingAdd(user.id);
+                    setSearch(user.name);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setPendingAdd(user.id);
+                      setSearch(user.name);
+                    }
+                  }}
+                  tabIndex={0}
+                >
+                  {user.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Inline reason input + Add button */}
+        {pendingAdd !== null && (
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              ref={reasonRef}
+              type="text"
+              placeholder={t('featureFlags.overrides.reasonPlaceholder')}
+              className="flex-1 text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              defaultValue=""
+              data-testid={`override-reason-${direction}-${flagKey}`}
+            />
+            <button
+              type="button"
+              className="shrink-0 text-xs font-medium text-white bg-indigo-600 rounded px-2 py-1.5 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+              disabled={upsertMutation.isPending}
+              onClick={() => handleAdd(direction, pendingAdd)}
+              data-testid={`override-add-confirm-${direction}-${flagKey}`}
+            >
+              {t('featureFlags.overrides.addUser')}
+            </button>
+            <button
+              type="button"
+              className="shrink-0 text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline"
+              onClick={() => {
+                setPendingAdd(null);
+                setSearch('');
+              }}
+              data-testid={`override-add-cancel-${direction}-${flagKey}`}
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-3 border-t border-gray-100 pt-3"
+      data-testid={`feature-flag-overrides-panel-${flagKey}`}
+    >
+      <p className="text-xs font-medium text-gray-700 mb-1">{t('featureFlags.overrides.title')}</p>
+      <p className="text-xs text-amber-600 mb-2">{t('featureFlags.overrides.absoluteWarning')}</p>
+
+      {OVERRIDE_DIRECTIONS.map((direction) => (
+        <div key={direction}>{renderDirectionSection(direction)}</div>
+      ))}
+    </div>
+  );
+}
+
 // ── Flag Row ──────────────────────────────────────────────────────────────────
 
 interface FlagRowProps {
@@ -289,6 +532,8 @@ interface FlagRowProps {
   onToggle: (flag: FeatureFlagRow, newEnabled: boolean) => void;
   onRoleOverride: (flag: FeatureFlagRow, role: 'admin' | 'rep', value: boolean) => void;
   onEnableAtChange: (flag: FeatureFlagRow, isoValue: string | null) => void;
+  onRolloutChange: (flag: FeatureFlagRow, percentage: number | null) => void;
+  onRolloutStagesChange: (flag: FeatureFlagRow, stages: RolloutStage[] | null) => void;
   isPending: boolean;
   nowMs: number;
 }
@@ -298,11 +543,14 @@ function FlagRow({
   onToggle,
   onRoleOverride,
   onEnableAtChange,
+  onRolloutChange,
+  onRolloutStagesChange,
   isPending,
   nowMs,
 }: FlagRowProps) {
   const { t } = useTranslation();
   const [showBetaPanel, setShowBetaPanel] = useState(false);
+  const [showRolloutStages, setShowRolloutStages] = useState(false);
   const supportsRoleOverrides = (ROLE_OVERRIDE_FLAG_KEYS as readonly string[]).includes(
     flag.flag_key,
   );
@@ -315,6 +563,37 @@ function FlagRow({
     !flag.enabled && flag.enable_at !== null && isEnableAtPending(flag.enable_at, nowMs);
   const isScheduleFired =
     !flag.enabled && flag.enable_at !== null && !isEnableAtPending(flag.enable_at, nowMs);
+
+  // Local state for rollout stages editing (MINCRM-490)
+  const [localStages, setLocalStages] = useState<
+    Array<{ percentage: number; scheduled_at: string }>
+  >(() => flag.rollout_stages ?? []);
+
+  function handleStageChange(index: number, field: 'percentage' | 'scheduled_at', value: string) {
+    const updated = localStages.map((stage, i) => {
+      if (i !== index) return stage;
+      if (field === 'percentage') {
+        return { ...stage, percentage: Number(value) };
+      }
+      return { ...stage, scheduled_at: value ? datetimeLocalToIso(value) : '' };
+    });
+    setLocalStages(updated);
+    // Only propagate valid (non-empty scheduled_at) stages
+    const valid = updated.filter((s) => s.scheduled_at !== '');
+    onRolloutStagesChange(flag, valid.length > 0 ? valid : null);
+  }
+
+  function handleStageRemove(index: number) {
+    const updated = localStages.filter((_, i) => i !== index);
+    setLocalStages(updated);
+    const valid = updated.filter((s) => s.scheduled_at !== '');
+    onRolloutStagesChange(flag, valid.length > 0 ? valid : null);
+  }
+
+  function handleStageAdd() {
+    setLocalStages((prev) => [...prev, { percentage: 0, scheduled_at: '' }]);
+    setShowRolloutStages(true);
+  }
 
   return (
     <div
@@ -371,6 +650,40 @@ function FlagRow({
                 data-testid={`feature-flag-badge-off-${flag.flag_key}`}
               >
                 {t('featureFlags.offBadge')}
+              </span>
+            )}
+
+            {/* Rollout percentage badge (MINCRM-490) */}
+            {flag.rollout_percentage !== null && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700"
+                data-testid={`rollout-percentage-badge-${flag.flag_key}`}
+              >
+                {t('featureFlags.rolloutBadge', { pct: flag.rollout_percentage })}
+              </span>
+            )}
+
+            {/* Force-enabled count badge (MINCRM-492) */}
+            {flag.override_count.force_enabled > 0 && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700"
+                data-testid={`override-count-force-enabled-${flag.flag_key}`}
+              >
+                {t('featureFlags.overrides.forceEnabledBadge', {
+                  count: flag.override_count.force_enabled,
+                })}
+              </span>
+            )}
+
+            {/* Force-disabled count badge (MINCRM-492) */}
+            {flag.override_count.force_disabled > 0 && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
+                data-testid={`override-count-force-disabled-${flag.flag_key}`}
+              >
+                {t('featureFlags.overrides.forceDisabledBadge', {
+                  count: flag.override_count.force_disabled,
+                })}
               </span>
             )}
           </div>
@@ -485,6 +798,113 @@ function FlagRow({
         </div>
       )}
 
+      {/* Rollout percentage + stages (MINCRM-490) */}
+      {flag.enabled && (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          {/* Rollout percentage input */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label
+              className="text-xs text-gray-500 shrink-0"
+              htmlFor={`rollout-pct-${flag.flag_key}`}
+            >
+              {t('featureFlags.rolloutPercentage')}
+            </label>
+            <input
+              id={`rollout-pct-${flag.flag_key}`}
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              disabled={isPending}
+              value={flag.rollout_percentage === null ? '' : flag.rollout_percentage}
+              onChange={(e) =>
+                onRolloutChange(flag, e.target.value === '' ? null : Number(e.target.value))
+              }
+              data-testid={`rollout-percentage-input-${flag.flag_key}`}
+              className="w-20 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          {/* Progress bar */}
+          {flag.rollout_percentage !== null && (
+            <div className="mt-2 w-full bg-gray-200 rounded h-2">
+              <div
+                className="bg-indigo-500 h-2 rounded"
+                style={{ width: `${flag.rollout_percentage ?? 0}%` }}
+              />
+            </div>
+          )}
+
+          {/* Rollout stages sub-section */}
+          <div className="mt-3" data-testid={`rollout-stages-${flag.flag_key}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-medium text-gray-700">
+                {t('featureFlags.rolloutStages')}
+              </span>
+              <button
+                type="button"
+                className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+                onClick={() => setShowRolloutStages((v) => !v)}
+                data-testid={`rollout-stages-toggle-${flag.flag_key}`}
+              >
+                {showRolloutStages ? t('common.collapse') : t('common.expand')}
+              </button>
+            </div>
+
+            {showRolloutStages && (
+              <>
+                {localStages.length > 0 && (
+                  <ul className="mb-2 space-y-2">
+                    {localStages.map((stage, index) => (
+                      <li key={index} className="flex items-center gap-2 flex-wrap">
+                        <input
+                          type="datetime-local"
+                          value={stage.scheduled_at ? isoToDatetimeLocal(stage.scheduled_at) : ''}
+                          onChange={(e) => handleStageChange(index, 'scheduled_at', e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          disabled={isPending}
+                          data-testid={`rollout-stage-scheduled-at-${flag.flag_key}-${index}`}
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={stage.percentage}
+                          onChange={(e) => handleStageChange(index, 'percentage', e.target.value)}
+                          className="w-16 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          disabled={isPending}
+                          data-testid={`rollout-stage-percentage-${flag.flag_key}-${index}`}
+                        />
+                        <button
+                          type="button"
+                          className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                          disabled={isPending}
+                          onClick={() => handleStageRemove(index)}
+                          data-testid={`rollout-stage-remove-${flag.flag_key}-${index}`}
+                        >
+                          {t('featureFlags.rolloutStageRemove')}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <button
+                  type="button"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline disabled:opacity-50"
+                  disabled={isPending}
+                  onClick={handleStageAdd}
+                  data-testid={`rollout-stage-add-${flag.flag_key}`}
+                >
+                  {t('featureFlags.rolloutStageAdd')}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Beta users panel (MINCRM-489) */}
       {(showBetaPanel || flag.beta_user_count === 0) && (
         <BetaUsersPanel flagKey={flag.flag_key} flagLabel={flag.label} />
@@ -499,6 +919,9 @@ function FlagRow({
           {t('featureFlags.betaUsers')}
         </button>
       )}
+
+      {/* User overrides panel (MINCRM-492) */}
+      <UserOverridesPanel flagKey={flag.flag_key} flagLabel={flag.label} />
     </div>
   );
 }
@@ -549,6 +972,22 @@ export default function FeatureFlagsSettings() {
 
   function handleEnableAtChange(flag: FeatureFlagRow, isoValue: string | null) {
     setConfirmPending({ flag, patch: { enabled: flag.enabled, enable_at: isoValue } });
+  }
+
+  function handleRolloutChange(flag: FeatureFlagRow, percentage: number | null) {
+    setPendingKey(flag.flag_key);
+    mutation.mutate({
+      key: flag.flag_key,
+      patch: { enabled: flag.enabled, rollout_percentage: percentage },
+    });
+  }
+
+  function handleRolloutStagesChange(flag: FeatureFlagRow, stages: RolloutStage[] | null) {
+    setPendingKey(flag.flag_key);
+    mutation.mutate({
+      key: flag.flag_key,
+      patch: { enabled: flag.enabled, rollout_stages: stages },
+    });
   }
 
   function handleConfirm() {
@@ -657,6 +1096,8 @@ export default function FeatureFlagsSettings() {
                     onToggle={handleToggle}
                     onRoleOverride={handleRoleOverride}
                     onEnableAtChange={handleEnableAtChange}
+                    onRolloutChange={handleRolloutChange}
+                    onRolloutStagesChange={handleRolloutStagesChange}
                     isPending={pendingKey === flag.flag_key}
                     nowMs={nowMs}
                   />

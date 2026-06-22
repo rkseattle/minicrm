@@ -1918,7 +1918,24 @@
     "betaUserRemove": "Supprimer",
     "betaUserSearch": "Rechercher des utilisateurs par nom ou e-mail",
     "betaUserEmpty": "Aucun utilisateur inscrit en bêta.",
-    "betaUserAlreadyEnrolled": "L'utilisateur est déjà inscrit en bêta."
+    "betaUserAlreadyEnrolled": "L'utilisateur est déjà inscrit en bêta.",
+    "rolloutBadge": "{{pct}}% de déploiement",
+    "rolloutPercentage": "% de déploiement",
+    "rolloutStages": "Étapes de déploiement",
+    "rolloutStageAdd": "Ajouter une étape",
+    "rolloutStageRemove": "Supprimer",
+    "overrides": {
+      "title": "Substitutions utilisateur",
+      "absoluteWarning": "Remplace toutes les autres règles de ciblage, y compris les paramètres de groupe et bêta",
+      "forcedOn": "Forcé activé",
+      "forcedOff": "Forcé désactivé",
+      "forceEnabledBadge": "{{count}} forcé(s) activé(s)",
+      "forceDisabledBadge": "{{count}} forcé(s) désactivé(s)",
+      "addUser": "Ajouter un utilisateur",
+      "reasonPlaceholder": "Raison (facultatif)",
+      "noOverrides": "Aucune substitution",
+      "removeOverride": "Supprimer"
+    }
   },
   "aiSettings": {
     "loadError": "Échec du chargement des paramètres IA. Veuillez réessayer.",

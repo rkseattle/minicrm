@@ -1918,7 +1918,24 @@
     "betaUserRemove": "移除",
     "betaUserSearch": "按姓名或邮箱搜索用户",
     "betaUserEmpty": "暂无已注册的测试用户。",
-    "betaUserAlreadyEnrolled": "该用户已注册为测试用户。"
+    "betaUserAlreadyEnrolled": "该用户已注册为测试用户。",
+    "rolloutBadge": "{{pct}}% 灰度发布",
+    "rolloutPercentage": "灰度百分比",
+    "rolloutStages": "发布阶段",
+    "rolloutStageAdd": "添加阶段",
+    "rolloutStageRemove": "移除",
+    "overrides": {
+      "title": "用户覆盖",
+      "absoluteWarning": "覆盖所有其他定向规则，包括群组和测试版设置",
+      "forcedOn": "强制启用",
+      "forcedOff": "强制禁用",
+      "forceEnabledBadge": "{{count}} 个强制启用",
+      "forceDisabledBadge": "{{count}} 个强制禁用",
+      "addUser": "添加用户",
+      "reasonPlaceholder": "原因（可选）",
+      "noOverrides": "无覆盖",
+      "removeOverride": "移除"
+    }
   },
   "aiSettings": {
     "loadError": "加载 AI 设置失败，请重试。",

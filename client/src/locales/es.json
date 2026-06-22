@@ -1918,7 +1918,24 @@
     "betaUserRemove": "Eliminar",
     "betaUserSearch": "Buscar usuarios por nombre o correo",
     "betaUserEmpty": "No hay usuarios inscritos en la beta.",
-    "betaUserAlreadyEnrolled": "El usuario ya está inscrito en la beta."
+    "betaUserAlreadyEnrolled": "El usuario ya está inscrito en la beta.",
+    "rolloutBadge": "{{pct}}% de despliegue",
+    "rolloutPercentage": "% de despliegue",
+    "rolloutStages": "Etapas de despliegue",
+    "rolloutStageAdd": "Agregar etapa",
+    "rolloutStageRemove": "Eliminar",
+    "overrides": {
+      "title": "Anulaciones de usuario",
+      "absoluteWarning": "Anula todas las demás reglas de segmentación, incluidas las configuraciones de grupo y beta",
+      "forcedOn": "Forzado activado",
+      "forcedOff": "Forzado desactivado",
+      "forceEnabledBadge": "{{count}} forzado(s) activado(s)",
+      "forceDisabledBadge": "{{count}} forzado(s) desactivado(s)",
+      "addUser": "Agregar usuario",
+      "reasonPlaceholder": "Motivo (opcional)",
+      "noOverrides": "Sin anulaciones",
+      "removeOverride": "Eliminar"
+    }
   },
   "aiSettings": {
     "loadError": "Error al cargar la configuración de IA. Inténtalo de nuevo.",
