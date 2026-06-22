@@ -26,15 +26,18 @@ import {
 } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToPath } from '@behaviors/minicrm/layout.behaviors.js';
 import {
-  getReportsHeadingLocator,
-  getReportsTabListLocator,
-  getReportsTabListSelectLocator,
-  getReportsWinLossTabLocator,
-  getReportsActivityTabLocator,
-  getReportsStageTrendTabLocator,
-  getReportsWinLossHeadingLocator,
-  getReportsActivityVolumeHeadingLocator,
-  getReportsStageTrendHeadingLocator,
+  expectReportsHeadingVisible,
+  expectReportsTabListVisible,
+  expectReportsTabListSelectVisible,
+  expectReportsTabListSelectHasValue,
+  selectReportsMobileTab,
+  expectReportsWinLossTabVisible,
+  expectReportsActivityTabVisible,
+  clickReportsActivityTab,
+  expectReportsStageTrendTabVisible,
+  expectReportsWinLossHeadingVisible,
+  expectReportsActivityVolumeHeadingVisible,
+  expectReportsStageTrendHeadingVisible,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
@@ -98,8 +101,7 @@ test('reports nav: /reports shows the page heading @functional', async ({
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToPath('/reports', { page });
 
-  const heading = await getReportsHeadingLocator({ page });
-  await expect(heading).toBeVisible({ timeout: 10_000 });
+  await expectReportsHeadingVisible({ page }, 10_000);
 });
 
 test('reports nav: /reports shows SubPageNav with three tabs @functional', async ({
@@ -113,22 +115,16 @@ test('reports nav: /reports shows SubPageNav with three tabs @functional', async
 
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
-  const tabList = await getReportsTabListLocator({ page });
-  await expect(tabList).toBeVisible({ timeout: 10_000 });
+  await expectReportsTabListVisible({ page }, 10_000);
 
   if (isMobile) {
     // On mobile SubPageNav renders a <select>; individual tab buttons are not in the DOM.
-    const select = await getReportsTabListSelectLocator({ page });
-    await expect(select).toBeVisible();
-    await expect(select).toHaveValue('win-loss');
+    await expectReportsTabListSelectVisible({ page });
+    await expectReportsTabListSelectHasValue('win-loss', { page });
   } else {
-    const winLossTab = await getReportsWinLossTabLocator({ page });
-    const activityTab = await getReportsActivityTabLocator({ page });
-    const stageTab = await getReportsStageTrendTabLocator({ page });
-
-    await expect(winLossTab).toBeVisible();
-    await expect(activityTab).toBeVisible();
-    await expect(stageTab).toBeVisible();
+    await expectReportsWinLossTabVisible({ page });
+    await expectReportsActivityTabVisible({ page });
+    await expectReportsStageTrendTabVisible({ page });
   }
 });
 
@@ -141,8 +137,7 @@ test('reports nav: /reports defaults to Win/Loss report content @functional', as
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToPath('/reports', { page });
 
-  const heading = await getReportsWinLossHeadingLocator({ page });
-  await expect(heading).toBeVisible({ timeout: 10_000 });
+  await expectReportsWinLossHeadingVisible({ page }, 10_000);
 });
 
 test('reports nav: /reports?view=activity deep-links to Activity Volume @functional', async ({
@@ -154,8 +149,7 @@ test('reports nav: /reports?view=activity deep-links to Activity Volume @functio
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToPath('/reports?view=activity', { page });
 
-  const heading = await getReportsActivityVolumeHeadingLocator({ page });
-  await expect(heading).toBeVisible({ timeout: 10_000 });
+  await expectReportsActivityVolumeHeadingVisible({ page }, 10_000);
 });
 
 test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage report @functional', async ({
@@ -167,8 +161,7 @@ test('reports nav: /reports?view=pipeline-stage deep-links to Pipeline Stage rep
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToPath('/reports?view=pipeline-stage', { page });
 
-  const heading = await getReportsStageTrendHeadingLocator({ page });
-  await expect(heading).toBeVisible({ timeout: 10_000 });
+  await expectReportsStageTrendHeadingVisible({ page }, 10_000);
 });
 
 test('reports nav: old /reports/win-loss URL redirects to /reports @functional', async ({
@@ -194,18 +187,14 @@ test('reports nav: switching tabs renders the selected report @functional', asyn
   const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
 
   // Wait for default (win-loss) to load
-  const winLossHeading = await getReportsWinLossHeadingLocator({ page });
-  await expect(winLossHeading).toBeVisible({ timeout: 10_000 });
+  await expectReportsWinLossHeadingVisible({ page }, 10_000);
 
   if (isMobile) {
     // On mobile SubPageNav renders a <select> — switch via selectOption.
-    const select = await getReportsTabListSelectLocator({ page });
-    await select?.selectOption('activity');
+    await selectReportsMobileTab('activity', { page });
   } else {
-    const activityTab = await getReportsActivityTabLocator({ page });
-    await activityTab.click();
+    await clickReportsActivityTab({ page });
   }
 
-  const activityHeading = await getReportsActivityVolumeHeadingLocator({ page });
-  await expect(activityHeading).toBeVisible({ timeout: 10_000 });
+  await expectReportsActivityVolumeHeadingVisible({ page }, 10_000);
 });

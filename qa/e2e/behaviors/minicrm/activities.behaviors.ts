@@ -159,22 +159,26 @@ export interface ActivitiesBehaviorContext {
 }
 
 /**
- * Returns a resolved locator for a task row by task ID (null if absent).
+ * Waits for the task row for the given ID to become visible.
+ * The row may be absent if the task is not on screen yet; this waits up to `timeout` ms.
  */
-export async function getMyTaskRowLocator(taskId: string, context: ActivitiesBehaviorContext) {
-  const tasksPage = new MyTasksPage(context);
-  return tasksPage.taskRowLocator(taskId);
-}
-
-/**
- * Returns a resolved locator for the overdue badge on a task row.
- */
-export async function getOverdueTaskBadgeLocator(
+export async function waitForMyTaskRow(
   taskId: string,
   context: ActivitiesBehaviorContext,
-) {
-  const tasksPage = new MyTasksPage(context);
-  return tasksPage.overdueTaskBadgeLocator(taskId);
+  timeout = 10_000,
+): Promise<void> {
+  const locator = await new MyTasksPage(context).taskRowLocator(taskId);
+  await locator?.waitFor({ state: 'visible', timeout });
+}
+
+/** Asserts the overdue badge on the given task row is visible. */
+export async function expectOverdueTaskBadgeVisible(
+  taskId: string,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new MyTasksPage(context).overdueTaskBadgeLocator(taskId);
+  await expect(locator).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------

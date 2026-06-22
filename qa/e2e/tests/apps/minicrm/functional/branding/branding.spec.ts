@@ -24,15 +24,15 @@ test.use({ storageState: { cookies: [], origins: [] } });
 import {
   ensureSystemDefaults,
   navigateToAdminSettings,
-  getAdminSettingsBrandingFormLocator,
-  getAdminSettingsBrandingCompanyNameLocator,
-  getAdminSettingsBrandingSaveLocator,
-  getAdminSettingsBrandingSaveSuccessLocator,
-  getAdminSettingsBrandingColorTextLocator,
-  getAdminSettingsBrandingFontSelectLocator,
-  getAdminSettingsBrandingResetButtonLocator,
-  getAdminSettingsBrandingResetConfirmLocator,
-  getAdminSettingsBrandingResetSuccessLocator,
+  expectAdminSettingsBrandingFormVisible,
+  fillAdminSettingsBrandingCompanyName,
+  clickAdminSettingsBrandingSave,
+  expectAdminSettingsBrandingSaveSuccessVisible,
+  fillAdminSettingsBrandingColorText,
+  selectAdminSettingsBrandingFont,
+  clickAdminSettingsBrandingReset,
+  clickAdminSettingsBrandingResetConfirm,
+  expectAdminSettingsBrandingResetSuccessVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 // ---------------------------------------------------------------------------
@@ -62,8 +62,7 @@ test('admin can navigate to the Branding tab @functional', async ({
 
   await navigateToAdminSettings({ page }, 'branding');
 
-  const form = await getAdminSettingsBrandingFormLocator({ page });
-  await expect(form).toBeVisible({ timeout: 10_000 });
+  await expectAdminSettingsBrandingFormVisible({ page }, 10_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -80,14 +79,11 @@ test('admin can save a company name and see success confirmation @functional @se
 
   await navigateToAdminSettings({ page }, 'branding');
 
-  const companyInput = await getAdminSettingsBrandingCompanyNameLocator({ page });
-  await companyInput.fill('Acme Corporation');
+  await fillAdminSettingsBrandingCompanyName('Acme Corporation', { page });
 
-  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
-  await saveBtn.click();
+  await clickAdminSettingsBrandingSave({ page });
 
-  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
-  await expect(successMsg).toBeVisible({ timeout: 8_000 });
+  await expectAdminSettingsBrandingSaveSuccessVisible({ page }, 8_000);
 });
 
 test('admin can save a primary colour @functional @serial', async ({
@@ -100,14 +96,11 @@ test('admin can save a primary colour @functional @serial', async ({
 
   await navigateToAdminSettings({ page }, 'branding');
 
-  const colorText = await getAdminSettingsBrandingColorTextLocator({ page });
-  await colorText.fill('#e53e3e');
+  await fillAdminSettingsBrandingColorText('#e53e3e', { page });
 
-  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
-  await saveBtn.click();
+  await clickAdminSettingsBrandingSave({ page });
 
-  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
-  await expect(successMsg).toBeVisible({ timeout: 8_000 });
+  await expectAdminSettingsBrandingSaveSuccessVisible({ page }, 8_000);
 });
 
 test('admin can select a custom font @functional @serial', async ({
@@ -120,14 +113,11 @@ test('admin can select a custom font @functional @serial', async ({
 
   await navigateToAdminSettings({ page }, 'branding');
 
-  const fontSelect = await getAdminSettingsBrandingFontSelectLocator({ page });
-  await fontSelect.selectOption('roboto');
+  await selectAdminSettingsBrandingFont('roboto', { page });
 
-  const saveBtn = await getAdminSettingsBrandingSaveLocator({ page });
-  await saveBtn.click();
+  await clickAdminSettingsBrandingSave({ page });
 
-  const successMsg = await getAdminSettingsBrandingSaveSuccessLocator({ page });
-  await expect(successMsg).toBeVisible({ timeout: 8_000 });
+  await expectAdminSettingsBrandingSaveSuccessVisible({ page }, 8_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -147,14 +137,11 @@ test('admin can reset branding to defaults @functional @serial', async ({
 
   await navigateToAdminSettings({ page }, 'branding');
 
-  const resetBtn = await getAdminSettingsBrandingResetButtonLocator({ page });
-  await resetBtn.click();
+  await clickAdminSettingsBrandingReset({ page });
 
-  const confirmBtn = await getAdminSettingsBrandingResetConfirmLocator({ page });
-  await confirmBtn.click();
+  await clickAdminSettingsBrandingResetConfirm({ page });
 
-  const successMsg = await getAdminSettingsBrandingResetSuccessLocator({ page });
-  await expect(successMsg).toBeVisible({ timeout: 8_000 });
+  await expectAdminSettingsBrandingResetSuccessVisible({ page }, 8_000);
 });
 
 // ---------------------------------------------------------------------------

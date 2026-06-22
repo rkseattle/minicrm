@@ -124,36 +124,42 @@ export async function navigateToAuditLog(context: AuditLogBehaviorContext): Prom
   await auditLogPage.navigate();
 }
 
-/**
- * Returns a resolved locator for the audit log page heading.
- */
-export async function getAuditLogHeadingLocator(context: AuditLogBehaviorContext) {
-  const auditLogPage = new AuditLogPage(context);
-  return auditLogPage.headingLocator();
+/** Asserts the audit log page heading is visible. */
+export async function expectAuditLogHeadingVisible(
+  context: AuditLogBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = new AuditLogPage(context).headingLocator();
+  await expect(await locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the audit log entry list.
- */
-export async function getAuditLogListLocator(context: AuditLogBehaviorContext) {
-  const auditLogPage = new AuditLogPage(context);
-  return auditLogPage.listLocator();
+/** Asserts the audit log entry list is visible, with an optional timeout (ms). */
+export async function expectAuditLogListVisible(
+  context: AuditLogBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = new AuditLogPage(context).listLocator();
+  await expect(await locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Returns a resolved locator for the audit log pagination navigation.
- */
-export async function getAuditLogPaginationLocator(context: AuditLogBehaviorContext) {
-  const auditLogPage = new AuditLogPage(context);
-  return auditLogPage.paginationLocator();
+/** Asserts the audit log pagination bar is visible, with an optional timeout (ms). */
+export async function expectAuditLogPaginationVisible(
+  context: AuditLogBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = new AuditLogPage(context).paginationLocator();
+  await expect(await locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Returns a resolved locator for the "previous page" button in audit log pagination.
- */
-export async function getAuditLogPaginationPrevLocator(context: AuditLogBehaviorContext) {
-  const auditLogPage = new AuditLogPage(context);
-  return auditLogPage.paginationPrevLocator();
+/** Asserts the "previous page" pagination button is disabled. */
+export async function expectAuditLogPaginationPrevDisabled(
+  context: AuditLogBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = new AuditLogPage(context).paginationPrevLocator();
+  await expect(await locator).toBeDisabled();
 }
 
 /**
@@ -169,27 +175,42 @@ export async function collapseAuditLogFilters(context: AuditLogBehaviorContext):
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a resolved locator for an audit log row expand button by entry ID.
- * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
+ * Returns true when the expand button for the given entry ID is visible on screen.
+ * Used to guard against rows that are off-page (past pagination).
  */
-export async function getAuditLogRowButtonLocator(
+export async function isAuditLogRowButtonVisible(
   entryId: string,
   context: AuditLogBehaviorContext,
-) {
+): Promise<boolean> {
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'testId', value: `audit-log-row-button-${entryId}` }])
     .resolve();
+  return locator.isVisible().catch(() => false);
 }
 
-/**
- * Returns a resolved locator for an audit log detail panel by entry ID.
- * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
- */
-export async function getAuditLogDetailPanelLocator(
+/** Clicks the expand button for the given audit log entry by ID. */
+export async function clickAuditLogRowButton(
   entryId: string,
   context: AuditLogBehaviorContext,
-) {
+): Promise<void> {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed row button has no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `audit-log-row-button-${entryId}` }])
+    .resolve();
+  await locator.click();
+}
+
+/** Asserts the detail panel for the given audit log entry is visible, with an optional timeout (ms). */
+export async function expectAuditLogDetailPanelVisible(
+  entryId: string,
+  context: AuditLogBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed detail panel has no stable role fallback
-  return context.page.locate([{ type: 'testId', value: `audit-log-detail-${entryId}` }]).resolve();
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `audit-log-detail-${entryId}` }])
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

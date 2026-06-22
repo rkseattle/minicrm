@@ -1,6 +1,6 @@
 /**
  * Settings behaviors for MiniCRM — system-wide defaults enforcement and
- * AdminSettings page locator-accessor wrappers (MINCRM-358, MINCRM-367).
+ * AdminSettings page action/assertion behaviors (MINCRM-358, MINCRM-367, MINCRM-564).
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -46,74 +46,9 @@ export async function navigateToAdminSettings(
 }
 
 // ---------------------------------------------------------------------------
-// Locator-accessor behaviors — wrap AdminSettingsPage locators
-// so spec files never import @pages/* directly. (MINCRM-367)
+// Action/assertion behaviors — all write operations go through page methods
+// or the HealingLocator API; no raw locators exposed to spec files. (MINCRM-564)
 // ---------------------------------------------------------------------------
-
-/** Returns a resolved locator for the admin settings page heading. */
-export async function getAdminSettingsHeadingLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).settingsHeadingLocator();
-}
-
-/** Returns a resolved locator for the settings save button (general tab). */
-export async function getAdminSettingsSaveLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).settingsSaveLocator();
-}
-
-/** Returns a resolved locator for the currency section. */
-export async function getAdminSettingsCurrencySectionLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).currencySectionLocator();
-}
-
-/** Returns a resolved locator for the email notifications section. */
-export async function getAdminSettingsEmailNotificationsSectionLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).emailNotificationsSectionLocator();
-}
-
-/** Returns a resolved locator for the webhook settings section. */
-export async function getAdminSettingsWebhookSectionLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).webhookSectionLocator();
-}
-
-/** Returns a resolved locator for the webhook URL input. */
-export async function getAdminSettingsWebhookUrlInputLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).webhookUrlInputLocator();
-}
-
-/** Returns a resolved locator for the webhook secret reveal modal. */
-export async function getAdminSettingsWebhookSecretRevealLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).webhookSecretRevealLocator();
-}
-
-/** Returns a resolved locator for the webhook secret value input. */
-export async function getAdminSettingsWebhookSecretValueLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).webhookSecretValueLocator();
-}
-
-/** Returns a resolved locator for a webhook subscription row by ID. */
-export async function getAdminSettingsWebhookRowLocator(
-  subscriptionId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
-}
-
-/** Returns a resolved locator for the webhook delete confirmation dialog. */
-export async function getAdminSettingsWebhookDeleteConfirmLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).webhookDeleteConfirmLocator();
-}
 
 /** Clicks the webhook event checkbox for the given event name. */
 export async function clickAdminSettingsWebhookEvent(
@@ -160,41 +95,6 @@ export async function confirmAdminSettingsDeleteWebhook(
   return new AdminSettingsPage(context).confirmDeleteWebhook();
 }
 
-/** Returns a resolved locator for the exchange rates section. */
-export async function getAdminSettingsExchangeRatesSectionLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).exchangeRatesSectionLocator();
-}
-
-/** Returns a resolved locator for the home currency select. */
-export async function getAdminSettingsHomeCurrencySelectLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).homeCurrencySelectLocator();
-}
-
-/** Returns a resolved locator for the add-currency form. */
-export async function getAdminSettingsAddCurrencyFormLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).addCurrencyFormLocator();
-}
-
-/** Returns a resolved locator for the currency code select. */
-export async function getAdminSettingsAddCurrencyCodeSelectLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).addCurrencyCodeSelectLocator();
-}
-
-/** Returns a resolved locator for the exchange rate input. */
-export async function getAdminSettingsAddCurrencyRateInputLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).addCurrencyRateInputLocator();
-}
-
 /** Clicks Add Currency to open the add currency form. */
 export async function clickAdminSettingsAddCurrency(
   context: AdminSettingsBehaviorContext,
@@ -216,61 +116,6 @@ export async function saveAdminSettingsExchangeRates(
   return new AdminSettingsPage(context).saveExchangeRates();
 }
 
-/** Returns a resolved locator for the exchange rate save success message. */
-export async function getAdminSettingsExchangeRateSaveSuccessLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).exchangeRateSaveSuccessLocator();
-}
-
-/** Returns a resolved locator for an exchange rate row by currency code. */
-export async function getAdminSettingsExchangeRateRowLocator(
-  currencyCode: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).exchangeRateRowLocator(currencyCode);
-}
-
-/** Returns a resolved locator for the custom fields section. */
-export async function getAdminSettingsCustomFieldsSectionLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).customFieldsSectionLocator();
-}
-
-/** Returns a resolved locator for the custom fields entity select. */
-export async function getAdminSettingsCustomFieldsEntitySelectLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).customFieldsEntitySelectLocator();
-}
-
-/** Returns a resolved locator for the add-field inline form. */
-export async function getAdminSettingsAddFieldFormLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).addFieldFormLocator();
-}
-
-/** Returns a resolved locator for the field name input. */
-export async function getAdminSettingsAddFieldNameInputLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).addFieldNameInputLocator();
-}
-
-/** Returns a resolved locator for the custom fields feedback message. */
-export async function getAdminSettingsCustomFieldsFeedbackLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).customFieldsFeedbackLocator();
-}
-
-/** Returns a resolved locator for the confirm-delete-field button. */
-export async function getAdminSettingsDeleteFieldConfirmLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).deleteFieldConfirmLocator();
-}
-
 /** Clicks Add Field to open the add-field form. */
 export async function clickAdminSettingsAddField(
   context: AdminSettingsBehaviorContext,
@@ -285,152 +130,52 @@ export async function submitAdminSettingsAddField(
   return new AdminSettingsPage(context).submitAddField();
 }
 
-/** Returns a resolved locator for the branding form. */
-export async function getAdminSettingsBrandingFormLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).brandingFormLocator();
-}
-
-/** Returns a resolved locator for the branding company name input. */
-export async function getAdminSettingsBrandingCompanyNameLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingCompanyNameLocator();
-}
-
-/** Returns a resolved locator for the branding primary colour text input. */
-export async function getAdminSettingsBrandingColorTextLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingColorTextLocator();
-}
-
-/** Returns a resolved locator for the branding font select. */
-export async function getAdminSettingsBrandingFontSelectLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingFontSelectLocator();
-}
-
-/** Returns a resolved locator for the branding Save button. */
-export async function getAdminSettingsBrandingSaveLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).brandingSaveLocator();
-}
-
-/** Returns a resolved locator for the branding save success message. */
-export async function getAdminSettingsBrandingSaveSuccessLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingSaveSuccessLocator();
-}
-
-/** Returns a resolved locator for the branding reset button. */
-export async function getAdminSettingsBrandingResetButtonLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingResetButtonLocator();
-}
-
-/** Returns a resolved locator for the branding reset confirm button. */
-export async function getAdminSettingsBrandingResetConfirmLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingResetConfirmLocator();
-}
-
-/** Returns a resolved locator for the branding reset success message. */
-export async function getAdminSettingsBrandingResetSuccessLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return new AdminSettingsPage(context).brandingResetSuccessLocator();
-}
-
-// ---------------------------------------------------------------------------
-// Pipeline stages — customisation tab (MINCRM-381)
-// ---------------------------------------------------------------------------
-
-/** Returns a resolved locator for the pipeline stages table. */
-export async function getPipelineStagesTableLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).pipelineStagesTableLocator();
-}
-
-/**
- * Returns a resolved locator for the move-up button of a stage row.
- *
- * @param context - Behavior context containing page.
- * @param stageId - UUID of the pipeline stage.
- */
-export async function getPipelineStageMoveUpLocator(
-  context: AdminSettingsBehaviorContext,
-  stageId: string,
-) {
-  return new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
-}
-
-/**
- * Returns a resolved locator for the move-down button of a stage row.
- *
- * @param context - Behavior context containing page.
- * @param stageId - UUID of the pipeline stage.
- */
-export async function getPipelineStageMoveDownLocator(
-  context: AdminSettingsBehaviorContext,
-  stageId: string,
-) {
-  return new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
-}
-
-/** Returns a resolved locator for the pipeline stages feedback status message. */
-export async function getPipelineStagesFeedbackLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).pipelineStagesFeedbackLocator();
-}
-
 // ---------------------------------------------------------------------------
 // SSO configuration (MINCRM-399)
 // ---------------------------------------------------------------------------
-
-/** Returns a resolved locator for the SSO section panel. */
-export async function getSsoSectionLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoSectionLocator();
+/** Asserts the SSO save button is not disabled, then clicks it. */
+export async function clickSsoSaveButton(context: AdminSettingsBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoSaveButtonLocator();
+  await expect(locator).not.toBeDisabled();
+  await locator.click();
 }
 
-/** Returns a resolved locator for the SSO protocol selector. */
-export async function getSsoProtocolSelectLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoProtocolSelectLocator();
+/** Asserts the SSO enabled badge is visible. */
+export async function expectSsoEnabledBadgeVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
-/** Returns a resolved locator for the SSO IdP metadata URL input. */
-export async function getSsoIdpMetadataUrlInputLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoIdpMetadataUrlInputLocator();
+/** Asserts the SSO enabled badge is NOT visible. */
+export async function expectSsoEnabledBadgeNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 8_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator();
+  await expect(locator).not.toBeVisible({ timeout });
 }
 
-/** Returns a resolved locator for the SSO entity ID input. */
-export async function getSsoEntityIdInputLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoEntityIdInputLocator();
+/** Asserts the SSO disable confirmation button is visible. */
+export async function expectSsoDisableConfirmVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoDisableConfirmButtonLocator();
+  await expect(locator).toBeVisible({ timeout });
 }
 
-/** Returns a resolved locator for the SSO save button. */
-export async function getSsoSaveButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoSaveButtonLocator();
-}
-
-/** Returns a resolved locator for the SSO enabled badge (shown when configured). */
-export async function getSsoEnabledBadgeLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoEnabledBadgeLocator();
-}
-
-/** Returns a resolved locator for the SSO disable button. */
-export async function getSsoDisableButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoDisableButtonLocator();
-}
-
-/** Returns a resolved locator for the SSO disable confirm button. */
-export async function getSsoDisableConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoDisableConfirmButtonLocator();
-}
-
-/** Returns a resolved locator for the SSO save success message. */
-export async function getSsoSaveSuccessLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).ssoSaveSuccessLocator();
+/** Clicks the SSO disable confirmation button. */
+export async function clickSsoDisableConfirmButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).ssoDisableConfirmButtonLocator()).click();
 }
 
 // ensureSystemDefaults
@@ -497,7 +242,7 @@ export async function clickMoveUpAndWaitForReorder(
   stageId: string,
   context: AdminSettingsBehaviorContext,
 ): Promise<StageReorderResult> {
-  const moveUpButton = await getPipelineStageMoveUpLocator(context, stageId);
+  const moveUpButton = await new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
   const [reorderResp] = await Promise.all([
     context.page.waitForResponse(
       (resp) =>
@@ -519,7 +264,7 @@ export async function clickMoveDownAndWaitForReorder(
   stageId: string,
   context: AdminSettingsBehaviorContext,
 ): Promise<StageReorderResult> {
-  const moveDownButton = await getPipelineStageMoveDownLocator(context, stageId);
+  const moveDownButton = await new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
   const [reorderResp] = await Promise.all([
     context.page.waitForResponse(
       (resp) =>
@@ -702,26 +447,6 @@ export async function navigateToLoginPageForSso(
   await context.page.goto('/login', { waitUntil: 'networkidle' });
 }
 
-/**
- * Resolves the SSO login button locator on the login page.
- */
-export async function getSsoLoginButtonLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'sso-login-button' },
-        { type: 'role', value: 'link', options: { name: /sign in with/i } },
-      ],
-      {
-        intent: 'SSO login button on the login page',
-        // The login page fetches SSO status asynchronously after load; allow extra
-        // probe time for the button to appear after the status request settles.
-        fallbackTimeout: 8_000,
-      },
-    )
-    .resolve();
-}
-
 // ---------------------------------------------------------------------------
 // Webhooks navigation helpers — keep page.goto out of spec files. (MINCRM-418)
 // ---------------------------------------------------------------------------
@@ -771,302 +496,9 @@ export async function navigateToAdminSettingsCurrency(
 // (MINCRM-418)
 // ---------------------------------------------------------------------------
 
-/**
- * Resolves the Add Pipeline button.
- */
-export async function getPipelineAddButtonLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'add-pipeline-button' },
-        { type: 'role', value: 'button', options: { name: /new pipeline/i } },
-      ],
-      { intent: 'button to open the new pipeline form' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the new-pipeline name input.
- */
-export async function getNewPipelineNameInputLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'new-pipeline-name-input' },
-        { type: 'role', value: 'textbox' },
-      ],
-      { intent: 'input field for the new pipeline name' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the create-pipeline submit button.
- */
-export async function getCreatePipelineSubmitLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'create-pipeline-submit-button' },
-        { type: 'role', value: 'button', options: { name: /save/i } },
-      ],
-      { intent: 'submit button to create the new pipeline' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the pipelines feedback status message.
- */
-export async function getPipelinesFeedbackLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'pipelines-feedback' },
-        { type: 'role', value: 'status' },
-      ],
-      { intent: 'success feedback message after a pipeline operation' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the edit button for a specific pipeline row.
- */
-export async function getPipelineEditButtonLocator(
-  pipelineId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `pipeline-edit-button-${pipelineId}` },
-        { type: 'role', value: 'button', options: { name: /edit/i } },
-      ],
-      { intent: 'edit button for the pipeline row to rename' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the edit input for a specific pipeline row.
- */
-export async function getPipelineEditInputLocator(
-  pipelineId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `pipeline-edit-input-${pipelineId}` },
-        { type: 'role', value: 'textbox' },
-      ],
-      { intent: 'text input for renaming the pipeline' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the save button for a specific pipeline row.
- */
-export async function getPipelineSaveButtonLocator(
-  pipelineId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `pipeline-save-button-${pipelineId}` },
-        { type: 'role', value: 'button', options: { name: /save/i } },
-      ],
-      { intent: 'save button to confirm pipeline rename' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the delete button for a specific pipeline row.
- */
-export async function getPipelineDeleteButtonLocator(
-  pipelineId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `pipeline-delete-button-${pipelineId}` },
-        { type: 'role', value: 'button', options: { name: /delete/i } },
-      ],
-      { intent: 'delete button for the pipeline row to remove' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the delete confirmation panel.
- * eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
- */
-export async function getPipelineDeleteConfirmLocator(context: AdminSettingsBehaviorContext) {
-  // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
-  return context.page
-    .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
-      intent: 'delete confirmation panel for the pipeline',
-    })
-    .resolve();
-}
-
-/**
- * Resolves the confirm-delete button inside the confirmation panel.
- */
-export async function getPipelineDeleteConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'pipeline-delete-confirm-button' },
-        { type: 'role', value: 'button', options: { name: /delete/i } },
-      ],
-      { intent: 'confirm button to execute pipeline deletion' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the pipeline stages pipeline selector dropdown.
- */
-export async function getPipelineStagesPipelineSelectorLocator(
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'pipeline-stages-pipeline-selector' },
-        { type: 'role', value: 'combobox' },
-      ],
-      { intent: 'dropdown to select which pipeline to manage stages for' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the pipeline selector on the deals board.
- */
-export async function getPipelineBoardSelectorLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'pipeline-selector' },
-        { type: 'role', value: 'combobox' },
-      ],
-      { intent: 'pipeline selector dropdown above the deals board' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the pipeline board container.
- * eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
- */
-export async function getPipelineBoardContainerLocator(context: AdminSettingsBehaviorContext) {
-  // eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
-  return context.page
-    .locate([{ type: 'testId', value: 'pipeline-board' }], {
-      intent: 'the main pipeline kanban board container',
-    })
-    .resolve();
-}
-
-/**
- * Resolves the pipeline stage row for a specific stage.
- */
-export async function getPipelineStageRowLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `pipeline-stage-row-${stageId}` },
-        { type: 'text', value: 'Custom Stage One' },
-      ],
-      { intent: 'row for the custom stage in the pipeline stages table' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the inline edit button for a pipeline stage row.
- * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
- */
-export async function getPipelineStageEditButtonLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
-  return context.page
-    .locate([{ type: 'testId', value: `pipeline-stage-edit-${stageId}` }])
-    .resolve();
-}
-
-/**
- * Resolves the inline save button for a pipeline stage row.
- * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
- */
-export async function getPipelineStageSaveButtonLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
-  return context.page
-    .locate([{ type: 'testId', value: `pipeline-stage-save-${stageId}` }])
-    .resolve();
-}
-
-/**
- * Resolves the inline delete button for a pipeline stage row.
- * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
- */
-export async function getPipelineStageDeleteButtonLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
-  return context.page
-    .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
-    .resolve();
-}
-
 // ---------------------------------------------------------------------------
 // Stage exit requirements UI behaviors (MINCRM-527)
 // ---------------------------------------------------------------------------
-
-/**
- * Resolves the input for the required_fields of a pipeline stage's exit requirements.
- * @param stageId - UUID of the pipeline stage.
- */
-export async function getPipelineStageExitRequiredInputLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
-  return context.page
-    .locate([{ type: 'testId', value: `pipeline-stage-exit-required-${stageId}` }])
-    .resolve();
-}
-
-/**
- * Resolves the input for the warning_fields of a pipeline stage's exit requirements.
- * @param stageId - UUID of the pipeline stage.
- */
-export async function getPipelineStageExitWarningInputLocator(
-  stageId: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
-  return context.page
-    .locate([{ type: 'testId', value: `pipeline-stage-exit-warning-${stageId}` }])
-    .resolve();
-}
 
 /**
  * Polls the pipeline-stages API until the given stage includes the specified field
@@ -1100,77 +532,6 @@ export async function waitForStageExitRequirementsUpdated(
 // ---------------------------------------------------------------------------
 // Feature flag UI behaviors (MINCRM-463)
 // ---------------------------------------------------------------------------
-
-/** Resolves the feature flags list container. */
-export async function getFeatureFlagsListLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'feature-flags-list' },
-        { type: 'role', value: 'region' },
-      ],
-      { intent: 'container showing the grouped list of feature flags' },
-    )
-    .resolve();
-}
-
-/**
- * Resolves the toggle button for a specific feature flag row.
- * @param flagKey - The flag_key identifier (e.g. 'notes', 'tags').
- */
-export async function getFeatureFlagToggleLocator(
-  flagKey: string,
-  context: AdminSettingsBehaviorContext,
-) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: `feature-flag-toggle-${flagKey}` },
-        { type: 'role', value: 'switch', options: { name: new RegExp(flagKey, 'i') } },
-      ],
-      { intent: `toggle switch to enable or disable the ${flagKey} feature flag` },
-    )
-    .resolve();
-}
-
-/** Resolves the confirmation dialog for a feature flag toggle. */
-export async function getFeatureFlagConfirmDialogLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'feature-flag-confirm-dialog' },
-        { type: 'role', value: 'dialog' },
-      ],
-      { intent: 'confirmation dialog shown before toggling a feature flag' },
-    )
-    .resolve();
-}
-
-/** Resolves the confirm OK button inside the feature flag confirmation dialog. */
-export async function getFeatureFlagConfirmOkLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'feature-flag-confirm-ok' },
-        { type: 'role', value: 'button', options: { name: /confirm/i } },
-      ],
-      { intent: 'confirm button inside the feature flag toggle confirmation dialog' },
-    )
-    .resolve();
-}
-
-/** Resolves the AI Features tab button in the admin settings nav (MINCRM-563). */
-export async function getAdminSettingsAiTabLocator(context: AdminSettingsBehaviorContext) {
-  return context.page
-    .locate(
-      [
-        { type: 'testId', value: 'settings-tab-ai' },
-        { type: 'role', value: 'tab', options: { name: /ai/i } },
-      ],
-      { intent: 'AI Features tab in the admin settings navigation' },
-    )
-    .resolve();
-}
 
 // ---------------------------------------------------------------------------
 // AI Settings behaviors (MINCRM-457)
@@ -1246,99 +607,9 @@ export async function resetAiSettings(restClient: RestClient): Promise<void> {
   ]);
 }
 
-/** Resolves the AI settings panel locator. */
-export async function getAiSettingsPanelLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiSettingsPanelLocator();
-}
-
-/** Resolves the AI master toggle locator. */
-export async function getAiMasterToggleLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiMasterToggleLocator();
-}
-
-/** Resolves the AI toggle confirmation dialog locator. */
-export async function getAiToggleConfirmDialogLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiToggleConfirmDialogLocator();
-}
-
-/** Resolves the Confirm button inside the AI toggle confirmation dialog. */
-export async function getAiToggleConfirmButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiToggleConfirmButtonLocator();
-}
-
-/** Resolves the Cancel button inside the AI toggle confirmation dialog. */
-export async function getAiToggleCancelButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiToggleCancelButtonLocator();
-}
-
-/** Resolves the AI DPA acknowledgment checkbox locator. */
-export async function getAiDpaCheckboxLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiDpaCheckboxLocator();
-}
-
-/** Resolves the DPA warning banner locator. */
-export async function getAiDpaWarningBannerLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiDpaWarningBannerLocator();
-}
-
-/** Resolves the AI data posture badge locator. */
-export async function getAiDataPostureBadgeLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiDataPostureBadgeLocator();
-}
-
-/** Resolves the AI DPA status badge locator. */
-export async function getAiDpaStatusBadgeLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiDpaStatusBadgeLocator();
-}
-
-/** Resolves the AI Save button locator. */
-export async function getAiSaveButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiSaveButtonLocator();
-}
-
-/** Resolves the AI Test Connection button locator. */
-export async function getAiTestConnectionButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiTestConnectionButtonLocator();
-}
-
-/** Resolves the AI test connection result message locator. */
-export async function getAiTestConnectionResultLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiTestConnectionResultLocator();
-}
-
-/** Resolves the AI model select locator. */
-export async function getAiModelSelectLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).aiModelSelectLocator();
-}
-
 // ---------------------------------------------------------------------------
 // Visibility Settings behaviors (MINCRM-538)
 // ---------------------------------------------------------------------------
-
-/** Resolves the visibility settings panel locator. */
-export async function getVisibilitySettingsPanelLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).visibilitySettingsPanelLocator();
-}
-
-/** Resolves the contacts visibility select locator. */
-export async function getVisibilityContactsSelectLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).visibilityContactsSelectLocator();
-}
-
-/** Resolves the deals visibility select locator. */
-export async function getVisibilityDealsSelectLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).visibilityDealsSelectLocator();
-}
-
-/** Resolves the visibility save button locator. */
-export async function getVisibilitySaveButtonLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).visibilitySaveButtonLocator();
-}
-
-/** Resolves the visibility save success message locator. */
-export async function getVisibilitySaveSuccessLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).visibilitySaveSuccessLocator();
-}
 
 /**
  * Resets all visibility policies back to 'org' via the REST API.
@@ -1359,34 +630,1339 @@ export async function resetVisibilitySettings(restClient: RestClient): Promise<v
 // Roles tab — built-in role View button (MINCRM-547)
 // ---------------------------------------------------------------------------
 
-/** Returns a resolved locator for the View button on a built-in role card. */
-export async function getRoleViewButtonLocator(
+// ---------------------------------------------------------------------------
+// Intent-bearing action/assertion behaviors — replace locator-accessor
+// wrappers with explicit, single-operation functions (MINCRM-564)
+// ---------------------------------------------------------------------------
+
+/** Asserts that the admin settings page heading is visible. */
+export async function expectAdminSettingsHeadingVisible(
   context: AdminSettingsBehaviorContext,
-  roleId: string,
-) {
-  return new AdminSettingsPage(context).roleViewButtonLocator(roleId);
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).settingsHeadingLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/** Returns a resolved locator for the read-only capability panel of a built-in role. */
-export async function getRoleCapabilityPanelLocator(
+/** Asserts that the settings save button (general tab) is visible. */
+export async function expectAdminSettingsSaveVisible(
   context: AdminSettingsBehaviorContext,
-  roleId: string,
-) {
-  return new AdminSettingsPage(context).roleCapabilityPanelLocator(roleId);
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).settingsSaveLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/** Returns a resolved locator for the read-only capability list inside an expanded panel. */
-export async function getRoleCapabilityReadOnlyListLocator(context: AdminSettingsBehaviorContext) {
-  return new AdminSettingsPage(context).roleCapabilityReadOnlyListLocator();
+/** Asserts that the webhook settings section is visible. */
+export async function expectAdminSettingsWebhookSectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookSectionLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Fills the webhook URL input with the given URL. */
+export async function fillAdminSettingsWebhookUrl(
+  url: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await new AdminSettingsPage(context).webhookUrlInputLocator();
+  await locator.fill(url);
+}
+
+/** Asserts that the webhook secret reveal modal is visible. */
+export async function expectAdminSettingsWebhookSecretRevealVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookSecretRevealLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Returns the current value of the webhook secret input. */
+export async function getAdminSettingsWebhookSecretValue(
+  context: AdminSettingsBehaviorContext,
+): Promise<string> {
+  return (await new AdminSettingsPage(context).webhookSecretValueLocator()).inputValue();
+}
+
+/** Asserts that the webhook delete confirmation dialog is visible. */
+export async function expectAdminSettingsWebhookDeleteConfirmVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookDeleteConfirmLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the exchange rates section is visible. */
+export async function expectAdminSettingsExchangeRatesSectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).exchangeRatesSectionLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects the home currency in the home currency select. */
+export async function selectAdminSettingsHomeCurrency(
+  currencyCode: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (
+    await new AdminSettingsPage(context).homeCurrencySelectLocator()
+  ).selectOption(currencyCode);
+}
+
+/** Asserts that the add-currency form is visible. */
+export async function expectAdminSettingsAddCurrencyFormVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).addCurrencyFormLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects a currency code in the add-currency code select. */
+export async function selectAdminSettingsAddCurrencyCode(
+  code: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).addCurrencyCodeSelectLocator()).selectOption(code);
+}
+
+/** Fills the exchange rate input with the given rate. */
+export async function fillAdminSettingsAddCurrencyRate(
+  rate: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).addCurrencyRateInputLocator()).fill(rate);
+}
+
+/** Asserts that the exchange rate save success message is visible. */
+export async function expectAdminSettingsExchangeRateSaveSuccessVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).exchangeRateSaveSuccessLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that an exchange rate row for the given currency code is visible. */
+export async function expectAdminSettingsExchangeRateRowVisible(
+  currencyCode: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).exchangeRateRowLocator(currencyCode);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the custom fields section is visible. */
+export async function expectAdminSettingsCustomFieldsSectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).customFieldsSectionLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects an entity type in the custom fields entity select. */
+export async function selectAdminSettingsCustomFieldsEntity(
+  entityType: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (
+    await new AdminSettingsPage(context).customFieldsEntitySelectLocator()
+  ).selectOption(entityType);
+}
+
+/** Asserts that the add-field inline form is visible. */
+export async function expectAdminSettingsAddFieldFormVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).addFieldFormLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Fills the add-field name input with the given name. */
+export async function fillAdminSettingsAddFieldName(
+  name: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).addFieldNameInputLocator()).fill(name);
+}
+
+/** Asserts that the custom fields feedback message is visible. */
+export async function expectAdminSettingsCustomFieldsFeedbackVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).customFieldsFeedbackLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the confirm-delete-field button is visible. */
+export async function expectAdminSettingsDeleteFieldConfirmVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).deleteFieldConfirmLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the confirm-delete-field button. */
+export async function clickAdminSettingsDeleteFieldConfirm(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).deleteFieldConfirmLocator()).click();
+}
+
+/** Asserts that the branding form is visible. */
+export async function expectAdminSettingsBrandingFormVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).brandingFormLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Fills the branding company name input. */
+export async function fillAdminSettingsBrandingCompanyName(
+  name: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingCompanyNameLocator()).fill(name);
+}
+
+/** Fills the branding primary colour text input. */
+export async function fillAdminSettingsBrandingColorText(
+  color: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingColorTextLocator()).fill(color);
+}
+
+/** Selects a font in the branding font select. */
+export async function selectAdminSettingsBrandingFont(
+  font: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingFontSelectLocator()).selectOption(font);
+}
+
+/** Clicks the branding Save button. */
+export async function clickAdminSettingsBrandingSave(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingSaveLocator()).click();
+}
+
+/** Asserts that the branding save success message is visible. */
+export async function expectAdminSettingsBrandingSaveSuccessVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).brandingSaveSuccessLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the branding reset button. */
+export async function clickAdminSettingsBrandingReset(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingResetButtonLocator()).click();
+}
+
+/** Clicks the branding reset confirm button. */
+export async function clickAdminSettingsBrandingResetConfirm(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).brandingResetConfirmLocator()).click();
+}
+
+/** Asserts that the branding reset success message is visible. */
+export async function expectAdminSettingsBrandingResetSuccessVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).brandingResetSuccessLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the pipeline stages table is visible. */
+export async function expectPipelineStagesTableVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).pipelineStagesTableLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the SSO section panel is visible. */
+export async function expectSsoSectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoSectionLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects the SSO protocol. */
+export async function selectSsoProtocol(
+  protocol: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).ssoProtocolSelectLocator()).selectOption(protocol);
+}
+
+/** Fills the SSO IdP metadata URL input. */
+export async function fillSsoIdpMetadataUrl(
+  url: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).ssoIdpMetadataUrlInputLocator()).fill(url);
+}
+
+/** Fills the SSO entity ID input. */
+export async function fillSsoEntityId(
+  entityId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).ssoEntityIdInputLocator()).fill(entityId);
+}
+
+/** Asserts that the SSO save success message is visible. */
+export async function expectSsoSaveSuccessVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).ssoSaveSuccessLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the SSO disable button. */
+export async function clickSsoDisableButton(context: AdminSettingsBehaviorContext): Promise<void> {
+  await (await new AdminSettingsPage(context).ssoDisableButtonLocator()).click();
+}
+
+/** Asserts that the SSO login button on the login page is visible. */
+export async function expectSsoLoginButtonVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'sso-login-button' },
+        { type: 'role', value: 'link', options: { name: /sign in with/i } },
+      ],
+      {
+        intent: 'SSO login button on the login page',
+        fallbackTimeout: 8_000,
+      },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the SSO login button on the login page is NOT visible. */
+export async function expectSsoLoginButtonNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // Re-locate after page state change; the element may be absent from the DOM
+  // or hidden. If the locator strategy exhausts all fallbacks (button not in DOM),
+  // catch the error and consider the assertion trivially satisfied. (MINCRM-564)
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'sso-login-button' },
+        { type: 'role', value: 'link', options: { name: /sign in with/i } },
+      ],
+      {
+        intent: 'SSO login button on the login page',
+        fallbackTimeout: 2_000,
+      },
+    )
+    .resolve()
+    .catch(() => null);
+  if (locator) {
+    await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+  }
+}
+
+/** Asserts that the feature flags list is visible. */
+export async function expectFeatureFlagsListVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flags-list' },
+        { type: 'role', value: 'region' },
+      ],
+      { intent: 'container showing the grouped list of feature flags' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the confirm OK button inside the feature flag confirmation dialog. */
+export async function clickFeatureFlagConfirmOk(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flag-confirm-ok' },
+        { type: 'role', value: 'button', options: { name: /confirm/i } },
+      ],
+      { intent: 'confirm button inside the feature flag toggle confirmation dialog' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Clicks the Confirm button inside the AI toggle confirmation dialog. */
+export async function clickAiToggleConfirmButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).aiToggleConfirmButtonLocator()).click();
+}
+
+/** Clicks the Cancel button inside the AI toggle confirmation dialog. */
+export async function clickAiToggleCancelButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).aiToggleCancelButtonLocator()).click();
+}
+
+/** Asserts that the AI data posture badge is visible. */
+export async function expectAiDataPostureBadgeVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiDataPostureBadgeLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI test connection result message is visible. */
+export async function expectAiTestConnectionResultVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiTestConnectionResultLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the read-only capability list inside an expanded panel is visible. */
+export async function expectRoleCapabilityReadOnlyListVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).roleCapabilityReadOnlyListLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that a specific disabled capability checkbox in a built-in role panel is disabled. */
+export async function expectRoleReadOnlyCapabilityCheckboxDisabled(
+  context: AdminSettingsBehaviorContext,
+  capabilityKey: string,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).roleReadOnlyCapabilityCheckboxLocator(
+    capabilityKey,
+  );
+  await expect(locator).toBeDisabled();
+}
+
+/** Clicks the Add Pipeline button. */
+export async function clickPipelineAddButton(context: AdminSettingsBehaviorContext): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'add-pipeline-button' },
+        { type: 'role', value: 'button', options: { name: /new pipeline/i } },
+      ],
+      { intent: 'button to open the new pipeline form' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Fills the new-pipeline name input. */
+export async function fillNewPipelineName(
+  name: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'new-pipeline-name-input' },
+        { type: 'role', value: 'textbox' },
+      ],
+      { intent: 'input field for the new pipeline name' },
+    )
+    .resolve();
+  await locator.fill(name);
+}
+
+/** Clicks the create-pipeline submit button. */
+export async function clickCreatePipelineSubmit(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'create-pipeline-submit-button' },
+        { type: 'role', value: 'button', options: { name: /save/i } },
+      ],
+      { intent: 'submit button to create the new pipeline' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Asserts that the pipelines feedback status message is visible. */
+export async function expectPipelinesFeedbackVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipelines-feedback' },
+        { type: 'role', value: 'status' },
+      ],
+      { intent: 'success feedback message after a pipeline operation' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the edit button for a specific pipeline row. */
+export async function clickPipelineEditButton(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-edit-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /edit/i } },
+      ],
+      { intent: 'edit button for the pipeline row to rename' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Fills the edit input for a specific pipeline row. */
+export async function fillPipelineEditInput(
+  pipelineId: string,
+  value: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-edit-input-${pipelineId}` },
+        { type: 'role', value: 'textbox' },
+      ],
+      { intent: 'text input for renaming the pipeline' },
+    )
+    .resolve();
+  await locator.fill(value);
+}
+
+/** Clicks the save button for a specific pipeline row. */
+export async function clickPipelineSaveButton(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-save-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /save/i } },
+      ],
+      { intent: 'save button to confirm pipeline rename' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Clicks the delete button for a specific pipeline row. */
+export async function clickPipelineDeleteButton(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-delete-button-${pipelineId}` },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'delete button for the pipeline row to remove' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Clicks the confirm-delete button inside the pipeline deletion confirmation panel. */
+export async function clickPipelineDeleteConfirmButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-delete-confirm-button' },
+        { type: 'role', value: 'button', options: { name: /delete/i } },
+      ],
+      { intent: 'confirm button to execute pipeline deletion' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Selects the pipeline in the pipeline stages pipeline selector. */
+export async function selectPipelineStagesPipeline(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-stages-pipeline-selector' },
+        { type: 'role', value: 'combobox' },
+      ],
+      { intent: 'dropdown to select which pipeline to manage stages for' },
+    )
+    .resolve();
+  await locator.selectOption(pipelineId);
+}
+
+/** Asserts that a specific pipeline stage row is visible. */
+export async function expectPipelineStageRowVisible(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `pipeline-stage-row-${stageId}` },
+        { type: 'text', value: 'Custom Stage One' },
+      ],
+      { intent: 'row for the custom stage in the pipeline stages table' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the pipeline board container is visible. */
+export async function expectPipelineBoardContainerVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- board container div; no stable role alternative
+  const locator = await context.page
+    .locate([{ type: 'testId', value: 'pipeline-board' }], {
+      intent: 'the main pipeline kanban board container',
+    })
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the inline edit button for a pipeline stage row. */
+export async function clickPipelineStageEditButton(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-edit-${stageId}` }])
+    .resolve();
+  await locator.click();
+}
+
+/** Clicks the inline save button for a pipeline stage row. */
+export async function clickPipelineStageSaveButton(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-save-${stageId}` }])
+    .resolve();
+  await locator.click();
+}
+
+/** Fills the exit required input for a pipeline stage. */
+export async function fillPipelineStageExitRequiredInput(
+  stageId: string,
+  value: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-exit-required-${stageId}` }])
+    .resolve();
+  await locator.fill(value);
+}
+
+/** Asserts that the visibility settings panel is visible. */
+export async function expectVisibilitySettingsPanelVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).visibilitySettingsPanelLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the contacts visibility select is visible. */
+export async function expectVisibilityContactsSelectVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).visibilityContactsSelectLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects a value in the contacts visibility select. */
+export async function selectVisibilityContacts(
+  value: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (
+    await new AdminSettingsPage(context).visibilityContactsSelectLocator()
+  ).selectOption(value);
+}
+
+/** Clicks the visibility save button. */
+export async function clickVisibilitySaveButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).visibilitySaveButtonLocator()).click();
+}
+
+/** Asserts that the visibility save success message is visible. */
+export async function expectVisibilitySaveSuccessVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).visibilitySaveSuccessLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline stage move-up / move-down assertions (MINCRM-564)
+// Replaces getPipelineStageMoveUpLocator / getPipelineStageMoveDownLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the move-up button for the given stage is enabled. */
+export async function expectPipelineStageMoveUpEnabled(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
+  await expect(locator).toBeEnabled(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the move-up button for the given stage is disabled. */
+export async function expectPipelineStageMoveUpDisabled(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).pipelineStageMoveUpLocator(stageId);
+  await expect(locator).toBeDisabled(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the move-down button for the given stage is enabled. */
+export async function expectPipelineStageMoveDownEnabled(
+  stageId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).pipelineStageMoveDownLocator(stageId);
+  await expect(locator).toBeEnabled(timeout !== undefined ? { timeout } : undefined);
 }
 
 /**
- * Returns a resolved locator for a specific disabled capability checkbox in a built-in role panel.
- * @param capabilityKey - e.g. 'contacts:view'
+ * Clicks the delete button for a pipeline stage, scrolling it into view first.
+ * The caller is responsible for retrying the click if the confirmation dialog
+ * does not appear in time (MINCRM-564).
  */
-export async function getRoleReadOnlyCapabilityCheckboxLocator(
+export async function clickPipelineStageDeleteButton(
+  stageId: string,
   context: AdminSettingsBehaviorContext,
-  capabilityKey: string,
-) {
-  return new AdminSettingsPage(context).roleReadOnlyCapabilityCheckboxLocator(capabilityKey);
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `pipeline-stage-delete-${stageId}` }])
+    .resolve();
+  await expect(locator).toBeVisible({ timeout: 5_000 });
+  await locator.scrollIntoViewIfNeeded();
+  await locator.click();
+}
+
+// ---------------------------------------------------------------------------
+// Feature flag toggle intent-bearing behaviors (MINCRM-564)
+// Replaces getFeatureFlagToggleLocator / getFeatureFlagConfirmDialogLocator /
+// getAdminSettingsAiTabLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the feature flag toggle for the given key has aria-checked=true. */
+export async function expectFeatureFlagToggleChecked(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-toggle-${flagKey}` },
+        { type: 'role', value: 'switch', options: { name: new RegExp(flagKey, 'i') } },
+      ],
+      { intent: `toggle switch for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toHaveAttribute(
+    'aria-checked',
+    'true',
+    timeout !== undefined ? { timeout } : undefined,
+  );
+}
+
+/** Asserts that the feature flag toggle for the given key has aria-checked=false. */
+export async function expectFeatureFlagToggleUnchecked(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-toggle-${flagKey}` },
+        { type: 'role', value: 'switch', options: { name: new RegExp(flagKey, 'i') } },
+      ],
+      { intent: `toggle switch for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toHaveAttribute(
+    'aria-checked',
+    'false',
+    timeout !== undefined ? { timeout } : undefined,
+  );
+}
+
+/** Clicks the feature flag toggle for the given key. */
+export async function clickFeatureFlagToggle(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-toggle-${flagKey}` },
+        { type: 'role', value: 'switch', options: { name: new RegExp(flagKey, 'i') } },
+      ],
+      { intent: `toggle switch to enable or disable the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/** Asserts that the feature flag confirmation dialog is visible. */
+export async function expectFeatureFlagConfirmDialogVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // waitForPresent guards against resolve() failing before the dialog renders.
+  // resolve() probes with a 2 s fallback; the dialog appears after a React state
+  // update following the toggle click, which can take >2 s on slow boxes.
+  await context.page.waitForPresent('[data-testid="feature-flag-confirm-dialog"]', timeout);
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'feature-flag-confirm-dialog' },
+        { type: 'role', value: 'dialog' },
+      ],
+      { intent: 'confirmation dialog shown before toggling a feature flag' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Asserts that the feature flag confirmation dialog is NOT visible (has left the DOM). */
+export async function expectFeatureFlagConfirmDialogNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // The confirmation dialog is unmounted (not just hidden) when dismissed.
+  // resolve() would throw StrategyExhaustedError once the element leaves the DOM,
+  // so we use waitForAbsent which polls the DOM directly without a healing locator.
+  await context.page.waitForAbsent('[data-testid="feature-flag-confirm-dialog"]', timeout);
+}
+
+/** Asserts that the AI Features tab is attached to the DOM (visible or hidden). */
+export async function expectAdminSettingsAiTabAttached(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'settings-tab-ai' },
+        { type: 'role', value: 'tab', options: { name: /ai/i } },
+      ],
+      { intent: 'AI Features tab in the admin settings navigation' },
+    )
+    .resolve();
+  await expect(locator).toBeAttached(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI Features tab is disabled. */
+export async function expectAdminSettingsAiTabDisabled(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'settings-tab-ai' },
+        { type: 'role', value: 'tab', options: { name: /ai/i } },
+      ],
+      { intent: 'AI Features tab in the admin settings navigation' },
+    )
+    .resolve();
+  await expect(locator).toBeDisabled(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI Features tab is NOT disabled (i.e., enabled). */
+export async function expectAdminSettingsAiTabEnabled(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'settings-tab-ai' },
+        { type: 'role', value: 'tab', options: { name: /ai/i } },
+      ],
+      { intent: 'AI Features tab in the admin settings navigation' },
+    )
+    .resolve();
+  await expect(locator).not.toBeDisabled(timeout !== undefined ? { timeout } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// AI Settings intent-bearing behaviors (MINCRM-564)
+// Replaces getAiSettingsPanelLocator, getAiMasterToggleLocator, etc.
+// ---------------------------------------------------------------------------
+
+/** Asserts that the AI settings panel is visible. */
+export async function expectAiSettingsPanelVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiSettingsPanelLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI master toggle is visible. */
+export async function expectAiMasterToggleVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the AI master toggle. */
+export async function clickAiMasterToggle(context: AdminSettingsBehaviorContext): Promise<void> {
+  await (await new AdminSettingsPage(context).aiMasterToggleLocator()).click();
+}
+
+/** Asserts that the AI master toggle has aria-checked=false (disabled state). */
+export async function expectAiMasterToggleUnchecked(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  await expect(locator).toHaveAttribute(
+    'aria-checked',
+    'false',
+    timeout !== undefined ? { timeout } : undefined,
+  );
+}
+
+/** Asserts that the AI master toggle has aria-checked=true (enabled state). */
+export async function expectAiMasterToggleChecked(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  await expect(locator).toHaveAttribute(
+    'aria-checked',
+    'true',
+    timeout !== undefined ? { timeout } : undefined,
+  );
+}
+
+/** Asserts that the AI toggle confirmation dialog is visible. */
+export async function expectAiToggleConfirmDialogVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // Use waitForPresent before resolve() — the dialog renders asynchronously after
+  // the toggle click. resolve() probes with a 2 s fallback timeout which is too
+  // short for the dialog animation; waitForPresent waits up to `timeout` for the
+  // element to enter the DOM before we attempt healing-locator resolution.
+  await context.page.waitForPresent('[data-testid="ai-toggle-confirm-dialog"]', timeout);
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiToggleConfirmDialogLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Asserts that the AI toggle confirmation dialog is NOT visible (has left the DOM). */
+export async function expectAiToggleConfirmDialogNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  // The confirmation dialog is unmounted (not just hidden) when dismissed.
+  // resolve() would throw StrategyExhaustedError once the element leaves the DOM,
+  // so we use waitForAbsent which polls the DOM directly without a healing locator.
+  await context.page.waitForAbsent('[data-testid="ai-toggle-confirm-dialog"]', timeout);
+}
+
+/** Asserts that the AI DPA acknowledgment checkbox is visible. */
+export async function expectAiDpaCheckboxVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiDpaCheckboxLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI DPA acknowledgment checkbox is NOT visible. */
+export async function expectAiDpaCheckboxNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiDpaCheckboxLocator();
+  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the AI DPA acknowledgment checkbox. */
+export async function clickAiDpaCheckbox(context: AdminSettingsBehaviorContext): Promise<void> {
+  await (await new AdminSettingsPage(context).aiDpaCheckboxLocator()).click();
+}
+
+/** Asserts that the AI DPA warning banner is visible. */
+export async function expectAiDpaWarningBannerVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiDpaWarningBannerLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the AI DPA warning banner is NOT visible, if it exists in the DOM. */
+export async function expectAiDpaWarningBannerNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context)
+    .aiDpaWarningBannerLocator()
+    .catch(() => null);
+  if (locator) {
+    await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+  }
+}
+
+/** Asserts that the AI model select is visible. */
+export async function expectAiModelSelectVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiModelSelectLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/**
+ * Returns the number of options in the AI model select element.
+ * Used to verify that the select is populated with at least one model.
+ */
+export async function getAiModelOptionCount(
+  context: AdminSettingsBehaviorContext,
+): Promise<number> {
+  const locator = await new AdminSettingsPage(context).aiModelSelectLocator();
+  return locator.evaluate(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (el: Element) => (el as unknown as any).options.length as number,
+  );
+}
+
+/** Asserts that the AI Test Connection button is visible. */
+export async function expectAiTestConnectionButtonVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiTestConnectionButtonLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the AI Test Connection button. */
+export async function clickAiTestConnectionButton(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).aiTestConnectionButtonLocator()).click();
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline delete confirmation and board selector behaviors (MINCRM-564)
+// Replaces getPipelineDeleteConfirmLocator / getPipelineBoardSelectorLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the pipeline delete confirmation panel is visible. */
+export async function expectPipelineDeleteConfirmVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
+  const locator = await context.page
+    .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
+      intent: 'delete confirmation panel for the pipeline',
+    })
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/**
+ * Waits for the pipeline delete confirmation panel to reach the given state.
+ * Used in conjunction with clickPipelineDeleteButton to drive the delete flow.
+ */
+export async function waitForPipelineDeleteConfirm(
+  state: 'visible' | 'hidden',
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
+  const locator = await context.page
+    .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
+      intent: 'delete confirmation panel for the pipeline',
+    })
+    .resolve();
+  await locator.waitFor(timeout !== undefined ? { state, timeout } : { state });
+}
+
+/** Asserts that the pipeline delete confirmation panel contains the given text. */
+export async function expectPipelineDeleteConfirmContainsText(
+  text: string | RegExp,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- static container div; no stable role alternative
+  const locator = await context.page
+    .locate([{ type: 'testId', value: 'pipeline-delete-confirm' }], {
+      intent: 'delete confirmation panel for the pipeline',
+    })
+    .resolve();
+  await expect(locator).toContainText(text, timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Waits for the pipeline board selector to be visible, then selects the given pipeline. */
+export async function selectPipelineBoardPipeline(
+  pipelineId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-selector' },
+        { type: 'role', value: 'combobox' },
+      ],
+      { intent: 'pipeline selector dropdown above the deals board' },
+    )
+    .resolve();
+  await locator.waitFor({ state: 'visible' });
+  await locator.selectOption(pipelineId);
+}
+
+/** Asserts that the pipeline board selector is visible. */
+export async function expectPipelineBoardSelectorVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'pipeline-selector' },
+        { type: 'role', value: 'combobox' },
+      ],
+      { intent: 'pipeline selector dropdown above the deals board' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Built-in role View button intent-bearing behaviors (MINCRM-564)
+// Replaces getRoleViewButtonLocator / getRoleCapabilityPanelLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the View button for a built-in role card is visible. */
+export async function expectRoleViewButtonVisible(
+  roleId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).roleViewButtonLocator(roleId);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Clicks the View button for a built-in role card. */
+export async function clickRoleViewButton(
+  roleId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (await new AdminSettingsPage(context).roleViewButtonLocator(roleId)).click();
+}
+
+/** Asserts that the read-only capability panel for a built-in role is visible. */
+export async function expectRoleCapabilityPanelVisible(
+  roleId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).roleCapabilityPanelLocator(roleId);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the read-only capability panel for a built-in role is NOT visible. */
+export async function expectRoleCapabilityPanelNotVisible(
+  roleId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).roleCapabilityPanelLocator(roleId);
+  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Webhook row intent-bearing behaviors (MINCRM-564)
+// Replaces getAdminSettingsWebhookRowLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the webhook subscription row for the given ID is visible. */
+export async function expectAdminSettingsWebhookRowVisible(
+  subscriptionId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the webhook subscription row contains the given text. */
+export async function expectAdminSettingsWebhookRowContainsText(
+  subscriptionId: string,
+  text: string | RegExp,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
+  await expect(locator).toContainText(text, timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts that the webhook subscription row is NOT visible. */
+export async function expectAdminSettingsWebhookRowNotVisible(
+  subscriptionId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
+  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+// ---------------------------------------------------------------------------
+// Currency section visibility behavior (MINCRM-564)
+// Replaces getAdminSettingsCurrencySectionLocator
+// ---------------------------------------------------------------------------
+
+/** Asserts that the currency section is visible. */
+export async function expectAdminSettingsCurrencySectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).currencySectionLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

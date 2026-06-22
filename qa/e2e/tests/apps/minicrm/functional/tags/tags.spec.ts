@@ -39,7 +39,7 @@ import {
   attachTagToContact,
   getDealTags,
 } from '@behaviors/minicrm/index.js';
-import { getAdminTagsPaginationLocator } from '@behaviors/minicrm/tags.behaviors.js';
+import { expectAdminTagsPaginationVisible } from '@behaviors/minicrm/tags.behaviors.js';
 import {
   navigateToContactDetailPage,
   navigateToDealDetailPage,
@@ -100,8 +100,7 @@ test(
 
     await navigateToAdminTags({ page });
 
-    const pagination = await getAdminTagsPaginationLocator({ page });
-    await expect(pagination).toBeVisible({ timeout: 10_000 });
+    await expectAdminTagsPaginationVisible({ page }, 10_000);
   },
 );
 

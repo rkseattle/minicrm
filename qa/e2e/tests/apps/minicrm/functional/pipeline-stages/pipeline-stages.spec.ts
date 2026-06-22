@@ -29,9 +29,10 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import {
   navigateToAdminSettings,
-  getPipelineStagesTableLocator,
-  getPipelineStageMoveUpLocator,
-  getPipelineStageMoveDownLocator,
+  expectPipelineStagesTableVisible,
+  expectPipelineStageMoveUpEnabled,
+  expectPipelineStageMoveUpDisabled,
+  expectPipelineStageMoveDownEnabled,
   clickMoveUpAndWaitForReorder,
   clickMoveDownAndWaitForReorder,
   clickAddPipelineStage,
@@ -39,9 +40,9 @@ import {
   submitAddPipelineStage,
   waitForPipelineStagesFeedback,
   fillRenamePipelineStage,
-  getPipelineStageEditButtonLocator,
-  getPipelineStageSaveButtonLocator,
-  getPipelineStageDeleteButtonLocator,
+  clickPipelineStageEditButton,
+  clickPipelineStageSaveButton,
+  clickPipelineStageDeleteButton,
   clickDeletePipelineStageConfirm,
   waitForDeleteStageDialog,
 } from '@behaviors/minicrm/settings.behaviors.js';
@@ -107,16 +108,14 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
   const stagesBefore = await fetchStages(restClient);
   expect(stagesBefore.length).toBeGreaterThanOrEqual(2);
 
   const secondStageId = stagesBefore[1].id;
 
-  const moveUpButton = await getPipelineStageMoveUpLocator({ page }, secondStageId);
-  await expect(moveUpButton).toBeEnabled();
+  await expectPipelineStageMoveUpEnabled(secondStageId, { page });
 
   // Capture the reorder response directly to validate the server-committed order
   // without a networkidle delay that a concurrent worker's afterEach restore could
@@ -140,8 +139,7 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
   const stagesBefore = await fetchStages(restClient);
   expect(stagesBefore.length).toBeGreaterThanOrEqual(2);
@@ -149,8 +147,7 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
   const firstStageId = stagesBefore[0].id;
   const secondStageId = stagesBefore[1].id;
 
-  const moveDownButton = await getPipelineStageMoveDownLocator({ page }, firstStageId);
-  await expect(moveDownButton).toBeEnabled();
+  await expectPipelineStageMoveDownEnabled(firstStageId, { page });
 
   // Capture the reorder response directly — avoids the race where a concurrent
   // worker's afterEach restore could overwrite the DB before fetchStages runs
@@ -178,14 +175,12 @@ test('@functional MINCRM-381-3: move-up button is disabled for the first stage',
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
   const stagesBefore = await fetchStages(restClient);
   const firstStageId = stagesBefore[0].id;
 
-  const moveUpButton = await getPipelineStageMoveUpLocator({ page }, firstStageId);
-  await expect(moveUpButton).toBeDisabled();
+  await expectPipelineStageMoveUpDisabled(firstStageId, { page });
 });
 
 // ---------------------------------------------------------------------------
@@ -201,8 +196,7 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
   const stageName = `PS1-Stage-${Date.now()}`;
   let createdStageId: string | undefined;
@@ -243,8 +237,7 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
   // Pick the first non-fixed stage (is_fixed=false stages can be renamed)
   const stages = await fetchStages(restClient);
@@ -258,13 +251,11 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
   const originalName = nonFixedStage.name;
 
   try {
-    const editEl = await getPipelineStageEditButtonLocator(nonFixedStage.id, { page });
-    await editEl.click();
+    await clickPipelineStageEditButton(nonFixedStage.id, { page });
 
     await fillRenamePipelineStage(newName, nonFixedStage.id, { page });
 
-    const saveEl = await getPipelineStageSaveButtonLocator(nonFixedStage.id, { page });
-    await saveEl.click();
+    await clickPipelineStageSaveButton(nonFixedStage.id, { page });
 
     await waitForPipelineStagesFeedback('visible', { page });
 
@@ -303,27 +294,22 @@ test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer a
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'pipelines');
 
-  const table = await getPipelineStagesTableLocator({ page });
-  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expectPipelineStagesTableVisible({ page }, 10_000);
 
-  const deleteEl = await getPipelineStageDeleteButtonLocator(stageId, { page });
   // Ensure the button is visible and in the viewport before clicking — on mobile
   // (Pixel 5, 393 px) the table is tight and the button may be below the fold;
   // on desktop the list may be long enough to push the new stage off-screen.
   // Then retry the click once if the dialog doesn't appear within 3 s — a React
   // re-render between resolve() and click() can silently swallow the first click.
   // (MINCRM-554)
-  await expect(deleteEl).toBeVisible({ timeout: 5_000 });
-  await deleteEl.scrollIntoViewIfNeeded();
-  await deleteEl.click();
+  await clickPipelineStageDeleteButton(stageId, { page });
 
   const dialogVisible = await waitForDeleteStageDialog('visible', { page }, 3_000).then(
     () => true,
     () => false,
   );
   if (!dialogVisible) {
-    await deleteEl.scrollIntoViewIfNeeded();
-    await deleteEl.click();
+    await clickPipelineStageDeleteButton(stageId, { page });
   }
   await waitForDeleteStageDialog('visible', { page }, 5_000);
   await clickDeletePipelineStageConfirm(stageId, { page });

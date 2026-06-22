@@ -373,20 +373,24 @@ export interface SetupUIBehaviorContext {
   page: PageFacade;
 }
 
-/**
- * Returns a resolved locator for the expanded setup checklist widget.
- */
-export async function getSetupChecklistWidgetLocator(context: SetupUIBehaviorContext) {
-  const checklistPage = new SetupChecklistPage(context);
-  return checklistPage.widgetLocator();
+/** Asserts the setup checklist widget is visible, with an optional timeout (ms). */
+export async function expectSetupChecklistWidgetVisible(
+  context: SetupUIBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new SetupChecklistPage(context).widgetLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Returns a resolved locator for the collapsed setup checklist pill.
- */
-export async function getSetupChecklistPillLocator(context: SetupUIBehaviorContext) {
-  const checklistPage = new SetupChecklistPage(context);
-  return checklistPage.pillLocator();
+/** Asserts the setup checklist pill (collapsed state) is visible, with an optional timeout (ms). */
+export async function expectSetupChecklistPillVisible(
+  context: SetupUIBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new SetupChecklistPage(context).pillLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
 /**
@@ -413,20 +417,23 @@ export async function navigateToAutomation(context: SetupUIBehaviorContext): Pro
   await automationPage.navigate();
 }
 
-/**
- * Returns a resolved locator for the automation rules page heading.
- */
-export async function getAutomationHeadingLocator(context: SetupUIBehaviorContext) {
-  const automationPage = new AutomationPage(context);
-  return automationPage.headingLocator();
+/** Asserts the automation rules page heading is visible. */
+export async function expectAutomationHeadingVisible(
+  context: SetupUIBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AutomationPage(context).headingLocator();
+  await expect(locator).toBeVisible();
 }
 
-/**
- * Returns a resolved locator for the pagination controls on the automation page.
- */
-export async function getAutomationPaginationLocator(context: SetupUIBehaviorContext) {
-  const automationPage = new AutomationPage(context);
-  return automationPage.paginationLocator();
+/** Asserts the automation pagination controls are visible, with an optional timeout (ms). */
+export async function expectAutomationPaginationVisible(
+  context: SetupUIBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AutomationPage(context).paginationLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
 // ---------------------------------------------------------------------------
@@ -481,11 +488,13 @@ export async function isSetupChecklistPillHidden(
   return context.page.isNotVisible([{ type: 'testId', value: 'setup-checklist-pill' }]);
 }
 
-/**
- * Resolves the setup checklist task list locator.
- */
-export async function getSetupChecklistTaskListLocator(context: OnboardingBehaviorContext) {
-  return context.page
+/** Asserts the setup checklist task list is visible, with an optional timeout (ms). */
+export async function expectSetupChecklistTaskListVisible(
+  context: OnboardingBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'setup-checklist-task-list' },
@@ -494,6 +503,23 @@ export async function getSetupChecklistTaskListLocator(context: OnboardingBehavi
       { intent: 'setup checklist task list showing setup tasks' },
     )
     .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Returns the innerHTML of the setup checklist task list, used to count list items. */
+export async function getSetupChecklistTaskListHtml(
+  context: OnboardingBehaviorContext,
+): Promise<string> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'setup-checklist-task-list' },
+        { type: 'role', value: 'list' },
+      ],
+      { intent: 'setup checklist task list showing setup tasks' },
+    )
+    .resolve();
+  return locator.innerHTML();
 }
 
 // ---------------------------------------------------------------------------
@@ -505,11 +531,13 @@ export interface CustomFieldsBehaviorContext {
   page: PageFacade;
 }
 
-/**
- * Resolves the custom-fields edit grid on any entity detail page.
- */
-export async function getCustomFieldsEditGridLocator(context: CustomFieldsBehaviorContext) {
-  return context.page
+/** Asserts the custom-fields edit grid is visible, with an optional timeout (ms). */
+export async function expectCustomFieldsEditGridVisible(
+  context: CustomFieldsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'custom-fields-edit-grid' },
@@ -518,46 +546,76 @@ export async function getCustomFieldsEditGridLocator(context: CustomFieldsBehavi
       { intent: 'custom fields edit grid in the entity edit form' },
     )
     .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
 /**
- * Resolves the delete button for a custom field definition row.
+ * Clicks the delete button for a custom field definition row.
  * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback without scoping
  */
-export async function getCustomFieldDeleteButtonLocator(
+export async function clickCustomFieldDeleteButton(
   definitionId: string,
   context: CustomFieldsBehaviorContext,
-) {
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed delete button has no stable role fallback without scoping
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'testId', value: `custom-field-delete-${definitionId}` }])
     .resolve();
+  await expect(locator).toBeVisible({ timeout: 5_000 });
+  await locator.click();
 }
 
 /**
- * Resolves the input for a custom field by definition ID.
+ * Fills a custom field text input, scrolling into view and pressing Tab to flush React state.
+ * Returns after confirming the value was accepted.
  * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
  */
-export async function getCustomFieldInputLocator(
+export async function fillCustomFieldInput(
   definitionId: string,
+  value: string,
   context: CustomFieldsBehaviorContext,
-) {
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
     .resolve();
+  // Scroll into view — on mobile the section can be below the fold (MINCRM-554)
+  await expect(locator).toBeVisible({ timeout: 5_000 });
+  await locator.scrollIntoViewIfNeeded();
+  await locator.fill(value);
+  // Tab away to flush React's useEffect chain before saving
+  await locator.press('Tab');
+  await expect(locator).toHaveValue(value);
 }
 
 /**
- * Resolves the label element for a custom field by definition ID.
+ * Asserts a custom field input is visible in the edit form without filling it.
  * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
  */
-export async function getCustomFieldLabelLocator(
+export async function expectCustomFieldInputVisible(
   definitionId: string,
   context: CustomFieldsBehaviorContext,
-) {
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed input has no stable role fallback
+  const locator = await context.page
+    .locate([{ type: 'testId', value: `custom-field-input-${definitionId}` }])
+    .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Asserts the label element for a custom field definition is visible. */
+export async function expectCustomFieldLabelVisible(
+  definitionId: string,
+  context: CustomFieldsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed label has no stable role fallback
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'testId', value: `custom-field-label-${definitionId}` }])
     .resolve();
+  await expect(locator).toBeVisible();
 }

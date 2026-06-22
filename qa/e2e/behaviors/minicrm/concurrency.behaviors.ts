@@ -120,24 +120,28 @@ export async function isConflictModalVisible(
   return new ConflictBannerWidget(context).isVisible();
 }
 
-/** Returns a resolved locator for the conflict modal container. */
-export async function getConflictModalLocator(context: ConcurrencyBehaviorContext) {
-  return new ConflictBannerWidget(context).modalLocator();
+/** Returns true when the conflict modal title is visible. */
+export async function isConflictModalTitleVisible(
+  context: ConcurrencyBehaviorContext,
+): Promise<boolean> {
+  const locator = await new ConflictBannerWidget(context).titleLocator();
+  return locator.isVisible();
 }
 
-/** Returns a resolved locator for the conflict modal title. */
-export async function getConflictModalTitleLocator(context: ConcurrencyBehaviorContext) {
-  return new ConflictBannerWidget(context).titleLocator();
+/** Returns true when the "Save resolved" button is visible in the conflict modal. */
+export async function isConflictSaveResolvedButtonVisible(
+  context: ConcurrencyBehaviorContext,
+): Promise<boolean> {
+  const locator = await new ConflictBannerWidget(context).saveResolvedButtonLocator();
+  return locator.isVisible();
 }
 
-/** Returns a resolved locator for the "Save resolved" button. */
-export async function getConflictSaveResolvedButtonLocator(context: ConcurrencyBehaviorContext) {
-  return new ConflictBannerWidget(context).saveResolvedButtonLocator();
-}
-
-/** Returns a resolved locator for the "Discard my changes" button. */
-export async function getConflictDiscardButtonLocator(context: ConcurrencyBehaviorContext) {
-  return new ConflictBannerWidget(context).discardButtonLocator();
+/** Returns true when the "Discard my changes" button is visible in the conflict modal. */
+export async function isConflictDiscardButtonVisible(
+  context: ConcurrencyBehaviorContext,
+): Promise<boolean> {
+  const locator = await new ConflictBannerWidget(context).discardButtonLocator();
+  return locator.isVisible();
 }
 
 /** Clicks "Save resolved" in the conflict modal. */

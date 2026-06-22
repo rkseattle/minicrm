@@ -97,15 +97,20 @@ export async function getAttachmentDownloadStatus(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolves the first attachment download link on the current page.
+ * Waits for the first attachment download link to become visible and returns its href.
  * Uses a prefix-match CSS selector because the testid includes a dynamic attachment ID.
- * eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
  */
-export async function getAttachmentDownloadLinkLocator(context: AttachmentsBehaviorContext) {
+export async function waitForAttachmentDownloadLinkAndGetHref(
+  context: AttachmentsBehaviorContext,
+  timeout = 10_000,
+): Promise<string | null> {
+  const { expect } = await import('@playwright/test');
   // eslint-disable-next-line local/require-locator-fallback -- prefix-match testId has no scoped role fallback; role:link matches all nav links
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'css', value: '[data-testid^="attachment-download-"]' }])
     .resolve();
+  await expect(locator).toBeVisible({ timeout });
+  return locator.getAttribute('href');
 }
 
 /**

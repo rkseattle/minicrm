@@ -29,11 +29,16 @@ import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToAdminSettings,
-  getFeatureFlagsListLocator,
-  getFeatureFlagToggleLocator,
-  getFeatureFlagConfirmDialogLocator,
-  getFeatureFlagConfirmOkLocator,
-  getAdminSettingsAiTabLocator,
+  expectFeatureFlagsListVisible,
+  clickFeatureFlagToggle,
+  expectFeatureFlagToggleChecked,
+  expectFeatureFlagToggleUnchecked,
+  expectFeatureFlagConfirmDialogVisible,
+  expectFeatureFlagConfirmDialogNotVisible,
+  clickFeatureFlagConfirmOk,
+  expectAdminSettingsAiTabAttached,
+  expectAdminSettingsAiTabDisabled,
+  expectAdminSettingsAiTabEnabled,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { listFeatureFlags, updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
@@ -70,8 +75,7 @@ test('@functional F-FF1: admin can navigate to the Features tab and see the flag
 
   await navigateToAdminSettings({ page }, 'flags');
 
-  const list = await getFeatureFlagsListLocator({ page });
-  await expect(list).toBeVisible({ timeout: 10_000 });
+  await expectFeatureFlagsListVisible({ page }, 10_000);
 });
 
 // ---------------------------------------------------------------------------
@@ -92,29 +96,24 @@ test('@functional @serial F-FF2: admin can disable a flag via the confirmation d
 
   await navigateToAdminSettings({ page }, 'flags');
 
-  const list = await getFeatureFlagsListLocator({ page });
-  await expect(list).toBeVisible({ timeout: 10_000 });
+  await expectFeatureFlagsListVisible({ page }, 10_000);
 
   // notes flag should be enabled
-  const notesToggle = await getFeatureFlagToggleLocator('notes', { page });
-  await expect(notesToggle).toHaveAttribute('aria-checked', 'true');
+  await expectFeatureFlagToggleChecked('notes', { page });
 
   // Click the toggle to trigger the confirmation dialog
-  await notesToggle.click();
+  await clickFeatureFlagToggle('notes', { page });
 
-  const confirmDialog = await getFeatureFlagConfirmDialogLocator({ page });
-  await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+  await expectFeatureFlagConfirmDialogVisible({ page }, 5_000);
 
   // Confirm the disable
-  const confirmOk = await getFeatureFlagConfirmOkLocator({ page });
-  await confirmOk.click();
+  await clickFeatureFlagConfirmOk({ page });
 
   // Dialog should close after confirmation
-  await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
+  await expectFeatureFlagConfirmDialogNotVisible({ page }, 5_000);
 
   // The toggle should now reflect disabled state
-  const refreshedToggle = await getFeatureFlagToggleLocator('notes', { page });
-  await expect(refreshedToggle).toHaveAttribute('aria-checked', 'false', { timeout: 5_000 });
+  await expectFeatureFlagToggleUnchecked('notes', { page }, 5_000);
 
   // REST API should confirm the flag is now disabled
   const flags = await listFeatureFlags(restClient);
@@ -235,9 +234,8 @@ test('@functional F-FF7: AI tab is disabled in admin settings when ai_features i
 
   // On mobile the tab renders as a hidden <option> inside a <select> — toBeAttached
   // confirms presence in the DOM without requiring it to be visually visible.
-  const aiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(aiTab).toBeAttached({ timeout: 5_000 });
-  await expect(aiTab).toBeDisabled();
+  await expectAdminSettingsAiTabAttached({ page }, 5_000);
+  await expectAdminSettingsAiTabDisabled({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -257,9 +255,8 @@ test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is
   await navigateToAdminSettings({ page }, 'flags');
 
   // On mobile the tab renders as a hidden <option> inside a <select>.
-  const aiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(aiTab).toBeAttached({ timeout: 5_000 });
-  await expect(aiTab).not.toBeDisabled();
+  await expectAdminSettingsAiTabAttached({ page }, 5_000);
+  await expectAdminSettingsAiTabEnabled({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -280,26 +277,20 @@ test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in
   await loginViaBrowser(admin.email, admin.password, { page });
   await navigateToAdminSettings({ page }, 'flags');
 
-  const list = await getFeatureFlagsListLocator({ page });
-  await expect(list).toBeVisible({ timeout: 10_000 });
+  await expectFeatureFlagsListVisible({ page }, 10_000);
 
   // AI tab should be enabled before toggling.
-  const aiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(aiTab).not.toBeDisabled();
+  await expectAdminSettingsAiTabEnabled({ page });
 
   // Toggle ai_features off via the confirmation dialog.
-  const toggle = await getFeatureFlagToggleLocator('ai_features', { page });
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await toggle.click();
+  await expectFeatureFlagToggleChecked('ai_features', { page });
+  await clickFeatureFlagToggle('ai_features', { page });
 
-  const confirmDialog = await getFeatureFlagConfirmDialogLocator({ page });
-  await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+  await expectFeatureFlagConfirmDialogVisible({ page }, 5_000);
 
-  const confirmOk = await getFeatureFlagConfirmOkLocator({ page });
-  await confirmOk.click();
-  await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 });
+  await clickFeatureFlagConfirmOk({ page });
+  await expectFeatureFlagConfirmDialogNotVisible({ page }, 5_000);
 
   // The AI tab must become disabled without any page navigation.
-  const refreshedAiTab = await getAdminSettingsAiTabLocator({ page });
-  await expect(refreshedAiTab).toBeDisabled({ timeout: 5_000 });
+  await expectAdminSettingsAiTabDisabled({ page }, 5_000);
 });

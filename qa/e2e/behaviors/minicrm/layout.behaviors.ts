@@ -179,11 +179,9 @@ export async function navigateToPath(path: string, context: LayoutBehaviorContex
 // files for one-off ready-check locators. (MINCRM-418)
 // ---------------------------------------------------------------------------
 
-/**
- * Resolves the dashboard stat cards element — used as a page-ready anchor.
- */
-export async function getDashboardStatCardsLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the dashboard stat cards to become visible — page-ready anchor. */
+export async function waitForDashboardStatCards(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'dashboard-stat-cards' },
@@ -192,13 +190,12 @@ export async function getDashboardStatCardsLocator(context: LayoutBehaviorContex
       { intent: 'dashboard KPI stat cards grid' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
-/**
- * Resolves the "my tasks" page heading — used as a ready anchor on the tasks list.
- */
-export async function getMyTasksHeadingLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the "my tasks" page heading to become visible — page-ready anchor. */
+export async function waitForMyTasksHeading(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'my-tasks-heading' },
@@ -207,13 +204,12 @@ export async function getMyTasksHeadingLocator(context: LayoutBehaviorContext) {
       { intent: 'my tasks page heading confirming the tasks list is ready' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
-/**
- * Resolves the "new contact" button — used as a ready anchor on the contacts list.
- */
-export async function getNewContactButtonLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the "new contact" button to become visible — page-ready anchor. */
+export async function waitForNewContactButton(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'new-contact-button' },
@@ -222,13 +218,12 @@ export async function getNewContactButtonLocator(context: LayoutBehaviorContext)
       { intent: 'new contact button confirming the contacts list is ready' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
-/**
- * Resolves the "new account" button — used as a ready anchor on the accounts list.
- */
-export async function getNewAccountButtonLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the "new account" button to become visible — page-ready anchor. */
+export async function waitForNewAccountButton(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'new-account-button' },
@@ -237,13 +232,12 @@ export async function getNewAccountButtonLocator(context: LayoutBehaviorContext)
       { intent: 'new account button confirming the accounts list is ready' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
-/**
- * Resolves the "new lead" button — used as a ready anchor on the leads list.
- */
-export async function getNewLeadButtonLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the "new lead" button to become visible — page-ready anchor. */
+export async function waitForNewLeadButton(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'new-lead-button' },
@@ -252,13 +246,12 @@ export async function getNewLeadButtonLocator(context: LayoutBehaviorContext) {
       { intent: 'new lead button confirming the leads list is ready' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
-/**
- * Resolves the account name heading — used as a ready anchor on account detail.
- */
-export async function getAccountNameHeadingLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Waits for the account name heading to become visible — page-ready anchor on account detail. */
+export async function waitForAccountNameHeading(context: LayoutBehaviorContext): Promise<void> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'account-name' },
@@ -267,6 +260,7 @@ export async function getAccountNameHeadingLocator(context: LayoutBehaviorContex
       { intent: 'account name heading confirming the account detail page has loaded' },
     )
     .resolve();
+  await locator.waitFor({ state: 'visible' });
 }
 
 // ---------------------------------------------------------------------------
@@ -319,11 +313,13 @@ export async function resolveTimestampMasks(
 // Dashboard-specific locator helpers (MINCRM-418)
 // ---------------------------------------------------------------------------
 
-/**
- * Resolves the recent activity feed element on the dashboard.
- */
-export async function getRecentActivityFeedLocator(context: LayoutBehaviorContext) {
-  return context.page
+/** Asserts the recent activity feed section is visible on the dashboard, with an optional timeout (ms). */
+export async function expectRecentActivityFeedVisible(
+  context: LayoutBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: 'recent-activity-feed' },
@@ -332,13 +328,17 @@ export async function getRecentActivityFeedLocator(context: LayoutBehaviorContex
       { intent: 'recent activity feed section on the dashboard page' },
     )
     .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Resolves a stat card by testId suffix (e.g. 'pipeline-value', 'overdue-tasks').
- */
-export async function getDashboardStatCardLocator(statKey: string, context: LayoutBehaviorContext) {
-  return context.page
+/** Asserts a stat card by key is visible on the dashboard, with an optional timeout (ms). */
+export async function expectDashboardStatCardVisible(
+  statKey: string,
+  context: LayoutBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: `stat-${statKey}` },
@@ -347,16 +347,15 @@ export async function getDashboardStatCardLocator(statKey: string, context: Layo
       { intent: `${statKey} stat card on the dashboard` },
     )
     .resolve();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/**
- * Resolves the value element inside a stat card by key.
- */
-export async function getDashboardStatCardValueLocator(
+/** Returns the text content of a stat card's value element by key. */
+export async function getDashboardStatCardValue(
   statKey: string,
   context: LayoutBehaviorContext,
-) {
-  return context.page
+): Promise<string | null> {
+  const locator = await context.page
     .locate(
       [
         { type: 'testId', value: `stat-${statKey}-value` },
@@ -365,20 +364,22 @@ export async function getDashboardStatCardValueLocator(
       { intent: `numeric value inside the ${statKey} stat card` },
     )
     .resolve();
+  return locator.textContent();
 }
 
 /**
- * Resolves a recent-activity entry by its activity ID.
+ * Returns true when the recent-activity entry for the given ID is visible on the dashboard.
  * eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed; no stable role fallback
  */
-export async function getRecentActivityEntryLocator(
+export async function isRecentActivityEntryVisible(
   activityId: string,
   context: LayoutBehaviorContext,
-) {
+): Promise<boolean> {
   // eslint-disable-next-line local/require-locator-fallback -- dynamic UUID-keyed activity row has no stable role fallback
-  return context.page
+  const locator = await context.page
     .locate([{ type: 'testId', value: `recent-activity-${activityId}` }])
     .resolve();
+  return locator.isVisible().catch(() => false);
 }
 
 /**

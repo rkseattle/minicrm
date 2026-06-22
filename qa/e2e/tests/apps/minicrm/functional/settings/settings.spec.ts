@@ -16,16 +16,16 @@ import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { setCurrencySettings } from '@behaviors/minicrm/setup.behaviors.js';
 import {
   ensureSystemDefaults,
-  getAdminSettingsExchangeRatesSectionLocator,
-  getAdminSettingsHomeCurrencySelectLocator,
+  expectAdminSettingsExchangeRatesSectionVisible,
+  selectAdminSettingsHomeCurrency,
   clickAdminSettingsAddCurrency,
-  getAdminSettingsAddCurrencyFormLocator,
-  getAdminSettingsAddCurrencyCodeSelectLocator,
-  getAdminSettingsAddCurrencyRateInputLocator,
+  expectAdminSettingsAddCurrencyFormVisible,
+  selectAdminSettingsAddCurrencyCode,
+  fillAdminSettingsAddCurrencyRate,
   confirmAdminSettingsAddCurrency,
   saveAdminSettingsExchangeRates,
-  getAdminSettingsExchangeRateSaveSuccessLocator,
-  getAdminSettingsExchangeRateRowLocator,
+  expectAdminSettingsExchangeRateSaveSuccessVisible,
+  expectAdminSettingsExchangeRateRowVisible,
   navigateToAdminSettingsCurrency,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
@@ -63,52 +63,42 @@ test('admin can configure exchange rates and reload to confirm persistence @func
   await navigateToAdminSettingsCurrency({ page });
 
   // Wait for the exchange rates section to be visible
-  const section = await getAdminSettingsExchangeRatesSectionLocator({ page });
-  await expect(section).toBeVisible({ timeout: 10_000 });
+  await expectAdminSettingsExchangeRatesSectionVisible({ page }, 10_000);
 
   // Set home currency to GBP first — this updates usedCurrencyCodes so that
   // USD and EUR are available in the add-currency dropdown (GBP is excluded
   // from the rate rows since it is now the home currency). (MINCRM-418)
-  const homeSelect = await getAdminSettingsHomeCurrencySelectLocator({ page });
-  await homeSelect.selectOption('GBP');
+  await selectAdminSettingsHomeCurrency('GBP', { page });
 
   // Wait for the exchange rate table to show GBP as the home currency before
   // proceeding. This confirms the React state update has flushed and the
   // refetchOnWindowFocus background re-fetch (staleTime:0) has settled.
   // Re-applying 'GBP' after the row is visible ensures the selection is stable
   // before the add-currency form is opened. (MINCRM-418)
-  const gbpRow = await getAdminSettingsExchangeRateRowLocator('GBP', { page });
-  await expect(gbpRow).toBeVisible({ timeout: 5_000 });
-  await homeSelect.selectOption('GBP');
+  await expectAdminSettingsExchangeRateRowVisible('GBP', { page }, 5_000);
+  await selectAdminSettingsHomeCurrency('GBP', { page });
 
   // Click Add Currency to open the form
   await clickAdminSettingsAddCurrency({ page });
-  const addForm = await getAdminSettingsAddCurrencyFormLocator({ page });
-  await expect(addForm).toBeVisible();
+  await expectAdminSettingsAddCurrencyFormVisible({ page });
 
   // Add USD with rate 1.27
-  const codeSelect = await getAdminSettingsAddCurrencyCodeSelectLocator({ page });
-  await codeSelect.selectOption('USD');
-  const rateInput = await getAdminSettingsAddCurrencyRateInputLocator({ page });
-  await rateInput.fill('1.27');
+  await selectAdminSettingsAddCurrencyCode('USD', { page });
+  await fillAdminSettingsAddCurrencyRate('1.27', { page });
   await confirmAdminSettingsAddCurrency({ page });
 
   // Add EUR with rate 1.16
   await clickAdminSettingsAddCurrency({ page });
-  const addForm2 = await getAdminSettingsAddCurrencyFormLocator({ page });
-  await expect(addForm2).toBeVisible();
-  const codeSelect2 = await getAdminSettingsAddCurrencyCodeSelectLocator({ page });
-  await codeSelect2.selectOption('EUR');
-  const rateInput2 = await getAdminSettingsAddCurrencyRateInputLocator({ page });
-  await rateInput2.fill('1.16');
+  await expectAdminSettingsAddCurrencyFormVisible({ page });
+  await selectAdminSettingsAddCurrencyCode('EUR', { page });
+  await fillAdminSettingsAddCurrencyRate('1.16', { page });
   await confirmAdminSettingsAddCurrency({ page });
 
   // Save rates
   await saveAdminSettingsExchangeRates({ page });
 
   // Wait for save success
-  const saveSuccess = await getAdminSettingsExchangeRateSaveSuccessLocator({ page });
-  await expect(saveSuccess).toBeVisible({ timeout: 8_000 });
+  await expectAdminSettingsExchangeRateSaveSuccessVisible({ page }, 8_000);
 
   // Verify persistence via REST immediately after save — before parallel workers
   // can call ensureSystemDefaults() and reset home_currency back to USD.

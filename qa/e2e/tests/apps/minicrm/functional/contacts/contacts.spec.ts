@@ -49,7 +49,7 @@ import {
   listContactsViaApi,
   patchContactAccount,
   getContactAccountLink,
-  getContactsPaginationLocator,
+  expectContactsPaginationVisible,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
@@ -662,7 +662,6 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   // If the total (all contacts in db) exceeds 50 the pagination component is shown.
   const total = (await searchContactsViaApi(restClient, '')).total;
   if (total > 50) {
-    const paginationLocator = await getContactsPaginationLocator({ page });
-    await expect(paginationLocator).toBeVisible();
+    await expectContactsPaginationVisible({ page });
   }
 });

@@ -22,9 +22,9 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import { patchDeal } from '@behaviors/minicrm/deals.behaviors.js';
 import {
   navigateToAdminSettings,
-  getPipelineStageEditButtonLocator,
-  getPipelineStageSaveButtonLocator,
-  getPipelineStageExitRequiredInputLocator,
+  clickPipelineStageEditButton,
+  clickPipelineStageSaveButton,
+  fillPipelineStageExitRequiredInput,
   waitForStageExitRequirementsUpdated,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
@@ -171,16 +171,13 @@ test('@functional SEQ-3: Admin can update stage_exit_requirements in Customisati
     await navigateToAdminSettings({ page }, 'pipelines');
 
     // Open the edit panel for the temp stage
-    const editButton = await getPipelineStageEditButtonLocator(stageId, { page });
-    await editButton.click();
+    await clickPipelineStageEditButton(stageId, { page });
 
     // Fill in required fields via behavior
-    const exitRequiredInput = await getPipelineStageExitRequiredInputLocator(stageId, { page });
-    await exitRequiredInput.fill('value');
+    await fillPipelineStageExitRequiredInput(stageId, 'value', { page });
 
     // Save via behavior
-    const saveButton = await getPipelineStageSaveButtonLocator(stageId, { page });
-    await saveButton.click();
+    await clickPipelineStageSaveButton(stageId, { page });
 
     // Wait for the save to land: poll the API from the browser context.
     await waitForStageExitRequirementsUpdated(stageId, 'value', { page });

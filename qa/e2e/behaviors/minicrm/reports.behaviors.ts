@@ -74,163 +74,288 @@ export async function navigateToReports(
 }
 
 /**
- * Returns a resolved locator for the reports page heading.
+ * Asserts the reports page heading is visible.
  */
-export async function getReportsHeadingLocator(context: ReportsBehaviorContext) {
+export async function expectReportsHeadingVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.headingLocator();
+  await expect(await reportsPage.headingLocator()).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the tab list / sub-navigation container.
+ * Asserts the reports tab list / sub-navigation container is visible.
  */
-export async function getReportsTabListLocator(context: ReportsBehaviorContext) {
+export async function expectReportsTabListVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.tabListLocator();
+  await expect(await reportsPage.tabListLocator()).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the mobile tab select dropdown.
+ * Asserts the mobile tab select dropdown is visible.
  */
-export async function getReportsTabListSelectLocator(context: ReportsBehaviorContext) {
+export async function expectReportsTabListSelectVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.tabListSelectLocator();
+  await expect(await reportsPage.tabListSelectLocator()).toBeVisible();
 }
 
 /**
- * Returns a resolved locator for the Win/Loss tab button.
+ * Asserts the mobile tab select dropdown has the expected value.
  */
-export async function getReportsWinLossTabLocator(context: ReportsBehaviorContext) {
+export async function expectReportsTabListSelectHasValue(
+  value: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.winLossTabLocator();
+  await expect(await reportsPage.tabListSelectLocator()).toHaveValue(value);
 }
 
 /**
- * Returns a resolved locator for the Activity Volume tab button.
+ * Selects a tab via the mobile tab select dropdown.
  */
-export async function getReportsActivityTabLocator(context: ReportsBehaviorContext) {
+export async function selectReportsMobileTab(
+  value: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.activityTabLocator();
+  const select = await reportsPage.tabListSelectLocator();
+  await select?.selectOption(value);
 }
 
 /**
- * Returns a resolved locator for the Pipeline Stage tab button.
+ * Asserts the Win/Loss tab button is visible.
  */
-export async function getReportsStageTrendTabLocator(context: ReportsBehaviorContext) {
+export async function expectReportsWinLossTabVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.stageTrendTabLocator();
+  await expect(await reportsPage.winLossTabLocator()).toBeVisible();
 }
 
 /**
- * Returns a resolved locator for the Win/Loss report heading.
+ * Asserts the Activity Volume tab button is visible.
  */
-export async function getReportsWinLossHeadingLocator(context: ReportsBehaviorContext) {
+export async function expectReportsActivityTabVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.winLossHeadingLocator();
+  await expect(await reportsPage.activityTabLocator()).toBeVisible();
 }
 
 /**
- * Returns a resolved locator for the Activity Volume report heading.
+ * Clicks the Activity Volume tab button.
  */
-export async function getReportsActivityVolumeHeadingLocator(context: ReportsBehaviorContext) {
+export async function clickReportsActivityTab(context: ReportsBehaviorContext): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.activityVolumeHeadingLocator();
+  const locator = await reportsPage.activityTabLocator();
+  await locator.click();
 }
 
 /**
- * Returns a resolved locator for the Stage Trend report heading.
+ * Asserts the Pipeline Stage Trend tab button is visible.
  */
-export async function getReportsStageTrendHeadingLocator(context: ReportsBehaviorContext) {
+export async function expectReportsStageTrendTabVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.stageTrendHeadingLocator();
+  await expect(await reportsPage.stageTrendTabLocator()).toBeVisible();
 }
 
 /**
- * Returns a resolved locator for the loading indicator (null if not present).
+ * Asserts the Win/Loss report heading is visible.
  */
-export async function getReportsLoadingLocator(context: ReportsBehaviorContext) {
+export async function expectReportsWinLossHeadingVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.loadingLocator();
+  await expect(await reportsPage.winLossHeadingLocator()).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the stage trend data table (null if not present).
+ * Asserts the Activity Volume report heading is visible.
  */
-export async function getReportsStageTrendTableLocator(context: ReportsBehaviorContext) {
+export async function expectReportsActivityVolumeHeadingVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.stageTrendTableLocator();
+  await expect(await reportsPage.activityVolumeHeadingLocator()).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the stage trend empty state (null if not present).
+ * Asserts the Stage Trend report heading is visible.
  */
-export async function getReportsStageTrendEmptyLocator(context: ReportsBehaviorContext) {
+export async function expectReportsStageTrendHeadingVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.stageTrendEmptyLocator();
+  await expect(await reportsPage.stageTrendHeadingLocator()).toBeVisible({ timeout });
 }
 
 /**
- * Returns a resolved locator for the days-range select on the stage trend report.
+ * Waits for the loading indicator to be hidden (reports finished loading).
  */
-export async function getReportsDaysSelectLocator(context: ReportsBehaviorContext) {
+export async function waitForReportsLoadingHidden(
+  context: ReportsBehaviorContext,
+  timeout = 15_000,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.daysSelectLocator();
+  const locator = await reportsPage.loadingLocator();
+  await locator?.waitFor({ state: 'hidden', timeout }).catch(() => null);
 }
 
 /**
- * Returns a resolved locator for the date preset select on the win-loss report.
+ * Returns true when the stage trend data table is visible.
  */
-export async function getReportsDatePresetSelectLocator(context: ReportsBehaviorContext) {
+export async function isReportsStageTrendTableVisible(
+  context: ReportsBehaviorContext,
+): Promise<boolean> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.datePresetSelectLocator();
+  const locator = await reportsPage.stageTrendTableLocator();
+  return (await locator?.isVisible().catch(() => false)) ?? false;
 }
 
 /**
- * Returns a resolved locator for the custom date range start input.
+ * Returns true when the stage trend empty state is visible.
  */
-export async function getReportsCustomStartInputLocator(context: ReportsBehaviorContext) {
+export async function isReportsStageTrendEmptyVisible(
+  context: ReportsBehaviorContext,
+): Promise<boolean> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.customStartInputLocator();
+  const locator = await reportsPage.stageTrendEmptyLocator();
+  return (await locator?.isVisible().catch(() => false)) ?? false;
 }
 
 /**
- * Returns a resolved locator for the custom date range end input.
+ * Selects a day-range option on the stage trend report.
  */
-export async function getReportsCustomEndInputLocator(context: ReportsBehaviorContext) {
+export async function selectReportsDays(
+  days: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.customEndInputLocator();
+  const locator = await reportsPage.daysSelectLocator();
+  await locator.selectOption(days);
 }
 
 /**
- * Returns a resolved locator for the stat cards container.
+ * Asserts the days-range select has the expected value.
  */
-export async function getReportsStatCardsLocator(context: ReportsBehaviorContext) {
+export async function expectReportsDaysSelectHasValue(
+  value: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.statCardsLocator();
+  await expect(await reportsPage.daysSelectLocator()).toHaveValue(value);
 }
 
 /**
- * Returns a resolved locator for the won count stat value.
+ * Selects a date preset option on the win-loss report.
  */
-export async function getReportsWonCountValueLocator(context: ReportsBehaviorContext) {
+export async function selectReportsDatePreset(
+  preset: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.wonCountValueLocator();
+  const locator = await reportsPage.datePresetSelectLocator();
+  await locator.selectOption(preset);
 }
 
 /**
- * Returns a resolved locator for the lost count stat value.
+ * Fills the custom date range start input.
  */
-export async function getReportsLostCountValueLocator(context: ReportsBehaviorContext) {
+export async function fillReportsCustomStartInput(
+  date: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.lostCountValueLocator();
+  const locator = await reportsPage.customStartInputLocator();
+  await locator.fill(date);
 }
 
 /**
- * Returns a resolved locator for the win rate stat value.
+ * Fills the custom date range end input.
  */
-export async function getReportsWinRateValueLocator(context: ReportsBehaviorContext) {
+export async function fillReportsCustomEndInput(
+  date: string,
+  context: ReportsBehaviorContext,
+): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  return reportsPage.winRateValueLocator();
+  const locator = await reportsPage.customEndInputLocator();
+  await locator.fill(date);
+}
+
+/**
+ * Asserts the stat cards container is visible.
+ */
+export async function expectReportsStatCardsVisible(
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const reportsPage = new ReportsPage(context);
+  await expect(await reportsPage.statCardsLocator()).toBeVisible({ timeout });
+}
+
+/**
+ * Returns the text content of the won count stat value.
+ */
+export async function getReportsWonCountText(
+  context: ReportsBehaviorContext,
+): Promise<string | null> {
+  const reportsPage = new ReportsPage(context);
+  const locator = await reportsPage.wonCountValueLocator();
+  return locator.textContent();
+}
+
+/**
+ * Returns the text content of the lost count stat value.
+ */
+export async function getReportsLostCountText(
+  context: ReportsBehaviorContext,
+): Promise<string | null> {
+  const reportsPage = new ReportsPage(context);
+  const locator = await reportsPage.lostCountValueLocator();
+  return locator.textContent();
+}
+
+/**
+ * Asserts the win rate stat value is visible.
+ */
+export async function expectReportsWinRateVisible(context: ReportsBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const reportsPage = new ReportsPage(context);
+  await expect(await reportsPage.winRateValueLocator()).toBeVisible();
+}
+
+/**
+ * Returns the text content of the win rate stat value.
+ */
+export async function getReportsWinRateText(
+  context: ReportsBehaviorContext,
+): Promise<string | null> {
+  const reportsPage = new ReportsPage(context);
+  const locator = await reportsPage.winRateValueLocator();
+  return locator.textContent();
 }
 
 // ---------------------------------------------------------------------------
@@ -268,51 +393,34 @@ export async function navigateToCustomReports(context: ReportsBehaviorContext): 
 }
 
 /**
- * Returns a resolved locator for the Custom Reports tab.
+ * Asserts the Custom Reports tab is visible.
  */
-export async function getCustomReportsTabLocator(context: ReportsBehaviorContext) {
+export async function expectCustomReportsTabVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.customReportsTabLocator();
+  expect(await (await reportsPage.customReportsTabLocator()).isVisible()).toBe(true);
 }
 
 /**
- * Returns a resolved locator for the custom report builder area.
+ * Asserts the custom report builder area is visible.
  */
-export async function getCustomReportBuilderLocator(context: ReportsBehaviorContext) {
+export async function expectCustomReportBuilderVisible(
+  context: ReportsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.customReportBuilderLocator();
+  expect(await (await reportsPage.customReportBuilderLocator()).isVisible()).toBe(true);
 }
 
 /**
- * Returns a resolved locator for the run-report button.
+ * Asserts the run-report button is visible.
  */
-export async function getRunReportButtonLocator(context: ReportsBehaviorContext) {
+export async function expectRunReportButtonVisible(context: ReportsBehaviorContext): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.runReportButtonLocator();
-}
-
-/**
- * Returns a resolved locator for the results table (null if not present).
- */
-export async function getCustomReportResultsTableLocator(context: ReportsBehaviorContext) {
-  const reportsPage = new ReportsPage(context);
-  return reportsPage.resultsTableLocator();
-}
-
-/**
- * Returns a resolved locator for the results empty state (null if not present).
- */
-export async function getCustomReportResultsEmptyLocator(context: ReportsBehaviorContext) {
-  const reportsPage = new ReportsPage(context);
-  return reportsPage.resultsEmptyLocator();
-}
-
-/**
- * Returns a resolved locator for the saved-reports list sidebar.
- */
-export async function getSavedReportsListLocator(context: ReportsBehaviorContext) {
-  const reportsPage = new ReportsPage(context);
-  return reportsPage.savedReportsListLocator();
+  expect(await (await reportsPage.runReportButtonLocator()).isVisible()).toBe(true);
 }
 
 /**
@@ -373,22 +481,6 @@ export async function waitForSavedReportsList(
 }
 
 /**
- * Waits for a specific report name to appear in the saved-reports sidebar and
- * returns a resolved locator for its button.
- *
- * Use this instead of positional locators to avoid matching stale reports from
- * prior test runs.
- */
-export async function getSavedReportByNameLocator(
-  name: string,
-  context: ReportsBehaviorContext,
-  timeout = 10_000,
-) {
-  const reportsPage = new ReportsPage(context);
-  return reportsPage.savedReportByNameLocator(name, timeout);
-}
-
-/**
  * Waits for a specific report name to appear in the saved-reports sidebar.
  *
  * Use after saveCustomReport() to confirm the new report is visible before asserting.
@@ -398,16 +490,46 @@ export async function waitForSavedReportByName(
   context: ReportsBehaviorContext,
   timeout = 10_000,
 ): Promise<void> {
-  // savedReportByNameLocator already performs the waitForFunction internally
-  await getSavedReportByNameLocator(name, context, timeout);
+  const reportsPage = new ReportsPage(context);
+  await reportsPage.savedReportByNameLocator(name, timeout);
 }
 
 /**
- * Returns a resolved locator for the entity-type selector in the builder.
+ * Asserts the named saved report is visible in the sidebar.
  */
-export async function getEntityTypeSelectLocator(context: ReportsBehaviorContext) {
+export async function expectSavedReportByNameVisible(
+  name: string,
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  return reportsPage.entityTypeSelectLocator();
+  const locator = await reportsPage.savedReportByNameLocator(name, timeout);
+  expect(await locator.isVisible()).toBe(true);
+}
+
+/**
+ * Clicks the named saved report in the sidebar to load it.
+ */
+export async function clickSavedReportByName(
+  name: string,
+  context: ReportsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const reportsPage = new ReportsPage(context);
+  const locator = await reportsPage.savedReportByNameLocator(name, timeout);
+  await locator.click();
+}
+
+/**
+ * Returns the current value of the entity-type selector in the report builder.
+ */
+export async function getReportsEntityTypeSelectValue(
+  context: ReportsBehaviorContext,
+): Promise<string> {
+  const reportsPage = new ReportsPage(context);
+  const locator = await reportsPage.entityTypeSelectLocator();
+  return locator.inputValue();
 }
 
 /**
