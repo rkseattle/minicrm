@@ -83,6 +83,8 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 test.afterEach(async ({ restClient }) => {
+  // Re-auth as admin first — some tests end as a rep and subsequent cleanup calls would 403.
+  await loginAsAdmin(restClient);
   // Restore any flags that tests may have toggled.
   await updateFeatureFlag(restClient, 'notes', { enabled: true, enable_at: null }).catch(() => {});
   await updateFeatureFlag(restClient, 'tags', { enabled: true, enable_at: null }).catch(() => {});
@@ -99,14 +101,6 @@ test.afterEach(async ({ restClient }) => {
     rollout_percentage: null,
     rollout_stages: null,
   }).catch(() => {});
-  // Remove all per-user overrides set by F-FF16 and F-FF17.
-  await loginAsAdmin(restClient);
-  const overrides = await listUserOverrides(restClient, 'mobile_access').catch(() => []);
-  await Promise.all(
-    overrides.map((o) =>
-      deleteUserOverride(restClient, 'mobile_access', o.user_id).catch(() => {}),
-    ),
-  );
 });
 
 // ---------------------------------------------------------------------------
