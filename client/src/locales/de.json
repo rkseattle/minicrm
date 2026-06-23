@@ -1301,7 +1301,9 @@
     "back": "Zurück",
     "confirm": "Bestätigen",
     "save": "Speichern",
-    "saving": "Wird gespeichert…"
+    "saving": "Wird gespeichert…",
+    "expand": "Erweitern",
+    "collapse": "Reduzieren"
   },
   "errors": {
     "boundaryTitle": "Etwas ist schiefgelaufen",

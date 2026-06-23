@@ -1301,7 +1301,9 @@
     "back": "Volver",
     "confirm": "Confirmar",
     "save": "Guardar",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "expand": "Expandir",
+    "collapse": "Contraer"
   },
   "errors": {
     "boundaryTitle": "Algo salió mal",

@@ -1266,7 +1266,9 @@
     "back": "Back",
     "confirm": "Confirm",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",
