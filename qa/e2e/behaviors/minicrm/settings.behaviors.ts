@@ -386,15 +386,26 @@ export async function waitForDeleteStageDialog(
   context: AdminSettingsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  await context.page.waitFor(
-    [
-      { type: 'testId', value: 'delete-stage-confirm-dialog' },
-      { type: 'role', value: 'dialog', options: { name: /delete/i } },
-    ],
-    state,
-    { intent: 'confirmation dialog for deleting a pipeline stage' },
-    timeout,
-  );
+  const strategies = [
+    { type: 'testId' as const, value: 'delete-stage-confirm-dialog' },
+    { type: 'role' as const, value: 'dialog', options: { name: /delete/i } },
+  ];
+  if (state === 'hidden') {
+    // isNotVisible() handles already-absent elements without calling resolve() first —
+    // avoids StrategyExhaustedError when the dialog closes faster than resolve() can find it.
+    const { expect } = await import('@playwright/test');
+    const notVisible = await context.page.isNotVisible(strategies, timeout);
+    expect(notVisible).toBe(true);
+  } else {
+    await context.page.waitFor(
+      strategies,
+      state,
+      {
+        intent: 'confirmation dialog for deleting a pipeline stage',
+      },
+      timeout,
+    );
+  }
 }
 
 export async function ensureSystemDefaults(restClient: RestClient): Promise<void> {
@@ -1703,8 +1714,16 @@ export async function expectAiDpaCheckboxNotVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiDpaCheckboxLocator();
-  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+  // Use isNotVisible() so the assertion succeeds even when the checkbox is removed from the
+  // DOM entirely (conditionally rendered) — resolve() throws if the element is already absent.
+  const notVisible = await context.page.isNotVisible(
+    [
+      { type: 'testId', value: 'ai-dpa-checkbox' },
+      { type: 'role', value: 'checkbox', options: { name: /dpa|data processing/i } },
+    ],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
 }
 
 /** Clicks the AI DPA acknowledgment checkbox. */
