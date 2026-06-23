@@ -837,7 +837,9 @@ function FlagRow({
       {showAdvanced && (
         <>
           {/* Rollout percentage + stages (MINCRM-490) */}
-          {flag.enabled && (
+          {(flag.enabled ||
+            flag.rollout_percentage !== null ||
+            (flag.rollout_stages && flag.rollout_stages.length > 0)) && (
             <div className="mt-3 border-t border-gray-100 pt-3">
               {/* Rollout percentage input */}
               <div className="flex items-center gap-3 flex-wrap">
