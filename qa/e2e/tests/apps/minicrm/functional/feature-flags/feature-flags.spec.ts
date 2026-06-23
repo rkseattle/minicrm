@@ -49,6 +49,7 @@ import {
   expectFeatureFlagScheduledBadgeNotVisible,
   expectBetaUserRowVisible,
   expandBetaUsersPanel,
+  expandAdvancedPanel,
   expectRolloutPercentageBadgeVisible,
   expectRolloutPercentageBadgeNotVisible,
   expectOverrideCountBadgeVisible,
@@ -452,7 +453,9 @@ test('@functional @serial F-FF13: enrolled beta user appears in the admin featur
   await navigateToAdminSettings({ page }, 'flags');
   await expectFeatureFlagsListVisible({ page }, 10_000);
 
-  // The panel is collapsed (beta_user_count > 0) — expand it first. (MINCRM-489)
+  // The advanced panel is collapsed — expand it to reveal beta/override sub-panels. (MINCRM-490)
+  await expandAdvancedPanel('mobile_access', { page });
+  // The beta panel is collapsed (beta_user_count > 0) — expand it too. (MINCRM-489)
   await expandBetaUsersPanel('mobile_access', { page });
 
   // The enrolled rep must appear in the beta panel for mobile_access.
@@ -567,6 +570,9 @@ test('@functional @serial F-FF16: adding a force_enabled override shows the badg
 
   // Badge showing forced-on count must appear.
   await expectOverrideCountBadgeVisible('mobile_access', 'force_enabled', { page }, 8_000);
+
+  // The advanced panel is collapsed — expand it to reveal the overrides panel. (MINCRM-492)
+  await expandAdvancedPanel('mobile_access', { page });
 
   // The override row must be present inside the overrides panel.
   await expectOverrideRowVisible('mobile_access', rep.userId, { page }, 8_000);
