@@ -972,45 +972,79 @@ const ROLLOUT_SCHEDULER_INTERVAL_MS = 60_000;
  * Called by the scheduler; also exported for direct use in tests with a past scheduled_at.
  */
 export async function advanceRolloutStages(actor: AuditActor): Promise<void> {
-  // Fetch flags with a non-null rollout_stages array; SKIP_LOCKED avoids lock contention
-  // when multiple instances run (e.g. during rolling deploys). (MINCRM-490)
-  const flagsResult = await pool.query<{
-    flag_key: string;
-    label: string;
-    rollout_percentage: number | null;
-    rollout_stages: RolloutStage[] | null;
-  }>(
-    `SELECT flag_key, label, rollout_percentage, rollout_stages
+  // Candidate scan: find flags with non-empty rollout_stages (no lock yet — just a quick read).
+  const candidatesResult = await pool.query<{ flag_key: string }>(
+    `SELECT flag_key
      FROM feature_flags
      WHERE rollout_stages IS NOT NULL
-       AND jsonb_array_length(rollout_stages) > 0
-     FOR UPDATE SKIP LOCKED`,
+       AND jsonb_array_length(rollout_stages) > 0`,
   );
 
-  if (flagsResult.rows.length === 0) return;
+  if (candidatesResult.rows.length === 0) return;
 
   const now = new Date();
   let advanced = false;
 
-  for (const flag of flagsResult.rows) {
-    const stages = flag.rollout_stages ?? [];
-    // Find the last stage whose scheduled_at has passed.
-    const dueStages = stages.filter((s) => new Date(s.scheduled_at) <= now);
-    if (dueStages.length === 0) continue;
-
-    // The most recently due stage wins.
-    const nextStage = dueStages[dueStages.length - 1]!;
-    if (nextStage.percentage === flag.rollout_percentage) continue;
-
+  for (const { flag_key } of candidatesResult.rows) {
     const client: PoolClient = await pool.connect();
     try {
       await client.query('BEGIN');
 
+      // Re-fetch with FOR UPDATE SKIP LOCKED inside the transaction so the lock is held
+      // for the full duration of the update. If another instance already holds the lock
+      // on this flag, we skip it — it will advance the stage instead. (MINCRM-490)
+      const lockedResult = await client.query<{
+        label: string;
+        rollout_percentage: number | null;
+        rollout_stages: RolloutStage[] | null;
+        updated_by: string | null;
+      }>(
+        `SELECT label, rollout_percentage, rollout_stages, updated_by
+         FROM feature_flags
+         WHERE flag_key = $1
+         FOR UPDATE SKIP LOCKED`,
+        [flag_key],
+      );
+
+      if (lockedResult.rows.length === 0) {
+        // Another instance holds the lock — skip this flag.
+        await client.query('ROLLBACK');
+        continue;
+      }
+
+      const flag = lockedResult.rows[0]!;
+      const stages = flag.rollout_stages ?? [];
+      const dueStages = stages.filter((s) => new Date(s.scheduled_at) <= now);
+      if (dueStages.length === 0) {
+        await client.query('ROLLBACK');
+        continue;
+      }
+
+      // The most recently due stage wins; remove all consumed stages from the array.
+      const nextStage = dueStages[dueStages.length - 1]!;
+      const remainingStages = stages.filter((s) => new Date(s.scheduled_at) > now);
+
+      if (nextStage.percentage === flag.rollout_percentage) {
+        // Percentage already matches — still remove the consumed stages from the array.
+        await client.query(
+          `UPDATE feature_flags
+           SET rollout_stages = $1::jsonb, updated_at = now()
+           WHERE flag_key = $2`,
+          [JSON.stringify(remainingStages), flag_key],
+        );
+        await client.query('COMMIT');
+        advanced = true;
+        continue;
+      }
+
       await client.query(
         `UPDATE feature_flags
-         SET rollout_percentage = $1, updated_at = now()
-         WHERE flag_key = $2`,
-        [nextStage.percentage, flag.flag_key],
+         SET rollout_percentage = $1,
+             rollout_stages     = $2::jsonb,
+             updated_by         = $3,
+             updated_at         = now()
+         WHERE flag_key = $4`,
+        [nextStage.percentage, JSON.stringify(remainingStages), actor.id, flag_key],
       );
 
       await writeAuditEntry(client, {
@@ -1029,12 +1063,12 @@ export async function advanceRolloutStages(actor: AuditActor): Promise<void> {
       advanced = true;
 
       logger.info(
-        { flagKey: flag.flag_key, from: flag.rollout_percentage, to: nextStage.percentage },
+        { flagKey: flag_key, from: flag.rollout_percentage, to: nextStage.percentage },
         'Rollout stage advanced',
       );
     } catch (err) {
       await client.query('ROLLBACK');
-      logger.error({ err, flagKey: flag.flag_key }, 'Failed to advance rollout stage');
+      logger.error({ err, flagKey: flag_key }, 'Failed to advance rollout stage');
     } finally {
       client.release();
     }
