@@ -1936,7 +1936,8 @@
       "addUser": "Ajouter un utilisateur",
       "reasonPlaceholder": "Raison (facultatif)",
       "noOverrides": "Aucune substitution",
-      "removeOverride": "Supprimer"
+      "removeOverride": "Supprimer",
+      "saveError": "Échec de l'enregistrement de la substitution. Veuillez réessayer."
     }
   },
   "aiSettings": {

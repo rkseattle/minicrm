@@ -1936,7 +1936,8 @@
       "addUser": "添加用户",
       "reasonPlaceholder": "原因（可选）",
       "noOverrides": "无覆盖",
-      "removeOverride": "移除"
+      "removeOverride": "移除",
+      "saveError": "保存覆盖失败，请重试。"
     }
   },
   "aiSettings": {

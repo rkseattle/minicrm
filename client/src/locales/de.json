@@ -1936,7 +1936,8 @@
       "addUser": "Benutzer hinzufügen",
       "reasonPlaceholder": "Grund (optional)",
       "noOverrides": "Keine Überschreibungen",
-      "removeOverride": "Entfernen"
+      "removeOverride": "Entfernen",
+      "saveError": "Override konnte nicht gespeichert werden. Bitte erneut versuchen."
     }
   },
   "aiSettings": {

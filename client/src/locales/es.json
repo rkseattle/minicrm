@@ -1936,7 +1936,8 @@
       "addUser": "Agregar usuario",
       "reasonPlaceholder": "Motivo (opcional)",
       "noOverrides": "Sin anulaciones",
-      "removeOverride": "Eliminar"
+      "removeOverride": "Eliminar",
+      "saveError": "Error al guardar la anulación. Por favor, inténtelo de nuevo."
     }
   },
   "aiSettings": {

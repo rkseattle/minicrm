@@ -1936,7 +1936,8 @@
       "addUser": "Add user",
       "reasonPlaceholder": "Reason (optional)",
       "noOverrides": "No overrides",
-      "removeOverride": "Remove"
+      "removeOverride": "Remove",
+      "saveError": "Failed to save override. Please try again."
     }
   },
   "aiSettings": {
