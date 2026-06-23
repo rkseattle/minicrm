@@ -2042,6 +2042,33 @@ export async function expectFeatureFlagScheduledBadgeNotVisible(
 }
 
 // ---------------------------------------------------------------------------
+// Feature flag advanced panel behaviors (MINCRM-490, MINCRM-492)
+// ---------------------------------------------------------------------------
+
+/**
+ * Expands the advanced settings panel (rollout, beta users, user overrides) for a flag.
+ * All three sub-panels are hidden behind this single toggle; call before any
+ * expectBetaUserRow*, expectOverrideRow*, or rollout-stage assertions. (MINCRM-490, MINCRM-492)
+ */
+export async function expandAdvancedPanel(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-advanced-toggle-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="feature-flag-advanced-toggle-"]`,
+        },
+      ],
+      { intent: `expand advanced settings panel for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await locator.click();
+}
+
 // Feature flag beta user behaviors (MINCRM-489)
 // ---------------------------------------------------------------------------
 

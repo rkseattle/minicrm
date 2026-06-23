@@ -1050,10 +1050,10 @@ export async function advanceRolloutStages(actor: AuditActor): Promise<void> {
         `UPDATE feature_flags
          SET rollout_percentage = $1,
              rollout_stages     = $2::jsonb,
-             updated_by         = $3,
+             updated_by         = NULL,
              updated_at         = now()
-         WHERE flag_key = $4`,
-        [nextStage.percentage, JSON.stringify(remainingStages), actor.id, flag_key],
+         WHERE flag_key = $3`,
+        [nextStage.percentage, JSON.stringify(remainingStages), flag_key],
       );
 
       await writeAuditEntry(client, {
