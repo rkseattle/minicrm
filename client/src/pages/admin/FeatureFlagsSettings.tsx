@@ -601,14 +601,19 @@ function FlagRow({
       return { ...stage, scheduled_at: value ? datetimeLocalToIso(value) : '' };
     });
     setLocalStages(updated);
-    // Only propagate valid (non-empty scheduled_at) stages
-    const valid = updated.filter((s) => s.scheduled_at !== '');
+    // Do NOT call onRolloutStagesChange here — propagation is deferred to onBlur so that
+    // typing intermediate values (e.g. "2" while entering "25") does not fire a PATCH.
+  }
+
+  function handleStageBlur(stages: Array<{ percentage: number; scheduled_at: string }>) {
+    const valid = stages.filter((s) => s.scheduled_at !== '');
     onRolloutStagesChange(flag, valid.length > 0 ? valid : null);
   }
 
   function handleStageRemove(index: number) {
     const updated = localStages.filter((_, i) => i !== index);
     setLocalStages(updated);
+    // Remove is a discrete action — propagate immediately, no blur needed.
     const valid = updated.filter((s) => s.scheduled_at !== '');
     onRolloutStagesChange(flag, valid.length > 0 ? valid : null);
   }
@@ -906,6 +911,7 @@ function FlagRow({
                               onChange={(e) =>
                                 handleStageChange(index, 'scheduled_at', e.target.value)
                               }
+                              onBlur={() => handleStageBlur(localStages)}
                               className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               disabled={isPending}
                               data-testid={`rollout-stage-scheduled-at-${flag.flag_key}-${index}`}
@@ -919,6 +925,7 @@ function FlagRow({
                               onChange={(e) =>
                                 handleStageChange(index, 'percentage', e.target.value)
                               }
+                              onBlur={() => handleStageBlur(localStages)}
                               className="w-16 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                               disabled={isPending}
                               data-testid={`rollout-stage-percentage-${flag.flag_key}-${index}`}
