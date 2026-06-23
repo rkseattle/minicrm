@@ -308,6 +308,8 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
+  const [overrideError, setOverrideError] = useState<string | null>(null);
+
   // Search state per direction
   const [searchForceEnabled, setSearchForceEnabled] = useState('');
   const [searchForceDisabled, setSearchForceDisabled] = useState('');
@@ -352,18 +354,26 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
       reason: string | undefined;
     }) => upsertUserOverride(flagKey, userId, { override: direction, reason }),
     onSuccess: () => {
+      setOverrideError(null);
       invalidateOverrides();
       setPendingAddForceEnabled(null);
       setPendingAddForceDisabled(null);
       setSearchForceEnabled('');
       setSearchForceDisabled('');
     },
+    onError: () => {
+      setOverrideError(t('featureFlags.overrides.saveError'));
+    },
   });
 
   const removeMutation = useMutation({
     mutationFn: (userId: string) => deleteUserOverride(flagKey, userId),
     onSuccess: () => {
+      setOverrideError(null);
       invalidateOverrides();
+    },
+    onError: () => {
+      setOverrideError(t('featureFlags.overrides.saveError'));
     },
   });
 
@@ -516,6 +526,12 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
     >
       <p className="text-xs font-medium text-gray-700 mb-1">{t('featureFlags.overrides.title')}</p>
       <p className="text-xs text-amber-600 mb-2">{t('featureFlags.overrides.absoluteWarning')}</p>
+
+      {overrideError && (
+        <p className="text-xs text-red-600 mb-2" data-testid={`override-error-${flagKey}`}>
+          {overrideError}
+        </p>
+      )}
 
       {OVERRIDE_DIRECTIONS.map((direction) => (
         <div key={direction}>{renderDirectionSection(direction)}</div>

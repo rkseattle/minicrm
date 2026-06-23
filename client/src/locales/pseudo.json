@@ -1752,7 +1752,8 @@
       "addUser": "[Àðð ùšéŗ]",
       "reasonPlaceholder": "[Ŗéàšöñ (öþŧïöñàl)]",
       "noOverrides": "[Ñö övéŗŗïðéš]",
-      "removeOverride": "[Ŗémövé]"
+      "removeOverride": "[Ŗémövé]",
+      "saveError": "[Ƒàïléð ŧö šàvé övéŗŗïðé. Þléàšé ŧŗý àgàïñ.]"
     }
   },
   "visibilitySettings": {
