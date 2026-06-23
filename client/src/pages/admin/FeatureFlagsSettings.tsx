@@ -8,7 +8,7 @@
  * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  */
 
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -569,6 +569,13 @@ function FlagRow({
     Array<{ percentage: number; scheduled_at: string }>
   >(() => flag.rollout_stages ?? []);
 
+  // Keys that change when the server-confirmed values change, causing React to remount the
+  // relevant inputs with fresh defaultValues. This avoids setState-in-effect while still
+  // re-syncing after a scheduler advancement or React Query refetch. (MINCRM-490)
+  const rolloutPctInputKey =
+    flag.rollout_percentage === null ? 'null' : String(flag.rollout_percentage);
+  const rolloutStagesKey = JSON.stringify(flag.rollout_stages);
+
   function handleStageChange(index: number, field: 'percentage' | 'scheduled_at', value: string) {
     const updated = localStages.map((stage, i) => {
       if (i !== index) return stage;
@@ -816,8 +823,9 @@ function FlagRow({
               max={100}
               step={1}
               disabled={isPending}
-              value={flag.rollout_percentage === null ? '' : flag.rollout_percentage}
-              onChange={(e) =>
+              key={rolloutPctInputKey}
+              defaultValue={flag.rollout_percentage === null ? '' : flag.rollout_percentage}
+              onBlur={(e) =>
                 onRolloutChange(flag, e.target.value === '' ? null : Number(e.target.value))
               }
               data-testid={`rollout-percentage-input-${flag.flag_key}`}
@@ -852,7 +860,7 @@ function FlagRow({
             </div>
 
             {showRolloutStages && (
-              <>
+              <React.Fragment key={rolloutStagesKey}>
                 {localStages.length > 0 && (
                   <ul className="mb-2 space-y-2">
                     {localStages.map((stage, index) => (
@@ -899,7 +907,7 @@ function FlagRow({
                 >
                   {t('featureFlags.rolloutStageAdd')}
                 </button>
-              </>
+              </React.Fragment>
             )}
           </div>
         </div>
