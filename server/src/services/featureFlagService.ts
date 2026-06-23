@@ -601,11 +601,12 @@ export async function isFlagEnabledForUser(
 
   // Step 3: rollout bucketing (MINCRM-490).
   // Only consult the cache for the rollout_percentage value — beta/override are always fresh.
-  // Guard by org-wide enabled state so disabling a flag acts as a kill-switch even when
-  // rollout_percentage is still set (e.g. admin disables without clearing rollout).
+  // Rollout acts as its own activation path: a flag with rollout_percentage set can enable
+  // users even when enabled=false, allowing gradual rollout before a full org-wide flip.
+  // To kill the rollout, clear rollout_percentage (set to null) or set it to 0.
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
-  if (row && row.rollout_percentage !== null && (row.enabled || isScheduledEnabled(row))) {
+  if (row && row.rollout_percentage !== null) {
     const bucket = stableHash(userId + key) % 100;
     return bucket < row.rollout_percentage;
   }
