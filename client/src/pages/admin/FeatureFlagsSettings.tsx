@@ -667,7 +667,7 @@ function FlagRow({
             {flag.override_count.force_enabled > 0 && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700"
-                data-testid={`override-count-force-enabled-${flag.flag_key}`}
+                data-testid={`override-count-force_enabled-${flag.flag_key}`}
               >
                 {t('featureFlags.overrides.forceEnabledBadge', {
                   count: flag.override_count.force_enabled,
@@ -679,7 +679,7 @@ function FlagRow({
             {flag.override_count.force_disabled > 0 && (
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
-                data-testid={`override-count-force-disabled-${flag.flag_key}`}
+                data-testid={`override-count-force_disabled-${flag.flag_key}`}
               >
                 {t('featureFlags.overrides.forceDisabledBadge', {
                   count: flag.override_count.force_disabled,

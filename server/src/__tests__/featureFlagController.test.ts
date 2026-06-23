@@ -2,7 +2,7 @@
  * HTTP contract tests for featureFlagController.
  * Verifies auth enforcement, response shapes, validation, and error codes.
  * Business logic is covered by featureFlagService.test.ts.
- * (MINCRM-463, MINCRM-488, MINCRM-489)
+ * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  *
  * Run: npm test --workspace=minicrm-server
  */
@@ -52,6 +52,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   __clearCacheForTest();
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   // Reset flags to seeded defaults before each test.
   await pool.query(
     `UPDATE feature_flags
@@ -64,6 +65,8 @@ beforeEach(async () => {
        ELSE null
      END,
      enable_at = null,
+     rollout_percentage = null,
+     rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
   );
@@ -71,6 +74,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Restore flags.
   await pool.query(
@@ -84,6 +88,8 @@ afterAll(async () => {
        ELSE null
      END,
      enable_at = null,
+     rollout_percentage = null,
+     rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
   );
@@ -474,5 +480,254 @@ describe('GET /api/v1/feature-flags/me reflects beta enrollment', () => {
     const res = await request(app).get('/api/v1/feature-flags/me').set('Cookie', betaUserCookie);
     expect(res.status).toBe(200);
     expect(res.body.flags['mobile_access']).toBe(true);
+  });
+});
+
+// ── PATCH — rollout fields (MINCRM-490) ───────────────────────────────────────
+
+describe('PATCH /api/v1/admin/feature-flags/:key — rollout fields', () => {
+  it('accepts rollout_percentage and returns it in the response', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, rollout_percentage: 42 });
+    expect(res.status).toBe(200);
+    expect(res.body.flag.rollout_percentage).toBe(42);
+  });
+
+  it('accepts rollout_stages and returns them in the response', async () => {
+    const stages = [
+      { percentage: 25, scheduled_at: '2099-01-01T00:00:00.000Z' },
+      { percentage: 75, scheduled_at: '2099-06-01T00:00:00.000Z' },
+    ];
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, rollout_stages: stages });
+    expect(res.status).toBe(200);
+    expect(res.body.flag.rollout_stages).toHaveLength(2);
+  });
+
+  it('rejects rollout_percentage out of range (> 100)', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, rollout_percentage: 101 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects rollout_stages with unsorted scheduled_at', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({
+        enabled: false,
+        rollout_stages: [
+          { percentage: 75, scheduled_at: '2099-06-01T00:00:00.000Z' },
+          { percentage: 25, scheduled_at: '2099-01-01T00:00:00.000Z' },
+        ],
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('accepts null rollout_percentage to clear the rollout', async () => {
+    // Set a rollout first.
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, rollout_percentage: 50 });
+
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, rollout_percentage: null });
+    expect(res.status).toBe(200);
+    expect(res.body.flag.rollout_percentage).toBeNull();
+  });
+});
+
+// ── User overrides API (MINCRM-492) ───────────────────────────────────────────
+
+describe('User overrides API', () => {
+  let overrideUserId: string;
+  const OVERRIDE_USER_EMAIL = `${FILE_PREFIX}-override-user@example.com`;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Override Test User', 'rep', '$2b$12$placeholder', 'active')
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [OVERRIDE_USER_EMAIL],
+    );
+    overrideUserId = result.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [OVERRIDE_USER_EMAIL]);
+  });
+
+  it('GET /overrides — 401 when unauthenticated', async () => {
+    const res = await request(app).get('/api/v1/admin/feature-flags/mobile_access/overrides');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /overrides — 403 for rep', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/mobile_access/overrides')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /overrides — 200 with empty array for admin', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/mobile_access/overrides')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.overrides)).toBe(true);
+    expect(res.body.overrides).toHaveLength(0);
+  });
+
+  it('PUT /overrides/:userId — 401 when unauthenticated', async () => {
+    const res = await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .send({ override: 'force_enabled' });
+    expect(res.status).toBe(401);
+  });
+
+  it('PUT /overrides/:userId — creates force_enabled override', async () => {
+    const res = await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled', reason: 'VIP user' });
+    expect(res.status).toBe(200);
+    expect(res.body.override.override).toBe('force_enabled');
+    expect(res.body.override.reason).toBe('VIP user');
+  });
+
+  it('PUT /overrides/:userId — upserts (replaces existing direction)', async () => {
+    await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled' });
+
+    const res = await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_disabled' });
+    expect(res.status).toBe(200);
+    expect(res.body.override.override).toBe('force_disabled');
+
+    const overrides = await request(app)
+      .get('/api/v1/admin/feature-flags/mobile_access/overrides')
+      .set('Cookie', adminCookie);
+    expect(overrides.body.overrides).toHaveLength(1);
+  });
+
+  it('PUT /overrides/:userId — 400 for invalid override direction', async () => {
+    const res = await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'invalid_direction' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('PUT /overrides/:userId — 404 for unknown user', async () => {
+    const res = await request(app)
+      .put(
+        `/api/v1/admin/feature-flags/mobile_access/overrides/00000000-0000-0000-0000-000000000000`,
+      )
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled' });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('USER_NOT_FOUND');
+  });
+
+  it('DELETE /overrides/:userId — 204 removes override', async () => {
+    await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled' });
+
+    const res = await request(app)
+      .delete(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(204);
+  });
+
+  it('DELETE /overrides/:userId — 404 when no override exists', async () => {
+    const res = await request(app)
+      .delete(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('USER_OVERRIDE_NOT_FOUND');
+  });
+
+  it('/me reflects force_enabled override on a disabled flag', async () => {
+    const overrideUserCookie = makeAuthCookie({
+      id: overrideUserId,
+      email: OVERRIDE_USER_EMAIL,
+      name: 'Override Test User',
+      role: 'rep',
+    });
+
+    const before = await request(app)
+      .get('/api/v1/feature-flags/me')
+      .set('Cookie', overrideUserCookie);
+    expect(before.body.flags['mobile_access']).toBe(false);
+
+    await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled' });
+
+    const after = await request(app)
+      .get('/api/v1/feature-flags/me')
+      .set('Cookie', overrideUserCookie);
+    expect(after.body.flags['mobile_access']).toBe(true);
+  });
+
+  it('/me reflects force_disabled override on an enabled flag', async () => {
+    const overrideUserCookie = makeAuthCookie({
+      id: overrideUserId,
+      email: OVERRIDE_USER_EMAIL,
+      name: 'Override Test User',
+      role: 'rep',
+    });
+
+    const before = await request(app)
+      .get('/api/v1/feature-flags/me')
+      .set('Cookie', overrideUserCookie);
+    expect(before.body.flags['reporting']).toBe(true);
+
+    await request(app)
+      .put(`/api/v1/admin/feature-flags/reporting/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_disabled' });
+
+    const after = await request(app)
+      .get('/api/v1/feature-flags/me')
+      .set('Cookie', overrideUserCookie);
+    expect(after.body.flags['reporting']).toBe(false);
+  });
+
+  it('GET /admin/feature-flags includes override_count per flag', async () => {
+    await request(app)
+      .put(`/api/v1/admin/feature-flags/mobile_access/overrides/${overrideUserId}`)
+      .set('Cookie', adminCookie)
+      .send({ override: 'force_enabled' });
+
+    const res = await request(app).get('/api/v1/admin/feature-flags').set('Cookie', adminCookie);
+    const mobileFlag = (
+      res.body.flags as Array<{
+        flag_key: string;
+        override_count: { force_enabled: number; force_disabled: number };
+      }>
+    ).find((f) => f.flag_key === 'mobile_access');
+    expect(mobileFlag?.override_count.force_enabled).toBe(1);
+    expect(mobileFlag?.override_count.force_disabled).toBe(0);
   });
 });

@@ -141,7 +141,7 @@ export const upsertUserOverrideSchema = z.object({
     required_error: 'override is required',
     invalid_type_error: "override must be 'force_enabled' or 'force_disabled'",
   }),
-  reason: z.string().max(1000).optional(),
+  reason: z.string().max(1000).nullable().optional(),
 });
 
 export type UpsertUserOverrideInput = z.infer<typeof upsertUserOverrideSchema>;
