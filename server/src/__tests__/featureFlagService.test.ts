@@ -1,5 +1,5 @@
 /**
- * Integration tests for featureFlagService. (MINCRM-463, MINCRM-488, MINCRM-489)
+ * Integration tests for featureFlagService. (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
  *
  * Runs against the real PostgreSQL minicrm_test DB.
  * The feature_flags table is seeded by migration 066; tests rely on the seed data.
@@ -22,6 +22,11 @@ import {
   getBetaUserCountForFlag,
   recordFeatureFlagUsage,
   getActiveUserCountForFlag,
+  stableHash,
+  advanceRolloutStages,
+  listUserOverrides,
+  upsertUserOverride,
+  deleteUserOverride,
   __clearCacheForTest,
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
@@ -46,6 +51,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await pool.query('TRUNCATE feature_flag_usage RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   // Reset any flags changed by previous tests back to their seeded defaults.
   await pool.query(
     `UPDATE feature_flags
@@ -58,6 +64,8 @@ beforeEach(async () => {
        ELSE null
      END,
      enable_at = null,
+     rollout_percentage = null,
+     rollout_stages = null,
      updated_by = null,
      updated_at = now()`,
   );
@@ -67,6 +75,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_usage RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
@@ -542,5 +551,317 @@ describe('beta user enrollment', () => {
     await removeBetaUser('mobile_access', actorId, ACTOR());
     // No __clearCacheForTest — beta membership is always queried fresh.
     expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+  });
+});
+
+// ── stableHash (MINCRM-490) ───────────────────────────────────────────────────
+
+describe('stableHash', () => {
+  it('produces a deterministic result for a fixed input', () => {
+    const hash = stableHash('test-user-idmobile_access');
+    expect(hash).toBe(stableHash('test-user-idmobile_access'));
+  });
+
+  it('produces different values for different inputs', () => {
+    expect(stableHash('user-amobile_access')).not.toBe(stableHash('user-bmobile_access'));
+  });
+
+  it('always returns an unsigned 32-bit integer (0 to 4294967295)', () => {
+    for (const input of ['', 'abc', 'uuid-test-123', '\u{1F600}']) {
+      const h = stableHash(input);
+      expect(h).toBeGreaterThanOrEqual(0);
+      expect(h).toBeLessThanOrEqual(4294967295);
+      expect(Number.isInteger(h)).toBe(true);
+    }
+  });
+
+  it('distributes 100 distinct userId+flagKey inputs roughly uniformly across 100 buckets', () => {
+    const buckets = new Array<number>(100).fill(0);
+    for (let i = 0; i < 100; i++) {
+      const bucket = stableHash(`user-${i}mobile_access`) % 100;
+      buckets[bucket]++;
+    }
+    // With 100 inputs over 100 buckets no bucket should exceed 10 hits
+    // (the expected value is 1; 10× expected is a generous threshold for FNV-1a).
+    for (const count of buckets) {
+      expect(count).toBeLessThanOrEqual(10);
+    }
+  });
+});
+
+// ── Rollout bucketing (MINCRM-490) ────────────────────────────────────────────
+
+describe('rollout bucketing', () => {
+  let targetUserId: string;
+  let outsideUserId: string;
+
+  beforeAll(async () => {
+    // Create two users whose buckets we know by computing stableHash offline.
+    // mobile_access is disabled by seed, so rollout is the only path to true.
+    // We'll find a userId whose hash % 100 < 50 (inside) and one >= 50 (outside).
+    let insideCandidate: string | null = null;
+    let outsideCandidate: string | null = null;
+
+    for (let i = 0; i < 200 && (!insideCandidate || !outsideCandidate); i++) {
+      const email = `${FILE_PREFIX}-bucket-${i}@example.com`;
+      const result = await pool.query<{ id: string }>(
+        `INSERT INTO users (email, name, role, password_hash, status)
+         VALUES ($1, $2, 'rep', '$2b$12$placeholder', 'active')
+         ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+         RETURNING id`,
+        [email, `Bucket User ${i}`],
+      );
+      const userId = result.rows[0].id;
+      const bucket = stableHash(userId + 'mobile_access') % 100;
+      if (bucket < 50 && !insideCandidate) insideCandidate = userId;
+      if (bucket >= 50 && !outsideCandidate) outsideCandidate = userId;
+    }
+
+    if (!insideCandidate || !outsideCandidate) {
+      throw new Error('Could not find suitable bucket candidates in 200 iterations');
+    }
+    targetUserId = insideCandidate;
+    outsideUserId = outsideCandidate;
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-bucket-%`]);
+  });
+
+  it('user in bucket sees disabled flag as enabled when rollout_percentage covers them', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 50 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    const result = await isFlagEnabledForUser('mobile_access', targetUserId, 'rep');
+    expect(result).toBe(true);
+  });
+
+  it('user outside bucket does not see the flag via rollout', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 50 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    const result = await isFlagEnabledForUser('mobile_access', outsideUserId, 'rep');
+    expect(result).toBe(false);
+  });
+
+  it('rollout_percentage = null skips rollout and falls back to enabled state', async () => {
+    // mobile_access is disabled and rollout_percentage is null — should be false.
+    const result = await isFlagEnabledForUser('mobile_access', targetUserId, 'rep');
+    expect(result).toBe(false);
+  });
+
+  it('rollout_percentage = 100 means all users are enabled', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 100 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('mobile_access', targetUserId, 'rep')).toBe(true);
+    expect(await isFlagEnabledForUser('mobile_access', outsideUserId, 'rep')).toBe(true);
+  });
+
+  it('rollout_percentage = 0 means no users are enabled via rollout', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 0 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('mobile_access', targetUserId, 'rep')).toBe(false);
+    expect(await isFlagEnabledForUser('mobile_access', outsideUserId, 'rep')).toBe(false);
+  });
+
+  it('beta membership bypasses rollout — beta user sees flag even when outside bucket', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 0 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    await enrollBetaUser('mobile_access', outsideUserId, ACTOR());
+    const result = await isFlagEnabledForUser('mobile_access', outsideUserId, 'rep');
+    expect(result).toBe(true);
+  });
+
+  it('updateFeatureFlag persists rollout_percentage in the returned row', async () => {
+    const updated = await updateFeatureFlag(
+      'mobile_access',
+      { enabled: false, rollout_percentage: 42 },
+      ACTOR(),
+    );
+    expect(updated?.rollout_percentage).toBe(42);
+    __clearCacheForTest();
+    const fetched = await getFeatureFlag('mobile_access');
+    expect(fetched?.rollout_percentage).toBe(42);
+  });
+
+  it('updateFeatureFlag persists rollout_stages and writes audit entries', async () => {
+    const stages = [
+      { percentage: 25, scheduled_at: '2099-01-01T00:00:00.000Z' },
+      { percentage: 75, scheduled_at: '2099-06-01T00:00:00.000Z' },
+    ];
+    await updateFeatureFlag('mobile_access', { enabled: false, rollout_stages: stages }, ACTOR());
+    __clearCacheForTest();
+    const fetched = await getFeatureFlag('mobile_access');
+    expect(fetched?.rollout_stages).toHaveLength(2);
+    expect(fetched?.rollout_stages?.[0]?.percentage).toBe(25);
+  });
+
+  it('advanceRolloutStages advances rollout_percentage for a past stage and writes audit', async () => {
+    const pastStage = { percentage: 30, scheduled_at: new Date(Date.now() - 1000).toISOString() };
+    await pool.query(
+      `UPDATE feature_flags
+       SET rollout_percentage = 0,
+           rollout_stages = $1::jsonb
+       WHERE flag_key = 'mobile_access'`,
+      [JSON.stringify([pastStage])],
+    );
+    __clearCacheForTest();
+
+    await advanceRolloutStages(ACTOR());
+
+    __clearCacheForTest();
+    const flag = await getFeatureFlag('mobile_access');
+    expect(flag?.rollout_percentage).toBe(30);
+
+    const auditRow = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_name = 'Mobile Access'
+         AND field_name = 'rollout_percentage'
+         AND new_value = '30'
+       ORDER BY created_at DESC LIMIT 1`,
+    );
+    expect(auditRow.rows.length).toBeGreaterThan(0);
+  });
+
+  it('advanceRolloutStages does not advance when next stage is in the future', async () => {
+    const futureStage = { percentage: 80, scheduled_at: '2099-01-01T00:00:00.000Z' };
+    await pool.query(
+      `UPDATE feature_flags
+       SET rollout_percentage = 0,
+           rollout_stages = $1::jsonb
+       WHERE flag_key = 'mobile_access'`,
+      [JSON.stringify([futureStage])],
+    );
+    __clearCacheForTest();
+
+    await advanceRolloutStages(ACTOR());
+
+    __clearCacheForTest();
+    const flag = await getFeatureFlag('mobile_access');
+    expect(flag?.rollout_percentage).toBe(0);
+  });
+});
+
+// ── User overrides (MINCRM-492) ───────────────────────────────────────────────
+
+describe('user overrides', () => {
+  let targetUserId: string;
+  const TARGET_EMAIL = `${FILE_PREFIX}-override-target@example.com`;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Override Target', 'rep', '$2b$12$placeholder', 'active')
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [TARGET_EMAIL],
+    );
+    targetUserId = result.rows[0].id;
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [TARGET_EMAIL]);
+  });
+
+  it('force_enabled user sees flag even when globally disabled and not beta-enrolled', async () => {
+    // mobile_access is disabled by seed — normally false.
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', null, ACTOR());
+    const result = await isFlagEnabledForUser('mobile_access', targetUserId, 'rep');
+    expect(result).toBe(true);
+  });
+
+  it('force_disabled user does not see flag even when globally enabled and beta-enrolled', async () => {
+    // notes is enabled by seed — normally true.
+    await enrollBetaUser('notes', targetUserId, ACTOR());
+    await upsertUserOverride('notes', targetUserId, 'force_disabled', 'test reason', ACTOR());
+    const result = await isFlagEnabledForUser('notes', targetUserId, 'rep');
+    expect(result).toBe(false);
+  });
+
+  it('force_disabled user does not see flag even with rollout_percentage = 100', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET rollout_percentage = 100 WHERE flag_key = 'mobile_access'`,
+    );
+    __clearCacheForTest();
+    await upsertUserOverride('mobile_access', targetUserId, 'force_disabled', null, ACTOR());
+    const result = await isFlagEnabledForUser('mobile_access', targetUserId, 'rep');
+    expect(result).toBe(false);
+  });
+
+  it('removing an override restores normal evaluation', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', null, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', targetUserId, 'rep')).toBe(true);
+    await deleteUserOverride('mobile_access', targetUserId, ACTOR());
+    // mobile_access is disabled by seed, no rollout, no beta — should be false again.
+    expect(await isFlagEnabledForUser('mobile_access', targetUserId, 'rep')).toBe(false);
+  });
+
+  it('upsert replaces an existing override direction without creating a duplicate row', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', null, ACTOR());
+    await upsertUserOverride('mobile_access', targetUserId, 'force_disabled', 'switched', ACTOR());
+
+    const rows = await pool.query(
+      `SELECT COUNT(*) AS count FROM feature_flag_user_overrides
+       WHERE flag_key = 'mobile_access' AND user_id = $1`,
+      [targetUserId],
+    );
+    expect(Number(rows.rows[0].count)).toBe(1);
+
+    const result = await isFlagEnabledForUser('mobile_access', targetUserId, 'rep');
+    expect(result).toBe(false);
+  });
+
+  it('deleteUserOverride returns false when no override exists', async () => {
+    const removed = await deleteUserOverride('mobile_access', targetUserId, ACTOR());
+    expect(removed).toBe(false);
+  });
+
+  it('listUserOverrides returns the override with reason', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', 'VIP user', ACTOR());
+    const overrides = await listUserOverrides('mobile_access');
+    const entry = overrides.find((o) => o.user_id === targetUserId);
+    expect(entry?.override).toBe('force_enabled');
+    expect(entry?.reason).toBe('VIP user');
+  });
+
+  it('listFeatureFlags includes override_count', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', null, ACTOR());
+    const flags = await listFeatureFlags();
+    const mobileFlag = flags.find((f) => f.flag_key === 'mobile_access');
+    expect(mobileFlag?.override_count.force_enabled).toBe(1);
+    expect(mobileFlag?.override_count.force_disabled).toBe(0);
+  });
+
+  it('upsertUserOverride writes an audit entry', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', 'audit test', ACTOR());
+    const auditRow = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_name LIKE '%Mobile%'
+         AND field_name = 'user_override'
+       ORDER BY created_at DESC LIMIT 1`,
+    );
+    expect(auditRow.rows.length).toBeGreaterThan(0);
+    expect(auditRow.rows[0].new_value).toContain('force_enabled');
+  });
+
+  it('deleteUserOverride writes an audit entry', async () => {
+    await upsertUserOverride('mobile_access', targetUserId, 'force_disabled', null, ACTOR());
+    await deleteUserOverride('mobile_access', targetUserId, ACTOR());
+    const auditRow = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_name LIKE '%Mobile%'
+         AND field_name = 'user_override'
+         AND new_value = 'null'
+       ORDER BY created_at DESC LIMIT 1`,
+    );
+    expect(auditRow.rows.length).toBeGreaterThan(0);
   });
 });

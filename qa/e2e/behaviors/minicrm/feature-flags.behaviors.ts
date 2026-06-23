@@ -28,6 +28,9 @@ export interface TestFeatureFlag {
   active_user_count: number;
   enable_at: string | null;
   beta_user_count: number;
+  rollout_percentage: number | null;
+  rollout_stages: Array<{ percentage: number; scheduled_at: string }> | null;
+  override_count: { force_enabled: number; force_disabled: number };
 }
 
 /** Shape of a beta user enrollment entry. */
@@ -137,4 +140,108 @@ export async function listBetaUsers(
 export async function getMyFeatureFlags(restClient: RestClient): Promise<Record<string, boolean>> {
   const res = await restClient.get<{ flags: Record<string, boolean> }>('/api/v1/feature-flags/me');
   return res.body.flags;
+}
+
+// ---------------------------------------------------------------------------
+// Rollout REST behaviors (MINCRM-490)
+// ---------------------------------------------------------------------------
+
+/**
+ * Updates the rollout_percentage and/or rollout_stages for a flag.
+ * The PATCH endpoint requires `enabled` — callers must supply the current
+ * flag's enabled state alongside the rollout fields.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param flagKey - The flag key to update.
+ * @param patch - Must include `enabled` plus any rollout fields to change.
+ * @returns The updated feature flag row.
+ */
+export async function updateFeatureFlagRollout(
+  restClient: RestClient,
+  flagKey: string,
+  patch: {
+    enabled: boolean;
+    rollout_percentage?: number | null;
+    rollout_stages?: Array<{ percentage: number; scheduled_at: string }> | null;
+  },
+): Promise<TestFeatureFlag> {
+  const res = await restClient.patch<{ flag: TestFeatureFlag }>(
+    `/api/v1/admin/feature-flags/${flagKey}`,
+    patch,
+  );
+  return res.body.flag;
+}
+
+// ---------------------------------------------------------------------------
+// User override REST behaviors (MINCRM-492)
+// ---------------------------------------------------------------------------
+
+/** Shape of a per-user override entry returned from the API. */
+export interface TestUserOverrideEntry {
+  id: string;
+  flag_key: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  override: 'force_enabled' | 'force_disabled';
+  reason: string | null;
+  added_by: string | null;
+  added_by_name: string | null;
+  added_at: string;
+}
+
+/**
+ * Lists all per-user overrides for a feature flag.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param flagKey - The flag key to query.
+ * @returns Array of override entries.
+ */
+export async function listUserOverrides(
+  restClient: RestClient,
+  flagKey: string,
+): Promise<TestUserOverrideEntry[]> {
+  const res = await restClient.get<{ overrides: TestUserOverrideEntry[] }>(
+    `/api/v1/admin/feature-flags/${flagKey}/overrides`,
+  );
+  return res.body.overrides;
+}
+
+/**
+ * Upserts a per-user override for a feature flag.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param flagKey - The flag key.
+ * @param userId - The target user ID.
+ * @param override - 'force_enabled' or 'force_disabled'.
+ * @param reason - Optional reason string.
+ * @returns The upserted override entry.
+ */
+export async function upsertUserOverride(
+  restClient: RestClient,
+  flagKey: string,
+  userId: string,
+  override: 'force_enabled' | 'force_disabled',
+  reason?: string | null,
+): Promise<TestUserOverrideEntry> {
+  const res = await restClient.put<{ override: TestUserOverrideEntry }>(
+    `/api/v1/admin/feature-flags/${flagKey}/overrides/${userId}`,
+    { override, reason: reason ?? null },
+  );
+  return res.body.override;
+}
+
+/**
+ * Deletes a per-user override for a feature flag.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param flagKey - The flag key.
+ * @param userId - The target user ID.
+ */
+export async function deleteUserOverride(
+  restClient: RestClient,
+  flagKey: string,
+  userId: string,
+): Promise<void> {
+  await restClient.delete(`/api/v1/admin/feature-flags/${flagKey}/overrides/${userId}`);
 }

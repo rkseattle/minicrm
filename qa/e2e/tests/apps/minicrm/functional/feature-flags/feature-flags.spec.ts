@@ -1,19 +1,23 @@
 /**
- * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477)
+ * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-492)
  *
  * Functional regression tests for the admin feature flag management UI,
  * API gate enforcement, and client-side flag isolation via withFlags().
  *
  * Test groups:
- *   F-FF1 — Admin views the feature flags page
- *   F-FF2 — Admin toggles a flag off and sees the confirmation dialog
- *   F-FF3 — Flag toggle writes an audit log entry
- *   F-FF4 — Disabled feature flag returns 403 on the guarded API route
- *   F-FF5 — withFlags() hides a nav link when its flag is intercepted as off
- *   F-FF6 — withFlags() shows a nav link when its flag is intercepted as on
- *   F-FF7 — AI tab is disabled when ai_features flag is intercepted as off
- *   F-FF8 — AI tab is enabled when ai_features flag is intercepted as on
- *   F-FF9 — Toggling ai_features off disables the AI tab without a page refresh
+ *   F-FF1  — Admin views the feature flags page
+ *   F-FF2  — Admin toggles a flag off and sees the confirmation dialog
+ *   F-FF3  — Flag toggle writes an audit log entry
+ *   F-FF4  — Disabled feature flag returns 403 on the guarded API route
+ *   F-FF5  — withFlags() hides a nav link when its flag is intercepted as off
+ *   F-FF6  — withFlags() shows a nav link when its flag is intercepted as on
+ *   F-FF7  — AI tab is disabled when ai_features flag is intercepted as off
+ *   F-FF8  — AI tab is enabled when ai_features flag is intercepted as on
+ *   F-FF9  — Toggling ai_features off disables the AI tab without a page refresh
+ *   F-FF14 — Rollout percentage badge appears in admin UI when rollout_percentage is set (MINCRM-490)
+ *   F-FF15 — Rep bucketed out of rollout sees flag as disabled via /me (MINCRM-490)
+ *   F-FF16 — Force-enabled override badge appears in admin UI (MINCRM-492)
+ *   F-FF17 — Force-enabled user sees a globally-disabled flag as enabled via /me (MINCRM-492)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -45,6 +49,13 @@ import {
   expectFeatureFlagScheduledBadgeNotVisible,
   expectBetaUserRowVisible,
   expandBetaUsersPanel,
+  expectRolloutPercentageBadgeVisible,
+  expectRolloutPercentageBadgeNotVisible,
+  expectOverrideCountBadgeVisible,
+  expectOverrideCountBadgeNotVisible,
+  expectOverrideRowVisible,
+  expectOverrideRowNotVisible,
+  clickOverrideRemove,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   listFeatureFlags,
@@ -52,6 +63,10 @@ import {
   enrollBetaUser,
   removeBetaUser,
   getMyFeatureFlags,
+  updateFeatureFlagRollout,
+  listUserOverrides,
+  upsertUserOverride,
+  deleteUserOverride,
 } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { isNavLinkHidden, assertNavLinkIsVisible } from '@behaviors/minicrm/nav.behaviors.js';
@@ -78,6 +93,20 @@ test.afterEach(async ({ restClient }) => {
     enabled: false,
     enable_at: null,
   }).catch(() => {});
+  // Clear rollout fields set by F-FF14 and F-FF15 (enabled:false matches the reset above).
+  await updateFeatureFlagRollout(restClient, 'mobile_access', {
+    enabled: false,
+    rollout_percentage: null,
+    rollout_stages: null,
+  }).catch(() => {});
+  // Remove all per-user overrides set by F-FF16 and F-FF17.
+  await loginAsAdmin(restClient);
+  const overrides = await listUserOverrides(restClient, 'mobile_access').catch(() => []);
+  await Promise.all(
+    overrides.map((o) =>
+      deleteUserOverride(restClient, 'mobile_access', o.user_id).catch(() => {}),
+    ),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -438,4 +467,164 @@ test('@functional @serial F-FF13: enrolled beta user appears in the admin featur
   // Cleanup: remove beta enrollment.
   await loginAsAdmin(restClient);
   await removeBetaUser(restClient, 'mobile_access', rep.userId).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF14 — Rollout percentage badge appears in admin UI (MINCRM-490)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF14: setting rollout_percentage shows a badge in the admin UI; clearing it removes the badge', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+
+  // Ensure mobile_access is enabled so the rollout section renders.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: true });
+
+  // Set a 25% rollout via REST (flag is enabled, required by the PATCH endpoint).
+  await updateFeatureFlagRollout(restClient, 'mobile_access', {
+    enabled: true,
+    rollout_percentage: 25,
+  });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+
+  // Badge must appear showing the rollout percentage.
+  await expectRolloutPercentageBadgeVisible('mobile_access', { page }, 8_000);
+
+  // Clear the rollout percentage via REST and reload the page.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlagRollout(restClient, 'mobile_access', {
+    enabled: true,
+    rollout_percentage: null,
+  });
+
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+
+  // Badge must be absent once rollout_percentage is null.
+  await expectRolloutPercentageBadgeNotVisible('mobile_access', { page }, 8_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF15 — Rep bucketed outside rollout sees flag as disabled via /me (MINCRM-490)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF15: a rep bucketed outside a 0% rollout sees the flag as disabled via /me', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+
+  // Enable the flag but set rollout to 0% — no one in the bucket.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: true });
+  await updateFeatureFlagRollout(restClient, 'mobile_access', {
+    enabled: true,
+    rollout_percentage: 0,
+  });
+
+  // Rep with no beta enrollment should see the flag as disabled (bucketed out).
+  await loginAs(restClient, rep.email, rep.password);
+  const flags = await getMyFeatureFlags(restClient);
+  expect(flags['mobile_access']).toBe(false);
+
+  // Cleanup: clear rollout and disable the flag.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlagRollout(restClient, 'mobile_access', {
+    enabled: true,
+    rollout_percentage: null,
+  });
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false });
+});
+
+// ---------------------------------------------------------------------------
+// F-FF16 — Force-enabled override badge appears in admin UI (MINCRM-492)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF16: adding a force_enabled override shows the badge in admin UI; removing it hides the badge and row', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const rep = await createTestRep(testData, restClient);
+
+  // Clear any leftover overrides from prior runs so the count starts at 0.
+  await loginAsAdmin(restClient);
+  const existingOverrides = await listUserOverrides(restClient, 'mobile_access');
+  await Promise.all(
+    existingOverrides.map((o) =>
+      deleteUserOverride(restClient, 'mobile_access', o.user_id).catch(() => {}),
+    ),
+  );
+
+  // Add exactly one force_enabled override for the rep.
+  await upsertUserOverride(restClient, 'mobile_access', rep.userId, 'force_enabled', 'E2E test');
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+
+  // Badge showing forced-on count must appear.
+  await expectOverrideCountBadgeVisible('mobile_access', 'force_enabled', { page }, 8_000);
+
+  // The override row must be present inside the overrides panel.
+  await expectOverrideRowVisible('mobile_access', rep.userId, { page }, 8_000);
+
+  // Remove the override via the UI remove button.
+  await clickOverrideRemove('mobile_access', rep.userId, { page });
+
+  // Row must disappear; badge must also disappear (count drops to 0).
+  await expectOverrideRowNotVisible('mobile_access', rep.userId, { page }, 8_000);
+  await expectOverrideCountBadgeNotVisible('mobile_access', 'force_enabled', { page }, 8_000);
+
+  // Confirm removal via the REST API.
+  await loginAsAdmin(restClient);
+  const overrides = await listUserOverrides(restClient, 'mobile_access');
+  const remaining = overrides.filter((o) => o.user_id === rep.userId);
+  expect(remaining).toHaveLength(0);
+});
+
+// ---------------------------------------------------------------------------
+// F-FF17 — Force-enabled user sees a globally-disabled flag as enabled (MINCRM-492)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF17: a force_enabled override lets a rep see a globally-disabled flag as enabled via /me', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+
+  // Disable the flag globally.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false });
+
+  // Rep sees it as disabled before the override.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsBefore = await getMyFeatureFlags(restClient);
+  expect(flagsBefore['mobile_access']).toBe(false);
+
+  // Add a force_enabled override.
+  await loginAsAdmin(restClient);
+  await upsertUserOverride(restClient, 'mobile_access', rep.userId, 'force_enabled', null);
+
+  // Rep now sees the flag as enabled despite global disable.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsAfter = await getMyFeatureFlags(restClient);
+  expect(flagsAfter['mobile_access']).toBe(true);
+
+  // Verify the override is recorded via REST.
+  await loginAsAdmin(restClient);
+  const overrides = await listUserOverrides(restClient, 'mobile_access');
+  const entry = overrides.find((o) => o.user_id === rep.userId);
+  expect(entry?.override).toBe('force_enabled');
+
+  // Cleanup: remove override.
+  await deleteUserOverride(restClient, 'mobile_access', rep.userId).catch(() => {});
 });

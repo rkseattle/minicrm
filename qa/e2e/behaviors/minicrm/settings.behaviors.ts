@@ -2130,3 +2130,210 @@ export async function expectBetaUserRowNotVisible(
   );
   expect(notVisible).toBe(true);
 }
+
+// ---------------------------------------------------------------------------
+// Feature flag rollout behaviors (MINCRM-490)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asserts the rollout percentage badge is visible for the given flag key.
+ * The badge only renders when rollout_percentage is non-null.
+ */
+export async function expectRolloutPercentageBadgeVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `rollout-percentage-badge-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="rollout-percentage-badge-"]`,
+        },
+      ],
+      { intent: `rollout percentage badge for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts the rollout percentage badge is NOT visible for the given flag key.
+ * This is the case when rollout_percentage is null.
+ */
+export async function expectRolloutPercentageBadgeNotVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `rollout-percentage-badge-${flagKey}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}
+
+/**
+ * Sets the rollout percentage input to the given value for a flag row.
+ * The input is only rendered when the flag is enabled.
+ */
+export async function setRolloutPercentageInput(
+  flagKey: string,
+  percentage: number | null,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `rollout-percentage-input-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] input[type="number"]`,
+        },
+      ],
+      { intent: `rollout percentage number input for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await locator.fill(percentage === null ? '' : String(percentage));
+}
+
+// ---------------------------------------------------------------------------
+// Feature flag user overrides behaviors (MINCRM-492)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asserts the override count badge (force_enabled or force_disabled) is visible.
+ * Badges only render when the count is > 0.
+ */
+export async function expectOverrideCountBadgeVisible(
+  flagKey: string,
+  direction: 'force_enabled' | 'force_disabled',
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `override-count-${direction}-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="override-count-${direction}-"]`,
+        },
+      ],
+      { intent: `${direction} override count badge for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts the override count badge is NOT visible for the given flag and direction.
+ */
+export async function expectOverrideCountBadgeNotVisible(
+  flagKey: string,
+  direction: 'force_enabled' | 'force_disabled',
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `override-count-${direction}-${flagKey}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}
+
+/**
+ * Asserts the user overrides panel is visible for the given flag key.
+ * The panel is always rendered (not behind a toggle).
+ */
+export async function expectOverridesPanelVisible(
+  flagKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-overrides-panel-${flagKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-row-${flagKey}"] [data-testid^="feature-flag-overrides-panel-"]`,
+        },
+      ],
+      { intent: `user overrides panel for the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts an override row is visible in the overrides panel for a given user.
+ */
+export async function expectOverrideRowVisible(
+  flagKey: string,
+  userId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `override-row-${flagKey}-${userId}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-overrides-panel-${flagKey}"] [data-testid*="${userId}"]`,
+        },
+      ],
+      { intent: `override row for user ${userId} on the ${flagKey} feature flag` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts an override row is NOT visible in the overrides panel for a given user.
+ */
+export async function expectOverrideRowNotVisible(
+  flagKey: string,
+  userId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `override-row-${flagKey}-${userId}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}
+
+/**
+ * Clicks the remove button for an override row.
+ */
+export async function clickOverrideRemove(
+  flagKey: string,
+  userId: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `override-remove-${flagKey}-${userId}` },
+        {
+          type: 'css',
+          value: `[data-testid="override-row-${flagKey}-${userId}"] button`,
+        },
+      ],
+      { intent: `remove override button for user ${userId} on ${flagKey} flag` },
+    )
+    .resolve();
+  await locator.click();
+}
