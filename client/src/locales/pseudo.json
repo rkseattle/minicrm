@@ -1139,7 +1139,9 @@
     "clearFilters": "[Ĉlëär fïltërŝ~~~~]",
     "next": "[[Next]]",
     "back": "[[Back]]",
-    "confirm": "[Confïrmẽẽ]"
+    "confirm": "[Confïrmẽẽ]",
+    "expand": "[Ẽẋƥàñď]",
+    "collapse": "[Çöļļàƥšẽ]"
   },
   "errors": {
     "boundaryTitle": "[Ŝömëthïñg wëñt wröñg~~~~~~]",

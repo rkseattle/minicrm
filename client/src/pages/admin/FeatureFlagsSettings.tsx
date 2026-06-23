@@ -302,7 +302,6 @@ function BetaUsersPanel({ flagKey }: BetaUsersPanelProps) {
 
 interface UserOverridesPanelProps {
   flagKey: string;
-  flagLabel: string;
 }
 
 function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
@@ -551,6 +550,7 @@ function FlagRow({
   const { t } = useTranslation();
   const [showBetaPanel, setShowBetaPanel] = useState(false);
   const [showRolloutStages, setShowRolloutStages] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const supportsRoleOverrides = (ROLE_OVERRIDE_FLAG_KEYS as readonly string[]).includes(
     flag.flag_key,
   );
@@ -805,131 +805,154 @@ function FlagRow({
         </div>
       )}
 
-      {/* Rollout percentage + stages (MINCRM-490) */}
-      {flag.enabled && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          {/* Rollout percentage input */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <label
-              className="text-xs text-gray-500 shrink-0"
-              htmlFor={`rollout-pct-${flag.flag_key}`}
-            >
-              {t('featureFlags.rolloutPercentage')}
-            </label>
-            <input
-              id={`rollout-pct-${flag.flag_key}`}
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              disabled={isPending}
-              key={rolloutPctInputKey}
-              defaultValue={flag.rollout_percentage === null ? '' : flag.rollout_percentage}
-              onBlur={(e) =>
-                onRolloutChange(flag, e.target.value === '' ? null : Number(e.target.value))
-              }
-              data-testid={`rollout-percentage-input-${flag.flag_key}`}
-              className="w-20 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
+      {/* Advanced settings toggle (rollout, overrides, beta) — MINCRM-490, MINCRM-492 */}
+      <div className="mt-2">
+        <button
+          type="button"
+          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+          onClick={() => setShowAdvanced((v) => !v)}
+          data-testid={`feature-flag-advanced-toggle-${flag.flag_key}`}
+          aria-expanded={showAdvanced}
+        >
+          {showAdvanced ? t('common.collapse') : t('common.expand')}
+        </button>
+      </div>
 
-          {/* Progress bar */}
-          {flag.rollout_percentage !== null && (
-            <div className="mt-2 w-full bg-gray-200 rounded h-2">
-              <div
-                className="bg-indigo-500 h-2 rounded"
-                style={{ width: `${flag.rollout_percentage ?? 0}%` }}
-              />
+      {showAdvanced && (
+        <>
+          {/* Rollout percentage + stages (MINCRM-490) */}
+          {flag.enabled && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              {/* Rollout percentage input */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <label
+                  className="text-xs text-gray-500 shrink-0"
+                  htmlFor={`rollout-pct-${flag.flag_key}`}
+                >
+                  {t('featureFlags.rolloutPercentage')}
+                </label>
+                <input
+                  id={`rollout-pct-${flag.flag_key}`}
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  disabled={isPending}
+                  key={rolloutPctInputKey}
+                  defaultValue={flag.rollout_percentage === null ? '' : flag.rollout_percentage}
+                  onBlur={(e) =>
+                    onRolloutChange(flag, e.target.value === '' ? null : Number(e.target.value))
+                  }
+                  data-testid={`rollout-percentage-input-${flag.flag_key}`}
+                  className="w-20 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              {/* Progress bar */}
+              {flag.rollout_percentage !== null && (
+                <div className="mt-2 w-full bg-gray-200 rounded h-2">
+                  <div
+                    className="bg-indigo-500 h-2 rounded"
+                    style={{ width: `${flag.rollout_percentage ?? 0}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Rollout stages sub-section */}
+              <div className="mt-3" data-testid={`rollout-stages-${flag.flag_key}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-gray-700">
+                    {t('featureFlags.rolloutStages')}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+                    onClick={() => setShowRolloutStages((v) => !v)}
+                    data-testid={`rollout-stages-toggle-${flag.flag_key}`}
+                  >
+                    {showRolloutStages ? t('common.collapse') : t('common.expand')}
+                  </button>
+                </div>
+
+                {showRolloutStages && (
+                  <React.Fragment key={rolloutStagesKey}>
+                    {localStages.length > 0 && (
+                      <ul className="mb-2 space-y-2">
+                        {localStages.map((stage, index) => (
+                          <li key={index} className="flex items-center gap-2 flex-wrap">
+                            <input
+                              type="datetime-local"
+                              value={
+                                stage.scheduled_at ? isoToDatetimeLocal(stage.scheduled_at) : ''
+                              }
+                              onChange={(e) =>
+                                handleStageChange(index, 'scheduled_at', e.target.value)
+                              }
+                              className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              disabled={isPending}
+                              data-testid={`rollout-stage-scheduled-at-${flag.flag_key}-${index}`}
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={stage.percentage}
+                              onChange={(e) =>
+                                handleStageChange(index, 'percentage', e.target.value)
+                              }
+                              className="w-16 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              disabled={isPending}
+                              data-testid={`rollout-stage-percentage-${flag.flag_key}-${index}`}
+                            />
+                            <button
+                              type="button"
+                              className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                              disabled={isPending}
+                              onClick={() => handleStageRemove(index)}
+                              data-testid={`rollout-stage-remove-${flag.flag_key}-${index}`}
+                            >
+                              {t('featureFlags.rolloutStageRemove')}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <button
+                      type="button"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline disabled:opacity-50"
+                      disabled={isPending}
+                      onClick={handleStageAdd}
+                      data-testid={`rollout-stage-add-${flag.flag_key}`}
+                    >
+                      {t('featureFlags.rolloutStageAdd')}
+                    </button>
+                  </React.Fragment>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Rollout stages sub-section */}
-          <div className="mt-3" data-testid={`rollout-stages-${flag.flag_key}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-medium text-gray-700">
-                {t('featureFlags.rolloutStages')}
-              </span>
-              <button
-                type="button"
-                className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
-                onClick={() => setShowRolloutStages((v) => !v)}
-                data-testid={`rollout-stages-toggle-${flag.flag_key}`}
-              >
-                {showRolloutStages ? t('common.collapse') : t('common.expand')}
-              </button>
-            </div>
+          {/* Beta users panel (MINCRM-489) */}
+          {(showBetaPanel || flag.beta_user_count === 0) && (
+            <BetaUsersPanel flagKey={flag.flag_key} flagLabel={flag.label} />
+          )}
+          {flag.beta_user_count > 0 && !showBetaPanel && (
+            <button
+              type="button"
+              className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+              onClick={() => setShowBetaPanel(true)}
+              data-testid={`feature-flag-beta-expand-${flag.flag_key}`}
+            >
+              {t('featureFlags.betaUsers')}
+            </button>
+          )}
 
-            {showRolloutStages && (
-              <React.Fragment key={rolloutStagesKey}>
-                {localStages.length > 0 && (
-                  <ul className="mb-2 space-y-2">
-                    {localStages.map((stage, index) => (
-                      <li key={index} className="flex items-center gap-2 flex-wrap">
-                        <input
-                          type="datetime-local"
-                          value={stage.scheduled_at ? isoToDatetimeLocal(stage.scheduled_at) : ''}
-                          onChange={(e) => handleStageChange(index, 'scheduled_at', e.target.value)}
-                          className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          disabled={isPending}
-                          data-testid={`rollout-stage-scheduled-at-${flag.flag_key}-${index}`}
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={stage.percentage}
-                          onChange={(e) => handleStageChange(index, 'percentage', e.target.value)}
-                          className="w-16 text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          disabled={isPending}
-                          data-testid={`rollout-stage-percentage-${flag.flag_key}-${index}`}
-                        />
-                        <button
-                          type="button"
-                          className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
-                          disabled={isPending}
-                          onClick={() => handleStageRemove(index)}
-                          data-testid={`rollout-stage-remove-${flag.flag_key}-${index}`}
-                        >
-                          {t('featureFlags.rolloutStageRemove')}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <button
-                  type="button"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline disabled:opacity-50"
-                  disabled={isPending}
-                  onClick={handleStageAdd}
-                  data-testid={`rollout-stage-add-${flag.flag_key}`}
-                >
-                  {t('featureFlags.rolloutStageAdd')}
-                </button>
-              </React.Fragment>
-            )}
-          </div>
-        </div>
+          {/* User overrides panel (MINCRM-492) */}
+          <UserOverridesPanel flagKey={flag.flag_key} />
+        </>
       )}
-
-      {/* Beta users panel (MINCRM-489) */}
-      {(showBetaPanel || flag.beta_user_count === 0) && (
-        <BetaUsersPanel flagKey={flag.flag_key} flagLabel={flag.label} />
-      )}
-      {flag.beta_user_count > 0 && !showBetaPanel && (
-        <button
-          type="button"
-          className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
-          onClick={() => setShowBetaPanel(true)}
-          data-testid={`feature-flag-beta-expand-${flag.flag_key}`}
-        >
-          {t('featureFlags.betaUsers')}
-        </button>
-      )}
-
-      {/* User overrides panel (MINCRM-492) */}
-      <UserOverridesPanel flagKey={flag.flag_key} flagLabel={flag.label} />
     </div>
   );
 }

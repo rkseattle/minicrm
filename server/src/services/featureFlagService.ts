@@ -601,9 +601,11 @@ export async function isFlagEnabledForUser(
 
   // Step 3: rollout bucketing (MINCRM-490).
   // Only consult the cache for the rollout_percentage value — beta/override are always fresh.
+  // Guard by org-wide enabled state so disabling a flag acts as a kill-switch even when
+  // rollout_percentage is still set (e.g. admin disables without clearing rollout).
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
-  if (row && row.rollout_percentage !== null) {
+  if (row && row.rollout_percentage !== null && (row.enabled || isScheduledEnabled(row))) {
     const bucket = stableHash(userId + key) % 100;
     return bucket < row.rollout_percentage;
   }
@@ -850,6 +852,12 @@ export async function upsertUserOverride(
 
     await client.query('BEGIN');
 
+    const existingOverrideResult = await client.query<{ override: OverrideDirection }>(
+      `SELECT override FROM feature_flag_user_overrides WHERE flag_key = $1 AND user_id = $2`,
+      [flagKey, userId],
+    );
+    const priorDirection = existingOverrideResult.rows[0]?.override ?? null;
+
     const upsertResult = await client.query<{ id: string; added_at: Date }>(
       `INSERT INTO feature_flag_user_overrides (flag_key, user_id, override, reason, added_by)
        VALUES ($1, $2, $3, $4, $5)
@@ -868,7 +876,7 @@ export async function upsertUserOverride(
       recordName: flagRow.rows[0].label,
       eventType: 'updated',
       fieldName: 'user_override',
-      oldValue: 'null',
+      oldValue: priorDirection ? `${priorDirection} for ${userRow.rows[0].name}` : 'null',
       newValue: `${direction} for ${userRow.rows[0].name}${reason ? ` (${reason})` : ''}`,
       changedById: actor.id,
       changedByName: actor.name,

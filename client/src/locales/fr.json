@@ -1301,7 +1301,9 @@
     "back": "Retour",
     "confirm": "Confirmer",
     "save": "Enregistrer",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "expand": "Développer",
+    "collapse": "Réduire"
   },
   "errors": {
     "boundaryTitle": "Une erreur s'est produite",

@@ -181,12 +181,10 @@ export interface TestUserOverrideEntry {
   id: string;
   flag_key: string;
   user_id: string;
-  user_name: string;
-  user_email: string;
+  name: string;
+  email: string;
   override: 'force_enabled' | 'force_disabled';
   reason: string | null;
-  added_by: string | null;
-  added_by_name: string | null;
   added_at: string;
 }
 
