@@ -117,6 +117,7 @@ describe('getUserUsageForMonth', () => {
 
   it('accumulates usage across multiple calls', async () => {
     recordTokenUsage(repId, 1000, 500);
+    await new Promise((r) => setTimeout(r, 100));
     recordTokenUsage(repId, 200, 100);
     await new Promise((r) => setTimeout(r, 100));
     await expect(getUserUsageForMonth(repId, CURRENT_MONTH)).resolves.toBe(1800);
