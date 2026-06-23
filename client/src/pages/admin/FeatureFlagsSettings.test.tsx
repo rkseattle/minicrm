@@ -435,6 +435,11 @@ describe('FeatureFlagsSettings', () => {
     renderWithProviders(<FeatureFlagsSettings />);
 
     await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-advanced-toggle-mobile_access')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('feature-flag-advanced-toggle-mobile_access'));
+
+    await waitFor(() => {
       expect(screen.getByTestId('beta-user-search-mobile_access')).toBeInTheDocument();
     });
 
@@ -459,6 +464,11 @@ describe('FeatureFlagsSettings', () => {
     );
 
     renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-advanced-toggle-mobile_access')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('feature-flag-advanced-toggle-mobile_access'));
 
     const betaRow = await screen.findByTestId('beta-user-row-mobile_access-user-uuid-1');
     expect(betaRow).toBeInTheDocument();

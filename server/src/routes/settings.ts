@@ -1129,7 +1129,7 @@ router.put('/branding', authenticate, requireRole('admin'), asyncHandler(putBran
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Branding reset — returns { branding: null }
+ *         description: "Branding reset - returns { branding: null }"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
