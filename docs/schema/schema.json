@@ -4672,6 +4672,23 @@
           "type": "timestamp with time zone",
           "nullable": true,
           "comment": "When set and \u003c= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
+        },
+        {
+          "name": "rollout_percentage",
+          "type": "smallint",
+          "nullable": true,
+          "comment": "When non-null, gates users via stableHash(userId+flagKey)%100 \u003c rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
+        },
+        {
+          "name": "rollout_stages",
+          "type": "jsonb",
+          "nullable": true,
+          "comment": "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at \u003c= now(). (MINCRM-490)"
+        },
+        {
+          "name": "group_key",
+          "type": "varchar(100)",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -4690,6 +4707,14 @@
           "columns": [
             "category"
           ]
+        },
+        {
+          "name": "feature_flags_group_key_index",
+          "def": "CREATE INDEX feature_flags_group_key_index ON public.feature_flags USING btree (group_key)",
+          "table": "public.feature_flags",
+          "columns": [
+            "group_key"
+          ]
         }
       ],
       "constraints": [
@@ -4701,6 +4726,16 @@
           "referenced_table": "",
           "columns": [
             "role_overrides"
+          ]
+        },
+        {
+          "name": "feature_flags_rollout_percentage_range",
+          "type": "CHECK",
+          "def": "CHECK (((rollout_percentage \u003e= 0) AND (rollout_percentage \u003c= 100)))",
+          "table": "public.feature_flags",
+          "referenced_table": "",
+          "columns": [
+            "rollout_percentage"
           ]
         },
         {
@@ -4724,6 +4759,19 @@
           "referenced_table": "",
           "columns": [
             "flag_key"
+          ]
+        },
+        {
+          "name": "feature_flags_group_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL",
+          "table": "public.feature_flags",
+          "referenced_table": "public.feature_flag_groups",
+          "columns": [
+            "group_key"
+          ],
+          "referenced_columns": [
+            "group_key"
           ]
         }
       ],
@@ -6151,6 +6199,317 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.feature_flag_user_overrides",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "flag_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "override",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "added_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_user_overrides_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_pkey ON public.feature_flag_user_overrides USING btree (id)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
+          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_flag_key_user_id_unique ON public.feature_flag_user_overrides USING btree (flag_key, user_id)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_index",
+          "def": "CREATE INDEX feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "flag_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_user_overrides_override_check",
+          "type": "CHECK",
+          "def": "CHECK (((override)::text = ANY ((ARRAY['force_enabled'::character varying, 'force_disabled'::character varying])::text[])))",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "",
+          "columns": [
+            "override"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.users",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.feature_flags",
+          "columns": [
+            "flag_key"
+          ],
+          "referenced_columns": [
+            "flag_key"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (flag_key, user_id)",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.feature_flag_groups",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "group_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "label",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "enable_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_groups_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_groups_pkey ON public.feature_flag_groups USING btree (group_key)",
+          "table": "public.feature_flag_groups",
+          "columns": [
+            "group_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_groups_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_groups",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_groups_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (group_key)",
+          "table": "public.feature_flag_groups",
+          "referenced_table": "",
+          "columns": [
+            "group_key"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.feature_flag_group_beta_users",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "group_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "added_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_group_beta_users_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_group_beta_users_pkey ON public.feature_flag_group_beta_users USING btree (group_key, user_id)",
+          "table": "public.feature_flag_group_beta_users",
+          "columns": [
+            "group_key",
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_group_beta_users_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_group_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_group_beta_users_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.feature_flag_group_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_group_beta_users_group_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE",
+          "table": "public.feature_flag_group_beta_users",
+          "referenced_table": "public.feature_flag_groups",
+          "columns": [
+            "group_key"
+          ],
+          "referenced_columns": [
+            "group_key"
+          ]
+        },
+        {
+          "name": "feature_flag_group_beta_users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (group_key, user_id)",
+          "table": "public.feature_flag_group_beta_users",
+          "referenced_table": "",
+          "columns": [
+            "group_key",
+            "user_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6857,6 +7216,19 @@
       "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
+      "table": "public.feature_flags",
+      "columns": [
+        "group_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flag_groups",
+      "parent_columns": [
+        "group_key"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL"
+    },
+    {
       "table": "public.feature_flag_usage",
       "columns": [
         "user_id"
@@ -7102,6 +7474,97 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "flag_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flags",
+      "parent_columns": [
+        "flag_key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_groups",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_group_beta_users",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_group_beta_users",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_group_beta_users",
+      "columns": [
+        "group_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flag_groups",
+      "parent_columns": [
+        "group_key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
     }
   ],
   "functions": [

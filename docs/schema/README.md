@@ -39,7 +39,7 @@
 | [public.sales_sequence_steps](public.sales_sequence_steps.md) | 8 |  | BASE TABLE |
 | [public.sequence_enrollments](public.sequence_enrollments.md) | 11 |  | BASE TABLE |
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
-| [public.feature_flags](public.feature_flags.md) | 10 |  | BASE TABLE |
+| [public.feature_flags](public.feature_flags.md) | 13 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
 | [public.ai_configuration](public.ai_configuration.md) | 16 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
@@ -55,6 +55,9 @@
 | [public.scim_tokens](public.scim_tokens.md) | 5 |  | BASE TABLE |
 | [public.scim_group_role_mappings](public.scim_group_role_mappings.md) | 5 |  | BASE TABLE |
 | [public.feature_flag_beta_users](public.feature_flag_beta_users.md) | 5 |  | BASE TABLE |
+| [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) | 7 |  | BASE TABLE |
+| [public.feature_flag_groups](public.feature_flag_groups.md) | 7 |  | BASE TABLE |
+| [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -177,6 +180,7 @@ erDiagram
 "public.sequence_enrollment_logs" }o--o| "public.sales_sequence_steps" : "FOREIGN KEY (step_id) REFERENCES sales_sequence_steps(id) ON DELETE SET NULL"
 "public.sequence_enrollment_logs" }o--|| "public.sequence_enrollments" : "FOREIGN KEY (enrollment_id) REFERENCES sequence_enrollments(id) ON DELETE CASCADE"
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flags" }o--o| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL"
 "public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
@@ -196,6 +200,13 @@ erDiagram
 "public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_groups" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_group_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_group_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_group_beta_users" }o--|| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -605,6 +616,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
   timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
+  smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
+  jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
+  varchar_100_ group_key FK ""
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
@@ -712,6 +726,30 @@ erDiagram
 "public.feature_flag_beta_users" {
   uuid id ""
   varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
+"public.feature_flag_user_overrides" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  varchar_20_ override ""
+  text reason ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
+"public.feature_flag_groups" {
+  varchar_100_ group_key ""
+  varchar_100_ label ""
+  text description ""
+  boolean enabled ""
+  timestamp_with_time_zone enable_at ""
+  uuid updated_by FK ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.feature_flag_group_beta_users" {
+  varchar_100_ group_key FK ""
   uuid user_id FK ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
