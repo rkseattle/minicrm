@@ -91,6 +91,15 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
     updated = await updateFeatureFlag(key, parsed.data, actor, { onDisabled });
   } catch (err) {
     const code = (err as { code?: string }).code;
+    if (code === 'FEATURE_FLAG_UNKNOWN_ROLE_KEY') {
+      res.status(422).json({
+        error: {
+          code: 'FEATURE_FLAG_UNKNOWN_ROLE_KEY',
+          message: err instanceof Error ? err.message : 'Unknown role key in role_overrides',
+        },
+      });
+      return;
+    }
     if (code === 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE') {
       res.status(400).json({
         error: {
@@ -568,11 +577,9 @@ export async function removeGroupBetaUserHandler(req: Request, res: Response): P
   } catch (err) {
     const domainErr = err as { code?: string };
     if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
-      res
-        .status(404)
-        .json({
-          error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
-        });
+      res.status(404).json({
+        error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
+      });
       return;
     }
     throw err;
