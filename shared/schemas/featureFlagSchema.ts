@@ -1,11 +1,10 @@
 /**
  * Shared Zod schemas and types for the feature flag registry.
  * Imported by both the server (validation) and the client (form validation, display).
- * (MINCRM-463, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-490, MINCRM-492, MINCRM-565)
  */
 
 import { z } from 'zod';
-import { USER_ROLES } from './userSchema.js';
 
 /**
  * All valid feature flag keys — must match the seed rows in migrations 066 and 071.
@@ -45,25 +44,6 @@ export const FEATURE_FLAG_KEYS = [
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];
 
-/**
- * Flag keys that support per-role overrides (admin/rep toggles in the admin UI).
- * AI sub-feature flags (MINCRM-460) all support role overrides so admins can
- * enable/disable each AI capability independently per role.
- */
-export const ROLE_OVERRIDE_FLAG_KEYS: readonly FeatureFlagKey[] = [
-  'reporting',
-  'csv_export',
-  'ai_nli_page',
-  'ai_activity_summarizer',
-  'ai_email_draft',
-  'ai_task_suggestions',
-  'ai_contact_enrichment',
-  'ai_duplicate_explanation',
-  'ai_lead_score_narrative',
-  'ai_deal_health_check',
-  'ai_stage_advancement',
-];
-
 /** UI grouping categories — must match the category values in migration 066. */
 export const FEATURE_FLAG_CATEGORIES = [
   'Core CRM',
@@ -75,15 +55,11 @@ export const FEATURE_FLAG_CATEGORIES = [
 
 export type FeatureFlagCategory = (typeof FEATURE_FLAG_CATEGORIES)[number];
 
-/** Per-role override map — keys are user roles, values are enable/disable overrides. */
-export const roleOverridesSchema = z
-  .object(
-    Object.fromEntries(USER_ROLES.map((r) => [r, z.boolean().optional()])) as Record<
-      (typeof USER_ROLES)[number],
-      z.ZodOptional<z.ZodBoolean>
-    >,
-  )
-  .nullable();
+/**
+ * Per-role override map — keys are arbitrary role name strings (built-in or custom),
+ * values are explicit enable/disable overrides. (MINCRM-565)
+ */
+export const roleOverridesSchema = z.record(z.string().min(1), z.boolean()).nullable();
 
 export type RoleOverrides = z.infer<typeof roleOverridesSchema>;
 
