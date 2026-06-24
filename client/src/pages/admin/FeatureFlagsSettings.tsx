@@ -1074,9 +1074,10 @@ function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
 interface GroupsSectionProps {
   flags: FeatureFlagRow[];
   onFlagClick: (flagKey: string) => void;
+  onGroupRowRef: (groupKey: string, el: HTMLDivElement | null) => void;
 }
 
-function GroupsSection({ flags, onFlagClick }: GroupsSectionProps) {
+function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   // eslint-disable-next-line react-hooks/purity
@@ -1154,17 +1155,23 @@ function GroupsSection({ flags, onFlagClick }: GroupsSectionProps) {
       </h2>
       <div className="bg-white border border-gray-200 rounded-lg px-4 divide-y divide-gray-100">
         {groups.map((group) => (
-          <GroupRow
+          <div
             key={group.group_key}
-            group={group}
-            memberFlags={flags.filter((f) => f.group_key === group.group_key)}
-            onToggle={handleToggle}
-            onEnableAtChange={handleEnableAtChange}
-            onDelete={handleDelete}
-            onFlagClick={onFlagClick}
-            isPending={pendingGroupKey === group.group_key}
-            nowMs={nowMs}
-          />
+            ref={(el) => onGroupRowRef(group.group_key, el)}
+            tabIndex={-1}
+            className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
+          >
+            <GroupRow
+              group={group}
+              memberFlags={flags.filter((f) => f.group_key === group.group_key)}
+              onToggle={handleToggle}
+              onEnableAtChange={handleEnableAtChange}
+              onDelete={handleDelete}
+              onFlagClick={onFlagClick}
+              isPending={pendingGroupKey === group.group_key}
+              nowMs={nowMs}
+            />
+          </div>
         ))}
       </div>
       <CreateGroupForm onCreated={() => {}} />
@@ -1678,8 +1685,11 @@ export default function FeatureFlagsSettings() {
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Ref map for scrolling to a flag row when clicking a group member link (MINCRM-491)
+  // Ref maps for scrolling: flag rows (clicked from group member list) and group rows
+  // (clicked from a flag's group badge). Keyed by flag_key and group_key respectively.
+  // (MINCRM-491)
   const flagRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const groupRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [confirmPending, setConfirmPending] = useState<{
     flag: FeatureFlagRow;
@@ -1743,6 +1753,14 @@ export default function FeatureFlagsSettings() {
   // Scrolls the page to the flag row identified by flagKey, opened from a group detail link.
   function handleFlagClick(flagKey: string) {
     const el = flagRowRefs.current[flagKey];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    }
+  }
+
+  function handleGroupBadgeClick(groupKey: string) {
+    const el = groupRowRefs.current[groupKey];
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.focus();
@@ -1837,7 +1855,13 @@ export default function FeatureFlagsSettings() {
         )}
 
         {/* Groups section — always shown so admins can create groups (MINCRM-491) */}
-        <GroupsSection flags={flags} onFlagClick={handleFlagClick} />
+        <GroupsSection
+          flags={flags}
+          onFlagClick={handleFlagClick}
+          onGroupRowRef={(groupKey, el) => {
+            groupRowRefs.current[groupKey] = el;
+          }}
+        />
 
         {FEATURE_FLAG_CATEGORIES.map((category) => {
           const categoryFlags = byCategory[category];
@@ -1871,7 +1895,7 @@ export default function FeatureFlagsSettings() {
                       onRolloutChange={handleRolloutChange}
                       onRolloutStagesChange={handleRolloutStagesChange}
                       onGroupChange={handleGroupChange}
-                      onGroupBadgeClick={handleFlagClick}
+                      onGroupBadgeClick={handleGroupBadgeClick}
                       isPending={pendingKey === flag.flag_key}
                       nowMs={nowMs}
                     />
