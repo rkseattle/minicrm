@@ -1910,6 +1910,7 @@
       "service_account": "Compte de service"
     },
     "roleOverridesLoading": "Chargement des rôles…",
+    "roleOverridesError": "Impossible de charger les rôles. Actualisez la page pour réessayer.",
     "unknownRole": "Rôle inconnu (clé : {{key}})",
     "onBadge": "Activé",
     "scheduledBadge": "Planifié",

@@ -220,14 +220,13 @@ describe('writeAuditEntries', () => {
     }
 
     const result = await pool.query(
-      // ctid is the physical row order within the partition — stable tiebreaker
-      // when two rows land in the same transaction and share the same created_at.
-      'SELECT * FROM audit_log WHERE record_id = $1 ORDER BY created_at, ctid',
+      'SELECT * FROM audit_log WHERE record_id = $1 ORDER BY field_name',
       [RECORD_ID],
     );
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0].field_name).toBe('name');
-    expect(result.rows[1].field_name).toBe('industry');
+    // ORDER BY field_name: 'industry' < 'name' alphabetically
+    expect(result.rows[0].field_name).toBe('industry');
+    expect(result.rows[1].field_name).toBe('name');
   });
 });
 

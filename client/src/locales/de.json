@@ -1910,6 +1910,7 @@
       "service_account": "Dienstkonto"
     },
     "roleOverridesLoading": "Rollen werden geladen…",
+    "roleOverridesError": "Rollen konnten nicht geladen werden. Seite neu laden, um es erneut zu versuchen.",
     "unknownRole": "Unbekannte Rolle (Schlüssel: {{key}})",
     "onBadge": "An",
     "scheduledBadge": "Geplant",
