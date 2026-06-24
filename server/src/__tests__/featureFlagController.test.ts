@@ -209,6 +209,50 @@ describe('PATCH /api/v1/admin/feature-flags/:key', () => {
     expect(res.body.flag.role_overrides.admin).toBe(true);
   });
 
+  // MINCRM-565 — dynamic role key validation
+  it('accepts role_overrides with a custom role name and persists it', async () => {
+    const roleResult = await pool.query<{ id: string }>(
+      `INSERT INTO public.custom_roles (name, description, is_builtin)
+       VALUES ('BetaTester', null, false)
+       RETURNING id`,
+    );
+    const roleId = roleResult.rows[0]!.id;
+
+    try {
+      const patchRes = await request(app)
+        .patch('/api/v1/admin/feature-flags/notes')
+        .set('Cookie', adminCookie)
+        .send({ enabled: true, role_overrides: { BetaTester: false } });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.flag.role_overrides.BetaTester).toBe(false);
+
+      // Verify the override persisted — read back via the list endpoint.
+      const listRes = await request(app)
+        .get('/api/v1/admin/feature-flags')
+        .set('Cookie', adminCookie);
+      expect(listRes.status).toBe(200);
+      const notesFlag = (
+        listRes.body.flags as Array<{
+          flag_key: string;
+          role_overrides: Record<string, boolean> | null;
+        }>
+      ).find((f) => f.flag_key === 'notes');
+      expect(notesFlag?.role_overrides?.BetaTester).toBe(false);
+    } finally {
+      await pool.query('DELETE FROM public.custom_roles WHERE id = $1', [roleId]);
+    }
+  });
+
+  it('returns 422 with FEATURE_FLAG_UNKNOWN_ROLE_KEY for an unknown role key', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/notes')
+      .set('Cookie', adminCookie)
+      .send({ enabled: true, role_overrides: { ghost_role: true } });
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('FEATURE_FLAG_UNKNOWN_ROLE_KEY');
+    expect(res.body.error.message).toContain('ghost_role');
+  });
+
   it('does not allow DELETE — returns 404', async () => {
     const res = await request(app)
       .delete('/api/v1/admin/feature-flags/notes')

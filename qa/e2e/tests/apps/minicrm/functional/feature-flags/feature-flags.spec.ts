@@ -1,5 +1,5 @@
 /**
- * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-491, MINCRM-492)
+ * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-491, MINCRM-492, MINCRM-565)
  *
  * Functional regression tests for the admin feature flag management UI,
  * API gate enforcement, and client-side flag isolation via withFlags().
@@ -21,6 +21,8 @@
  *   F-FF18 — Admin creates a group and sees it in the groups section (MINCRM-491)
  *   F-FF19 — Disabling a group gate blocks member flags for non-beta users (MINCRM-491)
  *   F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
+ *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state (MINCRM-565)
+ *   F-FF22 — Unknown role key in role_overrides returns 422 (MINCRM-565)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -754,4 +756,85 @@ test('@functional @serial F-FF20: re-enabling a disabled group gate restores mem
     .catch(() => {});
   await deleteFlagGroup(restClient, groupKey).catch(() => {});
   await updateFeatureFlag(restClient, 'mobile_access', { enabled: false }).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF21 — Role override on any flag: rep role override on 'notes' takes effect (MINCRM-565)
+//
+// Before MINCRM-565, only flags in ROLE_OVERRIDE_FLAG_KEYS supported role overrides
+// and only the 5 built-in role names were valid keys. After this refactor, all flags
+// accept role overrides and the valid key set is the full custom_roles table
+// (built-in + custom). This test verifies a rep-targeted override on the 'notes'
+// flag (previously excluded from ROLE_OVERRIDE_FLAG_KEYS) takes effect via /me.
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF21: rep role override on a previously-unrestricted flag is honored by /me', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+
+  await loginAsAdmin(restClient);
+
+  // Disable 'notes' globally so the baseline is false for the rep.
+  await updateFeatureFlag(restClient, 'notes', { enabled: false });
+
+  // Rep sees the flag as disabled before any role override.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsBefore = await getMyFeatureFlags(restClient);
+  expect(flagsBefore['notes']).toBe(false);
+
+  // Set a role override: rep → true (flag still globally disabled).
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'notes', {
+    enabled: false,
+    role_overrides: { rep: true },
+  });
+
+  // Rep now sees notes as enabled via the role override.
+  await loginAs(restClient, rep.email, rep.password);
+  const flagsAfter = await getMyFeatureFlags(restClient);
+  expect(flagsAfter['notes']).toBe(true);
+
+  // Confirm the override is reflected in the admin list endpoint.
+  await loginAsAdmin(restClient);
+  const flags = await listFeatureFlags(restClient);
+  const notesFlag = flags.find((f) => f.flag_key === 'notes');
+  expect(notesFlag?.role_overrides).toMatchObject({ rep: true });
+
+  // Cleanup: restore notes to enabled with no role overrides (afterEach also resets it).
+  await updateFeatureFlag(restClient, 'notes', { enabled: true, role_overrides: null });
+});
+
+// ---------------------------------------------------------------------------
+// F-FF22 — PATCH with an unknown role key returns 422 FEATURE_FLAG_UNKNOWN_ROLE_KEY (MINCRM-565)
+//
+// The service now validates role_overrides keys against the live custom_roles table.
+// An unrecognized key must be rejected with a 422 rather than silently stored.
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF22: PATCH role_overrides with an unknown role key returns 422', async ({
+  restClient,
+}) => {
+  await loginAsAdmin(restClient);
+
+  const UNKNOWN_ROLE = 'totally_nonexistent_role_xyz';
+  try {
+    await restClient.patch(`/api/v1/admin/feature-flags/notes`, {
+      enabled: true,
+      role_overrides: { [UNKNOWN_ROLE]: true },
+    });
+    // If we reach here the server accepted an unknown role — fail the test.
+    expect(true).toBe(false);
+  } catch (err: unknown) {
+    const status =
+      (err as { status?: number }).status ??
+      (err as { response?: { status?: number } }).response?.status;
+    expect(status).toBe(422);
+
+    const errorCode =
+      (err as { body?: { error?: { code?: string } } }).body?.error?.code ??
+      (err as { response?: { body?: { error?: { code?: string } } } }).response?.body?.error?.code;
+    expect(errorCode).toBe('FEATURE_FLAG_UNKNOWN_ROLE_KEY');
+  }
 });
