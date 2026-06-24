@@ -23,6 +23,7 @@
  *   F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
  *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state (MINCRM-565)
  *   F-FF22 — Unknown role key in role_overrides returns 422 (MINCRM-565)
+ *   F-FF23 — Custom role name appears as a checkbox in the admin UI role override panel (MINCRM-565)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -64,6 +65,7 @@ import {
   clickOverrideRemove,
   expectFlagGroupsSectionVisible,
   expectFlagGroupRowVisible,
+  expectRoleOverrideCheckboxVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   listFeatureFlags,
@@ -836,5 +838,43 @@ test('@functional @serial F-FF22: PATCH role_overrides with an unknown role key 
       (err as { body?: { error?: { code?: string } } }).body?.error?.code ??
       (err as { response?: { body?: { error?: { code?: string } } } }).response?.body?.error?.code;
     expect(errorCode).toBe('FEATURE_FLAG_UNKNOWN_ROLE_KEY');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// F-FF23 — Custom role name appears in the admin UI role override panel (MINCRM-565)
+//
+// The role override panel is now populated dynamically from GET /api/v1/custom-roles.
+// This test creates a custom role, navigates to the feature flags admin UI, and
+// asserts the custom role renders as a checkbox in the role override matrix for a flag.
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF23: custom role name renders as a checkbox in the admin UI role override panel', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const CUSTOM_ROLE_NAME = `E2EBetaRole${Date.now()}`;
+
+  // Create a custom role via REST (requires admin).
+  await loginAsAdmin(restClient);
+  const createRes = await restClient.post<{ data: { id: string; name: string } }>(
+    '/api/v1/custom-roles',
+    { name: CUSTOM_ROLE_NAME, capabilities: ['contacts:view'] },
+  );
+  const customRoleId = createRes.body.data.id;
+
+  try {
+    await loginViaBrowser(admin.email, admin.password, { page });
+    await navigateToAdminSettings({ page }, 'flags');
+    await expectFeatureFlagsListVisible({ page }, 10_000);
+
+    // The custom role must appear as a checkbox in the role override matrix for the 'notes' flag.
+    await expectRoleOverrideCheckboxVisible('notes', CUSTOM_ROLE_NAME, { page }, 8_000);
+  } finally {
+    // Cleanup: delete the custom role via REST.
+    await loginAsAdmin(restClient);
+    await restClient.delete(`/api/v1/custom-roles/${customRoleId}`).catch(() => {});
   }
 });

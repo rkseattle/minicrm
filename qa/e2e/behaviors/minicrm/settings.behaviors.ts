@@ -2469,3 +2469,30 @@ export async function clickFlagGroupToggle(
     .resolve();
   await locator.click();
 }
+
+/**
+ * Asserts that a role override checkbox is visible in the role override panel for the
+ * given flag key and role name. Used to verify that dynamically loaded roles (built-in
+ * or custom) appear in the panel. (MINCRM-565)
+ */
+export async function expectRoleOverrideCheckboxVisible(
+  flagKey: string,
+  roleName: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `feature-flag-role-override-${flagKey}-${roleName}` },
+        {
+          type: 'css',
+          value: `[data-testid="feature-flag-role-overrides-${flagKey}"] input[data-testid*="${roleName}"]`,
+        },
+      ],
+      { intent: `role override checkbox for role '${roleName}' on flag '${flagKey}'` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
