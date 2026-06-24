@@ -1904,8 +1904,13 @@
     },
     "roles": {
       "admin": "Admin",
-      "rep": "Commercial"
+      "rep": "Commercial",
+      "manager": "Manager",
+      "viewer": "Observateur",
+      "service_account": "Compte de service"
     },
+    "roleOverridesLoading": "Chargement des rôles…",
+    "unknownRole": "Rôle inconnu (clé : {{key}})",
     "onBadge": "Activé",
     "scheduledBadge": "Planifié",
     "scheduledLabel": "Activation planifiée le {{date}}",
