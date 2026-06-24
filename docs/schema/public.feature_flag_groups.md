@@ -1,48 +1,47 @@
-# public.feature_flag_beta_users
+# public.feature_flag_groups
 
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false |  |  |  |
-| flag_key | varchar(100) |  | false |  | [public.feature_flags](public.feature_flags.md) |  |
-| user_id | uuid |  | false |  | [public.users](public.users.md) |  |
-| added_by | uuid |  | true |  | [public.users](public.users.md) |  |
-| added_at | timestamp with time zone | now() | false |  |  |  |
+| group_key | varchar(100) |  | false | [public.feature_flags](public.feature_flags.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) |  |  |
+| label | varchar(100) |  | false |  |  |  |
+| description | text | ''::text | false |  |  |  |
+| enabled | boolean | true | false |  |  |  |
+| enable_at | timestamp with time zone |  | true |  |  |  |
+| updated_by | uuid |  | true |  | [public.users](public.users.md) |  |
+| updated_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| feature_flag_beta_users_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL |
-| feature_flag_beta_users_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| feature_flag_beta_users_flag_key_fkey | FOREIGN KEY | FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE |
-| feature_flag_beta_users_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| feature_flag_beta_users_flag_key_user_id_unique | UNIQUE | UNIQUE (flag_key, user_id) |
+| feature_flag_groups_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL |
+| feature_flag_groups_pkey | PRIMARY KEY | PRIMARY KEY (group_key) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| feature_flag_beta_users_pkey | CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id) |
-| feature_flag_beta_users_flag_key_user_id_unique | CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id) |
-| feature_flag_beta_users_flag_key_index | CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key) |
+| feature_flag_groups_pkey | CREATE UNIQUE INDEX feature_flag_groups_pkey ON public.feature_flag_groups USING btree (group_key) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flags" }o--o| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL"
+"public.feature_flag_group_beta_users" }o--|| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
+"public.feature_flag_groups" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 
-"public.feature_flag_beta_users" {
-  uuid id ""
-  varchar_100_ flag_key FK ""
-  uuid user_id FK ""
-  uuid added_by FK ""
-  timestamp_with_time_zone added_at ""
+"public.feature_flag_groups" {
+  varchar_100_ group_key ""
+  varchar_100_ label ""
+  text description ""
+  boolean enabled ""
+  timestamp_with_time_zone enable_at ""
+  uuid updated_by FK ""
+  timestamp_with_time_zone updated_at ""
 }
 "public.feature_flags" {
   varchar_100_ flag_key ""
@@ -58,6 +57,12 @@ erDiagram
   smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
   jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
   varchar_100_ group_key FK ""
+}
+"public.feature_flag_group_beta_users" {
+  varchar_100_ group_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 "public.users" {
   uuid id ""

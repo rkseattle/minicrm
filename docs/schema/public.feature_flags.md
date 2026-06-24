@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| flag_key | varchar(100) |  | false | [public.feature_flag_usage](public.feature_flag_usage.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) |  |  |
+| flag_key | varchar(100) |  | false | [public.feature_flag_usage](public.feature_flag_usage.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) |  |  |
 | label | varchar(100) |  | false |  |  |  |
 | description | text |  | false |  |  |  |
 | category | varchar(50) |  | false |  |  |  |
@@ -14,14 +14,19 @@
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | system_flag | boolean | true | false |  |  |  |
 | enable_at | timestamp with time zone |  | true |  |  | When set and \<= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488) |
+| rollout_percentage | smallint |  | true |  |  | When non-null, gates users via stableHash(userId+flagKey)%100 \< rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490) |
+| rollout_stages | jsonb |  | true |  |  | Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at \<= now(). (MINCRM-490) |
+| group_key | varchar(100) |  | true |  | [public.feature_flag_groups](public.feature_flag_groups.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | feature_flags_role_overrides_valid_shape | CHECK | CHECK (is_valid_role_overrides(role_overrides)) |
+| feature_flags_rollout_percentage_range | CHECK | CHECK (((rollout_percentage >= 0) AND (rollout_percentage <= 100))) |
 | feature_flags_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL |
 | feature_flags_pkey | PRIMARY KEY | PRIMARY KEY (flag_key) |
+| feature_flags_group_key_fkey | FOREIGN KEY | FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL |
 
 ## Indexes
 
@@ -29,6 +34,7 @@
 | ---- | ---------- |
 | feature_flags_pkey | CREATE UNIQUE INDEX feature_flags_pkey ON public.feature_flags USING btree (flag_key) |
 | feature_flags_category_index | CREATE INDEX feature_flags_category_index ON public.feature_flags USING btree (category) |
+| feature_flags_group_key_index | CREATE INDEX feature_flags_group_key_index ON public.feature_flags USING btree (group_key) |
 
 ## Triggers
 
@@ -43,7 +49,9 @@ erDiagram
 
 "public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flags" }o--o| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL"
 
 "public.feature_flags" {
   varchar_100_ flag_key ""
@@ -56,6 +64,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
   timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
+  smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
+  jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
+  varchar_100_ group_key FK ""
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
@@ -66,6 +77,15 @@ erDiagram
   uuid id ""
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
+"public.feature_flag_user_overrides" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  varchar_20_ override ""
+  text reason ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
 }
@@ -97,6 +117,15 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+}
+"public.feature_flag_groups" {
+  varchar_100_ group_key ""
+  varchar_100_ label ""
+  text description ""
+  boolean enabled ""
+  timestamp_with_time_zone enable_at ""
+  uuid updated_by FK ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 

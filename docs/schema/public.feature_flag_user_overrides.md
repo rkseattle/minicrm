@@ -1,4 +1,4 @@
-# public.feature_flag_beta_users
+# public.feature_flag_user_overrides
 
 ## Columns
 
@@ -7,6 +7,8 @@
 | id | uuid | gen_random_uuid() | false |  |  |  |
 | flag_key | varchar(100) |  | false |  | [public.feature_flags](public.feature_flags.md) |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
+| override | varchar(20) |  | false |  |  |  |
+| reason | text |  | true |  |  |  |
 | added_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | added_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -14,33 +16,36 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| feature_flag_beta_users_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL |
-| feature_flag_beta_users_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
-| feature_flag_beta_users_flag_key_fkey | FOREIGN KEY | FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE |
-| feature_flag_beta_users_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| feature_flag_beta_users_flag_key_user_id_unique | UNIQUE | UNIQUE (flag_key, user_id) |
+| feature_flag_user_overrides_override_check | CHECK | CHECK (((override)::text = ANY ((ARRAY['force_enabled'::character varying, 'force_disabled'::character varying])::text[]))) |
+| feature_flag_user_overrides_added_by_fkey | FOREIGN KEY | FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL |
+| feature_flag_user_overrides_user_id_fkey | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
+| feature_flag_user_overrides_flag_key_fkey | FOREIGN KEY | FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE |
+| feature_flag_user_overrides_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| feature_flag_user_overrides_flag_key_user_id_unique | UNIQUE | UNIQUE (flag_key, user_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| feature_flag_beta_users_pkey | CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id) |
-| feature_flag_beta_users_flag_key_user_id_unique | CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id) |
-| feature_flag_beta_users_flag_key_index | CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key) |
+| feature_flag_user_overrides_pkey | CREATE UNIQUE INDEX feature_flag_user_overrides_pkey ON public.feature_flag_user_overrides USING btree (id) |
+| feature_flag_user_overrides_flag_key_user_id_unique | CREATE UNIQUE INDEX feature_flag_user_overrides_flag_key_user_id_unique ON public.feature_flag_user_overrides USING btree (flag_key, user_id) |
+| feature_flag_user_overrides_flag_key_index | CREATE INDEX feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_user_overrides" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 
-"public.feature_flag_beta_users" {
+"public.feature_flag_user_overrides" {
   uuid id ""
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
+  varchar_20_ override ""
+  text reason ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
 }
