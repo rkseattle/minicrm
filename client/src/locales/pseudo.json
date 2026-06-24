@@ -1720,8 +1720,13 @@
     },
     "roles": {
       "admin": "[Àðmïñ]",
-      "rep": "[Ŕéƥ]"
+      "rep": "[Ŕéƥ]",
+      "manager": "[Màñàĝér]",
+      "viewer": "[Vïéwér]",
+      "service_account": "[Šérvïçé Àççöùñŧ]"
     },
+    "roleOverridesLoading": "[Löàðïñĝ röléš…]",
+    "unknownRole": "[Ùñkñöwñ röle (kéÿ: {{key}})]",
     "onBadge": "[Öñ]",
     "scheduledBadge": "[Šçhéðùléð]",
     "scheduledLabel": "[Šçhéðùléð ŧö éñàƀlé öñ {{date}}]",

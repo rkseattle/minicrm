@@ -1904,8 +1904,13 @@
     },
     "roles": {
       "admin": "管理员",
-      "rep": "销售代表"
+      "rep": "销售代表",
+      "manager": "经理",
+      "viewer": "查看者",
+      "service_account": "服务账户"
     },
+    "roleOverridesLoading": "正在加载角色…",
+    "unknownRole": "未知角色（键：{{key}}）",
     "onBadge": "已开启",
     "scheduledBadge": "已计划",
     "scheduledLabel": "计划于 {{date}} 启用",

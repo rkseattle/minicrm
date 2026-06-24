@@ -1,12 +1,12 @@
 /**
  * FeatureFlagsSettings — Admin feature flag registry management.
- * Flags are grouped by category. Supports per-role override toggles for flags
- * listed in ROLE_OVERRIDE_FLAG_KEYS (reporting, csv_export, and all AI sub-features).
+ * Flags are grouped by category. Supports per-role override toggles for all flags,
+ * with roles loaded dynamically from the IAM roles API (built-in + custom). (MINCRM-565)
  * Supports scheduled auto-enable via enable_at (MINCRM-488).
  * Supports beta user enrollment for user-level targeting (MINCRM-489).
  * Supports flag groups with master toggle and group-level beta users (MINCRM-491).
  * Changes require confirmation and write to the audit log.
- * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492)
+ * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492, MINCRM-565)
  */
 
 import React, { useState, useRef } from 'react';
@@ -37,8 +37,12 @@ import {
 } from '@/api/featureFlags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
 import {
+  listCustomRoles,
+  CUSTOM_ROLES_QUERY_KEY,
+  type CustomRoleResponse,
+} from '@/api/customRoles.js';
+import {
   FEATURE_FLAG_CATEGORIES,
-  ROLE_OVERRIDE_FLAG_KEYS,
   OVERRIDE_DIRECTIONS,
   GROUP_KEY_PATTERN,
 } from '@shared/schemas/featureFlagSchema.js';
@@ -1184,8 +1188,11 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
 interface FlagRowProps {
   flag: FeatureFlagRow;
   groups: FlagGroupRow[];
+  /** All known roles (built-in + custom); null while loading. */
+  allRoles: CustomRoleResponse[] | null;
   onToggle: (flag: FeatureFlagRow, newEnabled: boolean) => void;
-  onRoleOverride: (flag: FeatureFlagRow, role: 'admin' | 'rep', value: boolean) => void;
+  onRoleOverride: (flag: FeatureFlagRow, role: string, value: boolean) => void;
+  onRoleOverrideRemove: (flag: FeatureFlagRow, role: string) => void;
   onEnableAtChange: (flag: FeatureFlagRow, isoValue: string | null) => void;
   onRolloutChange: (flag: FeatureFlagRow, percentage: number | null) => void;
   onRolloutStagesChange: (flag: FeatureFlagRow, stages: RolloutStage[] | null) => void;
@@ -1198,8 +1205,10 @@ interface FlagRowProps {
 function FlagRow({
   flag,
   groups,
+  allRoles,
   onToggle,
   onRoleOverride,
+  onRoleOverrideRemove,
   onEnableAtChange,
   onRolloutChange,
   onRolloutStagesChange,
@@ -1212,9 +1221,6 @@ function FlagRow({
   const [showBetaPanel, setShowBetaPanel] = useState(false);
   const [showRolloutStages, setShowRolloutStages] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const supportsRoleOverrides = (ROLE_OVERRIDE_FLAG_KEYS as readonly string[]).includes(
-    flag.flag_key,
-  );
 
   // isPendingSchedule: enable_at is set and still in the future — flag not yet live.
   // isScheduleFired: enable_at is set but already in the past — flag is effectively on
@@ -1422,32 +1428,66 @@ function FlagRow({
         </div>
       </div>
 
-      {/* Role override matrix — only for flags that support it */}
-      {supportsRoleOverrides && (
-        <div
-          className="mt-2 ms-0 flex items-center gap-4"
-          data-testid={`feature-flag-role-overrides-${flag.flag_key}`}
-        >
-          <span className="text-xs text-gray-500">{t('featureFlags.roleOverrides')}</span>
-          {(['admin', 'rep'] as const).map((role) => {
-            const overrideValue = flag.role_overrides?.[role];
-            const effectiveValue = overrideValue !== undefined ? overrideValue : flag.enabled;
-            return (
-              <label key={role} className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={effectiveValue}
-                  disabled={isPending}
-                  onChange={(e) => onRoleOverride(flag, role, e.target.checked)}
-                  data-testid={`feature-flag-role-override-${flag.flag_key}-${role}`}
-                  className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
-                />
-                <span className="text-xs text-gray-600">{t(`featureFlags.roles.${role}`)}</span>
-              </label>
-            );
-          })}
-        </div>
-      )}
+      {/* Role override matrix — shown for all flags; roles loaded dynamically (MINCRM-565) */}
+      <div
+        className="mt-2 ms-0 flex items-center gap-4 flex-wrap"
+        data-testid={`feature-flag-role-overrides-${flag.flag_key}`}
+      >
+        <span className="text-xs text-gray-500 shrink-0">{t('featureFlags.roleOverrides')}</span>
+        {allRoles === null ? (
+          <span
+            className="text-xs text-gray-400 animate-pulse"
+            data-testid={`feature-flag-role-overrides-loading-${flag.flag_key}`}
+          >
+            {t('featureFlags.roleOverridesLoading')}
+          </span>
+        ) : (
+          <>
+            {allRoles.map((roleEntry) => {
+              const overrideValue = flag.role_overrides?.[roleEntry.name];
+              const effectiveValue = overrideValue !== undefined ? overrideValue : flag.enabled;
+              return (
+                <label key={roleEntry.id} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={effectiveValue}
+                    disabled={isPending}
+                    onChange={(e) => onRoleOverride(flag, roleEntry.name, e.target.checked)}
+                    data-testid={`feature-flag-role-override-${flag.flag_key}-${roleEntry.name}`}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                  />
+                  <span className="text-xs text-gray-600">
+                    {t(`featureFlags.roles.${roleEntry.name}`, { defaultValue: roleEntry.name })}
+                  </span>
+                </label>
+              );
+            })}
+            {/* Render stale keys from deleted custom roles as remove-only controls */}
+            {flag.role_overrides !== null &&
+              Object.keys(flag.role_overrides).map((key) => {
+                if (allRoles.some((r) => r.name === key)) return null;
+                return (
+                  <span
+                    key={key}
+                    className="flex items-center gap-1.5 text-xs text-amber-700"
+                    data-testid={`feature-flag-role-override-unknown-${flag.flag_key}-${key}`}
+                  >
+                    {t('featureFlags.unknownRole', { key })}
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => onRoleOverrideRemove(flag, key)}
+                      className="text-amber-600 hover:text-amber-800 focus:outline-none focus:underline disabled:opacity-50"
+                      data-testid={`feature-flag-role-override-remove-${flag.flag_key}-${key}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
+          </>
+        )}
+      </div>
 
       {/* Schedule enable_at picker — only when the flag is currently disabled (MINCRM-488) */}
       {!flag.enabled && (
@@ -1682,6 +1722,14 @@ export default function FeatureFlagsSettings() {
     queryFn: listFlagGroups,
   });
 
+  // Fetch all roles (built-in + custom) once; passed to every FlagRow to power the
+  // dynamic role override panel. null while loading. (MINCRM-565)
+  const { data: rolesData } = useQuery({
+    queryKey: CUSTOM_ROLES_QUERY_KEY,
+    queryFn: listCustomRoles,
+  });
+  const allRoles: CustomRoleResponse[] | null = rolesData ?? null;
+
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1716,10 +1764,21 @@ export default function FeatureFlagsSettings() {
     setConfirmPending({ flag, patch: { enabled: newEnabled } });
   }
 
-  function handleRoleOverride(flag: FeatureFlagRow, role: 'admin' | 'rep', value: boolean) {
+  function handleRoleOverride(flag: FeatureFlagRow, role: string, value: boolean) {
     const existing = flag.role_overrides ?? {};
     const newOverrides = { ...existing, [role]: value };
     setConfirmPending({ flag, patch: { enabled: flag.enabled, role_overrides: newOverrides } });
+  }
+
+  function handleRoleOverrideRemove(flag: FeatureFlagRow, role: string) {
+    const existing = flag.role_overrides ?? {};
+    const newOverrides = { ...existing };
+    delete newOverrides[role];
+    const clearedOverrides = Object.keys(newOverrides).length === 0 ? null : newOverrides;
+    setConfirmPending({
+      flag,
+      patch: { enabled: flag.enabled, role_overrides: clearedOverrides },
+    });
   }
 
   function handleEnableAtChange(flag: FeatureFlagRow, isoValue: string | null) {
@@ -1889,8 +1948,10 @@ export default function FeatureFlagsSettings() {
                     <FlagRow
                       flag={flag}
                       groups={groups}
+                      allRoles={allRoles}
                       onToggle={handleToggle}
                       onRoleOverride={handleRoleOverride}
+                      onRoleOverrideRemove={handleRoleOverrideRemove}
                       onEnableAtChange={handleEnableAtChange}
                       onRolloutChange={handleRolloutChange}
                       onRolloutStagesChange={handleRolloutStagesChange}

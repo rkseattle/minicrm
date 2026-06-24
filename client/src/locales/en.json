@@ -1904,8 +1904,13 @@
     },
     "roles": {
       "admin": "Admin",
-      "rep": "Rep"
+      "rep": "Rep",
+      "manager": "Manager",
+      "viewer": "Viewer",
+      "service_account": "Service Account"
     },
+    "roleOverridesLoading": "Loading roles…",
+    "unknownRole": "Unknown role (key: {{key}})",
     "onBadge": "On",
     "scheduledBadge": "Scheduled",
     "scheduledLabel": "Scheduled to enable on {{date}}",

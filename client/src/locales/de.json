@@ -1904,8 +1904,13 @@
     },
     "roles": {
       "admin": "Admin",
-      "rep": "Vertrieb"
+      "rep": "Vertrieb",
+      "manager": "Manager",
+      "viewer": "Betrachter",
+      "service_account": "Dienstkonto"
     },
+    "roleOverridesLoading": "Rollen werden geladen…",
+    "unknownRole": "Unbekannte Rolle (Schlüssel: {{key}})",
     "onBadge": "An",
     "scheduledBadge": "Geplant",
     "scheduledLabel": "Automatische Aktivierung am {{date}}",
