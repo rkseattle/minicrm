@@ -100,15 +100,19 @@ describe('FeatureFlagsSettings', () => {
     expect(mobileToggle).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('renders role override matrix only for flags that support it', async () => {
+  // MINCRM-565: every flag now shows a role override panel (no longer restricted to an allowlist)
+  it('renders role override panel for all flags, including notes', async () => {
     renderWithProviders(<FeatureFlagsSettings />);
 
     await waitFor(() => {
       expect(screen.getByTestId('feature-flag-role-overrides-reporting')).toBeInTheDocument();
     });
 
-    // notes does not support role overrides
-    expect(screen.queryByTestId('feature-flag-role-overrides-notes')).not.toBeInTheDocument();
+    // notes flag also shows role override panel (MINCRM-565 — no more ROLE_OVERRIDE_FLAG_KEYS)
+    expect(screen.getByTestId('feature-flag-role-overrides-notes')).toBeInTheDocument();
+    // Role checkboxes default to flag.enabled since role_overrides is null for notes
+    expect(screen.getByTestId('feature-flag-role-override-notes-admin')).toBeInTheDocument();
+    expect(screen.getByTestId('feature-flag-role-override-notes-rep')).toBeInTheDocument();
   });
 
   // MINCRM-460: AI sub-feature flags also render role override matrix

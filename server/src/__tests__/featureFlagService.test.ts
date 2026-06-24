@@ -306,6 +306,68 @@ describe('updateFeatureFlag', () => {
     const updated = await updateFeatureFlag('notes', { enabled: false }, ACTOR());
     expect(updated?.updated_by_name).toBe('FF Service Actor');
   });
+
+  // MINCRM-565 — dynamic role key validation
+  it('accepts role_overrides with all built-in role keys', async () => {
+    const updated = await updateFeatureFlag(
+      'notes',
+      {
+        enabled: true,
+        role_overrides: {
+          admin: true,
+          rep: false,
+          manager: true,
+          viewer: false,
+          service_account: false,
+        },
+      },
+      ACTOR(),
+    );
+    expect(updated).not.toBeNull();
+    expect(updated?.role_overrides?.admin).toBe(true);
+    expect(updated?.role_overrides?.rep).toBe(false);
+    expect(updated?.role_overrides?.manager).toBe(true);
+  });
+
+  it('accepts role_overrides with a valid custom role name', async () => {
+    const roleResult = await pool.query<{ id: string }>(
+      `INSERT INTO public.custom_roles (name, description, is_builtin)
+       VALUES ('SeniorRep', null, false)
+       RETURNING id`,
+    );
+    const roleId = roleResult.rows[0]!.id;
+
+    try {
+      const updated = await updateFeatureFlag(
+        'notes',
+        { enabled: true, role_overrides: { SeniorRep: true } },
+        ACTOR(),
+      );
+      expect(updated).not.toBeNull();
+      expect(updated?.role_overrides?.SeniorRep).toBe(true);
+    } finally {
+      await pool.query('DELETE FROM public.custom_roles WHERE id = $1', [roleId]);
+    }
+  });
+
+  it('rejects role_overrides with an unknown role key with FEATURE_FLAG_UNKNOWN_ROLE_KEY', async () => {
+    await expect(
+      updateFeatureFlag(
+        'notes',
+        { enabled: true, role_overrides: { nonexistent_role: true } },
+        ACTOR(),
+      ),
+    ).rejects.toMatchObject({ code: 'FEATURE_FLAG_UNKNOWN_ROLE_KEY' });
+  });
+
+  it('null role_overrides clears existing overrides', async () => {
+    const cleared = await updateFeatureFlag(
+      'reporting',
+      { enabled: true, role_overrides: null },
+      ACTOR(),
+    );
+    expect(cleared?.role_overrides).toBeNull();
+  });
 });
 
 // ── recordFeatureFlagUsage ────────────────────────────────────────────────────
