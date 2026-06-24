@@ -1420,18 +1420,9 @@ export async function addGroupBetaUser(
   actor: AuditActor,
 ): Promise<GroupBetaUserEntry> {
   const client: PoolClient = await pool.connect();
-  let inTransaction = false;
   try {
-    const groupRow = await client.query<{ label: string }>(
-      `SELECT label FROM feature_flag_groups WHERE group_key = $1`,
-      [groupKey],
-    );
-    if (!groupRow.rows[0]) {
-      throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
-        code: 'FLAG_GROUP_NOT_FOUND',
-      });
-    }
-
+    // Verify user exists before opening a transaction (user rows are never concurrently deleted
+    // in normal operation; no lock needed here).
     const userRow = await client.query<{ name: string; email: string }>(
       `SELECT name, email FROM users WHERE id = $1`,
       [userId],
@@ -1441,7 +1432,18 @@ export async function addGroupBetaUser(
     }
 
     await client.query('BEGIN');
-    inTransaction = true;
+
+    // Lock the group row inside the transaction so a concurrent DELETE cannot remove the
+    // group between the existence check and the FK-referencing INSERT (closes the 23503 race).
+    const groupRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flag_groups WHERE group_key = $1 FOR UPDATE`,
+      [groupKey],
+    );
+    if (!groupRow.rows[0]) {
+      throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
+        code: 'FLAG_GROUP_NOT_FOUND',
+      });
+    }
 
     const insertResult = await client.query<{ added_at: Date }>(
       `INSERT INTO feature_flag_group_beta_users (group_key, user_id, added_by)
@@ -1472,13 +1474,20 @@ export async function addGroupBetaUser(
       added_at: insertResult.rows[0].added_at.toISOString(),
     };
   } catch (err) {
-    if (inTransaction) await client.query('ROLLBACK');
+    await client.query('ROLLBACK');
     const pgErr = err as { code?: string };
     if (pgErr.code === '23505') {
       throw Object.assign(
         new Error(`User is already enrolled in the beta for group '${groupKey}'`),
         { code: 'GROUP_BETA_USER_ALREADY_ENROLLED' },
       );
+    }
+    // 23503 = FK violation: group was deleted between FOR UPDATE and INSERT (should not
+    // happen now that we lock the group row, but handle defensively).
+    if (pgErr.code === '23503') {
+      throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
+        code: 'FLAG_GROUP_NOT_FOUND',
+      });
     }
     throw err;
   } finally {
