@@ -1,6 +1,6 @@
 /**
  * Feature flag routes — all endpoints require authentication and admin role.
- * (MINCRM-463, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import { Router } from 'express';
@@ -17,6 +17,13 @@ import {
   listUserOverridesHandler,
   upsertUserOverrideHandler,
   deleteUserOverrideHandler,
+  listFlagGroupsHandler,
+  createFlagGroupHandler,
+  updateFlagGroupHandler,
+  deleteFlagGroupHandler,
+  listGroupBetaUsersHandler,
+  enrollGroupBetaUserHandler,
+  removeGroupBetaUserHandler,
 } from '../controllers/featureFlagController.js';
 
 const router = Router();
@@ -81,6 +88,287 @@ router.get('/me', authenticate, asyncHandler(getMyFeatureFlagsHandler));
  *         $ref: '#/components/responses/Forbidden'
  */
 router.get('/', authenticate, requireRole('admin'), asyncHandler(listFeatureFlagsHandler));
+
+// ── Flag groups (MINCRM-491) ───────────────────────────────────────────────────
+// NOTE: Group routes must be registered before /:key to prevent Express from
+// matching the literal string 'groups' as a flag key.
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups:
+ *   get:
+ *     tags: [FeatureFlags]
+ *     operationId: listFlagGroups
+ *     summary: List all flag groups
+ *     description: Returns all flag groups with member_count and beta_user_count. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of flag groups
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/groups', authenticate, requireRole('admin'), asyncHandler(listFlagGroupsHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups:
+ *   post:
+ *     tags: [FeatureFlags]
+ *     operationId: createFlagGroup
+ *     summary: Create a flag group
+ *     description: >
+ *       Creates a new flag group. Groups act as a gate layer above flags — disabling a group
+ *       blocks all member flags for all users not in the group's beta list. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [group_key, label]
+ *             properties:
+ *               group_key:
+ *                 type: string
+ *                 maxLength: 100
+ *                 pattern: '^[a-z0-9_-]+$'
+ *               label:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 1000
+ *     responses:
+ *       201:
+ *         description: Group created
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: Group key already exists
+ */
+router.post('/groups', authenticate, requireRole('admin'), asyncHandler(createFlagGroupHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups/{key}:
+ *   patch:
+ *     tags: [FeatureFlags]
+ *     operationId: updateFlagGroup
+ *     summary: Update a flag group
+ *     description: >
+ *       Updates a flag group's enabled state, enable_at schedule, label, or description.
+ *       Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *               label:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               enable_at:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Group updated
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.patch(
+  '/groups/:key',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(updateFlagGroupHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups/{key}:
+ *   delete:
+ *     tags: [FeatureFlags]
+ *     operationId: deleteFlagGroup
+ *     summary: Delete a flag group
+ *     description: >
+ *       Deletes a flag group. Returns 409 if the group still has member flags.
+ *       When deleted, member flags retain their own state but become ungrouped. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Group deleted
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Group has member flags
+ */
+router.delete(
+  '/groups/:key',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(deleteFlagGroupHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups/{key}/beta-users:
+ *   get:
+ *     tags: [FeatureFlags]
+ *     operationId: listGroupBetaUsers
+ *     summary: List beta users for a flag group
+ *     description: >
+ *       Returns all users enrolled in the beta for this group.
+ *       Group beta users bypass the group gate even when the group is disabled. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of enrolled group beta users
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/groups/:key/beta-users',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listGroupBetaUsersHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups/{key}/beta-users:
+ *   post:
+ *     tags: [FeatureFlags]
+ *     operationId: enrollGroupBetaUser
+ *     summary: Enroll a user in a group's beta
+ *     description: >
+ *       Enrolls a user in the group's beta list. This user bypasses the group gate
+ *       and proceeds to flag-level evaluation even when the group is disabled. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId]
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: User enrolled in group beta
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: User already enrolled in group beta
+ */
+router.post(
+  '/groups/:key/beta-users',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(enrollGroupBetaUserHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/feature-flags/groups/{key}/beta-users/{userId}:
+ *   delete:
+ *     tags: [FeatureFlags]
+ *     operationId: removeGroupBetaUser
+ *     summary: Remove a user from a group's beta
+ *     description: Removes the user's enrollment from the group's beta list. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Enrollment removed
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete(
+  '/groups/:key/beta-users/:userId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(removeGroupBetaUserHandler),
+);
 
 /**
  * @openapi

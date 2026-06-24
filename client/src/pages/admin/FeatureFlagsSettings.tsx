@@ -4,8 +4,9 @@
  * listed in ROLE_OVERRIDE_FLAG_KEYS (reporting, csv_export, and all AI sub-features).
  * Supports scheduled auto-enable via enable_at (MINCRM-488).
  * Supports beta user enrollment for user-level targeting (MINCRM-489).
+ * Supports flag groups with master toggle and group-level beta users (MINCRM-491).
  * Changes require confirmation and write to the audit log.
- * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import React, { useState, useRef } from 'react';
@@ -24,12 +25,22 @@ import {
   upsertUserOverride,
   deleteUserOverride,
   userOverridesQueryKey,
+  listFlagGroups,
+  createFlagGroup,
+  updateFlagGroup,
+  deleteFlagGroup,
+  getGroupBetaUsers,
+  enrollGroupBetaUser,
+  removeGroupBetaUser,
+  FLAG_GROUPS_QUERY_KEY,
+  groupBetaUsersQueryKey,
 } from '@/api/featureFlags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
 import {
   FEATURE_FLAG_CATEGORIES,
   ROLE_OVERRIDE_FLAG_KEYS,
   OVERRIDE_DIRECTIONS,
+  GROUP_KEY_PATTERN,
 } from '@shared/schemas/featureFlagSchema.js';
 import type {
   FeatureFlagRow,
@@ -38,6 +49,7 @@ import type {
   UserOverrideEntry,
   OverrideDirection,
   RolloutStage,
+  FlagGroupRow,
 } from '@shared/schemas/featureFlagSchema.js';
 
 const ACTIVE_USER_WARNING_THRESHOLD = 1;
@@ -540,26 +552,652 @@ function UserOverridesPanel({ flagKey }: UserOverridesPanelProps) {
   );
 }
 
+// ── Group Beta Users Panel (MINCRM-491) ───────────────────────────────────────
+
+interface GroupBetaUsersPanelProps {
+  groupKey: string;
+  groupLabel: string;
+}
+
+function GroupBetaUsersPanel({ groupKey }: GroupBetaUsersPanelProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+
+  const { data: betaData } = useQuery({
+    queryKey: groupBetaUsersQueryKey(groupKey),
+    queryFn: () => getGroupBetaUsers(groupKey),
+  });
+
+  const { data: activeUsersData } = useQuery({
+    queryKey: ACTIVE_USERS_QUERY_KEY,
+    queryFn: listActiveUsers,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const enrolledIds = new Set((betaData?.users ?? []).map((u) => u.user_id));
+
+  const filteredUsers = (activeUsersData?.users ?? []).filter(
+    (u) =>
+      !enrolledIds.has(u.id) &&
+      (search.trim() === '' || u.name.toLowerCase().includes(search.toLowerCase())),
+  );
+
+  const enrollMutation = useMutation({
+    mutationFn: (userId: string) => enrollGroupBetaUser(groupKey, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupBetaUsersQueryKey(groupKey) });
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
+      setSearch('');
+      setEnrollError(null);
+    },
+    onError: (err: unknown) => {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data
+        ?.error?.code;
+      if (code === 'GROUP_BETA_USER_ALREADY_ENROLLED') {
+        setEnrollError(t('featureFlags.groups.betaUserAlreadyEnrolled'));
+      } else {
+        setEnrollError(t('featureFlags.saveError'));
+      }
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => removeGroupBetaUser(groupKey, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: groupBetaUsersQueryKey(groupKey) });
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
+    },
+  });
+
+  const enrolledUsers = betaData?.users ?? [];
+
+  return (
+    <div
+      className="mt-3 border-t border-gray-100 pt-3"
+      data-testid={`group-beta-panel-${groupKey}`}
+    >
+      <p className="text-xs font-medium text-gray-700 mb-2">{t('featureFlags.groups.betaUsers')}</p>
+
+      {enrollError && (
+        <p className="text-xs text-red-600 mb-2" role="alert">
+          {enrollError}
+        </p>
+      )}
+
+      {enrolledUsers.length === 0 ? (
+        <p className="text-xs text-gray-400 mb-2">{t('featureFlags.groups.betaUserEmpty')}</p>
+      ) : (
+        <ul className="mb-2 space-y-1" aria-label={t('featureFlags.groups.betaUsers')}>
+          {enrolledUsers.map((user) => (
+            <li
+              key={user.user_id}
+              className="flex items-center justify-between gap-2 text-xs text-gray-700"
+              data-testid={`group-beta-user-row-${groupKey}-${user.user_id}`}
+            >
+              <span className="min-w-0 truncate">
+                {user.name}
+                <span className="text-gray-400 ms-1">{user.email}</span>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-50"
+                disabled={removeMutation.isPending}
+                onClick={() => removeMutation.mutate(user.user_id)}
+                data-testid={`group-beta-user-remove-${groupKey}-${user.user_id}`}
+                aria-label={`${t('featureFlags.groups.betaUserRemove')} ${user.name}`}
+              >
+                {t('featureFlags.groups.betaUserRemove')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="relative">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('featureFlags.betaUserSearch')}
+          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          data-testid={`group-beta-user-search-${groupKey}`}
+          aria-label={t('featureFlags.betaUserSearch')}
+        />
+        {search.trim() !== '' && filteredUsers.length > 0 && (
+          <ul
+            className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-40 overflow-y-auto"
+            role="listbox"
+            aria-label={t('featureFlags.betaUserSearch')}
+          >
+            {filteredUsers.map((user) => (
+              <li
+                key={user.id}
+                role="option"
+                aria-selected={false}
+                className="px-3 py-1.5 text-xs text-gray-800 hover:bg-indigo-50 cursor-pointer"
+                onClick={() => enrollMutation.mutate(user.id)}
+                onKeyDown={(e) => e.key === 'Enter' && enrollMutation.mutate(user.id)}
+                data-testid={`group-beta-user-option-${groupKey}-${user.id}`}
+                tabIndex={0}
+              >
+                {user.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Group Row (MINCRM-491) ────────────────────────────────────────────────────
+
+interface GroupRowProps {
+  group: FlagGroupRow;
+  memberFlags: FeatureFlagRow[];
+  onToggle: (group: FlagGroupRow, newEnabled: boolean) => void;
+  onEnableAtChange: (group: FlagGroupRow, isoValue: string | null) => void;
+  onDelete: (group: FlagGroupRow) => void;
+  onFlagClick: (flagKey: string) => void;
+  isPending: boolean;
+  nowMs: number;
+}
+
+function GroupRow({
+  group,
+  memberFlags,
+  onToggle,
+  onEnableAtChange,
+  onDelete,
+  onFlagClick,
+  isPending,
+  nowMs,
+}: GroupRowProps) {
+  const { t } = useTranslation();
+  const [showDetail, setShowDetail] = useState(false);
+
+  const isPendingSchedule =
+    !group.enabled && group.enable_at !== null && isEnableAtPending(group.enable_at, nowMs);
+
+  return (
+    <div
+      className={`py-4 border-b border-gray-100 last:border-0 ${!group.enabled && !isPendingSchedule ? 'opacity-60' : ''}`}
+      data-testid={`flag-group-row-${group.group_key}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-900">{group.label}</span>
+
+            {/* Member count badge */}
+            {group.member_count > 0 && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600"
+                data-testid={`group-member-count-${group.group_key}`}
+              >
+                {t('featureFlags.groups.memberCount', { count: group.member_count })}
+              </span>
+            )}
+
+            {/* Beta user count badge */}
+            {group.beta_user_count > 0 && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700"
+                data-testid={`group-beta-count-${group.group_key}`}
+              >
+                {t('featureFlags.betaUserCount_other', { count: group.beta_user_count })}
+              </span>
+            )}
+
+            {/* Scheduled badge */}
+            {isPendingSchedule && group.enable_at !== null && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700"
+                data-testid={`group-badge-scheduled-${group.group_key}`}
+                title={t('featureFlags.scheduledLabel', { date: formatEnableAt(group.enable_at) })}
+              >
+                {t('featureFlags.scheduledBadge')}
+              </span>
+            )}
+
+            {!group.enabled && !isPendingSchedule && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700"
+                data-testid={`group-badge-disabled-${group.group_key}`}
+              >
+                {t('featureFlags.groups.disabledBadge')}
+              </span>
+            )}
+          </div>
+
+          {group.description && (
+            <p className="text-xs text-gray-500 mt-0.5 break-words">{group.description}</p>
+          )}
+
+          {group.updated_by_name && (
+            <p className="text-xs text-gray-400 mt-1">
+              {t('featureFlags.lastChanged', {
+                name: group.updated_by_name,
+                date: formatUpdatedAt(group.updated_at),
+              })}
+            </p>
+          )}
+        </div>
+
+        {/* Master toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={group.enabled}
+            aria-label={t('featureFlags.groups.toggleLabel', { label: group.label })}
+            disabled={isPending}
+            onClick={() => onToggle(group, !group.enabled)}
+            data-testid={`flag-group-toggle-${group.group_key}`}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+              group.enabled ? 'bg-indigo-600' : 'bg-gray-300'
+            } disabled:cursor-not-allowed`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                group.enabled ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* Schedule enable_at picker — only when group is disabled */}
+      {!group.enabled && (
+        <div
+          className="mt-2 flex items-center gap-3 flex-wrap"
+          data-testid={`group-enable-at-${group.group_key}`}
+        >
+          <label
+            className="text-xs text-gray-500 shrink-0"
+            htmlFor={`group-enable-at-${group.group_key}`}
+          >
+            {t('featureFlags.enableAt')}
+          </label>
+          <input
+            id={`group-enable-at-${group.group_key}`}
+            type="datetime-local"
+            disabled={isPending}
+            value={group.enable_at ? isoToDatetimeLocal(group.enable_at) : ''}
+            onChange={(e) =>
+              onEnableAtChange(group, e.target.value ? datetimeLocalToIso(e.target.value) : null)
+            }
+            data-testid={`group-enable-at-input-${group.group_key}`}
+            className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          {group.enable_at !== null && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onEnableAtChange(group, null)}
+              data-testid={`group-enable-at-clear-${group.group_key}`}
+              className="text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline disabled:opacity-50"
+            >
+              {t('featureFlags.enableAtClear')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Expand/collapse detail */}
+      <div className="mt-2">
+        <button
+          type="button"
+          className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+          onClick={() => setShowDetail((v) => !v)}
+          data-testid={`group-detail-toggle-${group.group_key}`}
+          aria-expanded={showDetail}
+        >
+          {showDetail ? t('common.collapse') : t('common.expand')}
+        </button>
+      </div>
+
+      {showDetail && (
+        <div className="mt-2">
+          {/* Group beta users panel */}
+          <GroupBetaUsersPanel groupKey={group.group_key} groupLabel={group.label} />
+
+          {/* Member flags list */}
+          {memberFlags.length > 0 && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {t('featureFlags.groups.memberFlags')}
+              </p>
+              <ul className="space-y-1">
+                {memberFlags.map((flag) => (
+                  <li key={flag.flag_key}>
+                    <button
+                      type="button"
+                      className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-none focus:underline"
+                      onClick={() => onFlagClick(flag.flag_key)}
+                      data-testid={`group-member-flag-${group.group_key}-${flag.flag_key}`}
+                    >
+                      {flag.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Delete group button — only enabled when no member flags */}
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              disabled={isPending || group.member_count > 0}
+              onClick={() => onDelete(group)}
+              className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid={`group-delete-${group.group_key}`}
+              title={
+                group.member_count > 0 ? t('featureFlags.groups.deleteDisabledTooltip') : undefined
+              }
+            >
+              {t('featureFlags.groups.delete')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Create Group Form (MINCRM-491) ────────────────────────────────────────────
+
+interface CreateGroupFormProps {
+  onCreated: () => void;
+}
+
+function CreateGroupForm({ onCreated }: CreateGroupFormProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [groupKey, setGroupKey] = useState('');
+  const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createFlagGroup({
+        group_key: groupKey.trim(),
+        label: label.trim(),
+        description: description.trim(),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
+      setGroupKey('');
+      setLabel('');
+      setDescription('');
+      setFormError(null);
+      setShowForm(false);
+      onCreated();
+    },
+    onError: (err: unknown) => {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data
+        ?.error?.code;
+      if (code === 'FLAG_GROUP_DUPLICATE_KEY') {
+        setFormError(t('featureFlags.groups.duplicateKey'));
+      } else {
+        setFormError(t('featureFlags.saveError'));
+      }
+    },
+  });
+
+  function handleLabelChange(val: string) {
+    setLabel(val);
+    // Auto-suggest a group_key from the label when group_key is still empty or was auto-derived
+    const slugged = val
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    setGroupKey(slugged);
+  }
+
+  const isKeyValid = groupKey.trim().length > 0 && GROUP_KEY_PATTERN.test(groupKey.trim());
+  const isLabelValid = label.trim().length > 0;
+  const canSubmit = isKeyValid && isLabelValid && !createMutation.isPending;
+
+  if (!showForm) {
+    return (
+      <button
+        type="button"
+        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none focus:underline"
+        onClick={() => setShowForm(true)}
+        data-testid="group-create-open"
+      >
+        {t('featureFlags.groups.createGroup')}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="mt-3 border border-gray-200 rounded-lg p-4 bg-gray-50"
+      data-testid="group-create-form"
+    >
+      <p className="text-xs font-medium text-gray-700 mb-3">
+        {t('featureFlags.groups.createGroup')}
+      </p>
+
+      {formError && (
+        <p className="text-xs text-red-600 mb-2" role="alert">
+          {formError}
+        </p>
+      )}
+
+      <div className="space-y-2">
+        <div>
+          <label className="text-xs text-gray-600 block mb-0.5" htmlFor="group-create-label">
+            {t('featureFlags.groups.labelField')}
+          </label>
+          <input
+            id="group-create-label"
+            type="text"
+            value={label}
+            onChange={(e) => handleLabelChange(e.target.value)}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid="group-create-label"
+            maxLength={100}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-600 block mb-0.5" htmlFor="group-create-key">
+            {t('featureFlags.groups.keyField')}
+          </label>
+          <input
+            id="group-create-key"
+            type="text"
+            value={groupKey}
+            onChange={(e) => setGroupKey(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+            data-testid="group-create-key"
+            maxLength={100}
+            placeholder="my_group_key"
+          />
+          {groupKey && !isKeyValid && (
+            <p className="text-xs text-red-500 mt-0.5">{t('featureFlags.groups.keyInvalid')}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-600 block mb-0.5" htmlFor="group-create-description">
+            {t('featureFlags.groups.descriptionField')}
+          </label>
+          <input
+            id="group-create-description"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid="group-create-description"
+            maxLength={1000}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={() => createMutation.mutate()}
+          className="text-xs font-medium text-white bg-indigo-600 rounded px-3 py-1.5 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          data-testid="group-create-submit"
+        >
+          {t('featureFlags.groups.createSubmit')}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowForm(false);
+            setFormError(null);
+          }}
+          className="text-xs text-gray-500 hover:text-gray-700 focus:outline-none focus:underline"
+          data-testid="group-create-cancel"
+        >
+          {t('common.cancel')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Groups Section (MINCRM-491) ───────────────────────────────────────────────
+
+interface GroupsSectionProps {
+  flags: FeatureFlagRow[];
+  onFlagClick: (flagKey: string) => void;
+}
+
+function GroupsSection({ flags, onFlagClick }: GroupsSectionProps) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+
+  const { data: groupsData } = useQuery({
+    queryKey: FLAG_GROUPS_QUERY_KEY,
+    queryFn: listFlagGroups,
+  });
+
+  const groups = groupsData?.groups ?? [];
+
+  const [pendingGroupKey, setPendingGroupKey] = useState<string | null>(null);
+
+  const groupMutation = useMutation({
+    mutationFn: ({ key, patch }: { key: string; patch: Parameters<typeof updateFlagGroup>[1] }) =>
+      updateFlagGroup(key, patch),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
+      setPendingGroupKey(null);
+    },
+    onError: () => {
+      setPendingGroupKey(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (key: string) => deleteFlagGroup(key),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: FEATURE_FLAGS_QUERY_KEY });
+    },
+  });
+
+  function handleToggle(group: FlagGroupRow, newEnabled: boolean) {
+    setPendingGroupKey(group.group_key);
+    groupMutation.mutate({ key: group.group_key, patch: { enabled: newEnabled } });
+  }
+
+  function handleEnableAtChange(group: FlagGroupRow, isoValue: string | null) {
+    setPendingGroupKey(group.group_key);
+    groupMutation.mutate({ key: group.group_key, patch: { enable_at: isoValue } });
+  }
+
+  function handleDelete(group: FlagGroupRow) {
+    deleteMutation.mutate(group.group_key);
+  }
+
+  if (groups.length === 0) {
+    return (
+      <section aria-labelledby="feature-flag-groups-heading" data-testid="flag-groups-section">
+        <h2
+          id="feature-flag-groups-heading"
+          className="text-base font-semibold text-gray-900 mb-3"
+          data-testid="groups-section-heading"
+        >
+          {t('featureFlags.groups.sectionTitle')}
+        </h2>
+        <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
+          <p className="text-xs text-gray-400">{t('featureFlags.groups.empty')}</p>
+          <CreateGroupForm onCreated={() => {}} />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="feature-flag-groups-heading" data-testid="flag-groups-section">
+      <h2
+        id="feature-flag-groups-heading"
+        className="text-base font-semibold text-gray-900 mb-3"
+        data-testid="groups-section-heading"
+      >
+        {t('featureFlags.groups.sectionTitle')}
+      </h2>
+      <div className="bg-white border border-gray-200 rounded-lg px-4 divide-y divide-gray-100">
+        {groups.map((group) => (
+          <GroupRow
+            key={group.group_key}
+            group={group}
+            memberFlags={flags.filter((f) => f.group_key === group.group_key)}
+            onToggle={handleToggle}
+            onEnableAtChange={handleEnableAtChange}
+            onDelete={handleDelete}
+            onFlagClick={onFlagClick}
+            isPending={pendingGroupKey === group.group_key}
+            nowMs={nowMs}
+          />
+        ))}
+      </div>
+      <CreateGroupForm onCreated={() => {}} />
+    </section>
+  );
+}
+
 // ── Flag Row ──────────────────────────────────────────────────────────────────
 
 interface FlagRowProps {
   flag: FeatureFlagRow;
+  groups: FlagGroupRow[];
   onToggle: (flag: FeatureFlagRow, newEnabled: boolean) => void;
   onRoleOverride: (flag: FeatureFlagRow, role: 'admin' | 'rep', value: boolean) => void;
   onEnableAtChange: (flag: FeatureFlagRow, isoValue: string | null) => void;
   onRolloutChange: (flag: FeatureFlagRow, percentage: number | null) => void;
   onRolloutStagesChange: (flag: FeatureFlagRow, stages: RolloutStage[] | null) => void;
+  onGroupChange: (flag: FeatureFlagRow, groupKey: string | null) => void;
+  onGroupBadgeClick: (groupKey: string) => void;
   isPending: boolean;
   nowMs: number;
 }
 
 function FlagRow({
   flag,
+  groups,
   onToggle,
   onRoleOverride,
   onEnableAtChange,
   onRolloutChange,
   onRolloutStagesChange,
+  onGroupChange,
+  onGroupBadgeClick,
   isPending,
   nowMs,
 }: FlagRowProps) {
@@ -713,6 +1351,18 @@ function FlagRow({
                   count: flag.override_count.force_disabled,
                 })}
               </span>
+            )}
+
+            {/* Group badge — click opens the group detail (MINCRM-491) */}
+            {flag.group_key && (
+              <button
+                type="button"
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                onClick={() => onGroupBadgeClick(flag.group_key!)}
+                data-testid={`flag-group-badge-${flag.flag_key}`}
+              >
+                {groups.find((g) => g.group_key === flag.group_key)?.label ?? flag.group_key}
+              </button>
             )}
           </div>
 
@@ -959,6 +1609,33 @@ function FlagRow({
             </div>
           )}
 
+          {/* Group assignment dropdown (MINCRM-491) */}
+          {groups.length > 0 && (
+            <div className="mt-3 border-t border-gray-100 pt-3 flex items-center gap-3 flex-wrap">
+              <label
+                className="text-xs text-gray-500 shrink-0"
+                htmlFor={`flag-group-select-${flag.flag_key}`}
+              >
+                {t('featureFlags.groups.assignGroup')}
+              </label>
+              <select
+                id={`flag-group-select-${flag.flag_key}`}
+                disabled={isPending}
+                value={flag.group_key ?? ''}
+                onChange={(e) => onGroupChange(flag, e.target.value || null)}
+                className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid={`flag-group-select-${flag.flag_key}`}
+              >
+                <option value="">{t('featureFlags.groups.noGroup')}</option>
+                {groups.map((g) => (
+                  <option key={g.group_key} value={g.group_key}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Beta users panel (MINCRM-489) */}
           {(showBetaPanel || flag.beta_user_count === 0) && (
             <BetaUsersPanel flagKey={flag.flag_key} flagLabel={flag.label} />
@@ -993,8 +1670,16 @@ export default function FeatureFlagsSettings() {
     queryFn: listFeatureFlags,
   });
 
+  const { data: groupsData } = useQuery({
+    queryKey: FLAG_GROUPS_QUERY_KEY,
+    queryFn: listFlagGroups,
+  });
+
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Ref map for scrolling to a flag row when clicking a group member link (MINCRM-491)
+  const flagRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [confirmPending, setConfirmPending] = useState<{
     flag: FeatureFlagRow;
@@ -1007,6 +1692,7 @@ export default function FeatureFlagsSettings() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: FEATURE_FLAGS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: MY_FEATURE_FLAGS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
       setPendingKey(null);
       setSaveError(null);
     },
@@ -1046,6 +1732,23 @@ export default function FeatureFlagsSettings() {
     });
   }
 
+  function handleGroupChange(flag: FeatureFlagRow, groupKey: string | null) {
+    setPendingKey(flag.flag_key);
+    mutation.mutate({
+      key: flag.flag_key,
+      patch: { enabled: flag.enabled, group_key: groupKey },
+    });
+  }
+
+  // Scrolls the page to the flag row identified by flagKey, opened from a group detail link.
+  function handleFlagClick(flagKey: string) {
+    const el = flagRowRefs.current[flagKey];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    }
+  }
+
   function handleConfirm() {
     if (!confirmPending) return;
     setPendingKey(confirmPending.flag.flag_key);
@@ -1058,6 +1761,8 @@ export default function FeatureFlagsSettings() {
   }
 
   const flags = data?.flags ?? [];
+  const groups = groupsData?.groups ?? [];
+
   // Recomputed on every render so enable_at classification stays accurate after React Query
   // refetches. A frozen mount-time snapshot keeps isPendingSchedule=true after the schedule
   // fires until the user navigates away. eslint-disable-next-line is intentional — Date.now()
@@ -1131,6 +1836,9 @@ export default function FeatureFlagsSettings() {
           </div>
         )}
 
+        {/* Groups section — always shown so admins can create groups (MINCRM-491) */}
+        <GroupsSection flags={flags} onFlagClick={handleFlagClick} />
+
         {FEATURE_FLAG_CATEGORIES.map((category) => {
           const categoryFlags = byCategory[category];
           if (!categoryFlags || categoryFlags.length === 0) return null;
@@ -1146,17 +1854,28 @@ export default function FeatureFlagsSettings() {
               </h2>
               <div className="bg-white border border-gray-200 rounded-lg px-4 divide-y divide-gray-100">
                 {categoryFlags.map((flag) => (
-                  <FlagRow
+                  <div
                     key={flag.flag_key}
-                    flag={flag}
-                    onToggle={handleToggle}
-                    onRoleOverride={handleRoleOverride}
-                    onEnableAtChange={handleEnableAtChange}
-                    onRolloutChange={handleRolloutChange}
-                    onRolloutStagesChange={handleRolloutStagesChange}
-                    isPending={pendingKey === flag.flag_key}
-                    nowMs={nowMs}
-                  />
+                    ref={(el) => {
+                      flagRowRefs.current[flag.flag_key] = el;
+                    }}
+                    tabIndex={-1}
+                    className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
+                  >
+                    <FlagRow
+                      flag={flag}
+                      groups={groups}
+                      onToggle={handleToggle}
+                      onRoleOverride={handleRoleOverride}
+                      onEnableAtChange={handleEnableAtChange}
+                      onRolloutChange={handleRolloutChange}
+                      onRolloutStagesChange={handleRolloutStagesChange}
+                      onGroupChange={handleGroupChange}
+                      onGroupBadgeClick={handleFlagClick}
+                      isPending={pendingKey === flag.flag_key}
+                      nowMs={nowMs}
+                    />
+                  </div>
                 ))}
               </div>
             </section>

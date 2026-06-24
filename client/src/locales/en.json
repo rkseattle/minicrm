@@ -1938,6 +1938,30 @@
       "noOverrides": "No overrides",
       "removeOverride": "Remove",
       "saveError": "Failed to save override. Please try again."
+    },
+    "groups": {
+      "sectionTitle": "Flag Groups",
+      "empty": "No groups configured.",
+      "createGroup": "Create group",
+      "createSubmit": "Create",
+      "labelField": "Label",
+      "keyField": "Group key",
+      "descriptionField": "Description",
+      "keyInvalid": "Key must be lowercase alphanumeric with _ or -",
+      "duplicateKey": "A group with this key already exists.",
+      "memberCount_one": "{{count}} flag",
+      "memberCount_other": "{{count}} flags",
+      "betaUsers": "Group Beta Users",
+      "betaUserEmpty": "No users enrolled in group beta.",
+      "betaUserRemove": "Remove",
+      "betaUserAlreadyEnrolled": "User is already enrolled in this group's beta.",
+      "toggleLabel": "Toggle group {{label}}",
+      "disabledBadge": "Group Off",
+      "assignGroup": "Group:",
+      "noGroup": "None",
+      "memberFlags": "Member flags",
+      "delete": "Delete group",
+      "deleteDisabledTooltip": "Unassign all member flags before deleting this group."
     }
   },
   "aiSettings": {

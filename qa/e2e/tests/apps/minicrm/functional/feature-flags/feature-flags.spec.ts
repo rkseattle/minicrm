@@ -1,5 +1,5 @@
 /**
- * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-492)
+ * F-FF — Feature Flag Registry (MINCRM-463, MINCRM-477, MINCRM-490, MINCRM-491, MINCRM-492)
  *
  * Functional regression tests for the admin feature flag management UI,
  * API gate enforcement, and client-side flag isolation via withFlags().
@@ -18,6 +18,9 @@
  *   F-FF15 — Rep bucketed out of rollout sees flag as disabled via /me (MINCRM-490)
  *   F-FF16 — Force-enabled override badge appears in admin UI (MINCRM-492)
  *   F-FF17 — Force-enabled user sees a globally-disabled flag as enabled via /me (MINCRM-492)
+ *   F-FF18 — Admin creates a group and sees it in the groups section (MINCRM-491)
+ *   F-FF19 — Disabling a group gate blocks member flags for non-beta users (MINCRM-491)
+ *   F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -57,6 +60,8 @@ import {
   expectOverrideRowVisible,
   expectOverrideRowNotVisible,
   clickOverrideRemove,
+  expectFlagGroupsSectionVisible,
+  expectFlagGroupRowVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   listFeatureFlags,
@@ -68,6 +73,9 @@ import {
   listUserOverrides,
   upsertUserOverride,
   deleteUserOverride,
+  createFlagGroup,
+  updateFlagGroup,
+  deleteFlagGroup,
 } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { getAuditLog } from '@behaviors/minicrm/audit-log.behaviors.js';
 import { isNavLinkHidden, assertNavLinkIsVisible } from '@behaviors/minicrm/nav.behaviors.js';
@@ -627,4 +635,123 @@ test('@functional @serial F-FF17: a force_enabled override lets a rep see a glob
 
   // Cleanup: remove override.
   await deleteUserOverride(restClient, 'mobile_access', rep.userId).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF18 — Admin creates a flag group and sees it in the groups section (MINCRM-491)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF18: admin can create a flag group and it appears in the groups section', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const groupKey = `e2e-ff18-group-${Date.now()}`;
+
+  // Create the group via REST so it exists before the admin views the page.
+  await loginAsAdmin(restClient);
+  await createFlagGroup(restClient, { group_key: groupKey, label: 'E2E FF18 Group' });
+
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToAdminSettings({ page }, 'flags');
+  await expectFeatureFlagsListVisible({ page }, 10_000);
+  await expectFlagGroupsSectionVisible({ page }, 8_000);
+  await expectFlagGroupRowVisible(groupKey, { page }, 8_000);
+
+  // Cleanup.
+  await loginAsAdmin(restClient);
+  await deleteFlagGroup(restClient, groupKey).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF19 — Disabling a group gate blocks member flags for non-beta users via /me (MINCRM-491)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF19: disabling a group gate makes member flags return false via /me for non-beta users', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+  const groupKey = `e2e-ff19-group-${Date.now()}`;
+
+  await loginAsAdmin(restClient);
+
+  // Create group and assign mobile_access to it; enable the flag.
+  await createFlagGroup(restClient, { group_key: groupKey, label: 'E2E FF19 Group' });
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: true });
+
+  // Assign mobile_access to the new group (group enabled by default — flag is visible).
+  // The REST patch for group_key reuses the existing PATCH endpoint.
+  await restClient.patch(`/api/v1/admin/feature-flags/mobile_access`, {
+    enabled: true,
+    group_key: groupKey,
+  });
+
+  // Confirm rep sees the flag as enabled while group is enabled.
+  await loginAs(restClient, rep.email, rep.password);
+  const before = await getMyFeatureFlags(restClient);
+  expect(before['mobile_access']).toBe(true);
+
+  // Disable the group.
+  await loginAsAdmin(restClient);
+  await updateFlagGroup(restClient, groupKey, { enabled: false });
+
+  // Rep now sees the flag as disabled (group gate blocks it).
+  await loginAs(restClient, rep.email, rep.password);
+  const after = await getMyFeatureFlags(restClient);
+  expect(after['mobile_access']).toBe(false);
+
+  // Cleanup.
+  await loginAsAdmin(restClient);
+  await restClient
+    .patch(`/api/v1/admin/feature-flags/mobile_access`, { enabled: false, group_key: null })
+    .catch(() => {});
+  await deleteFlagGroup(restClient, groupKey).catch(() => {});
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false }).catch(() => {});
+});
+
+// ---------------------------------------------------------------------------
+// F-FF20 — Re-enabling a group gate restores member flag visibility (MINCRM-491)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF20: re-enabling a disabled group gate restores member flag visibility via /me', async ({
+  restClient,
+  testData,
+}) => {
+  const rep = await createTestRep(testData, restClient);
+  const groupKey = `e2e-ff20-group-${Date.now()}`;
+
+  await loginAsAdmin(restClient);
+
+  // Create group (disabled), enable mobile_access, assign to group.
+  await createFlagGroup(restClient, { group_key: groupKey, label: 'E2E FF20 Group' });
+  await updateFlagGroup(restClient, groupKey, { enabled: false });
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: true });
+  await restClient.patch(`/api/v1/admin/feature-flags/mobile_access`, {
+    enabled: true,
+    group_key: groupKey,
+  });
+
+  // Rep should see false (group disabled).
+  await loginAs(restClient, rep.email, rep.password);
+  const blocked = await getMyFeatureFlags(restClient);
+  expect(blocked['mobile_access']).toBe(false);
+
+  // Re-enable the group.
+  await loginAsAdmin(restClient);
+  await updateFlagGroup(restClient, groupKey, { enabled: true });
+
+  // Rep now sees the flag as enabled again.
+  await loginAs(restClient, rep.email, rep.password);
+  const restored = await getMyFeatureFlags(restClient);
+  expect(restored['mobile_access']).toBe(true);
+
+  // Cleanup.
+  await loginAsAdmin(restClient);
+  await restClient
+    .patch(`/api/v1/admin/feature-flags/mobile_access`, { enabled: false, group_key: null })
+    .catch(() => {});
+  await deleteFlagGroup(restClient, groupKey).catch(() => {});
+  await updateFeatureFlag(restClient, 'mobile_access', { enabled: false }).catch(() => {});
 });

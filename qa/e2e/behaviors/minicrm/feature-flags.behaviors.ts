@@ -243,3 +243,118 @@ export async function deleteUserOverride(
 ): Promise<void> {
   await restClient.delete(`/api/v1/admin/feature-flags/${flagKey}/overrides/${userId}`);
 }
+
+// ---------------------------------------------------------------------------
+// Flag group REST behaviors (MINCRM-491)
+// ---------------------------------------------------------------------------
+
+/** Shape of a flag group row returned from the API. */
+export interface TestFlagGroupRow {
+  group_key: string;
+  label: string;
+  description: string | null;
+  enabled: boolean;
+  enable_at: string | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  updated_at: string;
+  member_count: number;
+  beta_user_count: number;
+}
+
+/** Shape of a group beta user entry. */
+export interface TestGroupBetaUserEntry {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  added_at: string;
+}
+
+/**
+ * Creates a new flag group.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param input - group_key, label, description.
+ * @returns The created group row.
+ */
+export async function createFlagGroup(
+  restClient: RestClient,
+  input: { group_key: string; label: string; description?: string },
+): Promise<TestFlagGroupRow> {
+  const res = await restClient.post<{ group: TestFlagGroupRow }>(
+    '/api/v1/admin/feature-flags/groups',
+    input,
+  );
+  return res.body.group;
+}
+
+/**
+ * Updates a flag group.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param groupKey - The group key to update.
+ * @param patch - Fields to update (enabled, label, description, enable_at).
+ * @returns The updated group row.
+ */
+export async function updateFlagGroup(
+  restClient: RestClient,
+  groupKey: string,
+  patch: {
+    enabled?: boolean;
+    label?: string;
+    description?: string | null;
+    enable_at?: string | null;
+  },
+): Promise<TestFlagGroupRow> {
+  const res = await restClient.patch<{ group: TestFlagGroupRow }>(
+    `/api/v1/admin/feature-flags/groups/${groupKey}`,
+    patch,
+  );
+  return res.body.group;
+}
+
+/**
+ * Deletes a flag group.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param groupKey - The group key to delete.
+ */
+export async function deleteFlagGroup(restClient: RestClient, groupKey: string): Promise<void> {
+  await restClient.delete(`/api/v1/admin/feature-flags/groups/${groupKey}`);
+}
+
+/**
+ * Enrolls a user in a flag group's beta list.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param groupKey - The group key.
+ * @param userId - The user to enroll.
+ * @returns The new enrollment entry.
+ */
+export async function enrollGroupBetaUser(
+  restClient: RestClient,
+  groupKey: string,
+  userId: string,
+): Promise<TestGroupBetaUserEntry> {
+  const res = await restClient.post<{ user: TestGroupBetaUserEntry }>(
+    `/api/v1/admin/feature-flags/groups/${groupKey}/beta-users`,
+    { userId },
+  );
+  return res.body.user;
+}
+
+/**
+ * Removes a user from a flag group's beta list.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param groupKey - The group key.
+ * @param userId - The user ID to remove.
+ */
+export async function removeGroupBetaUser(
+  restClient: RestClient,
+  groupKey: string,
+  userId: string,
+): Promise<void> {
+  await restClient.delete(`/api/v1/admin/feature-flags/groups/${groupKey}/beta-users/${userId}`);
+}

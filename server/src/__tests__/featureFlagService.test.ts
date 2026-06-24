@@ -27,6 +27,13 @@ import {
   listUserOverrides,
   upsertUserOverride,
   deleteUserOverride,
+  listFlagGroups,
+  createFlagGroup,
+  updateFlagGroup,
+  deleteFlagGroup,
+  getFlagGroupBetaUsers,
+  addGroupBetaUser,
+  removeGroupBetaUser,
   __clearCacheForTest,
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
@@ -52,6 +59,8 @@ beforeEach(async () => {
   await pool.query('TRUNCATE feature_flag_usage RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
+  // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
+  await pool.query('DELETE FROM feature_flag_groups');
   // Reset any flags changed by previous tests back to their seeded defaults.
   await pool.query(
     `UPDATE feature_flags
@@ -76,6 +85,8 @@ beforeEach(async () => {
 afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_usage RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
+  // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
+  await pool.query('DELETE FROM feature_flag_groups');
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 
@@ -863,5 +874,342 @@ describe('user overrides', () => {
        ORDER BY created_at DESC LIMIT 1`,
     );
     expect(auditRow.rows.length).toBeGreaterThan(0);
+  });
+});
+
+// ── Flag groups (MINCRM-491) ──────────────────────────────────────────────────
+
+describe('flag groups CRUD', () => {
+  const GROUP_KEY = 'ff-svc-test-group';
+
+  it('createFlagGroup inserts a group and returns it with zero counts', async () => {
+    const group = await createFlagGroup(
+      { group_key: GROUP_KEY, label: 'Test Group', description: 'Created by test' },
+      ACTOR(),
+    );
+    expect(group.group_key).toBe(GROUP_KEY);
+    expect(group.label).toBe('Test Group');
+    expect(group.enabled).toBe(true);
+    expect(group.member_count).toBe(0);
+    expect(group.beta_user_count).toBe(0);
+  });
+
+  it('createFlagGroup throws FLAG_GROUP_DUPLICATE_KEY on duplicate group_key', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'First' }, ACTOR());
+    await expect(
+      createFlagGroup({ group_key: GROUP_KEY, label: 'Second' }, ACTOR()),
+    ).rejects.toMatchObject({ code: 'FLAG_GROUP_DUPLICATE_KEY' });
+  });
+
+  it('createFlagGroup writes an audit entry', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Audit Group' }, ACTOR());
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag_group'
+         AND changed_by_id = $1
+         AND field_name = 'group_key'
+         AND new_value = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId, GROUP_KEY],
+    );
+    expect(audit.rows.length).toBe(1);
+  });
+
+  it('listFlagGroups includes the created group', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Listed Group' }, ACTOR());
+    const groups = await listFlagGroups();
+    expect(groups.some((g) => g.group_key === GROUP_KEY)).toBe(true);
+  });
+
+  it('updateFlagGroup changes label and writes audit entry', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Before' }, ACTOR());
+    const updated = await updateFlagGroup(GROUP_KEY, { label: 'After' }, ACTOR());
+    expect(updated?.label).toBe('After');
+
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag_group'
+         AND changed_by_id = $1
+         AND field_name = 'label'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
+    );
+    expect(audit.rows.length).toBeGreaterThan(0);
+    expect(audit.rows[0].new_value).toBe('After');
+  });
+
+  it('updateFlagGroup can disable a group', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Toggle' }, ACTOR());
+    const updated = await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    expect(updated?.enabled).toBe(false);
+  });
+
+  it('updateFlagGroup returns null for an unknown group', async () => {
+    const result = await updateFlagGroup('nonexistent-group', { label: 'X' }, ACTOR());
+    expect(result).toBeNull();
+  });
+
+  it('deleteFlagGroup removes the group and returns true', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'To Delete' }, ACTOR());
+    const deleted = await deleteFlagGroup(GROUP_KEY, ACTOR());
+    expect(deleted).toBe(true);
+    const groups = await listFlagGroups();
+    expect(groups.some((g) => g.group_key === GROUP_KEY)).toBe(false);
+  });
+
+  it('deleteFlagGroup returns false for an unknown group', async () => {
+    const result = await deleteFlagGroup('nonexistent-group', ACTOR());
+    expect(result).toBe(false);
+  });
+
+  it('deleteFlagGroup throws FLAG_GROUP_HAS_MEMBERS when flags are assigned', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Has Member' }, ACTOR());
+    await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
+      GROUP_KEY,
+    ]);
+    await expect(deleteFlagGroup(GROUP_KEY, ACTOR())).rejects.toMatchObject({
+      code: 'FLAG_GROUP_HAS_MEMBERS',
+    });
+  });
+
+  it('deleteFlagGroup writes an audit entry', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Delete Audit' }, ACTOR());
+    await deleteFlagGroup(GROUP_KEY, ACTOR());
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag_group'
+         AND changed_by_id = $1
+         AND field_name = 'group_key'
+         AND new_value = 'null'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
+    );
+    expect(audit.rows.length).toBeGreaterThan(0);
+  });
+});
+
+describe('flag group gate evaluation (MINCRM-491)', () => {
+  const GROUP_KEY = 'ff-svc-gate-group';
+
+  beforeEach(async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Gate Group' }, ACTOR());
+    // Assign mobile_access (seeded disabled) to the group.
+    await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
+      GROUP_KEY,
+    ]);
+    __clearCacheForTest();
+  });
+
+  it('group disabled + non-member → flag returns false regardless of flag enabled state', async () => {
+    // Enable the flag itself, but group is disabled.
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    __clearCacheForTest();
+
+    const result = await isFlagEnabledForUser('mobile_access', actorId, 'admin');
+    expect(result).toBe(false);
+  });
+
+  it('group enabled → flag evaluation proceeds normally', async () => {
+    // mobile_access seeded as disabled; group enabled by default from createFlagGroup.
+    const result = await isFlagEnabledForUser('mobile_access', actorId, 'admin');
+    expect(result).toBe(false); // flag itself is disabled
+
+    // Enable the flag — with group enabled, it should resolve true.
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+  });
+
+  it('group beta user bypasses group gate even when group is disabled', async () => {
+    await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    // Enable the flag itself so that once through the group gate, it resolves.
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    __clearCacheForTest();
+
+    // Actor is not yet in group beta — should be blocked.
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+
+    // Enroll in group beta.
+    await addGroupBetaUser(GROUP_KEY, actorId, ACTOR());
+
+    // Now passes the group gate → flag is enabled.
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+  });
+
+  it('group beta user removed reverts to being blocked by disabled group', async () => {
+    await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    __clearCacheForTest();
+
+    await addGroupBetaUser(GROUP_KEY, actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+
+    await removeGroupBetaUser(GROUP_KEY, actorId, ACTOR());
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+  });
+
+  it('flag not assigned to any group is unaffected by group state', async () => {
+    // notes has no group_key (unassigned); disable GROUP_KEY group.
+    await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    __clearCacheForTest();
+    // notes is seeded enabled — should still be true.
+    expect(await isFlagEnabledForUser('notes', actorId, 'admin')).toBe(true);
+  });
+
+  it('group enable_at in the past counts as enabled (gate passes)', async () => {
+    await updateFlagGroup(
+      GROUP_KEY,
+      { enabled: false, enable_at: new Date(Date.now() - 60_000).toISOString() },
+      ACTOR(),
+    );
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+  });
+
+  it('group enable_at in the future does not unblock the gate', async () => {
+    await updateFlagGroup(
+      GROUP_KEY,
+      { enabled: false, enable_at: new Date(Date.now() + 60 * 60_000).toISOString() },
+      ACTOR(),
+    );
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+  });
+
+  it('force_enabled override bypasses group gate even when group is disabled', async () => {
+    await updateFlagGroup(GROUP_KEY, { enabled: false }, ACTOR());
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    await upsertUserOverride('mobile_access', actorId, 'force_enabled', null, ACTOR());
+    __clearCacheForTest();
+    // force_enabled fires before the group gate, so the disabled group does not block.
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(true);
+  });
+
+  it('force_disabled override blocks group beta user', async () => {
+    await updateFlagGroup(GROUP_KEY, { enabled: true }, ACTOR());
+    await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'mobile_access'`);
+    await addGroupBetaUser(GROUP_KEY, actorId, ACTOR());
+    await upsertUserOverride('mobile_access', actorId, 'force_disabled', null, ACTOR());
+    __clearCacheForTest();
+    // force_disabled fires before group gate; group beta membership cannot override it.
+    expect(await isFlagEnabledForUser('mobile_access', actorId, 'admin')).toBe(false);
+  });
+});
+
+describe('flag group beta user management (MINCRM-491)', () => {
+  const GROUP_KEY = 'ff-svc-beta-group';
+  let targetUserId: string;
+  const TARGET_EMAIL = `${FILE_PREFIX}-group-beta-target@example.com`;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Group Beta Target', 'rep', '$2b$12$placeholder', 'active')
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [TARGET_EMAIL],
+    );
+    targetUserId = result.rows[0].id;
+  });
+
+  beforeEach(async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Beta Group' }, ACTOR());
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [TARGET_EMAIL]);
+  });
+
+  it('addGroupBetaUser enrolls a user and getFlagGroupBetaUsers returns them', async () => {
+    await addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
+    const users = await getFlagGroupBetaUsers(GROUP_KEY);
+    expect(users.some((u) => u.user_id === targetUserId)).toBe(true);
+  });
+
+  it('addGroupBetaUser throws GROUP_BETA_USER_ALREADY_ENROLLED on duplicate', async () => {
+    await addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
+    await expect(addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR())).rejects.toMatchObject({
+      code: 'GROUP_BETA_USER_ALREADY_ENROLLED',
+    });
+  });
+
+  it('removeGroupBetaUser unenrolls a user', async () => {
+    await addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
+    await removeGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
+    const users = await getFlagGroupBetaUsers(GROUP_KEY);
+    expect(users.some((u) => u.user_id === targetUserId)).toBe(false);
+  });
+
+  it('addGroupBetaUser throws USER_NOT_FOUND for non-existent user', async () => {
+    await expect(
+      addGroupBetaUser(GROUP_KEY, '00000000-0000-0000-0000-000000000000', ACTOR()),
+    ).rejects.toMatchObject({ code: 'USER_NOT_FOUND' });
+  });
+
+  it('listFlagGroups reflects correct beta_user_count after enrollment', async () => {
+    await addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
+    const groups = await listFlagGroups();
+    const group = groups.find((g) => g.group_key === GROUP_KEY);
+    expect(group?.beta_user_count).toBe(1);
+  });
+
+  it('listFlagGroups reflects correct member_count after flag assignment', async () => {
+    await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
+      GROUP_KEY,
+    ]);
+    const groups = await listFlagGroups();
+    const group = groups.find((g) => g.group_key === GROUP_KEY);
+    expect(group?.member_count).toBe(1);
+  });
+});
+
+describe('updateFeatureFlag group assignment (MINCRM-491)', () => {
+  const GROUP_KEY = 'ff-svc-assign-group';
+
+  beforeEach(async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Assign Group' }, ACTOR());
+    __clearCacheForTest();
+  });
+
+  it('assigning a flag to a group persists group_key', async () => {
+    const updated = await updateFeatureFlag(
+      'mobile_access',
+      { enabled: false, group_key: GROUP_KEY },
+      ACTOR(),
+    );
+    expect(updated?.group_key).toBe(GROUP_KEY);
+  });
+
+  it('assigning a flag to null removes the group association', async () => {
+    await updateFeatureFlag('mobile_access', { enabled: false, group_key: GROUP_KEY }, ACTOR());
+    const cleared = await updateFeatureFlag(
+      'mobile_access',
+      { enabled: false, group_key: null },
+      ACTOR(),
+    );
+    expect(cleared?.group_key).toBeNull();
+  });
+
+  it('assigning to a non-existent group throws FLAG_GROUP_NOT_FOUND', async () => {
+    await expect(
+      updateFeatureFlag('mobile_access', { enabled: false, group_key: 'does-not-exist' }, ACTOR()),
+    ).rejects.toMatchObject({ code: 'FLAG_GROUP_NOT_FOUND' });
+  });
+
+  it('group assignment writes an audit entry', async () => {
+    await updateFeatureFlag('mobile_access', { enabled: false, group_key: GROUP_KEY }, ACTOR());
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag'
+         AND changed_by_id = $1
+         AND field_name = 'group_key'
+         AND new_value = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId, GROUP_KEY],
+    );
+    expect(audit.rows.length).toBeGreaterThan(0);
   });
 });

@@ -1938,6 +1938,30 @@
       "noOverrides": "Sin anulaciones",
       "removeOverride": "Eliminar",
       "saveError": "Error al guardar la anulación. Por favor, inténtelo de nuevo."
+    },
+    "groups": {
+      "sectionTitle": "Grupos de indicadores",
+      "empty": "No hay grupos configurados.",
+      "createGroup": "Crear grupo",
+      "createSubmit": "Crear",
+      "labelField": "Etiqueta",
+      "keyField": "Clave del grupo",
+      "descriptionField": "Descripción",
+      "keyInvalid": "La clave debe ser alfanumérica en minúsculas con _ o -",
+      "duplicateKey": "Ya existe un grupo con esta clave.",
+      "memberCount_one": "{{count}} indicador",
+      "memberCount_other": "{{count}} indicadores",
+      "betaUsers": "Usuarios beta del grupo",
+      "betaUserEmpty": "Ningún usuario inscrito en el beta del grupo.",
+      "betaUserRemove": "Eliminar",
+      "betaUserAlreadyEnrolled": "El usuario ya está inscrito en el beta de este grupo.",
+      "toggleLabel": "Activar/desactivar grupo {{label}}",
+      "disabledBadge": "Grupo desactivado",
+      "assignGroup": "Grupo:",
+      "noGroup": "Ninguno",
+      "memberFlags": "Indicadores miembros",
+      "delete": "Eliminar grupo",
+      "deleteDisabledTooltip": "Desasigne todos los indicadores miembros antes de eliminar este grupo."
     }
   },
   "aiSettings": {

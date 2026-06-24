@@ -561,6 +561,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'reporting',
@@ -579,6 +580,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'mobile_access',
@@ -597,6 +599,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   // AI sub-feature flags (MINCRM-460) — all support role overrides
   {
@@ -616,6 +619,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_activity_summarizer',
@@ -634,6 +638,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_email_draft',
@@ -652,6 +657,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_task_suggestions',
@@ -670,6 +676,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_contact_enrichment',
@@ -688,6 +695,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_duplicate_explanation',
@@ -706,6 +714,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_lead_score_narrative',
@@ -724,6 +733,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_deal_health_check',
@@ -742,6 +752,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
   {
     flag_key: 'ai_stage_advancement',
@@ -760,6 +771,7 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     rollout_percentage: null,
     rollout_stages: null,
     override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
   },
 ];
 

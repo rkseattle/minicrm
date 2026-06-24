@@ -177,6 +177,14 @@ export const updateFeatureFlagSchema = z.object({
     .nullable()
     .optional(),
   rollout_stages: rolloutStagesSchema.optional(),
+  /** Assign flag to a group (string key) or unassign (null). (MINCRM-491) */
+  group_key: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9_-]+$/, { message: 'group_key must be lowercase alphanumeric with _ or -' })
+    .nullable()
+    .optional(),
 });
 
 export type UpdateFeatureFlagInput = z.infer<typeof updateFeatureFlagSchema>;
@@ -224,4 +232,83 @@ export interface FeatureFlagRow {
   beta_user_count: number;
   /** Count of per-user forced overrides by direction. (MINCRM-492) */
   override_count: OverrideCount;
+  /** Group this flag belongs to, or null if ungrouped. (MINCRM-491) */
+  group_key: string | null;
+}
+
+// ── Flag Groups (MINCRM-491) ──────────────────────────────────────────────────
+
+/** Validation pattern for group_key values — lowercase alphanumeric with _ or -. */
+export const GROUP_KEY_PATTERN = /^[a-z0-9_-]+$/;
+
+/** Request body for POST /admin/feature-flags/groups */
+export const createFlagGroupSchema = z.object({
+  group_key: z
+    .string()
+    .min(1, { message: 'group_key is required' })
+    .max(100, { message: 'group_key must be at most 100 characters' })
+    .regex(GROUP_KEY_PATTERN, {
+      message: 'group_key must be lowercase alphanumeric with _ or -',
+    }),
+  label: z
+    .string()
+    .min(1, { message: 'label is required' })
+    .max(100, { message: 'label must be at most 100 characters' }),
+  description: z
+    .string()
+    .max(1000, { message: 'description must be at most 1000 characters' })
+    .optional()
+    .default(''),
+});
+
+export type CreateFlagGroupInput = z.input<typeof createFlagGroupSchema>;
+
+/** Request body for PATCH /admin/feature-flags/groups/:key */
+export const updateFlagGroupSchema = z.object({
+  enabled: z.boolean({ invalid_type_error: 'enabled must be a boolean' }).optional(),
+  label: z
+    .string()
+    .min(1, { message: 'label must be non-empty' })
+    .max(100, { message: 'label must be at most 100 characters' })
+    .optional(),
+  description: z
+    .string()
+    .max(1000, { message: 'description must be at most 1000 characters' })
+    .optional(),
+  enable_at: z
+    .string()
+    .datetime({ message: 'enable_at must be a valid ISO 8601 datetime string' })
+    .refine((val) => new Date(val) > new Date(), {
+      message: 'enable_at must be a future date',
+    })
+    .nullable()
+    .optional(),
+});
+
+export type UpdateFlagGroupInput = z.infer<typeof updateFlagGroupSchema>;
+
+/** A single enrolled beta user entry for a group. */
+export interface GroupBetaUserEntry {
+  group_key: string;
+  user_id: string;
+  name: string;
+  email: string;
+  added_at: string;
+}
+
+/** Shape of a flag group row returned from the API. */
+export interface FlagGroupRow {
+  group_key: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  /** ISO 8601 datetime; when set and <= now(), the group gate is treated as passing. */
+  enable_at: string | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  updated_at: string;
+  /** Number of feature flags assigned to this group. */
+  member_count: number;
+  /** Number of users enrolled in this group's beta list. */
+  beta_user_count: number;
 }

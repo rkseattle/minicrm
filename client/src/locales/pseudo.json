@@ -1754,6 +1754,30 @@
       "noOverrides": "[Ñö övéŗŗïðéš]",
       "removeOverride": "[Ŗémövé]",
       "saveError": "[Ƒàïléð ŧö šàvé övéŗŗïðé. Þléàšé ŧŗý àgàïñ.]"
+    },
+    "groups": {
+      "sectionTitle": "[Ƒlag Ĝroups]",
+      "empty": "[Ñø grøüps cønfïgüred.]",
+      "createGroup": "[Creatë grøüp]",
+      "createSubmit": "[Creatë]",
+      "labelField": "[Läbel]",
+      "keyField": "[Grøüp key]",
+      "descriptionField": "[Descriptiøn]",
+      "keyInvalid": "[Key müst be løwercase alphänümeric with _ ør -]",
+      "duplicateKey": "[A grøüp with this key already exists.]",
+      "memberCount_one": "[{{count}} flag]",
+      "memberCount_other": "[{{count}} flags]",
+      "betaUsers": "[Grøüp Betä Üsers]",
+      "betaUserEmpty": "[Nø üsers enrølled in grøüp beta.]",
+      "betaUserRemove": "[Remøve]",
+      "betaUserAlreadyEnrolled": "[Üser is already enrølled in this grøüp's beta.]",
+      "toggleLabel": "[Tøggle grøüp {{label}}]",
+      "disabledBadge": "[Grøüp Off]",
+      "assignGroup": "[Grøüp:]",
+      "noGroup": "[Nøne]",
+      "memberFlags": "[Member flags]",
+      "delete": "[Delete grøüp]",
+      "deleteDisabledTooltip": "[Unassign all member flags before deleting this grøüp.]"
     }
   },
   "visibilitySettings": {

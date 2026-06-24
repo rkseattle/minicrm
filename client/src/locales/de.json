@@ -1938,6 +1938,30 @@
       "noOverrides": "Keine Überschreibungen",
       "removeOverride": "Entfernen",
       "saveError": "Override konnte nicht gespeichert werden. Bitte erneut versuchen."
+    },
+    "groups": {
+      "sectionTitle": "Flag-Gruppen",
+      "empty": "Keine Gruppen konfiguriert.",
+      "createGroup": "Gruppe erstellen",
+      "createSubmit": "Erstellen",
+      "labelField": "Bezeichnung",
+      "keyField": "Gruppenschlüssel",
+      "descriptionField": "Beschreibung",
+      "keyInvalid": "Schlüssel muss kleingeschrieben alphanumerisch mit _ oder - sein",
+      "duplicateKey": "Eine Gruppe mit diesem Schlüssel existiert bereits.",
+      "memberCount_one": "{{count}} Flag",
+      "memberCount_other": "{{count}} Flags",
+      "betaUsers": "Gruppen-Beta-Benutzer",
+      "betaUserEmpty": "Keine Benutzer im Gruppen-Beta registriert.",
+      "betaUserRemove": "Entfernen",
+      "betaUserAlreadyEnrolled": "Benutzer ist bereits im Beta dieser Gruppe registriert.",
+      "toggleLabel": "Gruppe {{label}} umschalten",
+      "disabledBadge": "Gruppe deaktiviert",
+      "assignGroup": "Gruppe:",
+      "noGroup": "Keine",
+      "memberFlags": "Mitglieds-Flags",
+      "delete": "Gruppe löschen",
+      "deleteDisabledTooltip": "Heben Sie die Zuweisung aller Mitglieds-Flags auf, bevor Sie diese Gruppe löschen."
     }
   },
   "aiSettings": {

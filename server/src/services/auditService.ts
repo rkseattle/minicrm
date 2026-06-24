@@ -52,6 +52,8 @@ export type AuditRecordType =
   | 'sequence_enrollment'
   /** Feature flag registry entries (MINCRM-463) */
   | 'feature_flag'
+  /** Feature flag group entries (MINCRM-491) */
+  | 'feature_flag_group'
   /** AI provider/model configuration (MINCRM-457) */
   | 'ai_settings'
   /** Teams and team membership (MINCRM-537) */

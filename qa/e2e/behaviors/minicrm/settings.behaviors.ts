@@ -2383,3 +2383,89 @@ export async function clickOverrideRemove(
     .resolve();
   await locator.click();
 }
+
+// ---------------------------------------------------------------------------
+// Flag group UI behaviors (MINCRM-491)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asserts the flag groups section is visible on the admin feature flags page.
+ */
+export async function expectFlagGroupsSectionVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'flag-groups-section' },
+        { type: 'role', value: 'region' },
+      ],
+      { intent: 'flag groups management section on the feature flags admin page' },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts a group row with the given group_key is visible.
+ */
+export async function expectFlagGroupRowVisible(
+  groupKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `flag-group-row-${groupKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="flag-groups-section"] [data-testid="flag-group-row-${groupKey}"]`,
+        },
+      ],
+      { intent: `group row for group key ${groupKey} in the flag groups section` },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts a group row is NOT visible (either absent or hidden).
+ */
+export async function expectFlagGroupRowNotVisible(
+  groupKey: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: `flag-group-row-${groupKey}` }],
+    timeout,
+  );
+  expect(notVisible).toBe(true);
+}
+
+/**
+ * Clicks the group toggle switch to enable or disable a group.
+ */
+export async function clickFlagGroupToggle(
+  groupKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `flag-group-toggle-${groupKey}` },
+        {
+          type: 'css',
+          value: `[data-testid="flag-group-row-${groupKey}"] input[type="checkbox"]`,
+        },
+      ],
+      { intent: `enabled/disabled toggle for flag group ${groupKey}` },
+    )
+    .resolve();
+  await locator.click();
+}
