@@ -127,13 +127,17 @@ exports.up = (pgm) => {
       $$
   `);
 
-  // Validates that feature_flags.role_overrides only contains known role keys
+  // Validates that feature_flags.role_overrides has the correct structural shape.
+  // Keys must be non-empty strings; values must be booleans.
+  // Role name validity is enforced at the service layer against the live custom_roles table.
+  // (Updated by migration 122 — MINCRM-565)
   pgm.sql(`
     CREATE OR REPLACE FUNCTION public.is_valid_role_overrides(overrides jsonb) RETURNS boolean
       LANGUAGE plpgsql IMMUTABLE
       AS $$
       DECLARE
         k text;
+        v jsonb;
       BEGIN
         IF overrides IS NULL THEN
           RETURN TRUE;
@@ -141,8 +145,11 @@ exports.up = (pgm) => {
         IF jsonb_typeof(overrides) <> 'object' THEN
           RETURN FALSE;
         END IF;
-        FOR k IN SELECT jsonb_object_keys(overrides) LOOP
-          IF k NOT IN ('admin', 'rep', 'manager', 'viewer', 'service_account') THEN
+        FOR k, v IN SELECT key, value FROM jsonb_each(overrides) LOOP
+          IF length(k) = 0 THEN
+            RETURN FALSE;
+          END IF;
+          IF jsonb_typeof(v) <> 'boolean' THEN
             RETURN FALSE;
           END IF;
         END LOOP;
@@ -858,7 +865,7 @@ exports.up = (pgm) => {
       CONSTRAINT feature_flags_rollout_percentage_range CHECK (rollout_percentage BETWEEN 0 AND 100)
     )
   `);
-  pgm.sql(`COMMENT ON COLUMN public.feature_flags.role_overrides IS 'Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live.'`);
+  pgm.sql(`COMMENT ON COLUMN public.feature_flags.role_overrides IS 'Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)'`);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.enable_at IS 'When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)'`);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.rollout_percentage IS 'When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)'`);
   pgm.sql(`COMMENT ON COLUMN public.feature_flags.rollout_stages IS 'Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)'`);

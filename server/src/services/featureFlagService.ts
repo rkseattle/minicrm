@@ -281,14 +281,16 @@ async function assertValidRoleOverrides(
 
   // custom_roles holds both built-in rows (is_builtin=true: admin, rep, manager, viewer,
   // service_account) and tenant-defined custom roles — one query covers the full valid set.
-  // FOR SHARE prevents a concurrent DELETE from removing a validated role between this SELECT
-  // and the UPDATE feature_flags below, eliminating the TOCTOU race. (MINCRM-565)
+  // FOR SHARE scoped to only the keys being validated prevents a concurrent DELETE from removing
+  // a validated role between this SELECT and the UPDATE feature_flags below, eliminating the
+  // TOCTOU race while avoiding unnecessary locks on unrelated rows. (MINCRM-565)
   const knownRoles = await client.query<{ name: string }>(
-    `SELECT name FROM public.custom_roles FOR SHARE`,
+    `SELECT name FROM public.custom_roles WHERE name = ANY($1::text[]) FOR SHARE`,
+    [keys],
   );
   const knownRoleSet = new Set(knownRoles.rows.map((r) => r.name));
 
-  for (const key of Object.keys(overrides)) {
+  for (const key of keys) {
     if (!knownRoleSet.has(key)) {
       throw Object.assign(new Error(`role_overrides contains unknown role key: '${key}'`), {
         code: 'FEATURE_FLAG_UNKNOWN_ROLE_KEY',
