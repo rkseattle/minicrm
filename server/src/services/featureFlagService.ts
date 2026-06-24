@@ -281,20 +281,18 @@ async function assertValidRoleOverrides(
 
   // custom_roles holds both built-in rows (is_builtin=true: admin, rep, manager, viewer,
   // service_account) and tenant-defined custom roles — one query covers the full valid set.
-  const knownRoles = await client.query<{ name: string }>(`SELECT name FROM public.custom_roles`);
+  // FOR SHARE prevents a concurrent DELETE from removing a validated role between this SELECT
+  // and the UPDATE feature_flags below, eliminating the TOCTOU race. (MINCRM-565)
+  const knownRoles = await client.query<{ name: string }>(
+    `SELECT name FROM public.custom_roles FOR SHARE`,
+  );
   const knownRoleSet = new Set(knownRoles.rows.map((r) => r.name));
 
-  for (const [key, value] of Object.entries(overrides)) {
+  for (const key of Object.keys(overrides)) {
     if (!knownRoleSet.has(key)) {
       throw Object.assign(new Error(`role_overrides contains unknown role key: '${key}'`), {
         code: 'FEATURE_FLAG_UNKNOWN_ROLE_KEY',
       });
-    }
-    if (typeof value !== 'boolean') {
-      throw Object.assign(
-        new Error(`role_overrides['${key}'] must be a boolean, got ${typeof value}`),
-        { code: 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE' },
-      );
     }
   }
 }
@@ -665,6 +663,12 @@ export async function isFlagEnabledForUser(
 ): Promise<boolean> {
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
+
+  // Unknown flag keys are not in the registry — treat as disabled and avoid live DB round-trips.
+  if (!row) {
+    logger.warn(`isFlagEnabledForUser: unknown flag key '${key}' — treating as disabled`);
+    return false;
+  }
 
   // Step 1: per-user force overrides win over everything, including the group gate.
   // (documented at POST /api/v1/feature-flags/:key/overrides — "unconditionally overrides

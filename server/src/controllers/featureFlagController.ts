@@ -100,15 +100,6 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
       });
       return;
     }
-    if (code === 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE') {
-      res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: err instanceof Error ? err.message : 'Invalid role_overrides',
-        },
-      });
-      return;
-    }
     if (code === 'FLAG_GROUP_NOT_FOUND') {
       res.status(400).json({
         error: {

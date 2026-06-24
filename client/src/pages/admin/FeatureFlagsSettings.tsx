@@ -1764,10 +1764,17 @@ export default function FeatureFlagsSettings() {
     setConfirmPending({ flag, patch: { enabled: newEnabled } });
   }
 
+  // Role override changes do not route through the confirm dialog — they don't change the
+  // flag's enabled state, so "Enable X?" wording would be misleading. Mutate directly like
+  // rollout and group changes. (MINCRM-565)
   function handleRoleOverride(flag: FeatureFlagRow, role: string, value: boolean) {
     const existing = flag.role_overrides ?? {};
     const newOverrides = { ...existing, [role]: value };
-    setConfirmPending({ flag, patch: { enabled: flag.enabled, role_overrides: newOverrides } });
+    setPendingKey(flag.flag_key);
+    mutation.mutate({
+      key: flag.flag_key,
+      patch: { enabled: flag.enabled, role_overrides: newOverrides },
+    });
   }
 
   function handleRoleOverrideRemove(flag: FeatureFlagRow, role: string) {
@@ -1775,8 +1782,9 @@ export default function FeatureFlagsSettings() {
     const newOverrides = { ...existing };
     delete newOverrides[role];
     const clearedOverrides = Object.keys(newOverrides).length === 0 ? null : newOverrides;
-    setConfirmPending({
-      flag,
+    setPendingKey(flag.flag_key);
+    mutation.mutate({
+      key: flag.flag_key,
       patch: { enabled: flag.enabled, role_overrides: clearedOverrides },
     });
   }
