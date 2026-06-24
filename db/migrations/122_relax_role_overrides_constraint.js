@@ -57,6 +57,9 @@ exports.up = (pgm) => {
     ALTER TABLE feature_flags
       ADD CONSTRAINT feature_flags_role_overrides_valid_shape
         CHECK (public.is_valid_role_overrides(role_overrides));
+
+    COMMENT ON COLUMN public.feature_flags.role_overrides IS
+      'Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)';
   `);
 };
 
