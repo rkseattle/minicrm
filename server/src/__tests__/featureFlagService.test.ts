@@ -1149,6 +1149,12 @@ describe('flag group beta user management (MINCRM-491)', () => {
     expect(users.some((u) => u.user_id === targetUserId)).toBe(false);
   });
 
+  it('removeGroupBetaUser throws FLAG_GROUP_NOT_FOUND for unknown group', async () => {
+    await expect(
+      removeGroupBetaUser('nonexistent-group', targetUserId, ACTOR()),
+    ).rejects.toMatchObject({ code: 'FLAG_GROUP_NOT_FOUND' });
+  });
+
   it('addGroupBetaUser throws USER_NOT_FOUND for non-existent user', async () => {
     await expect(
       addGroupBetaUser(GROUP_KEY, '00000000-0000-0000-0000-000000000000', ACTOR()),

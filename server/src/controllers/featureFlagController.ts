@@ -477,11 +477,9 @@ export async function listGroupBetaUsersHandler(req: Request, res: Response): Pr
   } catch (err) {
     const domainErr = err as { code?: string };
     if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
-      res
-        .status(404)
-        .json({
-          error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
-        });
+      res.status(404).json({
+        error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
+      });
       return;
     }
     throw err;
@@ -564,7 +562,22 @@ export async function removeGroupBetaUserHandler(req: Request, res: Response): P
 
   const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
 
-  const removed = await removeGroupBetaUser(groupKey, userId, actor);
+  let removed: boolean;
+  try {
+    removed = await removeGroupBetaUser(groupKey, userId, actor);
+  } catch (err) {
+    const domainErr = err as { code?: string };
+    if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
+      res
+        .status(404)
+        .json({
+          error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
+        });
+      return;
+    }
+    throw err;
+  }
+
   if (!removed) {
     res.status(404).json({
       error: {

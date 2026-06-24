@@ -1137,6 +1137,16 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId', ()
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('GROUP_BETA_USER_NOT_ENROLLED');
   });
+
+  it('returns 404 FLAG_GROUP_NOT_FOUND for unknown group key', async () => {
+    const res = await request(app)
+      .delete(
+        `/api/v1/admin/feature-flags/groups/nonexistent-group/beta-users/${groupBetaRemoveTargetId}`,
+      )
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('FLAG_GROUP_NOT_FOUND');
+  });
 });
 
 // ── PATCH /:key assigns group_key via existing endpoint (MINCRM-491) ──────────
