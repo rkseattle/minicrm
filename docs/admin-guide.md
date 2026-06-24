@@ -495,7 +495,7 @@ group's beta list bypasses the group gate even while the group is disabled — u
 testing a feature area with a small set of users before a broader rollout.
 
 To manage group beta users, use the API endpoints under
-`/api/v1/admin/feature-flag-groups/:groupKey/beta-users`.
+`/api/v1/admin/feature-flags/groups/:groupKey/beta-users`.
 
 #### Assigning flags to a group
 

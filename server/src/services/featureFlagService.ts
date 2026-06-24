@@ -1508,10 +1508,19 @@ export async function removeGroupBetaUser(
   try {
     await client.query('BEGIN');
 
+    // Lock the group row first — throws FLAG_GROUP_NOT_FOUND if unknown, consistent with
+    // GET and POST siblings on this resource.
     const groupRow = await client.query<{ label: string }>(
-      `SELECT label FROM feature_flag_groups WHERE group_key = $1`,
+      `SELECT label FROM feature_flag_groups WHERE group_key = $1 FOR UPDATE`,
       [groupKey],
     );
+    if (!groupRow.rows[0]) {
+      await client.query('ROLLBACK');
+      throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
+        code: 'FLAG_GROUP_NOT_FOUND',
+      });
+    }
+
     const userRow = await client.query<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [
       userId,
     ]);
