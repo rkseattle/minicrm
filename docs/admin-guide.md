@@ -464,6 +464,46 @@ When a flag has a scheduled enable time:
 > time exists, the cache is shortened to expire exactly when `enable_at` arrives, so the
 > flag activates within one server-side cache cycle (at most a few seconds late).
 
+### Flag groups (MINCRM-491)
+
+Flag groups let you cluster related feature flags under a single on/off gate. When a
+group is disabled, all member flags are blocked for every user who is not in the
+group's own beta list — regardless of each flag's individual enabled state. This makes
+a group the fastest way to shut down an entire feature area in one action.
+
+> **Evaluation order:** A per-user force override (see _Per-user overrides_ below) always
+> wins — even over a disabled group gate. After that, the group gate fires, then
+> flag-level beta enrollment and rollout bucketing.
+
+#### Managing groups
+
+Groups are managed in the **Groups** section at the top of the **Admin Settings → Features**
+page. From there you can:
+
+- **Create a group** — give it a unique key, a label, and an optional description.
+- **Toggle a group** — click the group's toggle to enable or disable the gate for all
+  member flags at once.
+- **Schedule a group enable** — set an `Enable at` date/time; the group gate lifts
+  automatically at that moment (same mechanism as flag-level scheduling).
+- **Delete a group** — only allowed when no flags are assigned to it. Deleting a group
+  does not delete the flags themselves; they become ungrouped.
+
+#### Group beta list
+
+Each group has its own beta list, separate from per-flag beta lists. A user in the
+group's beta list bypasses the group gate even while the group is disabled — useful for
+testing a feature area with a small set of users before a broader rollout.
+
+To manage group beta users, use the API endpoints under
+`/api/v1/admin/feature-flag-groups/:groupKey/beta-users`.
+
+#### Assigning flags to a group
+
+Assign a flag to a group by setting `group_key` on the flag via the API
+(`PATCH /api/v1/admin/feature-flags/:key`). A flag can belong to at most one group.
+Removing a flag from a group sets `group_key` to `null`; the flag then evaluates
+independently.
+
 ### Beta users (MINCRM-489)
 
 Each flag has a **Beta Users** panel that lets you grant individual users access to a

@@ -2,7 +2,7 @@
  * Feature flags API module.
  * Wraps the admin feature flag endpoints.
  * All calls require admin authentication.
- * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import apiClient from './axiosInstance.js';
@@ -13,6 +13,10 @@ import type {
   BetaUserEntry,
   UserOverrideEntry,
   UpsertUserOverrideInput,
+  FlagGroupRow,
+  GroupBetaUserEntry,
+  CreateFlagGroupInput,
+  UpdateFlagGroupInput,
 } from '@shared/schemas/featureFlagSchema.js';
 
 /** React Query cache key for the feature flags list */
@@ -154,4 +158,113 @@ export async function upsertUserOverride(
  */
 export async function deleteUserOverride(flagKey: string, userId: string): Promise<void> {
   await apiClient.delete(`/admin/feature-flags/${flagKey}/overrides/${userId}`);
+}
+
+// ── Flag group endpoints (MINCRM-491) ─────────────────────────────────────────
+
+/** React Query cache key for the flag groups list. */
+export const FLAG_GROUPS_QUERY_KEY = ['admin', 'feature-flags', 'groups'] as const;
+
+/** React Query cache key factory for group beta users; scoped per group key. */
+export const groupBetaUsersQueryKey = (groupKey: string) =>
+  ['admin', 'feature-flags', 'groups', groupKey, 'beta-users'] as const;
+
+/** Shape of the GET /groups response. */
+export interface ListFlagGroupsResponse {
+  groups: FlagGroupRow[];
+}
+
+/** Shape of the POST /groups response. */
+export interface CreateFlagGroupResponse {
+  group: FlagGroupRow;
+}
+
+/** Shape of the PATCH /groups/:key response. */
+export interface UpdateFlagGroupResponse {
+  group: FlagGroupRow;
+}
+
+/**
+ * Returns all flag groups with member_count and beta_user_count.
+ * Admin only.
+ */
+export async function listFlagGroups(): Promise<ListFlagGroupsResponse> {
+  const response = await apiClient.get<ListFlagGroupsResponse>('/admin/feature-flags/groups');
+  return response.data;
+}
+
+/**
+ * Creates a new flag group.
+ * Admin only.
+ */
+export async function createFlagGroup(
+  input: CreateFlagGroupInput,
+): Promise<CreateFlagGroupResponse> {
+  const response = await apiClient.post<CreateFlagGroupResponse>(
+    '/admin/feature-flags/groups',
+    input,
+  );
+  return response.data;
+}
+
+/**
+ * Updates a flag group's enabled state, enable_at, label, or description.
+ * Admin only.
+ */
+export async function updateFlagGroup(
+  groupKey: string,
+  patch: UpdateFlagGroupInput,
+): Promise<UpdateFlagGroupResponse> {
+  const response = await apiClient.patch<UpdateFlagGroupResponse>(
+    `/admin/feature-flags/groups/${groupKey}`,
+    patch,
+  );
+  return response.data;
+}
+
+/**
+ * Deletes a flag group. The server returns 409 if the group still has member flags.
+ * Admin only.
+ */
+export async function deleteFlagGroup(groupKey: string): Promise<void> {
+  await apiClient.delete(`/admin/feature-flags/groups/${groupKey}`);
+}
+
+/** Shape of GET /groups/:key/beta-users response. */
+export interface ListGroupBetaUsersResponse {
+  users: GroupBetaUserEntry[];
+}
+
+/**
+ * Returns all users enrolled in a group's beta.
+ * Admin only.
+ */
+export async function getGroupBetaUsers(groupKey: string): Promise<ListGroupBetaUsersResponse> {
+  const response = await apiClient.get<ListGroupBetaUsersResponse>(
+    `/admin/feature-flags/groups/${groupKey}/beta-users`,
+  );
+  return response.data;
+}
+
+/**
+ * Enrolls a user in a group's beta list.
+ * Admin only.
+ */
+export async function enrollGroupBetaUser(
+  groupKey: string,
+  userId: string,
+): Promise<{ user: GroupBetaUserEntry }> {
+  const response = await apiClient.post<{ user: GroupBetaUserEntry }>(
+    `/admin/feature-flags/groups/${groupKey}/beta-users`,
+    { userId },
+  );
+  return response.data;
+}
+
+/**
+ * Removes a user from a group's beta list.
+ * Admin only.
+ */
+export async function removeGroupBetaUser(groupKey: string, userId: string): Promise<void> {
+  await apiClient.delete(`/admin/feature-flags/groups/${groupKey}/beta-users/${userId}`);
 }

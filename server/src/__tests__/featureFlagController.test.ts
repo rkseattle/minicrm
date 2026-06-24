@@ -15,6 +15,8 @@ import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
 
+// (MINCRM-491) group endpoint tests added at bottom of file.
+
 const FILE_PREFIX = 'ff-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -53,6 +55,8 @@ beforeEach(async () => {
   __clearCacheForTest();
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
+  // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
+  await pool.query('DELETE FROM feature_flag_groups');
   // Reset flags to seeded defaults before each test.
   await pool.query(
     `UPDATE feature_flags
@@ -75,6 +79,8 @@ beforeEach(async () => {
 afterAll(async () => {
   await pool.query('TRUNCATE feature_flag_beta_users RESTART IDENTITY CASCADE');
   await pool.query('TRUNCATE feature_flag_user_overrides RESTART IDENTITY CASCADE');
+  // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
+  await pool.query('DELETE FROM feature_flag_groups');
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Restore flags.
   await pool.query(
@@ -729,5 +735,462 @@ describe('User overrides API', () => {
     ).find((f) => f.flag_key === 'mobile_access');
     expect(mobileFlag?.override_count.force_enabled).toBe(1);
     expect(mobileFlag?.override_count.force_disabled).toBe(0);
+  });
+});
+
+// ── GET /api/v1/admin/feature-flags/groups (MINCRM-491) ───────────────────────
+
+describe('GET /api/v1/admin/feature-flags/groups', () => {
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app).get('/api/v1/admin/feature-flags/groups');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for a rep role', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 200 with an empty groups array when no groups exist', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.groups)).toBe(true);
+    expect(res.body.groups.length).toBe(0);
+  });
+
+  it('returns created groups with member_count and beta_user_count', async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-list-group', label: 'List Group' });
+
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    const group = (
+      res.body.groups as Array<{ group_key: string; member_count: number; beta_user_count: number }>
+    ).find((g) => g.group_key === 'ff-ctrl-list-group');
+    expect(group).toBeDefined();
+    expect(group?.member_count).toBe(0);
+    expect(group?.beta_user_count).toBe(0);
+  });
+});
+
+// ── POST /api/v1/admin/feature-flags/groups (MINCRM-491) ──────────────────────
+
+describe('POST /api/v1/admin/feature-flags/groups', () => {
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .send({ group_key: 'test-group', label: 'Test' });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for a rep role', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', repCookie)
+      .send({ group_key: 'test-group', label: 'Test' });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 when group_key is missing', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ label: 'No Key' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when label is missing', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'no-label' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when group_key contains uppercase letters', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'UPPERCASE', label: 'Bad Key' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('creates a group and returns 201 with the new group', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-create', label: 'Created Group', description: 'A group' });
+    expect(res.status).toBe(201);
+    expect(res.body.group.group_key).toBe('ff-ctrl-create');
+    expect(res.body.group.label).toBe('Created Group');
+    expect(res.body.group.enabled).toBe(true);
+    expect(res.body.group.member_count).toBe(0);
+  });
+
+  it('returns 409 when group_key already exists', async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-dup', label: 'First' });
+
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-dup', label: 'Second' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('FLAG_GROUP_DUPLICATE_KEY');
+  });
+});
+
+// ── PATCH /api/v1/admin/feature-flags/groups/:key (MINCRM-491) ────────────────
+
+describe('PATCH /api/v1/admin/feature-flags/groups/:key', () => {
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-patch-group', label: 'Patch Group' });
+  });
+
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-patch-group')
+      .send({ enabled: false });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for a rep role', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-patch-group')
+      .set('Cookie', repCookie)
+      .send({ enabled: false });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 for an unknown group key', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/totally-unknown')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('FLAG_GROUP_NOT_FOUND');
+  });
+
+  it('disables a group and returns 200 with updated group', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-patch-group')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false });
+    expect(res.status).toBe(200);
+    expect(res.body.group.enabled).toBe(false);
+    expect(res.body.group.group_key).toBe('ff-ctrl-patch-group');
+  });
+
+  it('updates the label', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-patch-group')
+      .set('Cookie', adminCookie)
+      .send({ label: 'Renamed Group' });
+    expect(res.status).toBe(200);
+    expect(res.body.group.label).toBe('Renamed Group');
+  });
+
+  it('returns 400 when body is empty (at least one field required)', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-patch-group')
+      .set('Cookie', adminCookie)
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ── DELETE /api/v1/admin/feature-flags/groups/:key (MINCRM-491) ──────────────
+
+describe('DELETE /api/v1/admin/feature-flags/groups/:key', () => {
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-del-group', label: 'Delete Group' });
+  });
+
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app).delete('/api/v1/admin/feature-flags/groups/ff-ctrl-del-group');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for a rep role', async () => {
+    const res = await request(app)
+      .delete('/api/v1/admin/feature-flags/groups/ff-ctrl-del-group')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 for an unknown group key', async () => {
+    const res = await request(app)
+      .delete('/api/v1/admin/feature-flags/groups/not-a-real-group')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('FLAG_GROUP_NOT_FOUND');
+  });
+
+  it('deletes an empty group and returns 204', async () => {
+    const res = await request(app)
+      .delete('/api/v1/admin/feature-flags/groups/ff-ctrl-del-group')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(204);
+  });
+
+  it('returns 409 when the group has member flags', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET group_key = 'ff-ctrl-del-group' WHERE flag_key = 'mobile_access'`,
+    );
+    const res = await request(app)
+      .delete('/api/v1/admin/feature-flags/groups/ff-ctrl-del-group')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('FLAG_GROUP_HAS_MEMBERS');
+  });
+});
+
+// ── GET /api/v1/admin/feature-flags/groups/:key/beta-users (MINCRM-491) ───────
+
+describe('GET /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-gbeta-group', label: 'Group Beta Group' });
+  });
+
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app).get(
+      '/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-group/beta-users',
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for a rep role', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-group/beta-users')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 200 with empty users array when none enrolled', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-group/beta-users')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.users)).toBe(true);
+    expect(res.body.users.length).toBe(0);
+  });
+});
+
+// ── POST /api/v1/admin/feature-flags/groups/:key/beta-users (MINCRM-491) ──────
+
+describe('POST /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
+  let groupBetaTargetId: string;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Group Beta Target Ctrl', 'rep', '$2b$12$placeholder', 'active')
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [`${FILE_PREFIX}-gbeta-target@example.com`],
+    );
+    groupBetaTargetId = result.rows[0].id;
+  });
+
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-gbeta-enroll', label: 'Enroll Group' });
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [
+      `${FILE_PREFIX}-gbeta-target@example.com`,
+    ]);
+  });
+
+  it('enrolls a user in the group beta and returns 201', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-enroll/beta-users')
+      .set('Cookie', adminCookie)
+      .send({ userId: groupBetaTargetId });
+    expect(res.status).toBe(201);
+    expect(res.body.user.user_id).toBe(groupBetaTargetId);
+  });
+
+  it('returns 400 when userId is missing', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-enroll/beta-users')
+      .set('Cookie', adminCookie)
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 when user does not exist', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-enroll/beta-users')
+      .set('Cookie', adminCookie)
+      .send({ userId: '00000000-0000-0000-0000-000000000000' });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('USER_NOT_FOUND');
+  });
+
+  it('returns 409 when user is already enrolled', async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-enroll/beta-users')
+      .set('Cookie', adminCookie)
+      .send({ userId: groupBetaTargetId });
+
+    const res = await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-enroll/beta-users')
+      .set('Cookie', adminCookie)
+      .send({ userId: groupBetaTargetId });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('GROUP_BETA_USER_ALREADY_ENROLLED');
+  });
+});
+
+// ── DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId (MINCRM-491)
+
+describe('DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId', () => {
+  let groupBetaRemoveTargetId: string;
+
+  beforeAll(async () => {
+    const result = await pool.query<{ id: string }>(
+      `INSERT INTO users (email, name, role, password_hash, status)
+       VALUES ($1, 'Group Beta Remove Ctrl', 'rep', '$2b$12$placeholder', 'active')
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [`${FILE_PREFIX}-gbeta-remove@example.com`],
+    );
+    groupBetaRemoveTargetId = result.rows[0].id;
+  });
+
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-gbeta-remove', label: 'Remove Group' });
+
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-remove/beta-users')
+      .set('Cookie', adminCookie)
+      .send({ userId: groupBetaRemoveTargetId });
+  });
+
+  afterAll(async () => {
+    await pool.query('DELETE FROM users WHERE email = $1', [
+      `${FILE_PREFIX}-gbeta-remove@example.com`,
+    ]);
+  });
+
+  it('returns 401 with no auth cookie', async () => {
+    const res = await request(app).delete(
+      `/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-remove/beta-users/${groupBetaRemoveTargetId}`,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('removes the user and returns 204', async () => {
+    const res = await request(app)
+      .delete(
+        `/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-remove/beta-users/${groupBetaRemoveTargetId}`,
+      )
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(204);
+  });
+
+  it('returns 404 when user was not enrolled', async () => {
+    const res = await request(app)
+      .delete(
+        '/api/v1/admin/feature-flags/groups/ff-ctrl-gbeta-remove/beta-users/00000000-0000-0000-0000-000000000000',
+      )
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('GROUP_BETA_USER_NOT_ENROLLED');
+  });
+});
+
+// ── PATCH /:key assigns group_key via existing endpoint (MINCRM-491) ──────────
+
+describe('PATCH /api/v1/admin/feature-flags/:key group assignment', () => {
+  beforeEach(async () => {
+    await request(app)
+      .post('/api/v1/admin/feature-flags/groups')
+      .set('Cookie', adminCookie)
+      .send({ group_key: 'ff-ctrl-assign-group', label: 'Assign Group' });
+  });
+
+  it('assigns a flag to an existing group', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, group_key: 'ff-ctrl-assign-group' });
+    expect(res.status).toBe(200);
+    expect(res.body.flag.group_key).toBe('ff-ctrl-assign-group');
+  });
+
+  it('clears group assignment when group_key is null', async () => {
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, group_key: 'ff-ctrl-assign-group' });
+
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, group_key: null });
+    expect(res.status).toBe(200);
+    expect(res.body.flag.group_key).toBeNull();
+  });
+
+  it('returns 400 when group_key references a non-existent group', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false, group_key: 'does-not-exist' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('FLAG_GROUP_NOT_FOUND');
+  });
+
+  it('/me reflects group gate — group disabled blocks member flag for non-beta user', async () => {
+    // Assign mobile_access to the group, enable the flag itself.
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/mobile_access')
+      .set('Cookie', adminCookie)
+      .send({ enabled: true, group_key: 'ff-ctrl-assign-group' });
+
+    // Disable the group.
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/groups/ff-ctrl-assign-group')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false });
+
+    __clearCacheForTest();
+
+    // Rep (repCookie) is not in the group beta — should see mobile_access as false.
+    const res = await request(app).get('/api/v1/feature-flags/me').set('Cookie', repCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.flags['mobile_access']).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Feature flag controller — request/response shaping only.
  * All business logic lives in featureFlagService.
- * (MINCRM-463, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-490, MINCRM-491, MINCRM-492)
  */
 
 import type { Request, Response } from 'express';
@@ -15,12 +15,21 @@ import {
   listUserOverrides,
   upsertUserOverride,
   deleteUserOverride,
+  listFlagGroups,
+  createFlagGroup,
+  updateFlagGroup,
+  deleteFlagGroup,
+  getFlagGroupBetaUsers,
+  addGroupBetaUser,
+  removeGroupBetaUser,
 } from '../services/featureFlagService.js';
 import { removeDemo } from '../services/demoService.js';
 import {
   updateFeatureFlagSchema,
   enrollBetaUserSchema,
   upsertUserOverrideSchema,
+  createFlagGroupSchema,
+  updateFlagGroupSchema,
   FEATURE_FLAG_KEYS,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { MyFeatureFlagsResponse } from '@minicrm/shared/schemas/featureFlagSchema.js';
@@ -87,6 +96,15 @@ export async function updateFeatureFlagHandler(req: Request, res: Response): Pro
         error: {
           code: 'VALIDATION_ERROR',
           message: err instanceof Error ? err.message : 'Invalid role_overrides',
+        },
+      });
+      return;
+    }
+    if (code === 'FLAG_GROUP_NOT_FOUND') {
+      res.status(400).json({
+        error: {
+          code: 'FLAG_GROUP_NOT_FOUND',
+          message: err instanceof Error ? err.message : 'Group not found',
         },
       });
       return;
@@ -308,6 +326,237 @@ export async function deleteUserOverrideHandler(req: Request, res: Response): Pr
       error: {
         code: 'USER_OVERRIDE_NOT_FOUND',
         message: `No override exists for this user on flag '${key}'`,
+      },
+    });
+    return;
+  }
+
+  res.status(204).send();
+}
+
+// ── Flag group handlers (MINCRM-491) ─────────────────────────────────────────
+
+/**
+ * GET /api/v1/admin/feature-flags/groups
+ * Returns all flag groups with member_count, beta_user_count. Admin only.
+ */
+export async function listFlagGroupsHandler(req: Request, res: Response): Promise<void> {
+  const groups = await listFlagGroups();
+  res.json({ groups });
+}
+
+/**
+ * POST /api/v1/admin/feature-flags/groups
+ * Creates a new flag group. Body: { group_key, label, description }. Admin only.
+ */
+export async function createFlagGroupHandler(req: Request, res: Response): Promise<void> {
+  const parsed = createFlagGroupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
+      },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  let group: Awaited<ReturnType<typeof createFlagGroup>>;
+  try {
+    group = await createFlagGroup(parsed.data, actor);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'FLAG_GROUP_DUPLICATE_KEY') {
+      res.status(409).json({
+        error: {
+          code: 'FLAG_GROUP_DUPLICATE_KEY',
+          message: err instanceof Error ? err.message : 'Group key already exists',
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+
+  res.status(201).json({ group });
+}
+
+/**
+ * PATCH /api/v1/admin/feature-flags/groups/:key
+ * Updates a flag group's enabled state, enable_at, label, or description. Admin only.
+ */
+export async function updateFlagGroupHandler(req: Request, res: Response): Promise<void> {
+  const groupKey = req.params['key'] as string;
+
+  const parsed = updateFlagGroupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
+      },
+    });
+    return;
+  }
+
+  if (Object.keys(parsed.data).length === 0) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'At least one field (enabled, label, description, enable_at) is required',
+      },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+  const updated = await updateFlagGroup(groupKey, parsed.data, actor);
+
+  if (!updated) {
+    res.status(404).json({
+      error: {
+        code: 'FLAG_GROUP_NOT_FOUND',
+        message: `Feature flag group '${groupKey}' not found`,
+      },
+    });
+    return;
+  }
+
+  res.json({ group: updated });
+}
+
+/**
+ * DELETE /api/v1/admin/feature-flags/groups/:key
+ * Deletes a flag group. Returns 409 if group has member flags. Admin only.
+ */
+export async function deleteFlagGroupHandler(req: Request, res: Response): Promise<void> {
+  const groupKey = req.params['key'] as string;
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  let deleted: boolean;
+  try {
+    deleted = await deleteFlagGroup(groupKey, actor);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'FLAG_GROUP_HAS_MEMBERS') {
+      res.status(409).json({
+        error: {
+          code: 'FLAG_GROUP_HAS_MEMBERS',
+          message: err instanceof Error ? err.message : 'Group has member flags',
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+
+  if (!deleted) {
+    res.status(404).json({
+      error: {
+        code: 'FLAG_GROUP_NOT_FOUND',
+        message: `Feature flag group '${groupKey}' not found`,
+      },
+    });
+    return;
+  }
+
+  res.status(204).send();
+}
+
+/**
+ * GET /api/v1/admin/feature-flags/groups/:key/beta-users
+ * Returns the list of users enrolled in a group's beta. Admin only.
+ */
+export async function listGroupBetaUsersHandler(req: Request, res: Response): Promise<void> {
+  const groupKey = req.params['key'] as string;
+  const users = await getFlagGroupBetaUsers(groupKey);
+  res.json({ users });
+}
+
+/**
+ * POST /api/v1/admin/feature-flags/groups/:key/beta-users
+ * Enrolls a user in a group's beta. Admin only.
+ * Body: { userId: string }
+ */
+export async function enrollGroupBetaUserHandler(req: Request, res: Response): Promise<void> {
+  const groupKey = req.params['key'] as string;
+
+  const parsed = enrollBetaUserSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request body',
+      },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  let entry: Awaited<ReturnType<typeof addGroupBetaUser>>;
+  try {
+    entry = await addGroupBetaUser(groupKey, parsed.data.userId, actor);
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'FLAG_GROUP_NOT_FOUND') {
+      res.status(404).json({
+        error: {
+          code: 'FLAG_GROUP_NOT_FOUND',
+          message: err instanceof Error ? err.message : 'Group not found',
+        },
+      });
+      return;
+    }
+    if (code === 'USER_NOT_FOUND') {
+      res.status(404).json({
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: err instanceof Error ? err.message : 'User not found',
+        },
+      });
+      return;
+    }
+    if (code === 'GROUP_BETA_USER_ALREADY_ENROLLED') {
+      res.status(409).json({
+        error: {
+          code: 'GROUP_BETA_USER_ALREADY_ENROLLED',
+          message: err instanceof Error ? err.message : 'Already enrolled',
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+
+  res.status(201).json({ user: entry });
+}
+
+/**
+ * DELETE /api/v1/admin/feature-flags/groups/:key/beta-users/:userId
+ * Removes a user from a group's beta. Admin only.
+ */
+export async function removeGroupBetaUserHandler(req: Request, res: Response): Promise<void> {
+  const groupKey = req.params['key'] as string;
+  const userId = req.params['userId'] as string;
+
+  if (!UUID_REGEX.test(userId)) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'userId must be a valid UUID' },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
+
+  const removed = await removeGroupBetaUser(groupKey, userId, actor);
+  if (!removed) {
+    res.status(404).json({
+      error: {
+        code: 'GROUP_BETA_USER_NOT_ENROLLED',
+        message: `User is not enrolled in the beta for group '${groupKey}'`,
       },
     });
     return;

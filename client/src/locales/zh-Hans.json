@@ -1938,6 +1938,30 @@
       "noOverrides": "无覆盖",
       "removeOverride": "移除",
       "saveError": "保存覆盖失败，请重试。"
+    },
+    "groups": {
+      "sectionTitle": "功能标志组",
+      "empty": "未配置任何组。",
+      "createGroup": "创建组",
+      "createSubmit": "创建",
+      "labelField": "标签",
+      "keyField": "组键",
+      "descriptionField": "描述",
+      "keyInvalid": "键必须是小写字母数字，可包含 _ 或 -",
+      "duplicateKey": "具有此键的组已存在。",
+      "memberCount_one": "{{count}} 个标志",
+      "memberCount_other": "{{count}} 个标志",
+      "betaUsers": "组 Beta 用户",
+      "betaUserEmpty": "尚无用户加入组 Beta。",
+      "betaUserRemove": "移除",
+      "betaUserAlreadyEnrolled": "该用户已加入此组的 Beta。",
+      "toggleLabel": "切换组 {{label}}",
+      "disabledBadge": "组已关闭",
+      "assignGroup": "组：",
+      "noGroup": "无",
+      "memberFlags": "成员标志",
+      "delete": "删除组",
+      "deleteDisabledTooltip": "删除此组前请先取消所有成员标志的分配。"
     }
   },
   "aiSettings": {

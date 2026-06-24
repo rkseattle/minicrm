@@ -1938,6 +1938,30 @@
       "noOverrides": "Aucune substitution",
       "removeOverride": "Supprimer",
       "saveError": "Échec de l'enregistrement de la substitution. Veuillez réessayer."
+    },
+    "groups": {
+      "sectionTitle": "Groupes de drapeaux",
+      "empty": "Aucun groupe configuré.",
+      "createGroup": "Créer un groupe",
+      "createSubmit": "Créer",
+      "labelField": "Libellé",
+      "keyField": "Clé du groupe",
+      "descriptionField": "Description",
+      "keyInvalid": "La clé doit être en minuscules alphanumériques avec _ ou -",
+      "duplicateKey": "Un groupe avec cette clé existe déjà.",
+      "memberCount_one": "{{count}} drapeau",
+      "memberCount_other": "{{count}} drapeaux",
+      "betaUsers": "Utilisateurs bêta du groupe",
+      "betaUserEmpty": "Aucun utilisateur inscrit dans le bêta du groupe.",
+      "betaUserRemove": "Retirer",
+      "betaUserAlreadyEnrolled": "L'utilisateur est déjà inscrit dans le bêta de ce groupe.",
+      "toggleLabel": "Activer/désactiver le groupe {{label}}",
+      "disabledBadge": "Groupe désactivé",
+      "assignGroup": "Groupe :",
+      "noGroup": "Aucun",
+      "memberFlags": "Drapeaux membres",
+      "delete": "Supprimer le groupe",
+      "deleteDisabledTooltip": "Désassignez tous les drapeaux membres avant de supprimer ce groupe."
     }
   },
   "aiSettings": {

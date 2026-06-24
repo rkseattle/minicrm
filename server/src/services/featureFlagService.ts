@@ -18,6 +18,10 @@ import type {
   OverrideDirection,
   UserOverrideEntry,
   OverrideCount,
+  CreateFlagGroupInput,
+  UpdateFlagGroupInput,
+  FlagGroupRow,
+  GroupBetaUserEntry,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
 import { USER_ROLES } from '@minicrm/shared/schemas/userSchema.js';
@@ -39,6 +43,20 @@ interface FeatureFlagDbRow {
   updated_by_name: string | null;
   updated_at: Date;
   system_flag: boolean;
+  /** Group this flag belongs to, or null if ungrouped. (MINCRM-491) */
+  group_key: string | null;
+}
+
+/** Raw DB row from the feature_flag_groups table joined with updated_by name. (MINCRM-491) */
+interface FlagGroupDbRow {
+  group_key: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  enable_at: Date | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
+  updated_at: Date;
 }
 
 // ── Stable hash (MINCRM-490) ──────────────────────────────────────────────────
@@ -109,7 +127,8 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
        ff.updated_by,
        u.name AS updated_by_name,
        ff.updated_at,
-       ff.system_flag
+       ff.system_flag,
+       ff.group_key
      FROM feature_flags ff
      LEFT JOIN users u ON u.id = ff.updated_by
      ORDER BY ff.category,
@@ -118,13 +137,26 @@ async function getCachedRows(): Promise<FeatureFlagDbRow[]> {
               ff.label`,
   );
 
-  // Cap TTL at the time until the nearest future enable_at so a scheduled enable
-  // fires without waiting for the full 60-second TTL. (MINCRM-488)
+  // Cap TTL at the time until the nearest future enable_at across flags and groups,
+  // so a scheduled enable fires without waiting for the full 60-second TTL. (MINCRM-488, MINCRM-491)
   const now = Date.now();
-  const nearestEnableAt = result.rows
+
+  const flagEnableAts = result.rows
     .map((r) => r.enable_at?.getTime() ?? null)
-    .filter((t): t is number => t !== null && t > now)
-    .reduce((min, t) => Math.min(min, t), Infinity);
+    .filter((t): t is number => t !== null && t > now);
+
+  // Also query group enable_at values to keep cache TTL tight for group-level scheduling.
+  const groupEnableAtResult = await pool.query<{ enable_at: Date | null }>(
+    `SELECT enable_at FROM feature_flag_groups WHERE enable_at IS NOT NULL AND enable_at > now()`,
+  );
+  const groupEnableAts = groupEnableAtResult.rows
+    .map((r) => r.enable_at?.getTime() ?? null)
+    .filter((t): t is number => t !== null && t > now);
+
+  const nearestEnableAt = [...flagEnableAts, ...groupEnableAts].reduce(
+    (min, t) => Math.min(min, t),
+    Infinity,
+  );
 
   const effectiveTtl =
     nearestEnableAt === Infinity ? CACHE_TTL_MS : Math.min(CACHE_TTL_MS, nearestEnableAt - now);
@@ -161,6 +193,7 @@ export async function listFeatureFlags(): Promise<FeatureFlagRow[]> {
     active_user_count: usageCounts.get(row.flag_key) ?? 0,
     beta_user_count: betaCounts.get(row.flag_key) ?? 0,
     override_count: overrideCounts.get(row.flag_key) ?? { force_enabled: 0, force_disabled: 0 },
+    group_key: row.group_key ?? null,
   })) as FeatureFlagRow[];
 }
 
@@ -184,6 +217,7 @@ export async function getFeatureFlag(key: string): Promise<FeatureFlagRow | null
     active_user_count: count,
     beta_user_count: betaCount,
     override_count: overrideCount,
+    group_key: row.group_key ?? null,
   } as FeatureFlagRow;
 }
 
@@ -275,7 +309,7 @@ export async function updateFeatureFlag(
 
     const existing = await client.query<FeatureFlagDbRow>(
       `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides, ff.enable_at,
-              ff.rollout_percentage, ff.rollout_stages
+              ff.rollout_percentage, ff.rollout_stages, ff.group_key
        FROM feature_flags ff
        WHERE ff.flag_key = $1
        FOR UPDATE`,
@@ -296,6 +330,23 @@ export async function updateFeatureFlag(
       patch.rollout_percentage !== undefined ? patch.rollout_percentage : before.rollout_percentage;
     const newRolloutStages =
       patch.rollout_stages !== undefined ? patch.rollout_stages : before.rollout_stages;
+    // undefined means "not in request body, keep existing"; null means "unassign from group"
+    const newGroupKey =
+      patch.group_key !== undefined ? patch.group_key : (before.group_key ?? null);
+
+    // Validate that the target group exists when assigning. (MINCRM-491)
+    if (patch.group_key != null) {
+      const groupExists = await client.query<{ exists: boolean }>(
+        `SELECT EXISTS(SELECT 1 FROM feature_flag_groups WHERE group_key = $1) AS exists`,
+        [patch.group_key],
+      );
+      if (!groupExists.rows[0]?.exists) {
+        await client.query('ROLLBACK');
+        throw Object.assign(new Error(`Feature flag group '${patch.group_key}' does not exist`), {
+          code: 'FLAG_GROUP_NOT_FOUND',
+        });
+      }
+    }
 
     const result = await client.query<FeatureFlagDbRow>(
       `UPDATE feature_flags
@@ -304,19 +355,21 @@ export async function updateFeatureFlag(
            enable_at          = $3,
            rollout_percentage = $4,
            rollout_stages     = $5,
-           updated_by         = $6,
+           group_key          = $6,
+           updated_by         = $7,
            updated_at         = now()
-       WHERE flag_key = $7
+       WHERE flag_key = $8
        RETURNING
          flag_key, label, description, category, enabled,
          role_overrides, enable_at, rollout_percentage, rollout_stages,
-         updated_by, updated_at, system_flag`,
+         group_key, updated_by, updated_at, system_flag`,
       [
         patch.enabled,
         newRoleOverrides,
         newEnableAt ?? null,
         newRolloutPercentage ?? null,
         newRolloutStages ? JSON.stringify(newRolloutStages) : null,
+        newGroupKey ?? null,
         actor.id,
         key,
       ],
@@ -406,6 +459,21 @@ export async function updateFeatureFlag(
       });
     }
 
+    // Audit group assignment changes. (MINCRM-491)
+    if (patch.group_key !== undefined && newGroupKey !== (before.group_key ?? null)) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'group_key',
+        oldValue: before.group_key ?? 'null',
+        newValue: newGroupKey ?? 'null',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
     await client.query('COMMIT');
     invalidateCache();
 
@@ -429,6 +497,7 @@ export async function updateFeatureFlag(
       active_user_count: activeCount,
       beta_user_count: betaCount,
       override_count: overrideCount,
+      group_key: updated.group_key ?? null,
     } as FeatureFlagRow;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -580,7 +649,12 @@ export async function isFlagEnabledForUser(
   userId: string,
   role: UserRole,
 ): Promise<boolean> {
-  // Step 1: absolute per-user override (MINCRM-492).
+  const rows = await getCachedRows();
+  const row = rows.find((r) => r.flag_key === key);
+
+  // Step 1: per-user force overrides win over everything, including the group gate.
+  // (documented at POST /api/v1/feature-flags/:key/overrides — "unconditionally overrides
+  // all other targeting rules including group gates") (MINCRM-492, MINCRM-491)
   const overrideResult = await pool.query<{ override: OverrideDirection }>(
     `SELECT override FROM feature_flag_user_overrides WHERE flag_key = $1 AND user_id = $2`,
     [key, userId],
@@ -589,7 +663,39 @@ export async function isFlagEnabledForUser(
   if (userOverride === 'force_enabled') return true;
   if (userOverride === 'force_disabled') return false;
 
-  // Step 2: beta membership → always enabled for beta users (MINCRM-489).
+  // Step 2: group gate — if the flag belongs to a group, check the group before flag-level rules.
+  // A disabled group blocks the flag for everyone except users in the group's own beta list.
+  // The group gate is a kill switch for all non-force-overridden users. (MINCRM-491)
+  if (row?.group_key) {
+    const groupPassResult = await pool.query<{
+      enabled: boolean;
+      enable_at: Date | null;
+      in_group_beta: boolean;
+    }>(
+      `SELECT
+         g.enabled,
+         g.enable_at,
+         EXISTS(
+           SELECT 1 FROM feature_flag_group_beta_users gb
+           WHERE gb.group_key = g.group_key AND gb.user_id = $2
+         ) AS in_group_beta
+       FROM feature_flag_groups g
+       WHERE g.group_key = $1`,
+      [row.group_key, userId],
+    );
+
+    const groupRow = groupPassResult.rows[0];
+    if (groupRow) {
+      const groupEnabled =
+        groupRow.enabled ||
+        (groupRow.enable_at !== null && groupRow.enable_at.getTime() <= Date.now());
+      // If the group is disabled and the user is not in the group beta, deny immediately.
+      if (!groupEnabled && !groupRow.in_group_beta) return false;
+    }
+    // If the group row is missing (deleted between cache population and now), allow through.
+  }
+
+  // Step 3: flag-level beta membership → always enabled for beta users (MINCRM-489).
   const betaResult = await pool.query<{ exists: boolean }>(
     `SELECT EXISTS(
        SELECT 1 FROM feature_flag_beta_users
@@ -599,19 +705,17 @@ export async function isFlagEnabledForUser(
   );
   if (betaResult.rows[0]?.exists) return true;
 
-  // Step 3: rollout bucketing (MINCRM-490).
+  // Step 4: rollout bucketing (MINCRM-490).
   // Only consult the cache for the rollout_percentage value — beta/override are always fresh.
   // Rollout acts as its own activation path: a flag with rollout_percentage set can enable
   // users even when enabled=false, allowing gradual rollout before a full org-wide flip.
   // To kill the rollout, clear rollout_percentage (set to null) or set it to 0.
-  const rows = await getCachedRows();
-  const row = rows.find((r) => r.flag_key === key);
   if (row && row.rollout_percentage !== null) {
     const bucket = stableHash(userId + key) % 100;
     return bucket < row.rollout_percentage;
   }
 
-  // Step 4: org-wide enabled / enable_at / role overrides.
+  // Step 5: org-wide enabled / enable_at / role overrides.
   return isFlagEnabledForRole(key, role);
 }
 
@@ -948,6 +1052,468 @@ export async function deleteUserOverride(
       eventType: 'updated',
       fieldName: 'user_override',
       oldValue: `${priorDirection ?? 'unknown'} for ${userRow.rows[0]?.name ?? userId}`,
+      newValue: 'null',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ── Flag group CRUD (MINCRM-491) ──────────────────────────────────────────────
+
+/**
+ * Maps a raw DB group row to the API shape.
+ */
+function toFlagGroupRow(
+  row: FlagGroupDbRow,
+  memberCount: number,
+  betaUserCount: number,
+): FlagGroupRow {
+  return {
+    group_key: row.group_key,
+    label: row.label,
+    description: row.description,
+    enabled: row.enabled,
+    enable_at: row.enable_at?.toISOString() ?? null,
+    updated_by: row.updated_by ?? null,
+    updated_by_name: row.updated_by_name ?? null,
+    updated_at: row.updated_at.toISOString(),
+    member_count: memberCount,
+    beta_user_count: betaUserCount,
+  };
+}
+
+/**
+ * Returns all flag groups with member_count and beta_user_count. Admin only.
+ */
+export async function listFlagGroups(): Promise<FlagGroupRow[]> {
+  const result = await pool.query<
+    FlagGroupDbRow & { member_count: string; beta_user_count: string }
+  >(
+    `SELECT
+       g.group_key,
+       g.label,
+       g.description,
+       g.enabled,
+       g.enable_at,
+       g.updated_by,
+       u.name AS updated_by_name,
+       g.updated_at,
+       COUNT(DISTINCT ff.flag_key)::text AS member_count,
+       COUNT(DISTINCT gb.user_id)::text AS beta_user_count
+     FROM feature_flag_groups g
+     LEFT JOIN users u ON u.id = g.updated_by
+     LEFT JOIN feature_flags ff ON ff.group_key = g.group_key
+     LEFT JOIN feature_flag_group_beta_users gb ON gb.group_key = g.group_key
+     GROUP BY g.group_key, u.name
+     ORDER BY g.label`,
+  );
+
+  return result.rows.map((r) =>
+    toFlagGroupRow(r, parseInt(r.member_count, 10), parseInt(r.beta_user_count, 10)),
+  );
+}
+
+/**
+ * Creates a new flag group. Throws FLAG_GROUP_DUPLICATE_KEY on 23505. (MINCRM-491)
+ */
+export async function createFlagGroup(
+  input: CreateFlagGroupInput,
+  actor: AuditActor,
+): Promise<FlagGroupRow> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const insertResult = await client.query<FlagGroupDbRow>(
+      `INSERT INTO feature_flag_groups (group_key, label, description, updated_by)
+       VALUES ($1, $2, $3, $4)
+       RETURNING group_key, label, description, enabled, enable_at, updated_by, updated_at`,
+      [input.group_key, input.label, input.description ?? '', actor.id],
+    );
+    const inserted = insertResult.rows[0]!;
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag_group',
+      recordId: null,
+      recordName: input.label,
+      eventType: 'created',
+      fieldName: 'group_key',
+      oldValue: 'null',
+      newValue: input.group_key,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    invalidateCache();
+
+    return toFlagGroupRow({ ...inserted, updated_by_name: actor.name }, 0, 0);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    const pgErr = err as { code?: string };
+    if (pgErr.code === '23505') {
+      throw Object.assign(new Error(`Feature flag group '${input.group_key}' already exists`), {
+        code: 'FLAG_GROUP_DUPLICATE_KEY',
+      });
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Updates a flag group's label, description, enabled state, or enable_at schedule.
+ * Returns null if the group does not exist. (MINCRM-491)
+ */
+export async function updateFlagGroup(
+  groupKey: string,
+  patch: UpdateFlagGroupInput,
+  actor: AuditActor,
+): Promise<FlagGroupRow | null> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const existing = await client.query<FlagGroupDbRow>(
+      `SELECT group_key, label, description, enabled, enable_at, updated_by, updated_at
+       FROM feature_flag_groups
+       WHERE group_key = $1
+       FOR UPDATE`,
+      [groupKey],
+    );
+    if (!existing.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const before = existing.rows[0];
+    const newLabel = patch.label !== undefined ? patch.label : before.label;
+    const newDescription = patch.description !== undefined ? patch.description : before.description;
+    const newEnabled = patch.enabled !== undefined ? patch.enabled : before.enabled;
+    const newEnableAt =
+      patch.enable_at !== undefined ? patch.enable_at : (before.enable_at?.toISOString() ?? null);
+
+    const updateResult = await client.query<FlagGroupDbRow>(
+      `UPDATE feature_flag_groups
+       SET label       = $1,
+           description = $2,
+           enabled     = $3,
+           enable_at   = $4,
+           updated_by  = $5,
+           updated_at  = now()
+       WHERE group_key = $6
+       RETURNING group_key, label, description, enabled, enable_at, updated_by, updated_at`,
+      [newLabel, newDescription, newEnabled, newEnableAt ?? null, actor.id, groupKey],
+    );
+    const updated = updateResult.rows[0]!;
+
+    if (patch.enabled !== undefined && patch.enabled !== before.enabled) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag_group',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'enabled',
+        oldValue: String(before.enabled),
+        newValue: String(patch.enabled),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    if (patch.label !== undefined && patch.label !== before.label) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag_group',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'label',
+        oldValue: before.label,
+        newValue: patch.label,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    if (patch.description !== undefined && patch.description !== before.description) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag_group',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'description',
+        oldValue: before.description,
+        newValue: patch.description,
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    const beforeEnableAt = before.enable_at?.toISOString() ?? null;
+    if (patch.enable_at !== undefined && patch.enable_at !== beforeEnableAt) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag_group',
+        recordId: null,
+        recordName: before.label,
+        eventType: 'updated',
+        fieldName: 'enable_at',
+        oldValue: beforeEnableAt ?? 'null',
+        newValue: patch.enable_at ?? 'null',
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+    invalidateCache();
+
+    const [memberCount, betaUserCount] = await Promise.all([
+      getFlagGroupMemberCount(groupKey),
+      getFlagGroupBetaUserCount(groupKey),
+    ]);
+
+    return toFlagGroupRow({ ...updated, updated_by_name: actor.name }, memberCount, betaUserCount);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes a flag group. Returns false if not found.
+ * Throws FLAG_GROUP_HAS_MEMBERS if the group still has member flags. (MINCRM-491)
+ */
+export async function deleteFlagGroup(groupKey: string, actor: AuditActor): Promise<boolean> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const groupRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flag_groups WHERE group_key = $1 FOR UPDATE`,
+      [groupKey],
+    );
+    if (!groupRow.rows[0]) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    const memberCheck = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM feature_flags WHERE group_key = $1`,
+      [groupKey],
+    );
+    if (parseInt(memberCheck.rows[0]?.count ?? '0', 10) > 0) {
+      await client.query('ROLLBACK');
+      throw Object.assign(
+        new Error(`Cannot delete group '${groupKey}': it still has member flags`),
+        { code: 'FLAG_GROUP_HAS_MEMBERS' },
+      );
+    }
+
+    await client.query(`DELETE FROM feature_flag_groups WHERE group_key = $1`, [groupKey]);
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag_group',
+      recordId: null,
+      recordName: groupRow.rows[0].label,
+      eventType: 'deleted',
+      fieldName: 'group_key',
+      oldValue: groupKey,
+      newValue: 'null',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    invalidateCache();
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Returns count of feature flags assigned to a group.
+ */
+async function getFlagGroupMemberCount(groupKey: string): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM feature_flags WHERE group_key = $1`,
+    [groupKey],
+  );
+  return parseInt(result.rows[0]?.count ?? '0', 10);
+}
+
+/**
+ * Returns count of beta users enrolled in a group.
+ */
+async function getFlagGroupBetaUserCount(groupKey: string): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM feature_flag_group_beta_users WHERE group_key = $1`,
+    [groupKey],
+  );
+  return parseInt(result.rows[0]?.count ?? '0', 10);
+}
+
+// ── Group beta user CRUD (MINCRM-491) ─────────────────────────────────────────
+
+/** Raw DB row from feature_flag_group_beta_users joined with user details. */
+interface GroupBetaUserDbRow {
+  group_key: string;
+  user_id: string;
+  name: string;
+  email: string;
+  added_at: Date;
+}
+
+/**
+ * Returns the list of users enrolled in the beta for a specific group. Always queries fresh.
+ */
+export async function getFlagGroupBetaUsers(groupKey: string): Promise<GroupBetaUserEntry[]> {
+  const result = await pool.query<GroupBetaUserDbRow>(
+    `SELECT
+       gb.group_key,
+       gb.user_id,
+       u.name,
+       u.email,
+       gb.added_at
+     FROM feature_flag_group_beta_users gb
+     JOIN users u ON u.id = gb.user_id
+     WHERE gb.group_key = $1
+     ORDER BY gb.added_at ASC`,
+    [groupKey],
+  );
+  return result.rows.map((r) => ({ ...r, added_at: r.added_at.toISOString() }));
+}
+
+/**
+ * Enrolls a user in the beta for a flag group.
+ * Writes an audit entry in the same transaction.
+ * Throws GROUP_BETA_USER_ALREADY_ENROLLED on duplicate. (MINCRM-491)
+ */
+export async function addGroupBetaUser(
+  groupKey: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<GroupBetaUserEntry> {
+  const client: PoolClient = await pool.connect();
+  let inTransaction = false;
+  try {
+    const groupRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flag_groups WHERE group_key = $1`,
+      [groupKey],
+    );
+    if (!groupRow.rows[0]) {
+      throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
+        code: 'FLAG_GROUP_NOT_FOUND',
+      });
+    }
+
+    const userRow = await client.query<{ name: string; email: string }>(
+      `SELECT name, email FROM users WHERE id = $1`,
+      [userId],
+    );
+    if (!userRow.rows[0]) {
+      throw Object.assign(new Error(`User '${userId}' not found`), { code: 'USER_NOT_FOUND' });
+    }
+
+    await client.query('BEGIN');
+    inTransaction = true;
+
+    const insertResult = await client.query<{ added_at: Date }>(
+      `INSERT INTO feature_flag_group_beta_users (group_key, user_id, added_by)
+       VALUES ($1, $2, $3)
+       RETURNING added_at`,
+      [groupKey, userId, actor.id],
+    );
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag_group',
+      recordId: null,
+      recordName: groupRow.rows[0].label,
+      eventType: 'updated',
+      fieldName: 'beta_users',
+      oldValue: 'null',
+      newValue: userRow.rows[0].name,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+
+    return {
+      group_key: groupKey,
+      user_id: userId,
+      name: userRow.rows[0].name,
+      email: userRow.rows[0].email,
+      added_at: insertResult.rows[0].added_at.toISOString(),
+    };
+  } catch (err) {
+    if (inTransaction) await client.query('ROLLBACK');
+    const pgErr = err as { code?: string };
+    if (pgErr.code === '23505') {
+      throw Object.assign(
+        new Error(`User is already enrolled in the beta for group '${groupKey}'`),
+        { code: 'GROUP_BETA_USER_ALREADY_ENROLLED' },
+      );
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Removes a user's beta enrollment from a flag group.
+ * Returns false if no enrollment existed. (MINCRM-491)
+ */
+export async function removeGroupBetaUser(
+  groupKey: string,
+  userId: string,
+  actor: AuditActor,
+): Promise<boolean> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const groupRow = await client.query<{ label: string }>(
+      `SELECT label FROM feature_flag_groups WHERE group_key = $1`,
+      [groupKey],
+    );
+    const userRow = await client.query<{ name: string }>(`SELECT name FROM users WHERE id = $1`, [
+      userId,
+    ]);
+
+    const deleteResult = await client.query(
+      `DELETE FROM feature_flag_group_beta_users WHERE group_key = $1 AND user_id = $2`,
+      [groupKey, userId],
+    );
+
+    if (deleteResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+
+    await writeAuditEntry(client, {
+      recordType: 'feature_flag_group',
+      recordId: null,
+      recordName: groupRow.rows[0]?.label ?? groupKey,
+      eventType: 'updated',
+      fieldName: 'beta_users',
+      oldValue: userRow.rows[0]?.name ?? userId,
       newValue: 'null',
       changedById: actor.id,
       changedByName: actor.name,
