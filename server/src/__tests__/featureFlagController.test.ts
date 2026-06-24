@@ -997,6 +997,14 @@ describe('GET /api/v1/admin/feature-flags/groups/:key/beta-users', () => {
     expect(Array.isArray(res.body.users)).toBe(true);
     expect(res.body.users.length).toBe(0);
   });
+
+  it('returns 404 for unknown group key', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/feature-flags/groups/nonexistent-group/beta-users')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('FLAG_GROUP_NOT_FOUND');
+  });
 });
 
 // ── POST /api/v1/admin/feature-flags/groups/:key/beta-users (MINCRM-491) ──────

@@ -471,8 +471,21 @@ export async function deleteFlagGroupHandler(req: Request, res: Response): Promi
  */
 export async function listGroupBetaUsersHandler(req: Request, res: Response): Promise<void> {
   const groupKey = req.params['key'] as string;
-  const users = await getFlagGroupBetaUsers(groupKey);
-  res.json({ users });
+  try {
+    const users = await getFlagGroupBetaUsers(groupKey);
+    res.json({ users });
+  } catch (err) {
+    const domainErr = err as { code?: string };
+    if (domainErr.code === 'FLAG_GROUP_NOT_FOUND') {
+      res
+        .status(404)
+        .json({
+          error: { code: 'FLAG_GROUP_NOT_FOUND', message: `Group '${groupKey}' not found` },
+        });
+      return;
+    }
+    throw err;
+  }
 }
 
 /**
