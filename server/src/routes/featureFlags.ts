@@ -219,8 +219,9 @@ router.patch(
  *     operationId: deleteFlagGroup
  *     summary: Delete a flag group
  *     description: >
- *       Deletes a flag group. Returns 409 if the group still has member flags.
- *       When deleted, member flags retain their own state but become ungrouped. Admin only.
+ *       Deletes a flag group. The group must have no member flags assigned; returns 409
+ *       (FLAG_GROUP_HAS_MEMBERS) if any flags still reference this group. Unassign all
+ *       member flags first (PATCH each flag's group_key to null), then delete. Admin only.
  *     security:
  *       - cookieAuth: []
  *     parameters:

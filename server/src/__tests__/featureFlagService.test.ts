@@ -1123,6 +1123,12 @@ describe('flag group beta user management (MINCRM-491)', () => {
     await pool.query('DELETE FROM users WHERE email = $1', [TARGET_EMAIL]);
   });
 
+  it('getFlagGroupBetaUsers throws FLAG_GROUP_NOT_FOUND for unknown group', async () => {
+    await expect(getFlagGroupBetaUsers('nonexistent-group')).rejects.toMatchObject({
+      code: 'FLAG_GROUP_NOT_FOUND',
+    });
+  });
+
   it('addGroupBetaUser enrolls a user and getFlagGroupBetaUsers returns them', async () => {
     await addGroupBetaUser(GROUP_KEY, targetUserId, ACTOR());
     const users = await getFlagGroupBetaUsers(GROUP_KEY);

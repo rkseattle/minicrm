@@ -1634,6 +1634,46 @@ exports.up = (pgm) => {
     )
   `);
 
+  // feature_flag_groups (migration 119 — MINCRM-491)
+  // Gate layer above individual flags — disabling a group blocks all member flags for
+  // non-beta users. Must be after users table.
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.feature_flag_groups (
+      group_key   varchar(100) NOT NULL,
+      label       varchar(100) NOT NULL,
+      description text NOT NULL DEFAULT '',
+      enabled     boolean NOT NULL DEFAULT true,
+      enable_at   timestamp with time zone,
+      updated_by  uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      updated_at  timestamp with time zone NOT NULL DEFAULT now(),
+      CONSTRAINT feature_flag_groups_pkey PRIMARY KEY (group_key)
+    )
+  `);
+
+  // feature_flag_group_beta_users (migration 120 — MINCRM-491)
+  // Users in a group's beta list bypass the group gate even when the group is disabled.
+  // Must be after feature_flag_groups and users tables.
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.feature_flag_group_beta_users (
+      group_key varchar(100) NOT NULL REFERENCES public.feature_flag_groups(group_key) ON DELETE CASCADE,
+      user_id   uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      added_by  uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      added_at  timestamp with time zone NOT NULL DEFAULT now(),
+      CONSTRAINT feature_flag_group_beta_users_pkey PRIMARY KEY (group_key, user_id)
+    )
+  `);
+
+  // group_key column on feature_flags (migration 121 — MINCRM-491)
+  // A flag may belong to at most one group. ON DELETE SET NULL so deleting a group
+  // ungroups its flags without data loss. Must be after feature_flag_groups.
+  pgm.sql(`
+    ALTER TABLE public.feature_flags
+      ADD COLUMN IF NOT EXISTS group_key varchar(100) REFERENCES public.feature_flag_groups(group_key) ON DELETE SET NULL
+  `);
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS feature_flags_group_key_index ON public.feature_flags USING btree (group_key)
+  `);
+
 };
 
 /**

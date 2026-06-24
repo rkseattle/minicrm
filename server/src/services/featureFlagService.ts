@@ -1383,6 +1383,16 @@ interface GroupBetaUserDbRow {
  * Returns the list of users enrolled in the beta for a specific group. Always queries fresh.
  */
 export async function getFlagGroupBetaUsers(groupKey: string): Promise<GroupBetaUserEntry[]> {
+  const exists = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM feature_flag_groups WHERE group_key = $1) AS exists`,
+    [groupKey],
+  );
+  if (!exists.rows[0]?.exists) {
+    throw Object.assign(new Error(`Feature flag group '${groupKey}' not found`), {
+      code: 'FLAG_GROUP_NOT_FOUND',
+    });
+  }
+
   const result = await pool.query<GroupBetaUserDbRow>(
     `SELECT
        gb.group_key,
