@@ -1,7 +1,7 @@
 /**
  * Feature flag service — all database operations and caching for the feature flag registry.
  * Business logic belongs here. Controllers must not query the database directly.
- * (MINCRM-463, MINCRM-490, MINCRM-492)
+ * (MINCRM-463, MINCRM-490, MINCRM-492, MINCRM-565)
  */
 
 import type { PoolClient } from 'pg';
@@ -23,8 +23,6 @@ import type {
   FlagGroupRow,
   GroupBetaUserEntry,
 } from '@minicrm/shared/schemas/featureFlagSchema.js';
-import type { UserRole } from '@minicrm/shared/schemas/userSchema.js';
-import { USER_ROLES } from '@minicrm/shared/schemas/userSchema.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -240,9 +238,11 @@ export async function isFeatureEnabled(key: string): Promise<boolean> {
 /**
  * Returns true if the flag is enabled for a specific user role.
  * Applies enable_at scheduling check first; then consults role_overrides;
- * falls back to the org-wide enabled value. (MINCRM-488)
+ * falls back to the org-wide enabled value. (MINCRM-488, MINCRM-565)
+ *
+ * @param role - Role name string; accepts both built-in roles and custom role names.
  */
-export async function isFlagEnabledForRole(key: string, role: UserRole): Promise<boolean> {
+export async function isFlagEnabledForRole(key: string, role: string): Promise<boolean> {
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
   if (!row) {
@@ -255,27 +255,39 @@ export async function isFlagEnabledForRole(key: string, role: UserRole): Promise
 
   const overrides = row.role_overrides;
   if (overrides != null && overrides[role] !== undefined) {
-    return overrides[role] as boolean;
+    // role_overrides values are always boolean; the Zod schema and DB write enforce it.
+    return overrides[role]!;
   }
   return row.enabled;
 }
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
-/** Allowed role keys in a role_overrides object. */
-const ALLOWED_ROLE_OVERRIDE_KEYS = new Set(USER_ROLES);
-
 /**
- * Validates that a role_overrides value contains only known role keys with boolean values.
- * Throws a typed domain error on invalid input so the controller can return 400.
- * This guard runs independently of the Zod layer as defence-in-depth. (MINCRM-511)
+ * Validates that all role keys in a role_overrides map exist in the current role set.
+ * Queries the live DB (built-in + custom roles) so that newly created custom roles are
+ * accepted and deleted roles are rejected. Throws typed domain errors on invalid input.
+ * Runs inside the caller's transaction so that no separate pool.query() is needed.
+ * (MINCRM-565)
  */
-function assertValidRoleOverrides(overrides: RoleOverrides): void {
+async function assertValidRoleOverrides(
+  overrides: RoleOverrides,
+  client: PoolClient,
+): Promise<void> {
   if (overrides == null) return;
+
+  const keys = Object.keys(overrides);
+  if (keys.length === 0) return;
+
+  // custom_roles holds both built-in rows (is_builtin=true: admin, rep, manager, viewer,
+  // service_account) and tenant-defined custom roles — one query covers the full valid set.
+  const knownRoles = await client.query<{ name: string }>(`SELECT name FROM public.custom_roles`);
+  const knownRoleSet = new Set(knownRoles.rows.map((r) => r.name));
+
   for (const [key, value] of Object.entries(overrides)) {
-    if (!ALLOWED_ROLE_OVERRIDE_KEYS.has(key as (typeof USER_ROLES)[number])) {
-      throw Object.assign(new Error(`role_overrides contains invalid role key: '${key}'`), {
-        code: 'FEATURE_FLAG_INVALID_ROLE_OVERRIDE',
+    if (!knownRoleSet.has(key)) {
+      throw Object.assign(new Error(`role_overrides contains unknown role key: '${key}'`), {
+        code: 'FEATURE_FLAG_UNKNOWN_ROLE_KEY',
       });
     }
     if (typeof value !== 'boolean') {
@@ -299,13 +311,15 @@ export async function updateFeatureFlag(
   actor: AuditActor,
   opts?: { onDisabled?: () => Promise<void> },
 ): Promise<FeatureFlagRow | null> {
-  if (patch.role_overrides !== undefined) {
-    assertValidRoleOverrides(patch.role_overrides);
-  }
-
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Validate role_overrides keys against live DB role set inside the transaction so the
+    // check is consistent with the state visible to the concurrent UPDATE below. (MINCRM-565)
+    if (patch.role_overrides !== undefined) {
+      await assertValidRoleOverrides(patch.role_overrides, client);
+    }
 
     const existing = await client.query<FeatureFlagDbRow>(
       `SELECT ff.flag_key, ff.label, ff.enabled, ff.role_overrides, ff.enable_at,
@@ -647,7 +661,7 @@ interface BetaUserDbRow {
 export async function isFlagEnabledForUser(
   key: string,
   userId: string,
-  role: UserRole,
+  role: string,
 ): Promise<boolean> {
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
