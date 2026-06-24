@@ -1910,6 +1910,7 @@
       "service_account": "服务账户"
     },
     "roleOverridesLoading": "正在加载角色…",
+    "roleOverridesError": "加载角色失败，请刷新页面重试。",
     "unknownRole": "未知角色（键：{{key}}）",
     "onBadge": "已开启",
     "scheduledBadge": "已计划",

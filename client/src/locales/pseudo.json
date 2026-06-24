@@ -1726,6 +1726,7 @@
       "service_account": "[Šérvïçé Àççöùñŧ]"
     },
     "roleOverridesLoading": "[Löàðïñĝ röléš…]",
+    "roleOverridesError": "[Fàïléð ŧö löàð röléš. Ŗéfrešh ŧhé pàĝé ŧö réŧrÿ.]",
     "unknownRole": "[Ùñkñöwñ röle (kéÿ: {{key}})]",
     "onBadge": "[Öñ]",
     "scheduledBadge": "[Šçhéðùléð]",

@@ -46,6 +46,20 @@ describe('FeatureFlagsSettings', () => {
     });
   });
 
+  it('shows role override error indicator when custom roles fetch fails', async () => {
+    server.use(http.get('/api/v1/custom-roles', () => new HttpResponse(null, { status: 500 })));
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-role-overrides-error-notes')).toBeInTheDocument();
+    });
+    // Loading indicator must not remain visible
+    expect(
+      screen.queryByTestId('feature-flag-role-overrides-loading-notes'),
+    ).not.toBeInTheDocument();
+  });
+
   // ── Empty state ─────────────────────────────────────────────────────────────
 
   it('shows empty state when the server returns no flags', async () => {

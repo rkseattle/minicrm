@@ -1910,6 +1910,7 @@
       "service_account": "Service Account"
     },
     "roleOverridesLoading": "Loading roles…",
+    "roleOverridesError": "Failed to load roles. Refresh the page to retry.",
     "unknownRole": "Unknown role (key: {{key}})",
     "onBadge": "On",
     "scheduledBadge": "Scheduled",

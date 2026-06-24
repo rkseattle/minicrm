@@ -1190,6 +1190,7 @@ interface FlagRowProps {
   groups: FlagGroupRow[];
   /** All known roles (built-in + custom); null while loading. */
   allRoles: CustomRoleResponse[] | null;
+  rolesError: boolean;
   onToggle: (flag: FeatureFlagRow, newEnabled: boolean) => void;
   onRoleOverride: (flag: FeatureFlagRow, role: string, value: boolean) => void;
   onRoleOverrideRemove: (flag: FeatureFlagRow, role: string) => void;
@@ -1206,6 +1207,7 @@ function FlagRow({
   flag,
   groups,
   allRoles,
+  rolesError,
   onToggle,
   onRoleOverride,
   onRoleOverrideRemove,
@@ -1434,7 +1436,14 @@ function FlagRow({
         data-testid={`feature-flag-role-overrides-${flag.flag_key}`}
       >
         <span className="text-xs text-gray-500 shrink-0">{t('featureFlags.roleOverrides')}</span>
-        {allRoles === null ? (
+        {rolesError ? (
+          <span
+            className="text-xs text-red-500"
+            data-testid={`feature-flag-role-overrides-error-${flag.flag_key}`}
+          >
+            {t('featureFlags.roleOverridesError')}
+          </span>
+        ) : allRoles === null ? (
           <span
             className="text-xs text-gray-400 animate-pulse"
             data-testid={`feature-flag-role-overrides-loading-${flag.flag_key}`}
@@ -1724,7 +1733,7 @@ export default function FeatureFlagsSettings() {
 
   // Fetch all roles (built-in + custom) once; passed to every FlagRow to power the
   // dynamic role override panel. null while loading. (MINCRM-565)
-  const { data: rolesData } = useQuery({
+  const { data: rolesData, isError: isRolesError } = useQuery({
     queryKey: CUSTOM_ROLES_QUERY_KEY,
     queryFn: listCustomRoles,
   });
@@ -1957,6 +1966,7 @@ export default function FeatureFlagsSettings() {
                       flag={flag}
                       groups={groups}
                       allRoles={allRoles}
+                      rolesError={isRolesError}
                       onToggle={handleToggle}
                       onRoleOverride={handleRoleOverride}
                       onRoleOverrideRemove={handleRoleOverrideRemove}
