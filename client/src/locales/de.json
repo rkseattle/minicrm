@@ -1972,7 +1972,8 @@
       "deleteConfirmTitle": "Gruppe löschen?",
       "deleteConfirmWarning": "Diese Gruppe enthält {{count}} Flag(s). Das Löschen entfernt alle Flags aus der Gruppe.",
       "deleteConfirmBody": "Dies kann nicht rückgängig gemacht werden. Fortfahren?",
-      "deleteConfirmOk": "Löschen"
+      "deleteConfirmOk": "Löschen",
+      "deleteError": "Gruppe konnte nicht gelöscht werden. Bitte erneut versuchen."
     }
   },
   "aiSettings": {

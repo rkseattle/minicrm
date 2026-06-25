@@ -433,7 +433,7 @@ export async function updateFlagGroupHandler(req: Request, res: Response): Promi
  * (MINCRM-567)
  */
 export async function deleteFlagGroupHandler(req: Request, res: Response): Promise<void> {
-  const groupKey = req.params['key'] as string;
+  const groupKey = req.params['key'] as string; // Express guarantees :key is a string when route matches
   const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
 
   const deleted = await deleteFlagGroup(groupKey, actor);

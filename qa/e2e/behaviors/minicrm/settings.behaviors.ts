@@ -2511,7 +2511,10 @@ export async function clickFlagGroupDeleteButton(
   groupKey: string,
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  // The detail expand/collapse toggle reveals the delete button.
+  const { expect } = await import('@playwright/test');
+
+  // The detail expand/collapse toggle reveals the delete button. Only click it if the
+  // panel is not already expanded — a second call after cancel must not re-collapse it.
   const expandToggle = await context.page
     .locate(
       [
@@ -2521,8 +2524,12 @@ export async function clickFlagGroupDeleteButton(
       { intent: `expand/collapse toggle for flag group ${groupKey} detail panel` },
     )
     .resolve();
-  await expandToggle.click();
+  const isExpanded = (await expandToggle.getAttribute('aria-expanded')) === 'true';
+  if (!isExpanded) {
+    await expandToggle.click();
+  }
 
+  // Wait for the delete button to appear before resolving — it only renders when expanded.
   const deleteBtn = await context.page
     .locate(
       [
@@ -2532,6 +2539,7 @@ export async function clickFlagGroupDeleteButton(
       { intent: `delete button for flag group ${groupKey}` },
     )
     .resolve();
+  await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
   await deleteBtn.click();
 }
 
@@ -2599,6 +2607,25 @@ export async function clickDeleteGroupDialogCancel(
     )
     .resolve();
   await locator.click();
+}
+
+/**
+ * Asserts the delete-group confirmation dialog is no longer visible (absent or hidden).
+ */
+export async function expectDeleteGroupDialogNotVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const notVisible = await context.page.isNotVisible(
+    [
+      { type: 'testId', value: 'delete-group-confirm-dialog' },
+      { type: 'role', value: 'dialog' },
+    ],
+    timeout,
+  );
+  if (!notVisible) {
+    throw new Error('Expected delete-group dialog to be absent or hidden, but it is still visible');
+  }
 }
 
 // ---------------------------------------------------------------------------

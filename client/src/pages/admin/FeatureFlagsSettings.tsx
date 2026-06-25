@@ -9,7 +9,7 @@
  * (MINCRM-463, MINCRM-460, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-491, MINCRM-492, MINCRM-565)
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -174,20 +174,76 @@ interface DeleteGroupDialogProps {
   group: FlagGroupRow;
   onConfirm: () => void;
   onCancel: () => void;
+  triggerRef: React.RefObject<HTMLElement>;
 }
 
-function DeleteGroupDialog({ group, onConfirm, onCancel }: DeleteGroupDialogProps) {
+function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGroupDialogProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // Return focus to the trigger button on unmount.
+  useEffect(() => {
+    const trigger = triggerRef.current;
+    return () => {
+      trigger?.focus();
+    };
+  }, [triggerRef]);
+
+  // Auto-focus the cancel button (safer default for a destructive action).
+  useEffect(() => {
+    cancelRef.current?.focus();
+  }, []);
+
+  // Trap Tab / Shift+Tab within the dialog and close on Escape.
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        onCancel();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    },
+    [onCancel],
+  );
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-group-dialog-title"
       data-testid="delete-group-confirm-dialog"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keyboard trap on the panel div, not on a landmark */}
+      <div
+        className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+        role="document"
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+      >
         <h2 id="delete-group-dialog-title" className="text-lg font-semibold text-gray-900 mb-2">
           {t('featureFlags.groups.deleteConfirmTitle')}
         </h2>
@@ -200,6 +256,7 @@ function DeleteGroupDialog({ group, onConfirm, onCancel }: DeleteGroupDialogProp
         <p className="text-sm text-gray-600 mb-6">{t('featureFlags.groups.deleteConfirmBody')}</p>
         <div className="flex justify-end gap-3">
           <button
+            ref={cancelRef}
             type="button"
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             onClick={onCancel}
@@ -756,7 +813,7 @@ interface GroupRowProps {
   memberFlags: FeatureFlagRow[];
   onToggle: (group: FlagGroupRow, newEnabled: boolean) => void;
   onEnableAtChange: (group: FlagGroupRow, isoValue: string | null) => void;
-  onDelete: (group: FlagGroupRow) => void;
+  onDelete: (group: FlagGroupRow, triggerEl: HTMLElement) => void;
   onFlagClick: (flagKey: string) => void;
   isPending: boolean;
   nowMs: number;
@@ -949,7 +1006,7 @@ function GroupRow({
             <button
               type="button"
               disabled={isPending}
-              onClick={() => onDelete(group)}
+              onClick={(e) => onDelete(group, e.currentTarget)}
               className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-40 disabled:cursor-not-allowed"
               data-testid={`group-delete-${group.group_key}`}
             >
@@ -1158,15 +1215,23 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
     },
   });
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const deleteMutation = useMutation({
     mutationFn: (key: string) => deleteFlagGroup(key),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: FLAG_GROUPS_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: FEATURE_FLAGS_QUERY_KEY });
+      setDeleteError(null);
+    },
+    onError: () => {
+      setDeleteError(t('featureFlags.groups.deleteError'));
     },
   });
 
   const [pendingDeleteGroup, setPendingDeleteGroup] = useState<FlagGroupRow | null>(null);
+  // Holds a ref to the delete button that opened the dialog, so focus returns on close.
+  const deleteDialogTriggerRef = useRef<HTMLElement>(null) as React.MutableRefObject<HTMLElement>;
 
   function handleToggle(group: FlagGroupRow, newEnabled: boolean) {
     setPendingGroupKey(group.group_key);
@@ -1178,8 +1243,11 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
     groupMutation.mutate({ key: group.group_key, patch: { enable_at: isoValue } });
   }
 
-  function handleDelete(group: FlagGroupRow) {
+  function handleDelete(group: FlagGroupRow, triggerEl: HTMLElement) {
+    if (deleteMutation.isPending) return;
+    setDeleteError(null);
     if (group.member_count > 0) {
+      deleteDialogTriggerRef.current = triggerEl;
       setPendingDeleteGroup(group);
     } else {
       deleteMutation.mutate(group.group_key);
@@ -1222,7 +1290,13 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
           group={pendingDeleteGroup}
           onConfirm={handleDeleteConfirm}
           onCancel={handleDeleteCancel}
+          triggerRef={deleteDialogTriggerRef}
         />
+      )}
+      {deleteError && (
+        <p role="alert" className="text-xs text-red-600 mt-1" data-testid="delete-group-error">
+          {deleteError}
+        </p>
       )}
       <section aria-labelledby="feature-flag-groups-heading" data-testid="flag-groups-section">
         <h2

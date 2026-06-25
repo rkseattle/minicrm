@@ -833,19 +833,21 @@ describe('AdminSettingsPage', () => {
       expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
     });
 
-    it('shows the AI tab disabled when ai_features flag is off', () => {
-      flagOverrides['ai_features'] = false;
-      renderWithProviders(<AdminSettingsPage />);
-      expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
-      expect(screen.getByTestId('settings-tab-ai')).toBeDisabled();
-    });
-
-    it('falls back to workspace tab when navigating to ?tab=ai with ai_features disabled', async () => {
+    it('shows the AI tab enabled (not disabled) when ai_features flag is off — panel shows disabled banner instead (MINCRM-566)', () => {
       flagOverrides['ai_features'] = false;
       renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
-      expect(screen.getByTestId('settings-tab-workspace')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
+      expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
+      // The panel must show a disabled banner rather than hiding the tab entirely.
+      expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
+    });
+
+    it('navigates to the AI tab when ai_features is disabled and shows disabled banner (MINCRM-566)', async () => {
+      flagOverrides['ai_features'] = false;
+      renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
+      expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
       await waitFor(() => {
-        expect(screen.getByTestId('default-language-select')).toBeInTheDocument();
+        expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
       });
     });
 

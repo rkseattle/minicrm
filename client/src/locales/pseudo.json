@@ -1788,7 +1788,8 @@
       "deleteConfirmTitle": "[Delëte grøüp?]",
       "deleteConfirmWarning": "[This grøüp cøntäins {{count}} flag(s). Delëting it will remøve äll flags from this grøüp.]",
       "deleteConfirmBody": "[This cännøt be undøne. Cøntinüe?]",
-      "deleteConfirmOk": "[Delëte]"
+      "deleteConfirmOk": "[Delëte]",
+      "deleteError": "[Fäiled to delëte grøüp. Pleäse try ägäin.]"
     }
   },
   "visibilitySettings": {
