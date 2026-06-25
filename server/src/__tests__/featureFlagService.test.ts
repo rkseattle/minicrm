@@ -1024,18 +1024,56 @@ describe('flag groups CRUD', () => {
     expect(result).toBe(false);
   });
 
-  it('deleteFlagGroup throws FLAG_GROUP_HAS_MEMBERS when flags are assigned', async () => {
+  it('deleteFlagGroup with member flags cascade-unassigns them and deletes the group (MINCRM-567)', async () => {
     await createFlagGroup({ group_key: GROUP_KEY, label: 'Has Member' }, ACTOR());
     await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
       GROUP_KEY,
     ]);
-    await expect(deleteFlagGroup(GROUP_KEY, ACTOR())).rejects.toMatchObject({
-      code: 'FLAG_GROUP_HAS_MEMBERS',
-    });
+    const deleted = await deleteFlagGroup(GROUP_KEY, ACTOR());
+    expect(deleted).toBe(true);
+    const groups = await listFlagGroups();
+    expect(groups.some((g) => g.group_key === GROUP_KEY)).toBe(false);
+    const flagRow = await pool.query(
+      `SELECT group_key FROM feature_flags WHERE flag_key = 'mobile_access'`,
+    );
+    expect(flagRow.rows[0]?.group_key).toBeNull();
   });
 
-  it('deleteFlagGroup writes an audit entry', async () => {
+  it('deleteFlagGroup writes audit entries for unassigned flags and the group itself (MINCRM-567)', async () => {
     await createFlagGroup({ group_key: GROUP_KEY, label: 'Delete Audit' }, ACTOR());
+    await pool.query(`UPDATE feature_flags SET group_key = $1 WHERE flag_key = 'mobile_access'`, [
+      GROUP_KEY,
+    ]);
+    await deleteFlagGroup(GROUP_KEY, ACTOR());
+
+    // Audit entry for the unassigned flag
+    const flagAudit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag'
+         AND changed_by_id = $1
+         AND field_name = 'group_key'
+         AND old_value = $2
+         AND new_value = 'null'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId, GROUP_KEY],
+    );
+    expect(flagAudit.rows.length).toBe(1);
+
+    // Audit entry for the group deletion itself
+    const groupAudit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag_group'
+         AND changed_by_id = $1
+         AND field_name = 'group_key'
+         AND new_value = 'null'
+       ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
+    );
+    expect(groupAudit.rows.length).toBeGreaterThan(0);
+  });
+
+  it('deleteFlagGroup empty group writes group audit entry and returns true', async () => {
+    await createFlagGroup({ group_key: GROUP_KEY, label: 'Delete Audit Empty' }, ACTOR());
     await deleteFlagGroup(GROUP_KEY, ACTOR());
     const audit = await pool.query(
       `SELECT * FROM audit_log

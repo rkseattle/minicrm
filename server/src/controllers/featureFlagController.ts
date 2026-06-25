@@ -429,28 +429,14 @@ export async function updateFlagGroupHandler(req: Request, res: Response): Promi
 
 /**
  * DELETE /api/v1/admin/feature-flags/groups/:key
- * Deletes a flag group. Returns 409 if group has member flags. Admin only.
+ * Deletes a flag group, atomically unassigning any member flags first. Admin only.
+ * (MINCRM-567)
  */
 export async function deleteFlagGroupHandler(req: Request, res: Response): Promise<void> {
   const groupKey = req.params['key'] as string;
   const actor = { id: req.user!.id, name: req.user!.name }; // authenticate ensures req.user exists
 
-  let deleted: boolean;
-  try {
-    deleted = await deleteFlagGroup(groupKey, actor);
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code === 'FLAG_GROUP_HAS_MEMBERS') {
-      res.status(409).json({
-        error: {
-          code: 'FLAG_GROUP_HAS_MEMBERS',
-          message: err instanceof Error ? err.message : 'Group has member flags',
-        },
-      });
-      return;
-    }
-    throw err;
-  }
+  const deleted = await deleteFlagGroup(groupKey, actor);
 
   if (!deleted) {
     res.status(404).json({
