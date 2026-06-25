@@ -71,6 +71,23 @@ function isValidTab(value: string | null): value is TabKey {
   return TAB_KEYS.includes(value as TabKey);
 }
 
+/** Renders Panel in a visually-disabled state with a banner. Used when a flag gates an admin panel. (MINCRM-566) */
+function DisabledPanelWrapper({ Panel, banner }: { Panel: React.ComponentType; banner: string }) {
+  return (
+    <div className="opacity-60" aria-disabled="true" data-testid="ai-panel-disabled-wrapper">
+      <p
+        className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
+        data-testid="ai-panel-disabled-banner"
+      >
+        {banner}
+      </p>
+      <fieldset disabled className="contents">
+        <Panel />
+      </fieldset>
+    </div>
+  );
+}
+
 export default function AdminSettingsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -128,21 +145,10 @@ export default function AdminSettingsPage() {
               data-testid={`settings-panel-${activeTab}`}
             >
               {aiPanelDisabled ? (
-                <div
-                  className="opacity-60"
-                  aria-disabled="true"
-                  data-testid="ai-panel-disabled-wrapper"
-                >
-                  <p
-                    className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
-                    data-testid="ai-panel-disabled-banner"
-                  >
-                    {t('settings.featureDisabledBanner')}
-                  </p>
-                  <fieldset disabled className="contents">
-                    <ActivePanel />
-                  </fieldset>
-                </div>
+                <DisabledPanelWrapper
+                  Panel={ActivePanel}
+                  banner={t('settings.featureDisabledBanner')}
+                />
               ) : (
                 <ActivePanel />
               )}
@@ -167,21 +173,10 @@ export default function AdminSettingsPage() {
               data-testid={`settings-panel-${activeTab}`}
             >
               {aiPanelDisabled ? (
-                <div
-                  className="opacity-60"
-                  aria-disabled="true"
-                  data-testid="ai-panel-disabled-wrapper"
-                >
-                  <p
-                    className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
-                    data-testid="ai-panel-disabled-banner"
-                  >
-                    {t('settings.featureDisabledBanner')}
-                  </p>
-                  <fieldset disabled className="contents">
-                    <ActivePanel />
-                  </fieldset>
-                </div>
+                <DisabledPanelWrapper
+                  Panel={ActivePanel}
+                  banner={t('settings.featureDisabledBanner')}
+                />
               ) : (
                 <ActivePanel />
               )}

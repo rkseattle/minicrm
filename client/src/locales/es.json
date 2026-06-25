@@ -1968,7 +1968,6 @@
       "noGroup": "Ninguno",
       "memberFlags": "Indicadores miembros",
       "delete": "Eliminar grupo",
-      "deleteDisabledTooltip": "Desasigne todos los indicadores miembros antes de eliminar este grupo.",
       "deleteConfirmTitle": "¿Eliminar grupo?",
       "deleteConfirmWarning": "Este grupo contiene {{count}} indicador(es). Al eliminarlo se retirarán todos del grupo.",
       "deleteConfirmBody": "Esta acción no se puede deshacer. ¿Continuar?",

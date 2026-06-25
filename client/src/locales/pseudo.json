@@ -1784,7 +1784,6 @@
       "noGroup": "[Nøne]",
       "memberFlags": "[Member flags]",
       "delete": "[Delete grøüp]",
-      "deleteDisabledTooltip": "[Unassign all member flags before deleting this grøüp.]",
       "deleteConfirmTitle": "[Delëte grøüp?]",
       "deleteConfirmWarning": "[This grøüp cøntäins {{count}} flag(s). Delëting it will remøve äll flags from this grøüp.]",
       "deleteConfirmBody": "[This cännøt be undøne. Cøntinüe?]",
