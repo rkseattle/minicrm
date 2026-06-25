@@ -79,20 +79,20 @@ export default function AdminSettingsPage() {
   const { enabled: aiEnabled } = useFeatureFlag('ai_features');
 
   const rawTab = searchParams.get('tab');
-  // Fall back to 'workspace' when the tab is unknown or the ai tab is disabled.
-  const activeTab: TabKey =
-    isValidTab(rawTab) && !(rawTab === 'ai' && !aiEnabled) ? rawTab : 'workspace';
+  const activeTab: TabKey = isValidTab(rawTab) ? rawTab : 'workspace';
 
   function selectTab(key: string): void {
     setSearchParams({ tab: key }, { replace: false });
   }
 
   const ActivePanel = TAB_CONTENT[activeTab];
+  // When the AI flag is off, render the panel in a visually-disabled state rather than hiding it.
+  // Non-admin surfaces that hide AI features by flag are correct and unchanged. (MINCRM-566)
+  const aiPanelDisabled = activeTab === 'ai' && !aiEnabled;
 
   const navItems = TAB_KEYS.map((tab) => ({
     key: tab,
     label: t(`settings.tabs.${tab}`),
-    disabled: tab === 'ai' && !aiEnabled,
     'data-testid': `settings-tab-${tab}`,
   }));
 
@@ -127,7 +127,25 @@ export default function AdminSettingsPage() {
               aria-labelledby={`settings-tab-${activeTab}`}
               data-testid={`settings-panel-${activeTab}`}
             >
-              <ActivePanel />
+              {aiPanelDisabled ? (
+                <div
+                  className="opacity-60"
+                  aria-disabled="true"
+                  data-testid="ai-panel-disabled-wrapper"
+                >
+                  <p
+                    className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
+                    data-testid="ai-panel-disabled-banner"
+                  >
+                    {t('settings.featureDisabledBanner')}
+                  </p>
+                  <fieldset disabled className="contents">
+                    <ActivePanel />
+                  </fieldset>
+                </div>
+              ) : (
+                <ActivePanel />
+              )}
             </div>
           </div>
         ) : (
@@ -148,7 +166,25 @@ export default function AdminSettingsPage() {
               aria-labelledby={isMobile ? 'settings-tab-list-select' : `settings-tab-${activeTab}`}
               data-testid={`settings-panel-${activeTab}`}
             >
-              <ActivePanel />
+              {aiPanelDisabled ? (
+                <div
+                  className="opacity-60"
+                  aria-disabled="true"
+                  data-testid="ai-panel-disabled-wrapper"
+                >
+                  <p
+                    className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-6"
+                    data-testid="ai-panel-disabled-banner"
+                  >
+                    {t('settings.featureDisabledBanner')}
+                  </p>
+                  <fieldset disabled className="contents">
+                    <ActivePanel />
+                  </fieldset>
+                </div>
+              ) : (
+                <ActivePanel />
+              )}
             </div>
           </>
         )}
