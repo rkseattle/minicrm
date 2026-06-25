@@ -1787,9 +1787,16 @@ export default function FeatureFlagsSettings() {
   }
 
   function handleRoleOverrideRemove(flag: FeatureFlagRow, role: string) {
+    // Filter to only known roles so stale keys from deleted custom roles don't
+    // trigger 422 FEATURE_FLAG_UNKNOWN_ROLE_KEY when multiple stale keys are present.
+    const validRoleNames = new Set((allRoles ?? []).map((r) => r.name));
     const existing = flag.role_overrides ?? {};
-    const newOverrides = { ...existing };
-    delete newOverrides[role];
+    const newOverrides: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(existing)) {
+      if (k !== role && validRoleNames.has(k)) {
+        newOverrides[k] = v;
+      }
+    }
     const clearedOverrides = Object.keys(newOverrides).length === 0 ? null : newOverrides;
     setPendingKey(flag.flag_key);
     mutation.mutate({
