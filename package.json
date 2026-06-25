@@ -29,7 +29,8 @@
     "generate:proto": "npx @bufbuild/buf generate",
     "e2e:timing:baseline": "npx tsx qa/e2e/scripts/compute-timing-baseline.ts",
     "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",
-    "e2e:timing:gen-config": "npx tsx qa/e2e/scripts/gen-shard-config.ts"
+    "e2e:timing:gen-config": "npx tsx qa/e2e/scripts/gen-shard-config.ts",
+    "e2e:timing:hotspots": "npx tsx qa/e2e/scripts/find-hotspots.ts"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
