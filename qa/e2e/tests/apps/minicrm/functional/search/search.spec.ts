@@ -54,8 +54,9 @@ import {
   createTestRep,
 } from '@apps/minicrm/helpers.js';
 
-test.use({ storageState: { cookies: [], origins: [] } });
 import { RestClientError } from '@framework/clients/rest-client.js';
+
+test.use({ storageState: { cookies: [], origins: [] } });
 import {
   typeSearchQuery,
   getSearchResult,
