@@ -1579,6 +1579,10 @@ export async function expectAdminSettingsAiTabAttached(
 }
 
 /** Asserts that the AI Features tab is disabled. */
+/**
+ * Asserts that the AI panel shows a disabled banner (feature flag is off).
+ * The tab itself is always navigation-accessible; the panel content is visually disabled. (MINCRM-566)
+ */
 export async function expectAdminSettingsAiTabDisabled(
   context: AdminSettingsBehaviorContext,
   timeout?: number,
@@ -1587,31 +1591,29 @@ export async function expectAdminSettingsAiTabDisabled(
   const locator = await context.page
     .locate(
       [
-        { type: 'testId', value: 'settings-tab-ai' },
-        { type: 'role', value: 'tab', options: { name: /ai/i } },
+        { type: 'testId', value: 'ai-panel-disabled-banner' },
+        { type: 'css', value: '[data-testid="ai-panel-disabled-wrapper"] p' },
       ],
-      { intent: 'AI Features tab in the admin settings navigation' },
+      {
+        intent:
+          'disabled feature banner shown in the AI settings panel when ai_features flag is off',
+      },
     )
     .resolve();
-  await expect(locator).toBeDisabled(timeout !== undefined ? { timeout } : undefined);
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
-/** Asserts that the AI Features tab is NOT disabled (i.e., enabled). */
+/** Asserts that the AI panel disabled banner is absent (feature flag is on). */
 export async function expectAdminSettingsAiTabEnabled(
   context: AdminSettingsBehaviorContext,
-  timeout?: number,
+  timeout = 5_000,
 ): Promise<void> {
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: 'ai-panel-disabled-banner' }],
+    timeout,
+  );
   const { expect } = await import('@playwright/test');
-  const locator = await context.page
-    .locate(
-      [
-        { type: 'testId', value: 'settings-tab-ai' },
-        { type: 'role', value: 'tab', options: { name: /ai/i } },
-      ],
-      { intent: 'AI Features tab in the admin settings navigation' },
-    )
-    .resolve();
-  await expect(locator).not.toBeDisabled(timeout !== undefined ? { timeout } : undefined);
+  expect(notVisible).toBe(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -2495,4 +2497,150 @@ export async function expectRoleOverrideCheckboxVisible(
     )
     .resolve();
   await expect(locator).toBeVisible({ timeout });
+}
+
+// ---------------------------------------------------------------------------
+// Flag group delete dialog behaviors (MINCRM-567)
+// ---------------------------------------------------------------------------
+
+/**
+ * Expands the detail panel of a flag group row, then clicks its delete button.
+ * The delete button is only visible when the group's detail panel is expanded.
+ */
+export async function clickFlagGroupDeleteButton(
+  groupKey: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  // The detail expand/collapse toggle reveals the delete button.
+  const expandToggle = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `group-detail-toggle-${groupKey}` },
+        { type: 'css', value: `[data-testid="group-detail-toggle-${groupKey}"]` },
+      ],
+      { intent: `expand/collapse toggle for flag group ${groupKey} detail panel` },
+    )
+    .resolve();
+  await expandToggle.click();
+
+  const deleteBtn = await context.page
+    .locate(
+      [
+        { type: 'testId', value: `group-delete-${groupKey}` },
+        { type: 'css', value: `[data-testid="group-delete-${groupKey}"]` },
+      ],
+      { intent: `delete button for flag group ${groupKey}` },
+    )
+    .resolve();
+  await deleteBtn.click();
+}
+
+/**
+ * Asserts the delete-group confirmation dialog is visible.
+ */
+export async function expectDeleteGroupDialogVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'delete-group-confirm-dialog' },
+        { type: 'role', value: 'dialog' },
+      ],
+      {
+        intent: 'confirmation dialog warning that member flags will be unassigned on group delete',
+      },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Clicks the confirm button on the delete-group dialog.
+ */
+export async function clickDeleteGroupDialogConfirm(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'delete-group-confirm-ok' },
+        {
+          type: 'css',
+          value:
+            '[data-testid="delete-group-confirm-dialog"] button[data-testid="delete-group-confirm-ok"]',
+        },
+      ],
+      { intent: 'confirm button on the delete-group warning dialog' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+/**
+ * Clicks the cancel button on the delete-group dialog.
+ */
+export async function clickDeleteGroupDialogCancel(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: 'delete-group-confirm-cancel' },
+        {
+          type: 'css',
+          value:
+            '[data-testid="delete-group-confirm-dialog"] button[data-testid="delete-group-confirm-cancel"]',
+        },
+      ],
+      { intent: 'cancel button on the delete-group warning dialog' },
+    )
+    .resolve();
+  await locator.click();
+}
+
+// ---------------------------------------------------------------------------
+// Admin settings panel disabled-banner behaviors (MINCRM-566)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asserts the "feature disabled" banner is visible inside an admin settings section.
+ * The testId corresponds to the data-testid attribute on the banner element.
+ */
+export async function expectAdminSettingsSectionDisabledBanner(
+  bannerTestId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await context.page
+    .locate(
+      [
+        { type: 'testId', value: bannerTestId },
+        { type: 'css', value: `[data-testid="${bannerTestId}"]` },
+      ],
+      {
+        intent: `feature-disabled banner with testId "${bannerTestId}" in an admin settings panel`,
+      },
+    )
+    .resolve();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Asserts the "feature disabled" banner is NOT visible in an admin settings section.
+ */
+export async function expectAdminSettingsSectionDisabledBannerAbsent(
+  bannerTestId: string,
+  context: AdminSettingsBehaviorContext,
+  timeout = 5_000,
+): Promise<void> {
+  const notVisible = await context.page.isNotVisible(
+    [{ type: 'testId', value: bannerTestId }],
+    timeout,
+  );
+  const { expect } = await import('@playwright/test');
+  expect(notVisible).toBe(true);
 }

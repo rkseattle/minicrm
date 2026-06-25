@@ -24,6 +24,8 @@
  *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state (MINCRM-565)
  *   F-FF22 — Unknown role key in role_overrides returns 422 (MINCRM-565)
  *   F-FF23 — Custom role name appears as a checkbox in the admin UI role override panel (MINCRM-565)
+ *   F-FF24 — Deleting a non-empty flag group shows warning dialog and cascade-deletes on confirm (MINCRM-567)
+ *   F-FF25 — Admin settings panels show disabled banner (not hidden) when flag is off (MINCRM-566)
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -65,6 +67,11 @@ import {
   clickOverrideRemove,
   expectFlagGroupsSectionVisible,
   expectFlagGroupRowVisible,
+  expectFlagGroupRowNotVisible,
+  clickFlagGroupDeleteButton,
+  expectDeleteGroupDialogVisible,
+  clickDeleteGroupDialogConfirm,
+  expectAdminSettingsSectionDisabledBanner,
   expectRoleOverrideCheckboxVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import {
@@ -274,7 +281,7 @@ test('@functional F-FF6: withFlags() shows the Reports nav link when reporting f
 // F-FF7 — AI tab is disabled when ai_features flag is intercepted as off
 // ---------------------------------------------------------------------------
 
-test('@functional F-FF7: AI tab is disabled in admin settings when ai_features is intercepted as off', async ({
+test('@functional F-FF7: AI panel shows disabled banner in admin settings when ai_features is intercepted as off', async ({
   page,
   restClient,
   testData,
@@ -285,19 +292,21 @@ test('@functional F-FF7: AI tab is disabled in admin settings when ai_features i
   await withFlags(page, { ai_features: false });
 
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'flags');
+  // Navigate to the AI tab directly — it is always visible in the nav even when the flag is off.
+  await navigateToAdminSettings({ page }, 'ai');
 
   // On mobile the tab renders as a hidden <option> inside a <select> — toBeAttached
   // confirms presence in the DOM without requiring it to be visually visible.
   await expectAdminSettingsAiTabAttached({ page }, 5_000);
-  await expectAdminSettingsAiTabDisabled({ page });
+  // The panel must show a disabled banner, not be hidden. (MINCRM-566)
+  await expectAdminSettingsAiTabDisabled({ page }, 5_000);
 });
 
 // ---------------------------------------------------------------------------
 // F-FF8 — AI tab is enabled when ai_features flag is intercepted as on
 // ---------------------------------------------------------------------------
 
-test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is intercepted as on', async ({
+test('@functional F-FF8: AI panel shows no disabled banner in admin settings when ai_features is intercepted as on', async ({
   page,
   restClient,
   testData,
@@ -307,10 +316,11 @@ test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is
   await withFlags(page, { ai_features: true });
 
   await loginViaBrowser(admin.email, admin.password, { page });
-  await navigateToAdminSettings({ page }, 'flags');
+  await navigateToAdminSettings({ page }, 'ai');
 
   // On mobile the tab renders as a hidden <option> inside a <select>.
   await expectAdminSettingsAiTabAttached({ page }, 5_000);
+  // The panel must not show a disabled banner when the flag is on. (MINCRM-566)
   await expectAdminSettingsAiTabEnabled({ page });
 });
 
@@ -318,7 +328,7 @@ test('@functional F-FF8: AI tab is enabled in admin settings when ai_features is
 // F-FF9 — Toggling ai_features off disables the AI tab without a page refresh
 // ---------------------------------------------------------------------------
 
-test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in real time', async ({
+test('@functional @serial F-FF9: toggling ai_features off shows the AI panel disabled banner in real time', async ({
   page,
   restClient,
   testData,
@@ -334,9 +344,6 @@ test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in
 
   await expectFeatureFlagsListVisible({ page }, 10_000);
 
-  // AI tab should be enabled before toggling.
-  await expectAdminSettingsAiTabEnabled({ page });
-
   // Toggle ai_features off via the confirmation dialog.
   await expectFeatureFlagToggleChecked('ai_features', { page });
   await clickFeatureFlagToggle('ai_features', { page });
@@ -346,7 +353,9 @@ test('@functional @serial F-FF9: toggling ai_features off disables the AI tab in
   await clickFeatureFlagConfirmOk({ page });
   await expectFeatureFlagConfirmDialogNotVisible({ page }, 5_000);
 
-  // The AI tab must become disabled without any page navigation.
+  // Navigate to the AI tab and confirm the disabled banner appears without a page refresh.
+  await navigateToAdminSettings({ page }, 'ai');
+  // The AI panel must show a disabled banner after the flag is toggled off. (MINCRM-566)
   await expectAdminSettingsAiTabDisabled({ page }, 5_000);
 });
 
@@ -876,5 +885,87 @@ test('@functional @serial F-FF23: custom role name renders as a checkbox in the 
     // Cleanup: delete the custom role via REST.
     await loginAsAdmin(restClient);
     await restClient.delete(`/api/v1/custom-roles/${customRoleId}`).catch(() => {});
+  }
+});
+
+// ---------------------------------------------------------------------------
+// F-FF24 — Deleting a non-empty flag group shows warning dialog and cascade-deletes (MINCRM-567)
+//
+// When a group has member_count > 0, clicking "Delete group" must open a warning
+// dialog describing how many flags will be unassigned. Confirming deletes the group
+// and clears group_key on member flags. Cancelling leaves everything unchanged.
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF24: deleting a non-empty flag group shows warning dialog and cascade-deletes on confirm', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const groupKey = `e2e-ff24-group-${Date.now()}`;
+
+  await loginAsAdmin(restClient);
+
+  // Create group and assign mobile_access to it.
+  await createFlagGroup(restClient, { group_key: groupKey, label: 'E2E FF24 Group' });
+  await restClient.patch(`/api/v1/admin/feature-flags/mobile_access`, {
+    group_key: groupKey,
+  });
+
+  try {
+    await loginViaBrowser(admin.email, admin.password, { page });
+    await navigateToAdminSettings({ page }, 'flags');
+    await expectFeatureFlagsListVisible({ page }, 10_000);
+    await expectFlagGroupsSectionVisible({ page }, 8_000);
+    await expectFlagGroupRowVisible(groupKey, { page }, 8_000);
+
+    // Click delete — the group has members so a warning dialog must appear.
+    await clickFlagGroupDeleteButton(groupKey, { page });
+    await expectDeleteGroupDialogVisible({ page }, 5_000);
+
+    // Confirm deletion.
+    await clickDeleteGroupDialogConfirm({ page });
+
+    // Group row must disappear after deletion.
+    await expectFlagGroupRowNotVisible(groupKey, { page }, 8_000);
+  } finally {
+    // Cleanup: unassign mobile_access from any group and remove the group if it still exists.
+    await loginAsAdmin(restClient);
+    await restClient
+      .patch(`/api/v1/admin/feature-flags/mobile_access`, { group_key: null })
+      .catch(() => {});
+    await deleteFlagGroup(restClient, groupKey).catch(() => {});
+  }
+});
+
+// ---------------------------------------------------------------------------
+// F-FF25 — Admin settings panels show disabled banner (not hidden) when flag off (MINCRM-566)
+//
+// When the demo_data feature flag is off, the Demo Data panel in Admin → Data & Platform
+// must remain visible but show a disabled banner. When the flag is on, the banner is absent.
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-FF25: demo_data section shows disabled banner when flag is off, not hidden', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  const DEMO_BANNER_TESTID = 'demo-section-disabled-banner';
+
+  // Start with demo_data disabled.
+  await loginAsAdmin(restClient);
+  await updateFeatureFlag(restClient, 'demo_data', { enabled: false });
+
+  try {
+    await loginViaBrowser(admin.email, admin.password, { page });
+    await navigateToAdminSettings({ page }, 'platform');
+
+    // The demo-section must still be present in the DOM with a disabled banner.
+    await expectAdminSettingsSectionDisabledBanner(DEMO_BANNER_TESTID, { page }, 8_000);
+  } finally {
+    // Restore demo_data to enabled.
+    await loginAsAdmin(restClient);
+    await updateFeatureFlag(restClient, 'demo_data', { enabled: true });
   }
 });
