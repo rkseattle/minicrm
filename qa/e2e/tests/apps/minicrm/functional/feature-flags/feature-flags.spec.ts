@@ -24,7 +24,7 @@
  *   F-FF21 — Role override on any flag: rep override on 'notes' overrides org-wide state (MINCRM-565)
  *   F-FF22 — Unknown role key in role_overrides returns 422 (MINCRM-565)
  *   F-FF23 — Custom role name appears as a checkbox in the admin UI role override panel (MINCRM-565)
- *   F-FF24 — Deleting a non-empty flag group shows warning dialog and cascade-deletes on confirm (MINCRM-567)
+ *   F-FF24 — Deleting a non-empty flag group: cancel leaves group intact; confirm cascade-deletes and clears group_key via REST (MINCRM-567)
  *   F-FF25 — Admin settings panels show disabled banner (not hidden) when flag is off (MINCRM-566)
  *
  * Framework conventions (MINCRM-42):
@@ -70,7 +70,9 @@ import {
   expectFlagGroupRowNotVisible,
   clickFlagGroupDeleteButton,
   expectDeleteGroupDialogVisible,
+  expectDeleteGroupDialogNotVisible,
   clickDeleteGroupDialogConfirm,
+  clickDeleteGroupDialogCancel,
   expectAdminSettingsSectionDisabledBanner,
   expectRoleOverrideCheckboxVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
@@ -906,9 +908,10 @@ test('@functional @serial F-FF24: deleting a non-empty flag group shows warning 
 
   await loginAsAdmin(restClient);
 
-  // Create group and assign mobile_access to it.
+  // Create group and assign mobile_access to it via PATCH (enabled required by schema).
   await createFlagGroup(restClient, { group_key: groupKey, label: 'E2E FF24 Group' });
   await restClient.patch(`/api/v1/admin/feature-flags/mobile_access`, {
+    enabled: false,
     group_key: groupKey,
   });
 
@@ -919,15 +922,31 @@ test('@functional @serial F-FF24: deleting a non-empty flag group shows warning 
     await expectFlagGroupsSectionVisible({ page }, 8_000);
     await expectFlagGroupRowVisible(groupKey, { page }, 8_000);
 
-    // Click delete — the group has members so a warning dialog must appear.
+    // Cancel path: dialog must dismiss without deleting anything.
     await clickFlagGroupDeleteButton(groupKey, { page });
     await expectDeleteGroupDialogVisible({ page }, 5_000);
+    await clickDeleteGroupDialogCancel({ page });
+    await expectDeleteGroupDialogNotVisible({ page }, 5_000);
+    await expectFlagGroupRowVisible(groupKey, { page }, 5_000);
 
-    // Confirm deletion.
+    // Confirm path: click delete again and confirm.
+    await clickFlagGroupDeleteButton(groupKey, { page });
+    await expectDeleteGroupDialogVisible({ page }, 5_000);
     await clickDeleteGroupDialogConfirm({ page });
 
-    // Group row must disappear after deletion.
-    await expectFlagGroupRowNotVisible(groupKey, { page }, 8_000);
+    // Dialog closes immediately on confirm; wait for it to be gone before asserting row removal.
+    await expectDeleteGroupDialogNotVisible({ page }, 5_000);
+
+    // Group row must disappear after deletion (query invalidation + refetch).
+    await expectFlagGroupRowNotVisible(groupKey, { page }, 15_000);
+
+    // REST verification: mobile_access.group_key must be NULL after cascade-delete.
+    await loginAsAdmin(restClient);
+    const flags = await listFeatureFlags(restClient);
+    const mobileFlag = flags.find((f) => f.flag_key === 'mobile_access') as
+      | ((typeof flags)[0] & { group_key: string | null })
+      | undefined;
+    expect(mobileFlag?.group_key ?? null).toBeNull();
   } finally {
     // Cleanup: unassign mobile_access from any group and remove the group if it still exists.
     await loginAsAdmin(restClient);

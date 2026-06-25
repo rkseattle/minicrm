@@ -1972,7 +1972,8 @@
       "deleteConfirmTitle": "¿Eliminar grupo?",
       "deleteConfirmWarning": "Este grupo contiene {{count}} indicador(es). Al eliminarlo se retirarán todos del grupo.",
       "deleteConfirmBody": "Esta acción no se puede deshacer. ¿Continuar?",
-      "deleteConfirmOk": "Eliminar"
+      "deleteConfirmOk": "Eliminar",
+      "deleteError": "Error al eliminar el grupo. Por favor, inténtalo de nuevo."
     }
   },
   "aiSettings": {

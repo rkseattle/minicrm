@@ -1033,10 +1033,11 @@ describe('flag groups CRUD', () => {
     expect(deleted).toBe(true);
     const groups = await listFlagGroups();
     expect(groups.some((g) => g.group_key === GROUP_KEY)).toBe(false);
-    const flagRow = await pool.query(
-      `SELECT group_key FROM feature_flags WHERE flag_key = 'mobile_access'`,
+    const flagRow = await pool.query<{ group_key: string | null; updated_by: string | null }>(
+      `SELECT group_key, updated_by FROM feature_flags WHERE flag_key = 'mobile_access'`,
     );
     expect(flagRow.rows[0]?.group_key).toBeNull();
+    expect(flagRow.rows[0]?.updated_by).toBe(actorId);
   });
 
   it('deleteFlagGroup writes audit entries for unassigned flags and the group itself (MINCRM-567)', async () => {

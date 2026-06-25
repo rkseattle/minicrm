@@ -1972,7 +1972,8 @@
       "deleteConfirmTitle": "Delete group?",
       "deleteConfirmWarning": "This group contains {{count}} flag(s). Deleting it will remove all flags from this group.",
       "deleteConfirmBody": "This cannot be undone. Continue?",
-      "deleteConfirmOk": "Delete"
+      "deleteConfirmOk": "Delete",
+      "deleteError": "Failed to delete group. Please try again."
     }
   },
   "aiSettings": {

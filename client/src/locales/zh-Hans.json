@@ -1972,7 +1972,8 @@
       "deleteConfirmTitle": "删除组？",
       "deleteConfirmWarning": "此组包含 {{count}} 个标志，删除后这些标志将从组中移除。",
       "deleteConfirmBody": "此操作无法撤销，是否继续？",
-      "deleteConfirmOk": "删除"
+      "deleteConfirmOk": "删除",
+      "deleteError": "删除组失败，请重试。"
     }
   },
   "aiSettings": {

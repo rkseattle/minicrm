@@ -1339,8 +1339,8 @@ export async function deleteFlagGroup(groupKey: string, actor: AuditActor): Prom
 
     if (membersResult.rows.length > 0) {
       await client.query(
-        `UPDATE feature_flags SET group_key = NULL, updated_at = NOW() WHERE group_key = $1`,
-        [groupKey],
+        `UPDATE feature_flags SET group_key = NULL, updated_by = $2, updated_at = NOW() WHERE group_key = $1`,
+        [groupKey, actor.id],
       );
       for (const flag of membersResult.rows) {
         await writeAuditEntry(client, {

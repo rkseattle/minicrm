@@ -1972,7 +1972,8 @@
       "deleteConfirmTitle": "Supprimer le groupe ?",
       "deleteConfirmWarning": "Ce groupe contient {{count}} indicateur(s). Sa suppression les retirera tous du groupe.",
       "deleteConfirmBody": "Cette action est irréversible. Continuer ?",
-      "deleteConfirmOk": "Supprimer"
+      "deleteConfirmOk": "Supprimer",
+      "deleteError": "Échec de la suppression du groupe. Veuillez réessayer."
     }
   },
   "aiSettings": {
