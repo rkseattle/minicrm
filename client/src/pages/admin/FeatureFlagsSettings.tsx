@@ -1777,8 +1777,15 @@ export default function FeatureFlagsSettings() {
   // flag's enabled state, so "Enable X?" wording would be misleading. Mutate directly like
   // rollout and group changes. (MINCRM-565)
   function handleRoleOverride(flag: FeatureFlagRow, role: string, value: boolean) {
+    // Strip stale keys (deleted custom roles) for the same reason as handleRoleOverrideRemove —
+    // assertValidRoleOverrides rejects any unknown key in the full payload.
+    const validRoleNames = new Set((allRoles ?? []).map((r) => r.name));
     const existing = flag.role_overrides ?? {};
-    const newOverrides = { ...existing, [role]: value };
+    const filtered: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(existing)) {
+      if (validRoleNames.has(k)) filtered[k] = v;
+    }
+    const newOverrides = { ...filtered, [role]: value };
     setPendingKey(flag.flag_key);
     mutation.mutate({
       key: flag.flag_key,

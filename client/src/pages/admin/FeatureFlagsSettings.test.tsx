@@ -220,6 +220,50 @@ describe('FeatureFlagsSettings', () => {
     expect(overrides['rep']).toBe(true);
   });
 
+  // MINCRM-565: stale keys are also stripped when toggling a live role override checkbox
+  it('strips stale role keys when toggling a live role override checkbox', async () => {
+    // Fixture: reporting has one stale key ('stale_a') not in custom-roles.
+    // Toggling the 'admin' checkbox must send { admin: <new>, rep: true } with stale_a absent.
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'reporting'
+              ? { ...f, role_overrides: { admin: true, rep: true, stale_a: false } }
+              : f,
+          ),
+        }),
+      ),
+    );
+
+    let sentBody: Record<string, unknown> | null = null;
+    server.use(
+      http.patch('/api/v1/admin/feature-flags/:key', async ({ request }) => {
+        sentBody = (await request.json()) as Record<string, unknown>;
+        const flag = FEATURE_FLAGS_FIXTURE.find((f) => f.flag_key === 'reporting')!;
+        return HttpResponse.json({ flag: { ...flag, role_overrides: sentBody['role_overrides'] } });
+      }),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-role-override-reporting-admin')).toBeInTheDocument();
+    });
+
+    // Uncheck admin (currently checked in fixture)
+    fireEvent.click(screen.getByTestId('feature-flag-role-override-reporting-admin'));
+
+    await waitFor(() => {
+      expect(sentBody).not.toBeNull();
+    });
+
+    const overrides = sentBody!['role_overrides'] as Record<string, boolean>;
+    expect(overrides).not.toHaveProperty('stale_a');
+    expect(overrides['admin']).toBe(false);
+    expect(overrides['rep']).toBe(true);
+  });
+
   // ── Confirmation dialog ─────────────────────────────────────────────────────
 
   it('shows confirmation dialog when toggle is clicked', async () => {
