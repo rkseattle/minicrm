@@ -23,18 +23,13 @@
  * MINCRM-173, MINCRM-174, MINCRM-175, MINCRM-192
  *
  * Parallelism (MINCRM-550):
- *   File-scope parallel mode is enabled below. Safety audit passed:
- *   - beforeEach creates a fresh UUID-suffixed rep; all leads are owned by
- *     that rep and torn down by TestDataManager after each test.
- *   - beforeEach resets the admin user's language preference and system default
- *     to 'en' so i18n tests on sibling workers cannot affect badge text assertions.
- *   - No aggregate count assertions on the full leads table.
- *   - No system_settings writes beyond the language reset, which is idempotent.
+ *   Evaluated for parallel mode but rejected. beforeEach calls
+ *   setSystemDefaultLanguage(restClient, 'en') which writes to the shared
+ *   default_language system_settings row. Concurrent workers running i18n.spec.ts
+ *   may write a non-English default_language between this file's beforeEach reset
+ *   and its badge-text assertion, causing intermittent cross-worker races.
+ *   See qa/e2e/PARALLELISM-NOTES.md.
  */
-
-// Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
-test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {

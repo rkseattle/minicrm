@@ -109,15 +109,15 @@ function main(): void {
   }
 
   const allDurations = entries.map(([, e]) => e.medianMs);
-  const suiteMedain = median(allDurations);
-  const threshold = suiteMedain * thresholdMultiplier;
+  const suiteMedian = median(allDurations);
+  const threshold = suiteMedian * thresholdMultiplier;
 
   const hotspots = entries
     .filter(([, e]) => e.medianMs > threshold)
     .sort((a, b) => b[1].medianMs - a[1].medianMs);
 
   process.stdout.write(
-    `Suite median: ${fmtMs(suiteMedain)}  ` +
+    `Suite median: ${fmtMs(suiteMedian)}  ` +
       `Threshold (${thresholdMultiplier}×): ${fmtMs(threshold)}  ` +
       `Hot spots: ${hotspots.length} of ${entries.length} files\n\n`,
   );
