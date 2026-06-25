@@ -585,4 +585,110 @@ describe('FeatureFlagsSettings', () => {
     expect(betaRow).toBeInTheDocument();
     expect(within(betaRow).getByText('Alice Beta')).toBeInTheDocument();
   });
+
+  // ── Delete group dialog (MINCRM-567) ─────────────────────────────────────────
+
+  const GROUP_FIXTURE_BASE = {
+    group_key: 'test_group',
+    label: 'Test Group',
+    description: '',
+    enabled: true,
+    enable_at: null,
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    beta_user_count: 0,
+  };
+
+  function setupGroupHandlers(memberCount: number) {
+    server.use(
+      http.get('/api/v1/admin/feature-flags/groups', () =>
+        HttpResponse.json({
+          groups: [{ ...GROUP_FIXTURE_BASE, member_count: memberCount }],
+        }),
+      ),
+      http.get('/api/v1/admin/feature-flags/groups/test_group/beta-users', () =>
+        HttpResponse.json({ users: [] }),
+      ),
+      http.delete(
+        '/api/v1/admin/feature-flags/groups/test_group',
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+  }
+
+  async function openGroupDetail() {
+    await waitFor(() => {
+      expect(screen.getByTestId('flag-group-row-test_group')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('group-detail-toggle-test_group'));
+    await waitFor(() => {
+      expect(screen.getByTestId('group-delete-test_group')).toBeInTheDocument();
+    });
+  }
+
+  it('always opens the confirm dialog when delete is clicked for an empty group (member_count=0)', async () => {
+    setupGroupHandlers(0);
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await openGroupDetail();
+    fireEvent.click(screen.getByTestId('group-delete-test_group'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-group-confirm-dialog')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show the amber warning for an empty group (member_count=0)', async () => {
+    setupGroupHandlers(0);
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await openGroupDetail();
+    fireEvent.click(screen.getByTestId('group-delete-test_group'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-group-confirm-dialog')).toBeInTheDocument();
+    });
+    // Warning paragraph only renders when member_count > 0
+    expect(screen.queryByText(/This group contains/)).not.toBeInTheDocument();
+  });
+
+  it('shows the amber warning for a non-empty group (member_count > 0)', async () => {
+    setupGroupHandlers(3);
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await openGroupDetail();
+    fireEvent.click(screen.getByTestId('group-delete-test_group'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-group-confirm-dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/This group contains 3 flag/)).toBeInTheDocument();
+  });
+
+  it('does not mutate immediately when delete is clicked for an empty group', async () => {
+    let deleteCallCount = 0;
+    server.use(
+      http.get('/api/v1/admin/feature-flags/groups', () =>
+        HttpResponse.json({ groups: [{ ...GROUP_FIXTURE_BASE, member_count: 0 }] }),
+      ),
+      http.get('/api/v1/admin/feature-flags/groups/test_group/beta-users', () =>
+        HttpResponse.json({ users: [] }),
+      ),
+      http.delete('/api/v1/admin/feature-flags/groups/test_group', () => {
+        deleteCallCount++;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+    await openGroupDetail();
+    fireEvent.click(screen.getByTestId('group-delete-test_group'));
+
+    // Dialog must appear; mutation must NOT have been called yet
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-group-confirm-dialog')).toBeInTheDocument();
+    });
+    expect(deleteCallCount).toBe(0);
+  });
 });

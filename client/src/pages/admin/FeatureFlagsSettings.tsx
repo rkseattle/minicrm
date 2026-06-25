@@ -247,11 +247,13 @@ function DeleteGroupDialog({ group, onConfirm, onCancel, triggerRef }: DeleteGro
         <h2 id="delete-group-dialog-title" className="text-lg font-semibold text-gray-900 mb-2">
           {t('featureFlags.groups.deleteConfirmTitle')}
         </h2>
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
-          {t('featureFlags.groups.deleteConfirmWarning', {
-            count: group.member_count,
-          })}
-        </p>
+        {group.member_count > 0 && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+            {t('featureFlags.groups.deleteConfirmWarning', {
+              count: group.member_count,
+            })}
+          </p>
+        )}
         <p className="text-sm text-gray-600 mb-6">{t('featureFlags.groups.deleteConfirmBody')}</p>
         <div className="flex justify-end gap-3">
           <button
@@ -1245,12 +1247,11 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
   function handleDelete(group: FlagGroupRow, triggerEl: HTMLElement) {
     if (deleteMutation.isPending) return;
     setDeleteError(null);
-    if (group.member_count > 0) {
-      deleteDialogTriggerRef.current = triggerEl;
-      setPendingDeleteGroup(group);
-    } else {
-      deleteMutation.mutate(group.group_key);
-    }
+    // Always confirm via dialog — never trust the cached member_count to bypass consent.
+    // The server atomically unassigns member flags; if the cache is stale the user would
+    // silently lose flag assignments with no warning. (MINCRM-567)
+    deleteDialogTriggerRef.current = triggerEl;
+    setPendingDeleteGroup(group);
   }
 
   function handleDeleteConfirm() {
