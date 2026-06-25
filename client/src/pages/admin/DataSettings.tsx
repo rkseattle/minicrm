@@ -123,97 +123,116 @@ export default function DataSettings() {
       {csvImportLoading && (
         <div className="h-48 bg-gray-100 rounded-lg animate-pulse" aria-hidden="true" />
       )}
-      {!csvImportLoading && csvImportEnabled && (
+      {!csvImportLoading && (
         <div
-          className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className={`bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl${!csvImportEnabled ? ' opacity-60' : ''}`}
           data-testid="import-section"
+          aria-disabled={!csvImportEnabled || undefined}
         >
-          <h2
-            className="text-lg font-semibold text-gray-900 mb-1"
-            data-testid="import-section-title"
-          >
-            {t('settings.import.sectionTitle')}
-          </h2>
-          <p className="text-xs text-gray-500 mb-4">{t('settings.import.sectionHint')}</p>
-
-          <div
-            className="flex overflow-x-auto overflow-y-hidden border-b border-gray-200 mb-6"
-            role="tablist"
-            aria-label={t('settings.import.sectionTitle')}
-          >
-            {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={importTab === tab}
-                aria-controls={`import-panel-${tab}`}
-                id={`import-tab-${tab}`}
-                data-testid={`import-tab-${tab}`}
-                onClick={() => {
-                  if (importTab !== tab) setImportTab(tab);
-                }}
-                className={[
-                  'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
-                  importTab === tab
-                    ? 'border-primary-600 text-primary-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                ].join(' ')}
-              >
-                {t(`settings.import.tab.${tab}`)}
-              </button>
-            ))}
-          </div>
-
-          {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
-            <div
-              key={tab}
-              role="tabpanel"
-              id={`import-panel-${tab}`}
-              aria-labelledby={`import-tab-${tab}`}
-              hidden={importTab !== tab}
-              data-testid={`import-panel-${tab}`}
+          {!csvImportEnabled && (
+            <p
+              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4"
+              data-testid="import-section-disabled-banner"
             >
-              {tab === 'accounts' && (
-                <>
-                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.accounts.hint')}</p>
-                  <CsvImporter
-                    entity="accounts"
-                    entityLabel={t('settings.import.tab.accounts')}
-                    options={[
-                      {
-                        key: 'skip_duplicates',
-                        label: t('settings.import.accounts.skipDuplicates'),
-                        defaultValue: true,
-                      },
-                    ]}
-                  />
-                </>
-              )}
-              {tab === 'contacts' && (
-                <>
-                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.contacts.hint')}</p>
-                  <CsvImporter entity="contacts" entityLabel={t('settings.import.tab.contacts')} />
-                </>
-              )}
-              {tab === 'deals' && (
-                <>
-                  <p className="text-xs text-gray-500 mb-4">{t('settings.import.deals.hint')}</p>
-                  <CsvImporter
-                    entity="deals"
-                    entityLabel={t('settings.import.tab.deals')}
-                    options={[
-                      {
-                        key: 'skip_unresolvable_accounts',
-                        label: t('settings.import.deals.skipUnresolvableAccounts'),
-                        defaultValue: false,
-                      },
-                    ]}
-                  />
-                </>
-              )}
+              {t('settings.featureDisabledBanner')}
+            </p>
+          )}
+          {/* fieldset[disabled] propagates disabled to all descendant form controls (MINCRM-566) */}
+          <fieldset disabled={!csvImportEnabled} className="contents">
+            <h2
+              className="text-lg font-semibold text-gray-900 mb-1"
+              data-testid="import-section-title"
+            >
+              {t('settings.import.sectionTitle')}
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">{t('settings.import.sectionHint')}</p>
+
+            <div
+              className="flex overflow-x-auto overflow-y-hidden border-b border-gray-200 mb-6"
+              role="tablist"
+              aria-label={t('settings.import.sectionTitle')}
+            >
+              {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={importTab === tab}
+                  aria-controls={`import-panel-${tab}`}
+                  id={`import-tab-${tab}`}
+                  data-testid={`import-tab-${tab}`}
+                  onClick={() => {
+                    if (importTab !== tab) setImportTab(tab);
+                  }}
+                  className={[
+                    'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500',
+                    importTab === tab
+                      ? 'border-primary-600 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  ].join(' ')}
+                >
+                  {t(`settings.import.tab.${tab}`)}
+                </button>
+              ))}
             </div>
-          ))}
+
+            {(['accounts', 'contacts', 'deals'] as ImportTab[]).map((tab) => (
+              <div
+                key={tab}
+                role="tabpanel"
+                id={`import-panel-${tab}`}
+                aria-labelledby={`import-tab-${tab}`}
+                hidden={importTab !== tab}
+                data-testid={`import-panel-${tab}`}
+              >
+                {tab === 'accounts' && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-4">
+                      {t('settings.import.accounts.hint')}
+                    </p>
+                    <CsvImporter
+                      entity="accounts"
+                      entityLabel={t('settings.import.tab.accounts')}
+                      options={[
+                        {
+                          key: 'skip_duplicates',
+                          label: t('settings.import.accounts.skipDuplicates'),
+                          defaultValue: true,
+                        },
+                      ]}
+                    />
+                  </>
+                )}
+                {tab === 'contacts' && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-4">
+                      {t('settings.import.contacts.hint')}
+                    </p>
+                    <CsvImporter
+                      entity="contacts"
+                      entityLabel={t('settings.import.tab.contacts')}
+                    />
+                  </>
+                )}
+                {tab === 'deals' && (
+                  <>
+                    <p className="text-xs text-gray-500 mb-4">{t('settings.import.deals.hint')}</p>
+                    <CsvImporter
+                      entity="deals"
+                      entityLabel={t('settings.import.tab.deals')}
+                      options={[
+                        {
+                          key: 'skip_unresolvable_accounts',
+                          label: t('settings.import.deals.skipUnresolvableAccounts'),
+                          defaultValue: false,
+                        },
+                      ]}
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </fieldset>
         </div>
       )}
 
@@ -221,11 +240,20 @@ export default function DataSettings() {
       {demoDataLoading && (
         <div className="mt-8 h-40 bg-gray-100 rounded-lg animate-pulse" aria-hidden="true" />
       )}
-      {!demoDataLoading && demoDataEnabled && (
+      {!demoDataLoading && (
         <div
-          className="mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl"
+          className={`mt-8 bg-white shadow-sm rounded-lg border border-gray-200 p-6 max-w-2xl${!demoDataEnabled ? ' opacity-60' : ''}`}
           data-testid="demo-section"
+          aria-disabled={!demoDataEnabled || undefined}
         >
+          {!demoDataEnabled && (
+            <p
+              className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4"
+              data-testid="demo-section-disabled-banner"
+            >
+              {t('settings.featureDisabledBanner')}
+            </p>
+          )}
           <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="demo-section-title">
             {t('settings.demo.sectionTitle')}
           </h2>
@@ -253,40 +281,43 @@ export default function DataSettings() {
             </p>
           )}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              data-testid="demo-seed-button"
-              disabled={isDemoMutating || demoActive}
-              onClick={() => openConfirm('seed')}
-            >
-              {seedMutation.isPending ? t('common.loading') : t('settings.demo.seedButton')}
-            </Button>
+          {/* fieldset[disabled] propagates disabled to all descendant form controls (MINCRM-566) */}
+          <fieldset disabled={!demoDataEnabled} className="contents">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                data-testid="demo-seed-button"
+                disabled={isDemoMutating || demoActive}
+                onClick={() => openConfirm('seed')}
+              >
+                {seedMutation.isPending ? t('common.loading') : t('settings.demo.seedButton')}
+              </Button>
 
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              data-testid="demo-reset-button"
-              disabled={isDemoMutating}
-              onClick={() => openConfirm('reset')}
-            >
-              {resetMutation.isPending ? t('common.loading') : t('settings.demo.resetButton')}
-            </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                data-testid="demo-reset-button"
+                disabled={isDemoMutating}
+                onClick={() => openConfirm('reset')}
+              >
+                {resetMutation.isPending ? t('common.loading') : t('settings.demo.resetButton')}
+              </Button>
 
-            <Button
-              type="button"
-              variant="danger"
-              size="md"
-              data-testid="demo-remove-button"
-              disabled={isDemoMutating || !demoActive}
-              onClick={() => openConfirm('remove')}
-            >
-              {removeMutation.isPending ? t('common.loading') : t('settings.demo.removeButton')}
-            </Button>
-          </div>
+              <Button
+                type="button"
+                variant="danger"
+                size="md"
+                data-testid="demo-remove-button"
+                disabled={isDemoMutating || !demoActive}
+                onClick={() => openConfirm('remove')}
+              >
+                {removeMutation.isPending ? t('common.loading') : t('settings.demo.removeButton')}
+              </Button>
+            </div>
+          </fieldset>
 
           {demoFeedback && (
             <p
