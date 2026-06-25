@@ -29,7 +29,19 @@
  *   npx playwright test --grep @functional
  *
  * MINCRM-137
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - Every test creates its own user via invite + password setup then tears down
+ *     in a finally block; no two tests share the same user account.
+ *   - storageState is cleared (empty object) so no shared auth cookie is mutated.
+ *   - No system_settings writes in any test.
+ *   - The lockout test (F1-LK1) locks only the unique user it creates and cleans up.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {

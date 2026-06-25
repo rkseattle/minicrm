@@ -27,7 +27,18 @@
  *   - AC3: deleting an account unlinks associated contacts (contacts are NOT deleted)
  *
  * MINCRM-139
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - beforeEach creates a fresh UUID-suffixed rep; all accounts and contacts are
+ *     owned by that rep and torn down by TestDataManager after each test.
+ *   - All API count assertions use UUID-scoped search terms unique per test.
+ *   - No system_settings writes in any test.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {

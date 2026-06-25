@@ -25,7 +25,19 @@
  *   - AC3: separate named user fixtures for admin and rep prevent session bleed
  *
  * MINCRM-143
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - Every test creates isolated users (admin + rep) with UUID-scoped names and
+ *     emails; records are cleaned up in finally blocks.
+ *   - All API count assertions use status codes (200/403/404), not table totals.
+ *   - No system_settings writes in any test.
+ *   - storageState is cleared (empty object) so no shared auth cookie is mutated.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { login } from '@behaviors/minicrm/auth.behaviors.js';

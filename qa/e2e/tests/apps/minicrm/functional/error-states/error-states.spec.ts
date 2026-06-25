@@ -20,7 +20,20 @@
  *   - No direct page.route() calls — only page.mockRoute()
  *
  * MINCRM-326
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - beforeEach creates a fresh UUID-suffixed rep; all contacts and deals are
+ *     owned by that rep and torn down by TestDataManager after each test.
+ *   - Network mocks (page.mockRoute) are scoped per-test and cleaned up by the
+ *     fixture teardown; they cannot bleed across parallel tests running in
+ *     separate worker contexts (each worker has its own page/browser context).
+ *   - No system_settings writes in any test.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
