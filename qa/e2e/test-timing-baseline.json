@@ -1,0 +1,234 @@
+{
+  "generatedAt": "2026-06-25T21:48:38.158Z",
+  "fallbackMs": 30000,
+  "files": {
+    "qa/e2e/tests/apps/minicrm/functional/feature-flags/feature-flags.spec.ts": {
+      "medianMs": 46741,
+      "runCount": 8
+    },
+    "qa/e2e/tests/apps/minicrm/functional/accessibility/accessibility.spec.ts": {
+      "medianMs": 4630,
+      "runCount": 7
+    },
+    "qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts": {
+      "medianMs": 14306,
+      "runCount": 7
+    },
+    "qa/e2e/tests/apps/minicrm/functional/i18n/i18n.spec.ts": {
+      "medianMs": 60515,
+      "runCount": 4
+    },
+    "qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts": {
+      "medianMs": 111527,
+      "runCount": 7
+    },
+    "qa/e2e/tests/apps/minicrm/functional/notifications/notifications.spec.ts": {
+      "medianMs": 14108,
+      "runCount": 7
+    },
+    "qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts": {
+      "medianMs": 2098,
+      "runCount": 7
+    },
+    "qa/e2e/tests/apps/minicrm/functional/settings/settings.spec.ts": {
+      "medianMs": 3848,
+      "runCount": 4
+    },
+    "qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts": {
+      "medianMs": 21770,
+      "runCount": 4
+    },
+    "qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts": {
+      "medianMs": 27779,
+      "runCount": 4
+    },
+    "qa/e2e/tests/apps/minicrm/functional/accounts/accounts.spec.ts": {
+      "medianMs": 36337,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/activities/activities.spec.ts": {
+      "medianMs": 34950,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/admin/aiSettings.spec.ts": {
+      "medianMs": 30309,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/attachments/attachments.spec.ts": {
+      "medianMs": 17110,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/audit-log/audit-log.spec.ts": {
+      "medianMs": 10497,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/auth/auth.spec.ts": {
+      "medianMs": 86578,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/auth/email-delivery.spec.ts": {
+      "medianMs": 1227,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/auth/invite.spec.ts": {
+      "medianMs": 11215,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/auth/mfa.spec.ts": {
+      "medianMs": 10686,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/auth/password-reset.spec.ts": {
+      "medianMs": 12785,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/automation/automation.spec.ts": {
+      "medianMs": 6196,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/concurrency/concurrency.spec.ts": {
+      "medianMs": 40494,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/contacts/bulk-operations.spec.ts": {
+      "medianMs": 3985,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/contacts/contacts.spec.ts": {
+      "medianMs": 65071,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/contacts/send-email.spec.ts": {
+      "medianMs": 5482,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/custom-fields/custom-fields.spec.ts": {
+      "medianMs": 16195,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/dashboard/dashboard.spec.ts": {
+      "medianMs": 6867,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/data-integrity/cascade-delete.spec.ts": {
+      "medianMs": 350,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/deals/deals.spec.ts": {
+      "medianMs": 8369,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/deals/multi-currency.spec.ts": {
+      "medianMs": 469,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/deals/stage-exit-requirements.spec.ts": {
+      "medianMs": 1949,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/error-states/error-states.spec.ts": {
+      "medianMs": 30485,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/framework/api-contract.spec.ts": {
+      "medianMs": 9684,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/gdpr/gdpr.spec.ts": {
+      "medianMs": 1474,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/grpc/audit-grpc.spec.ts": {
+      "medianMs": 2335,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/i18n/pseudoloc.spec.ts": {
+      "medianMs": 3454,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/iam/iam-capabilities.spec.ts": {
+      "medianMs": 5006,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/iam/iam-service-account.spec.ts": {
+      "medianMs": 4451,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/iam/iam-viewer.spec.ts": {
+      "medianMs": 10809,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/iam/teams.spec.ts": {
+      "medianMs": 2444,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/import-export/import-export.spec.ts": {
+      "medianMs": 4335,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/layout/paged-list-layout.spec.ts": {
+      "medianMs": 13241,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/leads/leads.spec.ts": {
+      "medianMs": 44471,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/leads-opportunities/leads-opportunities.spec.ts": {
+      "medianMs": 85173,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/notes/notes.spec.ts": {
+      "medianMs": 44546,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/onboarding/onboarding.spec.ts": {
+      "medianMs": 73511,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/owner-filter/owner-filter.spec.ts": {
+      "medianMs": 14362,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/permissions/permissions.spec.ts": {
+      "medianMs": 68551,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/pipeline-dnd/pipeline-dnd.spec.ts": {
+      "medianMs": 69932,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/pipeline-stages/pipeline-stages.spec.ts": {
+      "medianMs": 15881,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/pipelines/pipelines.spec.ts": {
+      "medianMs": 13626,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/reports/reports-custom.spec.ts": {
+      "medianMs": 10420,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/reports/stage-trend.spec.ts": {
+      "medianMs": 27201,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/reports/win-loss-accuracy.spec.ts": {
+      "medianMs": 25529,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/search/search.spec.ts": {
+      "medianMs": 112649,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/sequences/sequences.spec.ts": {
+      "medianMs": 1242,
+      "runCount": 3
+    },
+    "qa/e2e/tests/apps/minicrm/functional/tags/tags.spec.ts": {
+      "medianMs": 8419,
+      "runCount": 3
+    }
+  }
+}

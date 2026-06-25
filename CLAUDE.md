@@ -231,6 +231,13 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 - **No `loginAsAdmin` in `test.beforeAll`** — call at test body start.
 - **Feature flags via `withFlags()` only** — never toggle via API or DB mutation.
 - **Every story must include or update a functional E2E spec.**
+- **Intra-file parallelism:** New spec files covering shared system resources (any
+  `system_settings` row, feature flag state, shared admin account) must default to
+  `test.describe.serial`. Files that create all their own data via UUID-scoped
+  `TestDataManager` may be candidates for `test.describe.configure({ mode: 'parallel' })` —
+  apply the safety checklist in [`qa/e2e/PARALLELISM-NOTES.md`](qa/e2e/PARALLELISM-NOTES.md)
+  before enabling parallel mode. See also `npm run e2e:timing:hotspots` to identify
+  which files are worth auditing.
 
 ---
 
