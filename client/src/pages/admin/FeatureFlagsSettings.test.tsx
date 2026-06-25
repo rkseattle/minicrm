@@ -171,6 +171,55 @@ describe('FeatureFlagsSettings', () => {
     expect(repCheckbox).toBeChecked();
   });
 
+  // MINCRM-565: stale role keys from deleted custom roles are stripped before PATCH
+  it('strips other stale role keys when removing one stale role override', async () => {
+    // Fixture: reporting has two stale keys ('stale_a', 'stale_b') not in custom-roles.
+    // Clicking Remove on 'stale_a' must send a payload that omits both stale keys,
+    // not just the targeted one, to avoid a 422 FEATURE_FLAG_UNKNOWN_ROLE_KEY.
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: FEATURE_FLAGS_FIXTURE.map((f) =>
+            f.flag_key === 'reporting'
+              ? { ...f, role_overrides: { admin: true, rep: true, stale_a: false, stale_b: false } }
+              : f,
+          ),
+        }),
+      ),
+    );
+
+    let sentBody: Record<string, unknown> | null = null;
+    server.use(
+      http.patch('/api/v1/admin/feature-flags/:key', async ({ request }) => {
+        sentBody = (await request.json()) as Record<string, unknown>;
+        const flag = FEATURE_FLAGS_FIXTURE.find((f) => f.flag_key === 'reporting')!;
+        return HttpResponse.json({ flag: { ...flag, role_overrides: sentBody['role_overrides'] } });
+      }),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    // Stale key remove button only appears for keys not present in allRoles
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('feature-flag-role-override-remove-reporting-stale_a'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('feature-flag-role-override-remove-reporting-stale_a'));
+
+    await waitFor(() => {
+      expect(sentBody).not.toBeNull();
+    });
+
+    // Neither stale key should appear in the payload — only known roles survive the filter
+    const overrides = sentBody!['role_overrides'] as Record<string, boolean>;
+    expect(overrides).not.toHaveProperty('stale_a');
+    expect(overrides).not.toHaveProperty('stale_b');
+    expect(overrides['admin']).toBe(true);
+    expect(overrides['rep']).toBe(true);
+  });
+
   // ── Confirmation dialog ─────────────────────────────────────────────────────
 
   it('shows confirmation dialog when toggle is clicked', async () => {
