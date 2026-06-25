@@ -559,6 +559,7 @@
   },
   "settings": {
     "pageTitle": "Admin-Einstellungen",
+    "featureDisabledBanner": "Diese Funktion ist derzeit deaktiviert. Aktivieren Sie sie in den Feature-Flag-Einstellungen.",
     "tabs": {
       "workspace": "Arbeitsbereich",
       "branding": "Erscheinungsbild",
@@ -1967,7 +1968,11 @@
       "noGroup": "Keine",
       "memberFlags": "Mitglieds-Flags",
       "delete": "Gruppe löschen",
-      "deleteDisabledTooltip": "Heben Sie die Zuweisung aller Mitglieds-Flags auf, bevor Sie diese Gruppe löschen."
+      "deleteDisabledTooltip": "Heben Sie die Zuweisung aller Mitglieds-Flags auf, bevor Sie diese Gruppe löschen.",
+      "deleteConfirmTitle": "Gruppe löschen?",
+      "deleteConfirmWarning": "Diese Gruppe enthält {{count}} Flag(s). Das Löschen entfernt alle Flags aus der Gruppe.",
+      "deleteConfirmBody": "Dies kann nicht rückgängig gemacht werden. Fortfahren?",
+      "deleteConfirmOk": "Löschen"
     }
   },
   "aiSettings": {

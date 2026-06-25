@@ -168,6 +168,59 @@ function ConfirmDialog({
   );
 }
 
+// ── Delete Group Dialog (MINCRM-567) ─────────────────────────────────────────
+
+interface DeleteGroupDialogProps {
+  group: FlagGroupRow;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function DeleteGroupDialog({ group, onConfirm, onCancel }: DeleteGroupDialogProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-group-dialog-title"
+      data-testid="delete-group-confirm-dialog"
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h2 id="delete-group-dialog-title" className="text-lg font-semibold text-gray-900 mb-2">
+          {t('featureFlags.groups.deleteConfirmTitle')}
+        </h2>
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+          {t('featureFlags.groups.deleteConfirmWarning', {
+            count: group.member_count,
+            label: group.label,
+          })}
+        </p>
+        <p className="text-sm text-gray-600 mb-6">{t('featureFlags.groups.deleteConfirmBody')}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onClick={onCancel}
+            data-testid="delete-group-confirm-cancel"
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            onClick={onConfirm}
+            data-testid="delete-group-confirm-ok"
+          >
+            {t('featureFlags.groups.deleteConfirmOk')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Beta Users Panel ──────────────────────────────────────────────────────────
 
 interface BetaUsersPanelProps {
@@ -891,17 +944,14 @@ function GroupRow({
             </div>
           )}
 
-          {/* Delete group button — only enabled when no member flags */}
+          {/* Delete group button — always enabled; non-empty groups show a warning dialog (MINCRM-567) */}
           <div className="mt-3 border-t border-gray-100 pt-3">
             <button
               type="button"
-              disabled={isPending || group.member_count > 0}
+              disabled={isPending}
               onClick={() => onDelete(group)}
               className="text-xs text-red-600 hover:text-red-800 focus:outline-none focus:underline disabled:opacity-40 disabled:cursor-not-allowed"
               data-testid={`group-delete-${group.group_key}`}
-              title={
-                group.member_count > 0 ? t('featureFlags.groups.deleteDisabledTooltip') : undefined
-              }
             >
               {t('featureFlags.groups.delete')}
             </button>
@@ -1116,6 +1166,8 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
     },
   });
 
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<FlagGroupRow | null>(null);
+
   function handleToggle(group: FlagGroupRow, newEnabled: boolean) {
     setPendingGroupKey(group.group_key);
     groupMutation.mutate({ key: group.group_key, patch: { enabled: newEnabled } });
@@ -1127,7 +1179,22 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
   }
 
   function handleDelete(group: FlagGroupRow) {
-    deleteMutation.mutate(group.group_key);
+    if (group.member_count > 0) {
+      setPendingDeleteGroup(group);
+    } else {
+      deleteMutation.mutate(group.group_key);
+    }
+  }
+
+  function handleDeleteConfirm() {
+    if (pendingDeleteGroup) {
+      deleteMutation.mutate(pendingDeleteGroup.group_key);
+      setPendingDeleteGroup(null);
+    }
+  }
+
+  function handleDeleteCancel() {
+    setPendingDeleteGroup(null);
   }
 
   if (groups.length === 0) {
@@ -1149,37 +1216,46 @@ function GroupsSection({ flags, onFlagClick, onGroupRowRef }: GroupsSectionProps
   }
 
   return (
-    <section aria-labelledby="feature-flag-groups-heading" data-testid="flag-groups-section">
-      <h2
-        id="feature-flag-groups-heading"
-        className="text-base font-semibold text-gray-900 mb-3"
-        data-testid="groups-section-heading"
-      >
-        {t('featureFlags.groups.sectionTitle')}
-      </h2>
-      <div className="bg-white border border-gray-200 rounded-lg px-4 divide-y divide-gray-100">
-        {groups.map((group) => (
-          <div
-            key={group.group_key}
-            ref={(el) => onGroupRowRef(group.group_key, el)}
-            tabIndex={-1}
-            className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
-          >
-            <GroupRow
-              group={group}
-              memberFlags={flags.filter((f) => f.group_key === group.group_key)}
-              onToggle={handleToggle}
-              onEnableAtChange={handleEnableAtChange}
-              onDelete={handleDelete}
-              onFlagClick={onFlagClick}
-              isPending={pendingGroupKey === group.group_key}
-              nowMs={nowMs}
-            />
-          </div>
-        ))}
-      </div>
-      <CreateGroupForm onCreated={() => {}} />
-    </section>
+    <>
+      {pendingDeleteGroup && (
+        <DeleteGroupDialog
+          group={pendingDeleteGroup}
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+        />
+      )}
+      <section aria-labelledby="feature-flag-groups-heading" data-testid="flag-groups-section">
+        <h2
+          id="feature-flag-groups-heading"
+          className="text-base font-semibold text-gray-900 mb-3"
+          data-testid="groups-section-heading"
+        >
+          {t('featureFlags.groups.sectionTitle')}
+        </h2>
+        <div className="bg-white border border-gray-200 rounded-lg px-4 divide-y divide-gray-100">
+          {groups.map((group) => (
+            <div
+              key={group.group_key}
+              ref={(el) => onGroupRowRef(group.group_key, el)}
+              tabIndex={-1}
+              className="focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset rounded"
+            >
+              <GroupRow
+                group={group}
+                memberFlags={flags.filter((f) => f.group_key === group.group_key)}
+                onToggle={handleToggle}
+                onEnableAtChange={handleEnableAtChange}
+                onDelete={handleDelete}
+                onFlagClick={onFlagClick}
+                isPending={pendingGroupKey === group.group_key}
+                nowMs={nowMs}
+              />
+            </div>
+          ))}
+        </div>
+        <CreateGroupForm onCreated={() => {}} />
+      </section>
+    </>
   );
 }
 
