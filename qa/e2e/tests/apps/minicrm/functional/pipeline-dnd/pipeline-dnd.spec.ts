@@ -17,7 +17,20 @@
  *   - Tests pass with --workers=4 (no shared mutable state)
  *
  * MINCRM-300
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - beforeEach logs in as admin via restClient only; the browser session
+ *     (rep) is created fresh per test inside the test body.
+ *   - Each test creates its own UUID-suffixed rep, account, and deal via
+ *     TestDataManager — no shared records.
+ *   - DnD tests are desktop-only and skip on mobile-web; no layout mutation.
+ *   - No system_settings writes in any test.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { openDeal, dragDealToStage, getDealById } from '@behaviors/minicrm/deals.behaviors.js';

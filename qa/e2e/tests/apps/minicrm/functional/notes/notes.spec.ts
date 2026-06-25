@@ -23,7 +23,20 @@
  *   - No raw locators in this file — UI interaction via behaviors/page objects only
  *
  * MINCRM-352
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - beforeEach creates a fresh UUID-suffixed rep; all contacts, accounts,
+ *     deals, and notes are owned by that rep and torn down by TestDataManager.
+ *   - Visibility tests (F14-V1/V2) create their own isolated rep pair with
+ *     UUID-scoped names; no shared user accounts.
+ *   - No aggregate count assertions on the full notes table.
+ *   - No system_settings writes in any test.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {

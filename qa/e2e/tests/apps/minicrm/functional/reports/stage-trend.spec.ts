@@ -14,7 +14,19 @@
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - data-testid selectors only — no CSS class or positional selectors
  *   - No raw Page Object calls in spec — use behaviors or page objects
+ *
+ * Parallelism (MINCRM-550):
+ *   File-scope parallel mode is enabled below. Safety audit passed:
+ *   - beforeEach creates a fresh UUID-suffixed admin via TestDataManager; no
+ *     shared user records between tests.
+ *   - The stage-trend report is read-only; tests only select date ranges and
+ *     assert on empty/populated state — no writes to shared data.
+ *   - No system_settings writes in any test.
  */
+
+// Enable intra-file parallelism: tests run concurrently across workers.
+// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
+test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
