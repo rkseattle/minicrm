@@ -1968,7 +1968,6 @@
       "noGroup": "None",
       "memberFlags": "Member flags",
       "delete": "Delete group",
-      "deleteDisabledTooltip": "Unassign all member flags before deleting this group.",
       "deleteConfirmTitle": "Delete group?",
       "deleteConfirmWarning": "This group contains {{count}} flag(s). Deleting it will remove all flags from this group.",
       "deleteConfirmBody": "This cannot be undone. Continue?",

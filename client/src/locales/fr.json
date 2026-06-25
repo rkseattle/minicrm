@@ -1968,7 +1968,6 @@
       "noGroup": "Aucun",
       "memberFlags": "Drapeaux membres",
       "delete": "Supprimer le groupe",
-      "deleteDisabledTooltip": "Désassignez tous les drapeaux membres avant de supprimer ce groupe.",
       "deleteConfirmTitle": "Supprimer le groupe ?",
       "deleteConfirmWarning": "Ce groupe contient {{count}} indicateur(s). Sa suppression les retirera tous du groupe.",
       "deleteConfirmBody": "Cette action est irréversible. Continuer ?",
