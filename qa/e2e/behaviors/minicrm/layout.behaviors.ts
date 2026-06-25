@@ -82,10 +82,11 @@ export async function assertEmptyStateContainerFills(
   })()`;
 
   // Poll until the flex chain has resolved and the container has a positive
-  // rendered height. Falls through with 0 on timeout so the spec assertion
-  // produces a clear failure message rather than a generic waitForFunction
-  // timeout error.
-  await page.waitForFunction(getHeight + ' > 0').catch(() => {});
+  // rendered height. Use an explicit 15 s timeout — the mobile flex chain can
+  // take longer to settle under CI load than the default expect.timeout (5 s).
+  // Falls through with 0 on timeout so the spec assertion produces a clear
+  // failure message rather than a generic waitForFunction timeout error.
+  await page.waitForFunction(getHeight + ' > 0', undefined, { timeout: 15_000 }).catch(() => {});
 
   const containerHeight = (await page.evaluate(getHeight)) as number;
 
