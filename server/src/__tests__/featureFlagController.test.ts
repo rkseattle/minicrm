@@ -997,15 +997,18 @@ describe('DELETE /api/v1/admin/feature-flags/groups/:key', () => {
     expect(res.status).toBe(204);
   });
 
-  it('returns 409 when the group has member flags', async () => {
+  it('cascade-deletes a group with member flags and returns 204 (MINCRM-567)', async () => {
     await pool.query(
       `UPDATE feature_flags SET group_key = 'ff-ctrl-del-group' WHERE flag_key = 'mobile_access'`,
     );
     const res = await request(app)
       .delete('/api/v1/admin/feature-flags/groups/ff-ctrl-del-group')
       .set('Cookie', adminCookie);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe('FLAG_GROUP_HAS_MEMBERS');
+    expect(res.status).toBe(204);
+    const flagRow = await pool.query(
+      `SELECT group_key FROM feature_flags WHERE flag_key = 'mobile_access'`,
+    );
+    expect(flagRow.rows[0]?.group_key).toBeNull();
   });
 });
 

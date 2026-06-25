@@ -1312,8 +1312,9 @@ export async function updateFlagGroup(
 }
 
 /**
- * Deletes a flag group. Returns false if not found.
- * Throws FLAG_GROUP_HAS_MEMBERS if the group still has member flags. (MINCRM-491)
+ * Deletes a flag group and atomically unassigns all member flags (sets their group_key to NULL).
+ * Returns false if the group does not exist. Writes audit entries for each unassigned flag and
+ * for the group deletion itself, all within the same transaction. (MINCRM-567)
  */
 export async function deleteFlagGroup(groupKey: string, actor: AuditActor): Promise<boolean> {
   const client: PoolClient = await pool.connect();
@@ -1328,17 +1329,32 @@ export async function deleteFlagGroup(groupKey: string, actor: AuditActor): Prom
       await client.query('ROLLBACK');
       return false;
     }
+    const groupLabel = groupRow.rows[0].label;
 
-    const memberCheck = await client.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM feature_flags WHERE group_key = $1`,
+    // Fetch member flags before unassigning so we can write per-flag audit entries.
+    const membersResult = await client.query<{ flag_key: string; label: string }>(
+      `SELECT flag_key, label FROM feature_flags WHERE group_key = $1 FOR UPDATE`,
       [groupKey],
     );
-    if (parseInt(memberCheck.rows[0]?.count ?? '0', 10) > 0) {
-      await client.query('ROLLBACK');
-      throw Object.assign(
-        new Error(`Cannot delete group '${groupKey}': it still has member flags`),
-        { code: 'FLAG_GROUP_HAS_MEMBERS' },
+
+    if (membersResult.rows.length > 0) {
+      await client.query(
+        `UPDATE feature_flags SET group_key = NULL, updated_at = NOW() WHERE group_key = $1`,
+        [groupKey],
       );
+      for (const flag of membersResult.rows) {
+        await writeAuditEntry(client, {
+          recordType: 'feature_flag',
+          recordId: null,
+          recordName: flag.label,
+          eventType: 'updated',
+          fieldName: 'group_key',
+          oldValue: groupKey,
+          newValue: 'null',
+          changedById: actor.id,
+          changedByName: actor.name,
+        });
+      }
     }
 
     await client.query(`DELETE FROM feature_flag_groups WHERE group_key = $1`, [groupKey]);
@@ -1346,7 +1362,7 @@ export async function deleteFlagGroup(groupKey: string, actor: AuditActor): Prom
     await writeAuditEntry(client, {
       recordType: 'feature_flag_group',
       recordId: null,
-      recordName: groupRow.rows[0].label,
+      recordName: groupLabel,
       eventType: 'deleted',
       fieldName: 'group_key',
       oldValue: groupKey,

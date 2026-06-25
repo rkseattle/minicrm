@@ -219,9 +219,8 @@ router.patch(
  *     operationId: deleteFlagGroup
  *     summary: Delete a flag group
  *     description: >
- *       Deletes a flag group. The group must have no member flags assigned; returns 409
- *       (FLAG_GROUP_HAS_MEMBERS) if any flags still reference this group. Unassign all
- *       member flags first (PATCH each flag's group_key to null), then delete. Admin only.
+ *       Deletes a flag group, atomically unassigning all member flags (setting their group_key
+ *       to null) in the same transaction before removing the group. Admin only. (MINCRM-567)
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -239,8 +238,6 @@ router.patch(
  *         $ref: '#/components/responses/Forbidden'
  *       404:
  *         $ref: '#/components/responses/NotFound'
- *       409:
- *         description: Group has member flags
  */
 router.delete(
   '/groups/:key',
