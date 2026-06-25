@@ -556,6 +556,7 @@
   },
   "settings": {
     "pageTitle": "[Ädmïñ Ŝëttïñgŝ~~~~~]",
+    "featureDisabledBanner": "[Thïŝ fëätürë ïŝ cürrëñtlÿ dïŝäblëd. Eñäblë ït ïñ Fëätürë Fläg ŝëttïñgŝ.~~~~~~~~~~~~~~~~~~~~~~~~~]",
     "defaultLanguageLabel": "[Dëfäült läñgüägë~~~~~]",
     "defaultLanguageHint": "[Ŝëtŝ thë fällbäĉk läñgüägë för äll üŝërŝ whö hävë ñöt ĉöñfïgürëd ä përŝöñäl läñgüägë prëfërëñĉë. Döëŝ ñöt övërrïdë ä üŝër'ŝ bröwŝër ör ÖŜ läñgüägë ŝëttïñg.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
     "saveButton": "[Ŝävë~~]",
@@ -1783,7 +1784,11 @@
       "noGroup": "[Nøne]",
       "memberFlags": "[Member flags]",
       "delete": "[Delete grøüp]",
-      "deleteDisabledTooltip": "[Unassign all member flags before deleting this grøüp.]"
+      "deleteDisabledTooltip": "[Unassign all member flags before deleting this grøüp.]",
+      "deleteConfirmTitle": "[Delëte grøüp?]",
+      "deleteConfirmWarning": "[This grøüp cøntäins {{count}} flag(s). Delëting it will remøve äll flags from this grøüp.]",
+      "deleteConfirmBody": "[This cännøt be undøne. Cøntinüe?]",
+      "deleteConfirmOk": "[Delëte]"
     }
   },
   "visibilitySettings": {
