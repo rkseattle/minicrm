@@ -32,7 +32,7 @@ export interface AiBehaviorContext {
  * @param context - Playwright fixture context.
  */
 export async function navigateToAiPage(context: AiBehaviorContext): Promise<void> {
-  await context.page.goto('/ai', { waitUntil: 'networkidle' });
+  await context.page.goto('/ai');
 }
 
 // ---------------------------------------------------------------------------
@@ -363,22 +363,10 @@ export async function deleteAiSessionViaUI(
 
   await aiPage.confirmDeleteSession();
 
-  // Wait for the session item to leave the DOM
+  // waitForAbsent confirms removal; that's the authoritative check.
   await context.page.waitForAbsent(`[data-testid="ai-session-item-${sessionId}"]`);
 
-  const sessionRemoved = !(await context.page
-    .locate(
-      [
-        { type: 'testId', value: `ai-session-item-${sessionId}` },
-        { type: 'css', value: `[data-testid="ai-session-item-${sessionId}"]` },
-      ],
-      { intent: `AI session item for ${sessionId} should be absent after deletion` },
-    )
-    .resolve()
-    .then((el) => el.isVisible())
-    .catch(() => false));
-
-  return { modalVisible, sessionRemoved };
+  return { modalVisible, sessionRemoved: true };
 }
 
 // ---------------------------------------------------------------------------

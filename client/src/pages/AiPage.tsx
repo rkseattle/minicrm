@@ -36,8 +36,8 @@ function MessageBubble({ message }: MessageBubbleProps) {
       <div
         className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
           isUser
-            ? 'bg-primary-600 text-white rounded-br-sm'
-            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
+            ? 'bg-primary-600 text-white rounded-ee-sm'
+            : 'bg-white border border-gray-200 text-gray-800 rounded-es-sm shadow-sm'
         }`}
         role="article"
         aria-label={isUser ? t('ai.userRole') : t('ai.assistantRole')}
@@ -204,13 +204,13 @@ export default function AiPage() {
       return sendAiMessage(sessionId, content);
     },
     onSuccess: (assistantMessage) => {
-      // Replace optimistic messages with persisted ones via query invalidation
-      setOptimisticMessages([]);
+      // Invalidate queries so fresh data replaces the optimistic messages. Hold the
+      // assistantMessage as optimistic until the refetch settles to avoid a flash of
+      // missing content. The clear happens in onSettled via query invalidation.
       if (resolvedSessionId) {
         void queryClient.invalidateQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
         void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
       }
-      // Keep assistantMessage reference stable until query resolves
       setOptimisticMessages([assistantMessage]);
       setSendError(null);
     },
@@ -412,7 +412,7 @@ export default function AiPage() {
               <SessionItem
                 key={session.id}
                 session={session}
-                isActive={session.id === activeSessionId}
+                isActive={session.id === resolvedSessionId}
                 onSelect={handleSelectSession}
                 onDelete={handleDeleteSession}
                 isDeleting={deleteMutation.isPending && deleteConfirmId === session.id}
@@ -545,6 +545,7 @@ export default function AiPage() {
                 aria-label={t('ai.messagePlaceholder')}
                 className="flex-1 min-w-0 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 max-h-40 overflow-y-auto"
                 style={{
+                  // fieldSizing is a draft CSS property not yet in TS CSSProperties lib
                   fieldSizing: 'content' as React.CSSProperties['fieldSizing'],
                   minHeight: '2.5rem',
                 }}

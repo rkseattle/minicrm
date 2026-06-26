@@ -5,10 +5,13 @@
  */
 
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import {
   createAiSessionSchema,
   sendAiMessageSchema,
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
+
+const sessionIdSchema = z.string().uuid();
 import {
   listSessions,
   createSession,
@@ -37,18 +40,21 @@ export async function createAiSessionHandler(req: Request, res: Response): Promi
 }
 
 export async function getAiSessionHandler(req: Request, res: Response): Promise<void> {
-  const sessionId = req.params['sessionId'] as string;
+  const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
+  if (!idParsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    return;
+  }
+  const sessionId = idParsed.data;
   try {
     const session = await getSessionWithMessages(sessionId, req.user!.id);
     res.status(200).json(session);
   } catch (err: unknown) {
     const tagged = err as { statusCode?: number; message?: string };
     if (tagged.statusCode === 404) {
-      res
-        .status(404)
-        .json({
-          error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
-        });
+      res.status(404).json({
+        error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
+      });
       return;
     }
     throw err;
@@ -56,7 +62,12 @@ export async function getAiSessionHandler(req: Request, res: Response): Promise<
 }
 
 export async function deleteAiSessionHandler(req: Request, res: Response): Promise<void> {
-  const sessionId = req.params['sessionId'] as string;
+  const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
+  if (!idParsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    return;
+  }
+  const sessionId = idParsed.data;
   const actor = { id: req.user!.id, name: req.user!.name };
   try {
     await deleteSession(sessionId, req.user!.id, actor);
@@ -64,11 +75,9 @@ export async function deleteAiSessionHandler(req: Request, res: Response): Promi
   } catch (err: unknown) {
     const tagged = err as { statusCode?: number; message?: string };
     if (tagged.statusCode === 404) {
-      res
-        .status(404)
-        .json({
-          error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
-        });
+      res.status(404).json({
+        error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
+      });
       return;
     }
     throw err;
@@ -84,7 +93,12 @@ export async function sendAiMessageHandler(req: Request, res: Response): Promise
     return;
   }
 
-  const sessionId = req.params['sessionId'] as string;
+  const idParsed = sessionIdSchema.safeParse(req.params['sessionId']);
+  if (!idParsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid session ID' } });
+    return;
+  }
+  const sessionId = idParsed.data;
   const actor = { id: req.user!.id, name: req.user!.name };
 
   try {
@@ -93,27 +107,21 @@ export async function sendAiMessageHandler(req: Request, res: Response): Promise
   } catch (err: unknown) {
     const tagged = err as { statusCode?: number; message?: string };
     if (tagged.statusCode === 404) {
-      res
-        .status(404)
-        .json({
-          error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
-        });
+      res.status(404).json({
+        error: { code: 'SESSION_NOT_FOUND', message: tagged.message ?? 'Session not found' },
+      });
       return;
     }
     if (tagged.statusCode === 502) {
-      res
-        .status(502)
-        .json({
-          error: { code: 'AI_PROVIDER_ERROR', message: tagged.message ?? 'AI provider error' },
-        });
+      res.status(502).json({
+        error: { code: 'AI_PROVIDER_ERROR', message: tagged.message ?? 'AI provider error' },
+      });
       return;
     }
     if (tagged.statusCode === 503) {
-      res
-        .status(503)
-        .json({
-          error: { code: 'AI_NOT_CONFIGURED', message: tagged.message ?? 'AI is not configured' },
-        });
+      res.status(503).json({
+        error: { code: 'AI_NOT_CONFIGURED', message: tagged.message ?? 'AI is not configured' },
+      });
       return;
     }
     throw err;

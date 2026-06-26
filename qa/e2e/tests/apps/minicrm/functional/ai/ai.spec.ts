@@ -28,13 +28,14 @@
  *   - Behaviours imported from @behaviors/* only — never @pages/*
  *   - Feature flag UI state controlled via withFlags() route interception only
  *   - Test data managed via restClient + TestDataManager
- *   - test.describe.configure({ mode: 'parallel' }) is safe here because every
- *     test creates its own data and no test mutates system_settings rows.
+ *   - test.describe.configure({ mode: 'serial' }) required: tests share the admin
+ *     user's AI session list; parallel runs cause cross-test session state bleed.
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { navigateViaNavLink } from '@behaviors/minicrm/nav.behaviors.js';
+import { navigateViaNavLink, navigateViaMobileNavLink } from '@behaviors/minicrm/nav.behaviors.js';
+import { navigateToDashboardAndWait } from '@behaviors/minicrm/setup.behaviors.js';
 import { withFlags } from '@apps/minicrm/helpers.js';
 import { createTestRep } from '@apps/minicrm/helpers.js';
 import {
@@ -86,15 +87,28 @@ test('F-AI1 — /ai route accessible from nav when flag is on @functional', asyn
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  // Navigate to root first so the browser is on a page with the nav visible
-  await navigateToAiPage({ page });
-  await waitForAiConversationPanel({ page });
-  // On mobile, the AI nav uses the hamburger drawer; on desktop the top sidebar nav.
+  // Navigate to the dashboard (/) first so clicking the AI nav link changes the URL.
+  // navigateToAiPage would pre-land on /ai; navigateViaNavLink checks pathname change
+  // and never resolves when start and destination are the same route.
+  await navigateToDashboardAndWait({ page });
+  // On mobile viewports the default 'top' layout hides sidebar links and shows a
+  // mobile drawer. Use navigateViaMobileNavLink which opens that drawer and clicks
+  // nav-top-ai-mobile. On desktop the sidebar top nav link (nav-top-ai) is visible.
   const viewportWidth = page.viewportSize()?.width ?? 1280;
-  const layout = viewportWidth < 768 ? 'hamburger' : 'top';
-  const result = await navigateViaNavLink(layout, 'ai', { page });
-  expect(result.linkClicked).toBe(true);
-  expect(result.finalUrl).toContain('/ai');
+  const isMobile = viewportWidth < 1024;
+  let linkClicked: boolean;
+  let finalUrl: string;
+  if (isMobile) {
+    const mobileResult = await navigateViaMobileNavLink('ai', { page });
+    linkClicked = mobileResult.linkClicked;
+    finalUrl = mobileResult.finalUrl;
+  } else {
+    const desktopResult = await navigateViaNavLink('top', 'ai', { page });
+    linkClicked = desktopResult.linkClicked;
+    finalUrl = desktopResult.finalUrl;
+  }
+  expect(linkClicked).toBe(true);
+  expect(finalUrl).toContain('/ai');
 });
 
 test('F-AI2 — Two-panel layout renders: thread panel and input controls @functional', async ({
@@ -258,14 +272,14 @@ test('F-AI10 — Sessions scoped to authenticated user; other user cannot access
   });
 
   // The rep must receive a 404 when accessing the admin's session
-  let caughtStatusCode: number | undefined;
+  let caughtStatus: number | undefined;
   try {
     await getAiSessionViaApi(restClient, adminSessionId);
   } catch (err: unknown) {
-    const e = err as { statusCode?: number };
-    caughtStatusCode = e.statusCode;
+    const e = err as { status?: number };
+    caughtStatus = e.status;
   }
-  expect(caughtStatusCode).toBe(404);
+  expect(caughtStatus).toBe(404);
 
   // Re-auth the browser session as admin and verify the session still exists
   const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';

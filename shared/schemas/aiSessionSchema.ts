@@ -9,9 +9,7 @@ import { z } from 'zod';
 export const AI_MESSAGE_ROLES = ['user', 'assistant'] as const;
 export type AiMessageRole = (typeof AI_MESSAGE_ROLES)[number];
 
-export const createAiSessionSchema = z.object({
-  name: z.string().min(1).max(255).trim().optional(),
-});
+export const createAiSessionSchema = z.object({});
 
 export type CreateAiSessionInput = z.infer<typeof createAiSessionSchema>;
 
