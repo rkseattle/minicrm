@@ -63,6 +63,7 @@ import {
   getAiSessionViaApi,
   deleteAllAiSessionsViaApi,
 } from '@behaviors/minicrm/ai.behaviors.js';
+import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
 
 // Serial mode required: all tests share the admin user's AI sessions. Parallel
 // execution causes cross-test session state bleed (messages from one test appear
@@ -77,6 +78,9 @@ test.beforeEach(async ({ restClient }) => {
   // Delete all admin sessions so each test starts with a clean slate.
   // Needed because serial tests share the admin account and sessions accumulate.
   await loginAsAdmin(restClient);
+  // Ensure AI is enabled — aiSettings.spec.ts (which runs just before this file
+  // alphabetically) resets the master toggle to disabled in its afterEach.
+  await setAiEnabled(restClient, true);
   await deleteAllAiSessionsViaApi(restClient);
 });
 
