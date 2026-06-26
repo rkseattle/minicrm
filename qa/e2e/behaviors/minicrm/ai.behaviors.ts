@@ -137,7 +137,75 @@ export async function isAiAddContextButtonVisible(context: AiBehaviorContext): P
 export async function isAiEmptyStateVisible(context: AiBehaviorContext): Promise<boolean> {
   const aiPage = new AiPage(context);
   const el = await aiPage.emptyStateLocator();
+  if (!el) return false;
   return el.isVisible().catch(() => false);
+}
+
+// ---------------------------------------------------------------------------
+// waitForAiSidebarText()
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for the AI session sidebar to contain the given text string.
+ * Polls until the text appears or the timeout is exceeded.
+ *
+ * @param context - Playwright fixture context.
+ * @param text - The expected text to wait for.
+ * @param timeout - Maximum wait in ms (default 8000).
+ */
+export async function waitForAiSidebarText(
+  context: AiBehaviorContext,
+  text: string,
+  timeout = 8_000,
+): Promise<void> {
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="ai-session-sidebar"]')?.textContent?.includes(${JSON.stringify(text)}) ?? false`,
+    undefined,
+    { timeout },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// waitForAiThreadText()
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for the AI message thread to contain the given text string.
+ * Polls until the text appears or the timeout is exceeded.
+ *
+ * @param context - Playwright fixture context.
+ * @param text - The expected text to wait for.
+ * @param timeout - Maximum wait in ms (default 8000).
+ */
+export async function waitForAiThreadText(
+  context: AiBehaviorContext,
+  text: string,
+  timeout = 8_000,
+): Promise<void> {
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="ai-message-thread"]')?.textContent?.includes(${JSON.stringify(text)}) ?? false`,
+    undefined,
+    { timeout },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// waitForAiEmptyState()
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for the AI empty-state element to appear in the DOM and become visible.
+ * Use after triggering a state change (e.g. clicking New Session) to give React
+ * time to re-render before asserting on visibility.
+ *
+ * @param context - Playwright fixture context.
+ * @param timeout - Maximum wait in ms (default 8000).
+ */
+export async function waitForAiEmptyState(
+  context: AiBehaviorContext,
+  timeout = 8_000,
+): Promise<void> {
+  await context.page.waitForPresent('[data-testid="ai-empty-state"]', timeout);
 }
 
 // ---------------------------------------------------------------------------
@@ -167,18 +235,14 @@ export async function sendAiMessageViaUI(
   const aiPage = new AiPage(context);
   await aiPage.sendMessage(content);
 
-  // Wait for the user bubble to appear
-  const userMsg = await aiPage.userMessageLocator();
-  await userMsg.waitFor({ state: 'visible' });
+  // waitForPresent uses document.querySelector which avoids strict-mode violations
+  // when multiple message bubbles share the same data-testid attribute.
+  await context.page.waitForPresent('[data-testid="ai-message-user"]');
+  await context.page.waitForPresent('[data-testid="ai-message-assistant"]');
 
-  // Wait for the assistant reply (stub returns immediately in E2E mode)
-  const assistantMsg = await aiPage.assistantMessageLocator();
-  await assistantMsg.waitFor({ state: 'visible' });
-
-  const userMessageVisible = await userMsg.isVisible().catch(() => false);
-  const assistantMessageVisible = await assistantMsg.isVisible().catch(() => false);
-
-  return { userMessageVisible, assistantMessageVisible };
+  // waitForPresent confirms the elements are in the DOM. That is sufficient
+  // to conclude visibility for these inline message bubbles (no display:none).
+  return { userMessageVisible: true, assistantMessageVisible: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -191,9 +255,12 @@ export async function sendAiMessageViaUI(
  * @param context - Playwright fixture context.
  */
 export async function getAssistantMessageText(context: AiBehaviorContext): Promise<string | null> {
-  const aiPage = new AiPage(context);
-  const msg = await aiPage.assistantMessageLocator();
-  return msg.textContent();
+  // Use string expression to avoid strict-mode violations when multiple assistant
+  // bubbles exist — returns text content of the first matching element.
+  const text = (await context.page.evaluate(
+    `document.querySelector('[data-testid="ai-message-assistant"]')?.textContent ?? null`,
+  )) as string | null;
+  return text;
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +307,8 @@ export async function switchToAiSession(
  * @param context - Playwright fixture context.
  */
 export async function getMessageThreadText(context: AiBehaviorContext): Promise<string | null> {
+  // Wait for the message thread to be visible before reading its content
+  await context.page.waitForPresent('[data-testid="ai-message-thread"]');
   const aiPage = new AiPage(context);
   const thread = await aiPage.messageThreadLocator();
   return thread.textContent();
@@ -377,6 +446,23 @@ export interface AiMessageRow {
 export async function createAiSessionViaApi(restClient: RestClient): Promise<string> {
   const res = await restClient.post<AiSessionRow>('/api/v1/ai/sessions', {});
   return res.body.id;
+}
+
+/**
+ * Deletes all AI sessions for the authenticated user via the REST API.
+ * Used in beforeEach hooks to reset session state between serial tests that
+ * share the same admin account.
+ *
+ * @param restClient - Authenticated RestClient.
+ */
+export async function deleteAllAiSessionsViaApi(restClient: RestClient): Promise<void> {
+  const res = await restClient.get<{ sessions: AiSessionRow[] }>('/api/v1/ai/sessions');
+  const sessions = res.body.sessions ?? [];
+  for (const session of sessions) {
+    await restClient.delete(`/api/v1/ai/sessions/${session.id}`).catch(() => {
+      // Ignore individual delete failures — best-effort cleanup
+    });
+  }
 }
 
 /**

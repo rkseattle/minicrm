@@ -93,7 +93,7 @@ export class AiPage {
       .resolve();
   }
 
-  /** Returns the empty-state message element. */
+  /** Returns the empty-state message element. Null if not present. */
   async emptyStateLocator() {
     return this.page
       .locate(
@@ -103,7 +103,8 @@ export class AiPage {
         ],
         { intent: 'AI conversation empty-state message when no messages exist' },
       )
-      .resolve();
+      .resolve()
+      .catch(() => null);
   }
 
   /** Returns the New Session button. */
