@@ -393,6 +393,7 @@ export async function deleteAiSessionViaUI(
 export async function isAiNavLinkVisible(context: AiBehaviorContext): Promise<boolean> {
   const aiPage = new AiPage(context);
   const link = await aiPage.navLinkLocator();
+  if (!link) return false;
   return link.isVisible().catch(() => false);
 }
 

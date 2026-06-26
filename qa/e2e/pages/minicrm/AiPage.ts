@@ -227,7 +227,7 @@ export class AiPage {
       .resolve();
   }
 
-  /** Returns the nav link for the AI page. */
+  /** Returns the nav link for the AI page. Null if not present (flag disabled or mobile layout). */
   async navLinkLocator() {
     return this.page
       .locate(
@@ -237,7 +237,8 @@ export class AiPage {
         ],
         { intent: 'AI assistant navigation link in top nav' },
       )
-      .resolve();
+      .resolve()
+      .catch(() => null);
   }
 
   /**
