@@ -44,6 +44,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage.js'));
 const AuditLogPage = lazy(() => import('@/pages/AuditLogPage.js'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage.js'));
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
+const AiPage = lazy(() => import('@/pages/AiPage.js'));
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
@@ -120,6 +121,8 @@ function AppRoutes() {
               element={<Navigate to="/reports?view=pipeline-stage" replace />}
             />
             <Route path="/profile" element={<ProfilePage />} />
+            {/* MINCRM-420: AI Assistant page */}
+            <Route path="/ai" element={<AiPage />} />
           </Route>
         </Route>
 

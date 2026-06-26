@@ -25,7 +25,8 @@
     "tags": "Etiquetas",
     "administrationSection": "Administración",
     "poweredByMiniCRM": "Desarrollado por MiniCRM",
-    "appName": "MiniCRM"
+    "appName": "MiniCRM",
+    "ai": "Asistente IA"
   },
   "login": {
     "title": "Inicia sesión en tu cuenta",
@@ -2230,5 +2231,28 @@
     },
     "empty": "Todavía no se han creado equipos.",
     "loading": "Cargando equipos…"
+  },
+  "ai": {
+    "pageTitle": "Asistente IA",
+    "newSession": "Nueva sesión",
+    "deleteSession": "Eliminar sesión",
+    "confirmDeleteTitle": "¿Eliminar esta conversación?",
+    "confirmDeleteBody": "Esta conversación y todos sus mensajes se eliminarán permanentemente.",
+    "myContext": "Mi contexto",
+    "addContext": "+ Agregar contexto",
+    "emptyStateTitle": "Inicia una conversación",
+    "emptyStateBody": "Pregunta cualquier cosa sobre tus datos de CRM: contactos, tratos, actividades y más.",
+    "messagePlaceholder": "Pregunta cualquier cosa sobre tus datos de CRM…",
+    "sendButton": "Enviar",
+    "sending": "Enviando…",
+    "errorSend": "No se pudo enviar el mensaje. Inténtalo de nuevo.",
+    "errorLoad": "No se pudo cargar la conversación.",
+    "errorLoadSessions": "No se pudieron cargar las sesiones.",
+    "notAvailable": "El asistente IA no está disponible.",
+    "newSessionLabel": "Nueva conversación",
+    "sessionListLabel": "Conversaciones",
+    "userRole": "Tú",
+    "assistantRole": "Asistente IA",
+    "sendShortcutHint": "Enviar · ⌘↵"
   }
 }
