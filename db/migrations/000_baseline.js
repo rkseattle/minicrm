@@ -977,6 +977,31 @@ exports.up = (pgm) => {
     )
   `);
 
+  // ai_sessions — multi-session AI conversation persistence (MINCRM-421)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.ai_sessions (
+      id         uuid DEFAULT gen_random_uuid() NOT NULL,
+      user_id    uuid NOT NULL,
+      name       character varying(255),
+      created_at timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT ai_sessions_pkey PRIMARY KEY (id)
+    )
+  `);
+
+  // ai_messages — ordered message log for each ai_session (MINCRM-421)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.ai_messages (
+      id         uuid DEFAULT gen_random_uuid() NOT NULL,
+      session_id uuid NOT NULL,
+      role       character varying(20) NOT NULL,
+      content    text NOT NULL,
+      created_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT ai_messages_pkey PRIMARY KEY (id),
+      CONSTRAINT ai_messages_role_check CHECK (role IN ('user', 'assistant'))
+    )
+  `);
+
   // currency_rate_history — immutable rate audit log (MINCRM-526)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.currency_rate_history (
@@ -1064,6 +1089,8 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.ai_configuration ADD CONSTRAINT ai_configuration_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.ai_token_budgets ADD CONSTRAINT ai_token_budgets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.ai_token_usage ADD CONSTRAINT ai_token_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.ai_sessions ADD CONSTRAINT ai_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.ai_messages ADD CONSTRAINT ai_messages_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.ai_sessions(id) ON DELETE CASCADE`,
   ];
 
   for (const constraint of constraints) {
@@ -1238,6 +1265,12 @@ exports.up = (pgm) => {
 
   // ai_token_usage
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_year_month_index ON public.ai_token_usage USING btree (year_month)`);
+
+  // ai_sessions / ai_messages (MINCRM-421)
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_sessions_user_id_idx ON public.ai_sessions USING btree (user_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_sessions_user_id_updated_at_idx ON public.ai_sessions USING btree (user_id, updated_at)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_idx ON public.ai_messages USING btree (session_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_created_at_idx ON public.ai_messages USING btree (session_id, created_at)`);
 
   // currency_rate_history
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
