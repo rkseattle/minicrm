@@ -107,7 +107,7 @@ export class AiPage {
       .catch(() => null);
   }
 
-  /** Returns the New Session button. */
+  /** Returns the New Session button (desktop sidebar). */
   async newSessionButtonLocator() {
     return this.page
       .locate(
@@ -116,6 +116,19 @@ export class AiPage {
           { type: 'role', value: 'button', options: { name: /new session/i } },
         ],
         { intent: 'AI new conversation session button' },
+      )
+      .resolve();
+  }
+
+  /** Returns the mobile New Session button (shown in the conversation header on narrow viewports). */
+  async newSessionButtonMobileLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-new-session-button-mobile' },
+          { type: 'role', value: 'button', options: { name: /new session/i } },
+        ],
+        { intent: 'AI new conversation session button (mobile header)' },
       )
       .resolve();
   }
@@ -252,9 +265,12 @@ export class AiPage {
     await sendBtn.click();
   }
 
-  /** Clicks the New Session button. */
+  /** Clicks the New Session button, choosing mobile or desktop variant by viewport width. */
   async clickNewSession(): Promise<void> {
-    const btn = await this.newSessionButtonLocator();
+    const isMobile = (this.page.viewportSize()?.width ?? 1280) < 768;
+    const btn = isMobile
+      ? await this.newSessionButtonMobileLocator()
+      : await this.newSessionButtonLocator();
     await btn.click();
   }
 

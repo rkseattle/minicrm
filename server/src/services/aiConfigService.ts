@@ -348,6 +348,12 @@ export async function setAiEnabled(
       [params.enabled, actor.id],
     );
 
+    // Keep the ai_nli_page feature flag in sync with the master toggle so the
+    // nav link appears/disappears immediately when AI is enabled/disabled.
+    await client.query(`UPDATE feature_flags SET enabled = $1 WHERE flag_key = 'ai_nli_page'`, [
+      params.enabled,
+    ]);
+
     await writeAuditEntry(client, {
       recordType: 'ai_settings',
       recordName: 'AI Configuration',

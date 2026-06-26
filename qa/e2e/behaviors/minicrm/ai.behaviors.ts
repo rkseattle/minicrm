@@ -274,7 +274,10 @@ export async function getAssistantMessageText(context: AiBehaviorContext): Promi
  */
 export async function clickNewSessionButton(context: AiBehaviorContext): Promise<void> {
   const aiPage = new AiPage(context);
-  const btn = await aiPage.newSessionButtonLocator();
+  const isMobile = (context.page.viewportSize()?.width ?? 1280) < 768;
+  const btn = isMobile
+    ? await aiPage.newSessionButtonMobileLocator()
+    : await aiPage.newSessionButtonLocator();
   await btn.waitFor({ state: 'visible' });
   await aiPage.clickNewSession();
 }
