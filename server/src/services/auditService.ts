@@ -65,7 +65,9 @@ export type AuditRecordType =
   /** SCIM provisioning bearer token lifecycle (MINCRM-541) */
   | 'scim_token'
   /** SCIM group-to-custom-role mapping changes (MINCRM-541) */
-  | 'scim_group_role_mapping';
+  | 'scim_group_role_mapping'
+  /** AI conversation sessions (MINCRM-421) */
+  | 'ai_sessions';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =

@@ -30,6 +30,14 @@ import {
   setUserTokenBudgetHandler,
   getMyTokenBudgetStatusHandler,
 } from '../controllers/aiTokenBudgetController.js';
+import {
+  listAiSessionsHandler,
+  createAiSessionHandler,
+  getAiSessionHandler,
+  deleteAiSessionHandler,
+  sendAiMessageHandler,
+} from '../controllers/aiSessionController.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 
 const router = Router();
 
@@ -350,5 +358,165 @@ const aiUserRouter = Router();
  *         description: Unauthenticated
  */
 aiUserRouter.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudgetStatusHandler));
+
+/**
+ * @openapi
+ * /ai/sessions:
+ *   get:
+ *     tags: [AI]
+ *     summary: List all AI conversation sessions for the authenticated user
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of session objects ordered by most-recently-updated
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ */
+aiUserRouter.get(
+  '/sessions',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(listAiSessionsHandler),
+);
+
+/**
+ * @openapi
+ * /ai/sessions:
+ *   post:
+ *     tags: [AI]
+ *     summary: Create a new AI conversation session
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       201:
+ *         description: The newly created session
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ */
+aiUserRouter.post(
+  '/sessions',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(createAiSessionHandler),
+);
+
+/**
+ * @openapi
+ * /ai/sessions/{sessionId}:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get a single session with its full message history
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Session object with embedded messages array
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled or session belongs to another user
+ *       404:
+ *         description: Session not found
+ */
+aiUserRouter.get(
+  '/sessions/:sessionId',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(getAiSessionHandler),
+);
+
+/**
+ * @openapi
+ * /ai/sessions/{sessionId}:
+ *   delete:
+ *     tags: [AI]
+ *     summary: Delete a session and all its messages
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Session deleted
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Session not found or belongs to another user
+ */
+aiUserRouter.delete(
+  '/sessions/:sessionId',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(deleteAiSessionHandler),
+);
+
+/**
+ * @openapi
+ * /ai/sessions/{sessionId}/messages:
+ *   post:
+ *     tags: [AI]
+ *     summary: Send a user message and receive the AI assistant reply
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 32000
+ *     responses:
+ *       200:
+ *         description: The assistant reply message
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Session not found
+ *       502:
+ *         description: AI provider error
+ *       503:
+ *         description: AI not configured or disabled
+ */
+aiUserRouter.post(
+  '/sessions/:sessionId/messages',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(sendAiMessageHandler),
+);
 
 export { aiUserRouter };
