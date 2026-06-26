@@ -89,7 +89,10 @@ test('F-AI1 — /ai route accessible from nav when flag is on @functional', asyn
   // Navigate to root first so the browser is on a page with the nav visible
   await navigateToAiPage({ page });
   await waitForAiConversationPanel({ page });
-  const result = await navigateViaNavLink('top', 'ai', { page });
+  // On mobile, the AI nav uses the hamburger drawer; on desktop the top sidebar nav.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  const layout = viewportWidth < 768 ? 'hamburger' : 'top';
+  const result = await navigateViaNavLink(layout, 'ai', { page });
   expect(result.linkClicked).toBe(true);
   expect(result.finalUrl).toContain('/ai');
 });
