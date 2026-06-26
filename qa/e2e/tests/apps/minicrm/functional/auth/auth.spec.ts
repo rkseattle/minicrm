@@ -31,17 +31,17 @@
  * MINCRM-137
  *
  * Parallelism (MINCRM-550):
- *   File-scope parallel mode is enabled below. Safety audit passed:
- *   - Every test creates its own user via invite + password setup then tears down
- *     in a finally block; no two tests share the same user account.
- *   - storageState is cleared (empty object) so no shared auth cookie is mutated.
- *   - No system_settings writes in any test.
- *   - The lockout test (F1-LK1) locks only the unique user it creates and cleans up.
+ *   Evaluated for parallel mode but rejected. All tests create UUID-scoped users
+ *   and make no system_settings writes, so intra-file isolation holds. However,
+ *   tests hammer the rate-limited POST /api/v1/auth/login endpoint: the lockout
+ *   test (F1-LO1) alone fires 11 consecutive requests. When this file runs in
+ *   parallel (intra-file) at the same time as other shards, the combined
+ *   concurrent login load causes ECONNRESET on the shared CI test server,
+ *   breaking tests in other files (observed: F1-PR6 in password-reset.spec.ts
+ *   and F8-TN1 in navigation.spec.ts). The /api/v1/auth/login endpoint is
+ *   effectively a shared resource under rate limiting; that makes it unsafe to
+ *   parallelize. See qa/e2e/PARALLELISM-NOTES.md.
  */
-
-// Enable intra-file parallelism: tests run concurrently across workers.
-// Safety-audited in MINCRM-550: all data is UUID-scoped, no shared state.
-test.describe.configure({ mode: 'parallel' });
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
