@@ -205,6 +205,12 @@ test('F-AI7 — User can switch between sessions; thread updates @functional', a
   page,
   restClient,
 }) => {
+  // Session sidebar is desktop-only (hidden md:flex); switching requires it.
+  test.skip(
+    (page.viewportSize()?.width ?? 1280) < 768,
+    'F-AI7: session switching via sidebar is desktop-only',
+  );
+
   await loginAsAdmin(restClient);
   // Create two sessions with distinct messages via API
   const sessionA = await createAiSessionViaApi(restClient);
@@ -232,6 +238,12 @@ test('F-AI8 — Deleting a session removes it from the session list @functional'
   page,
   restClient,
 }) => {
+  // Delete button is in the session sidebar which is desktop-only (hidden md:flex).
+  test.skip(
+    (page.viewportSize()?.width ?? 1280) < 768,
+    'F-AI8: session deletion via sidebar is desktop-only',
+  );
+
   await loginAsAdmin(restClient);
   const sessionId = await createAiSessionViaApi(restClient);
   await sendAiMessageViaApi(restClient, sessionId, 'Message to delete');

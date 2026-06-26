@@ -597,6 +597,10 @@ Click **Save** to persist the configuration, then use the **AI enabled** master 
 at the top of the page to turn AI features on. A confirmation dialog will appear before
 the state is changed.
 
+Once enabled, the **AI Assistant** tab becomes visible in the navigation for all users.
+Users can start conversations, ask questions about CRM data, and manage their own sessions.
+See the [AI Assistant user guide](user-guide/ai-assistant.md) for end-user instructions.
+
 ### Reference
 
 #### Data posture indicator

@@ -187,7 +187,7 @@ export default function AiPage() {
     mutationFn: (sessionId: string) => deleteAiSession(sessionId),
     onSuccess: (_, deletedId) => {
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
-      if (activeSessionId === deletedId) {
+      if (resolvedSessionId === deletedId) {
         // Select a different session or clear
         const remaining = sessions.filter((s) => s.id !== deletedId);
         setActiveSessionId(remaining[0]?.id ?? null);
@@ -204,9 +204,8 @@ export default function AiPage() {
       return sendAiMessage(sessionId, content);
     },
     onSuccess: (assistantMessage) => {
-      // Invalidate queries so fresh data replaces the optimistic messages. Hold the
-      // assistantMessage as optimistic until the refetch settles to avoid a flash of
-      // missing content. The clear happens in onSettled via query invalidation.
+      // Show the assistant reply optimistically until the server messages refetch
+      // settles. onSettled clears optimistic state once persisted data is available.
       if (resolvedSessionId) {
         void queryClient.invalidateQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
         void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
@@ -217,6 +216,11 @@ export default function AiPage() {
     onError: () => {
       setOptimisticMessages([]);
       setSendError(t('ai.errorSend'));
+    },
+    onSettled: () => {
+      // Clear optimistic messages once the refetch has settled so the assistant
+      // reply is not rendered twice (once optimistic, once from persisted data).
+      setOptimisticMessages([]);
     },
   });
 

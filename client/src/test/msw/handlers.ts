@@ -2533,6 +2533,11 @@ export const handlers = [
     });
   }),
 
+  /** Feature flags: GET /api/admin/feature-flags/groups — returns empty list by default */
+  http.get('/api/v1/admin/feature-flags/groups', () => {
+    return HttpResponse.json({ groups: [] });
+  }),
+
   /** Feature flags: GET /api/admin/feature-flags/:key/beta-users — returns empty list by default */
   http.get('/api/v1/admin/feature-flags/:key/beta-users', () => {
     return HttpResponse.json({ users: [] });

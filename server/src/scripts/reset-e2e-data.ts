@@ -159,6 +159,8 @@ async function main(adminEmail: string): Promise<void> {
     // Seed rows are inserted by migrations and not re-seeded on subsequent runs.
     // Tests may toggle enabled or set role_overrides; undo both here.
     // mobile_access and demo_data default to false in migrations 066; keep them off.
+    // ai_nli_page is enabled in E2E so tests can exercise the full AI feature surface;
+    // the flag is synced with ai_configuration.enabled only in production via setAiEnabled.
     await client.query(
       `UPDATE feature_flags
        SET enabled = CASE WHEN flag_key IN ('mobile_access', 'demo_data') THEN false ELSE true END,

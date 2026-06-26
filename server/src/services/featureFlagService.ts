@@ -81,8 +81,8 @@ export function stableHash(input: string): number {
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
 
-/** TTL for the feature flag cache in milliseconds. */
-const CACHE_TTL_MS = 60_000;
+/** TTL for the feature flag cache in milliseconds. Zero in E2E so DB resets take effect immediately. */
+const CACHE_TTL_MS = process.env['E2E'] === 'true' ? 0 : 60_000;
 
 interface CacheEntry {
   rows: FeatureFlagDbRow[];

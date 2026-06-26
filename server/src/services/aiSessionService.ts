@@ -90,45 +90,6 @@ function deriveSessionName(firstUserContent: string): string {
   return trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 60)}…`;
 }
 
-/**
- * Fetches the active AI configuration row needed to instantiate the SDK client.
- * Throws a descriptive error when AI is disabled or unconfigured.
- */
-async function fetchActiveSdkConfig(client: PoolClient): Promise<{
-  anthropicClient: Anthropic;
-  model: string;
-}> {
-  const result = await client.query<AiConfigRow>(
-    `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled
-     FROM ai_configuration
-     LIMIT 1`,
-  );
-
-  const row = result.rows[0];
-  if (!row?.enabled) {
-    throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
-  }
-  if (!row.api_key_encrypted || row.api_key_encrypted.trim() === '') {
-    throw Object.assign(new Error('AI API key is not configured'), { statusCode: 503 });
-  }
-
-  let apiKey: string;
-  try {
-    apiKey = decryptVersioned(row.api_key_encrypted, row.api_key_key_version ?? 1);
-  } catch {
-    throw Object.assign(new Error('AI API key could not be decrypted — please re-enter it'), {
-      statusCode: 503,
-    });
-  }
-
-  const clientOptions: ConstructorParameters<typeof Anthropic>[0] = { apiKey };
-  if (row.base_url && row.base_url.trim() !== '') {
-    clientOptions.baseURL = row.base_url;
-  }
-
-  return { anthropicClient: new Anthropic(clientOptions), model: row.model };
-}
-
 // ── Public service functions ───────────────────────────────────────────────────
 
 /**
@@ -284,12 +245,18 @@ export async function sendMessage(
   content: string,
   actor: AuditActor,
 ): Promise<AiMessageResponse> {
-  const client: PoolClient = await pool.connect();
-  try {
-    await client.query('BEGIN');
+  // ── Tx 1: validate ownership, fetch history, insert user message ──────────
+  // Commit before calling Anthropic so the pool connection is released during
+  // the (potentially multi-second) external HTTP round-trip.
+  let session: AiSessionRow;
+  let sdkMessages: Anthropic.MessageParam[];
+  let isFirstMessage: boolean;
 
-    // Ownership + existence check.
-    const sessionResult = await client.query<AiSessionRow>(
+  const client1: PoolClient = await pool.connect();
+  try {
+    await client1.query('BEGIN');
+
+    const sessionResult = await client1.query<AiSessionRow>(
       `SELECT id, user_id, name, created_at, updated_at
        FROM ai_sessions
        WHERE id = $1 AND user_id = $2
@@ -301,11 +268,10 @@ export async function sendMessage(
       throw Object.assign(new Error('Session not found'), { statusCode: 404 });
     }
 
-    const session = sessionResult.rows[0];
-    const isFirstMessage = session.name === null;
+    session = sessionResult.rows[0];
+    isFirstMessage = session.name === null;
 
-    // Fetch prior messages to build the context window.
-    const historyResult = await client.query<AiMessageRow>(
+    const historyResult = await client1.query<AiMessageRow>(
       `SELECT role, content
        FROM ai_messages
        WHERE session_id = $1
@@ -313,14 +279,12 @@ export async function sendMessage(
       [sessionId],
     );
 
-    // Insert user message.
-    await client.query(
+    await client1.query(
       `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
       [sessionId, content],
     );
 
-    // Build message array for the SDK (history + new user turn).
-    const sdkMessages: Anthropic.MessageParam[] = [
+    sdkMessages = [
       ...historyResult.rows.map((row) => ({
         role: row.role as 'user' | 'assistant',
         content: row.content,
@@ -328,19 +292,53 @@ export async function sendMessage(
       { role: 'user' as const, content },
     ];
 
-    // ── Call the AI provider (or return the E2E stub) ──────────────────────
+    await client1.query('COMMIT');
+  } catch (err) {
+    await client1.query('ROLLBACK');
+    throw err;
+  } finally {
+    client1.release();
+  }
 
-    let assistantContent: string;
-    let inputTokens = 0;
-    let outputTokens = 0;
+  // ── AI call (outside any transaction) ────────────────────────────────────
 
-    if (IS_E2E) {
-      assistantContent = E2E_STUB_RESPONSE;
-    } else {
-      const { anthropicClient, model } = await fetchActiveSdkConfig(client);
+  let assistantContent: string;
+  let inputTokens = 0;
+  let outputTokens = 0;
 
+  if (IS_E2E) {
+    assistantContent = E2E_STUB_RESPONSE;
+  } else {
+    // Fetch config with a fresh pool query — no open transaction.
+    const configResult = await pool.query<AiConfigRow>(
+      `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled
+       FROM ai_configuration
+       LIMIT 1`,
+    );
+    const row = configResult.rows[0];
+    if (!row?.enabled) {
+      throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
+    }
+    if (!row.api_key_encrypted || row.api_key_encrypted.trim() === '') {
+      throw Object.assign(new Error('AI API key is not configured'), { statusCode: 503 });
+    }
+    let apiKey: string;
+    try {
+      apiKey = decryptVersioned(row.api_key_encrypted, row.api_key_key_version ?? 1);
+    } catch {
+      throw Object.assign(new Error('AI API key could not be decrypted — please re-enter it'), {
+        statusCode: 503,
+      });
+    }
+    const clientOptions: ConstructorParameters<typeof Anthropic>[0] = { apiKey };
+    if (row.base_url && row.base_url.trim() !== '') {
+      clientOptions.baseURL = row.base_url;
+    }
+    const anthropicClient = new Anthropic(clientOptions);
+
+    try {
       const response = await anthropicClient.messages.create({
-        model,
+        model: row.model,
         max_tokens: 4096,
         system:
           'You are a helpful AI assistant integrated into a CRM application. ' +
@@ -355,28 +353,47 @@ export async function sendMessage(
       }
       inputTokens = response.usage.input_tokens;
       outputTokens = response.usage.output_tokens;
+    } catch (err) {
+      if (err instanceof Anthropic.AuthenticationError) {
+        logger.error({ err }, 'AI authentication error — check the API key in admin settings');
+        throw Object.assign(new Error('AI provider authentication failed'), { statusCode: 502 });
+      }
+      if (err instanceof Anthropic.APIConnectionError) {
+        logger.error({ err }, 'AI connection error — check base URL and network');
+        throw Object.assign(new Error('Could not reach the AI provider'), { statusCode: 502 });
+      }
+      if (err instanceof Anthropic.APIError) {
+        logger.error({ err }, `AI API error ${err.status}`);
+        throw Object.assign(new Error(`AI provider error: ${err.message}`), { statusCode: 502 });
+      }
+      throw err;
     }
+  }
 
-    // Insert assistant message.
-    const assistantResult = await client.query<AiMessageRow>(
+  // ── Tx 2: insert assistant message, update session, write audit entry ─────
+
+  const client2: PoolClient = await pool.connect();
+  try {
+    await client2.query('BEGIN');
+
+    const assistantResult = await client2.query<AiMessageRow>(
       `INSERT INTO ai_messages (session_id, role, content)
        VALUES ($1, 'assistant', $2)
        RETURNING id, session_id, role, content, created_at`,
       [sessionId, assistantContent],
     );
 
-    // Auto-name the session from the first user message.
     if (isFirstMessage) {
       const derivedName = deriveSessionName(content);
-      await client.query(`UPDATE ai_sessions SET name = $1, updated_at = now() WHERE id = $2`, [
+      await client2.query(`UPDATE ai_sessions SET name = $1, updated_at = now() WHERE id = $2`, [
         derivedName,
         sessionId,
       ]);
     } else {
-      await client.query(`UPDATE ai_sessions SET updated_at = now() WHERE id = $1`, [sessionId]);
+      await client2.query(`UPDATE ai_sessions SET updated_at = now() WHERE id = $1`, [sessionId]);
     }
 
-    await writeAuditEntry(client, {
+    await writeAuditEntry(client2, {
       recordType: 'ai_sessions',
       recordId: sessionId,
       recordName: session.name ?? sessionId,
@@ -388,30 +405,17 @@ export async function sendMessage(
       changedByName: actor.name,
     });
 
-    await client.query('COMMIT');
+    await client2.query('COMMIT');
 
-    // Record token usage fire-and-forget (outside tx, errors swallowed).
     if (!IS_E2E && (inputTokens > 0 || outputTokens > 0)) {
       void recordTokenUsage(userId, inputTokens, outputTokens);
     }
 
     return serialiseMessage(assistantResult.rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK');
-    if (err instanceof Anthropic.AuthenticationError) {
-      logger.error({ err }, 'AI authentication error — check the API key in admin settings');
-      throw Object.assign(new Error('AI provider authentication failed'), { statusCode: 502 });
-    }
-    if (err instanceof Anthropic.APIConnectionError) {
-      logger.error({ err }, 'AI connection error — check base URL and network');
-      throw Object.assign(new Error('Could not reach the AI provider'), { statusCode: 502 });
-    }
-    if (err instanceof Anthropic.APIError) {
-      logger.error({ err }, `AI API error ${err.status}`);
-      throw Object.assign(new Error(`AI provider error: ${err.message}`), { statusCode: 502 });
-    }
+    await client2.query('ROLLBACK');
     throw err;
   } finally {
-    client.release();
+    client2.release();
   }
 }
