@@ -46,6 +46,7 @@ export const NAV_LINKS: NavLinkDef[] = [
   { to: '/deals', labelKey: 'nav.deals', adminOnly: false },
   { to: '/tasks', labelKey: 'nav.myTasks', adminOnly: false },
   { to: '/reports', labelKey: 'nav.reports', adminOnly: false, featureFlag: 'reporting' },
+  { to: '/ai', labelKey: 'nav.ai', adminOnly: false, featureFlag: 'ai_nli_page' },
   {
     to: '/users',
     labelKey: 'nav.users',
@@ -79,4 +80,5 @@ export const DESTINATION_NAME: Record<string, string> = {
   '/admin/automation': 'automation',
   '/admin/sequences': 'sequences',
   '/admin/settings': 'settings',
+  '/ai': 'ai',
 };

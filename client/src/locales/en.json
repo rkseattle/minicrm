@@ -25,7 +25,8 @@
     "tags": "Tags",
     "administrationSection": "Administration",
     "poweredByMiniCRM": "Powered by MiniCRM",
-    "appName": "MiniCRM"
+    "appName": "MiniCRM",
+    "ai": "AI Assistant"
   },
   "login": {
     "title": "Sign in to your account",
@@ -2230,5 +2231,28 @@
     },
     "empty": "No teams have been created yet.",
     "loading": "Loading teams…"
+  },
+  "ai": {
+    "pageTitle": "AI Assistant",
+    "newSession": "New Session",
+    "deleteSession": "Delete session",
+    "confirmDeleteTitle": "Delete this conversation?",
+    "confirmDeleteBody": "This will permanently delete the conversation and all its messages.",
+    "myContext": "My Context",
+    "addContext": "+ Add context",
+    "emptyStateTitle": "Start a conversation",
+    "emptyStateBody": "Ask anything about your CRM data — contacts, deals, activities, and more.",
+    "messagePlaceholder": "Ask anything about your CRM data…",
+    "sendButton": "Send",
+    "sending": "Sending…",
+    "errorSend": "Failed to send message. Please try again.",
+    "errorLoad": "Failed to load conversation.",
+    "errorLoadSessions": "Failed to load sessions.",
+    "notAvailable": "AI Assistant is not available.",
+    "newSessionLabel": "New conversation",
+    "sessionListLabel": "Conversations",
+    "userRole": "You",
+    "assistantRole": "AI Assistant",
+    "sendShortcutHint": "Send · ⌘↵"
   }
 }

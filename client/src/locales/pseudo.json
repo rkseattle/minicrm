@@ -25,7 +25,8 @@
     "administrationSection": "[Ädmïñïŝträtïöñ~~~~~~~]",
     "poweredByMiniCRM": "[Pöwërëd by MïñïĈRM~~~~~~~~]",
     "appName": "[MïñïĈRM~~]",
-    "sequences": "[Ŝëqüëñçëŝ~~]"
+    "sequences": "[Ŝëqüëñçëŝ~~]",
+    "ai": "[ÃÎ Àssïstànt]"
   },
   "login": {
     "title": "[Ŝïgñ ïñ tö yöür äĉĉöüñt~~~~~~~]",
@@ -1839,5 +1840,28 @@
       "builtin": "[Büïĺŧ-ïñ ŗöĺéš çàññöŧ ƀé ðéĺéŧéð.]",
       "generic": "[Ƒàïĺéð ŧö ðéĺéŧé ŗöĺé. Ƥĺéàšé ŧŗÿ àǧàïñ.]"
     }
+  },
+  "ai": {
+    "pageTitle": "[ÃÎ Àssïstànt]",
+    "newSession": "[Nëw Sëssïön]",
+    "deleteSession": "[Dëlëtë sëssïön]",
+    "confirmDeleteTitle": "[Dëlëtë thïs cönvërsàtïön?]",
+    "confirmDeleteBody": "[Thïs wïll përmànëntly dëlëtë thë cönvërsàtïön ànd àll ïts mëssàgës.]",
+    "myContext": "[Mÿ Cöntëxt]",
+    "addContext": "[+ Àdd cöntëxt]",
+    "emptyStateTitle": "[Stàrt à cönvërsàtïön]",
+    "emptyStateBody": "[Àsk ànÿthïng àböüt ÿöür CRM dàtà.]",
+    "messagePlaceholder": "[Àsk ànÿthïng àböüt ÿöür CRM dàtà…]",
+    "sendButton": "[Sënd]",
+    "sending": "[Sëndïng…]",
+    "errorSend": "[Fàïlëd tö sënd mëssàgë.]",
+    "errorLoad": "[Fàïlëd tö löàd cönvërsàtïön.]",
+    "errorLoadSessions": "[Fàïlëd tö löàd sëssïöns.]",
+    "notAvailable": "[ÃÎ Àssïstànt ïs nöt àvàïlàblë.]",
+    "newSessionLabel": "[Nëw cönvërsàtïön]",
+    "sessionListLabel": "[Cönvërsàtïöns]",
+    "userRole": "[Yöü]",
+    "assistantRole": "[ÃÎ Àssïstànt]",
+    "sendShortcutHint": "[Sënd · ⌘↵]"
   }
 }

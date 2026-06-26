@@ -25,7 +25,8 @@
     "tags": "Tags",
     "administrationSection": "Verwaltung",
     "poweredByMiniCRM": "Powered by MiniCRM",
-    "appName": "MiniCRM"
+    "appName": "MiniCRM",
+    "ai": "KI-Assistent"
   },
   "login": {
     "title": "Bei Ihrem Konto anmelden",
@@ -2230,5 +2231,28 @@
     },
     "empty": "Es wurden noch keine Teams erstellt.",
     "loading": "Teams werden geladen…"
+  },
+  "ai": {
+    "pageTitle": "KI-Assistent",
+    "newSession": "Neue Sitzung",
+    "deleteSession": "Sitzung löschen",
+    "confirmDeleteTitle": "Diese Unterhaltung löschen?",
+    "confirmDeleteBody": "Diese Unterhaltung und alle ihre Nachrichten werden dauerhaft gelöscht.",
+    "myContext": "Mein Kontext",
+    "addContext": "+ Kontext hinzufügen",
+    "emptyStateTitle": "Starten Sie eine Unterhaltung",
+    "emptyStateBody": "Stellen Sie Fragen zu Ihren CRM-Daten – Kontakte, Geschäfte, Aktivitäten und mehr.",
+    "messagePlaceholder": "Fragen Sie alles zu Ihren CRM-Daten…",
+    "sendButton": "Senden",
+    "sending": "Senden…",
+    "errorSend": "Nachricht konnte nicht gesendet werden. Bitte erneut versuchen.",
+    "errorLoad": "Unterhaltung konnte nicht geladen werden.",
+    "errorLoadSessions": "Sitzungen konnten nicht geladen werden.",
+    "notAvailable": "KI-Assistent ist nicht verfügbar.",
+    "newSessionLabel": "Neue Unterhaltung",
+    "sessionListLabel": "Unterhaltungen",
+    "userRole": "Sie",
+    "assistantRole": "KI-Assistent",
+    "sendShortcutHint": "Senden · ⌘↵"
   }
 }

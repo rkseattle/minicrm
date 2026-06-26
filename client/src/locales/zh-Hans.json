@@ -25,7 +25,8 @@
     "tags": "标签",
     "administrationSection": "管理",
     "poweredByMiniCRM": "由 MiniCRM 提供",
-    "appName": "MiniCRM"
+    "appName": "MiniCRM",
+    "ai": "AI 助手"
   },
   "login": {
     "title": "登录您的账户",
@@ -2230,5 +2231,28 @@
     },
     "empty": "尚未创建任何团队。",
     "loading": "正在加载团队…"
+  },
+  "ai": {
+    "pageTitle": "AI 助手",
+    "newSession": "新会话",
+    "deleteSession": "删除会话",
+    "confirmDeleteTitle": "删除此对话？",
+    "confirmDeleteBody": "此对话及其所有消息将被永久删除。",
+    "myContext": "我的上下文",
+    "addContext": "+ 添加上下文",
+    "emptyStateTitle": "开始对话",
+    "emptyStateBody": "询问有关您的 CRM 数据的任何问题——联系人、交易、活动等。",
+    "messagePlaceholder": "询问有关您的 CRM 数据的任何问题…",
+    "sendButton": "发送",
+    "sending": "发送中…",
+    "errorSend": "消息发送失败。请重试。",
+    "errorLoad": "无法加载对话。",
+    "errorLoadSessions": "无法加载会话。",
+    "notAvailable": "AI 助手不可用。",
+    "newSessionLabel": "新对话",
+    "sessionListLabel": "对话",
+    "userRole": "您",
+    "assistantRole": "AI 助手",
+    "sendShortcutHint": "发送 · ⌘↵"
   }
 }
