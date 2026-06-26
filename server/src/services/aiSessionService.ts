@@ -188,31 +188,33 @@ export async function createSession(userId: string, actor: AuditActor): Promise<
 /**
  * Returns a single session with all its messages, enforcing ownership.
  * Throws a 404-tagged error if the session does not exist or belongs to another user.
+ *
+ * Messages are fetched only after ownership is confirmed — the JOIN ensures no
+ * message rows are read for sessions belonging to a different user.
  */
 export async function getSessionWithMessages(
   sessionId: string,
   userId: string,
 ): Promise<AiSessionWithMessagesResponse> {
-  const [sessionResult, messagesResult] = await Promise.all([
-    pool.query<AiSessionRow>(
-      `SELECT id, user_id, name, created_at, updated_at
-       FROM ai_sessions
-       WHERE id = $1 AND user_id = $2`,
-      [sessionId, userId],
-    ),
-    pool.query<AiMessageRow>(
-      `SELECT id, session_id, role, content, created_at
-       FROM ai_messages
-       WHERE session_id = $1
-       ORDER BY created_at ASC`,
-      [sessionId],
-    ),
-  ]);
+  const sessionResult = await pool.query<AiSessionRow>(
+    `SELECT id, user_id, name, created_at, updated_at
+     FROM ai_sessions
+     WHERE id = $1 AND user_id = $2`,
+    [sessionId, userId],
+  );
 
   const session = sessionResult.rows[0];
   if (!session) {
     throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   }
+
+  const messagesResult = await pool.query<AiMessageRow>(
+    `SELECT id, session_id, role, content, created_at
+     FROM ai_messages
+     WHERE session_id = $1
+     ORDER BY created_at ASC`,
+    [sessionId],
+  );
 
   return {
     ...serialiseSession(session),
@@ -348,6 +350,9 @@ export async function sendMessage(
 
       const textBlock = response.content.find((block) => block.type === 'text');
       assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
+      if (!assistantContent) {
+        throw Object.assign(new Error('AI provider returned no text content'), { statusCode: 502 });
+      }
       inputTokens = response.usage.input_tokens;
       outputTokens = response.usage.output_tokens;
     }
@@ -387,7 +392,7 @@ export async function sendMessage(
 
     // Record token usage fire-and-forget (outside tx, errors swallowed).
     if (!IS_E2E && (inputTokens > 0 || outputTokens > 0)) {
-      recordTokenUsage(userId, inputTokens, outputTokens);
+      void recordTokenUsage(userId, inputTokens, outputTokens);
     }
 
     return serialiseMessage(assistantResult.rows[0]);
