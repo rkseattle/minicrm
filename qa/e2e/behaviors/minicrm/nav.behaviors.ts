@@ -292,26 +292,34 @@ export async function navigateViaNavLink(
   // bar. waitForURL waits for the actual URL string to match, which is the correct
   // signal for SPA navigation.
   const urlBefore = context.page.url();
+  // Compare by pathname only: pages like ReportsPage update search params via
+  // useEffect after mounting (e.g. /reports → /reports?view=pipeline-stage).
+  // A full href comparison would treat that search-param update as a navigation
+  // and resolve before the actual nav-link click propagates, causing the caller
+  // to receive the wrong finalUrl. Pathname comparison correctly ignores these
+  // same-page param writes while still detecting cross-page navigation.
+  const pathnameBefore = new URL(urlBefore).pathname;
 
   // On hamburger layout, the drawer's focus-on-open effect causes a layout
   // shift that triggers Playwright's stability check. Use force:true to bypass
   // the stability wait — visibility has already been confirmed above.
   await link.click({ force: layout === 'hamburger' });
 
-  // Wait for the URL to change from its pre-click value. If the first click
-  // was swallowed by a React re-render mid-paint (the link DOM node is briefly
-  // replaced during a state update), retry the click once before giving up.
-  // Falls back to domcontentloaded if the link navigates to the already-active
-  // route (URL won't change, e.g. clicking Dashboard when already on '/').
+  // Wait for the URL pathname to change from its pre-click value. If the first
+  // click was swallowed by a React re-render mid-paint (the link DOM node is
+  // briefly replaced during a state update), retry the click once before giving
+  // up. Falls back to domcontentloaded if the link navigates to the
+  // already-active route (pathname won't change, e.g. clicking Dashboard when
+  // already on '/').
   const urlChanged = await context.page
-    .waitForURL((url) => url.href !== urlBefore, { timeout: 6_000 })
+    .waitForURL((url) => url.pathname !== pathnameBefore, { timeout: 6_000 })
     .then(() => true)
     .catch(() => false);
 
-  if (!urlChanged && context.page.url() === urlBefore) {
+  if (!urlChanged && new URL(context.page.url()).pathname === pathnameBefore) {
     await link.click({ force: layout === 'hamburger' });
     await context.page
-      .waitForURL((url) => url.href !== urlBefore, { timeout: 8_000 })
+      .waitForURL((url) => url.pathname !== pathnameBefore, { timeout: 8_000 })
       .catch(() => context.page.waitForLoadState('domcontentloaded').catch(() => null));
   }
 
