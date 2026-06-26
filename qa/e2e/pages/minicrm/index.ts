@@ -85,3 +85,6 @@ export type { NotesPageContext } from './NotesPage.js';
 
 export { ConflictBannerWidget } from './ConflictBannerWidget.js';
 export type { ConflictBannerWidgetContext } from './ConflictBannerWidget.js';
+
+export { AiPage } from './AiPage.js';
+export type { AiPageContext } from './AiPage.js';

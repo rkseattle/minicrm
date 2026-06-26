@@ -807,3 +807,33 @@ export type { TestSequence, TestSequenceStep, TestEnrollment } from './sequences
 
 export { listFeatureFlags, updateFeatureFlag } from './feature-flags.behaviors.js';
 export type { TestFeatureFlag } from './feature-flags.behaviors.js';
+
+export {
+  navigateToAiPage,
+  waitForAiConversationPanel,
+  isAiConversationPanelVisible,
+  isAiContextPanelVisible,
+  isAiMessageInputVisible,
+  isAiSendButtonVisible,
+  isAiAddContextButtonVisible,
+  isAiEmptyStateVisible,
+  sendAiMessageViaUI,
+  getAssistantMessageText,
+  clickNewSessionButton,
+  switchToAiSession,
+  getMessageThreadText,
+  getSessionSidebarText,
+  deleteAiSessionViaUI,
+  isAiNavLinkVisible,
+  isAiSessionItemVisible,
+  createAiSessionViaApi,
+  sendAiMessageViaApi,
+  getAiSessionViaApi,
+} from './ai.behaviors.js';
+export type {
+  AiBehaviorContext,
+  SendAiMessageResult,
+  DeleteAiSessionResult,
+  AiSessionRow,
+  AiMessageRow,
+} from './ai.behaviors.js';
