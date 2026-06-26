@@ -28,8 +28,12 @@
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - beforeEach creates a fresh UUID-suffixed rep; all contacts, accounts,
  *     deals, and notes are owned by that rep and torn down by TestDataManager.
- *   - Visibility tests (F14-V1/V2) create their own isolated rep pair with
- *     UUID-scoped names; no shared user accounts.
+ *   - F14-V1 creates an isolated rep pair (repA writes a private note; repB
+ *     verifies the masked placeholder); both deactivated in finally.
+ *   - F14-V2 re-authenticates the REST client as the singleton admin to set up
+ *     visibility-change state, then asserts using only the rep's browser
+ *     session. No REST calls are made after the re-auth, so the singleton admin
+ *     credential is used read-only in this test and poses no cross-test race.
  *   - No aggregate count assertions on the full notes table.
  *   - No system_settings writes in any test.
  */
@@ -431,7 +435,7 @@ test('@functional F14-V2: Admin changes note visibility from private to team; no
     last_name: `Vis-${Date.now()}`,
   });
 
-  // Create a private note as admin
+  // Create a private note as the rep (restClient is authenticated as rep after beforeEach)
   const noteBody = JSON.stringify({
     type: 'doc',
     content: [{ type: 'paragraph', content: [{ type: 'text', text: 'F14-V2 private note' }] }],
@@ -448,7 +452,11 @@ test('@functional F14-V2: Admin changes note visibility from private to team; no
   const updated = await getNoteById(restClient, contact.id, note.id);
   expect(updated.visibility, 'note visibility must be updated to team').toBe('team');
 
-  // Verify that the note is NOT masked in the UI (the mask card shows when private)
+  // Verify the note is not masked in the rep's browser session.
+  // loginAndVerify re-authenticates the REST client as admin (confirming the
+  // admin session is valid) but does not affect the browser page — page remains
+  // the rep's session from beforeEach. This is intentional: we verify the rep
+  // can now see the note after the admin changed its visibility to 'team'.
   await loginAndVerify(
     restClient,
     process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com',
