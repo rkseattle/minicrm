@@ -3,7 +3,8 @@
  * and orchestrates the send-message flow (user message → Claude → assistant response).
  *
  * All writes are transactional with audit entries. The Anthropic SDK call happens
- * inside the transaction so a failed message write rolls back the user turn too.
+ * between two short transactions so the pool connection is released for the duration
+ * of the external HTTP round-trip.
  *
  * In E2E environments (E2E=true) the Anthropic SDK call is replaced by a deterministic
  * stub response so that test runs never consume real API tokens.
