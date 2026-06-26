@@ -811,6 +811,9 @@ export type { TestFeatureFlag } from './feature-flags.behaviors.js';
 export {
   navigateToAiPage,
   waitForAiConversationPanel,
+  waitForAiEmptyState,
+  waitForAiSidebarText,
+  waitForAiThreadText,
   isAiConversationPanelVisible,
   isAiContextPanelVisible,
   isAiMessageInputVisible,
@@ -829,6 +832,7 @@ export {
   createAiSessionViaApi,
   sendAiMessageViaApi,
   getAiSessionViaApi,
+  deleteAllAiSessionsViaApi,
 } from './ai.behaviors.js';
 export type {
   AiBehaviorContext,
