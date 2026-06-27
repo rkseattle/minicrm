@@ -54,7 +54,21 @@ export async function loginAsAdmin(restClient: RestClient): Promise<void> {
   const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const password = process.env['E2E_ADMIN_PASSWORD'];
   if (!password) throw new Error('[loginAsAdmin] E2E_ADMIN_PASSWORD is not set');
-  await restClient.post('/api/v1/auth/login', { email, password });
+  // Retry once on ECONNRESET: in CI a preceding bcrypt hash on the same event
+  // loop can stall the server long enough for the keep-alive connection to be
+  // reset before the login POST completes. Login is idempotent so a single
+  // retry is safe.
+  const ECONNRESET_RETRY_DELAY_MS = 500;
+  try {
+    await restClient.post('/api/v1/auth/login', { email, password });
+  } catch (err) {
+    if (err instanceof Error && /ECONNRESET/.test(err.message)) {
+      await new Promise((r) => setTimeout(r, ECONNRESET_RETRY_DELAY_MS));
+      await restClient.post('/api/v1/auth/login', { email, password });
+    } else {
+      throw err;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

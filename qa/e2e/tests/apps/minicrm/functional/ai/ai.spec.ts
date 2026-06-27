@@ -170,9 +170,8 @@ test('F-AI4 — New Session button creates a fresh conversation @functional', as
 
 test('F-AI5 — Sending a message appends user turn and receives stub reply @functional', async ({
   page,
-  restClient,
 }) => {
-  await loginAsAdmin(restClient);
+  // beforeEach already authenticates restClient as admin — no second login needed.
   await navigateToAiPage({ page });
   await waitForAiConversationPanel({ page });
 

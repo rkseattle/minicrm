@@ -237,8 +237,9 @@ export async function sendAiMessageViaUI(
 
   // waitForPresent uses document.querySelector which avoids strict-mode violations
   // when multiple message bubbles share the same data-testid attribute.
-  await context.page.waitForPresent('[data-testid="ai-message-user"]');
-  await context.page.waitForPresent('[data-testid="ai-message-assistant"]');
+  // 30s: the AI stub round-trip can exceed the 10s default under CI load.
+  await context.page.waitForPresent('[data-testid="ai-message-user"]', 30_000);
+  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 30_000);
 
   // waitForPresent confirms the elements are in the DOM. That is sufficient
   // to conclude visibility for these inline message bubbles (no display:none).

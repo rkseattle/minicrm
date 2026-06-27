@@ -1969,9 +1969,19 @@ export async function expectAdminSettingsWebhookRowNotVisible(
   context: AdminSettingsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
+  // Use isNotVisible() rather than resolve() + expect().not.toBeVisible().
+  // resolve() calls the healing locator eagerly and throws StrategyExhaustedError
+  // when the element is already absent — which is the expected outcome after
+  // deletion. isNotVisible() handles both "absent" and "hidden" without throwing.
+  const notVisible = await context.page.isNotVisible(
+    [
+      { type: 'testId', value: `webhook-row-${subscriptionId}` },
+      { type: 'css', value: `[data-testid="webhook-row-${subscriptionId}"]` },
+    ],
+    timeout,
+  );
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).webhookRowLocator(subscriptionId);
-  await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
+  expect(notVisible).toBe(true);
 }
 
 // ---------------------------------------------------------------------------
