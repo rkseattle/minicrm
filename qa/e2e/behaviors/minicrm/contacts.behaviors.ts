@@ -1393,16 +1393,17 @@ export async function performGdprErasure(
     { intent: 'confirm button that submits the GDPR erasure request' },
   );
 
-  // 30s: the erasure API deletes data server-side; under CI load it can take
-  // longer than the previous 10s ceiling before the modal closes.
-  await context.page.waitFor(
+  // isNotVisible() handles the race where the server responds fast enough that
+  // the modal is already dismissed before this line runs. waitFor('hidden')
+  // calls resolve() first, which throws StrategyExhaustedError when the element
+  // is absent. isNotVisible() uses Playwright's native waitFor({state:'hidden'})
+  // which treats absence as immediate success — no StrategyExhaustedError.
+  // 30s budget: the erasure API deletes data server-side and can be slow under CI load.
+  await context.page.isNotVisible(
     [
       { type: 'testId', value: 'gdpr-erase-modal-overlay' },
       { type: 'testId', value: 'gdpr-erase-modal' },
-      { type: 'role', value: 'dialog', options: { name: /erase/i } },
     ],
-    'hidden',
-    { intent: 'GDPR erasure confirmation modal' },
     30_000,
   );
 
