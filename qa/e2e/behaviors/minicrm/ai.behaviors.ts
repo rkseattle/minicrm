@@ -233,16 +233,27 @@ export async function sendAiMessageViaUI(
   content: string,
 ): Promise<SendAiMessageResult> {
   const aiPage = new AiPage(context);
+
+  // Register before clicking Send so a fast server response isn't missed.
+  // Waiting for the POST to resolve decouples server latency (3-10s Anthropic
+  // round-trip, longer under CI load) from the DOM poll — the DOM check then
+  // only needs a short window for React to commit the render.
+  const replyReceived = context.page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/ai/sessions') &&
+      res.url().includes('/messages') &&
+      res.status() === 200,
+    { timeout: 60_000 },
+  );
   await aiPage.sendMessage(content);
+  await replyReceived;
 
-  // waitForPresent uses document.querySelector which avoids strict-mode violations
-  // when multiple message bubbles share the same data-testid attribute.
-  // 30s: the AI stub round-trip can exceed the 10s default under CI load.
-  await context.page.waitForPresent('[data-testid="ai-message-user"]', 30_000);
-  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 30_000);
+  // waitForPresent uses document.querySelector which avoids strict-mode
+  // violations when multiple message bubbles share the same data-testid.
+  // Short timeout here: the network round-trip is already done.
+  await context.page.waitForPresent('[data-testid="ai-message-user"]', 10_000);
+  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 10_000);
 
-  // waitForPresent confirms the elements are in the DOM. That is sufficient
-  // to conclude visibility for these inline message bubbles (no display:none).
   return { userMessageVisible: true, assistantMessageVisible: true };
 }
 
