@@ -203,24 +203,20 @@ export default function AiPage() {
     mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
       return sendAiMessage(sessionId, content);
     },
-    onSuccess: (assistantMessage) => {
-      // Show the assistant reply optimistically until the server messages refetch
-      // settles. onSettled clears optimistic state once persisted data is available.
-      if (resolvedSessionId) {
-        void queryClient.invalidateQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
-        void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
-      }
-      setOptimisticMessages([assistantMessage]);
+    onSuccess: async () => {
       setSendError(null);
+      void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
+      // Await the messages refetch before clearing optimistic state — onSettled fires
+      // when the mutation settles, before the background refetch completes, so clearing
+      // there causes the optimistic user message to vanish during the refetch window.
+      if (resolvedSessionId) {
+        await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
+      }
+      setOptimisticMessages([]);
     },
     onError: () => {
       setOptimisticMessages([]);
       setSendError(t('ai.errorSend'));
-    },
-    onSettled: () => {
-      // Clear optimistic messages once the refetch has settled so the assistant
-      // reply is not rendered twice (once optimistic, once from persisted data).
-      setOptimisticMessages([]);
     },
   });
 
