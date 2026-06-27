@@ -259,8 +259,13 @@ export default function AiPage() {
 
     // Create a session on-demand if none exists yet
     if (!sessionId) {
-      const newSession = await createMutation.mutateAsync();
-      sessionId = newSession.id;
+      try {
+        const newSession = await createMutation.mutateAsync();
+        sessionId = newSession.id;
+      } catch {
+        setSendError(t('ai.errorCreateSession'));
+        return;
+      }
     }
 
     setInputValue('');
@@ -277,7 +282,7 @@ export default function AiPage() {
     setOptimisticMessages([optimisticUserMessage]);
 
     sendMutation.mutate({ sessionId, content });
-  }, [inputValue, resolvedSessionId, sendMutation, createMutation]);
+  }, [inputValue, resolvedSessionId, sendMutation, createMutation, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

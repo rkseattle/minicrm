@@ -14,7 +14,7 @@ export const createAiSessionSchema = z.object({});
 export type CreateAiSessionInput = z.infer<typeof createAiSessionSchema>;
 
 export const sendAiMessageSchema = z.object({
-  content: z.string().min(1, 'Message content is required').max(32_000).trim(),
+  content: z.string().trim().min(1, 'Message content is required').max(32_000),
 });
 
 export type SendAiMessageInput = z.infer<typeof sendAiMessageSchema>;

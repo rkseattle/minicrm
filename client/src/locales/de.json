@@ -2245,6 +2245,7 @@
     "messagePlaceholder": "Fragen Sie alles zu Ihren CRM-Daten…",
     "sendButton": "Senden",
     "sending": "Senden…",
+    "errorCreateSession": "Neue Unterhaltung konnte nicht gestartet werden. Bitte erneut versuchen.",
     "errorSend": "Nachricht konnte nicht gesendet werden. Bitte erneut versuchen.",
     "errorLoad": "Unterhaltung konnte nicht geladen werden.",
     "errorLoadSessions": "Sitzungen konnten nicht geladen werden.",

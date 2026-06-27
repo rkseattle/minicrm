@@ -2245,6 +2245,7 @@
     "messagePlaceholder": "询问有关您的 CRM 数据的任何问题…",
     "sendButton": "发送",
     "sending": "发送中…",
+    "errorCreateSession": "无法开始新对话。请重试。",
     "errorSend": "消息发送失败。请重试。",
     "errorLoad": "无法加载对话。",
     "errorLoadSessions": "无法加载会话。",
