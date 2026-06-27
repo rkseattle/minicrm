@@ -243,13 +243,28 @@ export async function adminSetUserPassword(
 /**
  * Deactivates a user via the API.
  *
+ * Retries once on ECONNRESET: in CI, a CPU-heavy bcrypt hash on the same event
+ * loop (e.g. from a preceding setPassword call) can stall the server long enough
+ * for the keep-alive connection to be reset mid-flight. Deactivation is idempotent
+ * (setting status=inactive twice is safe), so a single retry is safe here.
+ *
  * @param restClient - Admin-authenticated RestClient.
  * @param userId - User UUID.
  * @returns The updated user row.
  */
 export async function deactivateUser(restClient: RestClient, userId: string): Promise<UserRow> {
-  const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/deactivate`);
-  return res.body.user;
+  const ECONNRESET_RETRY_DELAY_MS = 500;
+  try {
+    const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/deactivate`);
+    return res.body.user;
+  } catch (err) {
+    if (err instanceof Error && /ECONNRESET/.test(err.message)) {
+      await new Promise((resolve) => setTimeout(resolve, ECONNRESET_RETRY_DELAY_MS));
+      const res = await restClient.patch<{ user: UserRow }>(`/api/v1/users/${userId}/deactivate`);
+      return res.body.user;
+    }
+    throw err;
+  }
 }
 
 /**
