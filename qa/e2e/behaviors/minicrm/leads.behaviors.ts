@@ -575,7 +575,16 @@ export async function navigateToLeadsOwnedByMe(context: LeadsBehaviorContext): P
   );
   await leadsPage.navigate();
   await leadsLoaded;
+  // Register the filtered-query listener before clicking so the response is
+  // captured even when the server responds quickly. Without this, callers that
+  // immediately measure layout (e.g. assertEmptyStateContainerFills) can read
+  // a mid-render height of 0 before the filtered list has committed to the DOM.
+  const filteredLoaded = context.page.waitForResponse(
+    (res) => res.url().includes('/api/v1/leads') && res.status() === 200,
+    { timeout: 15_000 },
+  );
   await leadsPage.filterByOwnerMe();
+  await filteredLoaded;
 }
 
 // ---------------------------------------------------------------------------
