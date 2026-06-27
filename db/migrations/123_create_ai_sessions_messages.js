@@ -20,6 +20,8 @@ exports.shorthands = undefined;
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
+  // ifNotExists: true — 000_baseline.js creates these tables on fresh installs,
+  // so migration 123 must be idempotent to avoid "relation already exists" errors.
   pgm.createTable('ai_sessions', {
     id: {
       type: 'uuid',
@@ -46,10 +48,10 @@ exports.up = (pgm) => {
       notNull: true,
       default: pgm.func('now()'),
     },
-  });
+  }, { ifNotExists: true });
 
-  pgm.createIndex('ai_sessions', 'user_id');
-  pgm.createIndex('ai_sessions', ['user_id', 'updated_at']);
+  pgm.createIndex('ai_sessions', 'user_id', { ifNotExists: true });
+  pgm.createIndex('ai_sessions', ['user_id', 'updated_at'], { ifNotExists: true });
 
   pgm.createTable('ai_messages', {
     id: {
@@ -76,14 +78,20 @@ exports.up = (pgm) => {
       notNull: true,
       default: pgm.func('now()'),
     },
-  });
+  }, { ifNotExists: true });
 
-  pgm.addConstraint('ai_messages', 'ai_messages_role_check', {
-    check: "role IN ('user', 'assistant')",
-  });
+  // Guard the CHECK constraint — 000_baseline defines it inline with CREATE TABLE
+  // so on fresh installs the constraint already exists when migration 123 runs.
+  pgm.sql(`
+    DO $$ BEGIN
+      ALTER TABLE ai_messages ADD CONSTRAINT ai_messages_role_check
+        CHECK (role IN ('user', 'assistant'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
 
-  pgm.createIndex('ai_messages', 'session_id');
-  pgm.createIndex('ai_messages', ['session_id', 'created_at']);
+  pgm.createIndex('ai_messages', 'session_id', { ifNotExists: true });
+  pgm.createIndex('ai_messages', ['session_id', 'created_at'], { ifNotExists: true });
 };
 
 /**
