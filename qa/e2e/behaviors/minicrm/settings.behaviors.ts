@@ -1067,6 +1067,23 @@ export async function clickAiToggleConfirmButton(
   await (await new AdminSettingsPage(context).aiToggleConfirmButtonLocator()).click();
 }
 
+/**
+ * Clicks the AI toggle confirm button and waits for the PATCH response before
+ * returning. Registering waitForResponse before clicking prevents a race where
+ * a fast server response is missed, and awaiting it ensures the React Query
+ * cache holds fresh data before the caller asserts on toggle state.
+ */
+export async function clickAiToggleConfirmAndWait(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const toggleDone = context.page.waitForResponse(
+    (res) => res.url().includes('/admin/ai/master-toggle') && res.status() === 200,
+    { timeout: 15_000 },
+  );
+  await (await new AdminSettingsPage(context).aiToggleConfirmButtonLocator()).click();
+  await toggleDone;
+}
+
 /** Clicks the Cancel button inside the AI toggle confirmation dialog. */
 export async function clickAiToggleCancelButton(
   context: AdminSettingsBehaviorContext,

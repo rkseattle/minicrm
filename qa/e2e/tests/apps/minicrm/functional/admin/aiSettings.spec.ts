@@ -35,7 +35,7 @@ import {
   expectAiMasterToggleChecked,
   expectAiToggleConfirmDialogVisible,
   expectAiToggleConfirmDialogNotVisible,
-  clickAiToggleConfirmButton,
+  clickAiToggleConfirmAndWait,
   clickAiToggleCancelButton,
   expectAiDpaCheckboxVisible,
   expectAiDpaCheckboxNotVisible,
@@ -133,7 +133,9 @@ test('@functional F-AI3: confirming the toggle dialog enables AI and updates tog
 
   await expectAiToggleConfirmDialogVisible({ page }, 5_000);
 
-  await clickAiToggleConfirmButton({ page });
+  // Wait for the PATCH response before asserting — prevents a race where the
+  // stale cache briefly shows enabled:false while the background refetch runs.
+  await clickAiToggleConfirmAndWait({ page });
 
   // Dialog closes after confirmation.
   await expectAiToggleConfirmDialogNotVisible({ page }, 5_000);

@@ -517,7 +517,8 @@ export default function AiSettings() {
 
   const configMutation = useMutation({
     mutationFn: setAiConfig,
-    onSuccess: () => {
+    onSuccess: (freshData) => {
+      queryClient.setQueryData(AI_CONFIG_QUERY_KEY, freshData);
       void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
       setConfigSaveSuccess(true);
       setConfigSaveError('');
@@ -532,7 +533,12 @@ export default function AiSettings() {
 
   const toggleMutation = useMutation({
     mutationFn: setAiEnabled,
-    onSuccess: () => {
+    onSuccess: (freshData) => {
+      // Write the server's response directly into the cache so the toggle
+      // reflects the new enabled state immediately — invalidateQueries alone
+      // causes a stale-data re-render where enabled is briefly the old value
+      // while the background refetch is in flight.
+      queryClient.setQueryData(AI_CONFIG_QUERY_KEY, freshData);
       void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
       setShowToggleConfirm(false);
       setPendingEnabled(null);

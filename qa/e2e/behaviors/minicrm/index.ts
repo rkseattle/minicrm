@@ -580,6 +580,7 @@ export {
   expectAiToggleConfirmDialogVisible,
   expectAiToggleConfirmDialogNotVisible,
   clickAiToggleConfirmButton,
+  clickAiToggleConfirmAndWait,
   clickAiToggleCancelButton,
   expectAiDpaCheckboxVisible,
   expectAiDpaCheckboxNotVisible,
