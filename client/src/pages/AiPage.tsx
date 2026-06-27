@@ -223,7 +223,12 @@ export default function AiPage() {
         setOptimisticMessages([optimisticUserMessage, assistantMessage]);
       }
       await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(sessionId) });
-      setOptimisticMessages([]);
+      // Guard: only clear optimistic state for the session that settled.
+      // Without this, session A's onSuccess would clear session B's in-flight bubble
+      // if the user switched sessions during the Anthropic round-trip.
+      if (resolvedSessionId === sessionId) {
+        setOptimisticMessages([]);
+      }
     },
     onError: () => {
       setOptimisticMessages([]);
@@ -239,13 +244,16 @@ export default function AiPage() {
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
-      if (sessionId !== activeSessionId) {
+      // Compare against resolvedSessionId (not activeSessionId) to avoid
+      // clearing optimistic state when clicking the already-active first session
+      // before activeSessionId has been set from the sessions list.
+      if (sessionId !== resolvedSessionId) {
         setActiveSessionId(sessionId);
         setOptimisticMessages([]);
         setSendError(null);
       }
     },
-    [activeSessionId],
+    [resolvedSessionId],
   );
 
   const handleDeleteSession = useCallback((sessionId: string) => {

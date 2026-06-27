@@ -22,7 +22,7 @@ If this is your first visit, you will see an empty state with a prompt input at 
 ### Step 2 — Send a message
 
 Type your question or request in the text area at the bottom of the page and press
-**Enter** (or click the **Send** button).
+**Cmd+Enter** (or **Ctrl+Enter** on Windows/Linux, or click the **Send** button).
 
 Example questions you can ask:
 
@@ -93,7 +93,7 @@ data referenced from your CRM — against the source records.
 
 ### Keyboard shortcuts
 
-| Action            | Shortcut          |
-| ----------------- | ----------------- |
-| Send message      | **Enter**         |
-| New line in input | **Shift + Enter** |
+| Action            | Shortcut                                    |
+| ----------------- | ------------------------------------------- |
+| Send message      | **Cmd+Enter** (Ctrl+Enter on Windows/Linux) |
+| New line in input | **Shift + Enter**                           |
