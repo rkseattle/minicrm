@@ -203,12 +203,21 @@ export default function AiPage() {
     mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
       return sendAiMessage(sessionId, content);
     },
-    onSuccess: async () => {
+    onSuccess: async (assistantMessage, { sessionId, content }) => {
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
-      // Await the messages refetch before clearing optimistic state — onSettled fires
-      // when the mutation settles, before the background refetch completes, so clearing
-      // there causes the optimistic user message to vanish during the refetch window.
+      // Hold both user and assistant messages in optimistic state during the refetch
+      // window. onSettled fires when the mutation settles (before the refetch), so
+      // clearing there would drop messages before persisted data is available.
+      // Instead, await the refetch, then clear once persisted data is in the cache.
+      const optimisticUserMessage: AiMessageResponse = {
+        id: `optimistic-user-settled`,
+        session_id: sessionId,
+        role: 'user',
+        content,
+        created_at: new Date().toISOString(),
+      };
+      setOptimisticMessages([optimisticUserMessage, assistantMessage]);
       if (resolvedSessionId) {
         await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
       }
