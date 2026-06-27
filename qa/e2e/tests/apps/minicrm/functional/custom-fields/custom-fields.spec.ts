@@ -79,7 +79,7 @@ test.beforeEach(async ({ restClient, page }) => {
 // Test 1 — admin creates a text custom field for contacts
 // ---------------------------------------------------------------------------
 
-test('admin creates a text custom field for contacts via Admin Settings @functional', async ({
+test('CF-1: admin creates a text custom field for contacts via Admin Settings @functional', async ({
   page,
   restClient,
   testData,
@@ -134,7 +134,7 @@ test('admin creates a text custom field for contacts via Admin Settings @functio
 // Test 2 — rep sets a custom field value, saves, reloads, confirms persistence
 // ---------------------------------------------------------------------------
 
-test('rep sets a custom field value on a contact, saves, reloads, confirms persistence @functional', async ({
+test('CF-2: rep sets a custom field value on a contact, saves, reloads, confirms persistence @functional', async ({
   page,
   restClient,
   testData,
@@ -207,7 +207,7 @@ test('rep sets a custom field value on a contact, saves, reloads, confirms persi
 // Test 3 — admin deletes the definition; it no longer appears on the detail page
 // ---------------------------------------------------------------------------
 
-test('admin deletes a custom field definition; it disappears from the contact detail page @functional', async ({
+test('CF-3: admin deletes a custom field definition; it disappears from the contact detail page @functional', async ({
   page,
   restClient,
   testData,

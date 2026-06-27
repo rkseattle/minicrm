@@ -117,7 +117,15 @@ export async function navigateToContactDetailPage(
   contactId: string,
   context: LayoutBehaviorContext,
 ): Promise<void> {
+  // Register before goto so a fast server response isn't missed.
+  // networkidle can resolve before React Query renders the contact data;
+  // waiting for the GET response ensures data is in the cache before callers assert.
+  const contactLoaded = context.page.waitForResponse(
+    (res) => res.url().includes(`/api/v1/contacts/${contactId}`) && res.status() === 200,
+    { timeout: 15_000 },
+  );
   await context.page.goto(`/contacts/${contactId}`, { waitUntil: 'networkidle' });
+  await contactLoaded;
 }
 
 /**
