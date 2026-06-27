@@ -1855,6 +1855,7 @@
     "sendButton": "[Sënd]",
     "sending": "[Sëndïng…]",
     "errorSend": "[Fàïlëd tö sënd mëssàgë.]",
+    "errorCreateSession": "[Fàïlëd tö stàrt à nëw cönvërsàtïön. Plëàsë trÿ àgàïn.]",
     "errorLoad": "[Fàïlëd tö löàd cönvërsàtïön.]",
     "errorLoadSessions": "[Fàïlëd tö löàd sëssïöns.]",
     "notAvailable": "[ÃÎ Àssïstànt ïs nöt àvàïlàblë.]",

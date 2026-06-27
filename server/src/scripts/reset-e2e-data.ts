@@ -81,6 +81,10 @@ async function main(adminEmail: string): Promise<void> {
     // audit_log has an append-only trigger that rejects DELETE; TRUNCATE bypasses it.
     await client.query(`TRUNCATE audit_log CASCADE`);
 
+    // AI sessions and messages (messages first due to FK → ai_sessions)
+    await client.query(`DELETE FROM ai_messages`);
+    await client.query(`DELETE FROM ai_sessions`);
+
     // AI usage tracking
     await client.query(`DELETE FROM ai_token_usage`);
     await client.query(`DELETE FROM ai_token_budgets`);

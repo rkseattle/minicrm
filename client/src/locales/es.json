@@ -2245,6 +2245,7 @@
     "messagePlaceholder": "Pregunta cualquier cosa sobre tus datos de CRM…",
     "sendButton": "Enviar",
     "sending": "Enviando…",
+    "errorCreateSession": "No se pudo iniciar una nueva conversación. Inténtalo de nuevo.",
     "errorSend": "No se pudo enviar el mensaje. Inténtalo de nuevo.",
     "errorLoad": "No se pudo cargar la conversación.",
     "errorLoadSessions": "No se pudieron cargar las sesiones.",
