@@ -1733,6 +1733,23 @@ export async function clickAiDpaCheckbox(context: AdminSettingsBehaviorContext):
   await (await new AdminSettingsPage(context).aiDpaCheckboxLocator()).click();
 }
 
+/**
+ * Clicks the DPA acknowledgment checkbox and waits for the server POST to
+ * complete before returning. Registering the waitForResponse before clicking
+ * prevents a race where a fast server response is missed, and awaiting it
+ * ensures the React Query cache holds fresh data (dpa_acknowledged: true)
+ * before the caller asserts on element visibility — without this, the stale
+ * cache briefly re-renders dpa_acknowledged: false during the refetch window.
+ */
+export async function acknowledgeAiDpa(context: AdminSettingsBehaviorContext): Promise<void> {
+  const dpaPostDone = context.page.waitForResponse(
+    (res) => res.url().includes('/admin/ai/dpa-acknowledgment') && res.status() === 200,
+    { timeout: 15_000 },
+  );
+  await (await new AdminSettingsPage(context).aiDpaCheckboxLocator()).click();
+  await dpaPostDone;
+}
+
 /** Asserts that the AI DPA warning banner is visible. */
 export async function expectAiDpaWarningBannerVisible(
   context: AdminSettingsBehaviorContext,

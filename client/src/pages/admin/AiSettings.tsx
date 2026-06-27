@@ -541,7 +541,12 @@ export default function AiSettings() {
 
   const dpaMutation = useMutation({
     mutationFn: setAiDpaAcknowledgment,
-    onSuccess: () => {
+    onSuccess: (freshData) => {
+      // Write the server's response directly into the cache so the checkbox
+      // disappears immediately — invalidateQueries alone causes a brief
+      // stale-data re-render where dpa_acknowledged is still false, which
+      // makes the checkbox reappear before the refetch completes.
+      queryClient.setQueryData(AI_CONFIG_QUERY_KEY, freshData);
       void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
       setDpaSaveSuccess(true);
       setDpaSaveError('');

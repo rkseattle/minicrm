@@ -39,7 +39,7 @@ import {
   clickAiToggleCancelButton,
   expectAiDpaCheckboxVisible,
   expectAiDpaCheckboxNotVisible,
-  clickAiDpaCheckbox,
+  acknowledgeAiDpa,
   expectAiDpaWarningBannerVisible,
   expectAiDpaWarningBannerNotVisible,
   expectAiDataPostureBadgeVisible,
@@ -175,16 +175,13 @@ test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged
   await navigateToAdminSettings({ page }, 'ai');
   await expectAiSettingsPanelVisible({ page }, 10_000);
 
-  // Click the DPA checkbox to acknowledge — fires a PATCH and invalidates the
-  // AI config query, causing the checkbox and warning banner to disappear.
-  // Using the UI instead of a pre-navigation REST call avoids a --workers=2
-  // race where afterEach from a concurrent test resets acknowledged:false
-  // between our POST and the page.goto().
+  // acknowledgeAiDpa clicks the checkbox and awaits the server POST response
+  // before returning — ensuring fresh data (dpa_acknowledged: true) is in the
+  // React Query cache before we assert on element visibility.
   await expectAiDpaCheckboxVisible({ page }, 5_000);
-  await clickAiDpaCheckbox({ page });
+  await acknowledgeAiDpa({ page });
 
-  // After clicking, the query invalidates and re-renders — checkbox should
-  // disappear (the acknowledged state renders static text instead).
+  // Fresh data confirmed by the server — checkbox should now be absent from the DOM.
   await expectAiDpaCheckboxNotVisible({ page }, 10_000);
 
   // Warning banner should not be visible when DPA is acknowledged.
