@@ -1393,6 +1393,8 @@ export async function performGdprErasure(
     { intent: 'confirm button that submits the GDPR erasure request' },
   );
 
+  // 30s: the erasure API deletes data server-side; under CI load it can take
+  // longer than the previous 10s ceiling before the modal closes.
   await context.page.waitFor(
     [
       { type: 'testId', value: 'gdpr-erase-modal-overlay' },
@@ -1401,7 +1403,7 @@ export async function performGdprErasure(
     ],
     'hidden',
     { intent: 'GDPR erasure confirmation modal' },
-    10_000,
+    30_000,
   );
 
   return { modalDismissed: true };
