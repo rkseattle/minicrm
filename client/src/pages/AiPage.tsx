@@ -206,21 +206,23 @@ export default function AiPage() {
     onSuccess: async (assistantMessage, { sessionId, content }) => {
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
-      // Hold both user and assistant messages in optimistic state during the refetch
-      // window. onSettled fires when the mutation settles (before the refetch), so
-      // clearing there would drop messages before persisted data is available.
-      // Instead, await the refetch, then clear once persisted data is in the cache.
-      const optimisticUserMessage: AiMessageResponse = {
-        id: `optimistic-user-settled`,
-        session_id: sessionId,
-        role: 'user',
-        content,
-        created_at: new Date().toISOString(),
-      };
-      setOptimisticMessages([optimisticUserMessage, assistantMessage]);
-      if (resolvedSessionId) {
-        await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(resolvedSessionId) });
+      // Use sessionId from mutation variables (not resolvedSessionId from the closure)
+      // so the correct session is refetched even if the user switched sessions during
+      // the 3-10 s Anthropic round-trip.
+      //
+      // Only show optimistic messages if the user is still viewing the session that
+      // sent the message — if they've switched away, just update the cache silently.
+      if (resolvedSessionId === sessionId) {
+        const optimisticUserMessage: AiMessageResponse = {
+          id: `optimistic-user-settled`,
+          session_id: sessionId,
+          role: 'user',
+          content,
+          created_at: new Date().toISOString(),
+        };
+        setOptimisticMessages([optimisticUserMessage, assistantMessage]);
       }
+      await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(sessionId) });
       setOptimisticMessages([]);
     },
     onError: () => {
