@@ -1773,14 +1773,15 @@ jobs:
     if: |
       needs.changes.outputs.ai == 'true' &&
       github.event.pull_request.draft == false &&
-      github.actor != 'dependabot[bot]'
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
+          node-version: 20
           cache: npm
 
       - name: Install dependencies

@@ -26,4 +26,4 @@ tests:
   - nli-pii.yaml
 
 # Write machine-readable results for CI artifact upload and local inspection.
-outputPath: qa/evals/.output/results.json
+outputPath: .output/results.json
