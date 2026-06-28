@@ -201,6 +201,8 @@ cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test 
 Read `qa/e2e/test-results/results.xml` for pass/fail — never rely on console output or exit code.
 One run per code change. Fix failures on the branch; never re-run to paper over them. Never compare to main to dismiss a failure.
 
+**AI tool schema check:** If any changes touch `server/src/services/` or `server/src/ai/`, review `server/src/ai/tools/` and verify the tool schemas still match the service signatures — correct input field names, enums, and required arrays. Update affected tool files in the same commit.
+
 **E2E session setup (once per session):**
 
 ```bash
@@ -262,6 +264,7 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 - [ ] Framework coverage ≥ 80% (`npm run test:framework:coverage --workspace=minicrm-qa`) if `qa/e2e/framework/` touched
 - [ ] Roles & Capabilities scoped for least privilege
 - [ ] Greptile review — code changes would pass a Greptile review
+- [ ] AI tool schemas reviewed if `server/src/services/` or `server/src/ai/` changed — field names, enums, and required arrays still match service signatures
 
 ## PR Review Feedback
 

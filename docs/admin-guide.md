@@ -20,6 +20,7 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 11. [AI Role-Based Feature Access](#11-ai-role-based-feature-access)
 12. [Data Visibility Scoping](#12-data-visibility-scoping)
 13. [Roles and Capabilities](#13-roles-and-capabilities)
+14. [Email Templates](#14-email-templates)
 
 ---
 
@@ -902,3 +903,70 @@ returns `409 CUSTOM_ROLE_HAS_ASSIGNEES` — reassign or remove those users first
 Every role create, update, and delete is recorded in the **Audit Log** under record type
 `custom_role`. User role assignments and removals are recorded under record type `user`
 with field names `custom_role_assigned` and `custom_role_removed`.
+
+---
+
+## 14. Email Templates
+
+Email templates are reusable message blueprints that can be referenced by the AI Assistant
+when drafting outbound emails. They are managed by admins and read by all users (via the AI).
+
+### What templates contain
+
+| Field     | Description                                                                       |
+| --------- | --------------------------------------------------------------------------------- |
+| Name      | Unique, human-readable identifier (e.g. "Cold outreach — SaaS")                   |
+| Category  | Free-text grouping label (e.g. `sales`, `support`, `onboarding`)                  |
+| Subject   | Default email subject line (may include merge tags like `{{contact.first_name}}`) |
+| Body HTML | HTML body of the email                                                            |
+| Enabled   | When disabled, the template is hidden from AI-assisted email drafting             |
+
+### Managing templates via the API
+
+Templates are managed via the REST API (admin only). A future release will add a UI.
+
+```bash
+# List templates
+curl https://<your-crm>/api/v1/email-templates \
+  -b "token=<admin-jwt>"
+
+# Create a template
+curl -X POST https://<your-crm>/api/v1/email-templates \
+  -H "Content-Type: application/json" \
+  -b "token=<admin-jwt>" \
+  -d '{
+    "name": "Cold outreach — SaaS",
+    "category": "sales",
+    "subject": "Quick question, {{contact.first_name}}",
+    "body_html": "<p>Hi {{contact.first_name}},</p>...",
+    "enabled": true
+  }'
+
+# Update a template
+curl -X PATCH https://<your-crm>/api/v1/email-templates/<id> \
+  -H "Content-Type: application/json" \
+  -b "token=<admin-jwt>" \
+  -d '{"enabled": false}'
+
+# Delete a template
+curl -X DELETE https://<your-crm>/api/v1/email-templates/<id> \
+  -b "token=<admin-jwt>"
+```
+
+### Reference
+
+| Endpoint                      | Method | Description                         |
+| ----------------------------- | ------ | ----------------------------------- |
+| `/api/v1/email-templates`     | GET    | List templates (filter by category) |
+| `/api/v1/email-templates`     | POST   | Create a template (admin only)      |
+| `/api/v1/email-templates/:id` | GET    | Get a single template               |
+| `/api/v1/email-templates/:id` | PATCH  | Update fields (admin only)          |
+| `/api/v1/email-templates/:id` | DELETE | Delete a template (admin only)      |
+
+`GET` endpoints are accessible to all authenticated users so the AI Assistant can browse
+templates when drafting emails. Write endpoints require the `admin` role.
+
+### Audit trail
+
+Every create, update, and delete is recorded in the **Audit Log** under record type
+`email_templates`.
