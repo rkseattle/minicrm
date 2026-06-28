@@ -20,12 +20,12 @@ Results are written to `qa/evals/.output/results.json` (gitignored).
 
 ## Test Files
 
-| File                | Concern                                                                 | Assertion type                                |
-| ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| `nli-intent.yaml`   | Tool selection for unambiguous queries                                  | Deterministic — `javascript` equality check   |
-| `nli-semantic.yaml` | Response relevance and non-hallucination                                | LLM-as-judge — Haiku `llm-rubric`             |
-| `nli-rbac.yaml`     | Admin-only tools absent from rep tool set; unauthorized-op error format | Mixed — `not-contains` + Haiku `llm-rubric`   |
-| `nli-pii.yaml`      | PII fields absent from AI payloads; `pii_excluded` custom fields nulled | Deterministic — `not-contains` + `javascript` |
+| File                | Concern                                                                      | Assertion type                              |
+| ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------- |
+| `nli-intent.yaml`   | Tool selection for unambiguous queries                                       | Deterministic — `javascript` equality check |
+| `nli-semantic.yaml` | Response relevance and non-hallucination                                     | LLM-as-judge — Haiku `llm-rubric`           |
+| `nli-rbac.yaml`     | Model doesn't surface admin tool names after a FORBIDDEN error; error format | Mixed — `not-contains` + Haiku `llm-rubric` |
+| `nli-pii.yaml`      | Model response doesn't echo PII values absent from the post-filter payload   | Deterministic — `not-contains`              |
 
 ## Model Selection Rationale
 
@@ -36,9 +36,8 @@ Rubrics are kept narrow and binary — vague rubrics produce inconsistent judgme
 rerun variance.
 
 **Deterministic assertions for structure and PII (`nli-intent.yaml`, `nli-pii.yaml`, RBAC tool list):**
-`is-json`, `not-contains`, and `javascript` assertions are used wherever the correctness
-criterion is structural. These run without any API call and produce identical results
-across every run.
+`not-contains` and `javascript` assertions are used wherever the correctness criterion is
+structural. These run without any API call and produce identical results across every run.
 
 **PII assertions MUST NEVER use an LLM judge.** Routing a PII check through a judge model
 sends the PII value (e.g., an SSN) to the Anthropic API as part of the judge's prompt.
@@ -82,11 +81,15 @@ is required.
    narrow binary `llm-rubric`. Keep the rubric to 2–3 sentences.
 
 3. **New RBAC rule** — if a new admin-only tool is added to `server/src/ai/tools/adminTools.ts`,
-   add a `not-contains` assertion for its name in `nli-rbac.yaml`.
+   add a `not-contains` assertion for its tool name in the rep-session test in `nli-rbac.yaml`,
+   and add the tool name to the available-tool list in the prompt. Also add a unit test in
+   `nliToolPermissions.test.ts` to verify `buildToolSet` excludes it for the rep role.
 
 4. **New PII field** — if a new field is added to `ALWAYS_EXCLUDED_FIELDS` in
-   `server/src/ai/piiFilter.ts`, add a `not-contains` assertion in `nli-pii.yaml`.
-   Never use `llm-rubric` for PII assertions.
+   `server/src/ai/piiFilter.ts`, add a unit test in `piiFilter.test.ts` first (that's the
+   authoritative test for filter correctness), then add a `not-contains` assertion in
+   `nli-pii.yaml` to verify the model's response doesn't echo back that field name or a
+   representative value. Never use `llm-rubric` for PII assertions.
 
 ## Environment Variables
 
