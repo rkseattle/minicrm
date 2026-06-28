@@ -51,8 +51,8 @@ export const adminTools: Anthropic.Messages.Tool[] = [
       properties: {
         entity_type: {
           type: 'string',
-          enum: ['contact', 'account', 'deal', 'lead'],
-          description: 'Entity type to list custom fields for.',
+          enum: ['contact', 'account', 'deal'],
+          description: 'Entity type to list custom fields for. Leads do not support custom fields.',
         },
       },
       required: ['entity_type'],

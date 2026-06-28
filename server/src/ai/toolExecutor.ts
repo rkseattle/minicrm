@@ -214,9 +214,12 @@ export async function executeToolCall(
 
       // ── Accounts ─────────────────────────────────────────────────────────────
       case 'searchAccounts': {
+        // Reps can only list accounts they own; admins see all (matching HTTP controller).
+        const accountOwnerId =
+          ctx.userRole !== 'admin' ? ctx.userId : (toolInput.owner_id as string | undefined);
         return await listAccounts({
           search: toolInput.query as string | undefined,
-          ownerId: toolInput.owner_id as string | undefined,
+          ownerId: accountOwnerId,
           accountType: toolInput.account_type as AccountType | undefined,
           tagIds: toolInput.tags as string[] | undefined,
           page: asPage(toolInput.page),
@@ -249,6 +252,12 @@ export async function executeToolCall(
         const id = toolInput.id as string;
         const current = await findAccountById(id);
         if (!current) return notFound('Account', id);
+        // Enforce ownership: reps can only update accounts they own (matches HTTP controller).
+        if (current.owner_id !== ctx.userId && ctx.userRole !== 'admin') {
+          throw Object.assign(new Error('You do not have permission to update this account'), {
+            statusCode: 403,
+          });
+        }
         return await updateAccount(
           id,
           {
@@ -272,8 +281,11 @@ export async function executeToolCall(
 
       // ── Leads ────────────────────────────────────────────────────────────────
       case 'searchLeads': {
+        // Reps can only list leads they own; admins see all (matching HTTP controller).
+        const leadOwnerId =
+          ctx.userRole !== 'admin' ? ctx.userId : (toolInput.owner_id as string | undefined);
         return await listLeads({
-          ownerId: toolInput.owner_id as string | undefined,
+          ownerId: leadOwnerId,
           status: toolInput.status as LeadStatus | undefined,
           lead_source: toolInput.source as LeadSource | undefined,
           page: asPage(toolInput.page),
@@ -503,6 +515,9 @@ export async function executeToolCall(
         if (!entityType || !entityId) {
           return { error: 'entity_type and entity_id are required for searchNotes' };
         }
+        // Verify the caller can access the parent entity before returning its notes.
+        // This prevents note leakage on records that are outside the caller's visibility.
+        await assertEntityAccess(entityType, entityId, ctx);
         return await listNotes(
           entityType,
           entityId,
@@ -570,10 +585,14 @@ export async function executeToolCall(
       }
 
       case 'attachTag': {
+        const tagEntityType = toolInput.entity_type as NoteEntityType;
+        const tagEntityId = toolInput.entity_id as string;
+        // Verify write access to the target record before mutating its tags.
+        await assertEntityAccess(tagEntityType, tagEntityId, ctx, true);
         // attachTag uses upsert-by-name semantics: creates the tag if it does not exist.
         await attachTag(
-          toolInput.entity_type as 'contact' | 'account' | 'deal',
-          toolInput.entity_id as string,
+          tagEntityType as 'contact' | 'account' | 'deal',
+          tagEntityId,
           { name: toolInput.tag_name as string },
           ctx.actor,
         );
@@ -581,9 +600,13 @@ export async function executeToolCall(
       }
 
       case 'detachTag': {
+        const detachEntityType = toolInput.entity_type as NoteEntityType;
+        const detachEntityId = toolInput.entity_id as string;
+        // Verify write access to the target record before mutating its tags.
+        await assertEntityAccess(detachEntityType, detachEntityId, ctx, true);
         await detachTag(
-          toolInput.entity_type as 'contact' | 'account' | 'deal',
-          toolInput.entity_id as string,
+          detachEntityType as 'contact' | 'account' | 'deal',
+          detachEntityId,
           toolInput.tag_id as string,
           ctx.actor,
         );
@@ -592,7 +615,7 @@ export async function executeToolCall(
 
       // ── Reports ──────────────────────────────────────────────────────────────
       case 'generateReport': {
-        return await dispatchReport(toolInput);
+        return await dispatchReport(toolInput, ctx);
       }
 
       // ── Export ───────────────────────────────────────────────────────────────
@@ -692,9 +715,14 @@ function asDir(value: unknown): 'ASC' | 'DESC' {
   return String(value ?? '').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 }
 
-async function dispatchReport(toolInput: Record<string, unknown>): Promise<unknown> {
+async function dispatchReport(
+  toolInput: Record<string, unknown>,
+  ctx: ToolCallContext,
+): Promise<unknown> {
   const reportType = toolInput.report_type as string;
-  const ownerId = (toolInput.owner_id as string | undefined) ?? null;
+  // Reps can only report on themselves; admins may request any owner_id.
+  const ownerId =
+    ctx.userRole !== 'admin' ? ctx.userId : ((toolInput.owner_id as string | undefined) ?? null);
   const dateFrom = (toolInput.date_from as string | undefined) ?? thirtyDaysAgo();
   const dateTo = (toolInput.date_to as string | undefined) ?? today();
 
@@ -736,14 +764,18 @@ async function dispatchExport(
         }),
       };
 
-    case 'account':
+    case 'account': {
+      // Reps see only their own accounts; admins may request any owner_id.
+      const accountExportOwnerId =
+        ctx.userRole !== 'admin' ? ctx.userId : (toolInput.owner_id as string | undefined);
       return {
         entity_type: 'account',
         rows: await exportAccountsForCsv({
-          ownerId: toolInput.owner_id as string | undefined,
+          ownerId: accountExportOwnerId,
           search: toolInput.query as string | undefined,
         }),
       };
+    }
 
     case 'deal':
       return {
@@ -756,6 +788,63 @@ async function dispatchExport(
 
     default:
       return { error: `Export not supported for entity type: ${entityType}` };
+  }
+}
+
+/**
+ * Verifies the calling user has access to a given CRM entity.
+ *
+ * For notes and read operations (requireWrite=false): reps must own the parent
+ * record to read its notes.
+ * For write operations (requireWrite=true): reps must own the record to mutate it.
+ * Admins always pass.
+ *
+ * Throws a 403 error when access is denied; throws a 404-style error object
+ * (non-throwing return) is not used here — the caller handles not-found itself.
+ */
+async function assertEntityAccess(
+  entityType: NoteEntityType,
+  entityId: string,
+  ctx: ToolCallContext,
+  requireWrite = false,
+): Promise<void> {
+  if (ctx.userRole === 'admin') return;
+
+  let ownerId: string | undefined;
+
+  switch (entityType) {
+    case 'contact': {
+      const row = await findContactById(entityId);
+      ownerId = row?.owner_id;
+      break;
+    }
+    case 'account': {
+      const row = await findAccountById(entityId);
+      ownerId = row?.owner_id;
+      break;
+    }
+    case 'deal': {
+      const row = await findDealById(entityId);
+      ownerId = row?.owner_id;
+      break;
+    }
+    case 'lead': {
+      const row = await findLeadById(entityId);
+      ownerId = row?.owner_id;
+      break;
+    }
+    default:
+      // Unknown entity type — deny access conservatively.
+      throw Object.assign(new Error(`Unsupported entity type for access check: ${entityType}`), {
+        statusCode: 403,
+      });
+  }
+
+  if (ownerId !== ctx.userId) {
+    const action = requireWrite ? 'update' : 'access';
+    throw Object.assign(new Error(`You do not have permission to ${action} this ${entityType}`), {
+      statusCode: 403,
+    });
   }
 }
 

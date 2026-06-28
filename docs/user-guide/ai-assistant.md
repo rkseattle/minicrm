@@ -71,6 +71,47 @@ The session and all its messages are permanently removed.
 
 ---
 
+## What the AI Assistant can do
+
+The AI Assistant has direct access to your CRM data and can perform actions on your behalf.
+It uses a set of built-in tools to read and write records — you do not need to copy and paste
+data into your messages.
+
+### Reading data
+
+| What you can ask                           | Example                                                 |
+| ------------------------------------------ | ------------------------------------------------------- |
+| Search contacts, accounts, leads, or deals | "Find all contacts at Acme Corp"                        |
+| Look up a specific record                  | "Get me the details for deal ID xyz"                    |
+| List activities, notes, or tags            | "What activities are logged for John Smith this month?" |
+| Run a report                               | "Give me a win/loss breakdown for Q2"                   |
+| Browse pipeline stages                     | "What stages are in our default pipeline?"              |
+
+### Writing data
+
+The assistant can create and update records when you ask it to:
+
+| Action                                                   | Example                                                         |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| Create a contact, lead, deal, account, activity, or note | "Add a new lead: Jane Doe, jane@example.com, from a trade show" |
+| Update an existing record                                | "Change the close date on the Acme deal to end of month"        |
+| Convert a lead                                           | "Convert the Jane Doe lead to a contact and deal"               |
+| Attach or remove a tag                                   | "Tag the Acme Corp account as VIP"                              |
+| Delete a record                                          | "Delete the duplicate contact I just created"                   |
+
+> **Note:** The assistant can only modify records you own. Admins can modify any record.
+
+### Visibility and data access
+
+Your data access in the AI Assistant mirrors your normal CRM permissions:
+
+- **Reps** see and can modify only their own contacts, accounts, leads, and deals.
+- **Admins** see all records and can scope reports to any user.
+
+The assistant never exposes webhook signing secrets or PII-excluded custom fields.
+
+---
+
 ## Reference
 
 ### Sessions and privacy
