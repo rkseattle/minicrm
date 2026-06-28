@@ -243,6 +243,15 @@ describe('buildToolSet', () => {
       expect(names.has('createDeal')).toBe(true);
     });
 
+    it('manager fallback includes create tools from migration 108', () => {
+      const caps = new Set(BUILTIN_ROLE_CAPABILITIES['manager'] ?? []);
+      const names = toolNames(buildToolSet('manager', caps));
+      expect(names.has('createContact')).toBe(true);
+      expect(names.has('createDeal')).toBe(true);
+      expect(names.has('createActivity')).toBe(true);
+      expect(names.has('deleteContact')).toBe(true);
+    });
+
     it('viewer fallback yields only read tools', () => {
       const caps = new Set(BUILTIN_ROLE_CAPABILITIES['viewer'] ?? []);
       const names = toolNames(buildToolSet('viewer', caps));
