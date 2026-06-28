@@ -250,9 +250,10 @@ export async function sendAiMessageViaUI(
 
   // waitForPresent uses document.querySelector which avoids strict-mode
   // violations when multiple message bubbles share the same data-testid.
-  // Short timeout here: the network round-trip is already done.
-  await context.page.waitForPresent('[data-testid="ai-message-user"]', 10_000);
-  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 10_000);
+  // The network round-trip is done, but React's render + commit can be slow on
+  // mobile CI under load — use a generous timeout to avoid false failures.
+  await context.page.waitForPresent('[data-testid="ai-message-user"]', 20_000);
+  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 20_000);
 
   return { userMessageVisible: true, assistantMessageVisible: true };
 }
