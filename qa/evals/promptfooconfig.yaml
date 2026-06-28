@@ -1,29 +1,21 @@
-# Promptfoo root configuration for MiniCRM NLI eval suite (MINCRM-568)
+# MiniCRM NLI eval suite — suite index (MINCRM-568)
 #
-# Run locally:
+# This file documents the four eval suites. It is NOT passed directly to
+# promptfoo as a config file (Promptfoo requires providers + prompts at the
+# root level for standalone invocation). Instead, run the full suite via:
+#
 #   npm run eval
+#
+# which expands to:
+#   promptfoo eval -c nli-intent.yaml -c nli-semantic.yaml -c nli-rbac.yaml -c nli-pii.yaml
 #
 # The judge model (claude-haiku-4-5-20251001) is used for LLM-as-judge assertions
 # in nli-semantic.yaml and nli-rbac.yaml only. Deterministic suites (nli-intent.yaml,
 # nli-pii.yaml) never invoke a judge model. PII assertions must NEVER route through
 # any LLM judge — doing so would send the PII value to a third-party API.
-
-description: MiniCRM NLI eval suite
-
-# Persist API responses so re-runs with unchanged prompts and models skip Anthropic calls.
-cache: true
-
-# Default provider for test prompts. Each test file may override this per-test.
-defaultTest:
-  options:
-    provider: anthropic:claude-haiku-4-5-20251001
-
-# Aggregate all four concern-specific test files.
-tests:
-  - nli-intent.yaml
-  - nli-semantic.yaml
-  - nli-rbac.yaml
-  - nli-pii.yaml
-
-# Write machine-readable results for CI artifact upload and local inspection.
-outputPath: .output/results.json
+#
+# Suites:
+#   nli-intent.yaml   — Deterministic tool selection assertions
+#   nli-semantic.yaml — LLM-as-judge semantic quality (Haiku, threshold 0.9)
+#   nli-rbac.yaml     — Mixed: not-contains + Haiku error-format rubric (threshold 0.9)
+#   nli-pii.yaml      — Deterministic PII minimization assertions
