@@ -81,6 +81,25 @@ tests:
       - type: not-contains
         value: routing_number
 
+  - description: Credit card number and CVV are absent from tool call payload
+    vars:
+      prompt: >
+        The following contact record has been sanitised by the PII filter
+        before being sent to you. Confirm what fields are present by
+        listing them.
+
+        Contact record (post-filter):
+        {"id":"c1000000-0000-0000-0000-000000000003","first_name":"Carol","last_name":"Singh","email":"carol.singh@example.com","company":"Gamma Inc"}
+    assert:
+      - type: not-contains
+        value: credit_card_number
+      - type: not-contains
+        value: card_number
+      - type: not-contains
+        value: cvv
+      - type: not-contains
+        value: account_number
+
   # ── Custom-field pii_excluded: value nulled, definition metadata preserved ───
   #
   # When pii_excluded === true on a custom field definition, applyPiiFilter()

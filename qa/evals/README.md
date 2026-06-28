@@ -22,7 +22,7 @@ Results are written to `qa/evals/.output/results.json` (gitignored).
 
 | File                | Concern                                                                 | Assertion type                                |
 | ------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| `nli-intent.yaml`   | Tool selection for unambiguous queries                                  | Deterministic — `is-json` path check          |
+| `nli-intent.yaml`   | Tool selection for unambiguous queries                                  | Deterministic — `javascript` equality check   |
 | `nli-semantic.yaml` | Response relevance and non-hallucination                                | LLM-as-judge — Haiku `llm-rubric`             |
 | `nli-rbac.yaml`     | Admin-only tools absent from rep tool set; unauthorized-op error format | Mixed — `not-contains` + Haiku `llm-rubric`   |
 | `nli-pii.yaml`      | PII fields absent from AI payloads; `pii_excluded` custom fields nulled | Deterministic — `not-contains` + `javascript` |
@@ -74,7 +74,9 @@ is required.
 ## Adding Test Cases
 
 1. **New tool selection scenario** — add a test block to `nli-intent.yaml` with a
-   `is-json` assertion on `{"tool": "<expected_tool_name>"}`.
+   `javascript` assertion that parses the output and checks `parsed.tool === '<expected_tool_name>'`.
+   Do not use `is-json` with a `value:` object — promptfoo treats that value as a JSON Schema
+   (validated by AJV), not an equality target, and AJV throws on unknown keywords.
 
 2. **New semantic quality scenario** — add a test block to `nli-semantic.yaml` with a
    narrow binary `llm-rubric`. Keep the rubric to 2–3 sentences.

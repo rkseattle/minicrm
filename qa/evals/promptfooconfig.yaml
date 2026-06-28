@@ -20,10 +20,10 @@ defaultTest:
 
 # Aggregate all four concern-specific test files.
 tests:
-  - qa/evals/nli-intent.yaml
-  - qa/evals/nli-semantic.yaml
-  - qa/evals/nli-rbac.yaml
-  - qa/evals/nli-pii.yaml
+  - nli-intent.yaml
+  - nli-semantic.yaml
+  - nli-rbac.yaml
+  - nli-pii.yaml
 
 # Write machine-readable results for CI artifact upload and local inspection.
 outputPath: qa/evals/.output/results.json

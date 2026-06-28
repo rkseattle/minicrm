@@ -5,8 +5,10 @@
 # no LLM judge is invoked for this suite.
 #
 # The prompt instructs the model to respond ONLY with a JSON object
-# describing which tool it would call. This makes the assertion purely
-# structural and fully reproducible.
+# describing which tool it would call. Assertions use `javascript` to parse
+# the output and compare the `tool` field — is-json with a value: object
+# treats the value as a JSON Schema (validated by AJV), not an equality
+# target, so it would throw on unknown keyword "tool".
 
 description: NLI intent resolution — deterministic tool selection
 
@@ -68,22 +70,25 @@ tests:
     vars:
       query: Show me all contacts named Alice
     assert:
-      - type: is-json
-        value:
-          tool: searchContacts
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output);
+          return parsed.tool === 'searchContacts';
 
   - description: Create a note on the Acme account maps to createNote
     vars:
       query: Create a note on the Acme account
     assert:
-      - type: is-json
-        value:
-          tool: createNote
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output);
+          return parsed.tool === 'createNote';
 
   - description: List open deals in Enterprise pipeline maps to searchDeals
     vars:
       query: List all open deals in the Enterprise pipeline
     assert:
-      - type: is-json
-        value:
-          tool: searchDeals
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output);
+          return parsed.tool === 'searchDeals';
