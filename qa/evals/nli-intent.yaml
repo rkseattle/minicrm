@@ -1,0 +1,89 @@
+# NLI intent resolution eval suite (MINCRM-568)
+#
+# Validates that unambiguous natural-language queries produce the correct
+# tool_use selection. All assertions are deterministic JSON path checks —
+# no LLM judge is invoked for this suite.
+#
+# The prompt instructs the model to respond ONLY with a JSON object
+# describing which tool it would call. This makes the assertion purely
+# structural and fully reproducible.
+
+description: NLI intent resolution — deterministic tool selection
+
+providers:
+  - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      tools:
+        - name: searchContacts
+          description: Search for contacts by name, email, company, or other criteria.
+          input_schema:
+            type: object
+            properties:
+              query:
+                type: string
+                description: Free-text search query
+            required:
+              - query
+        - name: createNote
+          description: Create a note attached to a contact, account, lead, or deal.
+          input_schema:
+            type: object
+            properties:
+              entity_type:
+                type: string
+                enum: [contact, account, lead, deal]
+              entity_id:
+                type: string
+              content:
+                type: string
+            required:
+              - entity_type
+              - entity_id
+              - content
+        - name: searchDeals
+          description: Search for deals by title, stage, pipeline, or status.
+          input_schema:
+            type: object
+            properties:
+              query:
+                type: string
+              pipeline:
+                type: string
+              status:
+                type: string
+                enum: [open, won, lost]
+            required: []
+
+prompts:
+  - |
+    You are a CRM assistant. Given the user's request below, identify the
+    single most appropriate tool to call and respond ONLY with a JSON object
+    in this exact format (no prose, no explanation):
+    {"tool": "<tool_name>"}
+
+    User request: {{query}}
+
+tests:
+  - description: Show contacts named Alice maps to searchContacts
+    vars:
+      query: Show me all contacts named Alice
+    assert:
+      - type: is-json
+        value:
+          tool: searchContacts
+
+  - description: Create a note on the Acme account maps to createNote
+    vars:
+      query: Create a note on the Acme account
+    assert:
+      - type: is-json
+        value:
+          tool: createNote
+
+  - description: List open deals in Enterprise pipeline maps to searchDeals
+    vars:
+      query: List all open deals in the Enterprise pipeline
+    assert:
+      - type: is-json
+        value:
+          tool: searchDeals
