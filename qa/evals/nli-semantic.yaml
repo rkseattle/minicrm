@@ -8,11 +8,23 @@
 #
 # IMPORTANT: This suite must NEVER be used for PII assertions. Any content
 # that may contain PII goes in nli-pii.yaml with deterministic checks only.
+#
+# NOTE: Do not set provider: on individual llm-rubric assertions — Promptfoo
+# v0.121 attempts to serialize the provider object as judge context, which
+# triggers "Converting circular structure to JSON" on the Anthropic SDK client.
+# Use defaultTest.options.provider to configure the judge at the suite level.
 
 description: NLI semantic quality — Haiku LLM-as-judge
 
 providers:
   - id: anthropic:claude-haiku-4-5-20251001
+
+# Judge model for llm-rubric assertions. Set here to avoid per-assertion
+# provider instantiation that triggers a circular JSON serialization bug
+# in Promptfoo v0.121 with the Anthropic SDK client object.
+defaultTest:
+  options:
+    provider: anthropic:claude-haiku-4-5-20251001
 
 # 90% threshold: deterministic suites enforce 100% implicitly (binary pass/fail);
 # Haiku judge variance on semantic rubrics allows up to 10% judgment noise.
@@ -39,7 +51,6 @@ tests:
           The response directly answers the question about contacts named Alice.
           It references exactly 1 contact and does not invent names, emails,
           or companies that are absent from the tool results.
-        provider: anthropic:claude-haiku-4-5-20251001
 
   - description: Response does not hallucinate entity names or field values
     vars:
@@ -51,7 +62,6 @@ tests:
           The response describes the deal accurately using only information
           present in the tool results. It does not fabricate deal titles,
           values, stages, or companies that are not in the provided data.
-        provider: anthropic:claude-haiku-4-5-20251001
 
   - description: Unauthorized operation error matches required plain-language format
     vars:
@@ -63,4 +73,3 @@ tests:
           The response conveys that the operation is not permitted. It includes
           language equivalent to "You don't have permission to delete contacts"
           and does not suggest alternative ways to bypass the restriction.
-        provider: anthropic:claude-haiku-4-5-20251001
