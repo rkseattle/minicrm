@@ -28,6 +28,7 @@ jobs:
       config:     ${{ steps.filter.outputs.config }}
       visual:     ${{ steps.filter.outputs.visual }}
       migrations: ${{ steps.filter.outputs.migrations }}
+      ai:         ${{ steps.filter.outputs.ai }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,6 +69,10 @@ jobs:
               - 'qa/e2e/snapshots/**'
             migrations:
               - 'db/migrations/**'
+            ai:
+              - 'server/src/ai/**'
+              - 'qa/evals/**'
+              - '.github/workflows/ci.yml'
 
       - name: Clear stale E2E functional test comment
         if: github.event_name == 'pull_request'
@@ -1759,6 +1764,49 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           E2E: true
 
+  # MINCRM-569: Promptfoo NLI eval suite.
+  # Runs only when AI source or eval config changes; never on draft PRs or Dependabot.
+  # Keeps Anthropic API spend minimal: path filter is the primary cost lever.
+  ai-evals:
+    name: AI evals (Promptfoo)
+    needs: [changes]
+    if: |
+      needs.changes.outputs.ai == 'true' &&
+      github.event.pull_request.draft == false &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore Promptfoo cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/promptfoo
+          key: promptfoo-${{ hashFiles('qa/evals/promptfooconfig.yaml', 'qa/evals/*.yaml') }}
+          restore-keys: |
+            promptfoo-
+
+      - name: Run eval suite
+        run: npm run eval
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_number }}
+          path: qa/evals/.output/results.json
+          if-no-files-found: warn
+
   # MINCRM-269: Sentinel job — sole required status check for branch protection.
   # Treats skipped jobs as passing so that path-scoped PRs are not blocked by
   # jobs that legitimately did not run.
@@ -1777,6 +1825,7 @@ jobs:
       - e2e-aggregate
       - e2e-all-shards-passed
       - e2e-serial
+      - ai-evals
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1792,6 +1841,7 @@ jobs:
             "${{ needs.e2e-aggregate.result }}" \
             "${{ needs.e2e-all-shards-passed.result }}" \
             "${{ needs.e2e-serial.result }}" \
+            "${{ needs.ai-evals.result }}" \
           )
           for result in "${results[@]}"; do
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
