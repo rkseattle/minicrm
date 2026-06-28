@@ -110,6 +110,7 @@ interface CustomFieldValueRaw {
   def_field_type: string;
   def_options: string[] | null;
   def_sort_order: number;
+  def_pii_excluded: boolean;
   def_created_at: Date;
 }
 
@@ -435,6 +436,7 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
            d.field_type AS def_field_type,
            d.options AS def_options,
            d.sort_order AS def_sort_order,
+           d.pii_excluded AS def_pii_excluded,
            d.created_at AS def_created_at
          FROM custom_field_values v
          JOIN custom_field_definitions d ON d.id = v.definition_id AND d.entity_type = 'contact'
@@ -475,6 +477,7 @@ export async function getGdprExportForContact(id: string): Promise<ContactGdprEx
       field_type: row.def_field_type,
       options: row.def_options,
       sort_order: row.def_sort_order,
+      pii_excluded: row.def_pii_excluded,
       created_at: row.def_created_at,
     },
   }));
@@ -575,6 +578,7 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
       field_type: row.def_field_type,
       options: row.def_options,
       sort_order: row.def_sort_order,
+      pii_excluded: row.def_pii_excluded,
       created_at: row.def_created_at,
     },
   }));
