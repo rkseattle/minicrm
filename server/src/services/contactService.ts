@@ -205,6 +205,7 @@ export async function createContact(
       eventType: 'created',
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');
@@ -564,6 +565,7 @@ export async function updateContact(
         recordName: `${contact.first_name} ${contact.last_name}`,
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       };
 
       const fieldEntries = diffFields(
@@ -775,6 +777,7 @@ export async function deleteContact(
         eventType: 'deleted',
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 
@@ -978,6 +981,7 @@ export async function mergeContacts(
       newValue: loserName,
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     // Activity note on the winner's timeline (step 7)

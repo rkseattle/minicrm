@@ -1276,7 +1276,8 @@
       "allTypes": "[Äll typëŝ~~~]",
       "allEvents": "[Äll ëvëñtŝ~~~]",
       "applyFilters": "[Äpply~~]",
-      "clearFilters": "[Ĉlëär fïltërŝ~~~~]"
+      "clearFilters": "[Ĉlëär fïltërŝ~~~~]",
+      "source": "[Şǿüřčé]"
     },
     "table": {
       "timestamp": "[Tïmëŝtämp~~~]",
@@ -1312,7 +1313,14 @@
       "next": "[Ñëxt~~]",
       "page": "[Pägë {{page}} öf {{total}}~~~~~~~~]"
     },
-    "accessDenied": "[Yöü dö ñöt hävë përmïŝŝïöñ tö vïëw thë äüdït lög.~~~~~~~~~~~~~~~]"
+    "accessDenied": "[Yöü dö ñöt hävë përmïŝŝïöñ tö vïëw thë äüdït lög.~~~~~~~~~~~~~~~]",
+    "source": {
+      "label": "[Şǿüřčé]",
+      "human": "[Ĥüмǻń]",
+      "aiNli": "[ÀÏ (ŃĹÏ)]",
+      "aiContext": "[ÀÏ (čǿńţéxţ)]",
+      "all": "[Àĺĺ şǿüřčéş]"
+    }
   },
   "leads": {
     "pageTitle": "[Lëädŝ~~]",

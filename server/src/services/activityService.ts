@@ -136,6 +136,7 @@ export async function createActivity(
     eventType: 'created',
     changedById: actor.id,
     changedByName: actor.name,
+    source: actor.source ?? null,
   });
 
   return activity;
@@ -329,6 +330,7 @@ export async function updateActivity(
         recordName: before.subject,
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
       if (auditEntries.length > 0) {
         await writeAuditEntries(client, auditEntries);
@@ -458,6 +460,7 @@ export async function deleteActivity(
     eventType: 'deleted',
     changedById: actor.id,
     changedByName: actor.name,
+    source: actor.source ?? null,
   });
 
   return existing;

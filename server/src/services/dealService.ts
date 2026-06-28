@@ -179,6 +179,7 @@ export async function createDeal(
       eventType: 'created',
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');
@@ -498,6 +499,7 @@ export async function updateDeal(
         recordName: deal.name,
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       };
 
       const fieldEntries = diffFields(
@@ -706,6 +708,7 @@ export async function deleteDeal(
         eventType: 'deleted',
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 

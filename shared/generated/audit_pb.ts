@@ -73,6 +73,13 @@ export class AuditRequest extends Message<AuditRequest> {
    */
   changedById = '';
 
+  /**
+   * empty = all sources; 'human' = NULL rows; 'AI (NLI)' = AI-initiated
+   *
+   * @generated from field: string source = 9;
+   */
+  source = '';
+
   constructor(data?: PartialMessage<AuditRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -89,6 +96,7 @@ export class AuditRequest extends Message<AuditRequest> {
     { no: 6, name: 'limit', kind: 'scalar', T: 5 /* ScalarType.INT32 */ },
     { no: 7, name: 'event_type', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
     { no: 8, name: 'changed_by_id', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: 'source', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuditRequest {
@@ -162,6 +170,13 @@ export class AuditEvent extends Message<AuditEvent> {
    */
   changedAt = '';
 
+  /**
+   * empty when human/REST; 'AI (NLI)' when AI-initiated
+   *
+   * @generated from field: string source = 10;
+   */
+  source = '';
+
   constructor(data?: PartialMessage<AuditEvent>) {
     super();
     proto3.util.initPartial(data, this);
@@ -179,6 +194,7 @@ export class AuditEvent extends Message<AuditEvent> {
     { no: 7, name: 'new_value', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
     { no: 8, name: 'changed_by', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
     { no: 9, name: 'changed_at', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: 'source', kind: 'scalar', T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuditEvent {

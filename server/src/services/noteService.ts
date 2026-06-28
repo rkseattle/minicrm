@@ -341,6 +341,7 @@ export async function createNote(
       newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(note.body_text),
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');
@@ -464,6 +465,7 @@ export async function updateNote(
         newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(after.body_text),
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 
@@ -477,6 +479,7 @@ export async function updateNote(
         newValue: after.visibility,
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 
@@ -495,6 +498,7 @@ export async function updateNote(
           newValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(after.body_text),
           changedById: actor.id,
           changedByName: actor.name,
+          source: actor.source ?? null,
         });
       }
     }
@@ -593,6 +597,7 @@ export async function deleteNote(
       oldValue: isPrivate ? PRIVATE_NOTE_AUDIT_VALUE : auditBodyText(note.body_text),
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');

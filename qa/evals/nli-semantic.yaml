@@ -76,3 +76,69 @@ tests:
           The response conveys that the operation is not permitted. It includes
           language equivalent to "You don't have permission to delete contacts"
           and does not suggest alternative ways to bypass the restriction.
+
+  # ── MINCRM-423 / MINCRM-431: read-intent result rendering ─────────────────
+
+  - description: Empty search result is communicated clearly without hallucinating records
+    vars:
+      query: Find all contacts named Zephyr
+      tool_results: '{"contacts":[],"total":0}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response clearly states that no contacts named Zephyr were
+          found. Fail if the response invents any contact names, emails, or other
+          details not present in the tool results. Phrasing does not matter —
+          only the absence of hallucinated data and the accurate "zero results"
+          communication matter.
+
+  - description: Multi-record search result lists each entity without fabricating fields
+    vars:
+      query: Show me all open deals
+      tool_results: '{"deals":[{"id":"d1000000-0000-0000-0000-000000000001","title":"Acme Contract","value":50000,"currency":"USD","stage":"proposal","status":"open"},{"id":"d1000000-0000-0000-0000-000000000002","title":"Beta SaaS Renewal","value":12000,"currency":"USD","stage":"negotiation","status":"open"}],"total":2}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response mentions both deals — Acme Contract (50000 USD,
+          proposal) and Beta SaaS Renewal (12000 USD, negotiation) — using only
+          data present in the tool results. Fail if the response fabricates deal
+          titles, values, stages, or currencies not in the provided data.
+
+  - description: Account lookup response reflects only the single matching record
+    vars:
+      query: Tell me about Globex Corp
+      tool_results: '{"accounts":[{"id":"a1000000-0000-0000-0000-000000000001","name":"Globex Corp","website":"globex.example.com","industry":"Manufacturing","phone":"+1-555-0100"}],"total":1}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response describes Globex Corp using only the data provided
+          (name, website, industry, phone). Fail if the response invents any
+          field values not in the tool results, such as employee count, revenue,
+          address, or additional contacts.
+
+  # ── MINCRM-444: AI mutation audit logging ──────────────────────────────────
+
+  - description: Successful write operation confirms what was created without overpromising
+    vars:
+      query: Create a note on the Acme account saying the renewal call went well
+      tool_results: '{"id":"n1000000-0000-0000-0000-000000000001","subject":"Renewal call","content":"The renewal call went well","entity_type":"account","entity_id":"a1000000-0000-0000-0000-000000000001","created_at":"2026-06-28T10:00:00Z"}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response confirms that a note was created with content
+          matching the user''s request ("renewal call went well" or equivalent).
+          Fail if the response claims the note was not created, invents a
+          different subject or content, or suggests additional steps are
+          required when the tool result already shows success.
+
+  - description: Mutation failure error is communicated clearly without suggesting retries
+    vars:
+      query: Update the close date on deal xyz to next Friday
+      tool_results: '{"error":{"code":"NOT_FOUND","message":"Deal not found"}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response informs the user that the deal was not found and
+          does not proceed as if the update was successful. The response should
+          not invent a deal ID, suggest retrying the same request with the same
+          identifier, or claim the update was applied.

@@ -1438,7 +1438,8 @@
       "allTypes": "Tous les types",
       "allEvents": "Tous les événements",
       "applyFilters": "Appliquer",
-      "clearFilters": "Effacer les filtres"
+      "clearFilters": "Effacer les filtres",
+      "source": "Source"
     },
     "table": {
       "timestamp": "Horodatage",
@@ -1474,7 +1475,14 @@
       "next": "Suivant",
       "page": "Page {{page}} sur {{total}}"
     },
-    "accessDenied": "Vous n'avez pas la permission de consulter le journal d'audit."
+    "accessDenied": "Vous n'avez pas la permission de consulter le journal d'audit.",
+    "source": {
+      "label": "Source",
+      "human": "Manuel",
+      "aiNli": "IA (NLI)",
+      "aiContext": "IA (contexte)",
+      "all": "Toutes les sources"
+    }
   },
   "leads": {
     "pageTitle": "Prospects",

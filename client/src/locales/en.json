@@ -1403,7 +1403,8 @@
       "allTypes": "All types",
       "allEvents": "All events",
       "applyFilters": "Apply",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "source": "Source"
     },
     "table": {
       "timestamp": "Timestamp",
@@ -1439,7 +1440,14 @@
       "next": "Next",
       "page": "Page {{page}} of {{total}}"
     },
-    "accessDenied": "You do not have permission to view the audit log."
+    "accessDenied": "You do not have permission to view the audit log.",
+    "source": {
+      "label": "Source",
+      "human": "Human",
+      "aiNli": "AI (NLI)",
+      "aiContext": "AI (context)",
+      "all": "All sources"
+    }
   },
   "leads": {
     "pageTitle": "Leads",

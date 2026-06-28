@@ -119,6 +119,7 @@ exports.up = (pgm) => {
             'new_value',       NEW.new_value,
             'changed_by_id',   NEW.changed_by_id,
             'changed_by_name', NEW.changed_by_name,
+            'source',          NEW.source,
             'created_at',      NEW.created_at
           )::text
         );
@@ -545,6 +546,7 @@ exports.up = (pgm) => {
       new_value      text,
       changed_by_id  uuid,
       changed_by_name text,
+      source         varchar(20) DEFAULT NULL CONSTRAINT audit_log_source_check CHECK (source IN ('AI (NLI)', 'AI (context)')),
       created_at     timestamp with time zone DEFAULT now() NOT NULL
     ) PARTITION BY RANGE (created_at)
   `);

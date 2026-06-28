@@ -11,6 +11,7 @@ message AuditRequest {
   int32  limit         = 6;  // default 25, unary RPC only
   string event_type    = 7;  // empty = all event types
   string changed_by_id = 8;  // empty = all users
+  string source        = 9;  // empty = all sources; 'human' = NULL rows; 'AI (NLI)' = AI-initiated
 }
 
 message AuditEvent {
@@ -23,6 +24,7 @@ message AuditEvent {
   string new_value   = 7;
   string changed_by  = 8;
   string changed_at  = 9;  // ISO 8601
+  string source      = 10; // empty when human/REST; 'AI (NLI)' when AI-initiated
 }
 
 message AuditResponse {

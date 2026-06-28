@@ -79,6 +79,10 @@ data into your messages.
 
 ### Reading data
 
+When you ask the AI to look up records, matching results appear as **inline cards** directly
+in the conversation — you do not need to navigate to a separate page. Each card shows key
+fields for the record type and includes a **View record** link to open the full detail page.
+
 | What you can ask                           | Example                                                 |
 | ------------------------------------------ | ------------------------------------------------------- |
 | Search contacts, accounts, leads, or deals | "Find all contacts at Acme Corp"                        |
@@ -86,6 +90,22 @@ data into your messages.
 | List activities, notes, or tags            | "What activities are logged for John Smith this month?" |
 | Run a report                               | "Give me a win/loss breakdown for Q2"                   |
 | Browse pipeline stages                     | "What stages are in our default pipeline?"              |
+
+#### Result cards
+
+After a successful search or lookup, the AI response includes a set of cards for the
+matching records. Each card shows:
+
+| Record type | Fields shown on card                              |
+| ----------- | ------------------------------------------------- |
+| Contact     | Name, email, company, phone                       |
+| Account     | Company name, website, industry                   |
+| Lead        | Name, email, company, status                      |
+| Deal        | Title, stage, value, currency, close date         |
+| Activity    | Subject, type, status, due date                   |
+| Note        | Subject, content preview, last-activity timestamp |
+
+If the search returns no results, a "No results found" notice appears in place of the cards.
 
 ### Writing data
 
@@ -117,6 +137,24 @@ never receives tools for operations you are not authorized to perform.
 
 The assistant never exposes webhook signing secrets or values from custom fields marked
 as PII-excluded by your administrator.
+
+---
+
+## Audit trail for AI-initiated changes
+
+Every record created, updated, or deleted via the AI Assistant is written to the audit log
+just like a manual change — with one difference: the entry is tagged with the source
+**AI (NLI)** so administrators can distinguish AI-initiated changes from human ones.
+
+You can see this attribution in **Admin → Data → Audit Log**:
+
+- In the **User** column, an **AI (NLI)** badge appears next to your name on entries
+  created through the AI Assistant.
+- Admins can filter the audit log by **Source** to view only AI-initiated changes, only
+  human changes, or all changes together.
+
+This means all AI actions are fully auditable and reversible — nothing the AI does on your
+behalf is hidden from the audit trail.
 
 ---
 

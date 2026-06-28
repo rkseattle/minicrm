@@ -55,6 +55,7 @@ export const auditLogEntrySchema = z.object({
   new_value: z.string().nullable(),
   changed_by_id: z.string().uuid().nullable(),
   changed_by_name: z.string().nullable(),
+  source: z.string().nullable(),
   created_at: z.string(),
 });
 
@@ -67,6 +68,7 @@ export const listAuditLogParamsSchema = z.object({
   userId: z.string().uuid().optional(),
   recordType: z.enum(AUDIT_RECORD_TYPES).optional(),
   eventType: z.enum(AUDIT_EVENT_TYPES).optional(),
+  source: z.enum(['AI (NLI)', 'AI (context)', 'human']).optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
