@@ -140,6 +140,10 @@ export async function executeToolCall(
   // Defence-in-depth: admin tool names are filtered from buildToolSet for non-admins,
   // but we enforce the check here too in case the tool set is bypassed.
   if (ADMIN_ONLY_TOOL_NAMES.has(toolName) && ctx.userRole !== 'admin') {
+    logger.warn(
+      { toolName, userId: ctx.userId, userRole: ctx.userRole },
+      'NLI permission denied: admin-only tool called by non-admin (MINCRM-434)',
+    );
     throw Object.assign(new Error(`Tool '${toolName}' requires admin role`), { statusCode: 403 });
   }
 
@@ -254,6 +258,15 @@ export async function executeToolCall(
         if (!current) return notFound('Account', id);
         // Enforce ownership: reps can only update accounts they own (matches HTTP controller).
         if (current.owner_id !== ctx.userId && ctx.userRole !== 'admin') {
+          logger.warn(
+            {
+              toolName: 'updateAccount',
+              accountId: id,
+              userId: ctx.userId,
+              userRole: ctx.userRole,
+            },
+            'NLI permission denied: rep attempted to update account they do not own (MINCRM-434)',
+          );
           throw Object.assign(new Error('You do not have permission to update this account'), {
             statusCode: 403,
           });
@@ -847,6 +860,10 @@ async function assertEntityAccess(
 
   if (ownerId !== ctx.userId) {
     const action = requireWrite ? 'update' : 'access';
+    logger.warn(
+      { entityType, entityId, userId: ctx.userId, userRole: ctx.userRole, requireWrite },
+      `NLI permission denied: user cannot ${action} ${entityType} (MINCRM-434)`,
+    );
     throw Object.assign(new Error(`You do not have permission to ${action} this ${entityType}`), {
       statusCode: 403,
     });
