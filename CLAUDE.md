@@ -280,6 +280,8 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 
 Never reply to comments before fixing the code. Never run a fresh `/code-review` when asked to address existing feedback.
 
+When replying to a comment left by Greptile, prefix the reply body with `@greptile:` followed by a space.
+
 ## Jira Workflow
 
 - Transition to **In Progress** when starting implementation.
