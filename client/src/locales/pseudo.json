@@ -1863,6 +1863,14 @@
     "sessionListLabel": "[Cönvërsàtïöns]",
     "userRole": "[Yöü]",
     "assistantRole": "[ÃÎ Àssïstànt]",
-    "sendShortcutHint": "[Sënd · ⌘↵]"
+    "sendShortcutHint": "[Sënd · ⌘↵]",
+    "results": {
+      "noResults": "[No results found.]",
+      "noSubject": "[(no subject)]",
+      "noContent": "[(no content)]",
+      "lastActivity": "[Last activity: {{date}}]",
+      "closes": "[Closes {{date}}]",
+      "viewRecord": "[View]"
+    }
   }
 }

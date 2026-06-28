@@ -2254,6 +2254,14 @@
     "sessionListLabel": "Conversations",
     "userRole": "Vous",
     "assistantRole": "Assistant IA",
-    "sendShortcutHint": "Envoyer · ⌘↵"
+    "sendShortcutHint": "Envoyer · ⌘↵",
+    "results": {
+      "noResults": "Aucun résultat trouvé.",
+      "noSubject": "(sans objet)",
+      "noContent": "(sans contenu)",
+      "lastActivity": "Dernière activité : {{date}}",
+      "closes": "Clôture le {{date}}",
+      "viewRecord": "Voir"
+    }
   }
 }

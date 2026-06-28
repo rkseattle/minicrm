@@ -2254,6 +2254,14 @@
     "sessionListLabel": "Unterhaltungen",
     "userRole": "Sie",
     "assistantRole": "KI-Assistent",
-    "sendShortcutHint": "Senden · ⌘↵"
+    "sendShortcutHint": "Senden · ⌘↵",
+    "results": {
+      "noResults": "Keine Ergebnisse gefunden.",
+      "noSubject": "(kein Betreff)",
+      "noContent": "(kein Inhalt)",
+      "lastActivity": "Letzte Aktivität: {{date}}",
+      "closes": "Abschluss {{date}}",
+      "viewRecord": "Anzeigen"
+    }
   }
 }
