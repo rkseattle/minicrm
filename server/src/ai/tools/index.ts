@@ -105,8 +105,8 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
 /** Names of tools that require the admin role (defence-in-depth). */
 export const ADMIN_ONLY_TOOL_NAMES = new Set<string>(adminTools.map((t) => t.name));
 
-/** All tool definitions in a flat array ordered for iteration. */
-const ALL_TOOLS: Anthropic.Messages.Tool[] = [
+/** All tool definitions in a flat array ordered for iteration. Exported for testing. */
+export const ALL_TOOLS: Anthropic.Messages.Tool[] = [
   ...contactTools,
   ...accountTools,
   ...leadTools,

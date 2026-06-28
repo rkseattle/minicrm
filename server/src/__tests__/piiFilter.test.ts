@@ -260,6 +260,26 @@ describe('applyPiiFilter — custom field PII exclusion', () => {
     expect(s['custom_fields']).toEqual([]);
     expect(strippedFields).toHaveLength(0);
   });
+
+  it('strips ALWAYS_EXCLUDED_FIELDS sibling properties on pii_excluded custom field entries', () => {
+    // A custom field entry that is pii_excluded AND has a sibling field in
+    // ALWAYS_EXCLUDED_FIELDS — both must be stripped.
+    const field = {
+      definition_id: 'd-1',
+      name: 'SSNField',
+      value: '111-22-3333',
+      password_hash: 'should-be-stripped', // sibling in ALWAYS_EXCLUDED_FIELDS
+      definition: { id: 'd-1', name: 'SSNField', field_type: 'text', pii_excluded: true },
+    };
+    const input = { id: 'c-1', custom_fields: [field] };
+    const { sanitised, strippedFields } = applyPiiFilter(input);
+    const s = sanitised as Record<string, unknown>;
+    const fields = s['custom_fields'] as Record<string, unknown>[];
+    expect(fields[0]['value']).toBeNull();
+    expect(fields[0]['password_hash']).toBeUndefined();
+    expect(strippedFields).toContain('custom_fields.SSNField');
+    expect(strippedFields).toContain('password_hash');
+  });
 });
 
 // ── applyPiiFilter: paginated list results ────────────────────────────────────

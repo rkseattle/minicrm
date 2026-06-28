@@ -8,7 +8,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildToolSet, TOOL_CAPABILITY_MAP, ADMIN_ONLY_TOOL_NAMES } from '../ai/tools/index.js';
+import {
+  buildToolSet,
+  TOOL_CAPABILITY_MAP,
+  ADMIN_ONLY_TOOL_NAMES,
+  ALL_TOOLS,
+} from '../ai/tools/index.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 // Helper: collect tool names from a tool array.
@@ -207,6 +212,17 @@ describe('buildToolSet', () => {
         expect(
           TOOL_CAPABILITY_MAP.has(toolName),
           `admin tool '${toolName}' is missing from TOOL_CAPABILITY_MAP`,
+        ).toBe(true);
+      }
+    });
+
+    it('every tool in ALL_TOOLS appears in TOOL_CAPABILITY_MAP (no unconstrained tools)', () => {
+      // Ensures that a new tool added to a tool file but omitted from the map
+      // does not silently become world-readable to any authenticated user.
+      for (const tool of ALL_TOOLS) {
+        expect(
+          TOOL_CAPABILITY_MAP.has(tool.name),
+          `tool '${tool.name}' is present in ALL_TOOLS but missing from TOOL_CAPABILITY_MAP`,
         ).toBe(true);
       }
     });

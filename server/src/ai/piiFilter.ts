@@ -89,14 +89,14 @@ export interface PiiFilterResult {
  * Non-object primitives are returned as-is (no stripping possible).
  */
 export function applyPiiFilter(result: unknown): PiiFilterResult {
-  const stripped: string[] = [];
-  const sanitised = filterValue(result, stripped);
-  return { sanitised, strippedFields: stripped };
+  const strippedSet = new Set<string>();
+  const sanitised = filterValue(result, strippedSet);
+  return { sanitised, strippedFields: Array.from(strippedSet) };
 }
 
 // ── Private helpers ────────────────────────────────────────────────────────────
 
-function filterValue(value: unknown, stripped: string[]): unknown {
+function filterValue(value: unknown, stripped: Set<string>): unknown {
   if (value === null || typeof value !== 'object') {
     return value;
   }
@@ -108,15 +108,16 @@ function filterValue(value: unknown, stripped: string[]): unknown {
   return filterObject(value as Record<string, unknown>, stripped);
 }
 
-function filterObject(obj: Record<string, unknown>, stripped: string[]): Record<string, unknown> {
+function filterObject(
+  obj: Record<string, unknown>,
+  stripped: Set<string>,
+): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const [key, val] of Object.entries(obj)) {
     if (ALWAYS_EXCLUDED_FIELDS.has(key)) {
       // Omit the field entirely — do not include the key at all.
-      if (!stripped.includes(key)) {
-        stripped.push(key);
-      }
+      stripped.add(key);
       continue;
     }
 
@@ -137,10 +138,10 @@ function filterObject(obj: Record<string, unknown>, stripped: string[]): Record<
  *   [{ definition_id, name, value, definition: { pii_excluded, ... } }, ...]
  *
  * Entries with pii_excluded === true on the definition have their `value`
- * replaced with null. The definition object itself and all other keys are
- * passed through unchanged so Claude knows the field exists.
+ * replaced with null. filterObject is called first on the full entry so that
+ * sibling properties in ALWAYS_EXCLUDED_FIELDS are also stripped.
  */
-function filterCustomFields(fields: unknown[], stripped: string[]): unknown[] {
+function filterCustomFields(fields: unknown[], stripped: Set<string>): unknown[] {
   return fields.map((field) => {
     if (field === null || typeof field !== 'object' || Array.isArray(field)) {
       return field;
@@ -156,16 +157,12 @@ function filterCustomFields(fields: unknown[], stripped: string[]): unknown[] {
 
     if (isPiiExcluded) {
       const fieldName = typeof f['name'] === 'string' ? f['name'] : 'custom_field';
-      const auditKey = `custom_fields.${fieldName}`;
-      if (!stripped.includes(auditKey)) {
-        stripped.push(auditKey);
-      }
-      // Clone with value nulled out; recurse into the definition normally.
-      return {
-        ...f,
-        value: null,
-        definition: filterValue(definition, stripped),
-      };
+      stripped.add(`custom_fields.${fieldName}`);
+      // Run the full filterObject pass first so sibling fields in ALWAYS_EXCLUDED_FIELDS
+      // are stripped, then override value to null.
+      const filtered = filterObject(f, stripped);
+      filtered['value'] = null;
+      return filtered;
     }
 
     return filterObject(f, stripped);

@@ -262,6 +262,11 @@ export async function sendMessage(
   actor: AuditActor,
   userRole: string,
 ): Promise<AiMessageResponse> {
+  // Resolve capabilities before Tx 1 so that a DB failure here aborts cleanly
+  // without leaving an orphaned user message in ai_messages. In E2E mode the
+  // result is unused but the query is cheap.
+  const capabilities = await userCapabilities(userId);
+
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────
   // Commit before calling Anthropic so the pool connection is released during
   // the (potentially multi-second) external HTTP round-trip.
@@ -354,9 +359,6 @@ export async function sendMessage(
       clientOptions.baseURL = row.base_url;
     }
     const anthropicClient = new Anthropic(clientOptions);
-    // Resolve the user's effective capability set once before the agentic loop.
-    // This is intentionally outside any transaction — it is a read-only DB query.
-    const capabilities = await userCapabilities(userId);
     const tools = buildToolSet(userRole, capabilities);
 
     try {
