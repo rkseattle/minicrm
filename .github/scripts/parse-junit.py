@@ -22,7 +22,14 @@ Usage:
       Prints: "<lines>|<funcs>|<branches>|<statements>"
       Prints "—|—|—|—" if the file does not exist; "?|?|?|?" on parse error.
 
-MINCRM-135, MINCRM-350
+  python3 parse-junit.py summary-promptfoo <json_file>
+      Parses a Promptfoo eval results JSON file (single-suite output from -o flag).
+      Prints: "<status>|<tests>|<passed>|<failed>|<errors>"
+      Status is "✅ Passed" or "❌ Failed".
+      Prints "⏭ Skipped|—|—|—|—" if the file does not exist.
+      Prints "❓ Unknown|0|0|0|0" on parse error.
+
+MINCRM-135, MINCRM-350, MINCRM-568
 """
 
 import sys
@@ -90,6 +97,24 @@ def cmd_coverage_summary(json_file):
         print('?|?|?|?')
 
 
+def cmd_summary_promptfoo(json_file):
+    if not os.path.exists(json_file):
+        print('⏭ Skipped|—|—|—|—')
+        return
+    try:
+        with open(json_file) as f:
+            data = json.load(f)
+        stats = data.get('results', {}).get('stats', {})
+        passed = int(stats.get('successes', 0))
+        failed = int(stats.get('failures', 0))
+        errors = int(stats.get('errors', 0))
+        total = passed + failed + errors
+        status = '✅ Passed' if (failed + errors) == 0 else '❌ Failed'
+        print(f'{status}|{total}|{passed}|{failed}|{errors}')
+    except Exception:
+        print('❓ Unknown|0|0|0|0')
+
+
 def cmd_failures(xml_file, project):
     try:
         suites = load_suites(xml_file)
@@ -119,6 +144,8 @@ if __name__ == '__main__':
         cmd_summary(sys.argv[2])
     elif command == 'summary-unit':
         cmd_summary_unit(sys.argv[2])
+    elif command == 'summary-promptfoo':
+        cmd_summary_promptfoo(sys.argv[2])
     elif command == 'coverage-summary':
         cmd_coverage_summary(sys.argv[2])
     elif command == 'failures':

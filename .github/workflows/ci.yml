@@ -74,13 +74,13 @@ jobs:
               - 'qa/evals/**'
               - '.github/workflows/ci.yml'
 
-      - name: Clear stale E2E functional test comment
+      - name: Clear stale functional test comment
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
           message: |
-            ## Playwright Test Results — Functional
+            ## Functional Test Results
 
             ⏳ Run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) in progress…
 
@@ -1245,7 +1245,7 @@ jobs:
     # Job dependency chain:
     #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
     #                                            → e2e-serial ────────────┘
-    needs: [e2e-aggregate, e2e-serial]
+    needs: [e2e-aggregate, e2e-serial, ai-evals]
     runs-on: ubuntu-latest
     if: |
       always() &&
@@ -1276,17 +1276,32 @@ jobs:
           name: e2e-serial-results
           path: artifacts/serial
 
+      - name: Download AI eval artifacts
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: eval-results-${{ github.run_number }}
+          path: artifacts/ai-evals
+
       - name: Build combined PR comment (MINCRM-135)
         id: comment
         run: |
           DESKTOP=$(python3 .github/scripts/parse-junit.py summary artifacts/desktop/merged-results.xml)
           MOBILE=$(python3 .github/scripts/parse-junit.py summary artifacts/mobile-web/merged-results.xml)
           SERIAL=$(python3 .github/scripts/parse-junit.py summary artifacts/serial/results.xml)
+          EVAL_INTENT=$(python3 .github/scripts/parse-junit.py summary-promptfoo artifacts/ai-evals/nli-intent.json)
+          EVAL_SEMANTIC=$(python3 .github/scripts/parse-junit.py summary-promptfoo artifacts/ai-evals/nli-semantic.json)
+          EVAL_RBAC=$(python3 .github/scripts/parse-junit.py summary-promptfoo artifacts/ai-evals/nli-rbac.json)
+          EVAL_PII=$(python3 .github/scripts/parse-junit.py summary-promptfoo artifacts/ai-evals/nli-pii.json)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r d_status d_tests d_passed d_failed d_skipped <<< "$DESKTOP"
           IFS='|' read -r m_status m_tests m_passed m_failed m_skipped <<< "$MOBILE"
           IFS='|' read -r s_status s_tests s_passed s_failed s_skipped <<< "$SERIAL"
+          IFS='|' read -r ei_status ei_tests ei_passed ei_failed ei_errors <<< "$EVAL_INTENT"
+          IFS='|' read -r es_status es_tests es_passed es_failed es_errors <<< "$EVAL_SEMANTIC"
+          IFS='|' read -r er_status er_tests er_passed er_failed er_errors <<< "$EVAL_RBAC"
+          IFS='|' read -r ep_status ep_tests ep_passed ep_failed ep_errors <<< "$EVAL_PII"
 
           HEAL_NOTE=""
           HEAL_LINK=""
@@ -1331,13 +1346,22 @@ jobs:
           done
 
           build_summary() {
-            echo "## Playwright Test Results — Functional"
+            echo "## Functional Test Results"
             echo ""
             echo "| Project | Status | Tests | Passed | Failed | Skipped |"
             echo "|---------|--------|-------|--------|--------|---------|"
             echo "| desktop | $d_status | $d_tests | $d_passed | $d_failed | $d_skipped |"
             echo "| mobile-web | $m_status | $m_tests | $m_passed | $m_failed | $m_skipped |"
             echo "| serial (desktop) | $s_status | $s_tests | $s_passed | $s_failed | $s_skipped |"
+            echo ""
+            echo "### AI Evals (Promptfoo)"
+            echo ""
+            echo "| Suite | Status | Tests | Passed | Failed | Errors |"
+            echo "|-------|--------|-------|--------|--------|--------|"
+            echo "| nli-intent | $ei_status | $ei_tests | $ei_passed | $ei_failed | $ei_errors |"
+            echo "| nli-semantic | $es_status | $es_tests | $es_passed | $es_failed | $es_errors |"
+            echo "| nli-rbac | $er_status | $er_tests | $er_passed | $er_failed | $er_errors |"
+            echo "| nli-pii | $ep_status | $ep_tests | $ep_passed | $ep_failed | $ep_errors |"
             if [ -n "$HEAL_NOTE" ]; then
               echo ""
               echo "$HEAL_NOTE"
