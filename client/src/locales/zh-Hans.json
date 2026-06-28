@@ -2254,6 +2254,14 @@
     "sessionListLabel": "对话",
     "userRole": "您",
     "assistantRole": "AI 助手",
-    "sendShortcutHint": "发送 · ⌘↵"
+    "sendShortcutHint": "发送 · ⌘↵",
+    "results": {
+      "noResults": "未找到结果。",
+      "noSubject": "（无主题）",
+      "noContent": "（无内容）",
+      "lastActivity": "最近活动：{{date}}",
+      "closes": "预计关闭：{{date}}",
+      "viewRecord": "查看"
+    }
   }
 }

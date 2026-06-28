@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import NavBar from '@/components/NavBar.js';
+import NliResultBlock from '@/components/ai/results/NliResultBlock.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import {
   AI_SESSIONS_QUERY_KEY,
@@ -25,25 +26,36 @@ import type { AiSessionResponse, AiMessageResponse } from '@shared/schemas/aiSes
 
 interface MessageBubbleProps {
   message: AiMessageResponse;
+  isLoading?: boolean;
 }
 
-function MessageBubble({ message }: MessageBubbleProps) {
+function MessageBubble({ message, isLoading = false }: MessageBubbleProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
+  const hasToolResults =
+    !isUser &&
+    message.tool_results !== null &&
+    message.tool_results !== undefined &&
+    message.tool_results.length > 0;
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
-          isUser
-            ? 'bg-primary-600 text-white rounded-ee-sm'
-            : 'bg-white border border-gray-200 text-gray-800 rounded-es-sm shadow-sm'
-        }`}
-        role="article"
-        aria-label={isUser ? t('ai.userRole') : t('ai.assistantRole')}
-        data-testid={`ai-message-${message.role}`}
-      >
-        {message.content}
+      <div className={`max-w-[80%] ${isUser ? '' : 'w-full'}`}>
+        <div
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
+            isUser
+              ? 'bg-primary-600 text-white rounded-ee-sm'
+              : 'bg-white border border-gray-200 text-gray-800 rounded-es-sm shadow-sm'
+          }`}
+          role="article"
+          aria-label={isUser ? t('ai.userRole') : t('ai.assistantRole')}
+          data-testid={`ai-message-${message.role}`}
+        >
+          {message.content}
+          {hasToolResults && (
+            <NliResultBlock toolResults={message.tool_results!} isLoading={isLoading} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -516,8 +528,16 @@ export default function AiPage() {
                 <p className="text-xs text-gray-500 max-w-xs">{t('ai.emptyStateBody')}</p>
               </div>
             )}
-            {allMessages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+            {allMessages.map((msg, idx) => (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isLoading={
+                  sendMutation.isPending &&
+                  idx === allMessages.length - 1 &&
+                  msg.role === 'assistant'
+                }
+              />
             ))}
             {/* Pending assistant indicator */}
             {sendMutation.isPending &&
