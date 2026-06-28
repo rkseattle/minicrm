@@ -1,0 +1,85 @@
+# NLI RBAC enforcement eval suite (MINCRM-568)
+#
+# Validates that role-based access control is correctly reflected in:
+#   1. The tool set presented to rep-role users (deterministic not-contains checks)
+#   2. The plain-language error returned for unauthorized operations (Haiku rubric)
+#
+# The tool list check simulates what buildToolSet('rep', repCapabilities) returns —
+# the admin-only tools (listPipelines, getPipeline, listStages, listCustomFields,
+# listAutomationRules, getAutomationRule, listWebhooks, listEmailTemplates,
+# getEmailTemplate) must all be absent from the rep tool set.
+#
+# Threshold: 0.9 for the Haiku-judged error-format test.
+
+description: NLI RBAC enforcement — tool-list exclusion and unauthorized-operation error
+
+providers:
+  - id: anthropic:claude-haiku-4-5-20251001
+
+threshold: 0.9
+
+prompts:
+  - "{{prompt}}"
+
+tests:
+  # ── Deterministic: rep tool list excludes every admin-only tool ──────────────
+  #
+  # The prompt asks the model to list the tools available to a rep-role user.
+  # Each assertion checks that a specific admin-only tool name is absent from
+  # the response text.
+
+  - description: Rep tool set excludes listPipelines
+    vars:
+      prompt: >
+        You are a CRM assistant configured for a rep-role user. The following
+        tools are available to this user (admin-only tools have been removed):
+        searchContacts, getContact, createContact, updateContact, deleteContact,
+        searchAccounts, getAccount, createAccount, updateAccount, deleteAccount,
+        searchLeads, getLead, createLead, updateLead, deleteLead, convertLead,
+        searchDeals, getDeal, createDeal, updateDeal, deleteDeal,
+        searchActivities, getActivity, createActivity, updateActivity,
+        deleteActivity, searchNotes, getNote, createNote, updateNote,
+        deleteNote, listTags, attachTag, detachTag, generateReport,
+        exportEntities.
+        List every tool available to this user.
+    assert:
+      - type: not-contains
+        value: listPipelines
+      - type: not-contains
+        value: getPipeline
+      - type: not-contains
+        value: listStages
+      - type: not-contains
+        value: listCustomFields
+      - type: not-contains
+        value: listAutomationRules
+      - type: not-contains
+        value: getAutomationRule
+      - type: not-contains
+        value: listWebhooks
+      - type: not-contains
+        value: listEmailTemplates
+      - type: not-contains
+        value: getEmailTemplate
+
+  # ── Haiku-judged: unauthorized operation returns correct plain-language error ─
+
+  - description: Unauthorized admin operation returns correct plain-language error
+    vars:
+      prompt: >
+        You are a CRM assistant. The user has requested an operation they are
+        not permitted to perform. Respond with the appropriate error message.
+
+        Tool result:
+        {"error":{"code":"FORBIDDEN","message":"You don't have permission to manage pipeline settings"}}
+
+        User query: Show me all pipeline configurations
+    assert:
+      - type: llm-rubric
+        value: >
+          The response clearly communicates that the user does not have
+          permission to perform the requested operation. It uses plain
+          language equivalent to "You don't have permission to manage
+          pipeline settings" and does not suggest any workaround or
+          alternative path to access the restricted data.
+        provider: anthropic:claude-haiku-4-5-20251001
