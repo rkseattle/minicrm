@@ -1805,7 +1805,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: eval-results-${{ github.run_number }}
-          path: qa/evals/.output/results.json
+          path: qa/evals/.output/
           if-no-files-found: warn
 
   # MINCRM-269: Sentinel job — sole required status check for branch protection.
