@@ -32,6 +32,8 @@ import type {
 import { buildToolSet } from '../ai/tools/index.js';
 import { executeToolCall } from '../ai/toolExecutor.js';
 import { AI_SYSTEM_PROMPT } from '../ai/systemPrompt.js';
+import { userCapabilities } from './roleService.js';
+import { applyPiiFilter } from '../ai/piiFilter.js';
 
 // ── Row types ──────────────────────────────────────────────────────────────────
 
@@ -352,7 +354,10 @@ export async function sendMessage(
       clientOptions.baseURL = row.base_url;
     }
     const anthropicClient = new Anthropic(clientOptions);
-    const tools = buildToolSet(userRole);
+    // Resolve the user's effective capability set once before the agentic loop.
+    // This is intentionally outside any transaction — it is a read-only DB query.
+    const capabilities = await userCapabilities(userId);
+    const tools = buildToolSet(userRole, capabilities);
 
     try {
       // Agentic tool-use loop: keep calling Claude until it produces a text
@@ -386,6 +391,7 @@ export async function sendMessage(
 
           // Execute each tool call sequentially to avoid write races.
           const toolResultBlocks: Anthropic.ToolResultBlockParam[] = [];
+          const strippedFieldsManifest: Record<string, string[]> = {};
           for (const block of response.content) {
             if (block.type !== 'tool_use') continue;
             let toolResult: unknown;
@@ -401,11 +407,27 @@ export async function sendMessage(
               if (statusCode === 403 || statusCode === 401) throw toolErr;
               toolResult = { error: toolErr instanceof Error ? toolErr.message : String(toolErr) };
             }
+
+            // Apply PII minimization before sending to the AI provider.
+            // Operates on a deep copy — the original result is unchanged.
+            const { sanitised, strippedFields } = applyPiiFilter(toolResult);
+            if (strippedFields.length > 0) {
+              strippedFieldsManifest[block.name] = strippedFields;
+            }
+
             toolResultBlocks.push({
               type: 'tool_result',
               tool_use_id: block.id,
-              content: JSON.stringify(toolResult),
+              content: JSON.stringify(sanitised),
             });
+          }
+
+          // Emit the per-round PII audit manifest (field names only, never values).
+          if (Object.keys(strippedFieldsManifest).length > 0) {
+            logger.info(
+              { sessionId, round: rounds, strippedFields: strippedFieldsManifest },
+              'NLI PII minimization: fields stripped from AI payload (MINCRM-445)',
+            );
           }
 
           // Append tool results and loop.
