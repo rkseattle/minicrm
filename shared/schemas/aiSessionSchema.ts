@@ -19,6 +19,19 @@ export const sendAiMessageSchema = z.object({
 
 export type SendAiMessageInput = z.infer<typeof sendAiMessageSchema>;
 
+/**
+ * A single tool call result captured during the NLI agentic loop.
+ * Stored alongside assistant messages to enable native CRM result rendering. (MINCRM-423, MINCRM-431)
+ */
+export interface AiToolResult {
+  /** The tool that was called (e.g. 'searchContacts', 'getDeal') */
+  toolName: string;
+  /** The input arguments passed to the tool */
+  input: Record<string, unknown>;
+  /** The raw output returned by the tool (already PII-filtered) */
+  output: unknown;
+}
+
 export interface AiSessionResponse {
   id: string;
   user_id: string;
@@ -32,6 +45,8 @@ export interface AiMessageResponse {
   session_id: string;
   role: AiMessageRole;
   content: string;
+  /** Structured tool results for native CRM rendering. Present only on assistant messages that invoked tools. */
+  tool_results: AiToolResult[] | null;
   created_at: string;
 }
 
