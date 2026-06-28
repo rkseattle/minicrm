@@ -836,6 +836,38 @@ an admin-only tool), the server emits a structured `warn` log entry with the too
 user ID, and role under the tag `NLI permission denied`. These entries are available in
 the server log for security review.
 
+### AI mutation audit trail (MINCRM-444)
+
+Every record created, updated, or deleted through the NLI is written to the **Audit Log**
+with the same fidelity as a manual change. The audit entry carries a `source` field that
+identifies the origin of the change:
+
+| Source value | Meaning                                                |
+| ------------ | ------------------------------------------------------ |
+| _(blank)_    | Change made by a human user via the CRM UI or REST API |
+| `AI (NLI)`   | Change initiated by the AI Natural-Language Interface  |
+
+#### Filtering audit log entries by source
+
+Go to **Admin Settings → Data → Audit Log** and use the **Source** dropdown to filter:
+
+| Filter option | Shows                                         |
+| ------------- | --------------------------------------------- |
+| All sources   | Every entry regardless of origin (default)    |
+| Human         | Only entries created by humans (blank source) |
+| AI (NLI)      | Only entries created through the NLI          |
+
+Entries created via the AI Assistant are highlighted with a purple **AI (NLI)** badge
+next to the user name in the audit log table, so you can identify them at a glance even
+when viewing unfiltered results.
+
+#### What is recorded
+
+The audit log captures the full change set for every NLI-initiated write — which fields
+changed, the old and new values, the acting user's identity, and the timestamp. This
+applies to all entity types the NLI can modify: contacts, accounts, leads, deals,
+activities, and notes.
+
 ---
 
 ## 12. Data Visibility Scoping

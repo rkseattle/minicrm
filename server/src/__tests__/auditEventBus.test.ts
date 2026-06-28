@@ -192,6 +192,7 @@ describe('maskAuditEvent', () => {
     new_value: 'Alicia',
     changed_by_id: ACTOR_ID,
     changed_by_name: ACTOR_NAME,
+    source: null,
     created_at: new Date().toISOString(),
   };
 

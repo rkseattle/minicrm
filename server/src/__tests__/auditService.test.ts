@@ -568,3 +568,121 @@ describe('listAuditLogActors', () => {
     expect(actors).toHaveLength(0);
   });
 });
+
+// ── source tagging (MINCRM-444) ───────────────────────────────────────────────
+
+describe('source tagging', () => {
+  it('stores source = "AI (NLI)" when provided', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID,
+        recordName: 'Alice Smith',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+        source: 'AI (NLI)',
+      });
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const rows = await getRecordAuditLog({ recordType: 'contact', recordId: RECORD_ID });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].source).toBe('AI (NLI)');
+  });
+
+  it('stores source = null when not provided', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID,
+        recordName: 'Alice Smith',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+      });
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const rows = await getRecordAuditLog({ recordType: 'contact', recordId: RECORD_ID });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].source).toBeNull();
+  });
+
+  it('listAuditLog({ source: "AI (NLI)" }) returns only AI entries', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID,
+        recordName: 'Alice',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+        source: 'AI (NLI)',
+      });
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID_2,
+        recordName: 'Bob',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+        // no source = human
+      });
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const result = await listAuditLog({
+      source: 'AI (NLI)',
+      userId: ACTOR.id,
+    });
+    expect(result.data.every((r) => r.source === 'AI (NLI)')).toBe(true);
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('listAuditLog({ source: "human" }) returns only null-source entries', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID,
+        recordName: 'Alice',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+        source: 'AI (NLI)',
+      });
+      await writeAuditEntry(client, {
+        recordType: 'contact',
+        recordId: RECORD_ID_2,
+        recordName: 'Bob',
+        eventType: 'created',
+        changedById: ACTOR.id,
+        changedByName: ACTOR.name,
+      });
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const result = await listAuditLog({
+      source: 'human',
+      userId: ACTOR.id,
+    });
+    expect(result.data.every((r) => r.source === null)).toBe(true);
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+  });
+});

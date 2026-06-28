@@ -19,6 +19,8 @@ import type { AuditNotification } from './auditEventBus.js';
 export interface AuditActor {
   id: string;
   name: string;
+  /** If set, audit entries written on behalf of this actor carry this source tag */
+  source?: 'AI (NLI)' | 'AI (context)';
 }
 
 /** System actor used as default for seeding, migrations, and automation triggers. */
@@ -124,6 +126,8 @@ export interface AuditEntryInput {
   changedById?: string | null;
   /** Display name of the user performing the action */
   changedByName?: string | null;
+  /** Source of the write operation: AI assistant or NULL for human/REST (MINCRM-444) */
+  source?: 'AI (NLI)' | 'AI (context)' | null;
 }
 
 /** A row returned from the audit_log table */
@@ -138,6 +142,7 @@ export interface AuditLogRow {
   new_value: string | null;
   changed_by_id: string | null;
   changed_by_name: string | null;
+  source: string | null;
   created_at: Date;
 }
 
@@ -165,8 +170,8 @@ export async function writeAuditEntry(client: PoolClient, entry: AuditEntryInput
 
   await client.query(
     `INSERT INTO audit_log
-       (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+       (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name, source)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       entry.recordType,
       entry.recordId ?? null,
@@ -177,6 +182,7 @@ export async function writeAuditEntry(client: PoolClient, entry: AuditEntryInput
       isSensitive ? null : (entry.newValue ?? null),
       entry.changedById ?? null,
       entry.changedByName ?? null,
+      entry.source ?? null,
     ],
   );
 }
@@ -318,6 +324,8 @@ export interface ListAuditLogOptions {
   recordId?: string;
   /** Filter by event type */
   eventType?: AuditEventType;
+  /** Filter by source: 'AI (NLI)' | 'AI (context)' | 'human' (NULL rows) (MINCRM-444) */
+  source?: 'AI (NLI)' | 'AI (context)' | 'human';
   /** 1-based page number; defaults to 1 */
   page?: number;
   /** Records per page; defaults to 50 */
@@ -350,7 +358,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
-         a.changed_by_id, a.changed_by_name, a.created_at
+         a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
        LEFT JOIN gdpr_deletion_log g
          ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
@@ -360,7 +368,7 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
-         a.changed_by_id, a.changed_by_name, a.created_at
+         a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a
        LEFT JOIN gdpr_deletion_log g
          ON g.record_id = a.record_id AND g.record_type = a.record_type AND g.completed_at IS NOT NULL
@@ -381,7 +389,17 @@ export async function getRecordAuditLog(options: GetRecordAuditLogOptions): Prom
  * @returns Paginated audit log entries
  */
 export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<AuditLogPage> {
-  const { from, to, userId, recordType, recordId, eventType, page = 1, limit = 50 } = options;
+  const {
+    from,
+    to,
+    userId,
+    recordType,
+    recordId,
+    eventType,
+    source,
+    page = 1,
+    limit = 50,
+  } = options;
 
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -416,6 +434,15 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
     conditions.push(`a.event_type = $${values.length}`);
   }
 
+  if (source) {
+    if (source === 'human') {
+      conditions.push(`a.source IS NULL`);
+    } else {
+      values.push(source);
+      conditions.push(`a.source = $${values.length}`);
+    }
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const offset = (page - 1) * limit;
 
@@ -434,7 +461,7 @@ export async function listAuditLog(options: ListAuditLogOptions = {}): Promise<A
          a.id, a.record_type, a.record_id, a.record_name, a.event_type, a.field_name,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.old_value END AS old_value,
          CASE WHEN g.record_id IS NOT NULL THEN '[GDPR deleted]' ELSE a.new_value END AS new_value,
-         a.changed_by_id, a.changed_by_name, a.created_at
+         a.changed_by_id, a.changed_by_name, a.source, a.created_at
        FROM audit_log a ${gdprJoin}
        ${where}
        ORDER BY a.created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
@@ -463,8 +490,8 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
   try {
     await pool.query(
       `INSERT INTO audit_log
-         (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         (record_type, record_id, record_name, event_type, field_name, old_value, new_value, changed_by_id, changed_by_name, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         entry.recordType,
         entry.recordId ?? null,
@@ -475,6 +502,7 @@ export async function writeAuditEntryBestEffort(entry: AuditEntryInput): Promise
         isSensitive ? null : (entry.newValue ?? null),
         entry.changedById ?? null,
         entry.changedByName ?? null,
+        entry.source ?? null,
       ],
     );
   } catch (err) {

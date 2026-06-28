@@ -26,6 +26,7 @@ function makeEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
     new_value: null,
     changed_by_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
     changed_by_name: 'Test User',
+    source: null,
     created_at: new Date().toISOString(),
     ...overrides,
   };

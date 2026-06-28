@@ -44,6 +44,7 @@ function grpcEventToEntry(event: PlainMessage<AuditEvent>): AuditLogEntry {
     new_value: event.newValue || null,
     changed_by_id: null,
     changed_by_name: event.changedBy || null,
+    source: event.source || null,
     created_at: event.changedAt,
   };
 }
@@ -56,6 +57,7 @@ interface AuditLogFilters {
   to?: string;
   userId?: string;
   eventType?: string;
+  source?: string;
 }
 
 /**
@@ -130,6 +132,7 @@ export default function AuditLogPage() {
   const [userId, setUserId] = useState('');
   const [recordType, setRecordType] = useState('');
   const [eventType, setEventType] = useState('');
+  const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
 
   /** Active filters applied to the query (submitted state) */
@@ -151,7 +154,8 @@ export default function AuditLogPage() {
     !appliedFilters.from &&
     !appliedFilters.to &&
     !appliedFilters.userId &&
-    !appliedFilters.eventType;
+    !appliedFilters.eventType &&
+    !appliedFilters.source;
 
   const { data, isLoading, isError } = useQuery({
     queryKey,
@@ -164,6 +168,7 @@ export default function AuditLogPage() {
           before: appliedFilters.to ?? '',
           eventType: appliedFilters.eventType ?? '',
           changedById: appliedFilters.userId ?? '',
+          source: appliedFilters.source ?? '',
           page,
           limit: PAGE_SIZE,
         });
@@ -264,9 +269,10 @@ export default function AuditLogPage() {
     if (userId) filters.userId = userId;
     if (recordType) filters.recordType = recordType;
     if (eventType) filters.eventType = eventType;
+    if (source) filters.source = source;
     setAppliedFilters(filters);
     setPage(1);
-  }, [from, to, userId, recordType, eventType]);
+  }, [from, to, userId, recordType, eventType, source]);
 
   const handleClearFilters = useCallback((): void => {
     setFrom('');
@@ -274,6 +280,7 @@ export default function AuditLogPage() {
     setUserId('');
     setRecordType('');
     setEventType('');
+    setSource('');
     setAppliedFilters({});
     setPage(1);
   }, []);
@@ -449,6 +456,26 @@ export default function AuditLogPage() {
                     ))}
                   </Select>
                 </div>
+
+                {/* Source filter (MINCRM-444) */}
+                <div>
+                  <label
+                    htmlFor="filter-source"
+                    className="block text-xs font-medium text-gray-500 mb-1"
+                  >
+                    {t('auditLog.filters.source')}
+                  </label>
+                  <Select
+                    id="filter-source"
+                    value={source}
+                    onChange={(e) => setSource(e.target.value)}
+                    data-testid="filter-source"
+                  >
+                    <option value="">{t('auditLog.source.all')}</option>
+                    <option value="human">{t('auditLog.source.human')}</option>
+                    <option value="AI (NLI)">{t('auditLog.source.aiNli')}</option>
+                  </Select>
+                </div>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -583,6 +610,13 @@ export default function AuditLogPage() {
                             data-testid={`audit-log-actor-${entry.id}`}
                           >
                             {entry.changed_by_name ?? '—'}
+                            {entry.source && (
+                              <span className="ms-1 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                                {t(
+                                  `auditLog.source.${entry.source === 'AI (NLI)' ? 'aiNli' : 'aiContext'}`,
+                                )}
+                              </span>
+                            )}
                           </span>
                           <span
                             className="text-sm text-gray-700 capitalize"

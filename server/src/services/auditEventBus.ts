@@ -37,6 +37,7 @@ export interface AuditNotification {
   new_value: string | null;
   changed_by_id: string | null;
   changed_by_name: string | null;
+  source: string | null;
   created_at: string;
 }
 

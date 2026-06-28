@@ -413,7 +413,7 @@ export async function sendMessage(
               toolResult = await executeToolCall(
                 block.name,
                 block.input as Record<string, unknown>,
-                { actor, userId, userRole },
+                { actor: { ...actor, source: 'AI (NLI)' as const }, userId, userRole },
               );
             } catch (toolErr: unknown) {
               // Hard auth errors propagate; other errors become error content.

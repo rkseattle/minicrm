@@ -94,6 +94,7 @@ function rowToEvent(row: AuditLogRow): PartialMessage<AuditEvent> {
     changedBy: row.changed_by_name ?? '',
     changedAt:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    source: row.source ?? '',
   };
 }
 
@@ -108,6 +109,7 @@ function notificationToEvent(n: AuditNotification): PartialMessage<AuditEvent> {
     newValue: n.new_value ?? '',
     changedBy: n.changed_by_name ?? '',
     changedAt: n.created_at,
+    source: n.source ?? '',
   };
 }
 
@@ -115,6 +117,11 @@ function matchesStreamFilter(notification: AuditNotification, req: AuditRequest)
   if (req.recordType && notification.record_type !== req.recordType) return false;
   if (req.recordId && notification.record_id !== req.recordId) return false;
   if (req.after && notification.created_at < req.after) return false;
+  if (req.source) {
+    const notifSource = notification.source ?? null;
+    if (req.source === 'human' && notifSource !== null) return false;
+    if (req.source !== 'human' && notifSource !== req.source) return false;
+  }
   return true;
 }
 
@@ -141,6 +148,7 @@ export function registerAuditService(router: ConnectRouter): void {
           to: req.before || undefined,
           eventType: (req.eventType || undefined) as AuditEventType | undefined,
           userId: req.changedById || undefined,
+          source: (req.source || undefined) as 'AI (NLI)' | 'AI (context)' | 'human' | undefined,
           page,
           limit,
         });

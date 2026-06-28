@@ -233,6 +233,7 @@ export async function createAccount(
       eventType: 'created',
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');
@@ -467,6 +468,7 @@ export async function updateAccount(
         recordName: account.name,
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       };
 
       const fieldEntries = diffFields(
@@ -630,6 +632,7 @@ export async function deleteAccount(
         eventType: 'deleted',
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 

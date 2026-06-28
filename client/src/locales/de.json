@@ -1438,7 +1438,8 @@
       "allTypes": "Alle Typen",
       "allEvents": "Alle Ereignisse",
       "applyFilters": "Anwenden",
-      "clearFilters": "Filter zurücksetzen"
+      "clearFilters": "Filter zurücksetzen",
+      "source": "Quelle"
     },
     "table": {
       "timestamp": "Zeitstempel",
@@ -1474,7 +1475,14 @@
       "next": "Weiter",
       "page": "Seite {{page}} von {{total}}"
     },
-    "accessDenied": "Sie haben keine Berechtigung, das Änderungsprotokoll einzusehen."
+    "accessDenied": "Sie haben keine Berechtigung, das Änderungsprotokoll einzusehen.",
+    "source": {
+      "label": "Quelle",
+      "human": "Manuell",
+      "aiNli": "KI (NLI)",
+      "aiContext": "KI (Kontext)",
+      "all": "Alle Quellen"
+    }
   },
   "leads": {
     "pageTitle": "Leads",

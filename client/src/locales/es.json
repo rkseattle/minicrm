@@ -1438,7 +1438,8 @@
       "allTypes": "Todos los tipos",
       "allEvents": "Todos los eventos",
       "applyFilters": "Aplicar",
-      "clearFilters": "Limpiar filtros"
+      "clearFilters": "Limpiar filtros",
+      "source": "Origen"
     },
     "table": {
       "timestamp": "Fecha y hora",
@@ -1474,7 +1475,14 @@
       "next": "Siguiente",
       "page": "Página {{page}} de {{total}}"
     },
-    "accessDenied": "No tiene permiso para ver el registro de auditoría."
+    "accessDenied": "No tiene permiso para ver el registro de auditoría.",
+    "source": {
+      "label": "Origen",
+      "human": "Manual",
+      "aiNli": "IA (NLI)",
+      "aiContext": "IA (contexto)",
+      "all": "Todos los orígenes"
+    }
   },
   "leads": {
     "pageTitle": "Prospectos",

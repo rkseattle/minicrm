@@ -156,6 +156,7 @@ export async function createLead(
       eventType: 'created',
       changedById: actor.id,
       changedByName: actor.name,
+      source: actor.source ?? null,
     });
 
     await client.query('COMMIT');
@@ -366,6 +367,7 @@ export async function updateLead(
           recordName: `${lead.first_name}${lead.last_name ? ' ' + lead.last_name : ''}`,
           changedById: actor.id,
           changedByName: actor.name,
+          source: actor.source ?? null,
         },
       );
       if (auditEntries.length > 0) {
@@ -414,6 +416,7 @@ export async function deleteLead(
         eventType: 'deleted',
         changedById: actor.id,
         changedByName: actor.name,
+        source: actor.source ?? null,
       });
     }
 
