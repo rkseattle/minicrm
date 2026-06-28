@@ -67,7 +67,7 @@ tests:
   - description: Unauthorized operation error matches required plain-language format
     vars:
       query: Delete all contacts
-      tool_results: '{"error":{"code":"FORBIDDEN","message":"You don'\''t have permission to delete contacts"}}'
+      tool_results: '{"error":{"code":"FORBIDDEN","message":"You don''t have permission to delete contacts"}}'
     assert:
       - type: llm-rubric
         value: >
