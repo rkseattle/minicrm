@@ -6,9 +6,14 @@
  * between two short transactions so the pool connection is released for the duration
  * of the external HTTP round-trip.
  *
+ * Tool use: when the model returns stop_reason 'tool_use', each tool_use block is
+ * dispatched to toolExecutor and the result appended as tool_result before the next
+ * Anthropic call. The loop repeats until stop_reason is 'end_turn' or the hard cap
+ * of MAX_TOOL_ROUNDS is reached.
+ *
  * In E2E environments (E2E=true) the Anthropic SDK call is replaced by a deterministic
  * stub response so that test runs never consume real API tokens.
- * (MINCRM-420, MINCRM-421)
+ * (MINCRM-420, MINCRM-421, MINCRM-422)
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -24,6 +29,9 @@ import type {
   AiMessageResponse,
   AiSessionWithMessagesResponse,
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
+import { buildToolSet } from '../ai/tools/index.js';
+import { executeToolCall } from '../ai/toolExecutor.js';
+import { AI_SYSTEM_PROMPT } from '../ai/systemPrompt.js';
 
 // ── Row types ──────────────────────────────────────────────────────────────────
 
@@ -51,12 +59,15 @@ interface AiConfigRow {
   enabled: boolean;
 }
 
-// ── E2E stub ───────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
 const IS_E2E = process.env.E2E === 'true';
 
 /** Deterministic response returned in E2E environments instead of calling Anthropic. */
 const E2E_STUB_RESPONSE = '[E2E stub response]';
+
+/** Maximum number of tool-call rounds before aborting to prevent runaway loops. */
+const MAX_TOOL_ROUNDS = 10;
 
 // ── Serialisers ───────────────────────────────────────────────────────────────
 
@@ -232,19 +243,22 @@ export async function deleteSession(
 }
 
 /**
- * Appends a user message to the session, calls the AI provider with the full
- * conversation history, and persists the assistant reply.
+ * Appends a user message to the session, runs the agentic Claude loop
+ * (tool calls resolved until end_turn or MAX_TOOL_ROUNDS), and persists
+ * the final assistant reply.
  *
  * Returns the assistant AiMessageResponse so the client can optimistically
  * append it without a refetch.
  *
  * In E2E mode the Anthropic call is replaced by a stub — no tokens are consumed.
+ * (MINCRM-422)
  */
 export async function sendMessage(
   sessionId: string,
   userId: string,
   content: string,
   actor: AuditActor,
+  userRole: string,
 ): Promise<AiMessageResponse> {
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────
   // Commit before calling Anthropic so the pool connection is released during
@@ -301,7 +315,9 @@ export async function sendMessage(
     client1.release();
   }
 
-  // ── AI call (outside any transaction) ────────────────────────────────────
+  // ── Agentic AI loop (outside any transaction) ──────────────────────────────
+  // Pool connection is intentionally released before this block (end of Tx 1)
+  // so it is available to tool calls that need their own DB queries.
 
   let assistantContent: string;
   let inputTokens = 0;
@@ -336,24 +352,85 @@ export async function sendMessage(
       clientOptions.baseURL = row.base_url;
     }
     const anthropicClient = new Anthropic(clientOptions);
+    const tools = buildToolSet(userRole);
 
     try {
-      const response = await anthropicClient.messages.create({
-        model: row.model,
-        max_tokens: 4096,
-        system:
-          'You are a helpful AI assistant integrated into a CRM application. ' +
-          'Help users understand and work with their CRM data.',
-        messages: sdkMessages,
-      });
+      // Agentic tool-use loop: keep calling Claude until it produces a text
+      // response (stop_reason === 'end_turn') or we hit the safety cap.
+      let loopMessages: Anthropic.MessageParam[] = [...sdkMessages];
+      let rounds = 0;
+      assistantContent = '';
 
-      const textBlock = response.content.find((block) => block.type === 'text');
-      assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
+      while (rounds < MAX_TOOL_ROUNDS) {
+        const response = await anthropicClient.messages.create({
+          model: row.model,
+          max_tokens: 4096,
+          system: AI_SYSTEM_PROMPT,
+          tools,
+          tool_choice: { type: 'auto' },
+          messages: loopMessages,
+        });
+
+        inputTokens += response.usage.input_tokens;
+        outputTokens += response.usage.output_tokens;
+
+        if (response.stop_reason === 'end_turn') {
+          const textBlock = response.content.find((b) => b.type === 'text');
+          assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
+          break;
+        }
+
+        if (response.stop_reason === 'tool_use') {
+          // Append the assistant's tool_use message to the conversation.
+          loopMessages = [...loopMessages, { role: 'assistant', content: response.content }];
+
+          // Execute each tool call sequentially to avoid write races.
+          const toolResultBlocks: Anthropic.ToolResultBlockParam[] = [];
+          for (const block of response.content) {
+            if (block.type !== 'tool_use') continue;
+            let toolResult: unknown;
+            try {
+              toolResult = await executeToolCall(
+                block.name,
+                block.input as Record<string, unknown>,
+                { actor, userId, userRole },
+              );
+            } catch (toolErr: unknown) {
+              // Hard auth errors propagate; other errors become error content.
+              const statusCode = (toolErr as { statusCode?: number }).statusCode;
+              if (statusCode === 403 || statusCode === 401) throw toolErr;
+              toolResult = { error: toolErr instanceof Error ? toolErr.message : String(toolErr) };
+            }
+            toolResultBlocks.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: JSON.stringify(toolResult),
+            });
+          }
+
+          // Append tool results and loop.
+          loopMessages = [...loopMessages, { role: 'user', content: toolResultBlocks }];
+          rounds++;
+          continue;
+        }
+
+        // Unexpected stop reason — treat current content as final.
+        logger.warn({ stop_reason: response.stop_reason }, 'Unexpected AI stop reason');
+        const textBlock = response.content.find((b) => b.type === 'text');
+        assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
+        break;
+      }
+
+      if (rounds >= MAX_TOOL_ROUNDS && !assistantContent) {
+        assistantContent =
+          'I reached the maximum number of tool calls while processing your request. ' +
+          'Please try breaking your request into smaller steps.';
+        logger.warn({ sessionId, rounds }, 'NLI hit MAX_TOOL_ROUNDS cap');
+      }
+
       if (!assistantContent) {
         throw Object.assign(new Error('AI provider returned no text content'), { statusCode: 502 });
       }
-      inputTokens = response.usage.input_tokens;
-      outputTokens = response.usage.output_tokens;
     } catch (err) {
       if (err instanceof Anthropic.AuthenticationError) {
         logger.error({ err }, 'AI authentication error — check the API key in admin settings');
