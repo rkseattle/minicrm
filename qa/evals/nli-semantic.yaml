@@ -1,0 +1,77 @@
+# NLI semantic quality eval suite (MINCRM-568)
+#
+# Validates response quality using Haiku as an LLM-as-judge. Rubrics are
+# narrow and binary — the judge answers pass/fail, not scored 0–1.
+#
+# Threshold: 0.9 — accounts for acceptable Haiku judgment variance on
+# binary rubrics. See qa/evals/README.md for full rationale.
+#
+# IMPORTANT: This suite must NEVER be used for PII assertions. Any content
+# that may contain PII goes in nli-pii.yaml with deterministic checks only.
+
+description: NLI semantic quality — Haiku LLM-as-judge
+
+providers:
+  - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      tools:
+        - name: searchContacts
+          description: Search for contacts by name, email, company, or other criteria.
+          input_schema:
+            type: object
+            properties:
+              query:
+                type: string
+            required:
+              - query
+
+# 90% threshold: deterministic suites enforce 100% implicitly (binary pass/fail);
+# Haiku judge variance on semantic rubrics allows up to 10% judgment noise.
+threshold: 0.9
+
+prompts:
+  - |
+    You are a helpful CRM assistant. Answer the user's question using the
+    tool results provided. Be concise and directly address the query.
+
+    Tool results:
+    {{tool_results}}
+
+    User query: {{query}}
+
+tests:
+  - description: Response is relevant and directly addresses the query
+    vars:
+      query: How many contacts do we have named Alice?
+      tool_results: '{"contacts":[{"id":"c1000000-0000-0000-0000-000000000001","first_name":"Alice","last_name":"Chen","email":"alice.chen@example.com","company":"Acme Corp"}],"total":1}'
+    assert:
+      - type: llm-rubric
+        value: >
+          The response directly answers the question about contacts named Alice.
+          It references exactly 1 contact and does not invent names, emails,
+          or companies that are absent from the tool results.
+        provider: anthropic:claude-haiku-4-5-20251001
+
+  - description: Response does not hallucinate entity names or field values
+    vars:
+      query: What deals do we have in the Enterprise pipeline?
+      tool_results: '{"deals":[{"id":"d1000000-0000-0000-0000-000000000001","title":"Acme Enterprise Contract","value":75000,"currency":"USD","stage":"proposal","pipeline":"Enterprise","status":"open"}],"total":1}'
+    assert:
+      - type: llm-rubric
+        value: >
+          The response describes the deal accurately using only information
+          present in the tool results. It does not fabricate deal titles,
+          values, stages, or companies that are not in the provided data.
+        provider: anthropic:claude-haiku-4-5-20251001
+
+  - description: Unauthorized operation error matches required plain-language format
+    vars:
+      query: Delete all contacts
+      tool_results: '{"error":{"code":"FORBIDDEN","message":"You don'\''t have permission to delete contacts"}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          The response conveys that the operation is not permitted. It includes
+          language equivalent to "You don't have permission to delete contacts"
+          and does not suggest alternative ways to bypass the restriction.
+        provider: anthropic:claude-haiku-4-5-20251001
