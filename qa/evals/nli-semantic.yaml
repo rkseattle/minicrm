@@ -48,9 +48,10 @@ tests:
     assert:
       - type: llm-rubric
         value: >
-          The response directly answers the question about contacts named Alice.
-          It references exactly 1 contact and does not invent names, emails,
-          or companies that are absent from the tool results.
+          Pass if the response mentions exactly 1 contact named Alice and does
+          not invent names, emails, or companies absent from the tool results.
+          The response may use any phrasing or structure — only the accuracy
+          of the count and the absence of hallucinated data matter.
 
   - description: Response does not hallucinate entity names or field values
     vars:
@@ -59,9 +60,11 @@ tests:
     assert:
       - type: llm-rubric
         value: >
-          The response describes the deal accurately using only information
-          present in the tool results. It does not fabricate deal titles,
-          values, stages, or companies that are not in the provided data.
+          Pass if the response describes the deal using only information present
+          in the tool results (title: Acme Enterprise Contract, value: 75000,
+          pipeline: Enterprise, stage: proposal, status: open). Fail only if
+          the response fabricates deal titles, values, stages, or companies
+          not in the provided data. Phrasing and structure do not matter.
 
   - description: Unauthorized operation error matches required plain-language format
     vars:
