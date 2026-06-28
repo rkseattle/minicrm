@@ -649,6 +649,46 @@ the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
 - The master toggle and configuration are separate operations. You can configure AI
   without enabling it globally, which is useful for staging your setup before rollout.
 
+### AI PII data minimization (MINCRM-445)
+
+MiniCRM applies a server-side data minimization pass to every tool call result before it
+is transmitted to the AI provider. This means sensitive fields are never included in the
+data sent to the external API, regardless of what is stored in the CRM database.
+
+#### Fields always excluded (hardcoded)
+
+The following field types are stripped from AI payloads regardless of admin configuration:
+
+| Category                   | Fields stripped                                                                                                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Internal system secrets    | `password_hash`, `password_reset_token`, `api_key_encrypted`, `mfa_secret`, `otp_backup_codes`, `secret_hash`, `service_account_token`, `refresh_token`, `access_token`           |
+| Financial / government IDs | `ssn`, `social_security_number`, `tax_id`, `tax_identification_number`, `ein`, `vat_number`, `bank_account`, `bank_account_number`, `routing_number`, `credit_card_number`, `cvv` |
+
+These fields are never transmitted to the AI provider even if they appear in search results
+or entity payloads.
+
+#### PII-excluded custom fields
+
+When a custom field definition is marked **PII-excluded** in **Admin Settings → Custom Fields**
+(the `pii_excluded` toggle), the _value_ of that field is stripped from AI payloads. The
+field name and metadata remain so the AI knows the field exists but cannot read its content.
+
+To mark a custom field as PII-excluded:
+
+1. Go to **Admin Settings → Custom Fields**.
+2. Open the definition for the field you want to protect.
+3. Enable the **PII-excluded** toggle.
+4. Save.
+
+The change takes effect on the user's next AI message — no restart is required.
+
+#### Audit logging
+
+Every AI API call that strips at least one field emits a structured server log entry
+containing the session ID, the tool name, and the list of stripped field names (never
+their values). These entries appear in the server log under the tag
+`NLI PII minimization` and can be used for compliance auditing.
+
 ---
 
 ## 10. AI Token Budgets
@@ -757,6 +797,44 @@ without disabling AI entirely.
 
 Reps will no longer see that feature on their next page load. Their existing data is not
 affected.
+
+### AI Natural-Language Interface (NLI) — RBAC-filtered tool set (MINCRM-434)
+
+The NLI tool set presented to Claude is filtered server-side based on the authenticated
+user's effective capabilities. Claude never receives tool definitions for operations the
+user is not authorized to perform.
+
+#### How tool filtering works
+
+Tool availability in the NLI mirrors the user's role and capability set:
+
+| Capability                | Tools available                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `contacts:view`           | Search and get contacts, accounts, leads                                                    |
+| `contacts:create`         | Create contacts, accounts, leads; convert leads                                             |
+| `contacts:edit`           | Update contacts, accounts, leads; manage notes and tags                                     |
+| `contacts:delete`         | Delete contacts, accounts, leads                                                            |
+| `deals:view`              | Search and get deals                                                                        |
+| `deals:create`            | Create deals                                                                                |
+| `deals:edit`              | Update deals                                                                                |
+| `deals:delete`            | Delete deals                                                                                |
+| `activities:view`         | Search and get activities                                                                   |
+| `activities:create`       | Create activities                                                                           |
+| `activities:edit`         | Update activities                                                                           |
+| `activities:delete`       | Delete activities                                                                           |
+| `reports:view`            | Run built-in reports                                                                        |
+| `data:export`             | Export records as CSV                                                                       |
+| `settings:manage` (admin) | Read pipeline config, custom field definitions, automation rules, webhooks, email templates |
+
+Viewers receive only read-only tools (search/get) and cannot create, update, or delete
+records via the NLI, matching their standard CRM access.
+
+#### Audit logging
+
+When a user attempts an operation they are not authorized to perform (e.g. a rep calling
+an admin-only tool), the server emits a structured `warn` log entry with the tool name,
+user ID, and role under the tag `NLI permission denied`. These entries are available in
+the server log for security review.
 
 ---
 

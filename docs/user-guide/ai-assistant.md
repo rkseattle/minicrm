@@ -105,10 +105,18 @@ The assistant can create and update records when you ask it to:
 
 Your data access in the AI Assistant mirrors your normal CRM permissions:
 
+- **Viewers** can search and read records but cannot create, update, or delete anything
+  via the AI Assistant.
 - **Reps** see and can modify only their own contacts, accounts, leads, and deals.
-- **Admins** see all records and can scope reports to any user.
+- **Admins** see all records and can scope reports to any user. Admins also have access
+  to read-only tools for pipeline stages, custom field definitions, automation rules,
+  webhooks, and email templates.
 
-The assistant never exposes webhook signing secrets or PII-excluded custom fields.
+The tool set Claude has access to is filtered server-side based on your role — Claude
+never receives tools for operations you are not authorized to perform.
+
+The assistant never exposes webhook signing secrets or values from custom fields marked
+as PII-excluded by your administrator.
 
 ---
 
