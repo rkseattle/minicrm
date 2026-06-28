@@ -109,7 +109,7 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
 // returns an empty set — e.g., when the custom_roles or role_capabilities tables are
 // missing the built-in rows due to a failed or rolled-back migration.
 //
-// Keep this in sync with the seed data in db/migrations/106, 109, and 114. (MINCRM-434)
+// Keep this in sync with the seed data in db/migrations/106, 108, 109, and 114. (MINCRM-434)
 
 /** Minimum capabilities guaranteed to each built-in role string (static fallback). */
 export const BUILTIN_ROLE_CAPABILITIES: Readonly<Record<string, readonly Capability[]>> = {
@@ -148,14 +148,17 @@ export const BUILTIN_ROLE_CAPABILITIES: Readonly<Record<string, readonly Capabil
   ],
   manager: [
     Capability.ContactsView,
+    Capability.ContactsCreate, // migration 108
     Capability.ContactsEdit,
     Capability.ContactsExport,
     Capability.ContactsDelete,
     Capability.DealsView,
+    Capability.DealsCreate, // migration 108
     Capability.DealsEdit,
     Capability.DealsReassign,
     Capability.DealsDelete,
     Capability.ActivitiesView,
+    Capability.ActivitiesCreate, // migration 108
     Capability.ActivitiesEdit,
     Capability.ActivitiesDelete,
     Capability.PipelinesView,
