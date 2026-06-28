@@ -17,7 +17,7 @@
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
-import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
+import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { contactTools } from './contactTools.js';
 import { accountTools } from './accountTools.js';
 import { leadTools } from './leadTools.js';
@@ -101,6 +101,94 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['listEmailTemplates', 'settings:manage' as Capability],
   ['getEmailTemplate', 'settings:manage' as Capability],
 ]);
+
+// ── Built-in role capability fallback ─────────────────────────────────────────
+//
+// Static snapshot of the capability matrix seeded by migrations 106, 109, and 114.
+// Used by resolveNliCapabilities() as a last-resort fallback when userCapabilities()
+// returns an empty set — e.g., when the custom_roles or role_capabilities tables are
+// missing the built-in rows due to a failed or rolled-back migration.
+//
+// Keep this in sync with the seed data in db/migrations/106, 109, and 114. (MINCRM-434)
+
+/** Minimum capabilities guaranteed to each built-in role string (static fallback). */
+export const BUILTIN_ROLE_CAPABILITIES: Readonly<Record<string, readonly Capability[]>> = {
+  admin: [
+    Capability.ContactsView,
+    Capability.ContactsCreate,
+    Capability.ContactsEdit,
+    Capability.ContactsDelete,
+    Capability.ContactsExport,
+    Capability.DealsView,
+    Capability.DealsCreate,
+    Capability.DealsEdit,
+    Capability.DealsDelete,
+    Capability.DealsReassign,
+    Capability.ActivitiesView,
+    Capability.ActivitiesCreate,
+    Capability.ActivitiesEdit,
+    Capability.ActivitiesDelete,
+    Capability.PipelinesView,
+    Capability.PipelinesManage,
+    Capability.ReportsView,
+    Capability.ReportsCreate,
+    Capability.ReportsExport,
+    Capability.BulkOperations,
+    Capability.DataImport,
+    Capability.DataExport,
+    Capability.UsersView,
+    Capability.UsersCreate,
+    Capability.UsersEdit,
+    Capability.UsersDelete,
+    Capability.TeamsManage,
+    Capability.IntegrationsManage,
+    Capability.SettingsManage,
+    Capability.FeatureFlagsManage,
+    Capability.AuditLogView,
+  ],
+  manager: [
+    Capability.ContactsView,
+    Capability.ContactsEdit,
+    Capability.ContactsExport,
+    Capability.ContactsDelete,
+    Capability.DealsView,
+    Capability.DealsEdit,
+    Capability.DealsReassign,
+    Capability.DealsDelete,
+    Capability.ActivitiesView,
+    Capability.ActivitiesEdit,
+    Capability.ActivitiesDelete,
+    Capability.PipelinesView,
+    Capability.ReportsView,
+    Capability.ReportsCreate,
+    Capability.ReportsExport,
+    Capability.BulkOperations,
+    Capability.DataExport,
+  ],
+  rep: [
+    Capability.ContactsView,
+    Capability.ContactsCreate,
+    Capability.ContactsEdit,
+    Capability.ContactsDelete,
+    Capability.DealsView,
+    Capability.DealsCreate,
+    Capability.DealsEdit,
+    Capability.DealsDelete,
+    Capability.ActivitiesView,
+    Capability.ActivitiesCreate,
+    Capability.ActivitiesEdit,
+    Capability.ActivitiesDelete,
+    Capability.PipelinesView,
+    Capability.ReportsView,
+  ],
+  viewer: [
+    Capability.ContactsView,
+    Capability.DealsView,
+    Capability.ActivitiesView,
+    Capability.PipelinesView,
+    Capability.ReportsView,
+  ],
+};
 
 /** Names of tools that require the admin role (defence-in-depth). */
 export const ADMIN_ONLY_TOOL_NAMES = new Set<string>(adminTools.map((t) => t.name));

@@ -29,10 +29,11 @@ import type {
   AiMessageResponse,
   AiSessionWithMessagesResponse,
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
-import { buildToolSet } from '../ai/tools/index.js';
+import { buildToolSet, BUILTIN_ROLE_CAPABILITIES } from '../ai/tools/index.js';
 import { executeToolCall } from '../ai/toolExecutor.js';
 import { AI_SYSTEM_PROMPT } from '../ai/systemPrompt.js';
 import { userCapabilities } from './roleService.js';
+import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 
 // ── Row types ──────────────────────────────────────────────────────────────────
@@ -265,7 +266,14 @@ export async function sendMessage(
   // Resolve capabilities before Tx 1 so that a DB failure here aborts cleanly
   // without leaving an orphaned user message in ai_messages. In E2E mode the
   // result is unused but the query is cheap.
-  const capabilities = await userCapabilities(userId);
+  //
+  // Fallback: if userCapabilities() returns an empty set (e.g., built-in
+  // role_capabilities rows missing due to a failed migration), merge in the
+  // static BUILTIN_ROLE_CAPABILITIES snapshot for the user's legacy role so
+  // the NLI tool set is never silently empty for a valid role. (MINCRM-434)
+  const dbCapabilities = await userCapabilities(userId);
+  const capabilities: ReadonlySet<Capability> =
+    dbCapabilities.size > 0 ? dbCapabilities : new Set(BUILTIN_ROLE_CAPABILITIES[userRole] ?? []);
 
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────
   // Commit before calling Anthropic so the pool connection is released during

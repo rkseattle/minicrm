@@ -101,6 +101,13 @@ function filterValue(value: unknown, stripped: Set<string>): unknown {
     return value;
   }
 
+  // Date instances are plain objects — Object.entries(new Date()) yields nothing,
+  // so without this guard they would collapse to {}. Serialise as ISO string to
+  // match what JSON.stringify would produce.
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
   if (Array.isArray(value)) {
     return value.map((item) => filterValue(item, stripped));
   }
