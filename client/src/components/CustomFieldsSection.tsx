@@ -3,7 +3,7 @@
  * Mounted on ContactDetailPage, AccountDetailPage, and DealDetailPage.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -47,15 +47,28 @@ export default function CustomFieldsSection({
   // Local edit state: map from definition_id → current string value
   const [editValues, setEditValues] = useState<Record<string, string | null>>({});
 
-  // Seed edit state from server values whenever we enter edit mode or server values load
+  // Tracks whether the edit state has been seeded for the current edit session.
+  // Reset to false when leaving edit mode so the next entry re-seeds cleanly.
+  // This prevents background query refetches from overwriting in-progress user
+  // input — the original bug where `definitions.length` / `serverValues.length`
+  // in deps caused a mid-edit re-seed. (MINCRM-421)
+  const seededRef = useRef(false);
+
   useEffect(() => {
-    if (isEditing) {
+    if (!isEditing) {
+      seededRef.current = false;
+      return;
+    }
+    // Seed once per edit session, and also when data first arrives if the queries
+    // were still loading when edit mode was entered (slow network / mobile).
+    if (!seededRef.current && definitions.length > 0) {
       const initial: Record<string, string | null> = {};
       for (const def of definitions) {
         const existing = serverValues.find((v) => v.definition_id === def.id);
         initial[def.id] = existing?.value ?? null;
       }
       setEditValues(initial);
+      seededRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, definitions.length, serverValues.length]);
