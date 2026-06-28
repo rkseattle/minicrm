@@ -13,17 +13,6 @@ description: NLI semantic quality — Haiku LLM-as-judge
 
 providers:
   - id: anthropic:claude-haiku-4-5-20251001
-    config:
-      tools:
-        - name: searchContacts
-          description: Search for contacts by name, email, company, or other criteria.
-          input_schema:
-            type: object
-            properties:
-              query:
-                type: string
-            required:
-              - query
 
 # 90% threshold: deterministic suites enforce 100% implicitly (binary pass/fail);
 # Haiku judge variance on semantic rubrics allows up to 10% judgment noise.

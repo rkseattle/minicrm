@@ -10,6 +10,8 @@
 # content block instead of text, making JSON.parse(output) fail.)
 #
 # Assertions use `javascript` to parse and compare the `tool` field.
+# Markdown fences are stripped before parsing — Haiku sometimes wraps the
+# JSON in ```json ... ``` despite the prompt instruction.
 # Do not use `is-json` with a `value:` object — promptfoo treats that value
 # as a JSON Schema (validated by AJV with strictSchema:true), which throws
 # on unknown keyword "tool".
@@ -32,7 +34,7 @@ prompts:
 
     Given the user request below, identify the single most appropriate tool
     to call. Respond ONLY with a JSON object in this exact format, with no
-    prose or explanation:
+    prose, explanation, or markdown formatting:
     {"tool": "<tool_name>"}
 
     User request: {{query}}
@@ -44,7 +46,8 @@ tests:
     assert:
       - type: javascript
         value: |
-          const parsed = JSON.parse(output);
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
           return parsed.tool === 'searchContacts';
 
   - description: Create a note on the Acme account maps to createNote
@@ -53,7 +56,8 @@ tests:
     assert:
       - type: javascript
         value: |
-          const parsed = JSON.parse(output);
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
           return parsed.tool === 'createNote';
 
   - description: List open deals in Enterprise pipeline maps to searchDeals
@@ -62,5 +66,6 @@ tests:
     assert:
       - type: javascript
         value: |
-          const parsed = JSON.parse(output);
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
           return parsed.tool === 'searchDeals';

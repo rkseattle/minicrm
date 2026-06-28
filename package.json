@@ -31,7 +31,7 @@
     "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",
     "e2e:timing:gen-config": "npx tsx qa/e2e/scripts/gen-shard-config.ts",
     "e2e:timing:hotspots": "npx tsx qa/e2e/scripts/find-hotspots.ts",
-    "eval": "promptfoo eval -c qa/evals/nli-intent.yaml -c qa/evals/nli-semantic.yaml -c qa/evals/nli-rbac.yaml -c qa/evals/nli-pii.yaml -o qa/evals/.output/results.json"
+    "eval": "bash qa/evals/run-evals.sh"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
