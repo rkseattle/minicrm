@@ -67,7 +67,9 @@ export type AuditRecordType =
   /** SCIM group-to-custom-role mapping changes (MINCRM-541) */
   | 'scim_group_role_mapping'
   /** AI conversation sessions (MINCRM-421) */
-  | 'ai_sessions';
+  | 'ai_sessions'
+  /** Email templates for sequences and activities (MINCRM-422) */
+  | 'email_templates';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =

@@ -23,6 +23,7 @@ export interface CustomFieldDefinitionRow {
   field_type: string;
   options: string[] | null;
   sort_order: number;
+  pii_excluded: boolean;
   created_at: Date;
 }
 
@@ -41,7 +42,8 @@ export interface CustomFieldValueWithDefinition extends CustomFieldValueRow {
   definition: CustomFieldDefinitionRow;
 }
 
-const DEFINITION_SELECT = 'id, entity_type, name, field_type, options, sort_order, created_at';
+const DEFINITION_SELECT =
+  'id, entity_type, name, field_type, options, sort_order, pii_excluded, created_at';
 
 /**
  * Returns all custom field definitions for the given entity type.
@@ -183,6 +185,7 @@ export async function getValuesForRecord(
       def_field_type: string;
       def_options: string[] | null;
       def_sort_order: number;
+      def_pii_excluded: boolean;
       def_created_at: Date;
     }
   >(
@@ -194,6 +197,7 @@ export async function getValuesForRecord(
        d.field_type AS def_field_type,
        d.options AS def_options,
        d.sort_order AS def_sort_order,
+       d.pii_excluded AS def_pii_excluded,
        d.created_at AS def_created_at
      FROM custom_field_values v
      JOIN custom_field_definitions d ON d.id = v.definition_id
@@ -216,6 +220,7 @@ export async function getValuesForRecord(
       field_type: row.def_field_type,
       options: row.def_options,
       sort_order: row.def_sort_order,
+      pii_excluded: row.def_pii_excluded,
       created_at: row.def_created_at,
     },
   }));
@@ -303,6 +308,7 @@ export function toDefinitionResponse(row: CustomFieldDefinitionRow): {
   field_type: string;
   options: string[] | null;
   sort_order: number;
+  pii_excluded: boolean;
   created_at: string;
 } {
   return {
@@ -312,6 +318,7 @@ export function toDefinitionResponse(row: CustomFieldDefinitionRow): {
     field_type: row.field_type,
     options: row.options,
     sort_order: row.sort_order,
+    pii_excluded: row.pii_excluded,
     created_at:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
