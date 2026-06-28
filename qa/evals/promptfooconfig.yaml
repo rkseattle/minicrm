@@ -1,0 +1,29 @@
+# Promptfoo root configuration for MiniCRM NLI eval suite (MINCRM-568)
+#
+# Run locally:
+#   npm run eval
+#
+# The judge model (claude-haiku-4-5-20251001) is used for LLM-as-judge assertions
+# in nli-semantic.yaml and nli-rbac.yaml only. Deterministic suites (nli-intent.yaml,
+# nli-pii.yaml) never invoke a judge model. PII assertions must NEVER route through
+# any LLM judge — doing so would send the PII value to a third-party API.
+
+description: MiniCRM NLI eval suite
+
+# Persist API responses so re-runs with unchanged prompts and models skip Anthropic calls.
+cache: true
+
+# Default provider for test prompts. Each test file may override this per-test.
+defaultTest:
+  options:
+    provider: anthropic:claude-haiku-4-5-20251001
+
+# Aggregate all four concern-specific test files.
+tests:
+  - qa/evals/nli-intent.yaml
+  - qa/evals/nli-semantic.yaml
+  - qa/evals/nli-rbac.yaml
+  - qa/evals/nli-pii.yaml
+
+# Write machine-readable results for CI artifact upload and local inspection.
+outputPath: qa/evals/.output/results.json

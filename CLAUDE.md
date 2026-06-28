@@ -203,6 +203,8 @@ One run per code change. Fix failures on the branch; never re-run to paper over 
 
 **AI tool schema check:** If any changes touch `server/src/services/` or `server/src/ai/`, review `server/src/ai/tools/` and verify the tool schemas still match the service signatures — correct input field names, enums, and required arrays. Update affected tool files in the same commit.
 
+**AI eval check:** If any changes add or modify NLI behavior in `server/src/ai/` (new tools, changed tool schemas, new RBAC rules, changes to PII filtering), add or update the corresponding eval test cases in `qa/evals/` in the same commit — intent changes go in `nli-intent.yaml`, semantic behavior in `nli-semantic.yaml`, RBAC in `nli-rbac.yaml`, PII in `nli-pii.yaml`. Never route PII assertions through an LLM judge.
+
 **E2E session setup (once per session):**
 
 ```bash
@@ -265,6 +267,7 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 - [ ] Roles & Capabilities scoped for least privilege
 - [ ] Greptile review — code changes would pass a Greptile review
 - [ ] AI tool schemas reviewed if `server/src/services/` or `server/src/ai/` changed — field names, enums, and required arrays still match service signatures
+- [ ] Eval tests added/updated in `qa/evals/` if NLI behavior changed — new tools, RBAC rules, PII fields, or semantic response expectations
 
 ## PR Review Feedback
 
