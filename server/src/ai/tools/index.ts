@@ -188,6 +188,9 @@ export const BUILTIN_ROLE_CAPABILITIES: Readonly<Record<string, readonly Capabil
     Capability.PipelinesView,
     Capability.ReportsView,
   ],
+  // service_account has only api:access, which gates no NLI tools — the
+  // fallback correctly yields an empty tool set for this role.
+  service_account: [Capability.ApiAccess],
 };
 
 /** Names of tools that require the admin role (defence-in-depth). */

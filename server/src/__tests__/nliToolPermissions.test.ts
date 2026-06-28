@@ -252,6 +252,19 @@ describe('buildToolSet', () => {
       expect(names.has('updateContact')).toBe(false);
     });
 
+    it('service_account fallback yields no NLI tools (api:access gates nothing)', () => {
+      // service_account only holds api:access, which is not mapped to any NLI tool.
+      // Verifies the entry exists and the fallback returns an empty tool set.
+      const caps = new Set(BUILTIN_ROLE_CAPABILITIES['service_account'] ?? []);
+      const names = toolNames(buildToolSet('service_account', caps));
+      for (const [toolName] of TOOL_CAPABILITY_MAP) {
+        expect(
+          names.has(toolName),
+          `tool '${toolName}' should not appear for service_account`,
+        ).toBe(false);
+      }
+    });
+
     it('unknown role string with empty fallback yields no gated tools', () => {
       // A role string with no fallback entry should not crash — it resolves to
       // an empty set, matching the behaviour when userCapabilities() returns empty
@@ -263,6 +276,17 @@ describe('buildToolSet', () => {
           names.has(toolName),
           `tool '${toolName}' should not appear for an unknown role with no fallback`,
         ).toBe(false);
+      }
+    });
+
+    it('every built-in role string has an entry in BUILTIN_ROLE_CAPABILITIES', () => {
+      // Guard against future roles being added to the DB without updating this map.
+      const KNOWN_BUILTIN_ROLES = ['admin', 'manager', 'rep', 'viewer', 'service_account'];
+      for (const role of KNOWN_BUILTIN_ROLES) {
+        expect(
+          BUILTIN_ROLE_CAPABILITIES[role],
+          `built-in role '${role}' is missing from BUILTIN_ROLE_CAPABILITIES`,
+        ).toBeDefined();
       }
     });
   });
