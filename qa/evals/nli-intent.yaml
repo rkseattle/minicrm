@@ -1,66 +1,38 @@
 # NLI intent resolution eval suite (MINCRM-568)
 #
 # Validates that unambiguous natural-language queries produce the correct
-# tool_use selection. All assertions are deterministic JSON path checks —
-# no LLM judge is invoked for this suite.
+# tool_use selection. All assertions are deterministic.
 #
-# The prompt instructs the model to respond ONLY with a JSON object
-# describing which tool it would call. Assertions use `javascript` to parse
-# the output and compare the `tool` field — is-json with a value: object
-# treats the value as a JSON Schema (validated by AJV), not an equality
-# target, so it would throw on unknown keyword "tool".
+# The prompt instructs the model to respond ONLY with a JSON object naming
+# the tool it would call. No tools are registered in the provider config —
+# this forces a plain-text response that the javascript assertion can parse.
+# (Registering tools in provider config causes Haiku to emit a tool_use
+# content block instead of text, making JSON.parse(output) fail.)
+#
+# Assertions use `javascript` to parse and compare the `tool` field.
+# Do not use `is-json` with a `value:` object — promptfoo treats that value
+# as a JSON Schema (validated by AJV with strictSchema:true), which throws
+# on unknown keyword "tool".
 
 description: NLI intent resolution — deterministic tool selection
 
 providers:
   - id: anthropic:claude-haiku-4-5-20251001
-    config:
-      tools:
-        - name: searchContacts
-          description: Search for contacts by name, email, company, or other criteria.
-          input_schema:
-            type: object
-            properties:
-              query:
-                type: string
-                description: Free-text search query
-            required:
-              - query
-        - name: createNote
-          description: Create a note attached to a contact, account, lead, or deal.
-          input_schema:
-            type: object
-            properties:
-              entity_type:
-                type: string
-                enum: [contact, account, lead, deal]
-              entity_id:
-                type: string
-              content:
-                type: string
-            required:
-              - entity_type
-              - entity_id
-              - content
-        - name: searchDeals
-          description: Search for deals by title, stage, pipeline, or status.
-          input_schema:
-            type: object
-            properties:
-              query:
-                type: string
-              pipeline:
-                type: string
-              status:
-                type: string
-                enum: [open, won, lost]
-            required: []
 
 prompts:
   - |
-    You are a CRM assistant. Given the user's request below, identify the
-    single most appropriate tool to call and respond ONLY with a JSON object
-    in this exact format (no prose, no explanation):
+    You are a CRM assistant. You have access to these tools:
+    searchContacts, getContact, createContact, updateContact, deleteContact,
+    searchAccounts, getAccount, createAccount, updateAccount, deleteAccount,
+    searchLeads, getLead, createLead, updateLead, deleteLead, convertLead,
+    searchDeals, getDeal, createDeal, updateDeal, deleteDeal,
+    searchActivities, getActivity, createActivity, updateActivity, deleteActivity,
+    searchNotes, getNote, createNote, updateNote, deleteNote,
+    listTags, attachTag, detachTag, generateReport, exportEntities.
+
+    Given the user request below, identify the single most appropriate tool
+    to call. Respond ONLY with a JSON object in this exact format, with no
+    prose or explanation:
     {"tool": "<tool_name>"}
 
     User request: {{query}}

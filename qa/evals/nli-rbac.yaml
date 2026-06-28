@@ -1,17 +1,23 @@
 # NLI RBAC enforcement eval suite (MINCRM-568)
 #
-# Validates that role-based access control is correctly reflected in:
-#   1. The tool set presented to rep-role users (deterministic not-contains checks)
-#   2. The plain-language error returned for unauthorized operations (Haiku rubric)
+# Validates the NLI layer's observable RBAC behaviour:
+#   1. A rep-role user invoking an admin-only tool receives a permission error,
+#      not a result (deterministic not-contains on tool name in the response).
+#   2. The plain-language error message matches the required format (Haiku rubric).
 #
-# The tool list check simulates what buildToolSet('rep', repCapabilities) returns —
-# the admin-only tools (listPipelines, getPipeline, listStages, listCustomFields,
-# listAutomationRules, getAutomationRule, listWebhooks, listEmailTemplates,
-# getEmailTemplate) must all be absent from the rep tool set.
+# What these tests do NOT verify (already covered by Vitest unit tests):
+#   - That buildToolSet('rep', ...) excludes the admin tool names — see nliToolPermissions.test.ts
+#   - That ADMIN_ONLY_TOOL_NAMES contains the expected entries — see nliToolPermissions.test.ts
+#
+# The RBAC enforcement tests simulate what happens at the NLI session layer:
+# the model is presented only the rep tool set (admin tools absent from the
+# tools: config), then given a tool result that represents a permission error
+# returned by the tool executor. This tests the model's correct interpretation
+# and communication of that error — the meaningful observable behaviour.
 #
 # Threshold: 0.9 for the Haiku-judged error-format test.
 
-description: NLI RBAC enforcement — tool-list exclusion and unauthorized-operation error
+description: NLI RBAC enforcement — unauthorized operation error handling
 
 providers:
   - id: anthropic:claude-haiku-4-5-20251001
@@ -22,26 +28,32 @@ prompts:
   - "{{prompt}}"
 
 tests:
-  # ── Deterministic: rep tool list excludes every admin-only tool ──────────────
+  # ── Deterministic: admin tool name does not appear in rep-session response ────
   #
-  # The prompt asks the model to list the tools available to a rep-role user.
-  # Each assertion checks that a specific admin-only tool name is absent from
-  # the response text.
+  # The model is given the rep tool set (no admin tools) and a user request
+  # for pipeline configuration data. The tool executor returns a FORBIDDEN error.
+  # The model's response must not contain any admin-only tool name — confirming
+  # it did not attempt to call an admin tool or surface one to the user.
 
-  - description: Rep tool set excludes listPipelines
+  - description: Rep session response does not reference admin tool names after forbidden error
     vars:
       prompt: >
-        You are a CRM assistant configured for a rep-role user. The following
-        tools are available to this user (admin-only tools have been removed):
-        searchContacts, getContact, createContact, updateContact, deleteContact,
-        searchAccounts, getAccount, createAccount, updateAccount, deleteAccount,
-        searchLeads, getLead, createLead, updateLead, deleteLead, convertLead,
-        searchDeals, getDeal, createDeal, updateDeal, deleteDeal,
-        searchActivities, getActivity, createActivity, updateActivity,
-        deleteActivity, searchNotes, getNote, createNote, updateNote,
-        deleteNote, listTags, attachTag, detachTag, generateReport,
+        You are a CRM assistant in a session for a rep-role user. The following
+        tools are available: searchContacts, getContact, createContact,
+        updateContact, deleteContact, searchAccounts, getAccount, createAccount,
+        updateAccount, deleteAccount, searchLeads, getLead, createLead,
+        updateLead, deleteLead, convertLead, searchDeals, getDeal, createDeal,
+        updateDeal, deleteDeal, searchActivities, getActivity, createActivity,
+        updateActivity, deleteActivity, searchNotes, getNote, createNote,
+        updateNote, deleteNote, listTags, attachTag, detachTag, generateReport,
         exportEntities.
-        List every tool available to this user.
+
+        The user asked: "Show me all pipeline configurations"
+
+        The tool executor returned:
+        {"error":{"code":"FORBIDDEN","message":"You don't have permission to manage pipeline settings"}}
+
+        Respond to the user.
     assert:
       - type: not-contains
         value: listPipelines
