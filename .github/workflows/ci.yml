@@ -1768,7 +1768,7 @@ jobs:
   # Runs only when AI source or eval config changes; never on draft PRs or Dependabot.
   # Keeps Anthropic API spend minimal: path filter is the primary cost lever.
   ai-evals:
-    name: AI evals (Promptfoo)
+    name: Phase 3 - AI Evals (Promptfoo)
     needs: [changes]
     if: |
       needs.changes.outputs.ai == 'true' &&
