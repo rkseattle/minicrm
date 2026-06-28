@@ -13,6 +13,7 @@ import {
   TOOL_CAPABILITY_MAP,
   ADMIN_ONLY_TOOL_NAMES,
   ALL_TOOLS,
+  BUILTIN_ROLE_CAPABILITIES,
 } from '../ai/tools/index.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
@@ -224,6 +225,44 @@ describe('buildToolSet', () => {
           TOOL_CAPABILITY_MAP.has(tool.name),
           `tool '${tool.name}' is present in ALL_TOOLS but missing from TOOL_CAPABILITY_MAP`,
         ).toBe(true);
+      }
+    });
+  });
+
+  describe('BUILTIN_ROLE_CAPABILITIES fallback', () => {
+    it('rep fallback yields read and write tools for core entities', () => {
+      // Simulates the empty-DB scenario: capabilities resolved from the static
+      // fallback map rather than from userCapabilities().
+      const caps = new Set(BUILTIN_ROLE_CAPABILITIES['rep'] ?? []);
+      const names = toolNames(buildToolSet('rep', caps));
+      expect(names.has('searchContacts')).toBe(true);
+      expect(names.has('createContact')).toBe(true);
+      expect(names.has('updateContact')).toBe(true);
+      expect(names.has('deleteContact')).toBe(true);
+      expect(names.has('searchDeals')).toBe(true);
+      expect(names.has('createDeal')).toBe(true);
+    });
+
+    it('viewer fallback yields only read tools', () => {
+      const caps = new Set(BUILTIN_ROLE_CAPABILITIES['viewer'] ?? []);
+      const names = toolNames(buildToolSet('viewer', caps));
+      expect(names.has('searchContacts')).toBe(true);
+      expect(names.has('getContact')).toBe(true);
+      expect(names.has('createContact')).toBe(false);
+      expect(names.has('updateContact')).toBe(false);
+    });
+
+    it('unknown role string with empty fallback yields no gated tools', () => {
+      // A role string with no fallback entry should not crash — it resolves to
+      // an empty set, matching the behaviour when userCapabilities() returns empty
+      // for an unknown role.
+      const caps = new Set(BUILTIN_ROLE_CAPABILITIES['unknown_role'] ?? []);
+      const names = toolNames(buildToolSet('unknown_role', caps));
+      for (const [toolName] of TOOL_CAPABILITY_MAP) {
+        expect(
+          names.has(toolName),
+          `tool '${toolName}' should not appear for an unknown role with no fallback`,
+        ).toBe(false);
       }
     });
   });

@@ -100,6 +100,26 @@ describe('applyPiiFilter — primitives', () => {
     const { sanitised } = applyPiiFilter({ error: 'Not found' });
     expect(sanitised).toEqual({ error: 'Not found' });
   });
+
+  it('serialises Date values as ISO strings rather than collapsing them to {}', () => {
+    // Object.entries(new Date()) yields no own-enumerable properties, so without
+    // an instanceof Date guard the walker would produce {} for every Date field.
+    const date = new Date('2026-01-15T10:00:00.000Z');
+    const input = { id: 'c-1', created_at: date, name: 'Alice' };
+    const { sanitised, strippedFields } = applyPiiFilter(input);
+    const s = sanitised as Record<string, unknown>;
+    expect(s['created_at']).toBe('2026-01-15T10:00:00.000Z');
+    expect(s['name']).toBe('Alice');
+    expect(strippedFields).toHaveLength(0);
+  });
+
+  it('serialises nested Date values inside arrays', () => {
+    const date = new Date('2026-03-01T00:00:00.000Z');
+    const input = { rows: [{ id: 'c-1', updated_at: date }] };
+    const { sanitised } = applyPiiFilter(input);
+    const s = sanitised as { rows: Record<string, unknown>[] };
+    expect(s.rows[0]['updated_at']).toBe('2026-03-01T00:00:00.000Z');
+  });
 });
 
 // ── applyPiiFilter: ALWAYS_EXCLUDED_FIELDS stripping ─────────────────────────
