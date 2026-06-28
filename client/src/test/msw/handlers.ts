@@ -2543,6 +2543,11 @@ export const handlers = [
     return HttpResponse.json({ users: [] });
   }),
 
+  /** Feature flags: GET /api/admin/feature-flags/:key/overrides — returns empty list by default */
+  http.get('/api/v1/admin/feature-flags/:key/overrides', () => {
+    return HttpResponse.json({ overrides: [] });
+  }),
+
   /** Feature flags: POST /api/admin/feature-flags/:key/beta-users — enrolls a user */
   http.post('/api/v1/admin/feature-flags/:key/beta-users', async ({ request }) => {
     const body = (await request.json()) as { userId: string };
