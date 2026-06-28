@@ -538,9 +538,14 @@ export async function executeToolCall(
       }
 
       case 'createNote': {
+        const cnEntityType = toolInput.entity_type as NoteEntityType;
+        const cnEntityId = toolInput.entity_id as string;
+        // Verify caller owns the parent record before creating a note on it.
+        // createNote only checks entity existence, not ownership. (MINCRM-422)
+        await assertEntityAccess(cnEntityType, cnEntityId, ctx);
         return await createNote(
-          toolInput.entity_type as NoteEntityType,
-          toolInput.entity_id as string,
+          cnEntityType,
+          cnEntityId,
           {
             body: toolInput.body as string,
             visibility: (toolInput.visibility as 'private' | 'team' | undefined) ?? 'team',
