@@ -1,0 +1,174 @@
+{
+  "contacts": [
+    {
+      "id": "c1000000-0000-0000-0000-000000000001",
+      "first_name": "Alice",
+      "last_name": "Chen",
+      "email": "alice.chen@example.com",
+      "phone": "+1-555-0101",
+      "company": "Acme Corp",
+      "owner_id": "u1000000-0000-0000-0000-000000000001",
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-06-01T09:00:00Z",
+      "custom_fields": []
+    },
+    {
+      "id": "c1000000-0000-0000-0000-000000000002",
+      "first_name": "Bob",
+      "last_name": "Martinez",
+      "email": "bob.martinez@example.com",
+      "phone": "+1-555-0102",
+      "company": "Beta LLC",
+      "owner_id": "u1000000-0000-0000-0000-000000000001",
+      "created_at": "2025-02-20T11:00:00Z",
+      "updated_at": "2025-06-10T14:00:00Z",
+      "custom_fields": []
+    },
+    {
+      "id": "c1000000-0000-0000-0000-000000000003",
+      "first_name": "Carol",
+      "last_name": "Singh",
+      "email": "carol.singh@example.com",
+      "phone": "+1-555-0103",
+      "company": "Gamma Inc",
+      "owner_id": "u1000000-0000-0000-0000-000000000002",
+      "created_at": "2025-03-05T08:00:00Z",
+      "updated_at": "2025-06-15T16:00:00Z",
+      "custom_fields": [
+        {
+          "definition": {
+            "id": "cf-ssn-001",
+            "name": "SSN",
+            "field_type": "text",
+            "pii_excluded": true
+          },
+          "value": "123-45-6789"
+        },
+        {
+          "definition": {
+            "id": "cf-bank-001",
+            "name": "Bank Account Number",
+            "field_type": "text",
+            "pii_excluded": true
+          },
+          "value": "9876543210"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "id": "a1000000-0000-0000-0000-000000000001",
+      "name": "Acme Corp",
+      "domain": "acme.example.com",
+      "industry": "Technology",
+      "owner_id": "u1000000-0000-0000-0000-000000000001",
+      "created_at": "2025-01-10T09:00:00Z",
+      "updated_at": "2025-05-20T12:00:00Z"
+    },
+    {
+      "id": "a1000000-0000-0000-0000-000000000002",
+      "name": "Beta LLC",
+      "domain": "beta.example.com",
+      "industry": "Finance",
+      "owner_id": "u1000000-0000-0000-0000-000000000002",
+      "created_at": "2025-02-14T10:00:00Z",
+      "updated_at": "2025-06-01T08:00:00Z"
+    }
+  ],
+  "deals": [
+    {
+      "id": "d1000000-0000-0000-0000-000000000001",
+      "title": "Acme Enterprise Contract",
+      "value": 75000,
+      "currency": "USD",
+      "stage": "proposal",
+      "pipeline": "Enterprise",
+      "status": "open",
+      "owner_id": "u1000000-0000-0000-0000-000000000001",
+      "account_id": "a1000000-0000-0000-0000-000000000001",
+      "created_at": "2025-04-01T09:00:00Z",
+      "updated_at": "2025-06-20T11:00:00Z"
+    }
+  ],
+  "leads": [
+    {
+      "id": "l1000000-0000-0000-0000-000000000001",
+      "first_name": "David",
+      "last_name": "Park",
+      "email": "david.park@prospect.com",
+      "company": "Prospect Co",
+      "status": "new",
+      "source": "web",
+      "owner_id": "u1000000-0000-0000-0000-000000000001",
+      "created_at": "2025-06-01T10:00:00Z",
+      "updated_at": "2025-06-25T09:00:00Z"
+    }
+  ],
+  "tool_results": {
+    "searchContacts_alice": {
+      "contacts": [
+        {
+          "id": "c1000000-0000-0000-0000-000000000001",
+          "first_name": "Alice",
+          "last_name": "Chen",
+          "email": "alice.chen@example.com",
+          "company": "Acme Corp"
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "per_page": 20
+    },
+    "createNote_acme": {
+      "id": "n1000000-0000-0000-0000-000000000001",
+      "entity_type": "account",
+      "entity_id": "a1000000-0000-0000-0000-000000000001",
+      "content": "Follow-up needed on Q3 renewal.",
+      "created_at": "2025-06-28T10:00:00Z"
+    },
+    "searchDeals_enterprise_open": {
+      "deals": [
+        {
+          "id": "d1000000-0000-0000-0000-000000000001",
+          "title": "Acme Enterprise Contract",
+          "value": 75000,
+          "currency": "USD",
+          "stage": "proposal",
+          "pipeline": "Enterprise",
+          "status": "open"
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "per_page": 20
+    },
+    "contact_with_pii_stripped": {
+      "id": "c1000000-0000-0000-0000-000000000003",
+      "first_name": "Carol",
+      "last_name": "Singh",
+      "email": "carol.singh@example.com",
+      "company": "Gamma Inc",
+      "custom_fields": [
+        {
+          "definition": {
+            "id": "cf-ssn-001",
+            "name": "SSN",
+            "field_type": "text",
+            "pii_excluded": true
+          },
+          "value": null
+        },
+        {
+          "definition": {
+            "id": "cf-bank-001",
+            "name": "Bank Account Number",
+            "field_type": "text",
+            "pii_excluded": true
+          },
+          "value": null
+        }
+      ]
+    }
+  }
+}
