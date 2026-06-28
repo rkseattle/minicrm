@@ -218,6 +218,7 @@ export default function AiPage() {
           session_id: sessionId,
           role: 'user',
           content,
+          tool_results: null,
           created_at: new Date().toISOString(),
         };
         setOptimisticMessages([optimisticUserMessage, assistantMessage]);
@@ -292,6 +293,7 @@ export default function AiPage() {
       session_id: sessionId,
       role: 'user',
       content,
+      tool_results: null,
       created_at: new Date().toISOString(),
     };
     setOptimisticMessages([optimisticUserMessage]);

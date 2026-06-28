@@ -28,6 +28,7 @@ import type {
   AiSessionResponse,
   AiMessageResponse,
   AiSessionWithMessagesResponse,
+  AiToolResult,
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import { buildToolSet, BUILTIN_ROLE_CAPABILITIES } from '../ai/tools/index.js';
 import { executeToolCall } from '../ai/toolExecutor.js';
@@ -51,6 +52,7 @@ interface AiMessageRow {
   session_id: string;
   role: 'user' | 'assistant';
   content: string;
+  tool_results: AiToolResult[] | null;
   created_at: Date;
 }
 
@@ -90,6 +92,7 @@ function serialiseMessage(row: AiMessageRow): AiMessageResponse {
     session_id: row.session_id,
     role: row.role,
     content: row.content,
+    tool_results: row.tool_results ?? null,
     created_at: row.created_at.toISOString(),
   };
 }
@@ -185,7 +188,7 @@ export async function getSessionWithMessages(
   }
 
   const messagesResult = await pool.query<AiMessageRow>(
-    `SELECT id, session_id, role, content, created_at
+    `SELECT id, session_id, role, content, tool_results, created_at
      FROM ai_messages
      WHERE session_id = $1
      ORDER BY created_at ASC`,
@@ -337,6 +340,7 @@ export async function sendMessage(
   let assistantContent: string;
   let inputTokens = 0;
   let outputTokens = 0;
+  const collectedToolResults: AiToolResult[] = [];
 
   if (IS_E2E) {
     assistantContent = E2E_STUB_RESPONSE;
@@ -421,6 +425,16 @@ export async function sendMessage(
             // Apply PII minimization before sending to the AI provider.
             // Operates on a deep copy — the original result is unchanged.
             const { sanitised, strippedFields } = applyPiiFilter(toolResult);
+
+            // Capture the PII-filtered result for native client rendering. (MINCRM-423, MINCRM-431)
+            // block.input is typed as `object` by the Anthropic SDK but is always a plain
+            // JSON object matching the tool's input_schema — safe to widen here.
+            collectedToolResults.push({
+              toolName: block.name,
+              input: block.input as Record<string, unknown>,
+              output: sanitised,
+            });
+
             if (strippedFields.length > 0) {
               strippedFieldsManifest[block.name] = strippedFields;
             }
@@ -486,11 +500,14 @@ export async function sendMessage(
   try {
     await client2.query('BEGIN');
 
+    const toolResultsJson =
+      collectedToolResults.length > 0 ? JSON.stringify(collectedToolResults) : null;
+
     const assistantResult = await client2.query<AiMessageRow>(
-      `INSERT INTO ai_messages (session_id, role, content)
-       VALUES ($1, 'assistant', $2)
-       RETURNING id, session_id, role, content, created_at`,
-      [sessionId, assistantContent],
+      `INSERT INTO ai_messages (session_id, role, content, tool_results)
+       VALUES ($1, 'assistant', $2, $3)
+       RETURNING id, session_id, role, content, tool_results, created_at`,
+      [sessionId, assistantContent, toolResultsJson],
     );
 
     if (isFirstMessage) {
