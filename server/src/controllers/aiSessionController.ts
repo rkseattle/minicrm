@@ -102,7 +102,13 @@ export async function sendAiMessageHandler(req: Request, res: Response): Promise
   const actor = { id: req.user!.id, name: req.user!.name };
 
   try {
-    const assistantMessage = await sendMessage(sessionId, req.user!.id, parsed.data.content, actor);
+    const assistantMessage = await sendMessage(
+      sessionId,
+      req.user!.id,
+      parsed.data.content,
+      actor,
+      req.user!.role,
+    );
     res.status(200).json(assistantMessage);
   } catch (err: unknown) {
     const tagged = err as { statusCode?: number; message?: string };
