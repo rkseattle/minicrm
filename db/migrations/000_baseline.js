@@ -479,6 +479,24 @@ exports.up = (pgm) => {
     )
   `);
 
+  // email_templates — reusable email templates for sequences and activities (MINCRM-422, MINCRM-437)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.email_templates (
+      id          uuid DEFAULT gen_random_uuid() NOT NULL,
+      name        character varying(200) NOT NULL,
+      category    character varying(50) NOT NULL,
+      subject     character varying(500) NOT NULL,
+      body        text NOT NULL,
+      merge_tags  jsonb DEFAULT '[]'::jsonb NOT NULL,
+      enabled     boolean DEFAULT true NOT NULL,
+      created_by  uuid,
+      created_at  timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at  timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT email_templates_pkey PRIMARY KEY (id),
+      CONSTRAINT email_templates_name_key UNIQUE (name)
+    )
+  `);
+
   // automation_rule_logs — execution history for automation rules (MINCRM-516)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.automation_rule_logs (
@@ -611,16 +629,18 @@ exports.up = (pgm) => {
   `);
 
   // custom_field_definitions — admin-defined EAV schema (ADR-002)
+  // pii_excluded added by migration 125 (MINCRM-422)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.custom_field_definitions (
-      id          uuid DEFAULT gen_random_uuid() NOT NULL,
-      entity_type character varying(16) NOT NULL,
-      name        character varying(100) NOT NULL,
-      field_type  character varying(16) NOT NULL,
-      options     jsonb,
-      sort_order  integer DEFAULT 0 NOT NULL,
-      created_at  timestamp with time zone DEFAULT now() NOT NULL,
-      updated_at  timestamp with time zone DEFAULT now() NOT NULL,
+      id           uuid DEFAULT gen_random_uuid() NOT NULL,
+      entity_type  character varying(16) NOT NULL,
+      name         character varying(100) NOT NULL,
+      field_type   character varying(16) NOT NULL,
+      options      jsonb,
+      sort_order   integer DEFAULT 0 NOT NULL,
+      pii_excluded boolean DEFAULT false NOT NULL,
+      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at   timestamp with time zone DEFAULT now() NOT NULL,
       CONSTRAINT custom_field_definitions_pkey PRIMARY KEY (id),
       CONSTRAINT custom_field_definitions_entity_type_name_key UNIQUE (entity_type, name),
       CONSTRAINT custom_field_definitions_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying])::text[]))),
@@ -1044,6 +1064,7 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.activities ADD CONSTRAINT activities_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.email_templates ADD CONSTRAINT email_templates_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL`,
     `ALTER TABLE ONLY public.automation_rules ADD CONSTRAINT automation_rules_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT`,
     `ALTER TABLE ONLY public.automation_rule_logs ADD CONSTRAINT automation_rule_logs_rule_id_fkey FOREIGN KEY (rule_id) REFERENCES public.automation_rules(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.attachments ADD CONSTRAINT attachments_uploader_id_fkey FOREIGN KEY (uploader_id) REFERENCES public.users(id) ON DELETE SET NULL`,
@@ -1160,6 +1181,10 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS pipelines_single_default_idx ON public.pipelines USING btree (is_default) WHERE (is_default = true)`);
 
   // automation_rules
+  // email_templates indexes
+  pgm.sql(`CREATE INDEX IF NOT EXISTS email_templates_category_index ON public.email_templates USING btree (category)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS email_templates_enabled_index ON public.email_templates USING btree (enabled)`);
+
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rules_enabled_index ON public.automation_rules USING btree (enabled)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rules_trigger_type_index ON public.automation_rules USING btree (trigger_type)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS automation_rules_is_demo_index ON public.automation_rules USING btree (is_demo)`);
@@ -1313,7 +1338,7 @@ exports.up = (pgm) => {
     'accounts', 'activities', 'ai_token_budgets', 'ai_token_usage',
     'automation_rules', 'contact_addresses', 'contacts', 'currencies',
     'custom_field_definitions', 'custom_field_values', 'custom_reports',
-    'deals', 'feature_flags', 'import_jobs', 'leads', 'notes',
+    'deals', 'email_templates', 'feature_flags', 'import_jobs', 'leads', 'notes',
     'pipeline_stages', 'pipelines', 'sales_sequence_steps', 'sales_sequences',
     'sequence_enrollments', 'system_settings', 'tags', 'teams', 'users',
   ]) {
