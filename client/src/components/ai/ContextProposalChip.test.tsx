@@ -74,7 +74,43 @@ describe('ContextProposalChip', () => {
     await waitFor(() => expect(onDismiss).toHaveBeenCalledWith('msg-2'), { timeout: 3000 });
   }, 10000);
 
-  it('shows error alert when accept API call fails', async () => {
+  it('shows limit-reached message when API returns CONTEXT_ENTRY_LIMIT_REACHED', async () => {
+    server.use(
+      http.post('/api/v1/ai/context', () =>
+        HttpResponse.json(
+          { error: { code: 'CONTEXT_ENTRY_LIMIT_REACHED', message: 'Limit reached' } },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ContextProposalChip messageId="msg-3" proposal={PROPOSAL} onDismiss={vi.fn()} />,
+    );
+    await user.click(screen.getByTestId('ai-context-proposal-accept-button-msg-3'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument(), { timeout: 5000 });
+    expect(screen.getByRole('alert').textContent).not.toBe('');
+  }, 10000);
+
+  it('shows key-duplicate message when API returns CONTEXT_KEY_DUPLICATE', async () => {
+    server.use(
+      http.post('/api/v1/ai/context', () =>
+        HttpResponse.json(
+          { error: { code: 'CONTEXT_KEY_DUPLICATE', message: 'Duplicate key' } },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <ContextProposalChip messageId="msg-4" proposal={PROPOSAL} onDismiss={vi.fn()} />,
+    );
+    await user.click(screen.getByTestId('ai-context-proposal-accept-button-msg-4'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument(), { timeout: 5000 });
+    expect(screen.getByRole('alert').textContent).not.toBe('');
+  }, 10000);
+
+  it('shows generic error message (not keyDuplicate text) when API returns a 500', async () => {
     server.use(
       http.post('/api/v1/ai/context', () =>
         HttpResponse.json(
@@ -85,9 +121,11 @@ describe('ContextProposalChip', () => {
     );
     const user = userEvent.setup();
     renderWithProviders(
-      <ContextProposalChip messageId="msg-3" proposal={PROPOSAL} onDismiss={vi.fn()} />,
+      <ContextProposalChip messageId="msg-5" proposal={PROPOSAL} onDismiss={vi.fn()} />,
     );
-    await user.click(screen.getByTestId('ai-context-proposal-accept-button-msg-3'));
+    await user.click(screen.getByTestId('ai-context-proposal-accept-button-msg-5'));
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument(), { timeout: 5000 });
+    // Must not show the misleading duplicate-key message for a 500
+    expect(screen.getByRole('alert').textContent).not.toContain('already exists');
   }, 10000);
 });
