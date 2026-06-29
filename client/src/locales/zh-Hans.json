@@ -2270,6 +2270,23 @@
       "lastActivity": "最近活动：{{date}}",
       "closes": "预计关闭：{{date}}",
       "viewRecord": "查看"
+    },
+    "confirmation": {
+      "operationCreate": "创建",
+      "operationUpdate": "更新",
+      "operationDelete": "删除",
+      "confirmCreate": "确认创建",
+      "confirmUpdate": "确认更新",
+      "confirmDelete": "确认删除",
+      "cancel": "取消",
+      "fieldLabel": "字段",
+      "newValueLabel": "新值",
+      "valueLabel": "值",
+      "affectedCount": "将影响 {{count}} 条记录",
+      "andMore": "+ 另 {{count}} 条",
+      "bulkDeleteWarning": "这将永久删除 {{count}} 条记录。此操作无法撤销。",
+      "bulkDeleteConfirmPlaceholder": "输入 {{count}} 或 DELETE 以确认",
+      "entityLabel": "{{entityType}}"
     }
   }
 }

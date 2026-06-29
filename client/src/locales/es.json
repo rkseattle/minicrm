@@ -2270,6 +2270,23 @@
       "lastActivity": "Última actividad: {{date}}",
       "closes": "Cierra {{date}}",
       "viewRecord": "Ver"
+    },
+    "confirmation": {
+      "operationCreate": "Crear",
+      "operationUpdate": "Actualizar",
+      "operationDelete": "Eliminar",
+      "confirmCreate": "Confirmar creación",
+      "confirmUpdate": "Confirmar actualización",
+      "confirmDelete": "Confirmar eliminación",
+      "cancel": "Cancelar",
+      "fieldLabel": "Campo",
+      "newValueLabel": "Nuevo valor",
+      "valueLabel": "Valor",
+      "affectedCount": "{{count}} registros se verán afectados",
+      "andMore": "+ {{count}} más",
+      "bulkDeleteWarning": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
+      "bulkDeleteConfirmPlaceholder": "Escribe {{count}} o DELETE para confirmar",
+      "entityLabel": "{{entityType}}"
     }
   }
 }

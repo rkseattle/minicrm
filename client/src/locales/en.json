@@ -2270,6 +2270,23 @@
       "lastActivity": "Last activity: {{date}}",
       "closes": "Closes {{date}}",
       "viewRecord": "View"
+    },
+    "confirmation": {
+      "operationCreate": "Create",
+      "operationUpdate": "Update",
+      "operationDelete": "Delete",
+      "confirmCreate": "Confirm Create",
+      "confirmUpdate": "Confirm Update",
+      "confirmDelete": "Confirm Delete",
+      "cancel": "Cancel",
+      "fieldLabel": "Field",
+      "newValueLabel": "New Value",
+      "valueLabel": "Value",
+      "affectedCount": "{{count}} records will be affected",
+      "andMore": "+ {{count}} more",
+      "bulkDeleteWarning": "This will permanently delete {{count}} records. This cannot be undone.",
+      "bulkDeleteConfirmPlaceholder": "Type {{count}} or DELETE to confirm",
+      "entityLabel": "{{entityType}}"
     }
   }
 }

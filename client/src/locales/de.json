@@ -2270,6 +2270,23 @@
       "lastActivity": "Letzte Aktivität: {{date}}",
       "closes": "Abschluss {{date}}",
       "viewRecord": "Anzeigen"
+    },
+    "confirmation": {
+      "operationCreate": "Erstellen",
+      "operationUpdate": "Aktualisieren",
+      "operationDelete": "Löschen",
+      "confirmCreate": "Erstellen bestätigen",
+      "confirmUpdate": "Aktualisierung bestätigen",
+      "confirmDelete": "Löschen bestätigen",
+      "cancel": "Abbrechen",
+      "fieldLabel": "Feld",
+      "newValueLabel": "Neuer Wert",
+      "valueLabel": "Wert",
+      "affectedCount": "{{count}} Datensätze werden betroffen sein",
+      "andMore": "+ {{count}} weitere",
+      "bulkDeleteWarning": "Damit werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+      "bulkDeleteConfirmPlaceholder": "Geben Sie {{count}} oder DELETE ein, um zu bestätigen",
+      "entityLabel": "{{entityType}}"
     }
   }
 }

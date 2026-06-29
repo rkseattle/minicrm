@@ -2270,6 +2270,23 @@
       "lastActivity": "Dernière activité : {{date}}",
       "closes": "Clôture le {{date}}",
       "viewRecord": "Voir"
+    },
+    "confirmation": {
+      "operationCreate": "Créer",
+      "operationUpdate": "Mettre à jour",
+      "operationDelete": "Supprimer",
+      "confirmCreate": "Confirmer la création",
+      "confirmUpdate": "Confirmer la mise à jour",
+      "confirmDelete": "Confirmer la suppression",
+      "cancel": "Annuler",
+      "fieldLabel": "Champ",
+      "newValueLabel": "Nouvelle valeur",
+      "valueLabel": "Valeur",
+      "affectedCount": "{{count}} enregistrements seront affectés",
+      "andMore": "+ {{count}} de plus",
+      "bulkDeleteWarning": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
+      "bulkDeleteConfirmPlaceholder": "Tapez {{count}} ou DELETE pour confirmer",
+      "entityLabel": "{{entityType}}"
     }
   }
 }
