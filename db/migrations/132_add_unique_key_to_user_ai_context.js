@@ -17,8 +17,11 @@ exports.shorthands = undefined;
  */
 exports.up = (pgm) => {
   pgm.sql(`
-    ALTER TABLE user_ai_context
-      ADD CONSTRAINT user_ai_context_user_id_key_unique UNIQUE (user_id, key)
+    DO $$ BEGIN
+      ALTER TABLE user_ai_context
+        ADD CONSTRAINT user_ai_context_user_id_key_unique UNIQUE (user_id, key);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$
   `);
 };
 

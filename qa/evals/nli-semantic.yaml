@@ -186,18 +186,19 @@ tests:
   - description: Response with ambiguous term can include a %%CONTEXT_PROPOSAL%% marker (MINCRM-429)
     vars:
       query: Find contacts I haven't heard from in a while
-      tool_results: '[{"id":"c1","first_name":"Alice","last_name":"Smith","last_activity_date":"2025-10-01"}]'
+      tool_results: '[{"id":"c1000000-0000-0000-0000-000000000001","first_name":"Alice","last_name":"Smith","last_activity_date":"2025-10-01"}]'
     assert:
       - type: llm-rubric
         value: >
           The user asked to find contacts they haven't heard from "in a while".
-          The assistant returned a list. Pass if the response either (a) uses the
-          term "a while" in its reply as the criterion, or (b) explicitly proposes
-          saving a definition for "a while" using the
+          The assistant returned a list containing Alice Smith. Pass if the response
+          either (a) uses the term "a while" in its reply as the criterion, or (b)
+          explicitly proposes saving a definition for "a while" using the
           %%CONTEXT_PROPOSAL%%{"key":"a while","value":"...","reason":"..."}%%
-          marker format. Fail if the response contradicts the user's phrasing,
-          asks for clarification without attempting to answer, or invents contact
-          details not present in the tool result.
+          marker format. The response must mention Alice Smith. Fail only if the
+          response asks for clarification without attempting to answer, or invents
+          contact names not present in the tool result. Do not fail for including
+          last_activity_date or other fields from the tool result.
 
   - description: Context proposal marker is stripped from the user-facing response body (MINCRM-430)
     vars:

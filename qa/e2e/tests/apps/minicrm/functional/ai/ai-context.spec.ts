@@ -73,8 +73,12 @@ test('F-AI-CTX-2 — Context panel shows empty state when no entries exist @func
 }) => {
   await navigateToAiPage({ page });
 
-  const emptyVisible = await isContextPanelEmptyStateVisible({ page });
-  expect(emptyVisible).toBe(true);
+  // Empty state lives inside the hidden lg:flex sidebar — only assertable on wide viewports.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  if (viewportWidth >= 1024) {
+    const emptyVisible = await isContextPanelEmptyStateVisible({ page });
+    expect(emptyVisible).toBe(true);
+  }
 });
 
 test('F-AI-CTX-3 — Adding a context entry via the UI saves and displays it @functional', async ({
