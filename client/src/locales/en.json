@@ -2286,6 +2286,21 @@
       "andMore": "+ {{count}} more",
       "bulkDeleteWarning": "This will permanently delete {{count}} records. This cannot be undone.",
       "bulkDeleteConfirmPlaceholder": "Type {{count}} or DELETE to confirm"
+    },
+    "context": {
+      "emptyState": "Add context to help the AI learn your preferences",
+      "addEntry": "+ Add context",
+      "keyPlaceholder": "Label (e.g. \"a while\")",
+      "valuePlaceholder": "Meaning (e.g. \"30+ days without activity\")",
+      "save": "Save",
+      "cancel": "Cancel",
+      "deleteConfirm": "Remove this context entry?",
+      "editEntry": "Edit entry",
+      "deleteEntry": "Delete entry",
+      "panelLabel": "My Context",
+      "proposalAccept": "Remember this",
+      "proposalDismiss": "Dismiss",
+      "limitReached": "You have reached the maximum of 50 context entries."
     }
   }
 }

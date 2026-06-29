@@ -70,6 +70,8 @@ export type AuditRecordType =
   | 'scim_group_role_mapping'
   /** AI conversation sessions (MINCRM-421) */
   | 'ai_sessions'
+  /** Per-user AI context preferences (MINCRM-427) */
+  | 'user_ai_context'
   /** Email templates for sequences and activities (MINCRM-422) */
   | 'email_templates';
 

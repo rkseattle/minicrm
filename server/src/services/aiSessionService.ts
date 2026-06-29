@@ -33,10 +33,14 @@ import type {
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import { buildToolSet, BUILTIN_ROLE_CAPABILITIES } from '../ai/tools/index.js';
 import { executeToolCall } from '../ai/toolExecutor.js';
-import { AI_SYSTEM_PROMPT } from '../ai/systemPrompt.js';
+import { buildSystemPrompt } from '../ai/systemPrompt.js';
+import { extractContextProposal } from '../ai/contextProposal.js';
 import { userCapabilities } from './roleService.js';
 import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
+import { listContextEntries } from './aiContextService.js';
+import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
+import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';
 
 // ── Row types ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +59,7 @@ interface AiMessageRow {
   content: string;
   tool_results: AiToolResult[] | null;
   pending_action: AiPendingAction | null;
+  context_proposal: AiContextProposal | null;
   created_at: Date;
 }
 
@@ -121,6 +126,7 @@ function serialiseMessage(row: AiMessageRow): AiMessageResponse {
     content: row.content,
     tool_results: row.tool_results ?? null,
     pending_action: row.pending_action ?? null,
+    context_proposal: row.context_proposal ?? null,
     created_at: row.created_at.toISOString(),
   };
 }
@@ -216,7 +222,7 @@ export async function getSessionWithMessages(
   }
 
   const messagesResult = await pool.query<AiMessageRow>(
-    `SELECT id, session_id, role, content, tool_results, pending_action, created_at
+    `SELECT id, session_id, role, content, tool_results, pending_action, context_proposal, created_at
      FROM ai_messages
      WHERE session_id = $1
      ORDER BY created_at ASC`,
@@ -294,9 +300,9 @@ export async function sendMessage(
   actor: AuditActor,
   userRole: string,
 ): Promise<AiMessageResponse> {
-  // Resolve capabilities before Tx 1 so that a DB failure here aborts cleanly
-  // without leaving an orphaned user message in ai_messages. In E2E mode the
-  // result is unused but the query is cheap.
+  // Resolve capabilities and user context entries before Tx 1 so that DB
+  // failures here abort cleanly without leaving an orphaned user message in
+  // ai_messages. In E2E mode results are unused but queries are cheap.
   //
   // Fallback: if userCapabilities() returns an empty set (e.g., built-in
   // role_capabilities rows missing due to a failed migration), merge in the
@@ -305,6 +311,9 @@ export async function sendMessage(
   const dbCapabilities = await userCapabilities(userId);
   const capabilities: ReadonlySet<Capability> =
     dbCapabilities.size > 0 ? dbCapabilities : new Set(BUILTIN_ROLE_CAPABILITIES[userRole] ?? []);
+
+  // Fetch user context entries to personalise the system prompt. (MINCRM-427)
+  const contextEntries: AiContextEntryResponse[] = await listContextEntries(userId);
 
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────
   // Commit before calling Anthropic so the pool connection is released during
@@ -398,6 +407,8 @@ export async function sendMessage(
   // Captured before applyPiiFilter so the confirmation block shows unredacted field values
   // to the session owner. (MINCRM-425)
   let rawPendingAction: unknown = null;
+  // Context proposal extracted from the final assistant text, if any. (MINCRM-429, MINCRM-430)
+  let rawContextProposal: AiContextProposal | null = null;
 
   if (IS_E2E) {
     assistantContent = E2E_STUB_RESPONSE;
@@ -441,7 +452,7 @@ export async function sendMessage(
         const response = await anthropicClient.messages.create({
           model: row.model,
           max_tokens: 4096,
-          system: AI_SYSTEM_PROMPT,
+          system: buildSystemPrompt(contextEntries),
           tools,
           tool_choice: { type: 'auto' },
           messages: loopMessages,
@@ -595,6 +606,17 @@ export async function sendMessage(
     }
   }
 
+  // Extract and strip the context proposal marker from the assistant's text
+  // before storage. The marker is Claude's structured signal that it wants to
+  // propose saving an ambiguity resolution or correction as a user preference.
+  // The cleaned content is stored as message content; the proposal is stored
+  // in its own column for the client to render as an accept/dismiss chip. (MINCRM-429, MINCRM-430)
+  if (!IS_E2E) {
+    const extraction = extractContextProposal(assistantContent);
+    assistantContent = extraction.cleanContent;
+    rawContextProposal = extraction.proposal;
+  }
+
   // ── Tx 2: insert assistant message, update session, write audit entry ─────
 
   const client2: PoolClient = await pool.connect();
@@ -619,11 +641,13 @@ export async function sendMessage(
       ? JSON.stringify(rawPendingAction as AiPendingAction)
       : null;
 
+    const contextProposalJson = rawContextProposal ? JSON.stringify(rawContextProposal) : null;
+
     const assistantResult = await client2.query<AiMessageRow>(
-      `INSERT INTO ai_messages (session_id, role, content, tool_results, pending_action)
-       VALUES ($1, 'assistant', $2, $3, $4)
-       RETURNING id, session_id, role, content, tool_results, pending_action, created_at`,
-      [sessionId, assistantContent, toolResultsJson, pendingActionJson],
+      `INSERT INTO ai_messages (session_id, role, content, tool_results, pending_action, context_proposal)
+       VALUES ($1, 'assistant', $2, $3, $4, $5)
+       RETURNING id, session_id, role, content, tool_results, pending_action, context_proposal, created_at`,
+      [sessionId, assistantContent, toolResultsJson, pendingActionJson, contextProposalJson],
     );
 
     if (isFirstMessage) {

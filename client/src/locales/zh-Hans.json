@@ -2286,6 +2286,21 @@
       "andMore": "+ 另 {{count}} 条",
       "bulkDeleteWarning": "这将永久删除 {{count}} 条记录。此操作无法撤销。",
       "bulkDeleteConfirmPlaceholder": "输入 {{count}} 或 DELETE 以确认"
+    },
+    "context": {
+      "emptyState": "添加上下文以帮助 AI 了解您的偏好",
+      "addEntry": "+ 添加上下文",
+      "keyPlaceholder": "标签（例如\"一段时间\"）",
+      "valuePlaceholder": "含义（例如\"超过 30 天没有活动\"）",
+      "save": "保存",
+      "cancel": "取消",
+      "deleteConfirm": "删除此上下文条目？",
+      "editEntry": "编辑条目",
+      "deleteEntry": "删除条目",
+      "panelLabel": "我的上下文",
+      "proposalAccept": "记住这个",
+      "proposalDismiss": "忽略",
+      "limitReached": "您已达到 50 条上下文条目的上限。"
     }
   }
 }
