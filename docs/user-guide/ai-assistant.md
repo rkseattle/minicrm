@@ -121,6 +121,44 @@ The assistant can create and update records when you ask it to:
 
 > **Note:** The assistant can only modify records you own. Admins can modify any record.
 
+### Confirming write actions
+
+Before the AI executes any create, update, or delete operation it shows a **confirmation
+block** in the chat. This gives you a chance to review the proposed change and either
+approve it or cancel before anything is written to your CRM.
+
+#### What the confirmation block shows
+
+- An **operation badge** — green for Create, blue for Update, red for Delete.
+- The **record type** (Contact, Deal, Lead, etc.) and a short summary of the proposed change.
+- A **field preview** table showing the values that will be set (for create/update) or the
+  name of the record that will be deleted.
+- For operations affecting **multiple records**, a count of how many records are affected and
+  a sample list of record names.
+
+#### Approving a change
+
+Click **Confirm** to let the AI proceed. The confirmation block becomes disabled while the
+request is being processed.
+
+#### Cancelling a change
+
+Click **Cancel** to abort the operation. The AI will acknowledge the cancellation and no
+data will be written.
+
+#### Bulk delete double-confirmation
+
+When the AI proposes deleting more than one record at once, an additional safety gate
+appears below the warning. You must type either:
+
+- The exact number of records to be deleted (e.g. `5`), or
+- The word `DELETE` (in any case)
+
+…before the **Confirm** button becomes active (case-insensitive). This prevents accidental bulk deletions.
+
+> If you reload the page or navigate away after clicking **Confirm**, the AI request is
+> still processed — navigating away does not cancel an in-flight write.
+
 ### Visibility and data access
 
 Your data access in the AI Assistant mirrors your normal CRM permissions:

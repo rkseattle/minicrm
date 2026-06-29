@@ -504,3 +504,72 @@ export async function getAiSessionViaApi(
   const res = await restClient.get<AiSessionRow>(`/api/v1/ai/sessions/${sessionId}`);
   return res.body;
 }
+
+// ---------------------------------------------------------------------------
+// Confirmation block behaviors (MINCRM-425, MINCRM-426)
+// ---------------------------------------------------------------------------
+
+export interface ConfirmationBlockResult {
+  /** Whether the confirmation block was visible. */
+  visible: boolean;
+  /** The text content of the operation badge, if visible. */
+  operationBadge: string | null;
+}
+
+/**
+ * Checks whether a standard (non-bulk) mutation confirmation block is visible
+ * in the AI conversation thread.
+ */
+export async function isConfirmationBlockVisible(context: AiBehaviorContext): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  return aiPage.isConfirmationBlockVisible();
+}
+
+/**
+ * Checks whether a bulk-delete confirmation block is visible.
+ */
+export async function isBulkConfirmationBlockVisible(context: AiBehaviorContext): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  return aiPage.isBulkConfirmationBlockVisible();
+}
+
+export interface ClickConfirmResult {
+  /** Whether the confirm button was clicked (false if block was not visible). */
+  clicked: boolean;
+}
+
+/**
+ * Clicks the Confirm button on the visible confirmation block.
+ * Returns whether the button was clicked.
+ */
+export async function clickConfirmButton(context: AiBehaviorContext): Promise<ClickConfirmResult> {
+  const aiPage = new AiPage(context);
+  const visible = await aiPage.isConfirmationBlockVisible();
+  if (!visible) return { clicked: false };
+  await aiPage.clickConfirmButton();
+  return { clicked: true };
+}
+
+/**
+ * Clicks the Cancel button on the visible confirmation block.
+ * Returns whether the button was clicked.
+ */
+export async function clickCancelButton(context: AiBehaviorContext): Promise<ClickConfirmResult> {
+  const aiPage = new AiPage(context);
+  const visible =
+    (await aiPage.isConfirmationBlockVisible()) || (await aiPage.isBulkConfirmationBlockVisible());
+  if (!visible) return { clicked: false };
+  await aiPage.clickCancelButton();
+  return { clicked: true };
+}
+
+/**
+ * Types text into the bulk-delete confirmation input.
+ */
+export async function typeBulkDeleteConfirmText(
+  context: AiBehaviorContext,
+  text: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+  await aiPage.typeBulkDeleteConfirmText(text);
+}

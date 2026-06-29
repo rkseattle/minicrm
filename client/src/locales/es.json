@@ -2285,8 +2285,7 @@
       "affectedCount": "{{count}} registros se verán afectados",
       "andMore": "+ {{count}} más",
       "bulkDeleteWarning": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
-      "bulkDeleteConfirmPlaceholder": "Escribe {{count}} o DELETE para confirmar",
-      "entityLabel": "{{entityType}}"
+      "bulkDeleteConfirmPlaceholder": "Escribe {{count}} o DELETE para confirmar"
     }
   }
 }

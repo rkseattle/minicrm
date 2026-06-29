@@ -157,16 +157,21 @@ export async function executeToolCall(
         // This tool does not call any service. It builds and returns an AiPendingAction
         // so the session service can store it on the assistant message for client rendering.
         // The actual write tool is called only after the user confirms. (MINCRM-425, MINCRM-426)
+        const isBulk = toolInput.is_bulk as boolean;
+        // isBulkDelete must only be true when isBulk is also true — enforce the invariant
+        // server-side so a malformed AI response cannot trigger the bulk-delete gate
+        // without a valid bulk count. (MINCRM-426)
+        const isBulkDelete = isBulk ? (toolInput.is_bulk_delete as boolean | undefined) : undefined;
         const pendingAction: AiPendingAction = {
           operation: toolInput.operation as AiPendingAction['operation'],
           entityType: toolInput.entity_type as string,
           entityId: toolInput.entity_id as string | undefined,
           entityName: toolInput.entity_name as string | undefined,
           fields: toolInput.fields as Record<string, unknown>,
-          isBulk: toolInput.is_bulk as boolean,
-          bulkCount: toolInput.bulk_count as number | undefined,
-          bulkSample: toolInput.bulk_sample as string[] | undefined,
-          isBulkDelete: toolInput.is_bulk_delete as boolean | undefined,
+          isBulk,
+          bulkCount: isBulk ? (toolInput.bulk_count as number | undefined) : undefined,
+          bulkSample: isBulk ? (toolInput.bulk_sample as string[] | undefined) : undefined,
+          isBulkDelete,
           summary: toolInput.summary as string,
         };
         logger.info(
@@ -174,6 +179,7 @@ export async function executeToolCall(
             operation: pendingAction.operation,
             entityType: pendingAction.entityType,
             isBulk: pendingAction.isBulk,
+            isBulkDelete: pendingAction.isBulkDelete,
           },
           'NLI mutation confirmation requested (MINCRM-425)',
         );

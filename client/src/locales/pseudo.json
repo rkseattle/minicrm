@@ -1894,8 +1894,7 @@
       "affectedCount": "[{{count}} rëcörds wïll bë àffëctëd]",
       "andMore": "[+ {{count}} mörë]",
       "bulkDeleteWarning": "[Thïs wïll përmànëntly dëlëtë {{count}} rëcörds. Thïs cànnöt bë ündönë.]",
-      "bulkDeleteConfirmPlaceholder": "[Tÿpë {{count}} ör DELETE tö cönfïrm]",
-      "entityLabel": "[{{entityType}}]"
+      "bulkDeleteConfirmPlaceholder": "[Tÿpë {{count}} ör DELETE tö cönfïrm]"
     }
   }
 }
