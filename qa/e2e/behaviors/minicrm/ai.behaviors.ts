@@ -234,6 +234,18 @@ export async function sendAiMessageViaUI(
 ): Promise<SendAiMessageResult> {
   const aiPage = new AiPage(context);
 
+  // Snapshot existing message counts before sending so we can wait for a net
+  // increase rather than mere presence. On multi-turn conversations, elements
+  // with data-testid="ai-message-assistant" are already in the DOM from prior
+  // turns — a pure presence check trivially passes and may return before the
+  // new reply has actually rendered.
+  const userBefore = (await context.page.evaluate(
+    `document.querySelectorAll('[data-testid="ai-message-user"]').length`,
+  )) as number;
+  const assistantBefore = (await context.page.evaluate(
+    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length`,
+  )) as number;
+
   // Register before clicking Send so a fast server response isn't missed.
   // Waiting for the POST to resolve decouples server latency (3-10s Anthropic
   // round-trip, longer under CI load) from the DOM poll — the DOM check then
@@ -248,12 +260,18 @@ export async function sendAiMessageViaUI(
   await aiPage.sendMessage(content);
   await replyReceived;
 
-  // waitForPresent uses document.querySelector which avoids strict-mode
-  // violations when multiple message bubbles share the same data-testid.
-  // The network round-trip is done, but React's render + commit can be slow on
-  // mobile CI under load — use a generous timeout to avoid false failures.
-  await context.page.waitForPresent('[data-testid="ai-message-user"]', 20_000);
-  await context.page.waitForPresent('[data-testid="ai-message-assistant"]', 20_000);
+  // Wait for counts to exceed the pre-send baseline. React's render + commit
+  // can be slow on mobile CI under load — use a generous timeout.
+  await context.page.waitForFunction(
+    `document.querySelectorAll('[data-testid="ai-message-user"]').length > ${userBefore}`,
+    undefined,
+    { timeout: 20_000 },
+  );
+  await context.page.waitForFunction(
+    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length > ${assistantBefore}`,
+    undefined,
+    { timeout: 20_000 },
+  );
 
   return { userMessageVisible: true, assistantMessageVisible: true };
 }
