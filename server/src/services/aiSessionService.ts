@@ -348,24 +348,27 @@ export async function sendMessage(
       [sessionId, content],
     );
 
-    // Clear any pending_action on the preceding assistant message so that
-    // after a page refresh the confirmation block does not re-render as interactive.
-    // This is a best-effort nullification — if no row is updated, that's fine.
-    // (MINCRM-425, MINCRM-426)
-    await client1.query(
-      `UPDATE ai_messages
-       SET pending_action = NULL
-       WHERE session_id = $1
-         AND role = 'assistant'
-         AND pending_action IS NOT NULL
-         AND id = (
-           SELECT id FROM ai_messages
-           WHERE session_id = $1 AND role = 'assistant'
-           ORDER BY created_at DESC
-           LIMIT 1
-         )`,
-      [sessionId],
-    );
+    // Only clear pending_action when the user sends an explicit confirm or cancel.
+    // Clarifying questions ("which fields will change?") must leave the pending_action
+    // intact so the confirmation block stays interactive after a page refresh. (MINCRM-425)
+    const CONFIRM_PHRASE = 'Yes, go ahead.';
+    const CANCEL_PHRASE = 'No, cancel that.';
+    if (content === CONFIRM_PHRASE || content === CANCEL_PHRASE) {
+      await client1.query(
+        `UPDATE ai_messages
+         SET pending_action = NULL
+         WHERE session_id = $1
+           AND role = 'assistant'
+           AND pending_action IS NOT NULL
+           AND id = (
+             SELECT id FROM ai_messages
+             WHERE session_id = $1 AND role = 'assistant'
+             ORDER BY created_at DESC
+             LIMIT 1
+           )`,
+        [sessionId],
+      );
+    }
 
     sdkMessages = [
       ...historyResult.rows.map((row) => ({
@@ -458,10 +461,30 @@ export async function sendMessage(
           loopMessages = [...loopMessages, { role: 'assistant', content: response.content }];
 
           // Execute each tool call sequentially to avoid write races.
+          // Stop immediately if requestMutationConfirmation is encountered — write tools
+          // must not run in the same batch as the confirmation request. (MINCRM-425)
           const toolResultBlocks: Anthropic.ToolResultBlockParam[] = [];
           const strippedFieldsManifest: Record<string, string[]> = {};
           for (const block of response.content) {
             if (block.type !== 'tool_use') continue;
+
+            // Guard: if we already have a pending confirmation, skip every remaining
+            // tool in this batch to prevent writes from executing before user confirms.
+            if (rawPendingAction !== null) {
+              logger.warn(
+                { sessionId, skippedTool: block.name },
+                'NLI: skipping tool call that arrived after requestMutationConfirmation in same batch',
+              );
+              toolResultBlocks.push({
+                type: 'tool_result',
+                tool_use_id: block.id,
+                content: JSON.stringify({
+                  error: 'Tool call skipped: a mutation confirmation is pending user approval.',
+                }),
+              });
+              continue;
+            }
+
             let toolResult: unknown;
             try {
               toolResult = await executeToolCall(
@@ -480,14 +503,7 @@ export async function sendMessage(
             // is shown only to the session owner (not sent to the AI), so field values
             // must not be stripped. (MINCRM-425)
             if (block.name === 'requestMutationConfirmation') {
-              if (rawPendingAction !== null) {
-                logger.warn(
-                  { sessionId },
-                  'NLI: multiple requestMutationConfirmation calls in one turn — only first stored',
-                );
-              } else {
-                rawPendingAction = toolResult;
-              }
+              rawPendingAction = toolResult;
             }
 
             // Apply PII minimization before sending to the AI provider.
