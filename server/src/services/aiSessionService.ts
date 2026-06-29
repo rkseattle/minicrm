@@ -460,20 +460,26 @@ export async function sendMessage(
           // Append the assistant's tool_use message to the conversation.
           loopMessages = [...loopMessages, { role: 'assistant', content: response.content }];
 
+          // Pre-scan the batch: if requestMutationConfirmation is present anywhere in this
+          // response, no write tool in the same batch may execute — regardless of position.
+          // Without this scan a write tool that precedes the confirmation in the batch would
+          // reach executeToolCall while rawPendingAction is still null. (MINCRM-425, MINCRM-426)
+          const batchHasConfirmation = response.content.some(
+            (b) => b.type === 'tool_use' && b.name === 'requestMutationConfirmation',
+          );
+
           // Execute each tool call sequentially to avoid write races.
-          // Stop immediately if requestMutationConfirmation is encountered — write tools
-          // must not run in the same batch as the confirmation request. (MINCRM-425)
           const toolResultBlocks: Anthropic.ToolResultBlockParam[] = [];
           const strippedFieldsManifest: Record<string, string[]> = {};
           for (const block of response.content) {
             if (block.type !== 'tool_use') continue;
 
-            // Guard: if we already have a pending confirmation, skip every remaining
-            // tool in this batch to prevent writes from executing before user confirms.
-            if (rawPendingAction !== null) {
+            // Skip all non-confirmation tools in a batch that contains a confirmation
+            // request — writes must not execute until the user approves. (MINCRM-425)
+            if (batchHasConfirmation && block.name !== 'requestMutationConfirmation') {
               logger.warn(
                 { sessionId, skippedTool: block.name },
-                'NLI: skipping tool call that arrived after requestMutationConfirmation in same batch',
+                'NLI: skipping tool call batched with requestMutationConfirmation — write blocked pending user approval',
               );
               toolResultBlocks.push({
                 type: 'tool_result',
@@ -540,11 +546,10 @@ export async function sendMessage(
             );
           }
 
-          // If the AI requested mutation confirmation in this round, stop the loop here.
+          // If this batch contained a confirmation request, stop the agentic loop.
           // The write tool must only be called after the user confirms in their next message.
-          // Allowing further tool calls in this turn would execute writes before the user
-          // sees the confirmation block. (MINCRM-425, MINCRM-426)
-          if (collectedToolResults.some((r) => r.toolName === 'requestMutationConfirmation')) {
+          // (MINCRM-425, MINCRM-426)
+          if (batchHasConfirmation) {
             const textBlock = response.content.find((b) => b.type === 'text');
             assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
             break;
