@@ -2285,8 +2285,7 @@
       "affectedCount": "{{count}} enregistrements seront affectés",
       "andMore": "+ {{count}} de plus",
       "bulkDeleteWarning": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
-      "bulkDeleteConfirmPlaceholder": "Tapez {{count}} ou DELETE pour confirmer",
-      "entityLabel": "{{entityType}}"
+      "bulkDeleteConfirmPlaceholder": "Tapez {{count}} ou DELETE pour confirmer"
     }
   }
 }

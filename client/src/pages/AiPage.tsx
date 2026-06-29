@@ -298,6 +298,8 @@ export default function AiPage() {
     onError: () => {
       setOptimisticMessages([]);
       setSendError(t('ai.errorSend'));
+      // Re-enable any disabled confirmation block so the user can retry.
+      setDisabledPendingActionId(null);
     },
   });
 
@@ -316,6 +318,8 @@ export default function AiPage() {
         setActiveSessionId(sessionId);
         setOptimisticMessages([]);
         setSendError(null);
+        setDisabledPendingActionId(null);
+        setBulkDeleteConfirmTexts({});
       }
     },
     [resolvedSessionId],

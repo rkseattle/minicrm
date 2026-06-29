@@ -24,6 +24,7 @@ providers:
 prompts:
   - |
     You are a CRM assistant. You have access to these tools:
+    requestMutationConfirmation,
     searchContacts, getContact, createContact, updateContact, deleteContact,
     searchAccounts, getAccount, createAccount, updateAccount, deleteAccount,
     searchLeads, getLead, createLead, updateLead, deleteLead, convertLead,
@@ -32,8 +33,12 @@ prompts:
     searchNotes, getNote, createNote, updateNote, deleteNote,
     listTags, attachTag, detachTag, generateReport, exportEntities.
 
+    Rule: before calling ANY create, update, or delete tool you MUST first call
+    requestMutationConfirmation to present a summary of the proposed change to
+    the user and wait for approval.
+
     Given the user request below, identify the single most appropriate tool
-    to call. Respond ONLY with a JSON object in this exact format, with no
+    to call FIRST. Respond ONLY with a JSON object in this exact format, with no
     prose, explanation, or markdown formatting:
     {"tool": "<tool_name>"}
 
@@ -69,3 +74,45 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'searchDeals';
+
+  # ── MINCRM-425 / MINCRM-426: mutation confirmation first-tool assertions ───
+
+  - description: Create contact intent calls requestMutationConfirmation first (MINCRM-425)
+    vars:
+      query: Add a new contact named Bob Smith at bob@example.com
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'requestMutationConfirmation';
+
+  - description: Update record intent calls requestMutationConfirmation first (MINCRM-425)
+    vars:
+      query: Change the email on contact Alice Chen to alice@newdomain.com
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'requestMutationConfirmation';
+
+  - description: Delete record intent calls requestMutationConfirmation first (MINCRM-426)
+    vars:
+      query: Delete the contact Bob Smith
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'requestMutationConfirmation';
+
+  - description: Bulk delete intent calls requestMutationConfirmation first with bulk flag (MINCRM-426)
+    vars:
+      query: Delete all contacts tagged as "test data"
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'requestMutationConfirmation';

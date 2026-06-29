@@ -533,9 +533,18 @@ export async function sendMessage(
     // Separate requestMutationConfirmation results from regular read-tool results.
     // The pending action is stored in its own column; confirmation calls are not
     // included in the tool_results array (which is for native CRM card rendering).
-    const confirmationResult = collectedToolResults.find(
+    const confirmationResults = collectedToolResults.filter(
       (r) => r.toolName === 'requestMutationConfirmation',
     );
+    // The AI should never call requestMutationConfirmation more than once per turn.
+    // If it does, log a warning and use only the first result. (MINCRM-425)
+    if (confirmationResults.length > 1) {
+      logger.warn(
+        { sessionId, count: confirmationResults.length },
+        'NLI: multiple requestMutationConfirmation calls in one turn — only first stored',
+      );
+    }
+    const confirmationResult = confirmationResults[0];
     const pendingActionJson = confirmationResult
       ? JSON.stringify(confirmationResult.output as AiPendingAction)
       : null;

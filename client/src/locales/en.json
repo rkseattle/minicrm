@@ -2285,8 +2285,7 @@
       "affectedCount": "{{count}} records will be affected",
       "andMore": "+ {{count}} more",
       "bulkDeleteWarning": "This will permanently delete {{count}} records. This cannot be undone.",
-      "bulkDeleteConfirmPlaceholder": "Type {{count}} or DELETE to confirm",
-      "entityLabel": "{{entityType}}"
+      "bulkDeleteConfirmPlaceholder": "Type {{count}} or DELETE to confirm"
     }
   }
 }

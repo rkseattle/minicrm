@@ -2285,8 +2285,7 @@
       "affectedCount": "{{count}} Datensätze werden betroffen sein",
       "andMore": "+ {{count}} weitere",
       "bulkDeleteWarning": "Damit werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
-      "bulkDeleteConfirmPlaceholder": "Geben Sie {{count}} oder DELETE ein, um zu bestätigen",
-      "entityLabel": "{{entityType}}"
+      "bulkDeleteConfirmPlaceholder": "Geben Sie {{count}} oder DELETE ein, um zu bestätigen"
     }
   }
 }

@@ -299,4 +299,121 @@ export class AiPage {
     const confirmBtn = await this.deleteConfirmButtonLocator();
     await confirmBtn.click();
   }
+
+  // ── Mutation confirmation block locators (MINCRM-425, MINCRM-426) ─────────
+
+  /** Locates the standard mutation confirmation block. */
+  async confirmationBlockLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-confirmation-block' },
+          { type: 'css', value: '[data-testid="nli-confirmation-block"]' },
+        ],
+        { intent: 'AI mutation confirmation block for pending write action' },
+      )
+      .resolve();
+  }
+
+  /** Locates the bulk-delete confirmation block. */
+  async bulkConfirmationBlockLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-bulk-confirmation-block' },
+          { type: 'css', value: '[data-testid="nli-bulk-confirmation-block"]' },
+        ],
+        { intent: 'AI bulk delete confirmation block with double-confirm gate' },
+      )
+      .resolve();
+  }
+
+  /** Locates the Confirm button inside either confirmation block. */
+  async confirmButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-confirm-button' },
+          { type: 'role', value: 'button', options: { name: /confirm/i } },
+        ],
+        { intent: 'Confirm button in AI mutation confirmation block' },
+      )
+      .resolve();
+  }
+
+  /** Locates the Cancel button inside either confirmation block. */
+  async cancelButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-cancel-button' },
+          { type: 'role', value: 'button', options: { name: /cancel/i } },
+        ],
+        { intent: 'Cancel button in AI mutation confirmation block' },
+      )
+      .resolve();
+  }
+
+  /** Locates the bulk-delete text input. */
+  async bulkDeleteConfirmInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-bulk-delete-confirm-input' },
+          { type: 'role', value: 'textbox' },
+        ],
+        { intent: 'Bulk delete double-confirm text input in AI confirmation block' },
+      )
+      .resolve();
+  }
+
+  /** Returns true when a standard confirmation block is visible in the thread. */
+  async isConfirmationBlockVisible(): Promise<boolean> {
+    const locator = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-confirmation-block' },
+          { type: 'css', value: '[data-testid="nli-confirmation-block"]' },
+        ],
+        { intent: 'AI mutation confirmation block for pending write action' },
+      )
+      .resolve()
+      .catch(() => null);
+    if (!locator) return false;
+    return locator.isVisible().catch(() => false);
+  }
+
+  /** Returns true when a bulk-delete confirmation block is visible in the thread. */
+  async isBulkConfirmationBlockVisible(): Promise<boolean> {
+    const locator = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-bulk-confirmation-block' },
+          { type: 'css', value: '[data-testid="nli-bulk-confirmation-block"]' },
+        ],
+        { intent: 'AI bulk delete confirmation block with double-confirm gate' },
+      )
+      .resolve()
+      .catch(() => null);
+    if (!locator) return false;
+    return locator.isVisible().catch(() => false);
+  }
+
+  /** Clicks the Confirm button in the confirmation block. */
+  async clickConfirmButton(): Promise<void> {
+    const btn = await this.confirmButtonLocator();
+    await btn.click();
+  }
+
+  /** Clicks the Cancel button in the confirmation block. */
+  async clickCancelButton(): Promise<void> {
+    const btn = await this.cancelButtonLocator();
+    await btn.click();
+  }
+
+  /** Types into the bulk-delete confirmation input. */
+  async typeBulkDeleteConfirmText(text: string): Promise<void> {
+    const input = await this.bulkDeleteConfirmInputLocator();
+    await input.fill(text);
+  }
 }

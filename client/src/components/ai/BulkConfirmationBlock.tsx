@@ -66,9 +66,9 @@ export default function BulkConfirmationBlock({
             </p>
             {pendingAction.bulkSample && pendingAction.bulkSample.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2" data-testid="nli-bulk-sample">
-                {pendingAction.bulkSample.map((name: string) => (
+                {pendingAction.bulkSample.map((name: string, idx: number) => (
                   <span
-                    key={name}
+                    key={`${name}-${idx}`}
                     className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-white border border-gray-300 text-gray-700"
                   >
                     {name}
