@@ -28,6 +28,7 @@ import { tagTools } from './tagTools.js';
 import { reportTools } from './reportTools.js';
 import { exportTools } from './exportTools.js';
 import { adminTools } from './adminTools.js';
+import { mutationConfirmationTools } from './mutationConfirmationTool.js';
 
 // ── Capability map ─────────────────────────────────────────────────────────────
 //
@@ -36,6 +37,12 @@ import { adminTools } from './adminTools.js';
 // Admin tools are guarded by SettingsManage; write tools by their domain capability.
 
 export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
+  // ── Mutation confirmation (MINCRM-425, MINCRM-426) ────────────────────────
+  // Gate on the minimum write capability: any user who can create a contact
+  // (the lowest write bar) should be able to request confirmation. Viewers
+  // have no write tools and will never need this tool.
+  ['requestMutationConfirmation', 'contacts:create' as Capability],
+
   // ── Contacts ──────────────────────────────────────────────────────────────
   ['searchContacts', 'contacts:view' as Capability],
   ['getContact', 'contacts:view' as Capability],
@@ -201,6 +208,10 @@ export const ADMIN_ONLY_TOOL_NAMES = new Set<string>(adminTools.map((t) => t.nam
 
 /** All tool definitions in a flat array ordered for iteration. Exported for testing. */
 export const ALL_TOOLS: Anthropic.Messages.Tool[] = [
+  // requestMutationConfirmation is listed first so Claude encounters its instructions
+  // before any write tool definition. It has no capability gate — viewers have no write
+  // tools so Claude will never attempt to use it for read-only sessions. (MINCRM-425)
+  ...mutationConfirmationTools,
   ...contactTools,
   ...accountTools,
   ...leadTools,
