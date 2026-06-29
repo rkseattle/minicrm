@@ -148,14 +148,18 @@ export default function MutationConfirmationBlock({
     entityType.charAt(0).toUpperCase() + entityType.slice(1).toLowerCase();
 
   return (
-    <div className={`mt-3 ${CONTAINER_CLASSES[operation]}`} data-testid="nli-confirmation-block">
+    <div
+      className={`mt-3 ${CONTAINER_CLASSES[operation] ?? CONTAINER_CLASSES['update']}`}
+      data-testid="nli-confirmation-block"
+    >
       {/* Header row: operation badge + entity type */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLASSES[operation]}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLASSES[operation] ?? BADGE_CLASSES['update']}`}
           data-testid="nli-operation-badge"
+          aria-label={t(OP_LABEL_KEY[operation] ?? OP_LABEL_KEY['update'])}
         >
-          {t(OP_LABEL_KEY[operation])}
+          {t(OP_LABEL_KEY[operation] ?? OP_LABEL_KEY['update'])}
         </span>
         <span className="text-sm font-medium text-gray-700">{capitalizedEntityType}</span>
       </div>
@@ -165,7 +169,10 @@ export default function MutationConfirmationBlock({
 
       {/* Single-record delete: show entity name/id prominently */}
       {operation === 'delete' && !isBulk && (entityName ?? entityId) && (
-        <div className="mb-2 p-2 bg-red-100 rounded-md text-xs text-red-800 break-words">
+        <div
+          className="mb-2 p-2 bg-red-100 rounded-md text-xs text-red-800 break-words"
+          data-testid="nli-entity-name"
+        >
           <span className="font-semibold">{entityName ?? entityId}</span>
         </div>
       )}
@@ -201,10 +208,10 @@ export default function MutationConfirmationBlock({
           onClick={onConfirm}
           disabled={isDisabled}
           data-testid="nli-confirm-button"
-          aria-label={t(CONFIRM_KEY[operation])}
-          className={CONFIRM_BUTTON_CLASSES[operation]}
+          aria-label={t(CONFIRM_KEY[operation] ?? CONFIRM_KEY['update'])}
+          className={CONFIRM_BUTTON_CLASSES[operation] ?? CONFIRM_BUTTON_CLASSES['update']}
         >
-          {t(CONFIRM_KEY[operation])}
+          {t(CONFIRM_KEY[operation] ?? CONFIRM_KEY['update'])}
         </button>
         <button
           type="button"

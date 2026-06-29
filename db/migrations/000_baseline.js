@@ -1011,15 +1011,16 @@ exports.up = (pgm) => {
     )
   `);
 
-  // ai_messages — ordered message log for each ai_session (MINCRM-421, MINCRM-423, MINCRM-431)
+  // ai_messages — ordered message log for each ai_session (MINCRM-421, MINCRM-423, MINCRM-431, MINCRM-425)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_messages (
-      id           uuid DEFAULT gen_random_uuid() NOT NULL,
-      session_id   uuid NOT NULL,
-      role         character varying(20) NOT NULL,
-      content      text NOT NULL,
-      tool_results jsonb DEFAULT NULL,
-      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      id             uuid DEFAULT gen_random_uuid() NOT NULL,
+      session_id     uuid NOT NULL,
+      role           character varying(20) NOT NULL,
+      content        text NOT NULL,
+      tool_results   jsonb DEFAULT NULL,
+      pending_action jsonb DEFAULT NULL,
+      created_at     timestamp with time zone DEFAULT now() NOT NULL,
       CONSTRAINT ai_messages_pkey PRIMARY KEY (id),
       CONSTRAINT ai_messages_role_check CHECK (role IN ('user', 'assistant'))
     )

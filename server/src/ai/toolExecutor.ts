@@ -157,22 +157,65 @@ export async function executeToolCall(
         // This tool does not call any service. It builds and returns an AiPendingAction
         // so the session service can store it on the assistant message for client rendering.
         // The actual write tool is called only after the user confirms. (MINCRM-425, MINCRM-426)
-        const isBulk = toolInput.is_bulk as boolean;
-        // isBulkDelete must only be true when isBulk is also true — enforce the invariant
-        // server-side so a malformed AI response cannot trigger the bulk-delete gate
-        // without a valid bulk count. (MINCRM-426)
-        const isBulkDelete = isBulk ? (toolInput.is_bulk_delete as boolean | undefined) : undefined;
+
+        // Runtime validation: the Anthropic tool schema enforces types for well-behaved
+        // models but a drifted or adversarial model could send unexpected shapes.
+        // Validate the fields critical for safe rendering before building the action object.
+        const rawOperation = toolInput.operation;
+        const VALID_OPERATIONS = new Set(['create', 'update', 'delete']);
+        if (typeof rawOperation !== 'string' || !VALID_OPERATIONS.has(rawOperation)) {
+          logger.warn(
+            { toolInput },
+            'NLI: requestMutationConfirmation received invalid operation — rejecting',
+          );
+          return {
+            error: `Invalid operation: ${String(rawOperation)}. Must be one of: create, update, delete.`,
+          };
+        }
+        if (
+          toolInput.fields !== null &&
+          toolInput.fields !== undefined &&
+          typeof toolInput.fields !== 'object'
+        ) {
+          logger.warn(
+            { toolInput },
+            'NLI: requestMutationConfirmation received non-object fields — rejecting',
+          );
+          return { error: 'Invalid fields: must be an object.' };
+        }
+        // Treat null fields as empty object to prevent Object.entries(null) crash on client.
+        if (toolInput.fields === null) {
+          toolInput.fields = {};
+        }
+
+        const isBulk = toolInput.is_bulk as boolean; // validated: Anthropic schema enforces boolean type
+        if (isBulk && (toolInput.bulk_count === null || toolInput.bulk_count === undefined)) {
+          logger.warn(
+            { toolInput },
+            'NLI: requestMutationConfirmation called with is_bulk=true but no bulk_count',
+          );
+          return { error: 'bulk_count is required when is_bulk is true.' };
+        }
+
+        // isBulkDelete is only valid when isBulk=true AND operation='delete'.
+        // Enforce both conditions server-side to prevent the bulk-delete double-confirm gate
+        // from rendering for create/update bulk operations. (MINCRM-426)
+        const isBulkDelete =
+          isBulk && rawOperation === 'delete'
+            ? (toolInput.is_bulk_delete as boolean | undefined) // Anthropic schema enforces boolean
+            : undefined;
+
         const pendingAction: AiPendingAction = {
-          operation: toolInput.operation as AiPendingAction['operation'],
-          entityType: toolInput.entity_type as string,
+          operation: toolInput.operation as AiPendingAction['operation'], // validated: VALID_OPERATIONS check above
+          entityType: toolInput.entity_type as string, // validated: Anthropic schema enforces string
           entityId: toolInput.entity_id as string | undefined,
           entityName: toolInput.entity_name as string | undefined,
-          fields: toolInput.fields as Record<string, unknown>,
+          fields: toolInput.fields as Record<string, unknown>, // validated: null guarded above, object check above
           isBulk,
-          bulkCount: isBulk ? (toolInput.bulk_count as number | undefined) : undefined,
-          bulkSample: isBulk ? (toolInput.bulk_sample as string[] | undefined) : undefined,
+          bulkCount: isBulk ? (toolInput.bulk_count as number | undefined) : undefined, // Anthropic schema enforces integer
+          bulkSample: isBulk ? (toolInput.bulk_sample as string[] | undefined) : undefined, // Anthropic schema enforces array
           isBulkDelete,
-          summary: toolInput.summary as string,
+          summary: toolInput.summary as string, // Anthropic schema enforces string
         };
         logger.info(
           {

@@ -267,6 +267,7 @@ export default function AiPage() {
       return sendAiMessage(sessionId, content);
     },
     onSuccess: async (assistantMessage, { sessionId, content }) => {
+      setDisabledPendingActionId(null);
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
       // Use sessionId from mutation variables (not resolvedSessionId from the closure)
@@ -352,6 +353,17 @@ export default function AiPage() {
         delete next[messageId];
         return next;
       });
+      setOptimisticMessages([
+        {
+          id: `optimistic-user-confirm-${messageId}`,
+          session_id: resolvedSessionId, // non-null: guarded by the if(!resolvedSessionId) check above
+          role: 'user' as const,
+          content: 'Yes, go ahead.',
+          tool_results: null,
+          pending_action: null,
+          created_at: new Date().toISOString(),
+        },
+      ]);
       sendMutation.mutate({ sessionId: resolvedSessionId, content: 'Yes, go ahead.' });
     },
     [resolvedSessionId, sendMutation],
@@ -365,6 +377,17 @@ export default function AiPage() {
     (messageId: string) => {
       if (!resolvedSessionId || sendMutation.isPending) return;
       setDisabledPendingActionId(messageId);
+      setOptimisticMessages([
+        {
+          id: `optimistic-user-cancel-${messageId}`,
+          session_id: resolvedSessionId, // non-null: guarded by the if(!resolvedSessionId) check above
+          role: 'user' as const,
+          content: 'No, cancel that.',
+          tool_results: null,
+          pending_action: null,
+          created_at: new Date().toISOString(),
+        },
+      ]);
       sendMutation.mutate({ sessionId: resolvedSessionId, content: 'No, cancel that.' });
     },
     [resolvedSessionId, sendMutation],
