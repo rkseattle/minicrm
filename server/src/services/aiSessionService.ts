@@ -312,7 +312,10 @@ export async function sendMessage(
   const capabilities: ReadonlySet<Capability> =
     dbCapabilities.size > 0 ? dbCapabilities : new Set(BUILTIN_ROLE_CAPABILITIES[userRole] ?? []);
 
-  // Fetch user context entries to personalise the system prompt. (MINCRM-427)
+  // Fetch user context entries before Tx 1 so the pool connection is not held
+  // during an Anthropic round-trip. A concurrent context edit between this
+  // point and the Claude call would use stale preferences for one message —
+  // acceptable for a UX-personalisation feature. (MINCRM-427)
   const contextEntries: AiContextEntryResponse[] = await listContextEntries(userId);
 
   // ── Tx 1: validate ownership, fetch history, insert user message ──────────

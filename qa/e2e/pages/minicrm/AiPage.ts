@@ -416,4 +416,123 @@ export class AiPage {
     const input = await this.bulkDeleteConfirmInputLocator();
     await input.fill(text);
   }
+
+  // ── Context panel interactions (MINCRM-427, MINCRM-428) ───────────────────
+
+  /** Returns the context panel empty-state message. */
+  async contextEmptyStateLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-empty' },
+          { type: 'css', value: '[data-testid="ai-context-empty"]' },
+        ],
+        { intent: 'context panel empty state message' },
+      )
+      .resolve();
+  }
+
+  /** Returns the context entry list container. */
+  async contextListLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-list' },
+          { type: 'css', value: '[data-testid="ai-context-list"]' },
+        ],
+        { intent: 'context panel list of entries' },
+      )
+      .resolve();
+  }
+
+  /** Returns a specific context entry row by its server-assigned ID. */
+  async contextEntryLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-entry-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-entry-${entryId}"]` },
+        ],
+        { intent: `context entry row for id ${entryId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the add form key input. */
+  async contextAddKeyInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-add-key' },
+          { type: 'role', value: 'textbox', options: { name: /label/i } },
+        ],
+        { intent: 'context add form key input' },
+      )
+      .resolve();
+  }
+
+  /** Returns the add form value input. */
+  async contextAddValueInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-add-value' },
+          { type: 'role', value: 'textbox', options: { name: /meaning/i } },
+        ],
+        { intent: 'context add form value input' },
+      )
+      .resolve();
+  }
+
+  /** Returns the add form save button. */
+  async contextAddSaveButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-add-save' },
+          { type: 'role', value: 'button', options: { name: /save/i } },
+        ],
+        { intent: 'context add form save button' },
+      )
+      .resolve();
+  }
+
+  /** Returns the add form cancel button. */
+  async contextAddCancelButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-context-add-cancel' },
+          { type: 'role', value: 'button', options: { name: /cancel/i } },
+        ],
+        { intent: 'context add form cancel button' },
+      )
+      .resolve();
+  }
+
+  /** Returns the edit button for a specific context entry. */
+  async contextEditButtonLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-edit-button-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-edit-button-${entryId}"]` },
+        ],
+        { intent: `edit button for context entry ${entryId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the delete button for a specific context entry. */
+  async contextDeleteButtonLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-delete-button-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-delete-button-${entryId}"]` },
+        ],
+        { intent: `delete button for context entry ${entryId}` },
+      )
+      .resolve();
+  }
 }

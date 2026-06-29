@@ -2299,8 +2299,10 @@
       "deleteEntry": "Supprimer l'entrée",
       "panelLabel": "Mon Contexte",
       "proposalAccept": "Mémoriser ceci",
+      "proposalAccepted": "Enregistré",
       "proposalDismiss": "Ignorer",
-      "limitReached": "Vous avez atteint le maximum de 50 entrées de contexte."
+      "limitReached": "Vous avez atteint le maximum de 50 entrées de contexte.",
+      "keyDuplicate": "Une entrée de contexte avec ce libellé existe déjà."
     }
   }
 }

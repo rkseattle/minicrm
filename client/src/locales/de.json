@@ -2299,8 +2299,10 @@
       "deleteEntry": "Eintrag löschen",
       "panelLabel": "Mein Kontext",
       "proposalAccept": "Das merken",
+      "proposalAccepted": "Gespeichert",
       "proposalDismiss": "Ablehnen",
-      "limitReached": "Sie haben das Maximum von 50 Kontexteinträgen erreicht."
+      "limitReached": "Sie haben das Maximum von 50 Kontexteinträgen erreicht.",
+      "keyDuplicate": "Ein Kontexteintrag mit dieser Bezeichnung existiert bereits."
     }
   }
 }

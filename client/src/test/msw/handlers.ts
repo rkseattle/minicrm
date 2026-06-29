@@ -2685,6 +2685,47 @@ export const handlers = [
     });
   }),
 
+  // ── AI user context handlers (MINCRM-427, MINCRM-428) ─────────────────────
+
+  /** AI context: GET /api/v1/ai/context */
+  http.get('/api/v1/ai/context', () => {
+    return HttpResponse.json({ entries: [] });
+  }),
+
+  /** AI context: POST /api/v1/ai/context */
+  http.post('/api/v1/ai/context', async ({ request }) => {
+    const body = (await request.json()) as { key: string; value: string };
+    return HttpResponse.json(
+      {
+        id: 'mock-context-entry-id',
+        user_id: 'mock-user-id',
+        key: body.key,
+        value: body.value,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
+  }),
+
+  /** AI context: PATCH /api/v1/ai/context/:id */
+  http.patch('/api/v1/ai/context/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { key?: string; value?: string };
+    return HttpResponse.json({
+      id: params['id'],
+      user_id: 'mock-user-id',
+      key: body.key ?? 'existing-key',
+      value: body.value ?? 'existing-value',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  /** AI context: DELETE /api/v1/ai/context/:id */
+  http.delete('/api/v1/ai/context/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   // ── AI token budget handlers (MINCRM-458) ──────────────────────────────────
 
   /** AI token budgets: GET /api/v1/admin/ai/token-budgets */

@@ -1036,7 +1036,8 @@ exports.up = (pgm) => {
       value      varchar(500) NOT NULL,
       created_at timestamp with time zone DEFAULT now() NOT NULL,
       updated_at timestamp with time zone DEFAULT now() NOT NULL,
-      CONSTRAINT user_ai_context_pkey PRIMARY KEY (id)
+      CONSTRAINT user_ai_context_pkey PRIMARY KEY (id),
+      CONSTRAINT user_ai_context_user_id_key_unique UNIQUE (user_id, key)
     )
   `);
 

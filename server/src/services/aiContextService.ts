@@ -60,7 +60,10 @@ export async function listContextEntries(userId: string): Promise<AiContextEntry
 
 /**
  * Creates a new context entry for the user.
- * Enforces the 50-entry cap (409 when exceeded).
+ * Enforces the 50-entry cap atomically using a conditional INSERT that counts
+ * existing rows in the same statement — eliminates the TOCTOU window that a
+ * separate COUNT + INSERT would leave open under concurrent requests.
+ * Throws 409 (CONTEXT_ENTRY_LIMIT_REACHED) when the cap is already reached.
  * Audit-logged within the same transaction.
  */
 export async function createContextEntry(
@@ -73,23 +76,23 @@ export async function createContextEntry(
   try {
     await client.query('BEGIN');
 
-    const countResult = await client.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM user_ai_context WHERE user_id = $1`,
-      [userId],
+    // Atomic conditional INSERT: only succeeds when the current row count is
+    // below MAX_CONTEXT_ENTRIES, eliminating the TOCTOU race between a
+    // separate COUNT check and INSERT.
+    const result = await client.query<AiContextRow>(
+      `INSERT INTO user_ai_context (user_id, key, value)
+       SELECT $1, $2, $3
+       WHERE (SELECT COUNT(*) FROM user_ai_context WHERE user_id = $1) < $4
+       RETURNING id, user_id, key, value, created_at, updated_at`,
+      [userId, key, value, MAX_CONTEXT_ENTRIES],
     );
-    if (parseInt(countResult.rows[0].count, 10) >= MAX_CONTEXT_ENTRIES) {
+
+    if (result.rows.length === 0) {
       throw Object.assign(
         new Error(`Context entry limit reached (maximum ${MAX_CONTEXT_ENTRIES} entries)`),
         { statusCode: 409, code: 'CONTEXT_ENTRY_LIMIT_REACHED' },
       );
     }
-
-    const result = await client.query<AiContextRow>(
-      `INSERT INTO user_ai_context (user_id, key, value)
-       VALUES ($1, $2, $3)
-       RETURNING id, user_id, key, value, created_at, updated_at`,
-      [userId, key, value],
-    );
     const entry = result.rows[0];
 
     await writeAuditEntry(client, {
@@ -102,6 +105,7 @@ export async function createContextEntry(
       newValue: `${key}: ${value}`,
       changedById: actor.id,
       changedByName: actor.name,
+      source: 'AI (context)',
     });
 
     await client.query('COMMIT');
@@ -151,6 +155,8 @@ export async function updateContextEntry(
        RETURNING id, user_id, key, value, created_at, updated_at`,
       [newKey, newValue, id, userId],
     );
+    // Safe: FOR UPDATE above confirmed the row exists and is owned by this user;
+    // ownership in the UPDATE WHERE clause guarantees a row is returned.
     const after = afterResult.rows[0];
 
     const auditBase = {
@@ -159,6 +165,7 @@ export async function updateContextEntry(
       recordName: after.key,
       changedById: actor.id,
       changedByName: actor.name,
+      source: 'AI (context)' as const,
     };
     const entries = diffFields(
       { key: before.key, value: before.value },
@@ -193,16 +200,18 @@ export async function deleteContextEntry(
   try {
     await client.query('BEGIN');
 
-    const checkResult = await client.query<{ id: string; key: string }>(
-      `SELECT id, key FROM user_ai_context WHERE id = $1 AND user_id = $2`,
+    // FOR UPDATE locks the row before DELETE so the key captured for the audit
+    // entry cannot be concurrently modified between the SELECT and DELETE.
+    const checkResult = await client.query<{ id: string; key: string; value: string }>(
+      `SELECT id, key, value FROM user_ai_context WHERE id = $1 AND user_id = $2 FOR UPDATE`,
       [id, userId],
     );
     if (checkResult.rows.length === 0) {
       throw Object.assign(new Error('Context entry not found'), { statusCode: 404 });
     }
-    const { key } = checkResult.rows[0];
+    const { key, value } = checkResult.rows[0];
 
-    await client.query(`DELETE FROM user_ai_context WHERE id = $1`, [id]);
+    await client.query(`DELETE FROM user_ai_context WHERE id = $1 AND user_id = $2`, [id, userId]);
 
     await writeAuditEntry(client, {
       recordType: 'user_ai_context',
@@ -210,10 +219,11 @@ export async function deleteContextEntry(
       recordName: key,
       eventType: 'deleted',
       fieldName: null,
-      oldValue: key,
+      oldValue: `${key}: ${value}`,
       newValue: null,
       changedById: actor.id,
       changedByName: actor.name,
+      source: 'AI (context)',
     });
 
     await client.query('COMMIT');

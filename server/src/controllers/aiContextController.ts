@@ -49,6 +49,15 @@ export async function createAiContextHandler(req: Request, res: Response): Promi
       });
       return;
     }
+    if (code === '23505') {
+      res.status(409).json({
+        error: {
+          code: 'CONTEXT_KEY_DUPLICATE',
+          message: 'A context entry with this key already exists',
+        },
+      });
+      return;
+    }
     throw err;
   }
 }
@@ -74,8 +83,18 @@ export async function updateAiContextHandler(req: Request, res: Response): Promi
     res.status(200).json(entry);
   } catch (err: unknown) {
     const statusCode = (err as { statusCode?: number }).statusCode;
+    const code = (err as { code?: string }).code;
     if (statusCode === 404) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Context entry not found' } });
+      return;
+    }
+    if (code === '23505') {
+      res.status(409).json({
+        error: {
+          code: 'CONTEXT_KEY_DUPLICATE',
+          message: 'A context entry with this key already exists',
+        },
+      });
       return;
     }
     throw err;

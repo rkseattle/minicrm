@@ -16,7 +16,12 @@
 
 import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';
 
-const PROPOSAL_REGEX = /%%CONTEXT_PROPOSAL%%(\{.*?\})%%/s;
+// Non-global: used with exec() to capture the first marker's JSON payload.
+const PROPOSAL_MATCH_REGEX = /%%CONTEXT_PROPOSAL%%(\{.*?\})%%/s;
+// Global: used with replace() to strip ALL marker occurrences from content so
+// that a model-generated second marker (violating the system prompt rule) does
+// not appear as raw JSON in the user-facing chat bubble.
+const PROPOSAL_STRIP_REGEX = /%%CONTEXT_PROPOSAL%%(?:\{.*?\})%%/gs;
 
 export interface ContextProposalExtraction {
   /** The message content with any proposal marker stripped out. */
@@ -31,12 +36,15 @@ export interface ContextProposalExtraction {
  * Never throws — malformed markers are silently discarded and treated as absent.
  */
 export function extractContextProposal(content: string): ContextProposalExtraction {
-  const match = PROPOSAL_REGEX.exec(content);
-  if (!match) {
-    return { cleanContent: content, proposal: null };
-  }
+  const match = PROPOSAL_MATCH_REGEX.exec(content);
 
-  const cleanContent = content.replace(PROPOSAL_REGEX, '').trim();
+  // Strip all marker occurrences regardless of whether the first one parsed
+  // successfully — a malformed or supernumerary marker must not reach the UI.
+  const cleanContent = content.replace(PROPOSAL_STRIP_REGEX, '').trim();
+
+  if (!match) {
+    return { cleanContent, proposal: null };
+  }
 
   let proposal: AiContextProposal | null = null;
   try {
@@ -48,7 +56,8 @@ export function extractContextProposal(content: string): ContextProposalExtracti
       typeof (parsed as Record<string, unknown>)['value'] === 'string' &&
       typeof (parsed as Record<string, unknown>)['reason'] === 'string' &&
       (parsed as Record<string, unknown>)['key'] !== '' &&
-      (parsed as Record<string, unknown>)['value'] !== ''
+      (parsed as Record<string, unknown>)['value'] !== '' &&
+      (parsed as Record<string, unknown>)['reason'] !== ''
     ) {
       proposal = parsed as AiContextProposal;
     }

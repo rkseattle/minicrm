@@ -12,6 +12,7 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiPage } from '@pages/minicrm/AiPage.js';
+import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -590,4 +591,138 @@ export async function typeBulkDeleteConfirmText(
 ): Promise<void> {
   const aiPage = new AiPage(context);
   await aiPage.typeBulkDeleteConfirmText(text);
+}
+
+// ── AI context panel behaviors (MINCRM-427, MINCRM-428) ──────────────────────
+
+export interface AddContextEntryResult {
+  /** Whether the add form was submitted. */
+  submitted: boolean;
+}
+
+/**
+ * Clicks the "+ Add context" button, fills the key and value fields, and saves.
+ * Waits for the add form to disappear after save, indicating success.
+ */
+export async function addContextEntryViaUI(
+  context: AiBehaviorContext,
+  key: string,
+  value: string,
+): Promise<AddContextEntryResult> {
+  const aiPage = new AiPage(context);
+
+  const addBtn = await aiPage.addContextButtonLocator();
+  await addBtn.click();
+
+  const keyInput = await aiPage.contextAddKeyInputLocator();
+  await keyInput.fill(key);
+
+  const valueInput = await aiPage.contextAddValueInputLocator();
+  await valueInput.fill(value);
+
+  const saveBtn = await aiPage.contextAddSaveButtonLocator();
+  await saveBtn.click();
+
+  return { submitted: true };
+}
+
+/**
+ * Clicks the "+ Add context" button, fills in the key and value fields, then
+ * clicks Cancel. Verifies the form is dismissed without saving an entry.
+ */
+export async function cancelContextEntryViaUI(
+  context: AiBehaviorContext,
+  key: string,
+  value: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+
+  const addBtn = await aiPage.addContextButtonLocator();
+  await addBtn.click();
+
+  const keyInput = await aiPage.contextAddKeyInputLocator();
+  await keyInput.fill(key);
+
+  const valueInput = await aiPage.contextAddValueInputLocator();
+  await valueInput.fill(value);
+
+  const cancelBtn = await aiPage.contextAddCancelButtonLocator();
+  await cancelBtn.click();
+}
+
+/**
+ * Deletes a context entry by ID via the REST API.
+ * UI delete requires accepting a native browser confirm dialog;
+ * use deleteAllContextEntriesViaApi() for test teardown instead.
+ */
+export async function deleteContextEntryViaApi(
+  restClient: RestClient,
+  entryId: string,
+): Promise<void> {
+  await restClient.delete(`/api/v1/ai/context/${entryId}`);
+}
+
+/**
+ * Checks whether the context panel empty-state message is visible.
+ * Returns false when the element is absent (contextEmptyStateLocator resolves
+ * via HealingLocator which throws when no strategy matches — we catch that here
+ * rather than on isVisible() so the throw doesn't escape).
+ */
+export async function isContextPanelEmptyStateVisible(
+  context: AiBehaviorContext,
+): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  try {
+    const locator = await aiPage.contextEmptyStateLocator();
+    return locator.isVisible().catch(() => false);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Checks whether a specific context entry (by ID) is visible in the panel.
+ * Returns false when the element is absent (same HealingLocator throw pattern
+ * as isContextPanelEmptyStateVisible).
+ */
+export async function isContextEntryVisible(
+  context: AiBehaviorContext,
+  entryId: string,
+): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  try {
+    const locator = await aiPage.contextEntryLocator(entryId);
+    return locator.isVisible().catch(() => false);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Creates a context entry directly via the REST API, bypassing the UI.
+ * Returns the created entry's server ID.
+ */
+export async function createContextEntryViaApi(
+  restClient: RestClient,
+  key: string,
+  value: string,
+): Promise<string> {
+  const response = await restClient.post<AiContextEntryResponse>('/api/v1/ai/context', {
+    key,
+    value,
+  });
+  return response.body.id;
+}
+
+/**
+ * Deletes all context entries for the currently authenticated user via the REST API.
+ * Best-effort: individual delete failures are swallowed so a concurrent teardown
+ * (e.g. afterEach racing with a test that already deleted an entry) does not
+ * propagate and corrupt subsequent tests in the serial suite.
+ */
+export async function deleteAllContextEntriesViaApi(restClient: RestClient): Promise<void> {
+  const response = await restClient.get<{ entries: Array<{ id: string }> }>('/api/v1/ai/context');
+  for (const entry of response.body.entries) {
+    await restClient.delete(`/api/v1/ai/context/${entry.id}`).catch(() => {});
+  }
 }
