@@ -29,6 +29,7 @@ import type {
   AiMessageResponse,
   AiSessionWithMessagesResponse,
   AiToolResult,
+  AiPendingAction,
 } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import { buildToolSet, BUILTIN_ROLE_CAPABILITIES } from '../ai/tools/index.js';
 import { executeToolCall } from '../ai/toolExecutor.js';
@@ -53,6 +54,7 @@ interface AiMessageRow {
   role: 'user' | 'assistant';
   content: string;
   tool_results: AiToolResult[] | null;
+  pending_action: AiPendingAction | null;
   created_at: Date;
 }
 
@@ -72,6 +74,9 @@ const IS_E2E = process.env.E2E === 'true';
  * Tools whose outputs are persisted on the assistant message for native client rendering.
  * Write, export, and admin tool results are excluded — they can be large and the client
  * has no renderer for them. Must stay in sync with READ_TOOL_NAMES in NliResultBlock.tsx.
+ *
+ * requestMutationConfirmation is included so its AiPendingAction output can be extracted
+ * and stored in the pending_action column for client confirmation rendering. (MINCRM-425)
  * (MINCRM-423, MINCRM-431)
  */
 const PERSISTABLE_TOOL_NAMES = new Set([
@@ -87,6 +92,7 @@ const PERSISTABLE_TOOL_NAMES = new Set([
   'getNote',
   'searchLeads',
   'getLead',
+  'requestMutationConfirmation',
 ]);
 
 /** Deterministic response returned in E2E environments instead of calling Anthropic. */
@@ -114,6 +120,7 @@ function serialiseMessage(row: AiMessageRow): AiMessageResponse {
     role: row.role,
     content: row.content,
     tool_results: row.tool_results ?? null,
+    pending_action: row.pending_action ?? null,
     created_at: row.created_at.toISOString(),
   };
 }
@@ -209,7 +216,7 @@ export async function getSessionWithMessages(
   }
 
   const messagesResult = await pool.query<AiMessageRow>(
-    `SELECT id, session_id, role, content, tool_results, created_at
+    `SELECT id, session_id, role, content, tool_results, pending_action, created_at
      FROM ai_messages
      WHERE session_id = $1
      ORDER BY created_at ASC`,
@@ -523,14 +530,27 @@ export async function sendMessage(
   try {
     await client2.query('BEGIN');
 
+    // Separate requestMutationConfirmation results from regular read-tool results.
+    // The pending action is stored in its own column; confirmation calls are not
+    // included in the tool_results array (which is for native CRM card rendering).
+    const confirmationResult = collectedToolResults.find(
+      (r) => r.toolName === 'requestMutationConfirmation',
+    );
+    const pendingActionJson = confirmationResult
+      ? JSON.stringify(confirmationResult.output as AiPendingAction)
+      : null;
+
+    const renderableToolResults = collectedToolResults.filter(
+      (r) => r.toolName !== 'requestMutationConfirmation',
+    );
     const toolResultsJson =
-      collectedToolResults.length > 0 ? JSON.stringify(collectedToolResults) : null;
+      renderableToolResults.length > 0 ? JSON.stringify(renderableToolResults) : null;
 
     const assistantResult = await client2.query<AiMessageRow>(
-      `INSERT INTO ai_messages (session_id, role, content, tool_results)
-       VALUES ($1, 'assistant', $2, $3)
-       RETURNING id, session_id, role, content, tool_results, created_at`,
-      [sessionId, assistantContent, toolResultsJson],
+      `INSERT INTO ai_messages (session_id, role, content, tool_results, pending_action)
+       VALUES ($1, 'assistant', $2, $3, $4)
+       RETURNING id, session_id, role, content, tool_results, pending_action, created_at`,
+      [sessionId, assistantContent, toolResultsJson, pendingActionJson],
     );
 
     if (isFirstMessage) {

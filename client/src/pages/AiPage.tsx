@@ -231,6 +231,7 @@ export default function AiPage() {
           role: 'user',
           content,
           tool_results: null,
+          pending_action: null,
           created_at: new Date().toISOString(),
         };
         setOptimisticMessages([optimisticUserMessage, assistantMessage]);
@@ -306,6 +307,7 @@ export default function AiPage() {
       role: 'user',
       content,
       tool_results: null,
+      pending_action: null,
       created_at: new Date().toISOString(),
     };
     setOptimisticMessages([optimisticUserMessage]);

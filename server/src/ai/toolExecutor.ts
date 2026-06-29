@@ -21,6 +21,7 @@
 import logger from '../logger.js';
 import type { AuditActor } from '../services/auditService.js';
 import { ADMIN_ONLY_TOOL_NAMES } from './tools/index.js';
+import type { AiPendingAction } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import { STAGE_TREND_DAYS_OPTIONS } from '../services/reportService.js';
 import type { NoteEntityType } from '@minicrm/shared/schemas/noteSchema.js';
 import type { ActivityType, ActivityStatus } from '@minicrm/shared/schemas/activitySchema.js';
@@ -151,6 +152,34 @@ export async function executeToolCall(
 
   try {
     switch (toolName) {
+      // ── Mutation confirmation ────────────────────────────────────────────────
+      case 'requestMutationConfirmation': {
+        // This tool does not call any service. It builds and returns an AiPendingAction
+        // so the session service can store it on the assistant message for client rendering.
+        // The actual write tool is called only after the user confirms. (MINCRM-425, MINCRM-426)
+        const pendingAction: AiPendingAction = {
+          operation: toolInput.operation as AiPendingAction['operation'],
+          entityType: toolInput.entity_type as string,
+          entityId: toolInput.entity_id as string | undefined,
+          entityName: toolInput.entity_name as string | undefined,
+          fields: toolInput.fields as Record<string, unknown>,
+          isBulk: toolInput.is_bulk as boolean,
+          bulkCount: toolInput.bulk_count as number | undefined,
+          bulkSample: toolInput.bulk_sample as string[] | undefined,
+          isBulkDelete: toolInput.is_bulk_delete as boolean | undefined,
+          summary: toolInput.summary as string,
+        };
+        logger.info(
+          {
+            operation: pendingAction.operation,
+            entityType: pendingAction.entityType,
+            isBulk: pendingAction.isBulk,
+          },
+          'NLI mutation confirmation requested (MINCRM-425)',
+        );
+        return pendingAction;
+      }
+
       // ── Contacts ────────────────────────────────────────────────────────────
       case 'searchContacts': {
         return await listContacts({
