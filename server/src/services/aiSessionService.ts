@@ -68,6 +68,27 @@ interface AiConfigRow {
 
 const IS_E2E = process.env.E2E === 'true';
 
+/**
+ * Tools whose outputs are persisted on the assistant message for native client rendering.
+ * Write, export, and admin tool results are excluded — they can be large and the client
+ * has no renderer for them. Must stay in sync with READ_TOOL_NAMES in NliResultBlock.tsx.
+ * (MINCRM-423, MINCRM-431)
+ */
+const PERSISTABLE_TOOL_NAMES = new Set([
+  'searchContacts',
+  'getContact',
+  'searchAccounts',
+  'getAccount',
+  'searchDeals',
+  'getDeal',
+  'searchActivities',
+  'getActivity',
+  'searchNotes',
+  'getNote',
+  'searchLeads',
+  'getLead',
+]);
+
 /** Deterministic response returned in E2E environments instead of calling Anthropic. */
 const E2E_STUB_RESPONSE = '[E2E stub response]';
 
@@ -426,14 +447,16 @@ export async function sendMessage(
             // Operates on a deep copy — the original result is unchanged.
             const { sanitised, strippedFields } = applyPiiFilter(toolResult);
 
-            // Capture the PII-filtered result for native client rendering. (MINCRM-423, MINCRM-431)
-            // block.input is typed as `object` by the Anthropic SDK but is always a plain
-            // JSON object matching the tool's input_schema — safe to widen here.
-            collectedToolResults.push({
-              toolName: block.name,
-              input: block.input as Record<string, unknown>,
-              output: sanitised,
-            });
+            // Persist results only for read tools so write/export/admin outputs
+            // do not bloat stored messages with data the client cannot render.
+            // (MINCRM-423, MINCRM-431)
+            if (PERSISTABLE_TOOL_NAMES.has(block.name)) {
+              collectedToolResults.push({
+                toolName: block.name,
+                input: block.input as Record<string, unknown>,
+                output: sanitised,
+              });
+            }
 
             if (strippedFields.length > 0) {
               strippedFieldsManifest[block.name] = strippedFields;

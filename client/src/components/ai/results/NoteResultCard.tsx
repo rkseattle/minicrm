@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 interface NoteCardData {
   id: string;
   content?: string | null;
+  body_text?: string | null;
+  body?: string | null;
   entity_type?: string | null;
   entity_name?: string | null;
   created_at?: string | null;
@@ -30,7 +32,7 @@ export default function NoteResultCard({ note }: NoteResultCardProps) {
           {note.author_name && <span>· {note.author_name}</span>}
         </div>
         <p className="text-sm text-gray-800 break-words line-clamp-3">
-          {note.content ?? t('ai.results.noContent')}
+          {note.content ?? note.body_text ?? note.body ?? t('ai.results.noContent')}
         </p>
       </div>
       {note.created_at && (
