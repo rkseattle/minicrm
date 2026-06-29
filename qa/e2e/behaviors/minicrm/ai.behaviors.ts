@@ -261,17 +261,18 @@ export async function sendAiMessageViaUI(
   await aiPage.sendMessage(content);
   await replyReceived;
 
-  // Wait for counts to exceed the pre-send baseline. React's render + commit
-  // can be slow on mobile CI under load — use a generous timeout.
+  // Wait for counts to exceed the pre-send baseline. The network response has
+  // arrived, but React's onSuccess callback, state updates, and DOM commit run
+  // asynchronously — allow up to 30s for the render to complete under CI load.
   await context.page.waitForFunction(
     `document.querySelectorAll('[data-testid="ai-message-user"]').length > ${userBefore}`,
     undefined,
-    { timeout: 20_000 },
+    { timeout: 30_000 },
   );
   await context.page.waitForFunction(
     `document.querySelectorAll('[data-testid="ai-message-assistant"]').length > ${assistantBefore}`,
     undefined,
-    { timeout: 20_000 },
+    { timeout: 30_000 },
   );
 
   return { userMessageVisible: true, assistantMessageVisible: true };
