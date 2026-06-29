@@ -333,7 +333,10 @@ export async function sendMessage(
     isFirstMessage = session.name === null;
 
     const historyResult = await client1.query<AiMessageRow>(
-      `SELECT role, content
+      // TODO: reconstruct tool_use/tool_result message pairs from tool_results for full
+      // context continuity across turns (entity IDs, prior search results). Currently
+      // only role+content is passed to the AI. (MINCRM-425)
+      `SELECT role, content, tool_results
        FROM ai_messages
        WHERE session_id = $1
        ORDER BY created_at ASC`,
@@ -343,6 +346,25 @@ export async function sendMessage(
     await client1.query(
       `INSERT INTO ai_messages (session_id, role, content) VALUES ($1, 'user', $2)`,
       [sessionId, content],
+    );
+
+    // Clear any pending_action on the preceding assistant message so that
+    // after a page refresh the confirmation block does not re-render as interactive.
+    // This is a best-effort nullification — if no row is updated, that's fine.
+    // (MINCRM-425, MINCRM-426)
+    await client1.query(
+      `UPDATE ai_messages
+       SET pending_action = NULL
+       WHERE session_id = $1
+         AND role = 'assistant'
+         AND pending_action IS NOT NULL
+         AND id = (
+           SELECT id FROM ai_messages
+           WHERE session_id = $1 AND role = 'assistant'
+           ORDER BY created_at DESC
+           LIMIT 1
+         )`,
+      [sessionId],
     );
 
     sdkMessages = [
@@ -369,6 +391,10 @@ export async function sendMessage(
   let inputTokens = 0;
   let outputTokens = 0;
   const collectedToolResults: AiToolResult[] = [];
+  // Tracks the raw (pre-PII-filter) AiPendingAction returned by requestMutationConfirmation.
+  // Captured before applyPiiFilter so the confirmation block shows unredacted field values
+  // to the session owner. (MINCRM-425)
+  let rawPendingAction: unknown = null;
 
   if (IS_E2E) {
     assistantContent = E2E_STUB_RESPONSE;
@@ -450,6 +476,20 @@ export async function sendMessage(
               toolResult = { error: toolErr instanceof Error ? toolErr.message : String(toolErr) };
             }
 
+            // Capture raw confirmation result BEFORE PII filtering — the confirmation block
+            // is shown only to the session owner (not sent to the AI), so field values
+            // must not be stripped. (MINCRM-425)
+            if (block.name === 'requestMutationConfirmation') {
+              if (rawPendingAction !== null) {
+                logger.warn(
+                  { sessionId },
+                  'NLI: multiple requestMutationConfirmation calls in one turn — only first stored',
+                );
+              } else {
+                rawPendingAction = toolResult;
+              }
+            }
+
             // Apply PII minimization before sending to the AI provider.
             // Operates on a deep copy — the original result is unchanged.
             const { sanitised, strippedFields } = applyPiiFilter(toolResult);
@@ -482,6 +522,16 @@ export async function sendMessage(
               { sessionId, round: rounds, strippedFields: strippedFieldsManifest },
               'NLI PII minimization: fields stripped from AI payload (MINCRM-445)',
             );
+          }
+
+          // If the AI requested mutation confirmation in this round, stop the loop here.
+          // The write tool must only be called after the user confirms in their next message.
+          // Allowing further tool calls in this turn would execute writes before the user
+          // sees the confirmation block. (MINCRM-425, MINCRM-426)
+          if (collectedToolResults.some((r) => r.toolName === 'requestMutationConfirmation')) {
+            const textBlock = response.content.find((b) => b.type === 'text');
+            assistantContent = textBlock?.type === 'text' ? textBlock.text : '';
+            break;
           }
 
           // Append tool results and loop.
@@ -533,27 +583,20 @@ export async function sendMessage(
     // Separate requestMutationConfirmation results from regular read-tool results.
     // The pending action is stored in its own column; confirmation calls are not
     // included in the tool_results array (which is for native CRM card rendering).
-    const confirmationResults = collectedToolResults.filter(
-      (r) => r.toolName === 'requestMutationConfirmation',
-    );
-    // The AI should never call requestMutationConfirmation more than once per turn.
-    // If it does, log a warning and use only the first result. (MINCRM-425)
-    if (confirmationResults.length > 1) {
-      logger.warn(
-        { sessionId, count: confirmationResults.length },
-        'NLI: multiple requestMutationConfirmation calls in one turn — only first stored',
-      );
-    }
-    const confirmationResult = confirmationResults[0];
-    const pendingActionJson = confirmationResult
-      ? JSON.stringify(confirmationResult.output as AiPendingAction)
-      : null;
-
     const renderableToolResults = collectedToolResults.filter(
       (r) => r.toolName !== 'requestMutationConfirmation',
     );
     const toolResultsJson =
       renderableToolResults.length > 0 ? JSON.stringify(renderableToolResults) : null;
+
+    // Use the raw (pre-PII-filter) pending action for storage — the confirmation block
+    // is shown only to the session owner, not the AI, so field values must not be stripped.
+    // (MINCRM-425)
+    // rawPendingAction is the return value of executeToolCall for requestMutationConfirmation,
+    // which always builds an AiPendingAction object (validated in toolExecutor). (MINCRM-425)
+    const pendingActionJson = rawPendingAction
+      ? JSON.stringify(rawPendingAction as AiPendingAction)
+      : null;
 
     const assistantResult = await client2.query<AiMessageRow>(
       `INSERT INTO ai_messages (session_id, role, content, tool_results, pending_action)

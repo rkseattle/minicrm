@@ -38,10 +38,11 @@ import { mutationConfirmationTools } from './mutationConfirmationTool.js';
 
 export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   // ── Mutation confirmation (MINCRM-425, MINCRM-426) ────────────────────────
-  // Gate on the minimum write capability: any user who can create a contact
-  // (the lowest write bar) should be able to request confirmation. Viewers
-  // have no write tools and will never need this tool.
-  ['requestMutationConfirmation', 'contacts:create' as Capability],
+  // Gated on contacts:view — the minimum capability held by any user with
+  // API access. Write-capable roles (rep, manager, admin) always have contacts:view,
+  // so they always receive this tool. Viewers have only read tools, so the AI
+  // will never attempt to call it in a viewer session.
+  ['requestMutationConfirmation', 'contacts:view' as Capability],
 
   // ── Contacts ──────────────────────────────────────────────────────────────
   ['searchContacts', 'contacts:view' as Capability],
