@@ -117,10 +117,14 @@ export default function ContextProposalChip({
           )}
           {createMutation.isError && (
             <span className="text-xs text-red-600" role="alert">
-              {(createMutation.error as { response?: { data?: { error?: { code?: string } } } })
-                ?.response?.data?.error?.code === 'CONTEXT_ENTRY_LIMIT_REACHED'
-                ? t('ai.context.limitReached')
-                : t('ai.context.keyDuplicate')}
+              {(() => {
+                const code = (
+                  createMutation.error as { response?: { data?: { error?: { code?: string } } } }
+                )?.response?.data?.error?.code;
+                if (code === 'CONTEXT_ENTRY_LIMIT_REACHED') return t('ai.context.limitReached');
+                if (code === 'CONTEXT_KEY_DUPLICATE') return t('ai.context.keyDuplicate');
+                return (createMutation.error as Error).message;
+              })()}
             </span>
           )}
         </div>

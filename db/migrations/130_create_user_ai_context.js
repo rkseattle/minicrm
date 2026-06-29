@@ -14,7 +14,7 @@ exports.shorthands = undefined;
 
 exports.up = (pgm) => {
   pgm.sql(`
-    CREATE TABLE public.user_ai_context (
+    CREATE TABLE IF NOT EXISTS public.user_ai_context (
       id         uuid DEFAULT gen_random_uuid() NOT NULL,
       user_id    uuid NOT NULL,
       key        varchar(100) NOT NULL,

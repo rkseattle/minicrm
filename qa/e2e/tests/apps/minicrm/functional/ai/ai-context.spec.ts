@@ -56,11 +56,16 @@ test.afterEach(async ({ restClient }) => {
 
 test('F-AI-CTX-1 — Context panel is visible on the AI page @functional', async ({ page }) => {
   await navigateToAiPage({ page });
-  const panelVisible = await isAiContextPanelVisible({ page });
-  expect(panelVisible).toBe(true);
+  // The context sidebar is hidden on narrow viewports (hidden lg:flex) — only
+  // assert visibility on wide viewports where it is expected to render.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  if (viewportWidth >= 1024) {
+    const panelVisible = await isAiContextPanelVisible({ page });
+    expect(panelVisible).toBe(true);
 
-  const addBtnVisible = await isAiAddContextButtonVisible({ page });
-  expect(addBtnVisible).toBe(true);
+    const addBtnVisible = await isAiAddContextButtonVisible({ page });
+    expect(addBtnVisible).toBe(true);
+  }
 });
 
 test('F-AI-CTX-2 — Context panel shows empty state when no entries exist @functional', async ({
