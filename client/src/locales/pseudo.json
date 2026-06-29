@@ -1879,6 +1879,23 @@
       "lastActivity": "[Last activity: {{date}}]",
       "closes": "[Closes {{date}}]",
       "viewRecord": "[View]"
+    },
+    "confirmation": {
+      "operationCreate": "[Crëàtë]",
+      "operationUpdate": "[Üpdàtë]",
+      "operationDelete": "[Dëlëtë]",
+      "confirmCreate": "[Cönfïrm Crëàtë]",
+      "confirmUpdate": "[Cönfïrm Üpdàtë]",
+      "confirmDelete": "[Cönfïrm Dëlëtë]",
+      "cancel": "[Càncël]",
+      "fieldLabel": "[Fïëld]",
+      "newValueLabel": "[Nëw Vàlüë]",
+      "valueLabel": "[Vàlüë]",
+      "affectedCount": "[{{count}} rëcörds wïll bë àffëctëd]",
+      "andMore": "[+ {{count}} mörë]",
+      "bulkDeleteWarning": "[Thïs wïll përmànëntly dëlëtë {{count}} rëcörds. Thïs cànnöt bë ündönë.]",
+      "bulkDeleteConfirmPlaceholder": "[Tÿpë {{count}} ör DELETE tö cönfïrm]",
+      "entityLabel": "[{{entityType}}]"
     }
   }
 }

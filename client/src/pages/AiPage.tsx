@@ -2,7 +2,7 @@
  * AI Assistant page — two-panel layout with multi-session conversation support.
  * Left panel: conversation thread + fixed input area.
  * Right sidebar: "My Context" panel (placeholder for future context features).
- * (MINCRM-420, MINCRM-421)
+ * (MINCRM-420, MINCRM-421, MINCRM-425, MINCRM-426)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import NavBar from '@/components/NavBar.js';
 import NliResultBlock from '@/components/ai/results/NliResultBlock.js';
+import MutationConfirmationBlock from '@/components/ai/MutationConfirmationBlock.js';
+import BulkConfirmationBlock from '@/components/ai/BulkConfirmationBlock.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import {
   AI_SESSIONS_QUERY_KEY,
@@ -27,9 +29,24 @@ import type { AiSessionResponse, AiMessageResponse } from '@shared/schemas/aiSes
 interface MessageBubbleProps {
   message: AiMessageResponse;
   isLoading?: boolean;
+  /** ID of the message whose confirmation block has already been acted on (disables it). */
+  disabledPendingActionId?: string | null;
+  onConfirmAction?: (messageId: string) => void;
+  onCancelAction?: (messageId: string) => void;
+  /** Typed text for the bulk-delete double-confirm input, keyed by message ID. */
+  bulkDeleteConfirmText?: string;
+  onBulkDeleteConfirmTextChange?: (messageId: string, value: string) => void;
 }
 
-function MessageBubble({ message, isLoading = false }: MessageBubbleProps) {
+function MessageBubble({
+  message,
+  isLoading = false,
+  disabledPendingActionId,
+  onConfirmAction,
+  onCancelAction,
+  bulkDeleteConfirmText = '',
+  onBulkDeleteConfirmTextChange,
+}: MessageBubbleProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
   const hasToolResults =
@@ -37,6 +54,9 @@ function MessageBubble({ message, isLoading = false }: MessageBubbleProps) {
     message.tool_results !== null &&
     message.tool_results !== undefined &&
     message.tool_results.length > 0;
+
+  const hasPendingAction = !isUser && message.pending_action != null;
+  const isActionDisabled = disabledPendingActionId === message.id;
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -55,6 +75,26 @@ function MessageBubble({ message, isLoading = false }: MessageBubbleProps) {
           {hasToolResults && (
             <NliResultBlock toolResults={message.tool_results!} isLoading={isLoading} />
           )}
+          {/* Confirmation block for pending mutation actions (MINCRM-425, MINCRM-426) */}
+          {hasPendingAction &&
+            // Non-null assertion safe: hasPendingAction guard above confirms this is non-null
+            (message.pending_action!.isBulkDelete ? (
+              <BulkConfirmationBlock
+                pendingAction={message.pending_action!}
+                onConfirm={() => onConfirmAction?.(message.id)}
+                onCancel={() => onCancelAction?.(message.id)}
+                isDisabled={isActionDisabled}
+                confirmText={bulkDeleteConfirmText}
+                onConfirmTextChange={(value) => onBulkDeleteConfirmTextChange?.(message.id, value)}
+              />
+            ) : (
+              <MutationConfirmationBlock
+                pendingAction={message.pending_action!}
+                onConfirm={() => onConfirmAction?.(message.id)}
+                onCancel={() => onCancelAction?.(message.id)}
+                isDisabled={isActionDisabled}
+              />
+            ))}
         </div>
       </div>
     </div>
@@ -136,6 +176,17 @@ export default function AiPage() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<AiMessageResponse[]>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // ── Confirmation block state (MINCRM-425, MINCRM-426) ───────────────────────
+
+  // The ID of the message whose confirmation block was last acted on (confirm/cancel).
+  // That block becomes disabled/greyed-out while the follow-up AI turn is in flight.
+  const [disabledPendingActionId, setDisabledPendingActionId] = useState<string | null>(null);
+
+  // Typed text for bulk-delete double-confirm, keyed by message ID.
+  // Stored as a map so that if multiple messages in the thread had pending bulk deletes,
+  // each has independent input state (though in practice only one is active at a time).
+  const [bulkDeleteConfirmTexts, setBulkDeleteConfirmTexts] = useState<Record<string, string>>({});
 
   const threadEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -280,6 +331,49 @@ export default function AiPage() {
     }
   }, [deleteConfirmId, deleteMutation]);
 
+  // ── Mutation confirmation handlers (MINCRM-425, MINCRM-426) ─────────────────
+
+  /**
+   * Called when the user clicks "Confirm" on a pending-action block.
+   * Marks the block as disabled, then sends "Yes, go ahead." as the next user
+   * message so the AI proceeds with the write tool.
+   */
+  const handleConfirmAction = useCallback(
+    (messageId: string) => {
+      if (!resolvedSessionId || sendMutation.isPending) return;
+      setDisabledPendingActionId(messageId);
+      // Clear the bulk-delete text for this message (updater form — safe in StrictMode)
+      setBulkDeleteConfirmTexts((prev) => {
+        const next = { ...prev };
+        delete next[messageId];
+        return next;
+      });
+      sendMutation.mutate({ sessionId: resolvedSessionId, content: 'Yes, go ahead.' });
+    },
+    [resolvedSessionId, sendMutation],
+  );
+
+  /**
+   * Called when the user clicks "Cancel" on a pending-action block.
+   * Marks the block as disabled, then sends "No, cancel that." so the AI aborts.
+   */
+  const handleCancelAction = useCallback(
+    (messageId: string) => {
+      if (!resolvedSessionId || sendMutation.isPending) return;
+      setDisabledPendingActionId(messageId);
+      sendMutation.mutate({ sessionId: resolvedSessionId, content: 'No, cancel that.' });
+    },
+    [resolvedSessionId, sendMutation],
+  );
+
+  /**
+   * Tracks the typed text in the bulk-delete double-confirm input.
+   * Updater form avoids stale-closure issues (safe in StrictMode — no side effects).
+   */
+  const handleBulkDeleteConfirmTextChange = useCallback((messageId: string, value: string) => {
+    setBulkDeleteConfirmTexts((prev) => ({ ...prev, [messageId]: value }));
+  }, []);
+
   const handleSend = useCallback(async () => {
     const content = inputValue.trim();
     if (!content || sendMutation.isPending) return;
@@ -300,10 +394,14 @@ export default function AiPage() {
     setInputValue('');
     setSendError(null);
 
-    // Add optimistic user message immediately
+    // Add optimistic user message immediately.
+    // sessionId is guaranteed non-null here: either it was non-null at the top of the function,
+    // or we just assigned it from createMutation (and returned early if that failed).
+    const resolvedId = sessionId!; // non-null safe: see comment above
+
     const optimisticUserMessage: AiMessageResponse = {
       id: `optimistic-user-${Date.now()}`,
-      session_id: sessionId,
+      session_id: resolvedId,
       role: 'user',
       content,
       tool_results: null,
@@ -312,7 +410,7 @@ export default function AiPage() {
     };
     setOptimisticMessages([optimisticUserMessage]);
 
-    sendMutation.mutate({ sessionId, content });
+    sendMutation.mutate({ sessionId: resolvedId, content });
   }, [inputValue, resolvedSessionId, sendMutation, createMutation, t]);
 
   const handleKeyDown = useCallback(
@@ -539,6 +637,11 @@ export default function AiPage() {
                   idx === allMessages.length - 1 &&
                   msg.role === 'assistant'
                 }
+                disabledPendingActionId={disabledPendingActionId}
+                onConfirmAction={handleConfirmAction}
+                onCancelAction={handleCancelAction}
+                bulkDeleteConfirmText={bulkDeleteConfirmTexts[msg.id] ?? ''}
+                onBulkDeleteConfirmTextChange={handleBulkDeleteConfirmTextChange}
               />
             ))}
             {/* Pending assistant indicator */}
