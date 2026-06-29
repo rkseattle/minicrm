@@ -9,6 +9,7 @@ interface LeadCardData {
   last_name?: string | null;
   email?: string | null;
   company?: string | null;
+  company_name?: string | null;
   status?: string | null;
   lead_source?: string | null;
 }
@@ -34,7 +35,7 @@ export default function LeadResultCard({ lead }: LeadResultCardProps) {
           {fullName}
         </Link>
         <div className="flex gap-2 text-xs text-gray-500 mt-0.5 flex-wrap">
-          {lead.company && <span>{lead.company}</span>}
+          {(lead.company ?? lead.company_name) && <span>{lead.company ?? lead.company_name}</span>}
           {lead.status && <span>· {lead.status}</span>}
           {lead.email && <span>· {lead.email}</span>}
         </div>

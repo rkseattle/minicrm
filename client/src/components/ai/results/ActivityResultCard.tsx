@@ -9,6 +9,7 @@ interface ActivityCardData {
   subject?: string | null;
   notes?: string | null;
   activity_date?: string | null;
+  due_date?: string | null;
   contact_name?: string | null;
 }
 
@@ -42,9 +43,9 @@ export default function ActivityResultCard({ activity }: ActivityResultCardProps
           <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{activity.notes}</p>
         )}
       </div>
-      {activity.activity_date && (
+      {(activity.activity_date ?? activity.due_date) && (
         <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
-          {activity.activity_date.slice(0, 10)}
+          {(activity.activity_date ?? activity.due_date)!.slice(0, 10)}
         </span>
       )}
     </div>
