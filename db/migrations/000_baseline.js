@@ -1011,18 +1011,32 @@ exports.up = (pgm) => {
     )
   `);
 
-  // ai_messages — ordered message log for each ai_session (MINCRM-421, MINCRM-423, MINCRM-431, MINCRM-425)
+  // ai_messages — ordered message log for each ai_session (MINCRM-421, MINCRM-423, MINCRM-431, MINCRM-425, MINCRM-429, MINCRM-430)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_messages (
-      id             uuid DEFAULT gen_random_uuid() NOT NULL,
-      session_id     uuid NOT NULL,
-      role           character varying(20) NOT NULL,
-      content        text NOT NULL,
-      tool_results   jsonb DEFAULT NULL,
-      pending_action jsonb DEFAULT NULL,
-      created_at     timestamp with time zone DEFAULT now() NOT NULL,
+      id                uuid DEFAULT gen_random_uuid() NOT NULL,
+      session_id        uuid NOT NULL,
+      role              character varying(20) NOT NULL,
+      content           text NOT NULL,
+      tool_results      jsonb DEFAULT NULL,
+      pending_action    jsonb DEFAULT NULL,
+      context_proposal  jsonb DEFAULT NULL,
+      created_at        timestamp with time zone DEFAULT now() NOT NULL,
       CONSTRAINT ai_messages_pkey PRIMARY KEY (id),
       CONSTRAINT ai_messages_role_check CHECK (role IN ('user', 'assistant'))
+    )
+  `);
+
+  // user_ai_context — per-user key/value preferences injected into Claude system prompt (MINCRM-427)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.user_ai_context (
+      id         uuid DEFAULT gen_random_uuid() NOT NULL,
+      user_id    uuid NOT NULL,
+      key        varchar(100) NOT NULL,
+      value      varchar(500) NOT NULL,
+      created_at timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT user_ai_context_pkey PRIMARY KEY (id)
     )
   `);
 
@@ -1116,6 +1130,7 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.ai_token_usage ADD CONSTRAINT ai_token_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.ai_sessions ADD CONSTRAINT ai_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.ai_messages ADD CONSTRAINT ai_messages_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.ai_sessions(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.user_ai_context ADD CONSTRAINT user_ai_context_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE`,
   ];
 
   for (const constraint of constraints) {
@@ -1301,6 +1316,9 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_idx ON public.ai_messages USING btree (session_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS ai_messages_session_id_created_at_idx ON public.ai_messages USING btree (session_id, created_at)`);
 
+  // user_ai_context (MINCRM-427)
+  pgm.sql(`CREATE INDEX IF NOT EXISTS user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id)`);
+
   // currency_rate_history
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
 
@@ -1344,7 +1362,7 @@ exports.up = (pgm) => {
     'custom_field_definitions', 'custom_field_values', 'custom_reports',
     'deals', 'email_templates', 'feature_flags', 'import_jobs', 'leads', 'notes',
     'pipeline_stages', 'pipelines', 'sales_sequence_steps', 'sales_sequences',
-    'sequence_enrollments', 'system_settings', 'tags', 'teams', 'users',
+    'sequence_enrollments', 'system_settings', 'tags', 'teams', 'user_ai_context', 'users',
   ]) {
     pgm.sql(`
       DO $$ BEGIN

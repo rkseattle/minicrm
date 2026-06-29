@@ -37,6 +37,12 @@ import {
   deleteAiSessionHandler,
   sendAiMessageHandler,
 } from '../controllers/aiSessionController.js';
+import {
+  listAiContextHandler,
+  createAiContextHandler,
+  updateAiContextHandler,
+  deleteAiContextHandler,
+} from '../controllers/aiContextController.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 
 const router = Router();
@@ -517,6 +523,149 @@ aiUserRouter.post(
   authenticate,
   requireFeatureEnabled('ai_nli_page'),
   asyncHandler(sendAiMessageHandler),
+);
+
+/**
+ * @openapi
+ * /ai/context:
+ *   get:
+ *     tags: [AI]
+ *     summary: List all context entries for the authenticated user
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of context entries ordered by creation time
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ */
+aiUserRouter.get(
+  '/context',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(listAiContextHandler),
+);
+
+/**
+ * @openapi
+ * /ai/context:
+ *   post:
+ *     tags: [AI]
+ *     summary: Create a new context entry
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [key, value]
+ *             properties:
+ *               key:
+ *                 type: string
+ *                 maxLength: 100
+ *               value:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       201:
+ *         description: Created context entry
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ *       409:
+ *         description: Entry limit reached (max 50 entries per user)
+ */
+aiUserRouter.post(
+  '/context',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(createAiContextHandler),
+);
+
+/**
+ * @openapi
+ * /ai/context/{id}:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Update a context entry's key or value
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               key:
+ *                 type: string
+ *                 maxLength: 100
+ *               value:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Updated context entry
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Entry not found or belongs to another user
+ */
+aiUserRouter.patch(
+  '/context/:id',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(updateAiContextHandler),
+);
+
+/**
+ * @openapi
+ * /ai/context/{id}:
+ *   delete:
+ *     tags: [AI]
+ *     summary: Delete a context entry
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Entry deleted
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ *       404:
+ *         description: Entry not found or belongs to another user
+ */
+aiUserRouter.delete(
+  '/context/:id',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(deleteAiContextHandler),
 );
 
 export { aiUserRouter };

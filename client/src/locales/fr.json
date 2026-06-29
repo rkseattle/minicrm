@@ -2286,6 +2286,21 @@
       "andMore": "+ {{count}} de plus",
       "bulkDeleteWarning": "Cela supprimera définitivement {{count}} enregistrements. Cette action est irréversible.",
       "bulkDeleteConfirmPlaceholder": "Tapez {{count}} ou DELETE pour confirmer"
+    },
+    "context": {
+      "emptyState": "Ajoutez du contexte pour que l'IA apprenne vos préférences",
+      "addEntry": "+ Ajouter un contexte",
+      "keyPlaceholder": "Étiquette (ex. « un moment »)",
+      "valuePlaceholder": "Signification (ex. « plus de 30 jours sans activité »)",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "deleteConfirm": "Supprimer cette entrée de contexte ?",
+      "editEntry": "Modifier l'entrée",
+      "deleteEntry": "Supprimer l'entrée",
+      "panelLabel": "Mon Contexte",
+      "proposalAccept": "Mémoriser ceci",
+      "proposalDismiss": "Ignorer",
+      "limitReached": "Vous avez atteint le maximum de 50 entrées de contexte."
     }
   }
 }

@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import type { AiContextProposal } from './aiContextSchema.js';
 
 export const AI_MESSAGE_ROLES = ['user', 'assistant'] as const;
 export type AiMessageRole = (typeof AI_MESSAGE_ROLES)[number];
@@ -86,6 +87,8 @@ export interface AiMessageResponse {
   tool_results: AiToolResult[] | null;
   /** Pending mutation action awaiting user confirmation. Present only when Claude called requestMutationConfirmation. */
   pending_action: AiPendingAction | null;
+  /** AI-proposed context entry awaiting user accept/dismiss. Present when Claude detected an ambiguous term or correction. (MINCRM-429, MINCRM-430) */
+  context_proposal: AiContextProposal | null;
   created_at: string;
 }
 

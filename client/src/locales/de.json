@@ -2286,6 +2286,21 @@
       "andMore": "+ {{count}} weitere",
       "bulkDeleteWarning": "Damit werden {{count}} Datensätze dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
       "bulkDeleteConfirmPlaceholder": "Geben Sie {{count}} oder DELETE ein, um zu bestätigen"
+    },
+    "context": {
+      "emptyState": "Fügen Sie Kontext hinzu, damit die KI Ihre Präferenzen erlernt",
+      "addEntry": "+ Kontext hinzufügen",
+      "keyPlaceholder": "Bezeichnung (z. B. „eine Weile\")",
+      "valuePlaceholder": "Bedeutung (z. B. „mehr als 30 Tage ohne Aktivität\")",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "deleteConfirm": "Diesen Kontexteintrag entfernen?",
+      "editEntry": "Eintrag bearbeiten",
+      "deleteEntry": "Eintrag löschen",
+      "panelLabel": "Mein Kontext",
+      "proposalAccept": "Das merken",
+      "proposalDismiss": "Ablehnen",
+      "limitReached": "Sie haben das Maximum von 50 Kontexteinträgen erreicht."
     }
   }
 }

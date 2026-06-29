@@ -284,6 +284,7 @@ export default function AiPage() {
           content,
           tool_results: null,
           pending_action: null,
+          context_proposal: null,
           created_at: new Date().toISOString(),
         };
         setOptimisticMessages([optimisticUserMessage, assistantMessage]);
@@ -361,6 +362,7 @@ export default function AiPage() {
           content: 'Yes, go ahead.',
           tool_results: null,
           pending_action: null,
+          context_proposal: null,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -385,6 +387,7 @@ export default function AiPage() {
           content: 'No, cancel that.',
           tool_results: null,
           pending_action: null,
+          context_proposal: null,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -433,6 +436,7 @@ export default function AiPage() {
       content,
       tool_results: null,
       pending_action: null,
+      context_proposal: null,
       created_at: new Date().toISOString(),
     };
     setOptimisticMessages([optimisticUserMessage]);

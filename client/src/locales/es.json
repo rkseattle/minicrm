@@ -2286,6 +2286,21 @@
       "andMore": "+ {{count}} más",
       "bulkDeleteWarning": "Esto eliminará permanentemente {{count}} registros. Esta acción no se puede deshacer.",
       "bulkDeleteConfirmPlaceholder": "Escribe {{count}} o DELETE para confirmar"
+    },
+    "context": {
+      "emptyState": "Añade contexto para que la IA aprenda tus preferencias",
+      "addEntry": "+ Añadir contexto",
+      "keyPlaceholder": "Etiqueta (p. ej. \"un tiempo\")",
+      "valuePlaceholder": "Significado (p. ej. \"más de 30 días sin actividad\")",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "deleteConfirm": "¿Eliminar esta entrada de contexto?",
+      "editEntry": "Editar entrada",
+      "deleteEntry": "Eliminar entrada",
+      "panelLabel": "Mi Contexto",
+      "proposalAccept": "Recordar esto",
+      "proposalDismiss": "Descartar",
+      "limitReached": "Has alcanzado el máximo de 50 entradas de contexto."
     }
   }
 }
