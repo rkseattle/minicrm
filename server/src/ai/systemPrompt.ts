@@ -86,6 +86,8 @@ export function buildSystemPrompt(contextEntries: AiContextEntryResponse[]): str
     return BASE_PROMPT;
   }
 
+  // User-authored entries are embedded verbatim. Injection risk is self-contained:
+  // a user can only affect their own session's system prompt, not other users'.
   const lines = contextEntries.map((e) => `- **${e.key}**: ${e.value}`).join('\n');
   const preamble = `## My Preferences\n\nThe following preferences have been saved by this user. Apply them automatically when relevant — do not ask the user to re-explain them:\n\n${lines}`;
 

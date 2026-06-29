@@ -119,3 +119,26 @@ tests:
           // Bulk delete may search first to enumerate scope, then confirm;
           // or may call requestMutationConfirmation directly if scope is assumed known.
           return parsed.tool === 'searchContacts' || parsed.tool === 'requestMutationConfirmation';
+
+  # ── MINCRM-427 / MINCRM-428: user AI context entries ───────────────────────
+
+  - description: Read-only query does not call requestMutationConfirmation (MINCRM-427)
+    vars:
+      query: Show me all contacts I haven't contacted in a while
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          // A read-only lookup should call a search tool, not requestMutationConfirmation
+          return parsed.tool === 'searchContacts' || parsed.tool === 'searchActivities';
+
+  - description: Query with ambiguous term resolves to search tool first (MINCRM-427)
+    vars:
+      query: Find high-value deals that are about to close
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'searchDeals';

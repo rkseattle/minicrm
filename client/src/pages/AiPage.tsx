@@ -1,8 +1,8 @@
 /**
  * AI Assistant page — two-panel layout with multi-session conversation support.
  * Left panel: conversation thread + fixed input area.
- * Right sidebar: "My Context" panel (placeholder for future context features).
- * (MINCRM-420, MINCRM-421, MINCRM-425, MINCRM-426)
+ * Right sidebar: "My Context" panel with user-managed key/value preferences.
+ * (MINCRM-420, MINCRM-421, MINCRM-425, MINCRM-426, MINCRM-427, MINCRM-428, MINCRM-429, MINCRM-430)
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -12,6 +12,8 @@ import NavBar from '@/components/NavBar.js';
 import NliResultBlock from '@/components/ai/results/NliResultBlock.js';
 import MutationConfirmationBlock from '@/components/ai/MutationConfirmationBlock.js';
 import BulkConfirmationBlock from '@/components/ai/BulkConfirmationBlock.js';
+import ContextPanel from '@/components/ai/ContextPanel.js';
+import ContextProposalChip from '@/components/ai/ContextProposalChip.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import {
   AI_SESSIONS_QUERY_KEY,
@@ -36,6 +38,9 @@ interface MessageBubbleProps {
   /** Typed text for the bulk-delete double-confirm input, keyed by message ID. */
   bulkDeleteConfirmText?: string;
   onBulkDeleteConfirmTextChange?: (messageId: string, value: string) => void;
+  /** Whether this message's context proposal has been dismissed for this session. */
+  isProposalDismissed?: boolean;
+  onProposalDismiss?: (messageId: string) => void;
 }
 
 function MessageBubble({
@@ -46,6 +51,8 @@ function MessageBubble({
   onCancelAction,
   bulkDeleteConfirmText = '',
   onBulkDeleteConfirmTextChange,
+  isProposalDismissed = false,
+  onProposalDismiss,
 }: MessageBubbleProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
@@ -57,6 +64,7 @@ function MessageBubble({
 
   const hasPendingAction = !isUser && message.pending_action != null;
   const isActionDisabled = disabledPendingActionId === message.id;
+  const hasProposal = !isUser && message.context_proposal != null && !isProposalDismissed;
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -95,6 +103,15 @@ function MessageBubble({
                 isDisabled={isActionDisabled}
               />
             ))}
+          {/* Context proposal chip (MINCRM-429, MINCRM-430) */}
+          {hasProposal && (
+            // Non-null assertion safe: hasProposal guard above confirms context_proposal is non-null
+            <ContextProposalChip
+              messageId={message.id}
+              proposal={message.context_proposal!}
+              onDismiss={onProposalDismiss ?? (() => undefined)}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -187,6 +204,12 @@ export default function AiPage() {
   // Stored as a map so that if multiple messages in the thread had pending bulk deletes,
   // each has independent input state (though in practice only one is active at a time).
   const [bulkDeleteConfirmTexts, setBulkDeleteConfirmTexts] = useState<Record<string, string>>({});
+
+  // ── Context proposal dismiss state (MINCRM-429, MINCRM-430) ─────────────────
+
+  // Session-scoped set of message IDs whose context proposal chip has been dismissed.
+  // A Set stored in a ref-stable updater pattern.
+  const [dismissedProposalIds, setDismissedProposalIds] = useState<Set<string>>(new Set());
 
   const threadEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -402,6 +425,14 @@ export default function AiPage() {
    */
   const handleBulkDeleteConfirmTextChange = useCallback((messageId: string, value: string) => {
     setBulkDeleteConfirmTexts((prev) => ({ ...prev, [messageId]: value }));
+  }, []);
+
+  /**
+   * Marks a context proposal chip as dismissed for this session.
+   * Updater form: no side effects, safe in StrictMode. (MINCRM-429, MINCRM-430)
+   */
+  const handleProposalDismiss = useCallback((messageId: string) => {
+    setDismissedProposalIds((prev) => new Set([...prev, messageId]));
   }, []);
 
   const handleSend = useCallback(async () => {
@@ -673,6 +704,8 @@ export default function AiPage() {
                 onCancelAction={handleCancelAction}
                 bulkDeleteConfirmText={bulkDeleteConfirmTexts[msg.id] ?? ''}
                 onBulkDeleteConfirmTextChange={handleBulkDeleteConfirmTextChange}
+                isProposalDismissed={dismissedProposalIds.has(msg.id)}
+                onProposalDismiss={handleProposalDismiss}
               />
             ))}
             {/* Pending assistant indicator */}
@@ -785,27 +818,8 @@ export default function AiPage() {
           </div>
         </main>
 
-        {/* ── Context sidebar ────────────────────────────────────────────── */}
-        <aside
-          className="hidden lg:flex flex-col w-64 flex-shrink-0 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-          aria-label={t('ai.myContext')}
-          data-testid="ai-context-panel"
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">{t('ai.myContext')}</h2>
-            <button
-              type="button"
-              data-testid="ai-add-context-button"
-              aria-label={t('ai.addContext')}
-              className="text-xs text-primary-600 font-medium hover:text-primary-700"
-            >
-              {t('ai.addContext')}
-            </button>
-          </div>
-          <div className="flex-1 px-4 py-4">
-            <p className="text-xs text-gray-400 text-center mt-8">{t('ai.emptyStateBody')}</p>
-          </div>
-        </aside>
+        {/* ── Context sidebar (MINCRM-427, MINCRM-428) ──────────────────── */}
+        <ContextPanel />
       </div>
     </div>
   );

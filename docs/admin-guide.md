@@ -842,10 +842,11 @@ Every record created, updated, or deleted through the NLI is written to the **Au
 with the same fidelity as a manual change. The audit entry carries a `source` field that
 identifies the origin of the change:
 
-| Source value | Meaning                                                |
-| ------------ | ------------------------------------------------------ |
-| _(blank)_    | Change made by a human user via the CRM UI or REST API |
-| `AI (NLI)`   | Change initiated by the AI Natural-Language Interface  |
+| Source value   | Meaning                                                                              |
+| -------------- | ------------------------------------------------------------------------------------ |
+| _(blank)_      | Change made by a human user via the CRM UI or REST API                               |
+| `AI (NLI)`     | Change initiated by the AI Natural-Language Interface                                |
+| `AI (context)` | Change to a user's personal AI context preferences (My Context panel on the AI page) |
 
 #### Filtering audit log entries by source
 

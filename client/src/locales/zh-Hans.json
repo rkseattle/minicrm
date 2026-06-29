@@ -2299,8 +2299,10 @@
       "deleteEntry": "删除条目",
       "panelLabel": "我的上下文",
       "proposalAccept": "记住这个",
+      "proposalAccepted": "已保存",
       "proposalDismiss": "忽略",
-      "limitReached": "您已达到 50 条上下文条目的上限。"
+      "limitReached": "您已达到 50 条上下文条目的上限。",
+      "keyDuplicate": "已存在具有此标签的上下文条目。"
     }
   }
 }

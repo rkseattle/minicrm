@@ -2299,8 +2299,10 @@
       "deleteEntry": "Delete entry",
       "panelLabel": "My Context",
       "proposalAccept": "Remember this",
+      "proposalAccepted": "Saved",
       "proposalDismiss": "Dismiss",
-      "limitReached": "You have reached the maximum of 50 context entries."
+      "limitReached": "You have reached the maximum of 50 context entries.",
+      "keyDuplicate": "A context entry with this label already exists."
     }
   }
 }

@@ -71,6 +71,49 @@ The session and all its messages are permanently removed.
 
 ---
 
+## Tutorial: personalizing the assistant with My Context
+
+The **My Context** panel on the right side of the AI page lets you save key/value
+preferences that are injected into every AI session's system prompt automatically.
+The assistant uses these preferences to tailor its responses — you never need to
+repeat yourself across sessions.
+
+### Adding a preference
+
+1. Click **+ Add context** at the top of the **My Context** panel.
+2. Enter a short label in the **Preference** field (for example: `deal size threshold`).
+3. Enter the value in the **Value** field (for example: `$50k`).
+4. Click **Save**. The entry appears immediately in the panel.
+
+The assistant now considers this preference in every response it gives you — including
+sessions you started before adding the entry.
+
+### Editing a preference
+
+Click the edit icon next to any entry, update the label or value, and click **Save**.
+
+### Removing a preference
+
+Click the delete icon next to an entry and confirm. The entry is removed from future
+sessions immediately.
+
+### Accepting a suggested preference
+
+The assistant may notice patterns in your requests and propose a preference directly
+in the conversation — for example, if you frequently ask about deals above a certain
+value it may suggest saving that threshold.
+
+When a proposal appears, you will see a chip below the assistant's reply:
+
+- Click **Accept** to save the preference to your My Context panel immediately.
+- Click **Dismiss** to ignore the suggestion. Dismissed proposals do not reappear
+  for the current session.
+
+> **Limit:** You can save up to 50 preferences. If you reach the limit, remove an
+> existing entry before adding a new one.
+
+---
+
 ## What the AI Assistant can do
 
 The AI Assistant has direct access to your CRM data and can perform actions on your behalf.
