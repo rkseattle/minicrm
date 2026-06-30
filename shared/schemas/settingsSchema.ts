@@ -248,6 +248,8 @@ export interface AiConfigResponse {
   available_models: AiModelOption[];
   /** Standard DPA URL for the selected provider. */
   provider_dpa_url: string;
+  /** Days to retain ai_sessions/ai_messages before nightly purge. Minimum 30. */
+  ai_session_retention_days: number;
 }
 
 /**
@@ -316,6 +318,17 @@ export type SetAiConfigInput = z.infer<typeof setAiConfigSchema>;
 export const setAiEnabledSchema = z.object({
   enabled: z.boolean({ required_error: 'enabled is required' }),
 });
+
+/** Schema for PATCH /api/v1/admin/ai/session-retention request body. */
+export const setAiSessionRetentionSchema = z.object({
+  ai_session_retention_days: z
+    .number({ required_error: 'ai_session_retention_days is required' })
+    .int({ message: 'ai_session_retention_days must be an integer' })
+    .min(30, { message: 'Retention window must be at least 30 days' })
+    .max(3650, { message: 'Retention window must be at most 3650 days (10 years)' }),
+});
+
+export type SetAiSessionRetentionInput = z.infer<typeof setAiSessionRetentionSchema>;
 
 export type SetAiEnabledInput = z.infer<typeof setAiEnabledSchema>;
 
