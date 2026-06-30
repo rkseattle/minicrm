@@ -23,7 +23,7 @@
  *     server/src/__tests__/gdprService.test.ts.
  *
  * Framework conventions:
- *   - All tests tagged @functional
+ *   - All tests tagged @functional @serial (mutates singleton ai_configuration row)
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behavior functions imported from @behaviors/* only — never @pages/*
  *   - Feature flag interception via withFlags() only
@@ -85,8 +85,8 @@ test.describe('AI session retention UI', () => {
   });
 
   test(
-    'F-AI-DL-1: AI settings panel shows the session retention section @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-1: AI settings panel shows the session retention section @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -98,8 +98,8 @@ test.describe('AI session retention UI', () => {
   );
 
   test(
-    'F-AI-DL-2: admin can update the retention window and see a success message @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-2: admin can update the retention window and see a success message @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -121,8 +121,8 @@ test.describe('AI session retention UI', () => {
   );
 
   test(
-    'F-AI-DL-3: entering a value below 30 shows a validation error @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-3: entering a value below 30 shows a validation error @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -145,8 +145,8 @@ test.describe('AI session retention UI', () => {
   );
 
   test(
-    'F-AI-DL-4: entering a value above 3650 shows a validation error @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-4: entering a value above 3650 shows a validation error @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
@@ -181,8 +181,8 @@ test.describe('AI session retention API', () => {
   });
 
   test(
-    'F-AI-DL-5: PATCH /admin/ai/session-retention rejects retention_days < 30 with 400 @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-5: PATCH /admin/ai/session-retention rejects retention_days < 30 with 400 @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ restClient }) => {
       let errorStatus = 0;
       try {
@@ -201,8 +201,8 @@ test.describe('AI session retention API', () => {
   );
 
   test(
-    'F-AI-DL-6: PATCH /admin/ai/session-retention accepts valid value and persists it @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-6: PATCH /admin/ai/session-retention accepts valid value and persists it @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ restClient }) => {
       const res = await restClient.patch('/api/v1/admin/ai/session-retention', {
         ai_session_retention_days: 365,
@@ -225,8 +225,8 @@ test.describe('GDPR AI cascade', () => {
   });
 
   test(
-    'F-AI-DL-7: GET /contacts/:id/ai-cascade returns empty array before any erasure @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-7: GET /contacts/:id/ai-cascade returns empty array before any erasure @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Cascade',
@@ -242,8 +242,8 @@ test.describe('GDPR AI cascade', () => {
   );
 
   test(
-    'F-AI-DL-8: POST /contacts/:id/ai-cascade returns 409 if contact has not been GDPR-erased @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-8: POST /contacts/:id/ai-cascade returns 409 if contact has not been GDPR-erased @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Cascade',
@@ -265,8 +265,8 @@ test.describe('GDPR AI cascade', () => {
   );
 
   test(
-    'F-AI-DL-9: POST /contacts/:id/ai-cascade returns 202 after GDPR erasure @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-9: POST /contacts/:id/ai-cascade returns 202 after GDPR erasure @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Cascade',
@@ -284,8 +284,8 @@ test.describe('GDPR AI cascade', () => {
   );
 
   test(
-    'F-AI-DL-10: after manual cascade trigger, GET /contacts/:id/ai-cascade returns a log entry @functional',
-    { tag: ['@functional'] },
+    'F-AI-DL-10: after manual cascade trigger, GET /contacts/:id/ai-cascade returns a log entry @functional @serial',
+    { tag: ['@functional', '@serial'] },
     async ({ testData, restClient }) => {
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Cascade',

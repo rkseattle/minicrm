@@ -212,18 +212,16 @@ export async function setAiSessionRetention(
       [params.ai_session_retention_days, actor.id],
     );
 
-    if (previousDays !== params.ai_session_retention_days) {
-      await writeAuditEntry(client, {
-        recordType: 'ai_settings',
-        recordName: 'AI Configuration',
-        eventType: 'updated',
-        fieldName: 'ai_session_retention_days',
-        oldValue: String(previousDays),
-        newValue: String(params.ai_session_retention_days),
-        changedById: actor.id,
-        changedByName: actor.name,
-      });
-    }
+    await writeAuditEntry(client, {
+      recordType: 'ai_settings',
+      recordName: 'AI Configuration',
+      eventType: 'updated',
+      fieldName: 'ai_session_retention_days',
+      oldValue: String(previousDays),
+      newValue: String(params.ai_session_retention_days),
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
 
     await client.query('COMMIT');
   } catch (err) {

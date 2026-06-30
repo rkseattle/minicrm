@@ -19,11 +19,10 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
-import { getAiSessionRetentionDays } from './aiConfigService.js';
-import { writeAuditEntry } from './auditService.js';
-import type { AuditActor } from './auditService.js';
+import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 
-const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
+/** Fallback AI session retention window when ai_configuration has no row. */
+const AI_SESSION_RETENTION_DAYS_DEFAULT = 90;
 
 /** Retention window in days for each log table. */
 const RETENTION_DAYS = {
@@ -85,23 +84,32 @@ async function purgeImportJobs(): Promise<number> {
  * explicitly excluded — they are persistent personalisation data, not transcripts.
  */
 async function purgeAiSessions(): Promise<number> {
-  const retentionDays = await getAiSessionRetentionDays();
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const result = await client.query<{ count: string }>(
-      `WITH deleted AS (
+    // Read retention_days and execute the DELETE atomically in one statement by
+    // embedding the config lookup as a subquery. This eliminates the TOCTOU window
+    // where an admin could change the retention setting between a separate read and
+    // the subsequent DELETE, causing the wrong window to be applied.
+    const result = await client.query<{ count: string; retention_days: number }>(
+      `WITH cfg AS (
+         SELECT COALESCE(ai_session_retention_days, $1) AS retention_days
+         FROM ai_configuration
+         LIMIT 1
+       ),
+       deleted AS (
          DELETE FROM ai_sessions
-         WHERE created_at < now() - ($1 || ' days')::interval
+         WHERE created_at < now() - ((SELECT retention_days FROM cfg) || ' days')::interval
          RETURNING id
        )
-       SELECT count(*)::text AS count FROM deleted`,
-      [retentionDays],
+       SELECT count(deleted.*)::text AS count, (SELECT retention_days FROM cfg) AS retention_days
+       FROM deleted`,
+      [AI_SESSION_RETENTION_DAYS_DEFAULT],
     );
 
     const deletedCount = parseInt(result.rows[0]?.count ?? '0', 10);
+    const retentionDays = result.rows[0]?.retention_days ?? AI_SESSION_RETENTION_DAYS_DEFAULT;
 
     await writeAuditEntry(client, {
       recordType: 'ai_sessions',

@@ -4,7 +4,7 @@
  * (MINCRM-457, MINCRM-458)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -276,10 +276,21 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
   const [validationError, setValidationError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setInputValue(String(retentionDays));
   }, [retentionDays]);
+
+  // Clear the success-message timer on unmount to prevent setState on an
+  // unmounted component when the admin navigates away within 3 seconds of saving.
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current !== null) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
 
   const mutation = useMutation({
     mutationFn: (days: number) => setAiSessionRetention({ ai_session_retention_days: days }),
@@ -287,7 +298,10 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
       void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
       setSaveSuccess(true);
       setSaveError('');
-      setTimeout(() => {
+      if (successTimerRef.current !== null) {
+        clearTimeout(successTimerRef.current);
+      }
+      successTimerRef.current = setTimeout(() => {
         setSaveSuccess(false);
       }, 3000);
     },
@@ -302,8 +316,11 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
     setSaveSuccess(false);
     setSaveError('');
 
-    const parsed = parseInt(inputValue, 10);
-    if (isNaN(parsed) || !Number.isInteger(parsed)) {
+    // Use Number() for parsing so that decimal inputs like '30.5' are not silently
+    // truncated to 30 by parseInt. Non-integer values are caught by the isInteger
+    // check and shown as a validation error, preventing silent data corruption.
+    const parsed = Number(inputValue);
+    if (!Number.isInteger(parsed) || isNaN(parsed)) {
       setValidationError(t('aiSettings.sessionRetention.validationMin'));
       return;
     }
