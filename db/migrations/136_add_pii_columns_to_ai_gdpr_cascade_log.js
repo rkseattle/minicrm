@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Migration 136: Add original_name and original_email to ai_gdpr_cascade_log.
  *

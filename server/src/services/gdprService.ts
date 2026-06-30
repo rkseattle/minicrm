@@ -737,47 +737,51 @@ export async function cascadeGdprErasureToAiData(
     // summary text) from mutation confirmation flows — it must be cleared on erasure.
     // Redact by email first (always present), then by name when non-empty.
     // Two separate statements are simpler than one dynamic statement with optional clauses.
-    let messagesRedacted = 0;
-
-    const emailMsgResult = await client.query<{ count: string }>(
-      `WITH updated AS (
-         UPDATE ai_messages
-         SET
-           content = regexp_replace(content, $1, '[redacted]', 'gi'),
-           pending_action = CASE
-             WHEN pending_action IS NOT NULL AND pending_action::text ILIKE $2
-             THEN NULL
-             ELSE pending_action
-           END
-         WHERE content ILIKE $2
-            OR (pending_action IS NOT NULL AND pending_action::text ILIKE $2)
-         RETURNING id
-       )
-       SELECT count(*)::text AS count FROM updated`,
-      [emailRegex, emailPat],
+    // Step 1 — redact ai_messages.content and clear pending_action containing PII.
+    // A single UPDATE handles both email and name in one pass so a message matching
+    // both identifiers is counted exactly once. When contactName is empty (hasName=false)
+    // we omit the name clauses entirely to prevent ILIKE '%%' matching all rows.
+    const msgResult = await client.query<{ count: string }>(
+      namePat !== null && nameRegex !== null
+        ? `WITH updated AS (
+             UPDATE ai_messages
+             SET
+               content = regexp_replace(
+                 regexp_replace(content, $1, '[redacted]', 'gi'),
+                 $3, '[redacted]', 'gi'
+               ),
+               pending_action = CASE
+                 WHEN pending_action IS NOT NULL AND (
+                   pending_action::text ILIKE $2 OR pending_action::text ILIKE $4
+                 ) THEN NULL
+                 ELSE pending_action
+               END
+             WHERE content ILIKE $2 OR content ILIKE $4
+                OR (pending_action IS NOT NULL AND (
+                  pending_action::text ILIKE $2 OR pending_action::text ILIKE $4
+                ))
+             RETURNING id
+           )
+           SELECT count(*)::text AS count FROM updated`
+        : `WITH updated AS (
+             UPDATE ai_messages
+             SET
+               content = regexp_replace(content, $1, '[redacted]', 'gi'),
+               pending_action = CASE
+                 WHEN pending_action IS NOT NULL AND pending_action::text ILIKE $2
+                 THEN NULL
+                 ELSE pending_action
+               END
+             WHERE content ILIKE $2
+                OR (pending_action IS NOT NULL AND pending_action::text ILIKE $2)
+             RETURNING id
+           )
+           SELECT count(*)::text AS count FROM updated`,
+      namePat !== null && nameRegex !== null
+        ? [emailRegex, emailPat, nameRegex, namePat]
+        : [emailRegex, emailPat],
     );
-    messagesRedacted += parseInt(emailMsgResult.rows[0]?.count ?? '0', 10);
-
-    if (nameRegex !== null && namePat !== null) {
-      const nameMsgResult = await client.query<{ count: string }>(
-        `WITH updated AS (
-           UPDATE ai_messages
-           SET
-             content = regexp_replace(content, $1, '[redacted]', 'gi'),
-             pending_action = CASE
-               WHEN pending_action IS NOT NULL AND pending_action::text ILIKE $2
-               THEN NULL
-               ELSE pending_action
-             END
-           WHERE content ILIKE $2
-              OR (pending_action IS NOT NULL AND pending_action::text ILIKE $2)
-           RETURNING id
-         )
-         SELECT count(*)::text AS count FROM updated`,
-        [nameRegex, namePat],
-      );
-      messagesRedacted += parseInt(nameMsgResult.rows[0]?.count ?? '0', 10);
-    }
+    const messagesRedacted = parseInt(msgResult.rows[0]?.count ?? '0', 10);
 
     // Step 2 — redact ai_sessions.name where it contains contact PII.
     // Session names may be auto-generated from message content that referenced the contact.
@@ -808,8 +812,12 @@ export async function cascadeGdprErasureToAiData(
     );
     const contextEntriesRemoved = parseInt(ctxResult.rows[0]?.count ?? '0', 10);
 
-    // Step 4 — record the cascade outcome, persisting original PII so a re-run
-    // can use the correct search terms even after the contacts row is redacted.
+    // Step 4 — record the cascade outcome.
+    // original_name and original_email are stored so a re-run (if this cascade
+    // were to fail) could locate the same PII. Because this INSERT is in the same
+    // transaction as the redaction, we immediately NULL them out on all log rows
+    // for this contact in Step 4b — once the cascade commits successfully the PII
+    // is no longer needed for re-runs and must not persist (GDPR Art. 17).
     await client.query(
       `INSERT INTO ai_gdpr_cascade_log
          (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
@@ -823,6 +831,17 @@ export async function cascadeGdprErasureToAiData(
         contactName || null,
         contactEmail || null,
       ],
+    );
+
+    // Step 4b — clear original PII from ALL cascade log rows for this contact now
+    // that a successful cascade has completed. The data was only needed to support
+    // a retry; retaining it after success would leave the erased contact's real
+    // name and email in a table with no retention policy (GDPR Art. 17 violation).
+    await client.query(
+      `UPDATE ai_gdpr_cascade_log
+       SET original_name = NULL, original_email = NULL
+       WHERE contact_id = $1`,
+      [contactId],
     );
 
     // Step 5 — audit entry on the contact record.
@@ -840,13 +859,17 @@ export async function cascadeGdprErasureToAiData(
     await client.query('ROLLBACK');
 
     // Log the error and record it in the cascade log (best-effort, outside tx).
+    // original_name/original_email are stored on failed rows so a re-run can
+    // locate the same PII — they remain populated until a successful cascade
+    // NULLs them out (Step 4b above).
     const errorMessage = err instanceof Error ? err.message : String(err);
     try {
       await pool.query(
         `INSERT INTO ai_gdpr_cascade_log
-           (contact_id, triggered_by, messages_redacted, context_entries_removed, status, error_detail)
-         VALUES ($1, $2, 0, 0, 'failed', $3)`,
-        [contactId, actor?.id ?? null, errorMessage],
+           (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
+            error_detail, original_name, original_email)
+         VALUES ($1, $2, 0, 0, 'failed', $3, $4, $5)`,
+        [contactId, actor?.id ?? null, errorMessage, contactName || null, contactEmail || null],
       );
     } catch {
       // Best-effort — if even the error log insert fails, we just log it.
@@ -875,12 +898,13 @@ export async function getAiCascadeLogForContact(contactId: string): Promise<AiGd
 }
 
 /**
- * Returns the original PII values (name, email) stored in the first cascade log
- * entry for a contact. Used by re-run cascade logic so the correct search terms
+ * Returns the original PII values (name, email) from the most recent failed cascade
+ * log entry for a contact. Used by re-run cascade logic so the correct search terms
  * are available after the contacts row has been redacted.
  *
- * Returns null when no prior cascade log entry exists or when the oldest entry
- * pre-dates migration 136 (original_name/original_email not yet populated).
+ * Successful cascades NULL out original_name/original_email immediately (GDPR Art. 17),
+ * so only failed rows retain the values. Returns null when no failed row exists or when
+ * the row pre-dates migration 136 (original_name/original_email not yet populated).
  */
 export async function getOriginalPiiFromCascadeLog(
   contactId: string,
@@ -889,7 +913,9 @@ export async function getOriginalPiiFromCascadeLog(
     `SELECT original_name, original_email
      FROM ai_gdpr_cascade_log
      WHERE contact_id = $1
-     ORDER BY triggered_at ASC
+       AND status = 'failed'
+       AND (original_name IS NOT NULL OR original_email IS NOT NULL)
+     ORDER BY triggered_at DESC
      LIMIT 1`,
     [contactId],
   );
