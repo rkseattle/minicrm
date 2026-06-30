@@ -22,6 +22,7 @@ import {
   setAiConfigHandler,
   setAiEnabledHandler,
   setAiDpaAcknowledgmentHandler,
+  setAiSessionRetentionHandler,
   testAiConnectionHandler,
 } from '../controllers/aiConfigController.js';
 import {
@@ -141,6 +142,43 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setAiEnabledHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/session-retention:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Update the AI session retention window (days)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ai_session_retention_days]
+ *             properties:
+ *               ai_session_retention_days:
+ *                 type: integer
+ *                 minimum: 30
+ *                 maximum: 3650
+ *     responses:
+ *       200:
+ *         description: Updated AI configuration
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/session-retention',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setAiSessionRetentionHandler),
 );
 
 /**

@@ -1,13 +1,17 @@
 /**
- * retentionService.ts — Log table retention enforcement. (MINCRM-522)
+ * retentionService.ts — Log table retention enforcement. (MINCRM-522, MINCRM-447)
  *
  * Deletes rows from append-only log tables that have aged past their defined
  * retention windows. Called once daily from server.ts, fire-and-forget.
  *
- * Retention policy (also documented in CLAUDE.md):
+ * Retention policy (also documented in docs/dev/retention.md):
  *   automation_rule_logs  — 90 days  (keyed on triggered_at)
  *   webhook_delivery_logs — 30 days  (keyed on delivered_at)
  *   import_jobs           — 180 days (keyed on created_at; completed jobs only)
+ *   ai_sessions           — configurable (default 90 days, min 30); reads
+ *                           ai_configuration.ai_session_retention_days each run.
+ *                           Cascade delete removes ai_messages automatically.
+ *                           user_ai_context is NOT purged by this policy.
  *
  * Each table is purged in its own statement so a single large delete does not
  * hold a lock across all three tables. Row counts are logged for observability.
@@ -15,6 +19,11 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
+import { getAiSessionRetentionDays } from './aiConfigService.js';
+import { writeAuditEntry } from './auditService.js';
+import type { AuditActor } from './auditService.js';
+
+const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 /** Retention window in days for each log table. */
 const RETENTION_DAYS = {
@@ -65,6 +74,55 @@ async function purgeImportJobs(): Promise<number> {
 }
 
 /**
+ * Purges ai_sessions (and, via ON DELETE CASCADE, ai_messages) older than the
+ * configured retention window. The window is read fresh from ai_configuration
+ * each run so a mid-day admin change takes effect on the next nightly run.
+ *
+ * Returns the number of sessions deleted; message rows are removed implicitly
+ * by the FK cascade and are not counted separately.
+ *
+ * Writes one audit entry recording the purge outcome. user_ai_context rows are
+ * explicitly excluded — they are persistent personalisation data, not transcripts.
+ */
+async function purgeAiSessions(): Promise<number> {
+  const retentionDays = await getAiSessionRetentionDays();
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<{ count: string }>(
+      `WITH deleted AS (
+         DELETE FROM ai_sessions
+         WHERE created_at < now() - ($1 || ' days')::interval
+         RETURNING id
+       )
+       SELECT count(*)::text AS count FROM deleted`,
+      [retentionDays],
+    );
+
+    const deletedCount = parseInt(result.rows[0]?.count ?? '0', 10);
+
+    await writeAuditEntry(client, {
+      recordType: 'ai_sessions',
+      recordName: 'AI Session Retention Purge',
+      eventType: 'deleted',
+      newValue: `Purged ${deletedCount} session(s) older than ${retentionDays} day(s)`,
+      changedById: SYSTEM_ACTOR.id,
+      changedByName: SYSTEM_ACTOR.name,
+    });
+
+    await client.query('COMMIT');
+    return deletedCount;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Runs all retention purges sequentially and logs the outcome.
  * Called fire-and-forget from the daily cron in server.ts — errors are caught
  * and logged but do not propagate to avoid crashing the scheduler.
@@ -91,6 +149,13 @@ export async function runRetentionPurge(): Promise<void> {
     logger.info({ deleted: importJobsDeleted }, 'retention: import_jobs purged');
   } catch (err) {
     logger.error({ err }, 'retention: failed to purge import_jobs');
+  }
+
+  try {
+    const aiSessionsDeleted = await purgeAiSessions();
+    logger.info({ deleted: aiSessionsDeleted }, 'retention: ai_sessions purged');
+  } catch (err) {
+    logger.error({ err }, 'retention: failed to purge ai_sessions');
   }
 
   logger.info('retention: daily log table purge complete');

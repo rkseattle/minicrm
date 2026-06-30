@@ -22,6 +22,7 @@ import type {
   SetAiConfigInput,
   SetAiEnabledInput,
   SetAiDpaAcknowledgmentInput,
+  SetAiSessionRetentionInput,
   TestAiConnectionInput,
   TestAiConnectionResponse,
 } from '@minicrm/shared/schemas/settingsSchema.js';
@@ -45,6 +46,7 @@ interface AiConfigRow {
   dpa_acknowledged_for_provider: string;
   custom_dpa_url: string;
   updated_by: string | null;
+  ai_session_retention_days: number;
 }
 
 /** Default values applied when no row exists (should not occur post-migration). */
@@ -58,6 +60,7 @@ const DEFAULTS = {
   dpaAcknowledgedAt: null as Date | null,
   dpaAcknowledgedForProvider: '',
   customDpaUrl: '',
+  aiSessionRetentionDays: 90,
 };
 
 /**
@@ -162,6 +165,7 @@ function buildResponse(row: AiConfigRow | null): AiConfigResponse {
     data_posture: dataPosture,
     available_models: AVAILABLE_MODELS.filter((m) => m.provider === provider),
     provider_dpa_url: PROVIDER_DPA_URLS[provider],
+    ai_session_retention_days: row?.ai_session_retention_days ?? DEFAULTS.aiSessionRetentionDays,
   };
 }
 
@@ -172,6 +176,64 @@ function buildResponse(row: AiConfigRow | null): AiConfigResponse {
  */
 export async function getAiConfig(): Promise<AiConfigResponse> {
   return buildResponse(await fetchAiRow());
+}
+
+/**
+ * Returns the configured session retention window in days.
+ * Called by the nightly retention job; avoids loading the full config payload.
+ */
+export async function getAiSessionRetentionDays(): Promise<number> {
+  const result = await pool.query<{ ai_session_retention_days: number }>(
+    'SELECT ai_session_retention_days FROM ai_configuration LIMIT 1',
+  );
+  return result.rows[0]?.ai_session_retention_days ?? DEFAULTS.aiSessionRetentionDays;
+}
+
+/**
+ * Updates the AI session retention window.
+ * Writes an audit entry in the same transaction as the data write.
+ */
+export async function setAiSessionRetention(
+  params: SetAiSessionRetentionInput,
+  actor: AuditActor,
+): Promise<AiConfigResponse> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const current = await fetchAiRow(client);
+    const previousDays = current?.ai_session_retention_days ?? DEFAULTS.aiSessionRetentionDays;
+
+    await client.query(
+      `UPDATE ai_configuration SET
+         ai_session_retention_days = $1,
+         updated_at = now(),
+         updated_by = $2`,
+      [params.ai_session_retention_days, actor.id],
+    );
+
+    if (previousDays !== params.ai_session_retention_days) {
+      await writeAuditEntry(client, {
+        recordType: 'ai_settings',
+        recordName: 'AI Configuration',
+        eventType: 'updated',
+        fieldName: 'ai_session_retention_days',
+        oldValue: String(previousDays),
+        newValue: String(params.ai_session_retention_days),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return getAiConfig();
 }
 
 /**

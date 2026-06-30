@@ -108,7 +108,9 @@ export type AuditEventType =
   | 'sso_unlinked'
   /** Service account API token lifecycle (MINCRM-536) */
   | 'api_token_issued'
-  | 'api_token_revoked';
+  | 'api_token_revoked'
+  /** GDPR AI data cascade — PII redaction from ai_messages/user_ai_context (MINCRM-446) */
+  | 'ai_gdpr_cascade';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {
