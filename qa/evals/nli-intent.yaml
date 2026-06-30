@@ -31,7 +31,8 @@ prompts:
     searchDeals, getDeal, createDeal, updateDeal, deleteDeal,
     searchActivities, getActivity, createActivity, updateActivity, deleteActivity,
     searchNotes, getNote, createNote, updateNote, deleteNote,
-    listTags, attachTag, detachTag, generateReport, exportEntities.
+    listTags, attachTag, detachTag, renameTag,
+    generateReport, saveReport, exportEntities.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -142,3 +143,61 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'searchDeals';
+
+  # ── MINCRM-432: cross-entity note search ────────────────────────────────────
+
+  - description: Keyword-only note search maps to searchNotes (MINCRM-432)
+    vars:
+      query: Show me all notes mentioning budget freeze
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'searchNotes';
+
+  - description: Author-scoped cross-entity note search maps to searchNotes (MINCRM-432)
+    vars:
+      query: Find all notes I created this week
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'searchNotes';
+
+  # ── MINCRM-433: tag rename ───────────────────────────────────────────────────
+
+  - description: Tag rename intent calls requestMutationConfirmation first (MINCRM-433)
+    vars:
+      query: "Rename the tag 'cold' to 'dormant'"
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          // renameTag mutates shared data; confirmation is required first
+          return parsed.tool === 'requestMutationConfirmation';
+
+  # ── MINCRM-424: report save ──────────────────────────────────────────────────
+
+  - description: Generate report intent maps to generateReport (MINCRM-424)
+    vars:
+      query: Build me a win/loss report for the last 30 days
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'generateReport';
+
+  - description: Save report intent calls requestMutationConfirmation first (MINCRM-424)
+    vars:
+      query: Save this report as Q2 Pipeline Trend
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          // saveReport persists data; confirmation is required before writing
+          return parsed.tool === 'requestMutationConfirmation';

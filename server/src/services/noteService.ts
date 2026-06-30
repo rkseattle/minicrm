@@ -566,12 +566,18 @@ export async function searchNotesCrossEntity(
     values.push(date_to);
   }
   if (keyword) {
-    // Use trigram index on body_text for efficient full-text similarity search
-    conditions.push(`n.body_text ILIKE $${paramIndex++}`);
-    values.push(`%${keyword}%`);
+    // Escape LIKE metacharacters so literal % and _ in the keyword don't act as wildcards.
+    // The trigram index on body_text still accelerates this ILIKE scan.
+    const escapedKeyword = keyword.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    conditions.push(`n.body_text ILIKE $${paramIndex++} ESCAPE '\\'`);
+    values.push(`%${escapedKeyword}%`);
   }
 
   const where = conditions.join(' AND ');
+
+  // Pagination placeholders come after all WHERE clause params.
+  const limitIdx = paramIndex;
+  const offsetIdx = paramIndex + 1;
 
   const [countResult, dataResult] = await Promise.all([
     pool.query<{ count: string }>(
@@ -587,7 +593,7 @@ export async function searchNotesCrossEntity(
        LEFT JOIN users updater ON updater.id = n.updated_by
        WHERE ${where}
        ORDER BY n.created_at DESC
-       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       [...values, limit, offset],
     ),
   ]);

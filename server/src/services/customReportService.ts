@@ -616,6 +616,13 @@ export interface NliReportSaveParams {
   days?: 30 | 60 | 90 | null;
 }
 
+/** Maps NLI report type to the most semantically appropriate entity_type for storage */
+const NLI_REPORT_ENTITY_TYPE: Record<NliReportSaveParams['report_type'], string> = {
+  win_loss: 'deal',
+  activity_volume: 'activity',
+  stage_trend: 'deal',
+};
+
 /**
  * Saves an NLI-generated analytic report to the custom_reports table so it appears
  * in the Reports module. The config jsonb carries an `nli_report_type` marker and
@@ -637,6 +644,8 @@ export async function saveNliReport(
     nli_days: params.days ?? null,
   });
 
+  const entityType = NLI_REPORT_ENTITY_TYPE[params.report_type];
+
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -647,7 +656,7 @@ export async function saveNliReport(
         `INSERT INTO custom_reports (name, entity_type, config, visibility, created_by)
          VALUES ($1, $2, $3::jsonb, $4, $5)
          RETURNING ${REPORT_SELECT}`,
-        [params.name, 'deal', configJson, 'public', actor.id],
+        [params.name, entityType, configJson, 'public', actor.id],
       );
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === '23505') {
