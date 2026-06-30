@@ -11,7 +11,7 @@ import type {
   AttachTagInput,
 } from '@minicrm/shared/schemas/tagSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
-import { writeAuditEntryBestEffort } from './auditService.js';
+import { writeAuditEntry, writeAuditEntryBestEffort } from './auditService.js';
 import type { AuditActor, AuditRecordType } from './auditService.js';
 
 /** Shape of a tag row returned from the database */
@@ -173,34 +173,107 @@ export async function getTagUsageSummary(tagId: string): Promise<TagUsageSummary
 }
 
 /**
- * Renames a tag by looking it up by name, then updating it.
+ * Renames a tag by looking it up by name, then updating it atomically.
  * Returns the updated tag row and usage summary for confirmation display, or null if not found.
  * The rename propagates automatically to all junction tables via shared tag rows. (MINCRM-433)
  *
+ * Audit entry recorded in the same transaction. The 23505 conflict (new name already taken)
+ * is surfaced as a TAG_NAME_CONFLICT error code.
+ *
  * @param currentName - Existing tag name (case-insensitive lookup)
  * @param newName - Desired new tag name
+ * @param actor - User performing the rename (for audit log)
  */
 export async function renameTagByName(
   currentName: string,
   newName: string,
+  actor: AuditActor,
 ): Promise<{ tag: TagRow; summary: TagUsageSummary } | null> {
-  const existing = await pool.query<TagRow>(
-    `SELECT id, name, created_at, updated_at FROM tags WHERE LOWER(name) = LOWER($1) LIMIT 1`,
-    [currentName],
-  );
-  const tag = existing.rows[0];
-  if (!tag) return null;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const updated = await updateTag(tag.id, { name: newName });
-  if (!updated) return null;
+    const existing = await client.query<TagRow>(
+      `SELECT id, name, created_at, updated_at FROM tags WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+      [currentName],
+    );
+    const tag = existing.rows[0];
+    if (!tag) {
+      await client.query('ROLLBACK');
+      return null;
+    }
 
-  const summary = await getTagUsageSummary(updated.id);
-  if (!summary) return null;
+    let updated: TagRow;
+    try {
+      const result = await client.query<TagRow>(
+        `UPDATE tags SET name = $1, updated_at = now()
+         WHERE id = $2
+         RETURNING id, name, created_at, updated_at`,
+        [newName, tag.id],
+      );
+      if (!result.rows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      updated = result.rows[0];
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === '23505') {
+        const e = new Error(`Tag "${newName}" already exists`);
+        (e as NodeJS.ErrnoException).code = 'TAG_NAME_CONFLICT';
+        throw e;
+      }
+      throw err;
+    }
 
-  // Reflect the new name in the summary returned to the caller
-  summary.tag_name = updated.name;
+    // Collect usage counts within the same transaction for consistency
+    const usageResult = await client.query<{
+      contacts: string;
+      accounts: string;
+      deals: string;
+      leads: string;
+    }>(
+      `SELECT
+         (SELECT COUNT(*) FROM contact_tags WHERE tag_id = $1)::int AS contacts,
+         (SELECT COUNT(*) FROM account_tags WHERE tag_id = $1)::int AS accounts,
+         (SELECT COUNT(*) FROM deal_tags    WHERE tag_id = $1)::int AS deals,
+         (SELECT COUNT(*) FROM lead_tags    WHERE tag_id = $1)::int AS leads`,
+      [updated.id],
+    );
+    const usageRow = usageResult.rows[0]!;
+    const contacts = parseInt(usageRow.contacts, 10);
+    const accounts = parseInt(usageRow.accounts, 10);
+    const deals = parseInt(usageRow.deals, 10);
+    const leads = parseInt(usageRow.leads, 10);
+    const summary: TagUsageSummary = {
+      tag_id: updated.id,
+      tag_name: updated.name,
+      contacts,
+      accounts,
+      deals,
+      leads,
+      total: contacts + accounts + deals + leads,
+    };
 
-  return { tag: updated, summary };
+    await writeAuditEntry(client, {
+      recordType: 'tag',
+      recordId: updated.id,
+      recordName: updated.name,
+      eventType: 'updated',
+      fieldName: 'name',
+      oldValue: tag.name,
+      newValue: updated.name,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return { tag: updated, summary };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -271,7 +344,7 @@ export async function syncEntityTagsWithinTransaction(
 /**
  * Returns all tags attached to a given record.
  *
- * @param entity - Entity type ('contact' | 'account' | 'deal' | 'note')
+ * @param entity - Entity type ('contact' | 'account' | 'deal' | 'lead' | 'note')
  * @param entityId - UUID of the record
  */
 export async function listEntityTags(entity: TaggableEntity, entityId: string): Promise<TagRow[]> {

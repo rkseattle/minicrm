@@ -187,10 +187,16 @@ function StageTrendTable({ data }: { data: StageTrendData }) {
   );
 }
 
+const REPORT_TITLE_KEYS: Record<string, string> = {
+  win_loss: 'ai.results.report.title_win_loss',
+  activity_volume: 'ai.results.report.title_activity_volume',
+  stage_trend: 'ai.results.report.title_stage_trend',
+};
+
 export default function ReportResultCard({ report }: ReportResultCardProps) {
   const { t } = useTranslation();
 
-  const titleKey = `ai.results.report.title_${report.report_type}`;
+  const titleKey = REPORT_TITLE_KEYS[report.report_type] ?? 'ai.results.report.title_win_loss';
 
   return (
     <div

@@ -212,3 +212,74 @@ tests:
           "%%CONTEXT_PROPOSAL%%" — i.e. the marker is implementation-internal and
           should not appear in conversational replies. Fail if the raw marker
           appears verbatim in the response.
+
+  # ── MINCRM-432: cross-entity note search semantics ──────────────────────────
+
+  - description: Cross-entity note search result lists matching notes without fabricating entity names (MINCRM-432)
+    vars:
+      query: Show me all notes mentioning budget freeze
+      tool_results: '{"notes":[{"id":"n1000000-0000-0000-0000-000000000001","body_text":"The client raised a budget freeze concern during the Q3 review.","entity_type":"account","entity_id":"a1000000-0000-0000-0000-000000000001","author_name":"Alice Chen","created_at":"2026-06-01T10:00:00Z"},{"id":"n1000000-0000-0000-0000-000000000002","body_text":"Budget freeze mentioned again — deal on hold.","entity_type":"deal","entity_id":"d1000000-0000-0000-0000-000000000001","author_name":"Bob Lee","created_at":"2026-06-15T14:30:00Z"}],"total":2}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response mentions both notes from the tool results —
+          one on an account (by Alice Chen, Q3 review context) and one on a deal
+          (by Bob Lee, deal on hold) — using only data present in the tool results.
+          Fail if the response fabricates author names, dates, entity names, or
+          note content not in the provided data.
+
+  - description: Empty cross-entity note search is communicated clearly (MINCRM-432)
+    vars:
+      query: Find all notes mentioning budget freeze
+      tool_results: '{"notes":[],"total":0}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response clearly states that no notes matching the search
+          were found. Fail if the response invents any note content, author names,
+          or entity associations not present in the tool results.
+
+  # ── MINCRM-433: tag rename confirmation semantics ────────────────────────────
+
+  - description: Tag rename confirmation summary includes per-entity affected counts (MINCRM-433)
+    vars:
+      query: "Rename the tag 'cold' to 'dormant'"
+      tool_results: '{"renamed":true,"tag":{"id":"t1000000-0000-0000-0000-000000000001","name":"dormant"},"affected":{"contacts":3,"accounts":1,"deals":2,"leads":4,"total":10}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response confirms the rename from "cold" to "dormant" and
+          communicates the scope of the change using the affected counts from the
+          tool results (10 total records across contacts, accounts, deals, leads).
+          The response may use any phrasing — only the accuracy of the new name
+          ("dormant") and the total affected count (10) are required. Fail if the
+          response invents counts not in the tool results or claims the tag was
+          not renamed.
+
+  # ── MINCRM-424: report generation and save semantics ────────────────────────
+
+  - description: Win/loss report result is summarized accurately without inventing numbers (MINCRM-424)
+    vars:
+      query: Build me a win/loss report for the last 30 days
+      tool_results: '{"report_type":"win_loss","data":{"wonCount":12,"lostCount":5,"winRate":0.706,"repRows":[{"owner_name":"Alice Chen","won_count":8,"lost_count":2},{"owner_name":"Bob Lee","won_count":4,"lost_count":3}]}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response summarizes the win/loss report using only numbers
+          from the tool results: 12 won, 5 lost, approximately 71% win rate.
+          It may mention per-rep breakdown for Alice Chen (8 won, 2 lost) and
+          Bob Lee (4 won, 3 lost). Fail if the response fabricates win counts,
+          loss counts, win rates, or rep names not in the tool results.
+
+  - description: Report save confirmation identifies the report name and type (MINCRM-424)
+    vars:
+      query: Save this report as Q2 Pipeline Trend
+      tool_results: '{"saved":true,"report_id":"r1000000-0000-0000-0000-000000000001","name":"Q2 Pipeline Trend"}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response confirms the report was saved with the name
+          "Q2 Pipeline Trend" and does not invent additional report details
+          such as file paths, report IDs, or access URLs not in the tool results.
+          Fail if the response claims the save failed, invents a different name,
+          or does not acknowledge the save was successful.

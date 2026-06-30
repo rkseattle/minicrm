@@ -110,19 +110,13 @@ function renderItems(toolName: string, items: unknown[]): ReactNode {
   return null;
 }
 
-/** Extracts the report type and data from a generateReport tool output object */
+/** Extracts the report type and data from a generateReport tool output object.
+ * The executor injects a `report_type` discriminator into every generateReport
+ * response so this function can identify the shape without property-sniffing. */
 function extractReport(output: unknown): { report_type: string; data: unknown } | null {
   if (output === null || output === undefined || typeof output !== 'object') return null;
   const obj = output as Record<string, unknown>;
-  // generateReport returns the report data directly with a report_type discriminator
-  // injected by the NLI result renderer. Fall back to checking for known report shapes.
   if (typeof obj.report_type === 'string') return { report_type: obj.report_type, data: obj };
-  // win_loss shape
-  if ('wonCount' in obj || 'winRate' in obj) return { report_type: 'win_loss', data: obj };
-  // activity_volume shape
-  if ('rows' in obj && 'totals' in obj) return { report_type: 'activity_volume', data: obj };
-  // stage_trend shape
-  if ('dataPoints' in obj || 'stages' in obj) return { report_type: 'stage_trend', data: obj };
   return null;
 }
 
