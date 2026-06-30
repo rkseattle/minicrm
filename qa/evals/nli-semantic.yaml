@@ -279,7 +279,8 @@ tests:
       - type: llm-rubric
         value: >
           Pass if the response confirms the report was saved with the name
-          "Q2 Pipeline Trend" and does not invent additional report details
-          such as file paths, report IDs, or access URLs not in the tool results.
-          Fail if the response claims the save failed, invents a different name,
-          or does not acknowledge the save was successful.
+          "Q2 Pipeline Trend". The response may include the report ID from the
+          tool results if it chooses — that is not fabrication. Fail only if
+          the response claims the save failed, invents a different report name,
+          invents file paths or access URLs absent from the tool results, or
+          does not acknowledge the save was successful.

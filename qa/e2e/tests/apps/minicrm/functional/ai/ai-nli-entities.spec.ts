@@ -27,7 +27,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { setAiEnabled, resetAiSettings } from '@behaviors/minicrm/settings.behaviors.js';
+import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   navigateToAiPage,
   waitForAiConversationPanel,
@@ -44,10 +44,6 @@ test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   await setAiEnabled(restClient, true);
   await deleteAllAiSessionsViaApi(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
-  await resetAiSettings(restClient);
 });
 
 // ── Notes cross-entity search ─────────────────────────────────────────────────

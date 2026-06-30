@@ -9,10 +9,10 @@ import { useTranslation } from 'react-i18next';
 // ── Win/Loss ──────────────────────────────────────────────────────────────────
 
 interface WinLossRepRow {
-  owner_name: string;
-  won_count: number;
-  lost_count: number;
-  won_value?: string | null;
+  ownerName: string;
+  wonCount: number;
+  lostCount: number;
+  winRate: number | null;
 }
 
 interface WinLossData {
@@ -26,18 +26,22 @@ interface WinLossData {
 
 // ── Activity Volume ───────────────────────────────────────────────────────────
 
+interface ActivityTypeCounts {
+  Note: number;
+  Call: number;
+  Email: number;
+  Meeting: number;
+  Task: number;
+}
+
 interface ActivityVolumeRepRow {
-  owner_name: string;
+  ownerName: string;
+  counts: ActivityTypeCounts;
   total: number;
-  note?: number;
-  call?: number;
-  email?: number;
-  meeting?: number;
-  task?: number;
 }
 
 interface ActivityVolumeData {
-  totals?: { total: number };
+  totals?: ActivityTypeCounts & { total: number };
   rows?: ActivityVolumeRepRow[];
 }
 
@@ -45,8 +49,8 @@ interface ActivityVolumeData {
 
 interface StageTrendDataPoint {
   stage: string;
-  entry_count?: number;
-  conversion_count?: number;
+  entered?: number;
+  converted?: number;
 }
 
 interface StageTrendData {
@@ -100,10 +104,10 @@ function WinLossTable({ data }: { data: WinLossData }) {
           </thead>
           <tbody>
             {data.repRows.map((row) => (
-              <tr key={row.owner_name} className="border-t border-gray-50">
-                <td className="py-1 pe-3 text-gray-700">{row.owner_name}</td>
-                <td className="py-1 pe-3 text-end text-green-600">{row.won_count}</td>
-                <td className="py-1 pe-3 text-end text-red-500">{row.lost_count}</td>
+              <tr key={row.ownerName} className="border-t border-gray-50">
+                <td className="py-1 pe-3 text-gray-700">{row.ownerName}</td>
+                <td className="py-1 pe-3 text-end text-green-600">{row.wonCount}</td>
+                <td className="py-1 pe-3 text-end text-red-500">{row.lostCount}</td>
               </tr>
             ))}
           </tbody>
@@ -135,8 +139,8 @@ function ActivityVolumeTable({ data }: { data: ActivityVolumeData }) {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.owner_name} className="border-t border-gray-50">
-                <td className="py-1 pe-3 text-gray-700">{row.owner_name}</td>
+              <tr key={row.ownerName} className="border-t border-gray-50">
+                <td className="py-1 pe-3 text-gray-700">{row.ownerName}</td>
                 <td className="py-1 pe-3 text-end text-gray-800">{row.total}</td>
               </tr>
             ))}
@@ -176,8 +180,8 @@ function StageTrendTable({ data }: { data: StageTrendData }) {
             {points.map((pt) => (
               <tr key={pt.stage} className="border-t border-gray-50">
                 <td className="py-1 pe-3 text-gray-700">{pt.stage}</td>
-                <td className="py-1 pe-3 text-end text-gray-800">{pt.entry_count ?? 0}</td>
-                <td className="py-1 pe-3 text-end text-gray-800">{pt.conversion_count ?? 0}</td>
+                <td className="py-1 pe-3 text-end text-gray-800">{pt.entered ?? 0}</td>
+                <td className="py-1 pe-3 text-end text-gray-800">{pt.converted ?? 0}</td>
               </tr>
             ))}
           </tbody>
