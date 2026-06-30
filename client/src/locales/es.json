@@ -2269,7 +2269,24 @@
       "noContent": "(sin contenido)",
       "lastActivity": "Última actividad: {{date}}",
       "closes": "Cierra {{date}}",
-      "viewRecord": "Ver"
+      "viewRecord": "Ver",
+      "report": {
+        "title_win_loss": "Informe de victorias y derrotas",
+        "title_activity_volume": "Informe de volumen de actividades",
+        "title_stage_trend": "Tendencia de etapas del pipeline",
+        "won": "Ganado",
+        "lost": "Perdido",
+        "winRate": "Tasa de victorias",
+        "rep": "Representante",
+        "total": "Total",
+        "totalActivities": "{{count}} actividades en total",
+        "stage": "Etapa",
+        "entries": "Entradas",
+        "conversions": "Conversiones",
+        "viewFullReport": "Abra el módulo de informes para ver el gráfico interactivo completo",
+        "winRateValue": "{{value}}%",
+        "dateRange": "{{from}} – {{to}}"
+      }
     },
     "confirmation": {
       "operationCreate": "Crear",

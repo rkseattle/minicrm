@@ -2269,7 +2269,24 @@
       "noContent": "(no content)",
       "lastActivity": "Last activity: {{date}}",
       "closes": "Closes {{date}}",
-      "viewRecord": "View"
+      "viewRecord": "View",
+      "report": {
+        "title_win_loss": "Win / Loss Report",
+        "title_activity_volume": "Activity Volume Report",
+        "title_stage_trend": "Pipeline Stage Trend",
+        "won": "Won",
+        "lost": "Lost",
+        "winRate": "Win Rate",
+        "rep": "Rep",
+        "total": "Total",
+        "totalActivities": "{{count}} activities total",
+        "stage": "Stage",
+        "entries": "Entries",
+        "conversions": "Conversions",
+        "viewFullReport": "Open Reports module to view the full interactive chart",
+        "winRateValue": "{{value}}%",
+        "dateRange": "{{from}} – {{to}}"
+      }
     },
     "confirmation": {
       "operationCreate": "Create",

@@ -84,7 +84,7 @@ import {
 
 // ── Note ───────────────────────────────────────────────────────────────────────
 import {
-  listNotes,
+  searchNotesCrossEntity,
   getNoteById,
   createNote,
   updateNote,
@@ -92,7 +92,7 @@ import {
 } from '../services/noteService.js';
 
 // ── Tag ────────────────────────────────────────────────────────────────────────
-import { listTags, attachTag, detachTag } from '../services/tagService.js';
+import { listTags, attachTag, detachTag, renameTagByName } from '../services/tagService.js';
 
 // ── Report ─────────────────────────────────────────────────────────────────────
 import {
@@ -100,6 +100,7 @@ import {
   getActivityVolumeReport,
   getStageTrendReport,
 } from '../services/reportService.js';
+import { saveNliReport } from '../services/customReportService.js';
 
 // ── Pipeline / Stage ───────────────────────────────────────────────────────────
 import { listPipelines, findPipelineById } from '../services/pipelineService.js';
@@ -603,18 +604,25 @@ export async function executeToolCall(
       case 'searchNotes': {
         const entityType = toolInput.entity_type as NoteEntityType | undefined;
         const entityId = toolInput.entity_id as string | undefined;
-        if (!entityType || !entityId) {
-          return { error: 'entity_type and entity_id are required for searchNotes' };
+
+        // When both entity_type and entity_id are provided, enforce ownership access
+        // on the parent entity before returning its notes (prevents note leakage).
+        if (entityType && entityId) {
+          await assertEntityAccess(entityType, entityId, ctx);
         }
-        // Verify the caller can access the parent entity before returning its notes.
-        // This prevents note leakage on records that are outside the caller's visibility.
-        await assertEntityAccess(entityType, entityId, ctx);
-        return await listNotes(
-          entityType,
-          entityId,
+
+        return await searchNotesCrossEntity(
+          {
+            entity_type: entityType,
+            entity_id: entityId,
+            keyword: toolInput.keyword as string | undefined,
+            author_id: toolInput.author_id as string | undefined,
+            date_from: toolInput.date_from as string | undefined,
+            date_to: toolInput.date_to as string | undefined,
+            page: asPage(toolInput.page),
+            limit: clampLimit(toolInput.limit as number | undefined),
+          },
           ctx.userId,
-          asPage(toolInput.page),
-          clampLimit(toolInput.limit as number | undefined),
         );
       }
 
@@ -686,8 +694,9 @@ export async function executeToolCall(
         // Verify write access to the target record before mutating its tags.
         await assertEntityAccess(tagEntityType, tagEntityId, ctx, true);
         // attachTag uses upsert-by-name semantics: creates the tag if it does not exist.
+        // Leads are now supported alongside contacts, accounts, and deals. (MINCRM-433)
         await attachTag(
-          tagEntityType as 'contact' | 'account' | 'deal',
+          tagEntityType as 'contact' | 'account' | 'deal' | 'lead',
           tagEntityId,
           { name: toolInput.tag_name as string },
           ctx.actor,
@@ -700,8 +709,9 @@ export async function executeToolCall(
         const detachEntityId = toolInput.entity_id as string;
         // Verify write access to the target record before mutating its tags.
         await assertEntityAccess(detachEntityType, detachEntityId, ctx, true);
+        // Leads are now supported alongside contacts, accounts, and deals. (MINCRM-433)
         await detachTag(
-          detachEntityType as 'contact' | 'account' | 'deal',
+          detachEntityType as 'contact' | 'account' | 'deal' | 'lead',
           detachEntityId,
           toolInput.tag_id as string,
           ctx.actor,
@@ -709,9 +719,54 @@ export async function executeToolCall(
         return { detached: true };
       }
 
+      case 'renameTag': {
+        // Look up the usage summary before renaming so the NLI can present the
+        // affected-count breakdown to the user via requestMutationConfirmation.
+        // The caller is responsible for calling requestMutationConfirmation first
+        // with this summary; renameTag only executes the write. (MINCRM-433)
+        const result = await renameTagByName(
+          toolInput.current_name as string,
+          toolInput.new_name as string,
+        );
+        if (!result) {
+          return { error: `Tag '${String(toolInput.current_name)}' not found.` };
+        }
+        return {
+          renamed: true,
+          tag: result.tag,
+          affected: result.summary,
+        };
+      }
+
       // ── Reports ──────────────────────────────────────────────────────────────
       case 'generateReport': {
         return await dispatchReport(toolInput, ctx);
+      }
+
+      case 'saveReport': {
+        // Saves an NLI-generated analytic report to the Reports module under Custom Reports.
+        // The config stores the NLI report parameters in the jsonb field so the Reports module
+        // can display context about the saved report. (MINCRM-424)
+        const rawDaysForSave = toolInput.days as number | undefined;
+        const validDaysForSave = STAGE_TREND_DAYS_OPTIONS.includes(rawDaysForSave as 30 | 60 | 90)
+          ? (rawDaysForSave as 30 | 60 | 90)
+          : null;
+        const savedReport = await saveNliReport(
+          {
+            name: toolInput.name as string,
+            report_type: toolInput.report_type as 'win_loss' | 'activity_volume' | 'stage_trend',
+            date_from: (toolInput.date_from as string | undefined) ?? null,
+            date_to: (toolInput.date_to as string | undefined) ?? null,
+            owner_id: (toolInput.owner_id as string | undefined) ?? null,
+            days: validDaysForSave,
+          },
+          ctx.actor,
+        );
+        return {
+          saved: true,
+          report_id: savedReport.id,
+          name: savedReport.name,
+        };
       }
 
       // ── Export ───────────────────────────────────────────────────────────────

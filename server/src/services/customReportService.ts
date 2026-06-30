@@ -604,6 +604,81 @@ function buildColumnNames(config: ReportConfig): string[] {
   return cols;
 }
 
+// ── NLI report save ───────────────────────────────────────────────────────────
+
+/** Parameters captured from an NLI generateReport call for persistence. (MINCRM-424) */
+export interface NliReportSaveParams {
+  name: string;
+  report_type: 'win_loss' | 'activity_volume' | 'stage_trend';
+  date_from?: string | null;
+  date_to?: string | null;
+  owner_id?: string | null;
+  days?: 30 | 60 | 90 | null;
+}
+
+/**
+ * Saves an NLI-generated analytic report to the custom_reports table so it appears
+ * in the Reports module. The config jsonb carries an `nli_report_type` marker and
+ * the original generation parameters — the custom report executor ignores unknown
+ * keys so this is safe, and the Reports UI routes on `nli_report_type` to render
+ * the correct analytic view. (MINCRM-424)
+ */
+export async function saveNliReport(
+  params: NliReportSaveParams,
+  actor: AuditActor,
+): Promise<CustomReportRow> {
+  const configJson = JSON.stringify({
+    selected_fields: ['id'],
+    filters: [],
+    nli_report_type: params.report_type,
+    nli_date_from: params.date_from ?? null,
+    nli_date_to: params.date_to ?? null,
+    nli_owner_id: params.owner_id ?? null,
+    nli_days: params.days ?? null,
+  });
+
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let result: { rows: CustomReportRow[] };
+    try {
+      result = await client.query<CustomReportRow>(
+        `INSERT INTO custom_reports (name, entity_type, config, visibility, created_by)
+         VALUES ($1, $2, $3::jsonb, $4, $5)
+         RETURNING ${REPORT_SELECT}`,
+        [params.name, 'deal', configJson, 'public', actor.id],
+      );
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === '23505') {
+        const e = new Error(`A report named "${params.name}" already exists`);
+        (e as NodeJS.ErrnoException).code = 'CUSTOM_REPORT_NAME_CONFLICT';
+        throw e;
+      }
+      throw err;
+    }
+
+    const report = result.rows[0]!;
+
+    await writeAuditEntry(client, {
+      recordType: 'custom_report',
+      recordId: report.id,
+      recordName: report.name,
+      eventType: 'created',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
+
+    await client.query('COMMIT');
+    return report;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // ── Response mapping ──────────────────────────────────────────────────────────
 
 export function toReportResponse(row: CustomReportRow): {
