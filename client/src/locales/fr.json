@@ -2061,6 +2061,18 @@
       "amber": "Posture des données : Révision nécessaire",
       "red": "Posture des données : Action requise"
     },
+    "sessionRetention": {
+      "heading": "Rétention des sessions",
+      "description": "Les sessions de conversation IA et les messages sont définitivement supprimés après ce nombre de jours. Vos préférences de contexte personnelles ne sont pas affectées.",
+      "label": "Fenêtre de rétention (jours)",
+      "hint": "Minimum 30 jours. Les modifications prennent effet lors de la prochaine purge nocturne (02h00).",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saveSuccess": "Fenêtre de rétention des sessions enregistrée.",
+      "saveError": "Échec de l'enregistrement de la fenêtre de rétention. Veuillez réessayer.",
+      "validationMin": "La fenêtre de rétention doit être d'au moins 30 jours.",
+      "validationMax": "La fenêtre de rétention doit être d'au plus 3 650 jours."
+    },
     "tokenBudgets": {
       "heading": "Budgets de tokens",
       "description": "Définissez des limites mensuelles de tokens pour maîtriser les coûts d'utilisation de l'IA. Le suivi des tokens est approximatif (±5 %). Les administrateurs sont exemptés des limites par utilisateur, mais sont inclus dans les totaux de l'organisation.",

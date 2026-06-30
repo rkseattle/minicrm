@@ -2061,6 +2061,18 @@
       "amber": "数据安全态势：需审查",
       "red": "数据安全态势：需立即处理"
     },
+    "sessionRetention": {
+      "heading": "会话保留",
+      "description": "AI 对话会话和消息将在指定天数后永久删除。您的个人上下文偏好不受影响。",
+      "label": "保留期限（天）",
+      "hint": "最少 30 天。更改将在下一次夜间清理（02:00）时生效。",
+      "save": "保存",
+      "saving": "保存中…",
+      "saveSuccess": "会话保留期限已保存。",
+      "saveError": "保存会话保留期限失败，请重试。",
+      "validationMin": "保留期限至少为 30 天。",
+      "validationMax": "保留期限最多为 3650 天。"
+    },
     "tokenBudgets": {
       "heading": "Token 预算",
       "description": "设置每月 Token 限额以控制 AI 使用成本。Token 追踪为近似值（±5%）。管理员不受用户级限额约束，但计入组织总量。",

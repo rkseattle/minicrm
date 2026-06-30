@@ -2061,6 +2061,18 @@
       "amber": "Datenlage: Überprüfung erforderlich",
       "red": "Datenlage: Handlungsbedarf"
     },
+    "sessionRetention": {
+      "heading": "Sitzungsaufbewahrung",
+      "description": "KI-Konversationssitzungen und Nachrichten werden nach dieser Anzahl von Tagen dauerhaft gelöscht. Ihre persönlichen Kontextpräferenzen sind nicht betroffen.",
+      "label": "Aufbewahrungszeitraum (Tage)",
+      "hint": "Mindestens 30 Tage. Änderungen werden bei der nächsten nächtlichen Bereinigung (02:00 Uhr) wirksam.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saveSuccess": "Sitzungsaufbewahrungszeitraum gespeichert.",
+      "saveError": "Fehler beim Speichern des Aufbewahrungszeitraums. Bitte erneut versuchen.",
+      "validationMin": "Der Aufbewahrungszeitraum muss mindestens 30 Tage betragen.",
+      "validationMax": "Der Aufbewahrungszeitraum darf höchstens 3.650 Tage betragen."
+    },
     "tokenBudgets": {
       "heading": "Token-Budgets",
       "description": "Legen Sie monatliche Token-Limits fest, um KI-Nutzungskosten zu kontrollieren. Das Token-Tracking ist näherungsweise (±5 %). Administratoren sind von benutzerspezifischen Limits ausgenommen, werden aber in die Gesamtsummen der Organisation einbezogen.",

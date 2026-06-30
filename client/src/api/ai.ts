@@ -10,6 +10,7 @@ import type {
   SetAiConfigInput,
   SetAiEnabledInput,
   SetAiDpaAcknowledgmentInput,
+  SetAiSessionRetentionInput,
   TestAiConnectionInput,
   TestAiConnectionResponse,
   AiTokenBudgetsResponse,
@@ -69,6 +70,16 @@ export async function testAiConnection(
     '/admin/ai/test-connection',
     params,
   );
+  return response.data;
+}
+
+/**
+ * Updates the AI session retention window (days). Minimum 30, maximum 3650.
+ */
+export async function setAiSessionRetention(
+  patch: SetAiSessionRetentionInput,
+): Promise<AiConfigResponse> {
+  const response = await apiClient.patch<AiConfigResponse>('/admin/ai/session-retention', patch);
   return response.data;
 }
 
