@@ -11,7 +11,7 @@
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
-import { writeAuditEntry } from './auditService.js';
+import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
@@ -65,6 +65,8 @@ export interface AiGdprCascadeLogRow {
   context_entries_removed: number;
   status: 'completed' | 'failed';
   error_detail: string | null;
+  original_name: string | null;
+  original_email: string | null;
 }
 
 /** Full GDPR export payload for a contact */
@@ -711,73 +713,116 @@ export async function cascadeGdprErasureToAiData(
   try {
     await client.query('BEGIN');
 
-    // Build case-insensitive search patterns for all PII identifiers.
-    // We escape ILIKE special characters (%, _) in the contact data so a contact
-    // named "50% Off" doesn't accidentally match unrelated messages.
-    const escape = (s: string) => s.replace(/([%_\\])/g, '\\$1');
-    const namePat = `%${escape(contactName)}%`;
-    const emailPat = `%${escape(contactEmail)}%`;
+    // Build case-insensitive ILIKE search patterns for PII identifiers.
+    // ILIKE special characters (%, _) are escaped so a name like "50% Off"
+    // cannot accidentally match unrelated rows. An empty contactName (allowed
+    // by the DB — first_name NOT NULL but can be '') would produce ILIKE '%%'
+    // which matches every row; guard against that by treating empty as absent.
+    // contactEmail is always present (contacts.email is NOT NULL and non-empty).
+    const escapeLike = (s: string) => s.replace(/([%_\\])/g, '\\$1');
+    const hasName = contactName.trim().length > 0;
+    const namePat = hasName ? `%${escapeLike(contactName)}%` : null;
+    const emailPat = `%${escapeLike(contactEmail)}%`;
 
-    const nameRegex = contactName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const emailRegex = contactEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Escape ERE metacharacters so the value can be passed as a literal pattern
+    // to PG regexp_replace with the 'gi' flag. PG ERE treats \. \* etc. as
+    // escaped literals, so this JS escaping is compatible. We only produce a
+    // nameRegex when contactName is non-empty to avoid an empty-pattern match.
+    const escapeEre = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nameRegex = hasName ? escapeEre(contactName) : null;
+    const emailRegex = escapeEre(contactEmail);
 
     // Step 1 — redact ai_messages.content and clear pending_action containing PII.
     // pending_action JSONB stores pre-PII-filter contact fields (entityName, input fields,
     // summary text) from mutation confirmation flows — it must be cleared on erasure.
-    // We use a CTE to count affected rows without a second query.
-    const msgResult = await client.query<{ count: string }>(
+    // Redact by email first (always present), then by name when non-empty.
+    // Two separate statements are simpler than one dynamic statement with optional clauses.
+    let messagesRedacted = 0;
+
+    const emailMsgResult = await client.query<{ count: string }>(
       `WITH updated AS (
          UPDATE ai_messages
          SET
-           content = regexp_replace(
-             regexp_replace(content, $1, '[redacted]', 'gi'),
-             $2, '[redacted]', 'gi'
-           ),
+           content = regexp_replace(content, $1, '[redacted]', 'gi'),
            pending_action = CASE
-             WHEN pending_action IS NOT NULL AND (
-               pending_action::text ILIKE $3 OR pending_action::text ILIKE $4
-             ) THEN NULL
+             WHEN pending_action IS NOT NULL AND pending_action::text ILIKE $2
+             THEN NULL
              ELSE pending_action
            END
-         WHERE content ILIKE $3 OR content ILIKE $4
-            OR (pending_action IS NOT NULL AND (
-              pending_action::text ILIKE $3 OR pending_action::text ILIKE $4
-            ))
+         WHERE content ILIKE $2
+            OR (pending_action IS NOT NULL AND pending_action::text ILIKE $2)
          RETURNING id
        )
        SELECT count(*)::text AS count FROM updated`,
-      [nameRegex, emailRegex, namePat, emailPat],
+      [emailRegex, emailPat],
     );
-    const messagesRedacted = parseInt(msgResult.rows[0]?.count ?? '0', 10);
+    messagesRedacted += parseInt(emailMsgResult.rows[0]?.count ?? '0', 10);
+
+    if (nameRegex !== null && namePat !== null) {
+      const nameMsgResult = await client.query<{ count: string }>(
+        `WITH updated AS (
+           UPDATE ai_messages
+           SET
+             content = regexp_replace(content, $1, '[redacted]', 'gi'),
+             pending_action = CASE
+               WHEN pending_action IS NOT NULL AND pending_action::text ILIKE $2
+               THEN NULL
+               ELSE pending_action
+             END
+           WHERE content ILIKE $2
+              OR (pending_action IS NOT NULL AND pending_action::text ILIKE $2)
+           RETURNING id
+         )
+         SELECT count(*)::text AS count FROM updated`,
+        [nameRegex, namePat],
+      );
+      messagesRedacted += parseInt(nameMsgResult.rows[0]?.count ?? '0', 10);
+    }
 
     // Step 2 — redact ai_sessions.name where it contains contact PII.
     // Session names may be auto-generated from message content that referenced the contact.
     await client.query(
       `UPDATE ai_sessions
        SET name = '[GDPR deleted]'
-       WHERE (name ILIKE $1 OR name ILIKE $2)
-         AND name IS NOT NULL`,
-      [namePat, emailPat],
+       WHERE name ILIKE $1 AND name IS NOT NULL`,
+      [emailPat],
     );
+    if (namePat !== null) {
+      await client.query(
+        `UPDATE ai_sessions
+         SET name = '[GDPR deleted]'
+         WHERE name ILIKE $1 AND name IS NOT NULL`,
+        [namePat],
+      );
+    }
 
     // Step 3 — remove user_ai_context entries referencing contact PII.
     const ctxResult = await client.query<{ count: string }>(
       `WITH deleted AS (
          DELETE FROM user_ai_context
-         WHERE value ILIKE $1 OR value ILIKE $2
+         WHERE value ILIKE $1 ${namePat ? 'OR value ILIKE $2' : ''}
          RETURNING id
        )
        SELECT count(*)::text AS count FROM deleted`,
-      [namePat, emailPat],
+      namePat ? [emailPat, namePat] : [emailPat],
     );
     const contextEntriesRemoved = parseInt(ctxResult.rows[0]?.count ?? '0', 10);
 
-    // Step 4 — record the cascade outcome.
+    // Step 4 — record the cascade outcome, persisting original PII so a re-run
+    // can use the correct search terms even after the contacts row is redacted.
     await client.query(
       `INSERT INTO ai_gdpr_cascade_log
-         (contact_id, triggered_by, messages_redacted, context_entries_removed, status)
-       VALUES ($1, $2, $3, $4, 'completed')`,
-      [contactId, actor?.id ?? null, messagesRedacted, contextEntriesRemoved],
+         (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
+          original_name, original_email)
+       VALUES ($1, $2, $3, $4, 'completed', $5, $6)`,
+      [
+        contactId,
+        actor?.id ?? null,
+        messagesRedacted,
+        contextEntriesRemoved,
+        contactName || null,
+        contactEmail || null,
+      ],
     );
 
     // Step 5 — audit entry on the contact record.
@@ -786,8 +831,8 @@ export async function cascadeGdprErasureToAiData(
       recordId: contactId,
       eventType: 'ai_gdpr_cascade',
       newValue: `AI cascade: ${messagesRedacted} message(s) redacted, ${contextEntriesRemoved} context entry(ies) removed`,
-      changedById: actor?.id ?? '00000000-0000-0000-0000-000000000000',
-      changedByName: actor?.name ?? 'System',
+      changedById: actor?.id ?? SYSTEM_ACTOR.id,
+      changedByName: actor?.name ?? SYSTEM_ACTOR.name,
     });
 
     await client.query('COMMIT');
@@ -827,6 +872,28 @@ export async function getAiCascadeLogForContact(contactId: string): Promise<AiGd
     [contactId],
   );
   return result.rows;
+}
+
+/**
+ * Returns the original PII values (name, email) stored in the first cascade log
+ * entry for a contact. Used by re-run cascade logic so the correct search terms
+ * are available after the contacts row has been redacted.
+ *
+ * Returns null when no prior cascade log entry exists or when the oldest entry
+ * pre-dates migration 136 (original_name/original_email not yet populated).
+ */
+export async function getOriginalPiiFromCascadeLog(
+  contactId: string,
+): Promise<{ original_name: string | null; original_email: string | null } | null> {
+  const result = await pool.query<{ original_name: string | null; original_email: string | null }>(
+    `SELECT original_name, original_email
+     FROM ai_gdpr_cascade_log
+     WHERE contact_id = $1
+     ORDER BY triggered_at ASC
+     LIMIT 1`,
+    [contactId],
+  );
+  return result.rows[0] ?? null;
 }
 
 /**

@@ -615,6 +615,9 @@ export async function resetAiSettings(restClient: RestClient): Promise<void> {
         custom_dpa_url: '',
       })
       .catch(() => undefined),
+    restClient
+      .patch('/api/v1/admin/ai/session-retention', { ai_session_retention_days: 90 })
+      .catch(() => undefined),
   ]);
 }
 

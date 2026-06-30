@@ -26,6 +26,7 @@ import {
   getGdprStatusForRecord,
   cascadeGdprErasureToAiData,
   getAiCascadeLogForContact,
+  getOriginalPiiFromCascadeLog,
   hasGdprErasureForContact,
 } from '../services/gdprService.js';
 import { uid } from './testUtils.js';
@@ -415,5 +416,68 @@ describe('getAiCascadeLogForContact', () => {
     expect(new Date(rows[0].triggered_at).getTime()).toBeGreaterThanOrEqual(
       new Date(rows[1].triggered_at).getTime(),
     );
+  });
+});
+
+// ── getOriginalPiiFromCascadeLog ───────────────────────────────────────────────
+
+describe('getOriginalPiiFromCascadeLog', () => {
+  beforeEach(async () => {
+    await pool.query(
+      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      [adminId],
+    );
+  });
+
+  it('returns null when no cascade log entry exists', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    expect(result).toBeNull();
+  });
+
+  it('returns original_name and original_email from the oldest log entry', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const name = `Pii-Test-${FILE_PREFIX}`;
+    const email = `${FILE_PREFIX}-pii@example.com`;
+
+    await cascadeGdprErasureToAiData(contact.id, name, email, adminActor);
+
+    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    expect(result).not.toBeNull();
+    expect(result?.original_name).toBe(name);
+    expect(result?.original_email).toBe(email);
+  });
+});
+
+// ── cascadeGdprErasureToAiData — empty name guard ──────────────────────────────
+
+describe('cascadeGdprErasureToAiData empty-name guard', () => {
+  beforeEach(async () => {
+    await pool.query(
+      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      [adminId],
+    );
+    await pool.query('DELETE FROM user_ai_context WHERE user_id = $1', [adminId]);
+  });
+
+  it('does not delete all user_ai_context rows when contactName is empty', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    // Seed a context entry that should NOT be deleted
+    const email = `keep-me-${FILE_PREFIX}@example.com`;
+    await pool.query(
+      `INSERT INTO user_ai_context (user_id, key, value) VALUES ($1, 'keep', $2)
+       ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value`,
+      [adminId, 'unrelated context value'],
+    );
+
+    // Cascade with empty name — previously this would produce ILIKE '%%' and wipe all rows
+    await cascadeGdprErasureToAiData(contact.id, '', email, adminActor);
+
+    const remaining = await pool.query(
+      `SELECT id FROM user_ai_context WHERE user_id = $1 AND key = 'keep'`,
+      [adminId],
+    );
+    expect(remaining.rows).toHaveLength(1);
   });
 });

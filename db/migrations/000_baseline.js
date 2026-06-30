@@ -1,5 +1,5 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–135 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446)
+ * Migration 000: Schema baseline — squash of migrations 001–136 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446)
  *
  * PURPOSE
  * -------
@@ -1069,6 +1069,8 @@ exports.up = (pgm) => {
                                 CONSTRAINT ai_gdpr_cascade_log_status_check
                                   CHECK (status IN ('completed', 'failed')),
       error_detail            text,
+      original_name           text,
+      original_email          text,
       CONSTRAINT ai_gdpr_cascade_log_pkey PRIMARY KEY (id)
     )
   `);

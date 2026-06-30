@@ -16,6 +16,7 @@ import {
   cascadeGdprErasureToAiData,
   getAiCascadeLogForContact,
   hasGdprErasureForContact,
+  getOriginalPiiFromCascadeLog,
 } from '../services/gdprService.js';
 
 /** Schema for the optional notes field in erasure request bodies */
@@ -211,11 +212,15 @@ export async function triggerAiCascadeHandler(req: Request, res: Response): Prom
     return;
   }
 
-  // Re-running the cascade: we no longer have the original PII (the contacts row is
-  // already redacted), so we use the synthetic email pattern to locate sessions.
-  // The contact name was replaced with '[GDPR deleted]' — pass the contact ID itself
-  // as a search term so any messages that still reference the raw ID get caught.
-  void cascadeGdprErasureToAiData(id, '[GDPR deleted]', `gdpr-deleted-${id}@gdpr.invalid`, actor);
+  // Re-running the cascade: look up the original name and email stored in the
+  // first cascade log entry (written by migration 136). Falls back to the
+  // synthetic redaction placeholder when no prior log entry exists (pre-migration
+  // rows), in which case the re-run can still match the synthetic email pattern.
+  const originalPii = await getOriginalPiiFromCascadeLog(id);
+  const reCascadeName = originalPii?.original_name ?? '[GDPR deleted]';
+  const reCascadeEmail = originalPii?.original_email ?? `gdpr-deleted-${id}@gdpr.invalid`;
+
+  void cascadeGdprErasureToAiData(id, reCascadeName, reCascadeEmail, actor);
 
   res.status(202).json({ accepted: true, message: 'AI cascade re-run accepted' });
 }
