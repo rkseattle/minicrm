@@ -2061,6 +2061,18 @@
       "amber": "Postura de datos: Revisión necesaria",
       "red": "Postura de datos: Acción requerida"
     },
+    "sessionRetention": {
+      "heading": "Retención de sesiones",
+      "description": "Las sesiones de conversación de IA y los mensajes se eliminan permanentemente después de este número de días. Tus preferencias de contexto personales no se ven afectadas.",
+      "label": "Ventana de retención (días)",
+      "hint": "Mínimo 30 días. Los cambios surten efecto en la próxima purga nocturna (02:00).",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "saveSuccess": "Ventana de retención de sesiones guardada.",
+      "saveError": "Error al guardar la ventana de retención de sesiones. Por favor, inténtalo de nuevo.",
+      "validationMin": "La ventana de retención debe ser de al menos 30 días.",
+      "validationMax": "La ventana de retención debe ser de como máximo 3 650 días."
+    },
     "tokenBudgets": {
       "heading": "Presupuestos de tokens",
       "description": "Establece límites mensuales de tokens para controlar los costos de uso de IA. El seguimiento de tokens es aproximado (±5%). Los administradores están exentos de los límites por usuario, pero se incluyen en los totales de la organización.",

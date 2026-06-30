@@ -2061,6 +2061,18 @@
       "amber": "Data Posture: Review Needed",
       "red": "Data Posture: Action Required"
     },
+    "sessionRetention": {
+      "heading": "Session Retention",
+      "description": "AI conversation sessions and messages are permanently deleted after this many days. Your personal context preferences are not affected.",
+      "label": "Retention window (days)",
+      "hint": "Minimum 30 days. Changes take effect at the next nightly purge (02:00).",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveSuccess": "Session retention window saved.",
+      "saveError": "Failed to save session retention window. Please try again.",
+      "validationMin": "Retention window must be at least 30 days.",
+      "validationMax": "Retention window must be at most 3650 days."
+    },
     "tokenBudgets": {
       "heading": "Token Budgets",
       "description": "Set monthly token limits to control AI usage costs. Token tracking is approximate (±5%). Admins are exempt from per-user limits but are included in org-wide totals.",

@@ -12,6 +12,7 @@ import {
   setAiConfig,
   setAiEnabled,
   setAiDpaAcknowledgment,
+  setAiSessionRetention,
   testAiConnection,
   AI_CONFIG_QUERY_KEY,
   getAiTokenBudgets,
@@ -262,6 +263,112 @@ function UserBudgetRow({ row, onSave, isSaving }: UserBudgetRowProps) {
         )}
       </td>
     </tr>
+  );
+}
+
+// ── Session retention section (MINCRM-447) ────────────────────────────────────
+
+function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const [inputValue, setInputValue] = useState(String(retentionDays));
+  const [validationError, setValidationError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    setInputValue(String(retentionDays));
+  }, [retentionDays]);
+
+  const mutation = useMutation({
+    mutationFn: (days: number) => setAiSessionRetention({ ai_session_retention_days: days }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
+      setSaveSuccess(true);
+      setSaveError('');
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+    },
+    onError: () => {
+      setSaveError(t('aiSettings.sessionRetention.saveError'));
+      setSaveSuccess(false);
+    },
+  });
+
+  const handleSave = () => {
+    setValidationError('');
+    setSaveSuccess(false);
+    setSaveError('');
+
+    const parsed = parseInt(inputValue, 10);
+    if (isNaN(parsed) || !Number.isInteger(parsed)) {
+      setValidationError(t('aiSettings.sessionRetention.validationMin'));
+      return;
+    }
+    if (parsed < 30) {
+      setValidationError(t('aiSettings.sessionRetention.validationMin'));
+      return;
+    }
+    if (parsed > 3650) {
+      setValidationError(t('aiSettings.sessionRetention.validationMax'));
+      return;
+    }
+
+    mutation.mutate(parsed);
+  };
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-700">
+        {t('aiSettings.sessionRetention.heading')}
+      </h3>
+      <p className="mt-1 text-sm text-gray-600">{t('aiSettings.sessionRetention.description')}</p>
+      <div className="mt-4 flex items-start gap-3">
+        <div className="flex-1 max-w-xs">
+          <label
+            className="block text-xs font-medium text-gray-700 mb-1"
+            htmlFor="session-retention-days"
+          >
+            {t('aiSettings.sessionRetention.label')}
+          </label>
+          <input
+            id="session-retention-days"
+            type="number"
+            min={30}
+            max={3650}
+            step={1}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setValidationError('');
+            }}
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid="ai-session-retention-days-input"
+          />
+          {validationError && <p className="mt-1 text-xs text-red-600">{validationError}</p>}
+          <p className="mt-1 text-xs text-gray-500">{t('aiSettings.sessionRetention.hint')}</p>
+        </div>
+        <div className="pt-6">
+          <Button
+            onClick={handleSave}
+            disabled={mutation.isPending}
+            data-testid="ai-session-retention-save-button"
+          >
+            {mutation.isPending
+              ? t('aiSettings.sessionRetention.saving')
+              : t('aiSettings.sessionRetention.save')}
+          </Button>
+        </div>
+      </div>
+      {saveSuccess && (
+        <p className="mt-2 text-xs text-green-600">
+          {t('aiSettings.sessionRetention.saveSuccess')}
+        </p>
+      )}
+      {saveError && <p className="mt-2 text-xs text-red-600">{saveError}</p>}
+    </div>
   );
 }
 
@@ -1027,6 +1134,11 @@ export default function AiSettings() {
           )}
         </div>
       </section>
+
+      {/* Session retention section (MINCRM-447) */}
+      <div className="border-t border-gray-200 pt-6">
+        <SessionRetentionSection retentionDays={data.ai_session_retention_days} />
+      </div>
 
       {/* Token budget section (MINCRM-458) */}
       <div className="border-t border-gray-200 pt-6">
