@@ -235,22 +235,7 @@ export async function sendAiMessageViaUI(
 ): Promise<SendAiMessageResult> {
   const aiPage = new AiPage(context);
 
-  // Snapshot existing message counts before sending so we can wait for a net
-  // increase rather than mere presence. On multi-turn conversations, elements
-  // with data-testid="ai-message-assistant" are already in the DOM from prior
-  // turns — a pure presence check trivially passes and may return before the
-  // new reply has actually rendered.
-  const userBefore = (await context.page.evaluate(
-    `document.querySelectorAll('[data-testid="ai-message-user"]').length`,
-  )) as number;
-  const assistantBefore = (await context.page.evaluate(
-    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length`,
-  )) as number;
-
   // Register before clicking Send so a fast server response isn't missed.
-  // Waiting for the POST to resolve decouples server latency (3-10s Anthropic
-  // round-trip, longer under CI load) from the DOM poll — the DOM check then
-  // only needs a short window for React to commit the render.
   const replyReceived = context.page.waitForResponse(
     (res) =>
       res.url().includes('/api/v1/ai/sessions') &&
@@ -261,19 +246,13 @@ export async function sendAiMessageViaUI(
   await aiPage.sendMessage(content);
   await replyReceived;
 
-  // Wait for counts to exceed the pre-send baseline. The network response has
-  // arrived, but React's onSuccess callback, state updates, and DOM commit run
-  // asynchronously — allow up to 30s for the render to complete under CI load.
-  await context.page.waitForFunction(
-    `document.querySelectorAll('[data-testid="ai-message-user"]').length > ${userBefore}`,
-    undefined,
-    { timeout: 30_000 },
-  );
-  await context.page.waitForFunction(
-    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length > ${assistantBefore}`,
-    undefined,
-    { timeout: 30_000 },
-  );
+  // Wait for the user message text to appear in the thread. Text-based detection
+  // is robust to the optimistic→real message transition: both the optimistic
+  // entry and the persisted entry contain the same content string, so this never
+  // transiently returns false between the two render cycles. Count-based checks
+  // can miss the brief window where optimistic messages are cleared before the
+  // refetch commits persisted messages to the DOM.
+  await waitForAiThreadText(context, content, 30_000);
 
   return { userMessageVisible: true, assistantMessageVisible: true };
 }

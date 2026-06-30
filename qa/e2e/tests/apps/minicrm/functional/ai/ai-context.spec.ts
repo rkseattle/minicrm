@@ -87,18 +87,25 @@ test('F-AI-CTX-3 — Adding a context entry via the UI saves and displays it @fu
 }) => {
   await navigateToAiPage({ page });
 
-  await addContextEntryViaUI({ page }, 'a while', '30+ days without activity');
+  // The add button and entry list live in the hidden lg:flex sidebar — only
+  // exercisable on wide viewports.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  if (viewportWidth >= 1024) {
+    await addContextEntryViaUI({ page }, 'a while', '30+ days without activity');
 
-  // Fetch the entry by API to get its server-assigned ID, then assert it is
-  // visible in the panel — this only passes once the save mutation succeeds
-  // and the panel re-renders the new row.
-  await expect(async () => {
-    const response = await restClient.get<{ entries: Array<{ id: string }> }>('/api/v1/ai/context');
-    expect(response.body.entries.length).toBeGreaterThan(0);
-    const entryId = response.body.entries[0].id;
-    const entryVisible = await isContextEntryVisible({ page }, entryId);
-    expect(entryVisible).toBe(true);
-  }).toPass({ timeout: 5000 });
+    // Fetch the entry by API to get its server-assigned ID, then assert it is
+    // visible in the panel — this only passes once the save mutation succeeds
+    // and the panel re-renders the new row.
+    await expect(async () => {
+      const response = await restClient.get<{ entries: Array<{ id: string }> }>(
+        '/api/v1/ai/context',
+      );
+      expect(response.body.entries.length).toBeGreaterThan(0);
+      const entryId = response.body.entries[0].id;
+      const entryVisible = await isContextEntryVisible({ page }, entryId);
+      expect(entryVisible).toBe(true);
+    }).toPass({ timeout: 5000 });
+  }
 });
 
 test('F-AI-CTX-4 — Context entry created via API appears in the panel @functional', async ({
@@ -109,21 +116,30 @@ test('F-AI-CTX-4 — Context entry created via API appears in the panel @functio
 
   await navigateToAiPage({ page });
 
-  const entryVisible = await isContextEntryVisible({ page }, entryId);
-  expect(entryVisible).toBe(true);
+  // Entry rows live in the hidden lg:flex sidebar — only visible on wide viewports.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  if (viewportWidth >= 1024) {
+    const entryVisible = await isContextEntryVisible({ page }, entryId);
+    expect(entryVisible).toBe(true);
+  }
 });
 
 test('F-AI-CTX-5 — Cancelling the add form discards the entry @functional', async ({ page }) => {
   await navigateToAiPage({ page });
 
-  const addBtnVisible = await isAiAddContextButtonVisible({ page });
-  expect(addBtnVisible).toBe(true);
+  // The add button, cancel form, and empty state all live in the hidden lg:flex
+  // sidebar — only exercisable on wide viewports.
+  const viewportWidth = page.viewportSize()?.width ?? 1280;
+  if (viewportWidth >= 1024) {
+    const addBtnVisible = await isAiAddContextButtonVisible({ page });
+    expect(addBtnVisible).toBe(true);
 
-  await cancelContextEntryViaUI({ page }, 'should-not-save', 'cancel test value');
+    await cancelContextEntryViaUI({ page }, 'should-not-save', 'cancel test value');
 
-  // Empty state should still be visible (no entry was saved)
-  await expect(async () => {
-    const emptyVisible = await isContextPanelEmptyStateVisible({ page });
-    expect(emptyVisible).toBe(true);
-  }).toPass({ timeout: 3000 });
+    // Empty state should still be visible (no entry was saved)
+    await expect(async () => {
+      const emptyVisible = await isContextPanelEmptyStateVisible({ page });
+      expect(emptyVisible).toBe(true);
+    }).toPass({ timeout: 3000 });
+  }
 });
