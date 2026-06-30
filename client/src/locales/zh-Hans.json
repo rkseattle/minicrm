@@ -2269,7 +2269,24 @@
       "noContent": "（无内容）",
       "lastActivity": "最近活动：{{date}}",
       "closes": "预计关闭：{{date}}",
-      "viewRecord": "查看"
+      "viewRecord": "查看",
+      "report": {
+        "title_win_loss": "赢/输报告",
+        "title_activity_volume": "活动量报告",
+        "title_stage_trend": "流水线阶段趋势",
+        "won": "赢得",
+        "lost": "失去",
+        "winRate": "赢率",
+        "rep": "销售代表",
+        "total": "合计",
+        "totalActivities": "共{{count}}个活动",
+        "stage": "阶段",
+        "entries": "进入数",
+        "conversions": "转化数",
+        "viewFullReport": "打开报告模块查看完整的交互式图表",
+        "winRateValue": "{{value}}%",
+        "dateRange": "{{from}} – {{to}}"
+      }
     },
     "confirmation": {
       "operationCreate": "创建",

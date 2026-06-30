@@ -2269,7 +2269,24 @@
       "noContent": "(kein Inhalt)",
       "lastActivity": "Letzte Aktivität: {{date}}",
       "closes": "Abschluss {{date}}",
-      "viewRecord": "Anzeigen"
+      "viewRecord": "Anzeigen",
+      "report": {
+        "title_win_loss": "Gewinn-/Verlustbericht",
+        "title_activity_volume": "Aktivitätsvolumenbericht",
+        "title_stage_trend": "Pipeline-Stufentrend",
+        "won": "Gewonnen",
+        "lost": "Verloren",
+        "winRate": "Gewinnquote",
+        "rep": "Mitarbeiter",
+        "total": "Gesamt",
+        "totalActivities": "{{count}} Aktivitäten gesamt",
+        "stage": "Stufe",
+        "entries": "Einträge",
+        "conversions": "Konversionen",
+        "viewFullReport": "Öffnen Sie das Berichtsmodul, um das vollständige interaktive Diagramm zu sehen",
+        "winRateValue": "{{value}} %",
+        "dateRange": "{{from}} – {{to}}"
+      }
     },
     "confirmation": {
       "operationCreate": "Erstellen",

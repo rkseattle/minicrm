@@ -12,13 +12,14 @@ import DealResultCard from './DealResultCard.js';
 import ActivityResultCard from './ActivityResultCard.js';
 import NoteResultCard from './NoteResultCard.js';
 import LeadResultCard from './LeadResultCard.js';
+import ReportResultCard from './ReportResultCard.js';
 
 interface NliResultBlockProps {
   toolResults: AiToolResult[];
   isLoading?: boolean;
 }
 
-/** Set of read tool names that produce renderable entity results */
+/** Set of tool names that produce renderable results in the conversation thread */
 const READ_TOOL_NAMES = new Set([
   'searchContacts',
   'getContact',
@@ -32,6 +33,7 @@ const READ_TOOL_NAMES = new Set([
   'getNote',
   'searchLeads',
   'getLead',
+  'generateReport',
 ]);
 
 /** Extracts an array of records from list or single-record tool output */
@@ -108,6 +110,22 @@ function renderItems(toolName: string, items: unknown[]): ReactNode {
   return null;
 }
 
+/** Extracts the report type and data from a generateReport tool output object */
+function extractReport(output: unknown): { report_type: string; data: unknown } | null {
+  if (output === null || output === undefined || typeof output !== 'object') return null;
+  const obj = output as Record<string, unknown>;
+  // generateReport returns the report data directly with a report_type discriminator
+  // injected by the NLI result renderer. Fall back to checking for known report shapes.
+  if (typeof obj.report_type === 'string') return { report_type: obj.report_type, data: obj };
+  // win_loss shape
+  if ('wonCount' in obj || 'winRate' in obj) return { report_type: 'win_loss', data: obj };
+  // activity_volume shape
+  if ('rows' in obj && 'totals' in obj) return { report_type: 'activity_volume', data: obj };
+  // stage_trend shape
+  if ('dataPoints' in obj || 'stages' in obj) return { report_type: 'stage_trend', data: obj };
+  return null;
+}
+
 export default function NliResultBlock({ toolResults, isLoading = false }: NliResultBlockProps) {
   const { t } = useTranslation();
 
@@ -128,6 +146,18 @@ export default function NliResultBlock({ toolResults, isLoading = false }: NliRe
   return (
     <div className="mt-2 space-y-3" data-testid="nli-result-block">
       {readResults.map((result, blockIdx) => {
+        // generateReport renders a single card directly rather than a list of items
+        if (result.toolName === 'generateReport') {
+          const reportData = extractReport(result.output);
+          if (!reportData) return null;
+          const typedReport = reportData as Parameters<typeof ReportResultCard>[0]['report'];
+          return (
+            <div key={blockIdx} data-testid={`nli-result-group-${blockIdx}`}>
+              <ReportResultCard report={typedReport} />
+            </div>
+          );
+        }
+
         const items = extractItems(result.output);
         const rendered = renderItems(result.toolName, items);
         if (!rendered) {

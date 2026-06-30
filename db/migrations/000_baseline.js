@@ -773,6 +773,15 @@ exports.up = (pgm) => {
       CONSTRAINT deal_tags_pkey PRIMARY KEY (deal_id, tag_id)
     )
   `);
+  // lead_tags — junction table linking leads to the shared tags registry (MINCRM-433)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.lead_tags (
+      lead_id    uuid NOT NULL,
+      tag_id     uuid NOT NULL,
+      created_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT lead_tags_pkey PRIMARY KEY (lead_id, tag_id)
+    )
+  `);
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.deal_contacts (
       deal_id    uuid NOT NULL,
@@ -1094,6 +1103,8 @@ exports.up = (pgm) => {
     `ALTER TABLE ONLY public.account_tags ADD CONSTRAINT account_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.deal_tags ADD CONSTRAINT deal_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.lead_tags ADD CONSTRAINT lead_tags_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE`,
+    `ALTER TABLE ONLY public.lead_tags ADD CONSTRAINT lead_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deals(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.deal_contacts ADD CONSTRAINT deal_contacts_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contacts(id) ON DELETE CASCADE`,
     `ALTER TABLE ONLY public.notes ADD CONSTRAINT notes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)`,
@@ -1259,6 +1270,7 @@ exports.up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS contact_tags_tag_id_index ON public.contact_tags USING btree (tag_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS account_tags_tag_id_index ON public.account_tags USING btree (tag_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS deal_tags_tag_id_index ON public.deal_tags USING btree (tag_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS lead_tags_tag_id_index ON public.lead_tags USING btree (tag_id)`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS deal_contacts_contact_id_index ON public.deal_contacts USING btree (contact_id)`);
 
   // currencies

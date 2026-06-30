@@ -2269,7 +2269,24 @@
       "noContent": "(sans contenu)",
       "lastActivity": "Dernière activité : {{date}}",
       "closes": "Clôture le {{date}}",
-      "viewRecord": "Voir"
+      "viewRecord": "Voir",
+      "report": {
+        "title_win_loss": "Rapport gains/pertes",
+        "title_activity_volume": "Rapport volume d'activités",
+        "title_stage_trend": "Tendance des étapes du pipeline",
+        "won": "Gagnés",
+        "lost": "Perdus",
+        "winRate": "Taux de réussite",
+        "rep": "Commercial",
+        "total": "Total",
+        "totalActivities": "{{count}} activités au total",
+        "stage": "Étape",
+        "entries": "Entrées",
+        "conversions": "Conversions",
+        "viewFullReport": "Ouvrez le module Rapports pour voir le graphique interactif complet",
+        "winRateValue": "{{value}} %",
+        "dateRange": "{{from}} – {{to}}"
+      }
     },
     "confirmation": {
       "operationCreate": "Créer",

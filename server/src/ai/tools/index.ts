@@ -91,9 +91,11 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['listTags', 'contacts:view' as Capability],
   ['attachTag', 'contacts:edit' as Capability],
   ['detachTag', 'contacts:edit' as Capability],
+  ['renameTag', 'contacts:edit' as Capability],
 
   // ── Reports ───────────────────────────────────────────────────────────────
   ['generateReport', 'reports:view' as Capability],
+  ['saveReport', 'reports:create' as Capability],
 
   // ── Export ────────────────────────────────────────────────────────────────
   ['exportEntities', 'data:export' as Capability],

@@ -1878,7 +1878,24 @@
       "noContent": "[(no content)]",
       "lastActivity": "[Last activity: {{date}}]",
       "closes": "[Closes {{date}}]",
-      "viewRecord": "[View]"
+      "viewRecord": "[View]",
+      "report": {
+        "title_win_loss": "[!!! Ŵĩñ / Ĺőśś Ŗéƥőŗţ !!!]",
+        "title_activity_volume": "[!!! Àćţĩvĩţý Vőĺũmé Ŗéƥőŗţ !!!]",
+        "title_stage_trend": "[!!! Ƥĩƥéĺĩñé Śţàĝé Ţŗéñď !!!]",
+        "won": "[!!! Ŵőñ !!!]",
+        "lost": "[!!! Ĺőśţ !!!]",
+        "winRate": "[!!! Ŵĩñ Ŗàţé !!!]",
+        "rep": "[!!! Ŗéƥ !!!]",
+        "total": "[!!! Ţőţàĺ !!!]",
+        "totalActivities": "[!!! {{count}} àćţĩvĩţĩéś ţőţàĺ !!!]",
+        "stage": "[!!! Śţàĝé !!!]",
+        "entries": "[!!! Éñţŗĩéś !!!]",
+        "conversions": "[!!! Ćőñvéŗśĩőñś !!!]",
+        "viewFullReport": "[!!! Öƥéñ Ŗéƥőŗţś mőďũĺé ţő vĩéŵ ţĥé ƒũĺĺ ĩñţéŗàćţĩvé ćĥàŗţ !!!]",
+        "winRateValue": "[!!! {{value}}% !!!]",
+        "dateRange": "[!!! {{from}} – {{to}} !!!]"
+      }
     },
     "confirmation": {
       "operationCreate": "[Crëàtë]",

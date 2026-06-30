@@ -1,5 +1,5 @@
 /**
- * NLI tool definitions for Tags. (MINCRM-422)
+ * NLI tool definitions for Tags. (MINCRM-422, MINCRM-433)
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
@@ -8,7 +8,7 @@ export const tagTools: Anthropic.Messages.Tool[] = [
   {
     name: 'listTags',
     description:
-      'List all available tags in the CRM. Use this to discover what tags exist before filtering records by tag.',
+      'List all available tags in the CRM. Use this to discover what tags exist before filtering records by tag or before renaming/removing a tag.',
     input_schema: {
       type: 'object',
       properties: {
@@ -21,13 +21,13 @@ export const tagTools: Anthropic.Messages.Tool[] = [
   {
     name: 'attachTag',
     description:
-      'Attach a tag to a CRM record (contact, account, or deal) by tag name. The tag will be created if it does not already exist.',
+      'Attach a tag to a CRM record (contact, account, deal, or lead) by tag name. The tag will be created if it does not already exist. Always call requestMutationConfirmation first.',
     input_schema: {
       type: 'object',
       properties: {
         entity_type: {
           type: 'string',
-          enum: ['contact', 'account', 'deal'],
+          enum: ['contact', 'account', 'deal', 'lead'],
           description: 'The type of entity to tag.',
         },
         entity_id: {
@@ -45,13 +45,14 @@ export const tagTools: Anthropic.Messages.Tool[] = [
   },
   {
     name: 'detachTag',
-    description: 'Remove a tag from a CRM record by tag UUID. Use listTags to find the tag UUID.',
+    description:
+      'Remove a tag from a CRM record (contact, account, deal, or lead) by tag UUID. Use listTags to find the tag UUID. Always call requestMutationConfirmation first.',
     input_schema: {
       type: 'object',
       properties: {
         entity_type: {
           type: 'string',
-          enum: ['contact', 'account', 'deal'],
+          enum: ['contact', 'account', 'deal', 'lead'],
           description: 'The type of entity to untag.',
         },
         entity_id: {
@@ -64,6 +65,25 @@ export const tagTools: Anthropic.Messages.Tool[] = [
         },
       },
       required: ['entity_type', 'entity_id', 'tag_id'],
+    },
+  },
+  {
+    name: 'renameTag',
+    description:
+      'Rename a tag across all CRM entities. The rename propagates everywhere the tag is used. Returns the affected count per entity type in the confirmation summary. Always call requestMutationConfirmation first, passing the per-entity counts in the summary field so the user knows the scope of the change.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        current_name: {
+          type: 'string',
+          description: 'Current tag name (case-insensitive lookup).',
+        },
+        new_name: {
+          type: 'string',
+          description: 'New tag name to apply.',
+        },
+      },
+      required: ['current_name', 'new_name'],
     },
   },
 ];

@@ -513,6 +513,93 @@ export async function updateNote(
   }
 }
 
+/** Parameters for cross-entity note search (MINCRM-432) */
+export interface SearchNotesParams {
+  entity_type?: NoteEntityType;
+  entity_id?: string;
+  keyword?: string;
+  author_id?: string;
+  date_from?: string;
+  date_to?: string;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Searches notes across all entity types (or within one) using keyword, author,
+ * and date filters. Visibility rules still apply: private notes from other users
+ * have their body/title masked.
+ *
+ * @param params - Filter and pagination parameters
+ * @param callerId - UUID of the authenticated user
+ */
+export async function searchNotesCrossEntity(
+  params: SearchNotesParams,
+  callerId: string,
+): Promise<PaginatedResponse<NoteResponse>> {
+  const { entity_type, entity_id, keyword, author_id, date_from, date_to, page, limit } = params;
+  const offset = (page - 1) * limit;
+
+  const conditions: string[] = ['n.deleted_at IS NULL'];
+  const values: unknown[] = [];
+  let paramIndex = 1;
+
+  if (entity_type) {
+    conditions.push(`n.entity_type = $${paramIndex++}`);
+    values.push(entity_type);
+  }
+  if (entity_id) {
+    conditions.push(`n.entity_id = $${paramIndex++}`);
+    values.push(entity_id);
+  }
+  if (author_id) {
+    conditions.push(`n.created_by = $${paramIndex++}`);
+    values.push(author_id);
+  }
+  if (date_from) {
+    conditions.push(`n.created_at >= $${paramIndex++}`);
+    values.push(date_from);
+  }
+  if (date_to) {
+    // Include the full end day by advancing to the next day exclusive
+    conditions.push(`n.created_at < ($${paramIndex++}::date + interval '1 day')`);
+    values.push(date_to);
+  }
+  if (keyword) {
+    // Use trigram index on body_text for efficient full-text similarity search
+    conditions.push(`n.body_text ILIKE $${paramIndex++}`);
+    values.push(`%${keyword}%`);
+  }
+
+  const where = conditions.join(' AND ');
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count
+       FROM notes n
+       WHERE ${where}`,
+      values,
+    ),
+    pool.query<NoteRow>(
+      `SELECT ${SELECT_COLS}
+       FROM notes n
+       JOIN  users creator ON creator.id = n.created_by
+       LEFT JOIN users updater ON updater.id = n.updated_by
+       WHERE ${where}
+       ORDER BY n.created_at DESC
+       LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+      [...values, limit, offset],
+    ),
+  ]);
+
+  return {
+    data: dataResult.rows.map((row) => maskNote(row, callerId)),
+    total: parseInt(countResult.rows[0]!.count, 10),
+    page,
+    limit,
+  };
+}
+
 /**
  * Soft-deletes all non-deleted notes for a given entity within an existing transaction.
  * Must be called before hard-deleting the parent entity row so that orphaned notes

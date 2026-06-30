@@ -23,17 +23,29 @@ export interface TagRow {
 }
 
 /** Valid entity types that support tagging */
-export type TaggableEntity = 'contact' | 'account' | 'deal' | 'note';
+export type TaggableEntity = 'contact' | 'account' | 'deal' | 'lead' | 'note';
 
 /** Entity types that support standalone attach/detach tag operations.
  * 'note' is excluded: note tags are managed atomically via syncEntityTagsWithinTransaction. */
-type AttachableEntity = Exclude<TaggableEntity, 'note'>;
+export type AttachableEntity = Exclude<TaggableEntity, 'note'>;
+
+/** Per-entity usage counts returned by getTagUsageSummary (MINCRM-433) */
+export interface TagUsageSummary {
+  tag_id: string;
+  tag_name: string;
+  contacts: number;
+  accounts: number;
+  deals: number;
+  leads: number;
+  total: number;
+}
 
 /** Maps attachable entity type to its AuditRecordType for audit log entries */
 const ENTITY_AUDIT_TYPE: Record<AttachableEntity, AuditRecordType> = {
   contact: 'contact',
   account: 'account',
   deal: 'deal',
+  lead: 'lead',
 };
 
 /** Maps entity type to its junction table and FK column name */
@@ -41,6 +53,7 @@ const ENTITY_TABLE: Record<TaggableEntity, { table: string; fkCol: string }> = {
   contact: { table: 'contact_tags', fkCol: 'contact_id' },
   account: { table: 'account_tags', fkCol: 'account_id' },
   deal: { table: 'deal_tags', fkCol: 'deal_id' },
+  lead: { table: 'lead_tags', fkCol: 'lead_id' },
   note: { table: 'note_tags', fkCol: 'note_id' },
 };
 
@@ -116,6 +129,78 @@ export async function updateTag(id: string, params: UpdateTagInput): Promise<Tag
     [params.name, id],
   );
   return result.rows[0] ?? null;
+}
+
+/**
+ * Returns the count of records tagged with a given tag, broken down by entity type.
+ * Used to populate the rename/delete confirmation summary in the NLI. (MINCRM-433)
+ *
+ * @param tagId - Tag UUID
+ */
+export async function getTagUsageSummary(tagId: string): Promise<TagUsageSummary | null> {
+  const tagRow = await findTagById(tagId);
+  if (!tagRow) return null;
+
+  const result = await pool.query<{
+    contacts: string;
+    accounts: string;
+    deals: string;
+    leads: string;
+  }>(
+    `SELECT
+       (SELECT COUNT(*) FROM contact_tags WHERE tag_id = $1)::int AS contacts,
+       (SELECT COUNT(*) FROM account_tags WHERE tag_id = $1)::int AS accounts,
+       (SELECT COUNT(*) FROM deal_tags    WHERE tag_id = $1)::int AS deals,
+       (SELECT COUNT(*) FROM lead_tags    WHERE tag_id = $1)::int AS leads`,
+    [tagId],
+  );
+
+  const row = result.rows[0]!;
+  const contacts = parseInt(row.contacts, 10);
+  const accounts = parseInt(row.accounts, 10);
+  const deals = parseInt(row.deals, 10);
+  const leads = parseInt(row.leads, 10);
+
+  return {
+    tag_id: tagRow.id,
+    tag_name: tagRow.name,
+    contacts,
+    accounts,
+    deals,
+    leads,
+    total: contacts + accounts + deals + leads,
+  };
+}
+
+/**
+ * Renames a tag by looking it up by name, then updating it.
+ * Returns the updated tag row and usage summary for confirmation display, or null if not found.
+ * The rename propagates automatically to all junction tables via shared tag rows. (MINCRM-433)
+ *
+ * @param currentName - Existing tag name (case-insensitive lookup)
+ * @param newName - Desired new tag name
+ */
+export async function renameTagByName(
+  currentName: string,
+  newName: string,
+): Promise<{ tag: TagRow; summary: TagUsageSummary } | null> {
+  const existing = await pool.query<TagRow>(
+    `SELECT id, name, created_at, updated_at FROM tags WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+    [currentName],
+  );
+  const tag = existing.rows[0];
+  if (!tag) return null;
+
+  const updated = await updateTag(tag.id, { name: newName });
+  if (!updated) return null;
+
+  const summary = await getTagUsageSummary(updated.id);
+  if (!summary) return null;
+
+  // Reflect the new name in the summary returned to the caller
+  summary.tag_name = updated.name;
+
+  return { tag: updated, summary };
 }
 
 /**
