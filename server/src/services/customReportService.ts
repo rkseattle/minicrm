@@ -579,7 +579,13 @@ function buildFilterExpr(filter: FilterCondition, params: unknown[]): string {
   if (filter.value === undefined || filter.value === null) return '';
 
   if (filter.operator === 'contains') {
-    params.push(`%${filter.value}%`);
+    // Escape ILIKE metacharacters so a filter value of "%" or "_" matches literally.
+    const escaped = String(filter.value)
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_');
+    params.push(`%${escaped}%`);
+    return `${col} ${op} $${params.length} ESCAPE '\\'`;
   } else {
     params.push(filter.value);
   }

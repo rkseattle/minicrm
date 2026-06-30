@@ -18,7 +18,7 @@ interface WinLossRepRow {
 interface WinLossData {
   wonCount: number;
   lostCount: number;
-  winRate: number;
+  winRate: number | null;
   currency?: string;
   homeCurrency?: string;
   repRows?: WinLossRepRow[];
@@ -88,7 +88,9 @@ function WinLossTable({ data }: { data: WinLossData }) {
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-gray-800">
-            {t('ai.results.report.winRateValue', { value: (data.winRate * 100).toFixed(0) })}
+            {data.winRate != null
+              ? t('ai.results.report.winRateValue', { value: (data.winRate * 100).toFixed(0) })
+              : '—'}
           </p>
           <p className="text-xs text-gray-500">{t('ai.results.report.winRate')}</p>
         </div>

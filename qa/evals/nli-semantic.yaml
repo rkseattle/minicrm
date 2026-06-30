@@ -261,7 +261,7 @@ tests:
   - description: Win/loss report result is summarized accurately without inventing numbers (MINCRM-424)
     vars:
       query: Build me a win/loss report for the last 30 days
-      tool_results: '{"report_type":"win_loss","data":{"wonCount":12,"lostCount":5,"winRate":0.706,"repRows":[{"owner_name":"Alice Chen","won_count":8,"lost_count":2},{"owner_name":"Bob Lee","won_count":4,"lost_count":3}]}}'
+      tool_results: '{"report_type":"win_loss","data":{"wonCount":12,"lostCount":5,"winRate":0.706,"repRows":[{"ownerName":"Alice Chen","wonCount":8,"lostCount":2},{"ownerName":"Bob Lee","wonCount":4,"lostCount":3}]}}'
     assert:
       - type: llm-rubric
         value: >

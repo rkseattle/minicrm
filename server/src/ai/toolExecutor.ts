@@ -741,13 +741,31 @@ export async function executeToolCall(
       case 'renameTag': {
         // renameTag executes atomically with an audit entry. The AI is instructed to
         // call requestMutationConfirmation before invoking this tool. (MINCRM-433)
-        const renameResult = await renameTagByName(
-          toolInput.current_name as string,
-          toolInput.new_name as string,
-          ctx.actor,
-        );
+        let renameResult: Awaited<ReturnType<typeof renameTagByName>>;
+        try {
+          renameResult = await renameTagByName(
+            toolInput.current_name as string,
+            toolInput.new_name as string,
+            ctx.actor,
+          );
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code === 'TAG_NAME_CONFLICT') {
+            return {
+              error: {
+                code: 'TAG_NAME_CONFLICT',
+                message: (err as Error).message,
+              },
+            };
+          }
+          throw err;
+        }
         if (!renameResult) {
-          return { error: `Tag '${String(toolInput.current_name)}' not found.` };
+          return {
+            error: {
+              code: 'NOT_FOUND',
+              message: `Tag '${String(toolInput.current_name)}' not found.`,
+            },
+          };
         }
         return {
           renamed: true,
@@ -769,17 +787,30 @@ export async function executeToolCall(
         const validDaysForSave = STAGE_TREND_DAYS_OPTIONS.includes(rawDaysForSave as 30 | 60 | 90)
           ? (rawDaysForSave as 30 | 60 | 90)
           : null;
-        const savedReport = await saveNliReport(
-          {
-            name: toolInput.name as string,
-            report_type: toolInput.report_type as 'win_loss' | 'activity_volume' | 'stage_trend',
-            date_from: (toolInput.date_from as string | undefined) ?? null,
-            date_to: (toolInput.date_to as string | undefined) ?? null,
-            owner_id: (toolInput.owner_id as string | undefined) ?? null,
-            days: validDaysForSave,
-          },
-          ctx.actor,
-        );
+        let savedReport: Awaited<ReturnType<typeof saveNliReport>>;
+        try {
+          savedReport = await saveNliReport(
+            {
+              name: toolInput.name as string,
+              report_type: toolInput.report_type as 'win_loss' | 'activity_volume' | 'stage_trend',
+              date_from: (toolInput.date_from as string | undefined) ?? null,
+              date_to: (toolInput.date_to as string | undefined) ?? null,
+              owner_id: (toolInput.owner_id as string | undefined) ?? null,
+              days: validDaysForSave,
+            },
+            ctx.actor,
+          );
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code === 'CUSTOM_REPORT_NAME_CONFLICT') {
+            return {
+              error: {
+                code: 'CUSTOM_REPORT_NAME_CONFLICT',
+                message: (err as Error).message,
+              },
+            };
+          }
+          throw err;
+        }
         return {
           saved: true,
           report_id: savedReport.id,
