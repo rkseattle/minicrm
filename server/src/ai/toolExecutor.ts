@@ -612,6 +612,17 @@ export async function executeToolCall(
         const entityId = toolInput.entity_id as string | undefined;
         const requestedAuthorId = toolInput.author_id as string | undefined;
 
+        // entity_id without entity_type is ambiguous and cannot be access-checked.
+        // Reject early to match the original listNotes contract (both required together).
+        if (entityId && !entityType) {
+          return {
+            error: {
+              code: 'INVALID_INPUT',
+              message: 'entity_type is required when entity_id is provided',
+            },
+          };
+        }
+
         // When both entity_type and entity_id are provided, enforce ownership access
         // on the parent entity before returning its notes (prevents note leakage).
         if (entityType && entityId) {
