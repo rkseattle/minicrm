@@ -1,25 +1,25 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–118 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492)
+ * Migration 000: Schema baseline — squash of migrations 001–135 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 118 migrations (001–118), so
+ * Captures the full schema as it exists after all 135 migrations (001–135), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 118 individual migrations.
+ * replaying all 135 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
- * Do NOT use `npm run migrate` on a brand-new database — it will run all 119
- * files (000_baseline + 001–118) and fail because 001–118 re-create objects
+ * Do NOT use `npm run migrate` on a brand-new database — it will run all 136
+ * files (000_baseline + 001–135) and fail because 001–135 re-create objects
  * that 000_baseline already created. Use the two-step bootstrap instead:
  *
  *   npm run migrate:fresh --workspace=minicrm-server
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–118 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–135 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (119+) run normally via `npm run migrate`
+ *   3. Future migrations (136+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–118 fully applied.
+ * with migrations 001–135 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -961,11 +961,15 @@ exports.up = (pgm) => {
       updated_at                       timestamp with time zone DEFAULT now() NOT NULL,
       updated_by                       uuid,
       api_key_key_version              smallint DEFAULT 1 NOT NULL,
+      ai_session_retention_days        integer DEFAULT 90 NOT NULL
+                                         CONSTRAINT ai_configuration_session_retention_min
+                                           CHECK (ai_session_retention_days >= 30),
       CONSTRAINT ai_configuration_singleton CHECK (singleton),
       CONSTRAINT ai_configuration_singleton_unique UNIQUE (singleton)
     )
   `);
   pgm.sql(`COMMENT ON COLUMN public.ai_configuration.api_key_key_version IS 'Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.ai_session_retention_days IS 'Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)'`);
 
   // smtp_configuration — singleton SMTP config (MINCRM-519 key versioning)
   pgm.sql(`
@@ -1049,6 +1053,27 @@ exports.up = (pgm) => {
       CONSTRAINT user_ai_context_user_id_key_unique UNIQUE (user_id, key)
     )
   `);
+
+  // ai_gdpr_cascade_log — audit log for GDPR AI data cascade runs (MINCRM-446)
+  // Must be after users table (triggered_by FK). contact_id has no FK because the
+  // contact row is typically already deleted when this table is queried.
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.ai_gdpr_cascade_log (
+      id                      uuid DEFAULT gen_random_uuid() NOT NULL,
+      contact_id              uuid NOT NULL,
+      triggered_at            timestamp with time zone DEFAULT now() NOT NULL,
+      triggered_by            uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      messages_redacted       integer NOT NULL DEFAULT 0,
+      context_entries_removed integer NOT NULL DEFAULT 0,
+      status                  character varying(20) NOT NULL DEFAULT 'completed'
+                                CONSTRAINT ai_gdpr_cascade_log_status_check
+                                  CHECK (status IN ('completed', 'failed')),
+      error_detail            text,
+      CONSTRAINT ai_gdpr_cascade_log_pkey PRIMARY KEY (id)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.ai_gdpr_cascade_log IS 'Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_gdpr_cascade_log.triggered_by IS 'NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run.'`);
 
   // currency_rate_history — immutable rate audit log (MINCRM-526)
   pgm.sql(`
@@ -1331,6 +1356,10 @@ exports.up = (pgm) => {
 
   // user_ai_context (MINCRM-427)
   pgm.sql(`CREATE INDEX IF NOT EXISTS user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id)`);
+
+  // ai_gdpr_cascade_log (MINCRM-446)
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_gdpr_cascade_log_contact_id_idx ON public.ai_gdpr_cascade_log USING btree (contact_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_gdpr_cascade_log_triggered_at_idx ON public.ai_gdpr_cascade_log USING btree (triggered_at)`);
 
   // currency_rate_history
   pgm.sql(`CREATE INDEX IF NOT EXISTS currency_rate_history_code_effective_from_idx ON public.currency_rate_history USING btree (code, effective_from DESC)`);
