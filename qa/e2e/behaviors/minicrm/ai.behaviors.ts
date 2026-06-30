@@ -235,6 +235,11 @@ export async function sendAiMessageViaUI(
 ): Promise<SendAiMessageResult> {
   const aiPage = new AiPage(context);
 
+  // Count existing assistant bubbles before sending so we can detect a new one.
+  const assistantCountBefore = (await context.page.evaluate(
+    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length`,
+  )) as number;
+
   // Register before clicking Send so a fast server response isn't missed.
   const replyReceived = context.page.waitForResponse(
     (res) =>
@@ -253,6 +258,17 @@ export async function sendAiMessageViaUI(
   // can miss the brief window where optimistic messages are cleared before the
   // refetch commits persisted messages to the DOM.
   await waitForAiThreadText(context, content, 30_000);
+
+  // Wait for a new assistant reply bubble to appear. The API returning 200
+  // means the server committed the reply, but React Query's cache update and
+  // re-render can lag — especially on loaded CI runners. Waiting here prevents
+  // callers from needing their own separate waitForAiThreadText(stubText) after
+  // each send, which has an 8s default that is too tight under CI load.
+  await context.page.waitForFunction(
+    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length > ${assistantCountBefore}`,
+    undefined,
+    { timeout: 30_000 },
+  );
 
   return { userMessageVisible: true, assistantMessageVisible: true };
 }
