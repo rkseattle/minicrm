@@ -357,7 +357,7 @@ describe('cascadeGdprErasureToAiData', () => {
     await pool.query('DELETE FROM ai_sessions WHERE user_id = $1', [adminId]);
   });
 
-  it('writes a completed log entry even when no AI messages reference the contact', async () => {
+  it('writes a completed log entry and NULLs out original PII on success', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
 
     await cascadeGdprErasureToAiData(
@@ -372,6 +372,9 @@ describe('cascadeGdprErasureToAiData', () => {
     expect(rows[0].status).toBe('completed');
     expect(rows[0].messages_redacted).toBe(0);
     expect(rows[0].context_entries_removed).toBe(0);
+    // PII must be cleared after a successful cascade (GDPR Art. 17).
+    expect(rows[0].original_name).toBeNull();
+    expect(rows[0].original_email).toBeNull();
   });
 
   it('writes a completed audit entry for the contact record', async () => {
@@ -435,12 +438,31 @@ describe('getOriginalPiiFromCascadeLog', () => {
     expect(result).toBeNull();
   });
 
-  it('returns original_name and original_email from the oldest log entry', async () => {
+  it('returns null after a successful cascade (PII is NULLed out on success)', async () => {
     const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
     const name = `Pii-Test-${FILE_PREFIX}`;
     const email = `${FILE_PREFIX}-pii@example.com`;
 
     await cascadeGdprErasureToAiData(contact.id, name, email, adminActor);
+
+    // Successful cascade must NULL out original_name/email — PII must not persist.
+    const result = await getOriginalPiiFromCascadeLog(contact.id);
+    expect(result).toBeNull();
+  });
+
+  it('returns original PII from a failed log row so a re-run can use it', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const name = `Pii-ReRun-${FILE_PREFIX}`;
+    const email = `${FILE_PREFIX}-rerun@example.com`;
+
+    // Insert a failed cascade log row directly (simulating a failed cascade).
+    await pool.query(
+      `INSERT INTO ai_gdpr_cascade_log
+         (contact_id, triggered_by, messages_redacted, context_entries_removed, status,
+          error_detail, original_name, original_email)
+       VALUES ($1, $2, 0, 0, 'failed', 'simulated failure', $3, $4)`,
+      [contact.id, adminId, name, email],
+    );
 
     const result = await getOriginalPiiFromCascadeLog(contact.id);
     expect(result).not.toBeNull();
