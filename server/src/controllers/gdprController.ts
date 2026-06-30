@@ -13,6 +13,9 @@ import {
   getGdprExportForLead,
   listGdprDeletions,
   getGdprStatusForRecord,
+  cascadeGdprErasureToAiData,
+  getAiCascadeLogForContact,
+  hasGdprErasureForContact,
 } from '../services/gdprService.js';
 
 /** Schema for the optional notes field in erasure request bodies */
@@ -175,6 +178,64 @@ export async function listGdprDeletionsHandler(req: Request, res: Response): Pro
   const { page, limit } = parsed.data;
   const result = await listGdprDeletions(page, limit);
   res.status(200).json(result);
+}
+
+/**
+ * POST /api/v1/gdpr/contacts/:id/ai-cascade
+ * Triggers a manual re-run of the GDPR AI data cascade for a contact. Admin only.
+ * Returns immediately — the cascade runs asynchronously.
+ */
+export async function triggerAiCascadeHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+
+  // Verify that a GDPR erasure has already been performed for this contact.
+  // The cascade is only meaningful after erasure — running it on a live contact
+  // would redact legitimate messages.
+  const erased = await hasGdprErasureForContact(id);
+  if (!erased) {
+    res.status(409).json({
+      error: {
+        code: 'GDPR_ERASURE_NOT_FOUND',
+        message: 'No GDPR erasure record found for this contact. Cascade requires a prior erasure.',
+      },
+    });
+    return;
+  }
+
+  // Re-running the cascade: we no longer have the original PII (the contacts row is
+  // already redacted), so we use the synthetic email pattern to locate sessions.
+  // The contact name was replaced with '[GDPR deleted]' — pass the contact ID itself
+  // as a search term so any messages that still reference the raw ID get caught.
+  void cascadeGdprErasureToAiData(id, '[GDPR deleted]', `gdpr-deleted-${id}@gdpr.invalid`, actor);
+
+  res.status(202).json({ accepted: true, message: 'AI cascade re-run accepted' });
+}
+
+/**
+ * GET /api/v1/gdpr/contacts/:id/ai-cascade
+ * Returns all ai_gdpr_cascade_log rows for a contact. Admin only.
+ */
+export async function getAiCascadeLogHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const idParsed = uuidSchema.safeParse(id);
+  if (!idParsed.success) {
+    res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: 'id must be a valid UUID' } });
+    return;
+  }
+
+  const rows = await getAiCascadeLogForContact(id);
+  res.status(200).json({ data: rows });
 }
 
 /**

@@ -10,6 +10,7 @@
 
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
+import logger from '../logger.js';
 import { writeAuditEntry } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
 import type { AuditActor, AuditLogRow } from './auditService.js';
@@ -52,6 +53,18 @@ export interface GdprDeletionLogRow {
   completed_at: Date | null;
   erasure_scope: string[];
   notes: string | null;
+}
+
+/** Row returned from the ai_gdpr_cascade_log table */
+export interface AiGdprCascadeLogRow {
+  id: string;
+  contact_id: string;
+  triggered_at: Date;
+  triggered_by: string | null;
+  messages_redacted: number;
+  context_entries_removed: number;
+  status: 'completed' | 'failed';
+  error_detail: string | null;
 }
 
 /** Full GDPR export payload for a contact */
@@ -147,14 +160,21 @@ export async function eraseContact(
     await client.query('BEGIN');
     await setRlsUserId(client);
 
-    // Step 1 — verify the contact exists
-    const contactResult = await client.query<{ id: string }>(
-      'SELECT id FROM contacts WHERE id = $1 LIMIT 1',
-      [id],
-    );
+    // Step 1 — verify the contact exists and capture PII before overwrite.
+    // Name and email are captured here so the AI cascade (fired after COMMIT)
+    // can search ai_messages for the original values, not the redacted placeholders.
+    const contactResult = await client.query<{
+      id: string;
+      first_name: string;
+      last_name: string | null;
+      email: string;
+    }>('SELECT id, first_name, last_name, email FROM contacts WHERE id = $1 LIMIT 1', [id]);
     if (contactResult.rows.length === 0) {
       throw Object.assign(new Error('Contact not found'), { code: 'NOT_FOUND' });
     }
+    const contactPii = contactResult.rows[0];
+    const contactName = [contactPii.first_name, contactPii.last_name].filter(Boolean).join(' ');
+    const contactEmail = contactPii.email;
 
     // Step 2 — check for an existing completed erasure
     const existingResult = await client.query<{ id: string }>(
@@ -240,6 +260,12 @@ export async function eraseContact(
     });
 
     await client.query('COMMIT');
+
+    // Fire-and-forget AI cascade: redacts contact PII from ai_messages and
+    // user_ai_context. Runs after COMMIT so it never blocks or rolls back
+    // the primary erasure. Errors are caught and logged inside the cascade.
+    void cascadeGdprErasureToAiData(id, contactName, contactEmail, actor);
+
     return logRow;
   } catch (err) {
     await client.query('ROLLBACK');
@@ -538,6 +564,7 @@ export async function getGdprExportForLead(id: string): Promise<LeadGdprExport> 
          d.field_type AS def_field_type,
          d.options AS def_options,
          d.sort_order AS def_sort_order,
+         d.pii_excluded AS def_pii_excluded,
          d.created_at AS def_created_at
        FROM custom_field_values v
        JOIN custom_field_definitions d ON d.id = v.definition_id AND d.entity_type = 'lead'
@@ -643,4 +670,175 @@ export async function getGdprStatusForRecord(
     [recordType, recordId],
   );
   return result.rows[0] ?? null;
+}
+
+// ── AI data cascade ────────────────────────────────────────────────────────────
+
+/**
+ * Cascades a GDPR erasure into AI session data for a contact.
+ *
+ * This function is designed to be called fire-and-forget (void, never awaited)
+ * after the primary GDPR erasure transaction commits. It runs asynchronously so
+ * it never blocks or rolls back the primary erasure operation.
+ *
+ * What it does:
+ * 1. Fetches the contact's name and email from gdpr_deletion_log context (the
+ *    contact row may already have PII overwritten by the time we run, so we
+ *    also accept name/email explicitly from the caller's pre-erasure snapshot).
+ * 2. Redacts ai_messages.content where it contains the contact name or email
+ *    (case-insensitive ILIKE search; replaces matched substrings in-process
+ *    via UPDATE ... WHERE content ILIKE any pattern).
+ * 3. Removes user_ai_context entries whose value references the contact name
+ *    or email.
+ * 4. Inserts a row into ai_gdpr_cascade_log recording counts and outcome.
+ * 5. Writes an audit entry on the contact record documenting the cascade.
+ *
+ * Errors inside this function are caught and logged — they do NOT propagate
+ * to the caller, preserving the fire-and-forget contract.
+ *
+ * @param contactId  - UUID of the contact that was erased
+ * @param contactName - Display name captured before PII overwrite
+ * @param contactEmail - Email captured before PII overwrite
+ * @param actor - Who triggered the cascade (null = system-initiated)
+ */
+export async function cascadeGdprErasureToAiData(
+  contactId: string,
+  contactName: string,
+  contactEmail: string,
+  actor: AuditActor | null,
+): Promise<void> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Build case-insensitive search patterns for all PII identifiers.
+    // We escape ILIKE special characters (%, _) in the contact data so a contact
+    // named "50% Off" doesn't accidentally match unrelated messages.
+    const escape = (s: string) => s.replace(/([%_\\])/g, '\\$1');
+    const namePat = `%${escape(contactName)}%`;
+    const emailPat = `%${escape(contactEmail)}%`;
+
+    const nameRegex = contactName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const emailRegex = contactEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Step 1 — redact ai_messages.content and clear pending_action containing PII.
+    // pending_action JSONB stores pre-PII-filter contact fields (entityName, input fields,
+    // summary text) from mutation confirmation flows — it must be cleared on erasure.
+    // We use a CTE to count affected rows without a second query.
+    const msgResult = await client.query<{ count: string }>(
+      `WITH updated AS (
+         UPDATE ai_messages
+         SET
+           content = regexp_replace(
+             regexp_replace(content, $1, '[redacted]', 'gi'),
+             $2, '[redacted]', 'gi'
+           ),
+           pending_action = CASE
+             WHEN pending_action IS NOT NULL AND (
+               pending_action::text ILIKE $3 OR pending_action::text ILIKE $4
+             ) THEN NULL
+             ELSE pending_action
+           END
+         WHERE content ILIKE $3 OR content ILIKE $4
+            OR (pending_action IS NOT NULL AND (
+              pending_action::text ILIKE $3 OR pending_action::text ILIKE $4
+            ))
+         RETURNING id
+       )
+       SELECT count(*)::text AS count FROM updated`,
+      [nameRegex, emailRegex, namePat, emailPat],
+    );
+    const messagesRedacted = parseInt(msgResult.rows[0]?.count ?? '0', 10);
+
+    // Step 2 — redact ai_sessions.name where it contains contact PII.
+    // Session names may be auto-generated from message content that referenced the contact.
+    await client.query(
+      `UPDATE ai_sessions
+       SET name = '[GDPR deleted]'
+       WHERE (name ILIKE $1 OR name ILIKE $2)
+         AND name IS NOT NULL`,
+      [namePat, emailPat],
+    );
+
+    // Step 3 — remove user_ai_context entries referencing contact PII.
+    const ctxResult = await client.query<{ count: string }>(
+      `WITH deleted AS (
+         DELETE FROM user_ai_context
+         WHERE value ILIKE $1 OR value ILIKE $2
+         RETURNING id
+       )
+       SELECT count(*)::text AS count FROM deleted`,
+      [namePat, emailPat],
+    );
+    const contextEntriesRemoved = parseInt(ctxResult.rows[0]?.count ?? '0', 10);
+
+    // Step 4 — record the cascade outcome.
+    await client.query(
+      `INSERT INTO ai_gdpr_cascade_log
+         (contact_id, triggered_by, messages_redacted, context_entries_removed, status)
+       VALUES ($1, $2, $3, $4, 'completed')`,
+      [contactId, actor?.id ?? null, messagesRedacted, contextEntriesRemoved],
+    );
+
+    // Step 5 — audit entry on the contact record.
+    await writeAuditEntry(client, {
+      recordType: 'contact',
+      recordId: contactId,
+      eventType: 'ai_gdpr_cascade',
+      newValue: `AI cascade: ${messagesRedacted} message(s) redacted, ${contextEntriesRemoved} context entry(ies) removed`,
+      changedById: actor?.id ?? '00000000-0000-0000-0000-000000000000',
+      changedByName: actor?.name ?? 'System',
+    });
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+
+    // Log the error and record it in the cascade log (best-effort, outside tx).
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    try {
+      await pool.query(
+        `INSERT INTO ai_gdpr_cascade_log
+           (contact_id, triggered_by, messages_redacted, context_entries_removed, status, error_detail)
+         VALUES ($1, $2, 0, 0, 'failed', $3)`,
+        [contactId, actor?.id ?? null, errorMessage],
+      );
+    } catch {
+      // Best-effort — if even the error log insert fails, we just log it.
+    }
+    // Errors are intentionally not re-thrown — this is fire-and-forget.
+    logger.error({ err, contactId }, 'gdpr: AI cascade failed');
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Returns all ai_gdpr_cascade_log rows for a given contact, newest first.
+ * Used to display the cascade status on the GDPR admin report.
+ *
+ * @param contactId - UUID of the contact
+ */
+export async function getAiCascadeLogForContact(contactId: string): Promise<AiGdprCascadeLogRow[]> {
+  const result = await pool.query<AiGdprCascadeLogRow>(
+    `SELECT * FROM ai_gdpr_cascade_log
+     WHERE contact_id = $1
+     ORDER BY triggered_at DESC`,
+    [contactId],
+  );
+  return result.rows;
+}
+
+/**
+ * Returns true if a GDPR erasure record exists for the given contact.
+ * Used by the AI cascade handler to guard against cascading on unerased contacts.
+ *
+ * @param contactId - UUID of the contact
+ */
+export async function hasGdprErasureForContact(contactId: string): Promise<boolean> {
+  const result = await pool.query<{ id: string }>(
+    `SELECT id FROM gdpr_deletion_log WHERE record_type = 'contact' AND record_id = $1 LIMIT 1`,
+    [contactId],
+  );
+  return result.rows.length > 0;
 }
