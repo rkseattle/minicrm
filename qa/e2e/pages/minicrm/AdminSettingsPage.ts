@@ -1510,4 +1510,63 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  // ---------------------------------------------------------------------------
+  // AI session retention section (MINCRM-447)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the AI session retention days input. */
+  async aiSessionRetentionDaysInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-session-retention-days-input' },
+          { type: 'role', value: 'spinbutton' },
+        ],
+        { intent: 'AI session retention days numeric input on the AI settings tab' },
+      )
+      .resolve();
+  }
+
+  /** Fills the AI session retention days input with the given value. */
+  async fillAiSessionRetentionDays(days: string) {
+    await this.page.fill(days, [
+      { type: 'testId', value: 'ai-session-retention-days-input' },
+      { type: 'role', value: 'spinbutton' },
+    ]);
+  }
+
+  /** Clicks the AI session retention save button. */
+  async clickAiSessionRetentionSave() {
+    await this.page.click([
+      { type: 'testId', value: 'ai-session-retention-save-button' },
+      { type: 'role', value: 'button', options: { name: /save/i } },
+    ]);
+  }
+
+  /** Returns a resolved locator for the AI session retention validation error element. */
+  async aiSessionRetentionValidationErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-session-retention-validation-error' },
+          { type: 'role', value: 'alert' },
+        ],
+        { intent: 'client-side validation error below the retention days input' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the AI session retention save-success indicator. */
+  async aiSessionRetentionSaveSuccessLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-session-retention-save-success' },
+          { type: 'text', value: 'saved' },
+        ],
+        { intent: 'success confirmation message after saving the retention window' },
+      )
+      .resolve();
+  }
 }

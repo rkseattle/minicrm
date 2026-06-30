@@ -347,7 +347,14 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
             className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             data-testid="ai-session-retention-days-input"
           />
-          {validationError && <p className="mt-1 text-xs text-red-600">{validationError}</p>}
+          {validationError && (
+            <p
+              className="mt-1 text-xs text-red-600"
+              data-testid="ai-session-retention-validation-error"
+            >
+              {validationError}
+            </p>
+          )}
           <p className="mt-1 text-xs text-gray-500">{t('aiSettings.sessionRetention.hint')}</p>
         </div>
         <div className="pt-6">
@@ -363,11 +370,15 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
         </div>
       </div>
       {saveSuccess && (
-        <p className="mt-2 text-xs text-green-600">
+        <p className="mt-2 text-xs text-green-600" data-testid="ai-session-retention-save-success">
           {t('aiSettings.sessionRetention.saveSuccess')}
         </p>
       )}
-      {saveError && <p className="mt-2 text-xs text-red-600">{saveError}</p>}
+      {saveError && (
+        <p className="mt-2 text-xs text-red-600" data-testid="ai-session-retention-save-error">
+          {saveError}
+        </p>
+      )}
     </div>
   );
 }

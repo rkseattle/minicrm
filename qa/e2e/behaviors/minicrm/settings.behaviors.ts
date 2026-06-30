@@ -2715,3 +2715,46 @@ export async function expectAdminSettingsSectionDisabledBannerAbsent(
   const { expect } = await import('@playwright/test');
   expect(notVisible).toBe(true);
 }
+
+// ---------------------------------------------------------------------------
+// AI session retention behaviors (MINCRM-447)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the AI session retention days input locator from the AI settings tab.
+ * Callers must have already navigated to the AI settings tab.
+ */
+export async function getAiSessionRetentionDaysInput(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiSessionRetentionDaysInputLocator();
+}
+
+/** Fills the AI session retention days input with the given value. */
+export async function fillAiSessionRetentionDays(
+  days: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await new AdminSettingsPage(context).fillAiSessionRetentionDays(days);
+}
+
+/** Clicks the AI session retention save button. */
+export async function clickAiSessionRetentionSave(
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await new AdminSettingsPage(context).clickAiSessionRetentionSave();
+}
+
+/**
+ * Returns the AI session retention validation error locator.
+ * Present only when client-side validation fails.
+ */
+export async function getAiSessionRetentionValidationError(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiSessionRetentionValidationErrorLocator();
+}
+
+/**
+ * Returns the AI session retention save-success indicator locator.
+ * Present only immediately after a successful save.
+ */
+export async function getAiSessionRetentionSaveSuccess(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiSessionRetentionSaveSuccessLocator();
+}

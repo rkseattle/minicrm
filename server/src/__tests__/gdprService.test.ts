@@ -24,6 +24,9 @@ import {
   getGdprExportForContact,
   listGdprDeletions,
   getGdprStatusForRecord,
+  cascadeGdprErasureToAiData,
+  getAiCascadeLogForContact,
+  hasGdprErasureForContact,
 } from '../services/gdprService.js';
 import { uid } from './testUtils.js';
 
@@ -322,5 +325,95 @@ describe('getGdprStatusForRecord', () => {
     expect(status?.record_id).toBe(contact.id);
     expect(status?.record_type).toBe('contact');
     expect(status?.completed_at).not.toBeNull();
+  });
+});
+
+// ── hasGdprErasureForContact ───────────────────────────────────────────────────
+
+describe('hasGdprErasureForContact', () => {
+  it('returns false for a contact that has not been erased', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const result = await hasGdprErasureForContact(contact.id);
+    expect(result).toBe(false);
+  });
+
+  it('returns true after the contact has been erased', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    await eraseContact(contact.id, adminActor);
+    const result = await hasGdprErasureForContact(contact.id);
+    expect(result).toBe(true);
+  });
+});
+
+// ── cascadeGdprErasureToAiData ─────────────────────────────────────────────────
+
+describe('cascadeGdprErasureToAiData', () => {
+  beforeEach(async () => {
+    await pool.query(
+      'DELETE FROM ai_gdpr_cascade_log WHERE contact_id IN (SELECT id FROM contacts WHERE owner_id = $1)',
+      [adminId],
+    );
+    await pool.query('DELETE FROM ai_sessions WHERE user_id = $1', [adminId]);
+  });
+
+  it('writes a completed log entry even when no AI messages reference the contact', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    await cascadeGdprErasureToAiData(
+      contact.id,
+      'Alice Erasure',
+      `${FILE_PREFIX}-cascade-test@example.com`,
+      adminActor,
+    );
+
+    const rows = await getAiCascadeLogForContact(contact.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('completed');
+    expect(rows[0].messages_redacted).toBe(0);
+    expect(rows[0].context_entries_removed).toBe(0);
+  });
+
+  it('writes a completed audit entry for the contact record', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    await cascadeGdprErasureToAiData(
+      contact.id,
+      'Alice Erasure',
+      `${FILE_PREFIX}-audit-test@example.com`,
+      adminActor,
+    );
+
+    const auditRows = await getRecordAuditLog({
+      recordType: 'contact',
+      recordId: contact.id,
+      all: true,
+    });
+    const cascadeEntry = auditRows.find((e) => e.event_type === 'ai_gdpr_cascade');
+    expect(cascadeEntry).toBeDefined();
+    expect(cascadeEntry?.changed_by_id).toBe(adminId);
+  });
+});
+
+// ── getAiCascadeLogForContact ──────────────────────────────────────────────────
+
+describe('getAiCascadeLogForContact', () => {
+  it('returns empty array when no cascade has been run', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+    const rows = await getAiCascadeLogForContact(contact.id);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('returns rows ordered newest-first after multiple cascade runs', async () => {
+    const contact = await createContact({ ...makeContact(), owner_id: adminId }, adminActor);
+
+    await cascadeGdprErasureToAiData(contact.id, 'Alice', 'a@example.com', adminActor);
+    await cascadeGdprErasureToAiData(contact.id, 'Alice', 'a@example.com', adminActor);
+
+    const rows = await getAiCascadeLogForContact(contact.id);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    // Newest first
+    expect(new Date(rows[0].triggered_at).getTime()).toBeGreaterThanOrEqual(
+      new Date(rows[1].triggered_at).getTime(),
+    );
   });
 });
