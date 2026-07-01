@@ -116,8 +116,10 @@ export async function createLeadViaUI(
 
   await leadsPage.submitForm();
 
-  // Short wait for network/React state to settle.
-  await context.page.waitForLoadState('networkidle');
+  // Wait for the form to close OR a duplicate warning to appear — both are
+  // deterministic DOM transitions. networkidle is unreliable under CI load
+  // because it can settle before React finishes hiding the form.
+  await Promise.race([leadsPage.waitForFormHidden(), leadsPage.waitForDuplicateWarning()]);
 
   const finalUrl = leadsPage.url();
   const duplicateWarning = await leadsPage.duplicateWarningIsVisible();

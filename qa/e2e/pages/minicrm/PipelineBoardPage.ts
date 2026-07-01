@@ -310,27 +310,19 @@ export class PipelineBoardPage {
   private async mobileNavigateToStageWithDeal(dealId: string): Promise<void> {
     const STAGE_COUNT = PipelineBoardPage.STAGE_SLUGS.length;
     for (let i = 0; i < STAGE_COUNT; i++) {
-      try {
-        const card = await this.page
-          .locate(
-            [
-              { type: 'testId', value: `mobile-deal-card-${dealId}` },
-              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
-            ],
-            {
-              intent: 'deal card in mobile single-column board view',
-              // Extended timeout: deal cards for the current stage may still be
-              // mounting when the probe runs. Without extra time the scan skips
-              // the correct column and leaves the board on the wrong stage,
-              // causing the subsequent stage-select locate to fail. (heal-trends)
-              fallbackTimeout: 6_000,
-            },
-          )
-          .resolve();
-        if (await card.isVisible().catch(() => false)) return;
-      } catch {
-        // Not visible in this column — try next.
-      }
+      // Use a short probe timeout — the card is either rendered immediately in
+      // this column or it isn't. The long 6s fallback was causing up to 24s of
+      // dead time when scanning through columns before reaching 'Closed Won'.
+      const cardVisible = await this.page
+        .waitForFunction(
+          `!!document.querySelector('[data-testid="mobile-deal-card-${dealId}"]')`,
+          undefined,
+          { timeout: 1_500 },
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (cardVisible) return;
+
       try {
         const nextBtn = await this.page
           .locate(
