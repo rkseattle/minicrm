@@ -19,11 +19,13 @@ Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid r
 | changed_by_id | uuid |  | true |  |  |  |
 | changed_by_name | text |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| source | varchar(20) | NULL::character varying | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| audit_log_source_check | CHECK | CHECK (((source)::text = ANY ((ARRAY['AI (NLI)'::character varying, 'AI (context)'::character varying])::text[]))) |
 | audit_log_pkey | PRIMARY KEY | PRIMARY KEY (id, created_at) |
 
 ## Indexes
@@ -61,6 +63,7 @@ erDiagram
   uuid changed_by_id ""
   text changed_by_name ""
   timestamp_with_time_zone created_at ""
+  varchar_20_ source ""
 }
 ```
 

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.lead_status_history](public.lead_status_history.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.lead_status_history](public.lead_status_history.md) [public.lead_tags](public.lead_tags.md) |  |  |
 | first_name | text |  | false |  |  |  |
 | last_name | text |  | true |  |  |  |
 | email | text |  | false |  |  |  |
@@ -62,6 +62,7 @@ erDiagram
 "public.contacts" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
 "public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
 "public.lead_status_history" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
 "public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.leads" }o--o| "public.contacts" : "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
 "public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
@@ -139,6 +140,11 @@ erDiagram
   text to_status ""
   uuid changed_by_id ""
   text changed_by_name ""
+  timestamp_with_time_zone created_at ""
+}
+"public.lead_tags" {
+  uuid lead_id FK ""
+  uuid tag_id FK ""
   timestamp_with_time_zone created_at ""
 }
 "public.users" {

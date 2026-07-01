@@ -9,6 +9,9 @@
 | role | varchar(20) |  | false |  |  |  |
 | content | text |  | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| tool_results | jsonb |  | true |  |  | Structured tool call results for native CRM result rendering. Array of {toolName, input, output} objects. NULL for user messages and assistant messages that did not invoke tools. (MINCRM-423, MINCRM-431) |
+| pending_action | jsonb |  | true |  |  | Pending mutation action awaiting user confirmation. Object with {operation, entityType, entityId?, entityName?, fields, isBulk, bulkCount?, bulkSample?, isBulkDelete?, summary}. NULL when no confirmation is pending. (MINCRM-425, MINCRM-426) |
+| context_proposal | jsonb |  | true |  |  | AI-proposed context entry awaiting user accept/dismiss. Object with {key, value, reason}. NULL when no proposal is present. (MINCRM-429, MINCRM-430) |
 
 ## Constraints
 
@@ -39,6 +42,9 @@ erDiagram
   varchar_20_ role ""
   text content ""
   timestamp_with_time_zone created_at ""
+  jsonb tool_results "Structured tool call results for native CRM result rendering. Array of {toolName, input, output} objects. NULL for user messages and assistant messages that did not invoke tools. (MINCRM-423, MINCRM-431)"
+  jsonb pending_action "Pending mutation action awaiting user confirmation. Object with {operation, entityType, entityId?, entityName?, fields, isBulk, bulkCount?, bulkSample?, isBulkDelete?, summary}. NULL when no confirmation is pending. (MINCRM-425, MINCRM-426)"
+  jsonb context_proposal "AI-proposed context entry awaiting user accept/dismiss. Object with {key, value, reason}. NULL when no proposal is present. (MINCRM-429, MINCRM-430)"
 }
 "public.ai_sessions" {
   uuid id ""

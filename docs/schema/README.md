@@ -19,11 +19,11 @@
 | [public.automation_rules](public.automation_rules.md) | 11 |  | BASE TABLE |
 | [public.automation_rule_logs](public.automation_rule_logs.md) | 8 |  | BASE TABLE |
 | [public.attachments](public.attachments.md) | 9 | File attachment metadata for CRM entity records. record_type + record_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid record_type values: 'contact', 'account', 'deal', 'lead' (extended in migration 047). Orphan cleanup is the application's responsibility: rows whose record_id no longer exists in the referenced entity table should be deleted when the parent is removed. The physical file (storage_key) must be deleted from object storage before or alongside the row. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
-| [public.audit_log](public.audit_log.md) | 11 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
+| [public.audit_log](public.audit_log.md) | 12 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
 | [public.overdue_task_notifications](public.overdue_task_notifications.md) | 2 |  | BASE TABLE |
 | [public.notes](public.notes.md) | 13 | Rich notes attached to CRM entity records, with soft-delete support. entity_type + entity_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid entity_type values: 'contact', 'account', 'deal', 'lead'. Soft-deleted rows (deleted_at IS NOT NULL) are excluded from application queries but remain in the table; the partial GIN index on body_text also excludes them. Hard orphan cleanup (rows whose entity_id no longer exists) is the application's responsibility. Soft-deleted orphans are harmless but may be purged by a periodic maintenance query. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
 | [public.note_tags](public.note_tags.md) | 2 |  | BASE TABLE |
-| [public.custom_field_definitions](public.custom_field_definitions.md) | 8 |  | BASE TABLE |
+| [public.custom_field_definitions](public.custom_field_definitions.md) | 9 |  | BASE TABLE |
 | [public.custom_field_values](public.custom_field_values.md) | 6 | Values for admin-defined custom fields on CRM entity records. record_id is a polymorphic reference to the entity row identified by the associated custom_field_definitions.entity_type — no FK constraint is possible because the parent table varies per definition. Valid entity_type values (on custom_field_definitions): 'contact', 'account', 'deal'. definition_id has a real FK with ON DELETE CASCADE — deleting a field definition removes all its values automatically. Orphan cleanup: rows whose record_id no longer exists in the parent entity table accumulate silently when the entity is deleted. Application must delete custom_field_values rows alongside entity deletion. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
 | [public.webhook_subscriptions](public.webhook_subscriptions.md) | 7 |  | BASE TABLE |
 | [public.webhook_delivery_logs](public.webhook_delivery_logs.md) | 9 |  | BASE TABLE |
@@ -41,7 +41,7 @@
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
 | [public.feature_flags](public.feature_flags.md) | 13 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
-| [public.ai_configuration](public.ai_configuration.md) | 16 |  | BASE TABLE |
+| [public.ai_configuration](public.ai_configuration.md) | 19 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
 | [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
 | [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
@@ -58,6 +58,14 @@
 | [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) | 7 |  | BASE TABLE |
 | [public.feature_flag_groups](public.feature_flag_groups.md) | 7 |  | BASE TABLE |
 | [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) | 4 |  | BASE TABLE |
+| [public.ai_sessions](public.ai_sessions.md) | 5 |  | BASE TABLE |
+| [public.ai_messages](public.ai_messages.md) | 8 |  | BASE TABLE |
+| [public.email_templates](public.email_templates.md) | 10 |  | BASE TABLE |
+| [public.user_ai_context](public.user_ai_context.md) | 6 | Per-user key/value context entries injected into every Claude system prompt as a personalisation preamble. (MINCRM-427) | BASE TABLE |
+| [public.lead_tags](public.lead_tags.md) | 3 |  | BASE TABLE |
+| [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 10 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
+| [public.ai_token_usage_daily](public.ai_token_usage_daily.md) | 7 | Per-day, per-feature token usage for the AI usage/cost dashboard. Additive to ai_token_usage, which remains the source of truth for monthly budget enforcement. (MINCRM-459) | BASE TABLE |
+| [public.ai_field_exclusions](public.ai_field_exclusions.md) | 6 | Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461) | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -207,6 +215,14 @@ erDiagram
 "public.feature_flag_group_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_group_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_group_beta_users" }o--|| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
+"public.ai_sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_messages" }o--|| "public.ai_sessions" : "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE"
+"public.email_templates" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.lead_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.ai_token_usage_daily" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -436,6 +452,7 @@ erDiagram
   uuid changed_by_id ""
   text changed_by_name ""
   timestamp_with_time_zone created_at ""
+  varchar_20_ source ""
 }
 "public.overdue_task_notifications" {
   uuid activity_id FK ""
@@ -469,6 +486,7 @@ erDiagram
   integer sort_order ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  boolean pii_excluded ""
 }
 "public.custom_field_values" {
   uuid id ""
@@ -642,6 +660,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   uuid updated_by FK ""
   smallint api_key_key_version "Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)"
+  integer ai_session_retention_days "Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)"
+  integer ai_input_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
+  integer ai_output_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
 }
 "public.smtp_configuration" {
   boolean singleton ""
@@ -753,6 +774,77 @@ erDiagram
   uuid user_id FK ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
+}
+"public.ai_sessions" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_255_ name ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.ai_messages" {
+  uuid id ""
+  uuid session_id FK ""
+  varchar_20_ role ""
+  text content ""
+  timestamp_with_time_zone created_at ""
+  jsonb tool_results "Structured tool call results for native CRM result rendering. Array of {toolName, input, output} objects. NULL for user messages and assistant messages that did not invoke tools. (MINCRM-423, MINCRM-431)"
+  jsonb pending_action "Pending mutation action awaiting user confirmation. Object with {operation, entityType, entityId?, entityName?, fields, isBulk, bulkCount?, bulkSample?, isBulkDelete?, summary}. NULL when no confirmation is pending. (MINCRM-425, MINCRM-426)"
+  jsonb context_proposal "AI-proposed context entry awaiting user accept/dismiss. Object with {key, value, reason}. NULL when no proposal is present. (MINCRM-429, MINCRM-430)"
+}
+"public.email_templates" {
+  uuid id ""
+  varchar_200_ name ""
+  varchar_50_ category ""
+  varchar_500_ subject ""
+  text body ""
+  jsonb merge_tags ""
+  boolean enabled ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.user_ai_context" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_100_ key "Short label for this preference (e.g. #quot;a while#quot;, #quot;high-value#quot;). Max 100 chars."
+  varchar_500_ value "Plain-text definition of the preference (e.g. #quot;30+ days without activity#quot;). Max 500 chars."
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.lead_tags" {
+  uuid lead_id FK ""
+  uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.ai_gdpr_cascade_log" {
+  uuid id ""
+  uuid contact_id ""
+  timestamp_with_time_zone triggered_at ""
+  uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
+  integer messages_redacted ""
+  integer context_entries_removed ""
+  varchar_20_ status ""
+  text error_detail ""
+  text original_name ""
+  text original_email ""
+}
+"public.ai_token_usage_daily" {
+  uuid id ""
+  uuid user_id FK ""
+  date usage_date ""
+  text feature ""
+  bigint input_tokens ""
+  bigint output_tokens ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.ai_field_exclusions" {
+  uuid id ""
+  text entity_type ""
+  text field_name ""
+  boolean excluded ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 
