@@ -13,7 +13,7 @@
  */
 
 import pool from '../db.js';
-import { getEffectiveUserBudget, getUserUsageForMonth } from './aiTokenBudgetService.js';
+import { getUserBudgetSnapshots } from './aiTokenBudgetService.js';
 import type {
   UsageSummaryResponse,
   UsageDailySeriesResponse,
@@ -166,29 +166,29 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
     }
   }
 
-  const perUser: PerUserUsageRow[] = await Promise.all(
-    perUserResult.rows.map(async (row) => {
-      const inputTokens = parseInt(row.input_tokens, 10);
-      const outputTokens = parseInt(row.output_tokens, 10);
-      const limit = await getEffectiveUserBudget(row.user_id);
-      let budgetPercentage: number | null = null;
-      if (limit > 0) {
-        const currentMonth = `${range.end.getFullYear()}-${String(range.end.getMonth() + 1).padStart(2, '0')}`;
-        const monthUsed = await getUserUsageForMonth(row.user_id, currentMonth);
-        budgetPercentage = Math.round((monthUsed / limit) * 100);
-      }
-      return {
-        user_id: row.user_id,
-        user_name: row.user_name,
-        user_email: row.user_email,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        estimated_cost_cents: estimateCostCents(inputTokens, outputTokens, rates),
-        budget_percentage: budgetPercentage,
-        top_feature: topFeatureByUser.get(row.user_id) ?? null,
-      };
-    }),
+  const budgetSnapshots = await getUserBudgetSnapshots(
+    perUserResult.rows.map((row) => row.user_id),
   );
+
+  const perUser: PerUserUsageRow[] = perUserResult.rows.map((row) => {
+    const inputTokens = parseInt(row.input_tokens, 10);
+    const outputTokens = parseInt(row.output_tokens, 10);
+    const snapshot = budgetSnapshots.get(row.user_id);
+    const budgetPercentage =
+      snapshot && snapshot.limit > 0
+        ? Math.round((snapshot.usedThisMonth / snapshot.limit) * 100)
+        : null;
+    return {
+      user_id: row.user_id,
+      user_name: row.user_name,
+      user_email: row.user_email,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      estimated_cost_cents: estimateCostCents(inputTokens, outputTokens, rates),
+      budget_percentage: budgetPercentage,
+      top_feature: topFeatureByUser.get(row.user_id) ?? null,
+    };
+  });
 
   const perFeature: PerFeatureUsageRow[] = perFeatureResult.rows.map((row) => {
     const inputTokens = parseInt(row.input_tokens, 10);

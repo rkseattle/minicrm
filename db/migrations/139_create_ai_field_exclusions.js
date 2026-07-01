@@ -26,12 +26,13 @@ exports.up = (pgm) => {
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.ai_field_exclusions (
       id           uuid DEFAULT gen_random_uuid() NOT NULL,
-      entity_type  text NOT NULL,
+      entity_type  varchar(16) NOT NULL,
       field_name   text NOT NULL,
       excluded     boolean NOT NULL DEFAULT false,
       created_at   timestamp with time zone DEFAULT now() NOT NULL,
       updated_at   timestamp with time zone DEFAULT now() NOT NULL,
-      CONSTRAINT ai_field_exclusions_pkey PRIMARY KEY (id)
+      CONSTRAINT ai_field_exclusions_pkey PRIMARY KEY (id),
+      CONSTRAINT ai_field_exclusions_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))
     )
   `);
 

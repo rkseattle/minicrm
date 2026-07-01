@@ -143,16 +143,19 @@ export async function updateDefinition(
 
   if (setClauses.length === 0) return null;
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const before =
       input.pii_excluded !== undefined
-        ? await pool.query<{ pii_excluded: boolean; name: string }>(
-            `SELECT pii_excluded, name FROM custom_field_definitions WHERE id = $1`,
+        ? await client.query<{ pii_excluded: boolean; name: string }>(
+            `SELECT pii_excluded, name FROM custom_field_definitions WHERE id = $1 FOR UPDATE`,
             [id],
           )
         : null;
 
-    const result = await pool.query<CustomFieldDefinitionRow>(
+    const result = await client.query<CustomFieldDefinitionRow>(
       `UPDATE custom_field_definitions
        SET ${setClauses.join(', ')}
        WHERE id = $1
@@ -162,7 +165,7 @@ export async function updateDefinition(
     const updated = result.rows[0] ?? null;
 
     if (updated && before?.rows[0] && before.rows[0].pii_excluded !== input.pii_excluded) {
-      void writeAuditEntryBestEffort({
+      await writeAuditEntry(client, {
         recordType: 'ai_field_exclusion',
         recordId: id,
         recordName: before.rows[0].name,
@@ -175,8 +178,10 @@ export async function updateDefinition(
       });
     }
 
+    await client.query('COMMIT');
     return updated;
   } catch (err) {
+    await client.query('ROLLBACK');
     if ((err as NodeJS.ErrnoException).code === '23505') {
       const e = new Error(
         `A custom field named "${input.name}" already exists for this entity type`,
@@ -185,6 +190,8 @@ export async function updateDefinition(
       throw e;
     }
     throw err;
+  } finally {
+    client.release();
   }
 }
 

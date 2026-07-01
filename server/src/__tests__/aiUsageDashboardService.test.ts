@@ -34,6 +34,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await pool.query('DELETE FROM ai_token_usage_daily WHERE user_id = $1', [userId]);
+  await pool.query('DELETE FROM ai_token_usage WHERE user_id = $1', [userId]);
+  await pool.query('DELETE FROM ai_token_budgets WHERE user_id = $1', [userId]);
   await pool.query(
     `UPDATE ai_configuration SET ai_input_cost_per_million_cents = 300, ai_output_cost_per_million_cents = 1500`,
   );
@@ -43,6 +45,11 @@ function todayMinus(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
+}
+
+function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 describe('getUsageSummary', () => {
@@ -97,6 +104,36 @@ describe('getUsageSummary', () => {
     expect(userRow!.input_tokens).toBe(550);
     expect(userRow!.output_tokens).toBe(110);
     expect(userRow!.top_feature).toBe('nli_chat');
+  });
+
+  it('computes budget_percentage against the actual current month, not range.end', async () => {
+    // range.end for 'current_month' is an exclusive start-of-next-month boundary
+    // (per resolveDateRange in aiUsageController.ts) — this regression-tests that
+    // budget_percentage is derived from the real current month, not range.end's month.
+    await pool.query(
+      `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens)
+       VALUES ($1, CURRENT_DATE, 'nli_chat', 500, 100)`,
+      [userId],
+    );
+    await pool.query(
+      `INSERT INTO ai_token_usage (user_id, year_month, input_tokens, output_tokens)
+       VALUES ($1, $2, 4000, 1000)`,
+      [userId, currentYearMonth()],
+    );
+    await pool.query(`INSERT INTO ai_token_budgets (user_id, monthly_limit) VALUES ($1, 10000)`, [
+      userId,
+    ]);
+
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const summary = await getUsageSummary({ start, end });
+
+    const userRow = summary.per_user.find((u) => u.user_id === userId);
+    expect(userRow).toBeDefined();
+    // 5000 tokens used / 10000 limit = 50%.
+    expect(userRow!.budget_percentage).toBe(50);
   });
 
   it('returns a per-feature breakdown', async () => {

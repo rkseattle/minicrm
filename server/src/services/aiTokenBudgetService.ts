@@ -50,7 +50,7 @@ interface ActiveUserRow {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /** Returns the current calendar month in 'YYYY-MM' format. */
-function currentYearMonth(): string {
+export function currentYearMonth(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -151,6 +151,62 @@ export async function getUserBudgetStatus(
 
   const percentage = Math.round((used / limit) * 100);
   return { limit, used, percentage, status: deriveStatus(percentage) };
+}
+
+/** Per-user effective monthly budget limit and current-month tokens used. */
+export interface UserBudgetSnapshot {
+  limit: number;
+  usedThisMonth: number;
+}
+
+/**
+ * Batch-loads each user's effective monthly budget limit and current-month
+ * token usage in 2 queries total, regardless of userIds.length — avoids the
+ * N+1 pattern of calling getEffectiveUserBudget/getUserUsageForMonth per user.
+ * Users with no override fall back to the org default; users with no usage
+ * row this month get usedThisMonth: 0.
+ */
+export async function getUserBudgetSnapshots(
+  userIds: string[],
+): Promise<Map<string, UserBudgetSnapshot>> {
+  const snapshots = new Map<string, UserBudgetSnapshot>();
+  if (userIds.length === 0) return snapshots;
+
+  const yearMonth = currentYearMonth();
+  const [orgLimit, overridesResult, usageResult] = await Promise.all([
+    getOrgTokenBudget(),
+    pool.query<BudgetRow>(
+      `SELECT user_id, monthly_limit FROM ai_token_budgets WHERE user_id = ANY($1)`,
+      [userIds],
+    ),
+    pool.query<UsageRow>(
+      `SELECT user_id, input_tokens, output_tokens
+       FROM ai_token_usage
+       WHERE year_month = $1 AND user_id = ANY($2)`,
+      [yearMonth, userIds],
+    ),
+  ]);
+
+  const overrideMap = new Map<string, number>();
+  for (const row of overridesResult.rows) {
+    // WHERE user_id = ANY($1) with a non-null userIds array never returns the
+    // user_id IS NULL org-default row, but the shared BudgetRow type allows null.
+    if (row.user_id !== null) {
+      overrideMap.set(row.user_id, row.monthly_limit);
+    }
+  }
+  const usageMap = new Map<string, number>();
+  for (const row of usageResult.rows) {
+    usageMap.set(row.user_id, row.input_tokens + row.output_tokens);
+  }
+
+  for (const userId of userIds) {
+    snapshots.set(userId, {
+      limit: overrideMap.get(userId) ?? orgLimit,
+      usedThisMonth: usageMap.get(userId) ?? 0,
+    });
+  }
+  return snapshots;
 }
 
 /**

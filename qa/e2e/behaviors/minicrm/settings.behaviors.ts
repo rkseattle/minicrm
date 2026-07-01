@@ -622,6 +622,49 @@ export async function resetAiSettings(restClient: RestClient): Promise<void> {
   ]);
 }
 
+/** Default cost rates as seeded by db/migrations/137_add_ai_cost_rate_config.js. */
+const DEFAULT_AI_INPUT_COST_PER_MILLION_CENTS = 300;
+const DEFAULT_AI_OUTPUT_COST_PER_MILLION_CENTS = 1500;
+
+/**
+ * Resets the AI cost estimation rates (ai_input/output_cost_per_million_cents)
+ * back to their seeded defaults. Safe to call in afterEach for specs that
+ * mutate /admin/ai/cost-rates (MINCRM-459).
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ */
+export async function resetAiCostRates(restClient: RestClient): Promise<void> {
+  await restClient
+    .patch('/api/v1/admin/ai/cost-rates', {
+      ai_input_cost_per_million_cents: DEFAULT_AI_INPUT_COST_PER_MILLION_CENTS,
+      ai_output_cost_per_million_cents: DEFAULT_AI_OUTPUT_COST_PER_MILLION_CENTS,
+    })
+    .catch(() => undefined);
+}
+
+/**
+ * Resets a single standard-field AI exclusion override back to excluded=false
+ * (the seeded default for every standard field — MINCRM-461). Safe to call in
+ * afterEach for specs that mutate /admin/ai/field-exclusions.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ * @param entityType - 'contact' | 'account' | 'deal'.
+ * @param fieldName - Standard field name eligible for the exclusion toggle.
+ */
+export async function resetAiFieldExclusion(
+  restClient: RestClient,
+  entityType: string,
+  fieldName: string,
+): Promise<void> {
+  await restClient
+    .patch('/api/v1/admin/ai/field-exclusions', {
+      entity_type: entityType,
+      field_name: fieldName,
+      excluded: false,
+    })
+    .catch(() => undefined);
+}
+
 // ---------------------------------------------------------------------------
 // Visibility Settings behaviors (MINCRM-538)
 // ---------------------------------------------------------------------------
