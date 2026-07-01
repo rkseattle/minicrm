@@ -31,6 +31,10 @@ import {
   triggerManualAiPurgeHandler,
 } from '../controllers/aiRetentionController.js';
 import {
+  listFieldExclusionsHandler,
+  setFieldExclusionHandler,
+} from '../controllers/aiFieldExclusionController.js';
+import {
   getAiTokenBudgetsHandler,
   setOrgTokenBudgetHandler,
   setUserTokenBudgetHandler,
@@ -427,6 +431,69 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(triggerManualAiPurgeHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/field-exclusions:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the effective AI field exclusion list (defaults, admin overrides, custom fields)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Effective exclusion list
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/field-exclusions',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listFieldExclusionsHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/field-exclusions:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Set a standard field's AI payload exclusion state
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [entity_type, field_name, excluded]
+ *             properties:
+ *               entity_type:
+ *                 type: string
+ *                 enum: [contact, account, deal]
+ *               field_name:
+ *                 type: string
+ *               excluded:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Updated field exclusion state
+ *       400:
+ *         description: Validation error or unknown field
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/field-exclusions',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setFieldExclusionHandler),
 );
 
 export default router;

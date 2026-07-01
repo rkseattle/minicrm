@@ -380,9 +380,14 @@ export default function CustomisationSettings() {
   const customFields: CustomFieldDefinitionResponse[] = customFieldsData?.definitions ?? [];
 
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
-  const [editFieldDraft, setEditFieldDraft] = useState<{ name: string; options: string }>({
+  const [editFieldDraft, setEditFieldDraft] = useState<{
+    name: string;
+    options: string;
+    piiExcluded: boolean;
+  }>({
     name: '',
     options: '',
+    piiExcluded: false,
   });
   const [editFieldError, setEditFieldError] = useState<string | null>(null);
 
@@ -435,8 +440,17 @@ export default function CustomisationSettings() {
   });
 
   const updateFieldMutation = useMutation({
-    mutationFn: ({ id, name, options }: { id: string; name: string; options?: string[] | null }) =>
-      updateCustomFieldDefinition(id, { name, options }),
+    mutationFn: ({
+      id,
+      name,
+      options,
+      piiExcluded,
+    }: {
+      id: string;
+      name: string;
+      options?: string[] | null;
+      piiExcluded: boolean;
+    }) => updateCustomFieldDefinition(id, { name, options, pii_excluded: piiExcluded }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customFieldsQueryKey });
       setEditingFieldId(null);
@@ -471,6 +485,7 @@ export default function CustomisationSettings() {
     setEditFieldDraft({
       name: field.name,
       options: field.options ? field.options.join(', ') : '',
+      piiExcluded: field.pii_excluded,
     });
     setEditFieldError(null);
   }
@@ -492,7 +507,12 @@ export default function CustomisationSettings() {
             .map((o) => o.trim())
             .filter(Boolean)
         : null;
-    updateFieldMutation.mutate({ id: field.id, name: trimmedName, options });
+    updateFieldMutation.mutate({
+      id: field.id,
+      name: trimmedName,
+      options,
+      piiExcluded: editFieldDraft.piiExcluded,
+    });
   }
 
   function handleAddField(): void {
@@ -1227,6 +1247,9 @@ export default function CustomisationSettings() {
                     <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">
                       {t('settings.customFields.fieldTypeLabel')}
                     </th>
+                    <th className="pb-2 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">
+                      {t('settings.customFields.aiExcludedLabel')}
+                    </th>
                     <th className="pb-2 text-end text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">
                       {/* actions */}
                     </th>
@@ -1268,6 +1291,35 @@ export default function CustomisationSettings() {
                       <td className="py-2 pe-3 text-gray-600 text-sm">
                         {t(
                           `settings.customFields.fieldType${field.field_type.charAt(0).toUpperCase()}${field.field_type.slice(1)}`,
+                        )}
+                      </td>
+                      <td className="py-2 pe-3 text-sm">
+                        {editingFieldId === field.id ? (
+                          <label className="inline-flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              data-testid={`custom-field-pii-excluded-toggle-${field.id}`}
+                              checked={editFieldDraft.piiExcluded}
+                              disabled={updateFieldMutation.isPending}
+                              onChange={(e) =>
+                                setEditFieldDraft((d) => ({ ...d, piiExcluded: e.target.checked }))
+                              }
+                            />
+                            <span className="text-xs text-gray-600">
+                              {t('settings.customFields.aiExcludedLabel')}
+                            </span>
+                          </label>
+                        ) : field.pii_excluded ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200"
+                            data-testid={`custom-field-pii-excluded-badge-${field.id}`}
+                          >
+                            {t('settings.customFields.aiExcludedYes')}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {t('settings.customFields.aiExcludedNo')}
+                          </span>
                         )}
                       </td>
                       <td className="py-2 text-end">

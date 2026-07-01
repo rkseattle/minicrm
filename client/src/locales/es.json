@@ -859,7 +859,10 @@
       "saveSuccess": "Campo guardado.",
       "saveError": "Error al guardar. Por favor, inténtelo de nuevo.",
       "deleteSuccess": "Campo eliminado.",
-      "deleteError": "Error al eliminar. Por favor, inténtelo de nuevo."
+      "deleteError": "Error al eliminar. Por favor, inténtelo de nuevo.",
+      "aiExcludedLabel": "Excluido de IA",
+      "aiExcludedYes": "Excluido de la IA",
+      "aiExcludedNo": "—"
     },
     "pipelines": {
       "sectionTitle": "Pipelines",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "Superado",
       "orgTotal": "({{total}} tokens en total org)",
       "noUsers": "No hay usuarios activos."
+    },
+    "dataMinimization": {
+      "heading": "Minimización de datos",
+      "description": "Controla qué campos de entidad se excluyen de las cargas de IA. Los campos excluidos se eliminan antes de enviar cualquier dato al proveedor de IA.",
+      "loadError": "Error al cargar los datos de exclusión de campos. Por favor, inténtalo de nuevo.",
+      "saveError": "Error al guardar la exclusión de campo. Por favor, inténtalo de nuevo.",
+      "alwaysExcludedHeading": "Siempre excluidos (no se puede cambiar)",
+      "lockedTooltip": "Este campo siempre está excluido de las cargas de IA y no se puede volver a habilitar.",
+      "standardFieldsHeading": "Campos estándar",
+      "tableField": "Campo",
+      "tableEntity": "Entidad",
+      "tableExcluded": "Excluido",
+      "customFieldsHeading": "Campos personalizados actualmente excluidos",
+      "noCustomFields": "Actualmente no hay campos personalizados excluidos.",
+      "customFieldsHint": "Las exclusiones de campos personalizados se gestionan junto con la definición del campo.",
+      "customFieldsLink": "Gestionar campos personalizados",
+      "toggleAriaLabel": "Alternar exclusión de IA para {{field}} en {{entity}}",
+      "customFieldEntry": "{{field}} ({{entity}})"
     }
   },
   "aiTokenBudget": {

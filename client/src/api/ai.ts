@@ -20,6 +20,11 @@ import type {
   AiRetentionStatsResponse,
   AiRetentionWindowResponse,
 } from '@shared/schemas/settingsSchema.js';
+import type {
+  EffectiveExclusionListResponse,
+  SetFieldExclusionInput,
+  SetFieldExclusionResponse,
+} from '@shared/schemas/aiFieldExclusionSchema.js';
 
 /** React Query cache key for the AI configuration */
 export const AI_CONFIG_QUERY_KEY = ['admin', 'ai', 'config'] as const;
@@ -172,5 +177,35 @@ export const MY_RETENTION_WINDOW_QUERY_KEY = ['ai', 'retention-window', 'me'] as
  */
 export async function getMyRetentionWindow(): Promise<AiRetentionWindowResponse> {
   const response = await apiClient.get<AiRetentionWindowResponse>('/ai/retention-window');
+  return response.data;
+}
+
+// ── Field exclusion API (MINCRM-461) ──────────────────────────────────────────
+
+/** React Query cache key for the effective AI field exclusion list */
+export const AI_FIELD_EXCLUSIONS_QUERY_KEY = ['admin', 'ai', 'field-exclusions'] as const;
+
+/**
+ * Returns the effective AI field exclusion list: hardcoded defaults, admin
+ * overrides for standard fields, and custom fields' current pii_excluded state.
+ * Admin only.
+ */
+export async function getEffectiveFieldExclusions(): Promise<EffectiveExclusionListResponse> {
+  const response = await apiClient.get<EffectiveExclusionListResponse>(
+    '/admin/ai/field-exclusions',
+  );
+  return response.data;
+}
+
+/**
+ * Sets a standard field's AI payload exclusion state. Admin only.
+ */
+export async function setFieldExclusion(
+  input: SetFieldExclusionInput,
+): Promise<SetFieldExclusionResponse> {
+  const response = await apiClient.patch<SetFieldExclusionResponse>(
+    '/admin/ai/field-exclusions',
+    input,
+  );
   return response.data;
 }

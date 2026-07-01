@@ -106,6 +106,21 @@ const E2E_STUB_RESPONSE = '[E2E stub response]';
 /** Maximum number of tool-call rounds before aborting to prevent runaway loops. */
 const MAX_TOOL_ROUNDS = 10;
 
+/**
+ * Maps a tool name substring to the entity type used to scope admin-configured
+ * AI field exclusions (MINCRM-461). Tool names consistently embed the entity
+ * name (searchContacts, getContact, createDeal, etc.), so a substring match is
+ * sufficient — returns undefined for tools with no single associated entity
+ * (e.g. reports, tags), in which case applyPiiFilter falls back to unqualified
+ * matching.
+ */
+function inferEntityTypeHint(toolName: string): string | undefined {
+  if (toolName.includes('Contact')) return 'contact';
+  if (toolName.includes('Account')) return 'account';
+  if (toolName.includes('Deal')) return 'deal';
+  return undefined;
+}
+
 // ── Serialisers ───────────────────────────────────────────────────────────────
 
 function serialiseSession(row: AiSessionRow): AiSessionResponse {
@@ -528,7 +543,13 @@ export async function sendMessage(
 
             // Apply PII minimization before sending to the AI provider.
             // Operates on a deep copy — the original result is unchanged.
-            const { sanitised, strippedFields } = applyPiiFilter(toolResult);
+            // entityTypeHint scopes admin-configured field exclusions to the
+            // correct entity when a same-named field exists on multiple
+            // entities (e.g. `name` on both accounts and deals). (MINCRM-461)
+            const { sanitised, strippedFields } = await applyPiiFilter(
+              toolResult,
+              inferEntityTypeHint(block.name),
+            );
 
             // Persist results only for read tools so write/export/admin outputs
             // do not bloat stored messages with data the client cannot render.

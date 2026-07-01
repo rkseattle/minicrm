@@ -105,14 +105,21 @@ export async function createDefinition(
  * Updates an existing custom field definition.
  * field_type cannot be changed after creation.
  *
+ * When pii_excluded changes, writes a best-effort audit entry noting the field's
+ * new AI data minimization state (MINCRM-461). updateDefinition is not wrapped in
+ * an explicit transaction, so this uses the best-effort (non-blocking) audit write
+ * rather than introducing a new transaction wrapper solely for the audit row.
+ *
  * @param id - Definition UUID
  * @param input - Fields to update
+ * @param actor - User performing the update; defaults to SYSTEM_ACTOR for internal callers
  * @returns The updated definition row, or null if not found
  * @throws Error with code CUSTOM_FIELD_NAME_CONFLICT if the new name already exists
  */
 export async function updateDefinition(
   id: string,
   input: UpdateCustomFieldDefinitionInput,
+  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<CustomFieldDefinitionRow | null> {
   const setClauses: string[] = [];
   const values: unknown[] = [id];
@@ -129,10 +136,22 @@ export async function updateDefinition(
     values.push(input.sort_order);
     setClauses.push(`sort_order = $${values.length}`);
   }
+  if (input.pii_excluded !== undefined) {
+    values.push(input.pii_excluded);
+    setClauses.push(`pii_excluded = $${values.length}`);
+  }
 
   if (setClauses.length === 0) return null;
 
   try {
+    const before =
+      input.pii_excluded !== undefined
+        ? await pool.query<{ pii_excluded: boolean; name: string }>(
+            `SELECT pii_excluded, name FROM custom_field_definitions WHERE id = $1`,
+            [id],
+          )
+        : null;
+
     const result = await pool.query<CustomFieldDefinitionRow>(
       `UPDATE custom_field_definitions
        SET ${setClauses.join(', ')}
@@ -140,7 +159,23 @@ export async function updateDefinition(
        RETURNING ${DEFINITION_SELECT}`,
       values,
     );
-    return result.rows[0] ?? null;
+    const updated = result.rows[0] ?? null;
+
+    if (updated && before?.rows[0] && before.rows[0].pii_excluded !== input.pii_excluded) {
+      void writeAuditEntryBestEffort({
+        recordType: 'ai_field_exclusion',
+        recordId: id,
+        recordName: before.rows[0].name,
+        eventType: 'updated',
+        fieldName: 'pii_excluded',
+        oldValue: String(before.rows[0].pii_excluded),
+        newValue: String(input.pii_excluded),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    return updated;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === '23505') {
       const e = new Error(

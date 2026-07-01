@@ -859,7 +859,10 @@
       "saveSuccess": "Feld gespeichert.",
       "saveError": "Fehler beim Speichern. Bitte erneut versuchen.",
       "deleteSuccess": "Feld gelöscht.",
-      "deleteError": "Fehler beim Löschen. Bitte erneut versuchen."
+      "deleteError": "Fehler beim Löschen. Bitte erneut versuchen.",
+      "aiExcludedLabel": "KI-Ausschluss",
+      "aiExcludedYes": "Von KI ausgeschlossen",
+      "aiExcludedNo": "—"
     },
     "pipelines": {
       "sectionTitle": "Pipelines",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "Überschritten",
       "orgTotal": "({{total}} Token gesamt org)",
       "noUsers": "Keine aktiven Benutzer."
+    },
+    "dataMinimization": {
+      "heading": "Datenminimierung",
+      "description": "Legen Sie fest, welche Felder von Entitäten von KI-Nutzdaten ausgeschlossen werden. Ausgeschlossene Felder werden entfernt, bevor Daten an den KI-Anbieter gesendet werden.",
+      "loadError": "Fehler beim Laden der Felderausschlussdaten. Bitte erneut versuchen.",
+      "saveError": "Fehler beim Speichern des Feldausschlusses. Bitte erneut versuchen.",
+      "alwaysExcludedHeading": "Immer ausgeschlossen (kann nicht geändert werden)",
+      "lockedTooltip": "Dieses Feld ist immer von KI-Nutzdaten ausgeschlossen und kann nicht wieder aktiviert werden.",
+      "standardFieldsHeading": "Standardfelder",
+      "tableField": "Feld",
+      "tableEntity": "Entität",
+      "tableExcluded": "Ausgeschlossen",
+      "customFieldsHeading": "Aktuell ausgeschlossene benutzerdefinierte Felder",
+      "noCustomFields": "Derzeit sind keine benutzerdefinierten Felder ausgeschlossen.",
+      "customFieldsHint": "Ausschlüsse für benutzerdefinierte Felder werden zusammen mit der Felddefinition verwaltet.",
+      "customFieldsLink": "Benutzerdefinierte Felder verwalten",
+      "toggleAriaLabel": "KI-Ausschluss für {{field}} bei {{entity}} umschalten",
+      "customFieldEntry": "{{field}} ({{entity}})"
     }
   },
   "aiTokenBudget": {

@@ -168,6 +168,13 @@ const SERIAL_FILES = [
   // (MINCRM-462)
   'src/__tests__/retentionService.test.ts',
   'src/__tests__/aiRetentionController.test.ts',
+  // piiFilter deletes and writes ai_field_exclusions (global table, no per-test scoping
+  // key) and exercises piiFilter's in-memory admin-exclusion cache; running in parallel
+  // with aiFieldExclusionService/aiFieldExclusionController (same table) would race on
+  // beforeEach cleanup vs. concurrent inserts. (MINCRM-461)
+  'src/__tests__/piiFilter.test.ts',
+  'src/__tests__/aiFieldExclusionService.test.ts',
+  'src/__tests__/aiFieldExclusionController.test.ts',
 ];
 
 const sharedResolve = {

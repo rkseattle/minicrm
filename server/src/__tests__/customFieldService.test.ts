@@ -39,9 +39,24 @@ describe('listDefinitions', () => {
   });
 
   it('returns definitions for the given entity type in sort order', async () => {
-    await createDefinition({ entity_type: 'contact', name: 'Z Field', field_type: 'text', sort_order: 10 });
-    await createDefinition({ entity_type: 'contact', name: 'A Field', field_type: 'number', sort_order: 5 });
-    await createDefinition({ entity_type: 'deal', name: 'Deal Field', field_type: 'date', sort_order: 0 });
+    await createDefinition({
+      entity_type: 'contact',
+      name: 'Z Field',
+      field_type: 'text',
+      sort_order: 10,
+    });
+    await createDefinition({
+      entity_type: 'contact',
+      name: 'A Field',
+      field_type: 'number',
+      sort_order: 5,
+    });
+    await createDefinition({
+      entity_type: 'deal',
+      name: 'Deal Field',
+      field_type: 'date',
+      sort_order: 0,
+    });
 
     const contactDefs = await listDefinitions('contact');
     expect(contactDefs).toHaveLength(2);
@@ -92,14 +107,22 @@ describe('createDefinition', () => {
 
   it('allows same name for different entity types', async () => {
     await createDefinition({ entity_type: 'contact', name: 'Priority', field_type: 'text' });
-    const dealDef = await createDefinition({ entity_type: 'deal', name: 'Priority', field_type: 'text' });
+    const dealDef = await createDefinition({
+      entity_type: 'deal',
+      name: 'Priority',
+      field_type: 'text',
+    });
     expect(dealDef.name).toBe('Priority');
   });
 });
 
 describe('updateDefinition', () => {
   it('updates the name of a definition', async () => {
-    const def = await createDefinition({ entity_type: 'contact', name: 'Old Name', field_type: 'text' });
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'Old Name',
+      field_type: 'text',
+    });
     const updated = await updateDefinition(def.id, { name: 'New Name' });
     expect(updated?.name).toBe('New Name');
   });
@@ -111,17 +134,82 @@ describe('updateDefinition', () => {
 
   it('throws CUSTOM_FIELD_NAME_CONFLICT when renaming to a taken name', async () => {
     await createDefinition({ entity_type: 'contact', name: 'Field A', field_type: 'text' });
-    const b = await createDefinition({ entity_type: 'contact', name: 'Field B', field_type: 'text' });
+    const b = await createDefinition({
+      entity_type: 'contact',
+      name: 'Field B',
+      field_type: 'text',
+    });
 
     await expect(updateDefinition(b.id, { name: 'Field A' })).rejects.toMatchObject({
       code: 'CUSTOM_FIELD_NAME_CONFLICT',
     });
   });
+
+  it('defaults pii_excluded to false on creation', async () => {
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'Notes',
+      field_type: 'text',
+    });
+    expect(def.pii_excluded).toBe(false);
+  });
+
+  it('sets pii_excluded to true (MINCRM-461)', async () => {
+    const def = await createDefinition({ entity_type: 'contact', name: 'SSN', field_type: 'text' });
+    const updated = await updateDefinition(def.id, { pii_excluded: true }, SYSTEM_ACTOR);
+    expect(updated?.pii_excluded).toBe(true);
+  });
+
+  it('writes an audit entry when pii_excluded changes', async () => {
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'BankRef',
+      field_type: 'text',
+    });
+    await updateDefinition(def.id, { pii_excluded: true }, SYSTEM_ACTOR);
+
+    let found = false;
+    for (let attempt = 0; attempt < 10 && !found; attempt++) {
+      const row = await pool.query<{ old_value: string; new_value: string }>(
+        `SELECT old_value, new_value FROM audit_log
+         WHERE record_type = 'ai_field_exclusion' AND record_id = $1 AND field_name = 'pii_excluded'
+         ORDER BY id DESC LIMIT 1`,
+        [def.id],
+      );
+      if (row.rows.length > 0) {
+        found = true;
+        expect(row.rows[0].old_value).toBe('false');
+        expect(row.rows[0].new_value).toBe('true');
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    }
+    expect(found).toBe(true);
+  });
+
+  it('does not write an audit entry when pii_excluded is unchanged by the update', async () => {
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'NameOnlyChange',
+      field_type: 'text',
+    });
+    await updateDefinition(def.id, { name: 'RenamedField' }, SYSTEM_ACTOR);
+
+    const row = await pool.query(
+      `SELECT id FROM audit_log WHERE record_type = 'ai_field_exclusion' AND record_id = $1`,
+      [def.id],
+    );
+    expect(row.rows).toHaveLength(0);
+  });
 });
 
 describe('deleteDefinition', () => {
   it('deletes a definition and returns it', async () => {
-    const def = await createDefinition({ entity_type: 'contact', name: 'To Delete', field_type: 'text' });
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'To Delete',
+      field_type: 'text',
+    });
     const deleted = await deleteDefinition(def.id);
     expect(deleted?.id).toBe(def.id);
 
@@ -135,10 +223,19 @@ describe('deleteDefinition', () => {
   });
 
   it('cascades to custom_field_values on delete', async () => {
-    const def = await createDefinition({ entity_type: 'contact', name: 'Cascade Test', field_type: 'text' });
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'Cascade Test',
+      field_type: 'text',
+    });
     const recordId = '11111111-1111-1111-1111-111111111111';
 
-    await upsertValues(recordId, [{ definition_id: def.id, value: 'test' }], SYSTEM_ACTOR, 'contact');
+    await upsertValues(
+      recordId,
+      [{ definition_id: def.id, value: 'test' }],
+      SYSTEM_ACTOR,
+      'contact',
+    );
 
     const valuesBefore = await getValuesForRecord(recordId);
     expect(valuesBefore).toHaveLength(1);
@@ -152,7 +249,11 @@ describe('deleteDefinition', () => {
 
 describe('upsertValues', () => {
   it('inserts a new value for a record', async () => {
-    const def = await createDefinition({ entity_type: 'contact', name: 'Score', field_type: 'number' });
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'Score',
+      field_type: 'number',
+    });
     const recordId = '22222222-2222-2222-2222-222222222222';
 
     await upsertValues(recordId, [{ definition_id: def.id, value: '42' }], SYSTEM_ACTOR, 'contact');
@@ -164,11 +265,25 @@ describe('upsertValues', () => {
   });
 
   it('updates an existing value on conflict', async () => {
-    const def = await createDefinition({ entity_type: 'contact', name: 'Level', field_type: 'text' });
+    const def = await createDefinition({
+      entity_type: 'contact',
+      name: 'Level',
+      field_type: 'text',
+    });
     const recordId = '33333333-3333-3333-3333-333333333333';
 
-    await upsertValues(recordId, [{ definition_id: def.id, value: 'initial' }], SYSTEM_ACTOR, 'contact');
-    await upsertValues(recordId, [{ definition_id: def.id, value: 'updated' }], SYSTEM_ACTOR, 'contact');
+    await upsertValues(
+      recordId,
+      [{ definition_id: def.id, value: 'initial' }],
+      SYSTEM_ACTOR,
+      'contact',
+    );
+    await upsertValues(
+      recordId,
+      [{ definition_id: def.id, value: 'updated' }],
+      SYSTEM_ACTOR,
+      'contact',
+    );
 
     const values = await getValuesForRecord(recordId);
     expect(values).toHaveLength(1);

@@ -253,6 +253,16 @@ Your admin may set a monthly token budget that limits how many AI requests you c
 If you reach your budget, the AI Assistant will show an error message until the budget
 resets at the start of the next calendar month.
 
+### Data retention
+
+Your organisation's admin configures how long AI conversation sessions and messages are
+kept before they are automatically and permanently deleted. The current retention window
+is shown near the top of the conversation panel — for example, "Your conversation history
+is retained for 90 days."
+
+Your personal **My Context** entries are not affected by this retention window — they
+persist until you edit or delete them yourself.
+
 ### AI responses are not guaranteed to be accurate
 
 The AI Assistant uses a large language model. Its responses can contain errors, hallucinations,

@@ -859,7 +859,10 @@
       "saveSuccess": "Champ enregistré.",
       "saveError": "Échec de l'enregistrement. Veuillez réessayer.",
       "deleteSuccess": "Champ supprimé.",
-      "deleteError": "Échec de la suppression. Veuillez réessayer."
+      "deleteError": "Échec de la suppression. Veuillez réessayer.",
+      "aiExcludedLabel": "Exclu de l'IA",
+      "aiExcludedYes": "Exclu de l'IA",
+      "aiExcludedNo": "—"
     },
     "pipelines": {
       "sectionTitle": "Pipelines",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "Dépassé",
       "orgTotal": "({{total}} tokens total org)",
       "noUsers": "Aucun utilisateur actif."
+    },
+    "dataMinimization": {
+      "heading": "Minimisation des données",
+      "description": "Contrôlez quels champs d'entité sont exclus des charges utiles de l'IA. Les champs exclus sont supprimés avant l'envoi de toute donnée au fournisseur d'IA.",
+      "loadError": "Échec du chargement des données d'exclusion de champs. Veuillez réessayer.",
+      "saveError": "Échec de l'enregistrement de l'exclusion de champ. Veuillez réessayer.",
+      "alwaysExcludedHeading": "Toujours exclus (ne peut pas être modifié)",
+      "lockedTooltip": "Ce champ est toujours exclu des charges utiles de l'IA et ne peut pas être réactivé.",
+      "standardFieldsHeading": "Champs standard",
+      "tableField": "Champ",
+      "tableEntity": "Entité",
+      "tableExcluded": "Exclu",
+      "customFieldsHeading": "Champs personnalisés actuellement exclus",
+      "noCustomFields": "Aucun champ personnalisé n'est actuellement exclu.",
+      "customFieldsHint": "Les exclusions de champs personnalisés sont gérées avec la définition du champ.",
+      "customFieldsLink": "Gérer les champs personnalisés",
+      "toggleAriaLabel": "Basculer l'exclusion IA pour {{field}} sur {{entity}}",
+      "customFieldEntry": "{{field}} ({{entity}})"
     }
   },
   "aiTokenBudget": {
