@@ -566,6 +566,7 @@ export interface TestAiConfig {
   data_posture: string;
   available_models: { id: string; display_name: string; provider: string }[];
   provider_dpa_url: string;
+  ai_session_retention_days: number;
 }
 
 /**
