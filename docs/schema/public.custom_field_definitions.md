@@ -12,6 +12,7 @@
 | sort_order | integer | 0 | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| pii_excluded | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -51,6 +52,7 @@ erDiagram
   integer sort_order ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  boolean pii_excluded ""
 }
 "public.custom_field_values" {
   uuid id ""

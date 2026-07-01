@@ -75,7 +75,9 @@ export type AuditRecordType =
   /** Email templates for sequences and activities (MINCRM-422) */
   | 'email_templates'
   /** Global tag definitions renamed by NLI or admin (MINCRM-433) */
-  | 'tag';
+  | 'tag'
+  /** AI data minimization field exclusion toggles (MINCRM-461) */
+  | 'ai_field_exclusion';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
