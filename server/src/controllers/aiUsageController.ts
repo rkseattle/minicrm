@@ -6,8 +6,13 @@
 
 import type { Request, Response } from 'express';
 import { usageDateRangePresetSchema } from '@minicrm/shared/schemas/aiUsageSchema.js';
-import { getUsageSummary, getDailyUsageSeries } from '../services/aiUsageDashboardService.js';
+import {
+  getUsageSummary,
+  getDailyUsageSeries,
+  getUsageExportRows,
+} from '../services/aiUsageDashboardService.js';
 import type { DateRange } from '../services/aiUsageDashboardService.js';
+import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 
 /**
  * Resolves the requested date range from query params. Supports either a
@@ -83,4 +88,45 @@ export async function getAiUsageDailyHandler(req: Request, res: Response): Promi
 
   const series = await getDailyUsageSeries(range);
   res.status(200).json(series);
+}
+
+export async function exportAiUsageCsvHandler(req: Request, res: Response): Promise<void> {
+  const range = resolveDateRange(req.query);
+  if (!range) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
+      },
+    });
+    return;
+  }
+
+  const rows = await getUsageExportRows(range);
+
+  const headers = [
+    'Date',
+    'User Name',
+    'User Email',
+    'Feature',
+    'Input Tokens',
+    'Output Tokens',
+    'Estimated Cost (USD)',
+  ];
+  const csvRows = rows.map((row) => ({
+    Date: row.usage_date,
+    'User Name': row.user_name,
+    'User Email': row.user_email,
+    Feature: row.feature,
+    'Input Tokens': row.input_tokens,
+    'Output Tokens': row.output_tokens,
+    'Estimated Cost (USD)': (row.estimated_cost_cents / 100).toFixed(2),
+  }));
+
+  const csv = serializeToCsv(headers, csvRows);
+  const filename = csvFilename('ai-usage');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(csv);
 }

@@ -45,6 +45,7 @@ const AuditLogPage = lazy(() => import('@/pages/AuditLogPage.js'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage.js'));
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
 const AiPage = lazy(() => import('@/pages/AiPage.js'));
+const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
@@ -137,6 +138,7 @@ function AppRoutes() {
               element={<Navigate to="/admin/settings?tab=pipelines" replace />}
             />
             <Route path="/admin/audit-log" element={<AuditLogPage />} />
+            <Route path="/admin/ai/usage" element={<AiUsageDashboardPage />} />
             <Route path="/admin/automation" element={<AutomationRulesPage />} />
             <Route path="/admin/sequences" element={<SequencesPage />} />
             <Route path="/admin/sequences/:id" element={<SequenceDetailPage />} />

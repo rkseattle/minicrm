@@ -17,10 +17,11 @@ For everyday usage (contacts, deals, activities), see the [User Guide](user-guid
 8. [Feature Flags](#8-feature-flags)
 9. [AI Configuration](#9-ai-configuration)
 10. [AI Token Budgets](#10-ai-token-budgets)
-11. [AI Role-Based Feature Access](#11-ai-role-based-feature-access)
-12. [Data Visibility Scoping](#12-data-visibility-scoping)
-13. [Roles and Capabilities](#13-roles-and-capabilities)
-14. [Email Templates](#14-email-templates)
+11. [AI Usage & Cost Dashboard](#11-ai-usage--cost-dashboard)
+12. [AI Role-Based Feature Access](#12-ai-role-based-feature-access)
+13. [Data Visibility Scoping](#13-data-visibility-scoping)
+14. [Roles and Capabilities](#14-roles-and-capabilities)
+15. [Email Templates](#15-email-templates)
 
 ---
 
@@ -826,7 +827,54 @@ type, with the old and new values. You can review this history in
 
 ---
 
-## 11. AI Role-Based Feature Access
+## 11. AI Usage & Cost Dashboard
+
+> **Route:** `/admin/ai/usage` (standalone page, not part of Admin Settings)
+
+The AI Usage & Cost Dashboard gives admins visibility into token consumption and
+estimated spend across the organization, broken down by user and by feature.
+
+### Tutorial: reviewing usage and exporting data
+
+1. Go to **Admin Settings → AI → Token Budgets** and click **View usage & cost
+   dashboard**, or navigate directly to `/admin/ai/usage`.
+2. Select a date range: **Current month**, **Last month**, **Last 3 months**, or
+   **Custom range** (pick explicit start/end dates).
+3. Review the summary cards: total tokens, estimated cost, and trend vs. the prior
+   equivalent-length period.
+4. Scroll down for the **Usage by User** and **Usage by Feature** tables, and the daily
+   token consumption chart.
+5. Click **Export CSV** to download the full per-user, per-day, per-feature breakdown.
+
+### Configuring the cost estimate rate
+
+Estimated cost is calculated from token counts × a configurable rate, set in
+**Admin Settings → AI → Cost Estimation Rates**:
+
+1. Enter the **Input cost (cents per 1M tokens)** and **Output cost (cents per 1M
+   tokens)** for your provider agreement.
+2. Click **Save**.
+
+Changes take effect immediately on the next dashboard load — historical cost figures on
+the dashboard are recalculated using the current rate, not the rate that was in effect
+when the tokens were originally consumed.
+
+### Known limitations / follow-up
+
+- **Cost estimates are self-reported, not reconciled against provider billing.** Token
+  counts come from the same values Claude's API returns on each response — they are not
+  cross-checked against Anthropic's usage/billing dashboard or API. If you need
+  billing-grade accuracy, use your provider's own billing console as the source of truth;
+  treat this dashboard as a directional estimate. A follow-up ticket has been noted to
+  investigate real provider-side usage reconciliation if/when Anthropic exposes a
+  suitable API for it.
+- **Aggregation is computed on-demand, not cached nightly.** At current data volumes this
+  is fast enough that a separate nightly caching job was not implemented; revisit if
+  usage data volume grows significantly.
+
+---
+
+## 12. AI Role-Based Feature Access
 
 > **Feature flags:** `ai_nli_page`, `ai_activity_summarizer`, `ai_email_draft`,
 > `ai_task_suggestions`, `ai_contact_enrichment`, `ai_duplicate_explanation`,
@@ -944,7 +992,7 @@ activities, and notes.
 
 ---
 
-## 12. Data Visibility Scoping
+## 13. Data Visibility Scoping
 
 Controls which records each role can see when listing contacts, deals, and activities.
 (MINCRM-534, MINCRM-538)
@@ -992,7 +1040,7 @@ Every visibility policy change is recorded in the **Audit Log** under record typ
 
 ---
 
-## 13. Roles and Capabilities
+## 14. Roles and Capabilities
 
 MiniCRM uses capability-based access control (RBAC). Every user's permissions are determined
 by the union of all capabilities granted across their assigned roles. Custom roles let you
@@ -1090,7 +1138,7 @@ with field names `custom_role_assigned` and `custom_role_removed`.
 
 ---
 
-## 14. Email Templates
+## 15. Email Templates
 
 Email templates are reusable message blueprints that can be referenced by the AI Assistant
 when drafting outbound emails. They are managed by admins and read by all users (via the AI).

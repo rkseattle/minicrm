@@ -2112,7 +2112,18 @@
       "statusWarning": "警告",
       "statusExceeded": "已超限",
       "orgTotal": "（组织总计 {{total}} 个令牌）",
-      "noUsers": "没有活跃用户。"
+      "noUsers": "没有活跃用户。",
+      "usageDashboardLink": "查看使用情况和成本仪表板"
+    },
+    "costRates": {
+      "heading": "成本估算费率",
+      "description": "配置用于在使用情况仪表板上估算 AI 支出的费率。估算值根据自报告的令牌数量计算——不会与提供商账单进行核对。",
+      "inputLabel": "输入成本（每百万令牌的美分数）",
+      "outputLabel": "输出成本（每百万令牌的美分数）",
+      "save": "保存",
+      "saveSuccess": "成本费率已保存。",
+      "saveError": "保存成本费率失败，请重试。",
+      "validationError": "成本费率必须为非负数。"
     },
     "dataMinimization": {
       "heading": "数据最小化",
@@ -2280,6 +2291,38 @@
     },
     "empty": "尚未创建任何团队。",
     "loading": "正在加载团队…"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "AI 使用情况和成本仪表板",
+    "description": "监控贵组织的 AI 令牌使用情况和预估支出。",
+    "exportCsv": "导出 CSV",
+    "exporting": "正在导出…",
+    "exportError": "导出使用数据失败，请重试。",
+    "disclaimer": "估算值是根据自报告的令牌数量乘以您配置的成本费率计算得出的。这不会与提供商账单进行核对。",
+    "disclaimerLink": "配置成本费率",
+    "presetCurrentMonth": "本月",
+    "presetLastMonth": "上月",
+    "presetLast3Months": "最近3个月",
+    "presetCustom": "自定义范围",
+    "customStartLabel": "开始日期",
+    "customEndLabel": "结束日期",
+    "loadError": "加载使用数据失败，请重试。",
+    "totalTokens": "令牌总数",
+    "tokenBreakdown": "{{input}} 输入 / {{output}} 输出",
+    "estimatedCost": "预估成本",
+    "trend": "与上一周期相比的趋势",
+    "trendUnavailable": "不可用",
+    "dailyChartHeading": "每日令牌消耗",
+    "noDailyData": "此范围内没有使用数据。",
+    "perUserHeading": "按用户查看使用情况",
+    "perFeatureHeading": "按功能查看使用情况",
+    "tableUser": "用户",
+    "tableTokens": "令牌数",
+    "tableCost": "预估成本",
+    "tableBudget": "预算百分比",
+    "tableTopFeature": "主要功能",
+    "tableFeature": "功能",
+    "noUsageData": "此范围内没有使用数据。"
   },
   "ai": {
     "pageTitle": "AI 助手",

@@ -2112,7 +2112,18 @@
       "statusWarning": "[Wärñïñg~~~]",
       "statusExceeded": "[Ëxĉëëdëd~~~]",
       "orgTotal": "[({{total}} tökëñŝ örg tötäl)~~~~~~~~~]",
-      "noUsers": "[Ñö äĉtïvë üŝërŝ.~~~~~]"
+      "noUsers": "[Ñö äĉtïvë üŝërŝ.~~~~~]",
+      "usageDashboardLink": "[Vïëw üŝägë & ĉöŝt däŝhböärd~~~~~~~~~]"
+    },
+    "costRates": {
+      "heading": "[Ĉöŝt Ëŝtïmätïöñ Rätëŝ~~~~~~~]",
+      "description": "[Ĉöñfïgürë thë rätë üŝëd tö ëŝtïmätë ÄÏ ŝpëñd öñ thë üŝägë däŝhböärd. Ëŝtïmätëŝ ärë ĉälĉülätëd fröm ŝëlf-rëpörtëd tökëñ ĉöüñtŝ — thïŝ ïŝ ñöt rëĉöñĉïlëd ägäïñŝt prövïdër bïllïñg.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "inputLabel": "[Ïñpüt ĉöŝt (ĉëñtŝ për 1M tökëñŝ)~~~~~~~~~~]",
+      "outputLabel": "[Öütpüt ĉöŝt (ĉëñtŝ për 1M tökëñŝ)~~~~~~~~~~]",
+      "save": "[Ŝävë~~]",
+      "saveSuccess": "[Ĉöŝt rätëŝ ŝävëd.~~~~~~]",
+      "saveError": "[Fäïlëd tö ŝävë ĉöŝt rätëŝ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
+      "validationError": "[Ĉöŝt rätëŝ müŝt bë ñöññëgätïvë ñümbërŝ.~~~~~~~~~~~~]"
     },
     "dataMinimization": {
       "heading": "[Dätä Mïñïmïzätïöñ~~~~~~]",
@@ -2280,6 +2291,38 @@
     },
     "empty": "[Ñö tëämŝ hävë bëëñ ĉrëätëd yët.~~~~~~~~~~]",
     "loading": "[Löädïñg tëämŝ…~~~~~]"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "[ÄÏ Üŝägë & Ĉöŝt Däŝhböärd~~~~~~~~]",
+    "description": "[Möñïtör ÄÏ tökëñ üŝägë äñd ëŝtïmätëd ŝpëñd äĉröŝŝ yöür örgäñïzätïöñ.~~~~~~~~~~~~~~~~~~~~~]",
+    "exportCsv": "[Ëxpört ĈŜV~~~]",
+    "exporting": "[Ëxpörtïñg…~~~]",
+    "exportError": "[Fäïlëd tö ëxpört üŝägë dätä. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
+    "disclaimer": "[Ëŝtïmätëŝ ärë ĉälĉülätëd fröm ŝëlf-rëpörtëd tökëñ ĉöüñtŝ mültïplïëd by yöür ĉöñfïgürëd ĉöŝt rätë. Thïŝ ïŝ ñöt rëĉöñĉïlëd ägäïñŝt prövïdër bïllïñg.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "disclaimerLink": "[Ĉöñfïgürë ĉöŝt rätëŝ~~~~~~]",
+    "presetCurrentMonth": "[Ĉürrëñt möñth~~~~]",
+    "presetLastMonth": "[Läŝt möñth~~~]",
+    "presetLast3Months": "[Läŝt 3 möñthŝ~~~~]",
+    "presetCustom": "[Ĉüŝtöm räñgë~~~~]",
+    "customStartLabel": "[Ŝtärt dätë~~~]",
+    "customEndLabel": "[Ëñd dätë~~~]",
+    "loadError": "[Fäïlëd tö löäd üŝägë dätä. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
+    "totalTokens": "[Tötäl Tökëñŝ~~~~]",
+    "tokenBreakdown": "[{{input}} ïñpüt / {{output}} öütpüt~~~~~~~~~~~]",
+    "estimatedCost": "[Ëŝtïmätëd Ĉöŝt~~~~~]",
+    "trend": "[Trëñd vŝ Prïör Përïöd~~~~~~~]",
+    "trendUnavailable": "[Ñ/Ä~]",
+    "dailyChartHeading": "[Däïly Tökëñ Ĉöñŝümptïöñ~~~~~~~]",
+    "noDailyData": "[Ñö üŝägë dätä för thïŝ räñgë.~~~~~~~~~]",
+    "perUserHeading": "[Üŝägë by Üŝër~~~~]",
+    "perFeatureHeading": "[Üŝägë by Fëätürë~~~~~]",
+    "tableUser": "[Üŝër~~]",
+    "tableTokens": "[Tökëñŝ~~]",
+    "tableCost": "[Ëŝtïmätëd Ĉöŝt~~~~~]",
+    "tableBudget": "[Büdgët %~~~]",
+    "tableTopFeature": "[Töp Fëätürë~~~~]",
+    "tableFeature": "[Fëätürë~~~]",
+    "noUsageData": "[Ñö üŝägë dätä för thïŝ räñgë.~~~~~~~~~]"
   },
   "ai": {
     "pageTitle": "[ÄÏ Äŝŝïŝtäñt~~~~]",

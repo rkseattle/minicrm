@@ -215,6 +215,57 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
   };
 }
 
+/** A single exportable row: one user, one day, one feature. */
+export interface UsageExportRow {
+  usage_date: string;
+  user_name: string;
+  user_email: string;
+  feature: string;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost_cents: number;
+}
+
+/**
+ * Returns the full per-user-per-day-per-feature breakdown for the given range,
+ * for CSV export. This is the most granular view — per-user, per-feature, or
+ * daily totals can all be derived by pivoting this data in a spreadsheet.
+ */
+export async function getUsageExportRows(range: DateRange): Promise<UsageExportRow[]> {
+  const rates = await getCostRates();
+
+  const result = await pool.query<{
+    usage_date: string;
+    user_name: string;
+    user_email: string;
+    feature: string;
+    input_tokens: string;
+    output_tokens: string;
+  }>(
+    `SELECT d.usage_date::text AS usage_date, u.name AS user_name, u.email AS user_email,
+            d.feature, d.input_tokens, d.output_tokens
+     FROM ai_token_usage_daily d
+     JOIN users u ON u.id = d.user_id
+     WHERE d.usage_date >= $1 AND d.usage_date < $2
+     ORDER BY d.usage_date, u.name, d.feature`,
+    [range.start, range.end],
+  );
+
+  return result.rows.map((row) => {
+    const inputTokens = parseInt(row.input_tokens, 10);
+    const outputTokens = parseInt(row.output_tokens, 10);
+    return {
+      usage_date: row.usage_date,
+      user_name: row.user_name,
+      user_email: row.user_email,
+      feature: row.feature,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      estimated_cost_cents: estimateCostCents(inputTokens, outputTokens, rates),
+    };
+  });
+}
+
 /**
  * Returns daily token totals across all users/features for the given range,
  * for the dashboard's daily consumption chart.

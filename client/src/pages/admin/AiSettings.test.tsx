@@ -624,3 +624,67 @@ describe('AiSettings — data minimization section', () => {
     );
   });
 });
+
+// ── Cost rates section (MINCRM-459) ───────────────────────────────────────────
+
+describe('AiSettings — cost rates section', () => {
+  it('renders the cost rate inputs with current values', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-input-cost-rate-input')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-input-cost-rate-input')).toHaveValue(300);
+    expect(screen.getByTestId('ai-output-cost-rate-input')).toHaveValue(1500);
+  });
+
+  it('shows success message after saving cost rates', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
+
+    fireEvent.change(screen.getByTestId('ai-input-cost-rate-input'), {
+      target: { value: '250' },
+    });
+    fireEvent.click(screen.getByTestId('ai-cost-rates-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-cost-rates-save-success')).toBeInTheDocument();
+    });
+  });
+
+  it('shows validation error for a negative rate', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
+
+    fireEvent.change(screen.getByTestId('ai-input-cost-rate-input'), {
+      target: { value: '-1' },
+    });
+    fireEvent.click(screen.getByTestId('ai-cost-rates-save-button'));
+
+    expect(screen.getByTestId('ai-cost-rates-save-error')).toBeInTheDocument();
+  });
+
+  it('shows an error message when the save request fails', async () => {
+    server.use(
+      http.patch('/api/v1/admin/ai/cost-rates', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
+
+    fireEvent.click(screen.getByTestId('ai-cost-rates-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-cost-rates-save-error')).toBeInTheDocument();
+    });
+  });
+
+  it('links to the usage dashboard', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-usage-dashboard-link')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-usage-dashboard-link')).toHaveAttribute(
+      'href',
+      '/admin/ai/usage',
+    );
+  });
+});

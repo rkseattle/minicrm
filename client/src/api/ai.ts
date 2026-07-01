@@ -5,6 +5,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type {
   AiConfigResponse,
   SetAiConfigInput,
@@ -25,6 +26,12 @@ import type {
   SetFieldExclusionInput,
   SetFieldExclusionResponse,
 } from '@shared/schemas/aiFieldExclusionSchema.js';
+import type {
+  UsageSummaryResponse,
+  UsageDailySeriesResponse,
+  SetAiCostRatesInput,
+  UsageDateRangePreset,
+} from '@shared/schemas/aiUsageSchema.js';
 
 /** React Query cache key for the AI configuration */
 export const AI_CONFIG_QUERY_KEY = ['admin', 'ai', 'config'] as const;
@@ -207,5 +214,62 @@ export async function setFieldExclusion(
     '/admin/ai/field-exclusions',
     input,
   );
+  return response.data;
+}
+
+// ── Usage dashboard API (MINCRM-459) ──────────────────────────────────────────
+
+/** Date range query params shared by usage summary/daily/export endpoints. */
+export type UsageDateRangeQuery = { preset: UsageDateRangePreset } | { start: string; end: string };
+
+/** React Query cache key factory for the usage summary (range appended as extra elements) */
+export const AI_USAGE_SUMMARY_QUERY_KEY = ['admin', 'ai', 'usage', 'summary'] as const;
+
+/** React Query cache key factory for the daily usage series (range appended as extra elements) */
+export const AI_USAGE_DAILY_QUERY_KEY = ['admin', 'ai', 'usage', 'daily'] as const;
+
+function toQueryParams(range: UsageDateRangeQuery): Record<string, string> {
+  return 'preset' in range ? { preset: range.preset } : { start: range.start, end: range.end };
+}
+
+/**
+ * Returns the aggregated AI usage/cost summary for the given date range. Admin only.
+ */
+export async function getAiUsageSummary(range: UsageDateRangeQuery): Promise<UsageSummaryResponse> {
+  const response = await apiClient.get<UsageSummaryResponse>('/admin/ai/usage/summary', {
+    params: toQueryParams(range),
+  });
+  return response.data;
+}
+
+/**
+ * Returns daily token totals for the given date range, for the consumption chart. Admin only.
+ */
+export async function getAiUsageDaily(
+  range: UsageDateRangeQuery,
+): Promise<UsageDailySeriesResponse> {
+  const response = await apiClient.get<UsageDailySeriesResponse>('/admin/ai/usage/daily', {
+    params: toQueryParams(range),
+  });
+  return response.data;
+}
+
+/**
+ * Downloads AI usage data as a CSV file for the given date range. Admin only.
+ */
+export async function exportAiUsageCsv(range: UsageDateRangeQuery): Promise<void> {
+  const response = await apiClient.get<Blob>('/admin/ai/usage/export', {
+    params: toQueryParams(range),
+    responseType: 'blob',
+  });
+  const date = new Date().toISOString().split('T')[0];
+  triggerCsvDownload(response.data, `minicrm-ai-usage-${date}.csv`);
+}
+
+/**
+ * Sets the AI cost estimation rates (cents per 1,000,000 tokens). Admin only.
+ */
+export async function setAiCostRates(input: SetAiCostRatesInput): Promise<AiConfigResponse> {
+  const response = await apiClient.patch<AiConfigResponse>('/admin/ai/cost-rates', input);
   return response.data;
 }
