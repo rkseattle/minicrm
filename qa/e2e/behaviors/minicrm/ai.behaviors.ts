@@ -15,6 +15,13 @@ import { AiPage } from '@pages/minicrm/AiPage.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 
 // ---------------------------------------------------------------------------
+// Shared constants
+// ---------------------------------------------------------------------------
+
+/** Deterministic stub returned by the E2E server (E2E=true mode). */
+export const E2E_STUB = '[E2E stub response]';
+
+// ---------------------------------------------------------------------------
 // Fixture context
 // ---------------------------------------------------------------------------
 
@@ -721,4 +728,19 @@ export async function deleteAllContextEntriesViaApi(restClient: RestClient): Pro
   for (const entry of response.body.entries) {
     await restClient.delete(`/api/v1/ai/context/${entry.id}`).catch(() => {});
   }
+}
+
+/**
+ * Fetches all AI context entries for the currently authenticated user via the REST API.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @returns Array of context entry objects.
+ */
+export async function getContextEntriesViaApi(
+  restClient: RestClient,
+): Promise<Array<{ id: string; key: string; value: string }>> {
+  const response = await restClient.get<{
+    entries: Array<{ id: string; key: string; value: string }>;
+  }>('/api/v1/ai/context');
+  return response.body.entries;
 }

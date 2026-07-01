@@ -44,8 +44,6 @@ import {
 // Serial mode required: tests share the admin account's AI session list.
 test.describe.configure({ mode: 'serial' });
 
-const E2E_STUB = '[E2E stub response]';
-
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   await setAiEnabled(restClient, true);
@@ -54,53 +52,57 @@ test.beforeEach(async ({ restClient }) => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-test('F-AI-C1 — Normal AI stub response does not show a confirmation block @functional', async ({
-  page,
-}) => {
-  // beforeEach already logs in as admin and clears sessions.
-  await navigateToAiPage({ page });
-  await waitForAiConversationPanel({ page });
+test(
+  'F-AI-C1 — Normal AI stub response does not show a confirmation block @functional @serial',
+  { tag: ['@functional', '@serial'] },
+  async ({ page }) => {
+    // beforeEach already logs in as admin and clears sessions.
+    await navigateToAiPage({ page });
+    await waitForAiConversationPanel({ page });
 
-  await sendAiMessageViaUI({ page }, 'Show me all contacts');
-  await waitForAiThreadText({ page }, E2E_STUB);
+    // sendAiMessageViaUI already waits for the assistant bubble — no extra wait needed.
+    await sendAiMessageViaUI({ page }, 'Show me all contacts');
 
-  const stdVisible = await isConfirmationBlockVisible({ page });
-  const bulkVisible = await isBulkConfirmationBlockVisible({ page });
+    const stdVisible = await isConfirmationBlockVisible({ page });
+    const bulkVisible = await isBulkConfirmationBlockVisible({ page });
 
-  expect(stdVisible).toBe(false);
-  expect(bulkVisible).toBe(false);
-});
+    expect(stdVisible).toBe(false);
+    expect(bulkVisible).toBe(false);
+  },
+);
 
-test('F-AI-C2 — Sending cancel phrase after confirmation dispatches correct message @functional', async ({
-  page,
-}) => {
-  // beforeEach already logs in as admin and clears sessions.
-  await navigateToAiPage({ page });
-  await waitForAiConversationPanel({ page });
+test(
+  'F-AI-C2 — Sending cancel phrase after confirmation dispatches correct message @functional @serial',
+  { tag: ['@functional', '@serial'] },
+  async ({ page }) => {
+    // beforeEach already logs in as admin and clears sessions.
+    await navigateToAiPage({ page });
+    await waitForAiConversationPanel({ page });
 
-  // First message establishes context (stub returns generic reply)
-  await sendAiMessageViaUI({ page }, 'Delete contact Bob Smith');
-  await waitForAiThreadText({ page }, E2E_STUB);
+    // First message establishes context (stub returns generic reply)
+    await sendAiMessageViaUI({ page }, 'Delete contact Bob Smith');
 
-  // User types the cancel phrase as a follow-up (simulating what the Cancel
-  // button sends programmatically when a real pending_action block is present)
-  await sendAiMessageViaUI({ page }, 'No, cancel that.');
-  // The stub still replies — verify the cancel message appears in the thread
-  await waitForAiThreadText({ page }, 'No, cancel that.');
-});
+    // User types the cancel phrase as a follow-up (simulating what the Cancel
+    // button sends programmatically when a real pending_action block is present)
+    await sendAiMessageViaUI({ page }, 'No, cancel that.');
+    // The stub still replies — verify the cancel message appears in the thread
+    await waitForAiThreadText({ page }, 'No, cancel that.');
+  },
+);
 
-test('F-AI-C3 — Sending confirm phrase after confirmation dispatches correct message @functional', async ({
-  page,
-}) => {
-  // beforeEach already logs in as admin and clears sessions.
-  await navigateToAiPage({ page });
-  await waitForAiConversationPanel({ page });
+test(
+  'F-AI-C3 — Sending confirm phrase after confirmation dispatches correct message @functional @serial',
+  { tag: ['@functional', '@serial'] },
+  async ({ page }) => {
+    // beforeEach already logs in as admin and clears sessions.
+    await navigateToAiPage({ page });
+    await waitForAiConversationPanel({ page });
 
-  // First message establishes context (stub returns generic reply)
-  await sendAiMessageViaUI({ page }, 'Create a contact Jane Doe at jane@example.com');
-  await waitForAiThreadText({ page }, E2E_STUB);
+    // First message establishes context (stub returns generic reply)
+    await sendAiMessageViaUI({ page }, 'Create a contact Jane Doe at jane@example.com');
 
-  // User types the confirm phrase (simulating what the Confirm button sends)
-  await sendAiMessageViaUI({ page }, 'Yes, go ahead.');
-  await waitForAiThreadText({ page }, 'Yes, go ahead.');
-});
+    // User types the confirm phrase (simulating what the Confirm button sends)
+    await sendAiMessageViaUI({ page }, 'Yes, go ahead.');
+    await waitForAiThreadText({ page }, 'Yes, go ahead.');
+  },
+);

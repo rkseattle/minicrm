@@ -36,6 +36,7 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   navigateToAdminSettings,
   resetAiSettings,
+  getAiConfig,
   getAiSessionRetentionDaysInput,
   fillAiSessionRetentionDays,
   clickAiSessionRetentionSave,
@@ -43,7 +44,6 @@ import {
   getAiSessionRetentionSaveSuccess,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin, createTestContact } from '@apps/minicrm/helpers.js';
-import type { RestClient } from '@framework/clients/index.js';
 import { RestClientError } from '@framework/clients/index.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -53,34 +53,16 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ mode: 'serial' });
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-async function getRetentionDays(restClient: RestClient): Promise<number> {
-  const res = await restClient.get<{ ai_session_retention_days: number }>(
-    '/api/v1/admin/ai/config',
-  );
-  return res.body.ai_session_retention_days;
-}
-
-async function resetRetentionDays(restClient: RestClient): Promise<void> {
-  await restClient
-    .patch('/api/v1/admin/ai/session-retention', { ai_session_retention_days: 90 })
-    .catch(() => undefined);
-}
-
-// ---------------------------------------------------------------------------
 // F-AI-DL-1 through F-AI-DL-4 — UI tests
 // ---------------------------------------------------------------------------
 
 test.describe('AI session retention UI', () => {
   test.beforeEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
-    await resetRetentionDays(restClient);
+    await resetAiSettings(restClient);
   });
 
   test.afterEach(async ({ restClient }) => {
-    await resetRetentionDays(restClient);
     await resetAiSettings(restClient);
   });
 
@@ -115,7 +97,7 @@ test.describe('AI session retention UI', () => {
         timeout: 8_000,
       });
 
-      const updatedDays = await getRetentionDays(restClient);
+      const updatedDays = (await getAiConfig(restClient)).ai_session_retention_days;
       expect(updatedDays).toBe(180);
     },
   );
@@ -139,7 +121,7 @@ test.describe('AI session retention UI', () => {
       });
 
       // Confirm the API was NOT called (value unchanged)
-      const days = await getRetentionDays(restClient);
+      const days = (await getAiConfig(restClient)).ai_session_retention_days;
       expect(days).toBe(90);
     },
   );
@@ -161,7 +143,7 @@ test.describe('AI session retention UI', () => {
         timeout: 5_000,
       });
 
-      const days = await getRetentionDays(restClient);
+      const days = (await getAiConfig(restClient)).ai_session_retention_days;
       expect(days).toBe(90);
     },
   );
@@ -177,7 +159,7 @@ test.describe('AI session retention API', () => {
   });
 
   test.afterEach(async ({ restClient }) => {
-    await resetRetentionDays(restClient);
+    await resetAiSettings(restClient);
   });
 
   test(
@@ -209,7 +191,7 @@ test.describe('AI session retention API', () => {
       });
       expect(res.status).toBe(200);
 
-      const updated = await getRetentionDays(restClient);
+      const updated = (await getAiConfig(restClient)).ai_session_retention_days;
       expect(updated).toBe(365);
     },
   );
