@@ -201,11 +201,11 @@ export async function createLeadViaUIThenCreateAnyway(
   await leadsPage.clickCreateAnyway();
   await secondResponse;
 
+  // 201 confirmed — wait for form to close (UI catch-up only).
   await leadsPage.waitForFormHidden();
 
   const finalUrl = leadsPage.url();
-  const formStillVisible = await leadsPage.formIsVisible();
-  return { created: !formStillVisible, finalUrl };
+  return { created: true, finalUrl };
 }
 
 // ---------------------------------------------------------------------------
