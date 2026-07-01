@@ -218,27 +218,20 @@ export class PipelineBoardPage {
     }
 
     for (const slug of PipelineBoardPage.STAGE_SLUGS) {
-      try {
-        const card = await this.page
-          .locate(
-            [
-              { type: 'testId', value: `mobile-deal-card-${dealId}` },
-              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
-            ],
-            {
-              intent: 'deal card in mobile single-column board view',
-              // Extended timeout: deal cards for the current stage may still be
-              // mounting when the probe runs, especially at stage 0 immediately
-              // after navigation. A 2 s window was too short under CI load and
-              // caused the scan to skip the correct column. (heal-trends)
-              fallbackTimeout: 6_000,
-            },
-          )
-          .resolve();
-        if (await card.isVisible().catch(() => false)) return slug;
-      } catch {
-        // Card not visible in this column.
-      }
+      // 3 s probe — the card is either rendered in this column or it isn't.
+      // The 6s HealingLocator fallback caused up to 24 s of dead time when
+      // scanning to 'Closed Won' (index 4). waitForFunction is equivalent
+      // without triggering the AI healer for a dynamic UUID testid.
+      const cardVisible = await this.page
+        .waitForFunction(
+          `!!document.querySelector('[data-testid="mobile-deal-card-${dealId}"]')`,
+          undefined,
+          { timeout: 3_000 },
+        )
+        .then(() => true)
+        .catch(() => false);
+      if (cardVisible) return slug;
+
       try {
         const nextBtn = await this.page
           .locate(
