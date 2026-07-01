@@ -310,14 +310,15 @@ export class PipelineBoardPage {
   private async mobileNavigateToStageWithDeal(dealId: string): Promise<void> {
     const STAGE_COUNT = PipelineBoardPage.STAGE_SLUGS.length;
     for (let i = 0; i < STAGE_COUNT; i++) {
-      // Use a short probe timeout — the card is either rendered immediately in
-      // this column or it isn't. The long 6s fallback was causing up to 24s of
-      // dead time when scanning through columns before reaching 'Closed Won'.
+      // Allow 3 s per column — enough for React to finish rendering deal cards
+      // after the column transition, but much shorter than the original 6 s
+      // HealingLocator fallback. The column heading change (waitForMobileStageChange)
+      // already confirms the board has transitioned before this probe runs.
       const cardVisible = await this.page
         .waitForFunction(
           `!!document.querySelector('[data-testid="mobile-deal-card-${dealId}"]')`,
           undefined,
-          { timeout: 1_500 },
+          { timeout: 3_000 },
         )
         .then(() => true)
         .catch(() => false);

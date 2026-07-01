@@ -410,12 +410,11 @@ export class LeadsPage {
 
   /** Waits until the lead creation form is no longer visible (hidden or detached). */
   async waitForFormHidden(timeout = 15_000): Promise<void> {
-    await this.page.waitForFunction(
-      `!document.querySelector('[data-testid="lead-form"]') || ` +
-        `getComputedStyle(document.querySelector('[data-testid="lead-form"]')).display === 'none'`,
-      undefined,
-      { timeout },
-    );
+    // First ensure the form is in the DOM — prevents a false-positive where
+    // waitForFunction resolves immediately during a transient React reconciliation
+    // gap before the form has mounted. Then wait for it to be removed.
+    await this.page.waitForPresent('[data-testid="lead-form"]', 5_000).catch(() => null);
+    await this.page.waitForAbsent('[data-testid="lead-form"]', timeout);
   }
 
   /** Waits until the duplicate lead warning becomes visible. */
