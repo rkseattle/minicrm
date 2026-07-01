@@ -188,8 +188,15 @@ bash qa/scripts/check-framework-purity.sh
 bash qa/scripts/check-behavior-layer.sh
 bash qa/scripts/check-settings-mutations.sh
 bash qa/scripts/check-networkidle.sh
+```
 
-# 6. E2E — always, no exceptions
+Steps 1–5 run before every commit. **E2E does not gate individual commits** — for a
+multi-commit/multi-phase branch, run the E2E suite once at the end, immediately
+before pushing to the remote (see below), not after each commit.
+
+### E2E — required once before every push, no exceptions
+
+```bash
 date
 env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 rm -rf qa/e2e/test-results/
@@ -200,7 +207,7 @@ cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test 
 ```
 
 Read `qa/e2e/test-results/results.xml` for pass/fail — never rely on console output or exit code.
-One run per code change. Fix failures on the branch; never re-run to paper over them. Never compare to main to dismiss a failure.
+One run per push. Fix failures on the branch; never re-run to paper over them. Never compare to main to dismiss a failure.
 
 **AI tool schema check:** If any changes touch `server/src/services/` or `server/src/ai/`, review `server/src/ai/tools/` and verify the tool schemas still match the service signatures — correct input field names, enums, and required arrays. Update affected tool files in the same commit.
 
