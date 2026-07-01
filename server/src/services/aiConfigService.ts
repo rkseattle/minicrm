@@ -484,9 +484,16 @@ export async function setAiEnabled(
 
     // Keep the ai_nli_page feature flag in sync with the master toggle so the
     // nav link appears/disappears immediately when AI is enabled/disabled.
-    await client.query(`UPDATE feature_flags SET enabled = $1 WHERE flag_key = 'ai_nli_page'`, [
-      params.enabled,
-    ]);
+    // role_overrides is cleared here too: the baseline seed (migration 000) set
+    // role_overrides to {"admin":true,"rep":true} for this flag, and
+    // isFlagEnabledForRole() checks role_overrides BEFORE the enabled column
+    // (see featureFlagService.ts), so leaving a stale override in place meant
+    // this UPDATE never actually took effect for any role — admins and reps
+    // kept seeing the AI Assistant nav link even after disabling AI here.
+    await client.query(
+      `UPDATE feature_flags SET enabled = $1, role_overrides = NULL WHERE flag_key = 'ai_nli_page'`,
+      [params.enabled],
+    );
 
     await writeAuditEntry(client, {
       recordType: 'ai_settings',

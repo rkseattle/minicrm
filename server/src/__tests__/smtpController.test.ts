@@ -19,17 +19,14 @@ const REP_EMAIL = 'smtp-rep@example.com';
 let adminCookie: string;
 let repCookie: string;
 
-const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass_encrypted', 'smtp_enabled'];
-
 async function resetSmtpSettings(): Promise<void> {
+  // smtpController reads/writes the smtp_configuration singleton table (migration 087),
+  // not system_settings — smtp_* keys in system_settings are pre-migration-087 legacy
+  // remnants and are no longer consulted by getSmtpConfig/setSmtpConfig.
   await pool.query(
-    `UPDATE system_settings SET value = CASE
-       WHEN key = 'smtp_port'    THEN '587'
-       WHEN key = 'smtp_enabled' THEN 'false'
-       ELSE ''
-     END, updated_at = now()
-     WHERE key = ANY($1)`,
-    [SMTP_KEYS],
+    `UPDATE smtp_configuration SET
+       host = '', port = 587, username = '', pass_encrypted = '', enabled = false, updated_at = now()
+     WHERE singleton = true`,
   );
 }
 

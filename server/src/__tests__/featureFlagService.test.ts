@@ -627,6 +627,66 @@ describe('beta user enrollment', () => {
   });
 });
 
+// ── ai_features master toggle gates ai_* sub-feature flags (MINCRM-460) ──────
+
+describe('ai_features master toggle', () => {
+  it('ai_nli_page resolves enabled when ai_features is enabled', async () => {
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(true);
+  });
+
+  it('disabling ai_features disables ai_nli_page even though ai_nli_page itself is still enabled', async () => {
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+
+    expect(await isFlagEnabledForUser('ai_features', actorId, 'admin')).toBe(false);
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(false);
+  });
+
+  it('ai_features master gate supersedes an ai_nli_page beta enrollment', async () => {
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+    await enrollBetaUser('ai_nli_page', actorId, ACTOR());
+
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(false);
+  });
+
+  it('ai_features master gate supersedes an ai_nli_page force_enabled user override', async () => {
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+    await upsertUserOverride('ai_nli_page', actorId, 'force_enabled', null, ACTOR());
+
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(false);
+  });
+
+  it('ai_features master gate supersedes an ai_nli_page role_overrides entry', async () => {
+    await updateFeatureFlag(
+      'ai_nli_page',
+      { enabled: false, role_overrides: { admin: true, rep: true } },
+      ACTOR(),
+    );
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(false);
+  });
+
+  it('re-enabling ai_features restores ai_nli_page to its own resolution', async () => {
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(false);
+
+    await updateFeatureFlag('ai_features', { enabled: true }, ACTOR());
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('ai_nli_page', actorId, 'admin')).toBe(true);
+  });
+
+  it('does not affect non-AI flags', async () => {
+    await updateFeatureFlag('ai_features', { enabled: false }, ACTOR());
+    __clearCacheForTest();
+    expect(await isFlagEnabledForUser('notes', actorId, 'admin')).toBe(true);
+  });
+});
+
 // ── stableHash (MINCRM-490) ───────────────────────────────────────────────────
 
 describe('stableHash', () => {

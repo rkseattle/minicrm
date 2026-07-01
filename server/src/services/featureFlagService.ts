@@ -648,9 +648,26 @@ interface BetaUserDbRow {
 }
 
 /**
+ * The 'ai_features' master toggle's key. AI sub-feature flags (ai_nli_page
+ * through ai_stage_advancement — see FEATURE_FLAG_KEYS) are child flags of
+ * this master toggle: it must gate them before any of their own per-user
+ * overrides, beta membership, or rollout bucketing, matching its documented
+ * behavior ("hidden from all users regardless of per-feature or per-role
+ * settings"). (MINCRM-460)
+ */
+const AI_MASTER_FEATURE_FLAG_KEY = 'ai_features';
+
+/** True for every AI sub-feature flag key that is gated by ai_features (not ai_features itself). */
+function isAiSubFeatureFlag(key: string): boolean {
+  return key.startsWith('ai_') && key !== AI_MASTER_FEATURE_FLAG_KEY;
+}
+
+/**
  * Returns true if the flag is enabled for a specific user.
  *
- * Evaluation order (MINCRM-492, MINCRM-490, MINCRM-489):
+ * Evaluation order (MINCRM-492, MINCRM-490, MINCRM-489, MINCRM-460):
+ *   0. AI sub-feature flags only: if the ai_features master toggle is disabled
+ *      for this user, deny immediately — supersedes every other rule below.
  *   1. User override (force_enabled → true; force_disabled → false) — unconditional.
  *   2. Beta membership → true.
  *   3. Rollout bucketing: stableHash(userId + key) % 100 < rollout_percentage → result.
@@ -663,6 +680,13 @@ export async function isFlagEnabledForUser(
   userId: string,
   role: string,
 ): Promise<boolean> {
+  // Step 0: the ai_features master toggle gates every ai_* sub-feature flag before
+  // any of its own targeting rules are consulted.
+  if (isAiSubFeatureFlag(key)) {
+    const masterEnabled = await isFlagEnabledForUser(AI_MASTER_FEATURE_FLAG_KEY, userId, role);
+    if (!masterEnabled) return false;
+  }
+
   const rows = await getCachedRows();
   const row = rows.find((r) => r.flag_key === key);
 
