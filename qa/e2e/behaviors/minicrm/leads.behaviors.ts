@@ -114,11 +114,21 @@ export async function createLeadViaUI(
     await leadsPage.fillCompanyName(fields.company_name);
   }
 
+  // Set up the response listener BEFORE clicking submit so we don't miss the
+  // response if the server responds before Playwright registers the listener.
+  const responseReceived = context.page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/api/v1/leads') &&
+      (res.status() === 201 || res.status() === 409),
+    { timeout: 30_000 },
+  );
+
   await leadsPage.submitForm();
 
-  // Wait for the form to close OR a duplicate warning to appear — both are
-  // deterministic DOM transitions. networkidle is unreliable under CI load
-  // because it can settle before React finishes hiding the form.
+  // Wait for the POST response — confirms the mutation completed (success or
+  // duplicate 409). Then wait for the DOM to reflect the outcome.
+  await responseReceived;
   await Promise.race([leadsPage.waitForFormHidden(), leadsPage.waitForDuplicateWarning()]);
 
   const finalUrl = leadsPage.url();
@@ -164,12 +174,29 @@ export async function createLeadViaUIThenCreateAnyway(
     await leadsPage.fillLastName(fields.last_name);
   }
 
+  // First submit triggers a 409 duplicate response.
+  const firstResponse = context.page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/api/v1/leads') &&
+      res.status() === 409,
+    { timeout: 30_000 },
+  );
   await leadsPage.submitForm();
-  await leadsPage.clickCreateAnyway();
+  await firstResponse;
 
-  // Wait for the form to close rather than networkidle — networkidle is non-deterministic
-  // under CI load and causes false negatives when the response is slightly delayed.
-  await context.page.waitForAbsent('[data-testid="lead-form"]', 15_000);
+  // Second submit (force=true) triggers the actual 201 creation.
+  const secondResponse = context.page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/api/v1/leads') &&
+      res.status() === 201,
+    { timeout: 30_000 },
+  );
+  await leadsPage.clickCreateAnyway();
+  await secondResponse;
+
+  await leadsPage.waitForFormHidden();
 
   const finalUrl = leadsPage.url();
   const formStillVisible = await leadsPage.formIsVisible();
