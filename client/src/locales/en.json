@@ -1392,6 +1392,7 @@
       "sequence_enrollment": "Sequence Enrollment",
       "feature_flag": "Feature Flag",
       "ai_settings": "AI Settings",
+      "ai_field_exclusion": "AI Field Exclusion",
       "team": "Team",
       "all": "All"
     },

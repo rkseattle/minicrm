@@ -22,6 +22,8 @@ export const AUDIT_RECORD_TYPES = [
   'feature_flag',
   /** AI provider/model configuration (MINCRM-457) */
   'ai_settings',
+  /** AI data minimization field exclusion toggles (MINCRM-461) */
+  'ai_field_exclusion',
 ] as const;
 
 /** Valid event types in the audit log */

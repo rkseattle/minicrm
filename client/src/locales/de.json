@@ -1427,6 +1427,7 @@
       "sequence_enrollment": "Sequenzregistrierung",
       "feature_flag": "Feature-Flag",
       "ai_settings": "KI-Einstellungen",
+      "ai_field_exclusion": "KI-Feldausschluss",
       "team": "Team",
       "all": "Alle"
     },

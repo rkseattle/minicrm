@@ -1427,6 +1427,7 @@
       "sequence_enrollment": "Inscription à la séquence",
       "feature_flag": "Indicateur de fonctionnalité",
       "ai_settings": "Paramètres IA",
+      "ai_field_exclusion": "Exclusion de champ IA",
       "team": "Équipe",
       "all": "Tous"
     },

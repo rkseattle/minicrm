@@ -128,6 +128,53 @@ contacts/accounts/deals/leads: version integer  (optimistic locking, migration 0
 feature_flags.role_overrides (jsonb, nullable)
   ⚠ Transitional column. MINCRM-487 will replace with user-level override tables.
     Never bypass assertValidRoleOverrides() in featureFlagService.ts.
+
+ai_configuration                       ← singleton row (singleton bool CHECK UNIQUE)
+  provider varchar(50) DEFAULT 'anthropic'   model varchar(100)
+  api_key_encrypted text   api_key_key_version smallint  (AES-256-GCM, NODE_ENCRYPTION_KEY)
+  deployment_mode(cloud_api|private_endpoint|self_hosted)   base_url nullable
+  enabled bool   dpa_acknowledged bool   dpa_acknowledged_for_provider varchar(50)
+  ai_session_retention_days integer NOT NULL DEFAULT 90 CHECK (>= 30)
+  ai_input_cost_per_million_cents integer NOT NULL DEFAULT 300   ← MINCRM-459
+  ai_output_cost_per_million_cents integer NOT NULL DEFAULT 1500 ← MINCRM-459
+
+ai_sessions / ai_messages
+  ai_sessions: user_id → users ON DELETE CASCADE   name nullable (auto-set on first message)
+  ai_messages: session_id → ai_sessions ON DELETE CASCADE   role(user|assistant)
+    content text   tool_results jsonb nullable   pending_action jsonb nullable
+    context_proposal jsonb nullable
+  Purged by nightly retentionService job per ai_configuration.ai_session_retention_days
+
+ai_token_usage                         ← per-user, per-month; budget enforcement only
+  PK (user_id, year_month char(7) 'YYYY-MM')   input_tokens/output_tokens bigint
+  Do NOT widen this table for new dimensions — see ai_token_usage_daily below.
+
+ai_token_usage_daily                   ← per-user, per-day, per-feature; usage dashboard (MINCRM-459)
+  UNIQUE (user_id, usage_date, feature)   feature text DEFAULT 'nli_chat' (free text, not enum)
+  Additive to ai_token_usage — written independently so a failure here never
+  affects monthly budget enforcement.
+
+ai_token_budgets
+  user_id nullable (NULL = org default)   monthly_limit bigint (0 = unlimited)
+  Unique partial indexes: one row per user_id, and only one row where user_id IS NULL
+
+ai_field_exclusions                    ← admin-configurable standard-field AI exclusions (MINCRM-461)
+  UNIQUE (entity_type, field_name)   excluded bool DEFAULT false
+  Does NOT store the hardcoded immutable defaults (ALWAYS_EXCLUDED_FIELDS in piiFilter.ts)
+    or custom-field exclusions (see custom_field_definitions.pii_excluded below) —
+    consulted by piiFilter.ts in addition to, never instead of, the hardcoded set.
+
+custom_field_definitions.pii_excluded (bool, migration 125)
+  Value stripped from AI payloads when true; definition metadata (name, field_type) retained.
+
+ai_gdpr_cascade_log                    ← GDPR Art. 17 cascade tracking for AI data (MINCRM-446)
+  contact_id   triggered_by nullable (NULL = system-initiated)
+  messages_redacted int   context_entries_removed int   status(completed|failed)
+  original_name/original_email nullable  ← cleared after successful cascade
+
+user_ai_context
+  Per-user AI personalization key/value pairs. Explicitly excluded from the
+  session retention purge policy — this is persistent config, not conversation history.
 ```
 
 ---

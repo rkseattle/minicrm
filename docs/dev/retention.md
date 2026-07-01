@@ -18,6 +18,15 @@ The AI session retention window is configurable by admins at **Admin → AI Sett
 Changes take effect on the next nightly run at 02:00. Minimum window: 30 days. Maximum: 3650 days (10 years).
 Each purge writes one audit entry recording the session count and retention window applied.
 
+Admins can also trigger an immediate purge outside the nightly schedule via the **Purge now**
+button in the same section (MINCRM-462). This calls the exact same `purgeAiSessions()` function
+used by the nightly cron — same logic, same audit trail — just on demand. The endpoint
+(`POST /admin/ai/retention/purge`) responds `202 Accepted` immediately and runs the purge
+asynchronously, and additionally writes its own audit entry recording who triggered it (distinct
+from the purge-result audit entry `purgeAiSessions()` itself writes). The current session and
+message counts are shown alongside the retention window input so admins can gauge the impact of
+a purge before triggering one.
+
 ## Autovacuum Tuning
 
 `automation_rule_logs` and `webhook_delivery_logs` use `autovacuum_vacuum_scale_factor = 0.05` (vs. PG default 0.2) to handle burst writes. Set in migration 082.

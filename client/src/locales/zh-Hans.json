@@ -1427,6 +1427,7 @@
       "sequence_enrollment": "序列注册",
       "feature_flag": "功能标志",
       "ai_settings": "AI 设置",
+      "ai_field_exclusion": "AI 字段排除",
       "team": "团队",
       "all": "全部"
     },
