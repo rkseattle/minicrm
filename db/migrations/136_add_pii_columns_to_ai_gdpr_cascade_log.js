@@ -20,10 +20,11 @@ exports.shorthands = undefined;
  * @param {import('node-pg-migrate').MigrationBuilder} pgm
  */
 exports.up = (pgm) => {
-  pgm.addColumns('ai_gdpr_cascade_log', {
-    original_name: { type: 'text', notNull: false, default: null },
-    original_email: { type: 'text', notNull: false, default: null },
-  });
+  pgm.sql(
+    `ALTER TABLE ai_gdpr_cascade_log
+       ADD COLUMN IF NOT EXISTS original_name  text,
+       ADD COLUMN IF NOT EXISTS original_email text`,
+  );
 };
 
 /**

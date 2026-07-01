@@ -232,15 +232,6 @@ export default function AiPage() {
   // across re-renders without any synchronisation needed.
   const resolvedSessionId: string | null = activeSessionId ?? sessions[0]?.id ?? null;
 
-  // Keep a ref current with resolvedSessionId so onSuccess closures (which capture
-  // stale values from when useMutation was constructed) can always see the latest
-  // value — critical for the new-session path where setActiveSessionId fires
-  // asynchronously after createMutation resolves.
-  const resolvedSessionIdRef = useRef(resolvedSessionId);
-  useEffect(() => {
-    resolvedSessionIdRef.current = resolvedSessionId;
-  });
-
   // ── Active session messages ──────────────────────────────────────────────────
 
   const {
@@ -295,10 +286,18 @@ export default function AiPage() {
   // ── Send message mutation ────────────────────────────────────────────────────
 
   const sendMutation = useMutation({
-    mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
+    mutationFn: async ({
+      sessionId,
+      content,
+      isDisplayedSession: _isDisplayedSession,
+    }: {
+      sessionId: string;
+      content: string;
+      isDisplayedSession: boolean;
+    }) => {
       return sendAiMessage(sessionId, content);
     },
-    onSuccess: async (assistantMessage, { sessionId, content }) => {
+    onSuccess: async (assistantMessage, { sessionId, content, isDisplayedSession }) => {
       setDisabledPendingActionId(null);
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
@@ -306,13 +305,12 @@ export default function AiPage() {
       // so the correct session is refetched even if the user switched sessions during
       // the 3-10 s Anthropic round-trip.
       //
-      // Use resolvedSessionIdRef.current (not the closure value of resolvedSessionId)
-      // so we see the up-to-date session ID — important on the new-session path where
-      // setActiveSessionId fires between handleSend and onSuccess.
+      // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
+      // even on the new-session path where resolvedSessionId hasn't updated yet when
+      // onSuccess fires (React state updates are async — the closure sees the old value).
       //
-      // Only show optimistic messages if the user is still viewing the session that
-      // sent the message — if they've switched away, just update the cache silently.
-      if (resolvedSessionIdRef.current === sessionId) {
+      // Only show optimistic messages if the user was viewing this session when they sent.
+      if (isDisplayedSession) {
         const optimisticUserMessage: AiMessageResponse = {
           id: `optimistic-user-settled`,
           session_id: sessionId,
@@ -329,7 +327,7 @@ export default function AiPage() {
       // Guard: only clear optimistic state for the session that settled.
       // Without this, session A's onSuccess would clear session B's in-flight bubble
       // if the user switched sessions during the Anthropic round-trip.
-      if (resolvedSessionIdRef.current === sessionId) {
+      if (isDisplayedSession) {
         setOptimisticMessages([]);
       }
     },
@@ -402,7 +400,11 @@ export default function AiPage() {
           created_at: new Date().toISOString(),
         },
       ]);
-      sendMutation.mutate({ sessionId: resolvedSessionId, content: 'Yes, go ahead.' });
+      sendMutation.mutate({
+        sessionId: resolvedSessionId,
+        content: 'Yes, go ahead.',
+        isDisplayedSession: true,
+      });
     },
     [resolvedSessionId, sendMutation],
   );
@@ -427,7 +429,11 @@ export default function AiPage() {
           created_at: new Date().toISOString(),
         },
       ]);
-      sendMutation.mutate({ sessionId: resolvedSessionId, content: 'No, cancel that.' });
+      sendMutation.mutate({
+        sessionId: resolvedSessionId,
+        content: 'No, cancel that.',
+        isDisplayedSession: true,
+      });
     },
     [resolvedSessionId, sendMutation],
   );
@@ -459,8 +465,6 @@ export default function AiPage() {
       try {
         const newSession = await createMutation.mutateAsync();
         sessionId = newSession.id;
-        // Activate immediately so resolvedSessionIdRef stays current before
-        // sendMutation.onSuccess fires and checks the ref for optimistic state.
         setActiveSessionId(newSession.id);
       } catch {
         setSendError(t('ai.errorCreateSession'));
@@ -488,7 +492,7 @@ export default function AiPage() {
     };
     setOptimisticMessages([optimisticUserMessage]);
 
-    sendMutation.mutate({ sessionId: resolvedId, content });
+    sendMutation.mutate({ sessionId: resolvedId, content, isDisplayedSession: true });
   }, [inputValue, resolvedSessionId, sendMutation, createMutation, t]);
 
   const handleKeyDown = useCallback(
