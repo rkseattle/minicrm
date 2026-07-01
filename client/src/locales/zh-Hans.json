@@ -2071,7 +2071,15 @@
       "saveSuccess": "会话保留期限已保存。",
       "saveError": "保存会话保留期限失败，请重试。",
       "validationMin": "保留期限至少为 30 天。",
-      "validationMax": "保留期限最多为 3650 天。"
+      "validationMax": "保留期限最多为 3650 天。",
+      "statsSummary": "当前存储了 {{sessions}} 个会话和 {{messages}} 条消息。",
+      "statsLoadError": "加载会话/消息数量失败。",
+      "purgeNow": "立即清理",
+      "purgeConfirmTitle": "立即清理 AI 会话？",
+      "purgeConfirmBody": "此操作将立即删除所有早于已配置保留期限的 AI 会话和消息，不受夜间清理计划限制。此操作无法撤销。",
+      "purgeConfirmAction": "立即清理",
+      "purgeAccepted": "清理已开始。会话和消息数量将很快更新。",
+      "purgeError": "无法启动清理，请重试。"
     },
     "tokenBudgets": {
       "heading": "Token 预算",
@@ -2254,6 +2262,7 @@
   },
   "ai": {
     "pageTitle": "AI 助手",
+    "retentionWindowNotice": "您的对话记录将保留 {{days}} 天。",
     "newSession": "新会话",
     "deleteSession": "删除会话",
     "confirmDeleteTitle": "删除此对话？",

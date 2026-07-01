@@ -17,6 +17,8 @@ import type {
   AiTokenBudgetStatusResponse,
   SetOrgTokenBudgetInput,
   SetUserTokenBudgetInput,
+  AiRetentionStatsResponse,
+  AiRetentionWindowResponse,
 } from '@shared/schemas/settingsSchema.js';
 
 /** React Query cache key for the AI configuration */
@@ -135,5 +137,40 @@ export async function setUserTokenBudget(
  */
 export async function getMyTokenBudgetStatus(): Promise<AiTokenBudgetStatusResponse> {
   const response = await apiClient.get<AiTokenBudgetStatusResponse>('/ai/token-budget/me');
+  return response.data;
+}
+
+// ── Retention API (MINCRM-462) ────────────────────────────────────────────────
+
+/** React Query cache key for AI session retention stats */
+export const AI_RETENTION_STATS_QUERY_KEY = ['admin', 'ai', 'retention-stats'] as const;
+
+/**
+ * Returns the current counts of stored AI sessions and messages. Admin only.
+ */
+export async function getAiRetentionStats(): Promise<AiRetentionStatsResponse> {
+  const response = await apiClient.get<AiRetentionStatsResponse>('/admin/ai/retention-stats');
+  return response.data;
+}
+
+/**
+ * Triggers an immediate AI session purge outside the nightly schedule.
+ * Returns immediately (202) — the purge runs asynchronously. Admin only.
+ */
+export async function triggerManualAiPurge(): Promise<{ accepted: boolean; message: string }> {
+  const response = await apiClient.post<{ accepted: boolean; message: string }>(
+    '/admin/ai/retention/purge',
+  );
+  return response.data;
+}
+
+/** React Query cache key for the current user's AI retention window */
+export const MY_RETENTION_WINDOW_QUERY_KEY = ['ai', 'retention-window', 'me'] as const;
+
+/**
+ * Returns the current AI session retention window (days) for display to end users.
+ */
+export async function getMyRetentionWindow(): Promise<AiRetentionWindowResponse> {
+  const response = await apiClient.get<AiRetentionWindowResponse>('/ai/retention-window');
   return response.data;
 }

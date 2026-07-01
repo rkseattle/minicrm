@@ -24,7 +24,12 @@ import {
   setAiDpaAcknowledgmentHandler,
   setAiSessionRetentionHandler,
   testAiConnectionHandler,
+  getMyRetentionWindowHandler,
 } from '../controllers/aiConfigController.js';
+import {
+  getAiSessionRetentionStatsHandler,
+  triggerManualAiPurgeHandler,
+} from '../controllers/aiRetentionController.js';
 import {
   getAiTokenBudgetsHandler,
   setOrgTokenBudgetHandler,
@@ -378,6 +383,52 @@ router.patch(
   asyncHandler(setUserTokenBudgetHandler),
 );
 
+/**
+ * @openapi
+ * /admin/ai/retention-stats:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get current AI session/message counts for the retention admin UI
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current session and message counts
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/retention-stats',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getAiSessionRetentionStatsHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/retention/purge:
+ *   post:
+ *     tags: [AI]
+ *     summary: Trigger an immediate AI session purge outside the nightly schedule
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       202:
+ *         description: Purge accepted and running asynchronously
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.post(
+  '/retention/purge',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(triggerManualAiPurgeHandler),
+);
+
 export default router;
 
 // ── User-facing AI router ──────────────────────────────────────────────────────
@@ -402,6 +453,29 @@ const aiUserRouter = Router();
  *         description: Unauthenticated
  */
 aiUserRouter.get('/token-budget/me', authenticate, asyncHandler(getMyTokenBudgetStatusHandler));
+
+/**
+ * @openapi
+ * /ai/retention-window:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the current AI session retention window (days) for display to end users
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Retention window in days
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Feature disabled
+ */
+aiUserRouter.get(
+  '/retention-window',
+  authenticate,
+  requireFeatureEnabled('ai_nli_page'),
+  asyncHandler(getMyRetentionWindowHandler),
+);
 
 /**
  * @openapi

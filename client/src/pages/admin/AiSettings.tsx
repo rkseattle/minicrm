@@ -19,6 +19,9 @@ import {
   setOrgTokenBudget,
   setUserTokenBudget,
   AI_TOKEN_BUDGETS_QUERY_KEY,
+  getAiRetentionStats,
+  triggerManualAiPurge,
+  AI_RETENTION_STATS_QUERY_KEY,
 } from '@/api/ai.js';
 import type {
   AiDeploymentMode,
@@ -136,6 +139,56 @@ function ToggleConfirmDialog({
             data-testid="ai-toggle-confirm-button"
           >
             {isPending ? t('common.saving') : t('common.confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Manual purge confirmation dialog (MINCRM-462) ──────────────────────────────
+
+interface PurgeConfirmDialogProps {
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}
+
+function PurgeConfirmDialog({ onConfirm, onCancel, isPending }: PurgeConfirmDialogProps) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-purge-confirm-title"
+      data-testid="ai-purge-confirm-dialog"
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h2 id="ai-purge-confirm-title" className="text-lg font-semibold text-gray-900 mb-3">
+          {t('aiSettings.sessionRetention.purgeConfirmTitle')}
+        </h2>
+        <p className="text-sm text-gray-600 mb-6">
+          {t('aiSettings.sessionRetention.purgeConfirmBody')}
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            onClick={onCancel}
+            disabled={isPending}
+            data-testid="ai-purge-cancel-button"
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            onClick={onConfirm}
+            disabled={isPending}
+            data-testid="ai-purge-confirm-button"
+          >
+            {isPending ? t('common.saving') : t('aiSettings.sessionRetention.purgeConfirmAction')}
           </button>
         </div>
       </div>
@@ -278,6 +331,36 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
   const [saveError, setSaveError] = useState('');
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Retention stats + manual purge (MINCRM-462) ─────────────────────────────
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useQuery({
+    queryKey: AI_RETENTION_STATS_QUERY_KEY,
+    queryFn: getAiRetentionStats,
+  });
+
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [purgeAccepted, setPurgeAccepted] = useState(false);
+  const [purgeError, setPurgeError] = useState('');
+
+  const purgeMutation = useMutation({
+    mutationFn: triggerManualAiPurge,
+    onSuccess: () => {
+      setShowPurgeConfirm(false);
+      setPurgeAccepted(true);
+      setPurgeError('');
+      // The purge runs asynchronously — invalidate stats so the count updates
+      // once it completes, rather than showing a stale "still N sessions" value.
+      void queryClient.invalidateQueries({ queryKey: AI_RETENTION_STATS_QUERY_KEY });
+    },
+    onError: () => {
+      setPurgeError(t('aiSettings.sessionRetention.purgeError'));
+      setPurgeAccepted(false);
+    },
+  });
+
   useEffect(() => {
     setInputValue(String(retentionDays));
   }, [retentionDays]);
@@ -395,6 +478,63 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
         <p className="mt-2 text-xs text-red-600" data-testid="ai-session-retention-save-error">
           {saveError}
         </p>
+      )}
+
+      {/* Retention stats + manual purge (MINCRM-462) */}
+      <div className="mt-6 border-t border-gray-100 pt-4">
+        {statsLoading && (
+          <div
+            className="animate-pulse h-4 bg-gray-200 rounded w-1/2"
+            data-testid="ai-retention-stats-loading"
+          />
+        )}
+        {statsError && (
+          <p className="text-xs text-red-600" data-testid="ai-retention-stats-error">
+            {t('aiSettings.sessionRetention.statsLoadError')}
+          </p>
+        )}
+        {statsData && (
+          <p className="text-xs text-gray-600" data-testid="ai-retention-stats">
+            {t('aiSettings.sessionRetention.statsSummary', {
+              sessions: statsData.session_count.toLocaleString(),
+              messages: statsData.message_count.toLocaleString(),
+            })}
+          </p>
+        )}
+
+        <div className="mt-3">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPurgeAccepted(false);
+              setPurgeError('');
+              setShowPurgeConfirm(true);
+            }}
+            disabled={purgeMutation.isPending}
+            data-testid="ai-purge-now-button"
+          >
+            {t('aiSettings.sessionRetention.purgeNow')}
+          </Button>
+        </div>
+
+        {purgeAccepted && (
+          <p className="mt-2 text-xs text-green-600" data-testid="ai-purge-accepted">
+            {t('aiSettings.sessionRetention.purgeAccepted')}
+          </p>
+        )}
+        {purgeError && (
+          <p className="mt-2 text-xs text-red-600" data-testid="ai-purge-error">
+            {purgeError}
+          </p>
+        )}
+      </div>
+
+      {showPurgeConfirm && (
+        <PurgeConfirmDialog
+          onConfirm={() => purgeMutation.mutate()}
+          onCancel={() => setShowPurgeConfirm(false)}
+          isPending={purgeMutation.isPending}
+        />
       )}
     </div>
   );

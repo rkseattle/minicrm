@@ -82,8 +82,12 @@ async function purgeImportJobs(): Promise<number> {
  *
  * Writes one audit entry recording the purge outcome. user_ai_context rows are
  * explicitly excluded — they are persistent personalisation data, not transcripts.
+ *
+ * Exported so it can be invoked directly by the manual "purge now" admin
+ * endpoint (MINCRM-462), reusing the exact same logic and audit trail as the
+ * nightly cron path rather than duplicating it.
  */
-async function purgeAiSessions(): Promise<number> {
+export async function purgeAiSessions(): Promise<number> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -128,6 +132,29 @@ async function purgeAiSessions(): Promise<number> {
   } finally {
     client.release();
   }
+}
+
+/** Counts of AI session data currently stored, for the retention admin UI (MINCRM-462). */
+export interface AiSessionRetentionStats {
+  sessionCount: number;
+  messageCount: number;
+}
+
+/**
+ * Returns the current counts of ai_sessions and ai_messages rows.
+ * Read-only — used by the admin retention settings UI to show "N sessions,
+ * M messages currently stored" alongside the configured retention window.
+ */
+export async function getAiSessionRetentionStats(): Promise<AiSessionRetentionStats> {
+  const result = await pool.query<{ session_count: string; message_count: string }>(
+    `SELECT
+       (SELECT count(*) FROM ai_sessions)::text AS session_count,
+       (SELECT count(*) FROM ai_messages)::text AS message_count`,
+  );
+  return {
+    sessionCount: parseInt(result.rows[0]?.session_count ?? '0', 10),
+    messageCount: parseInt(result.rows[0]?.message_count ?? '0', 10),
+  };
 }
 
 /**

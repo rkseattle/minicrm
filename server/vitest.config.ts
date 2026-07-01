@@ -162,6 +162,12 @@ const SERIAL_FILES = [
   // beforeEach deletes on sequence_enrollments, which can remove the first enrollment
   // between the two POST calls and let the second POST return 201 instead of 409.
   'src/__tests__/sequenceController.test.ts',
+  // retentionService and aiRetentionController write ai_configuration.ai_session_retention_days
+  // and read global ai_sessions/ai_messages counts; running in parallel with any test that
+  // creates AI sessions (e.g. aiConfigController) would make the count/purge assertions flap.
+  // (MINCRM-462)
+  'src/__tests__/retentionService.test.ts',
+  'src/__tests__/aiRetentionController.test.ts',
 ];
 
 const sharedResolve = {

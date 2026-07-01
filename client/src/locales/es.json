@@ -2071,7 +2071,15 @@
       "saveSuccess": "Ventana de retención de sesiones guardada.",
       "saveError": "Error al guardar la ventana de retención de sesiones. Por favor, inténtalo de nuevo.",
       "validationMin": "La ventana de retención debe ser de al menos 30 días.",
-      "validationMax": "La ventana de retención debe ser de como máximo 3 650 días."
+      "validationMax": "La ventana de retención debe ser de como máximo 3 650 días.",
+      "statsSummary": "Actualmente se almacenan {{sessions}} sesión(es) y {{messages}} mensaje(s).",
+      "statsLoadError": "Error al cargar el recuento de sesiones/mensajes.",
+      "purgeNow": "Purgar ahora",
+      "purgeConfirmTitle": "¿Purgar las sesiones de IA ahora?",
+      "purgeConfirmBody": "Esto elimina inmediatamente todas las sesiones y mensajes de IA anteriores a la ventana de retención configurada, fuera del horario nocturno. Esta acción no se puede deshacer.",
+      "purgeConfirmAction": "Purgar ahora",
+      "purgeAccepted": "Purga iniciada. El recuento de sesiones y mensajes se actualizará en breve.",
+      "purgeError": "No se pudo iniciar la purga. Por favor, inténtalo de nuevo."
     },
     "tokenBudgets": {
       "heading": "Presupuestos de tokens",
@@ -2254,6 +2262,7 @@
   },
   "ai": {
     "pageTitle": "Asistente IA",
+    "retentionWindowNotice": "Tu historial de conversaciones se conserva durante {{days}} días.",
     "newSession": "Nueva sesión",
     "deleteSession": "Eliminar sesión",
     "confirmDeleteTitle": "¿Eliminar esta conversación?",

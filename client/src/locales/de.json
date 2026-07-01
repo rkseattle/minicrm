@@ -2071,7 +2071,15 @@
       "saveSuccess": "Sitzungsaufbewahrungszeitraum gespeichert.",
       "saveError": "Fehler beim Speichern des Aufbewahrungszeitraums. Bitte erneut versuchen.",
       "validationMin": "Der Aufbewahrungszeitraum muss mindestens 30 Tage betragen.",
-      "validationMax": "Der Aufbewahrungszeitraum darf höchstens 3.650 Tage betragen."
+      "validationMax": "Der Aufbewahrungszeitraum darf höchstens 3.650 Tage betragen.",
+      "statsSummary": "Derzeit werden {{sessions}} Sitzung(en) und {{messages}} Nachricht(en) gespeichert.",
+      "statsLoadError": "Fehler beim Laden der Sitzungs-/Nachrichtenanzahl.",
+      "purgeNow": "Jetzt bereinigen",
+      "purgeConfirmTitle": "KI-Sitzungen jetzt bereinigen?",
+      "purgeConfirmBody": "Dadurch werden sofort alle KI-Sitzungen und Nachrichten gelöscht, die älter als der konfigurierte Aufbewahrungszeitraum sind — außerhalb des nächtlichen Zeitplans. Dies kann nicht rückgängig gemacht werden.",
+      "purgeConfirmAction": "Jetzt bereinigen",
+      "purgeAccepted": "Bereinigung gestartet. Die Sitzungs- und Nachrichtenanzahl wird in Kürze aktualisiert.",
+      "purgeError": "Bereinigung konnte nicht gestartet werden. Bitte erneut versuchen."
     },
     "tokenBudgets": {
       "heading": "Token-Budgets",
@@ -2254,6 +2262,7 @@
   },
   "ai": {
     "pageTitle": "KI-Assistent",
+    "retentionWindowNotice": "Ihr Gesprächsverlauf wird {{days}} Tage lang aufbewahrt.",
     "newSession": "Neue Sitzung",
     "deleteSession": "Sitzung löschen",
     "confirmDeleteTitle": "Diese Unterhaltung löschen?",

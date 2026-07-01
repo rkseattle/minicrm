@@ -19,6 +19,7 @@ import {
   setAiDpaAcknowledgment,
   setAiSessionRetention,
   testAiConnection,
+  getAiSessionRetentionDays,
 } from '../services/aiConfigService.js';
 
 export async function getAiConfigHandler(req: Request, res: Response): Promise<void> {
@@ -93,4 +94,13 @@ export async function testAiConnectionHandler(req: Request, res: Response): Prom
 
   const result = await testAiConnection(parsed.data);
   res.status(200).json(result);
+}
+
+/**
+ * GET /api/v1/ai/retention-window — user-facing, feature-flag gated.
+ * Returns only the retention window, not the full admin AiConfigResponse. (MINCRM-462)
+ */
+export async function getMyRetentionWindowHandler(req: Request, res: Response): Promise<void> {
+  const days = await getAiSessionRetentionDays();
+  res.status(200).json({ ai_session_retention_days: days });
 }

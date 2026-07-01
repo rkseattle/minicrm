@@ -2762,3 +2762,27 @@ export async function getAiSessionRetentionValidationError(context: AdminSetting
 export async function getAiSessionRetentionSaveSuccess(context: AdminSettingsBehaviorContext) {
   return new AdminSettingsPage(context).aiSessionRetentionSaveSuccessLocator();
 }
+
+// ---------------------------------------------------------------------------
+// AI retention stats + manual purge behaviors (MINCRM-462)
+// ---------------------------------------------------------------------------
+
+/** Returns the AI retention stats summary locator (session/message counts). */
+export async function getAiRetentionStats(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiRetentionStatsLocator();
+}
+
+/** Clicks "Purge now", opening the manual purge confirmation dialog. */
+export async function clickAiPurgeNow(context: AdminSettingsBehaviorContext): Promise<void> {
+  await new AdminSettingsPage(context).clickAiPurgeNow();
+}
+
+/** Confirms the manual purge in the confirmation dialog. */
+export async function clickAiPurgeConfirm(context: AdminSettingsBehaviorContext): Promise<void> {
+  await new AdminSettingsPage(context).clickAiPurgeConfirm();
+}
+
+/** Returns the manual purge "accepted" confirmation message locator. */
+export async function getAiPurgeAccepted(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiPurgeAcceptedLocator();
+}

@@ -330,6 +330,25 @@ export const setAiSessionRetentionSchema = z.object({
 
 export type SetAiSessionRetentionInput = z.infer<typeof setAiSessionRetentionSchema>;
 
+/**
+ * Response shape for GET /api/v1/admin/ai/retention-stats.
+ * Counts of AI session data currently stored, shown alongside the configured
+ * retention window so admins can gauge the impact of a purge before triggering one. (MINCRM-462)
+ */
+export interface AiRetentionStatsResponse {
+  session_count: number;
+  message_count: number;
+}
+
+/**
+ * Response shape for GET /api/v1/ai/retention-window.
+ * Thin, user-facing view of the retention window — deliberately excludes the
+ * rest of AiConfigResponse's admin-only fields. (MINCRM-462)
+ */
+export interface AiRetentionWindowResponse {
+  ai_session_retention_days: number;
+}
+
 export type SetAiEnabledInput = z.infer<typeof setAiEnabledSchema>;
 
 /** Schema for POST /api/v1/admin/ai/dpa-acknowledgment request body. */

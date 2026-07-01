@@ -2071,7 +2071,15 @@
       "saveSuccess": "Session retention window saved.",
       "saveError": "Failed to save session retention window. Please try again.",
       "validationMin": "Retention window must be at least 30 days.",
-      "validationMax": "Retention window must be at most 3650 days."
+      "validationMax": "Retention window must be at most 3650 days.",
+      "statsSummary": "Currently storing {{sessions}} session(s) and {{messages}} message(s).",
+      "statsLoadError": "Failed to load session/message counts.",
+      "purgeNow": "Purge now",
+      "purgeConfirmTitle": "Purge AI sessions now?",
+      "purgeConfirmBody": "This immediately deletes all AI sessions and messages older than the configured retention window, outside the nightly schedule. This cannot be undone.",
+      "purgeConfirmAction": "Purge now",
+      "purgeAccepted": "Purge started. Session and message counts will update shortly.",
+      "purgeError": "Failed to start the purge. Please try again."
     },
     "tokenBudgets": {
       "heading": "Token Budgets",
@@ -2254,6 +2262,7 @@
   },
   "ai": {
     "pageTitle": "AI Assistant",
+    "retentionWindowNotice": "Your conversation history is retained for {{days}} days.",
     "newSession": "New Session",
     "deleteSession": "Delete session",
     "confirmDeleteTitle": "Delete this conversation?",
