@@ -408,6 +408,25 @@ export class LeadsPage {
     }
   }
 
+  /** Waits until the lead creation form is no longer visible (hidden or detached). */
+  async waitForFormHidden(timeout = 15_000): Promise<void> {
+    await this.page.waitForFunction(
+      `!document.querySelector('[data-testid="lead-form"]') || ` +
+        `getComputedStyle(document.querySelector('[data-testid="lead-form"]')).display === 'none'`,
+      undefined,
+      { timeout },
+    );
+  }
+
+  /** Waits until the duplicate lead warning becomes visible. */
+  async waitForDuplicateWarning(timeout = 15_000): Promise<void> {
+    await this.page.waitForFunction(
+      `!!document.querySelector('[data-testid="duplicate-lead-warning"]')`,
+      undefined,
+      { timeout },
+    );
+  }
+
   /**
    * Returns true when the duplicate lead warning is visible.
    */
