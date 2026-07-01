@@ -25,7 +25,12 @@ import {
   setAiSessionRetentionHandler,
   testAiConnectionHandler,
   getMyRetentionWindowHandler,
+  setAiCostRatesHandler,
 } from '../controllers/aiConfigController.js';
+import {
+  getAiUsageSummaryHandler,
+  getAiUsageDailyHandler,
+} from '../controllers/aiUsageController.js';
 import {
   getAiSessionRetentionStatsHandler,
   triggerManualAiPurgeHandler,
@@ -494,6 +499,115 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setFieldExclusionHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/usage/summary:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get aggregated AI usage/cost summary for a date range
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: preset
+ *         schema: { type: string, enum: [current_month, last_month, last_3_months] }
+ *       - in: query
+ *         name: start
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: end
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Usage summary with per-user and per-feature breakdowns
+ *       400:
+ *         description: Invalid date range
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/usage/summary',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getAiUsageSummaryHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/usage/daily:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get daily token totals for a date range (for the consumption chart)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: preset
+ *         schema: { type: string, enum: [current_month, last_month, last_3_months] }
+ *       - in: query
+ *         name: start
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: end
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Daily token totals
+ *       400:
+ *         description: Invalid date range
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/usage/daily',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getAiUsageDailyHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/cost-rates:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Set the AI cost estimation rates (cents per 1,000,000 tokens)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ai_input_cost_per_million_cents, ai_output_cost_per_million_cents]
+ *             properties:
+ *               ai_input_cost_per_million_cents:
+ *                 type: integer
+ *                 minimum: 0
+ *               ai_output_cost_per_million_cents:
+ *                 type: integer
+ *                 minimum: 0
+ *     responses:
+ *       200:
+ *         description: Updated AI configuration
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/cost-rates',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setAiCostRatesHandler),
 );
 
 export default router;

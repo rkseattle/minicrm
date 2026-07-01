@@ -57,6 +57,15 @@ function currentYearMonth(): string {
   return `${year}-${month}`;
 }
 
+/** Returns the current calendar date in 'YYYY-MM-DD' format. */
+function currentDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * Derives the threshold status from consumed percentage.
  * exceeded: 100%+, warning: 80–99%, ok: below 80%.
@@ -352,12 +361,23 @@ export async function setUserTokenBudget(
 }
 
 /**
- * Records token usage for a user in the current calendar month.
- * Upserts the usage row; old months are preserved for historical reporting.
+ * Records token usage for a user in the current calendar month, for budget
+ * enforcement, and independently in ai_token_usage_daily for the usage/cost
+ * dashboard (MINCRM-459). The two upserts are independent fire-and-forget
+ * calls — a failure writing the daily/per-feature row must never affect the
+ * monthly budget-enforcement row, and vice versa.
  *
  * Fire-and-forget — callers must not await this function. Errors are logged and swallowed.
+ *
+ * @param feature - Identifies which AI feature generated this usage (e.g. 'nli_chat').
+ *   Defaults to 'nli_chat', the only feature that records usage today.
  */
-export function recordTokenUsage(userId: string, inputTokens: number, outputTokens: number): void {
+export function recordTokenUsage(
+  userId: string,
+  inputTokens: number,
+  outputTokens: number,
+  feature: string = 'nli_chat',
+): void {
   const yearMonth = currentYearMonth();
   pool
     .query(
@@ -371,5 +391,23 @@ export function recordTokenUsage(userId: string, inputTokens: number, outputToke
     )
     .catch((err: unknown) => {
       logger.error({ err, userId, yearMonth }, 'recordTokenUsage: failed to persist token usage');
+    });
+
+  const usageDate = currentDate();
+  pool
+    .query(
+      `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (user_id, usage_date, feature) DO UPDATE
+         SET input_tokens = ai_token_usage_daily.input_tokens + $4,
+             output_tokens = ai_token_usage_daily.output_tokens + $5,
+             updated_at = now()`,
+      [userId, usageDate, feature, inputTokens, outputTokens],
+    )
+    .catch((err: unknown) => {
+      logger.error(
+        { err, userId, usageDate, feature },
+        'recordTokenUsage: failed to persist daily token usage',
+      );
     });
 }

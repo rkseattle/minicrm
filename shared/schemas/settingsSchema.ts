@@ -250,6 +250,10 @@ export interface AiConfigResponse {
   provider_dpa_url: string;
   /** Days to retain ai_sessions/ai_messages before nightly purge. Minimum 30. */
   ai_session_retention_days: number;
+  /** Admin-configured cost rate in cents per 1,000,000 input tokens. (MINCRM-459) */
+  ai_input_cost_per_million_cents: number;
+  /** Admin-configured cost rate in cents per 1,000,000 output tokens. (MINCRM-459) */
+  ai_output_cost_per_million_cents: number;
 }
 
 /**

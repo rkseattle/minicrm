@@ -12,6 +12,7 @@ import {
   setAiSessionRetentionSchema,
   testAiConnectionSchema,
 } from '@minicrm/shared/schemas/settingsSchema.js';
+import { setAiCostRatesSchema } from '@minicrm/shared/schemas/aiUsageSchema.js';
 import {
   getAiConfig,
   setAiConfig,
@@ -20,6 +21,7 @@ import {
   setAiSessionRetention,
   testAiConnection,
   getAiSessionRetentionDays,
+  setAiCostRates,
 } from '../services/aiConfigService.js';
 
 export async function getAiConfigHandler(req: Request, res: Response): Promise<void> {
@@ -103,4 +105,18 @@ export async function testAiConnectionHandler(req: Request, res: Response): Prom
 export async function getMyRetentionWindowHandler(req: Request, res: Response): Promise<void> {
   const days = await getAiSessionRetentionDays();
   res.status(200).json({ ai_session_retention_days: days });
+}
+
+export async function setAiCostRatesHandler(req: Request, res: Response): Promise<void> {
+  const parsed = setAiCostRatesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const updated = await setAiCostRates(parsed.data, actor);
+  res.status(200).json(updated);
 }

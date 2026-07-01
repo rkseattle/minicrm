@@ -699,7 +699,7 @@ export async function sendMessage(
     await client2.query('COMMIT');
 
     if (!IS_E2E && (inputTokens > 0 || outputTokens > 0)) {
-      void recordTokenUsage(userId, inputTokens, outputTokens);
+      void recordTokenUsage(userId, inputTokens, outputTokens, 'nli_chat');
     }
 
     return serialiseMessage(assistantResult.rows[0]);
