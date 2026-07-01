@@ -21,6 +21,8 @@ export const customFieldDefinitionResponseSchema = z.object({
   field_type: z.enum(FIELD_TYPES),
   options: z.array(z.string()).nullable(),
   sort_order: z.number().int(),
+  /** Excludes this field's value from AI payloads via the data minimization layer. (MINCRM-461) */
+  pii_excluded: z.boolean(),
   created_at: z.string(),
 });
 
@@ -52,6 +54,7 @@ export const updateCustomFieldDefinitionSchema = z
     name: z.string().min(1).max(100).trim().optional(),
     options: z.array(z.string().min(1).max(100)).max(50).nullable().optional(),
     sort_order: z.number().int().nonnegative().optional(),
+    pii_excluded: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',

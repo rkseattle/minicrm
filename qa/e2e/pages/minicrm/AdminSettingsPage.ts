@@ -1615,4 +1615,42 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  // ---------------------------------------------------------------------------
+  // AI data minimization / field exclusions (MINCRM-461)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the always-excluded fields list container. */
+  async aiAlwaysExcludedFieldsLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-always-excluded-fields' },
+          { type: 'role', value: 'group' },
+        ],
+        { intent: 'container listing the immutable always-excluded AI field names' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the standard-field exclusion toggle for the given entity type and field name. */
+  async clickAiFieldExclusionToggle(entityType: string, fieldName: string) {
+    await this.page.click([
+      { type: 'testId', value: `field-exclusion-toggle-${entityType}-${fieldName}` },
+      { type: 'role', value: 'checkbox' },
+    ]);
+  }
+
+  /** Returns a resolved locator for the standard-field exclusion toggle's current checked state. */
+  async aiFieldExclusionToggleLocator(entityType: string, fieldName: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `field-exclusion-toggle-${entityType}-${fieldName}` },
+          { type: 'role', value: 'checkbox' },
+        ],
+        { intent: `AI field exclusion checkbox for ${entityType}.${fieldName}` },
+      )
+      .resolve();
+  }
 }

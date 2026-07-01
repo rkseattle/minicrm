@@ -649,15 +649,20 @@ the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
 - The master toggle and configuration are separate operations. You can configure AI
   without enabling it globally, which is useful for staging your setup before rollout.
 
-### AI PII data minimization (MINCRM-445)
+### AI PII data minimization (MINCRM-445, MINCRM-461)
 
 MiniCRM applies a server-side data minimization pass to every tool call result before it
 is transmitted to the AI provider. This means sensitive fields are never included in the
 data sent to the external API, regardless of what is stored in the CRM database.
 
-#### Fields always excluded (hardcoded)
+The **Data Minimization** section under **Admin Settings → AI** shows the full effective
+exclusion list — always-excluded defaults, admin-configurable standard fields, and
+currently-excluded custom fields — in one place.
 
-The following field types are stripped from AI payloads regardless of admin configuration:
+#### Fields always excluded (hardcoded, cannot be changed)
+
+The following field types are stripped from AI payloads regardless of admin configuration.
+They are shown as locked entries in the Data Minimization section and cannot be re-enabled:
 
 | Category                   | Fields stripped                                                                                                                                                                   |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -667,18 +672,36 @@ The following field types are stripped from AI payloads regardless of admin conf
 These fields are never transmitted to the AI provider even if they appear in search results
 or entity payloads.
 
+#### Admin-configurable standard fields (MINCRM-461)
+
+Beyond the always-excluded defaults, admins can exclude additional standard (non-custom)
+fields per entity type — for example, `department` on contacts or `loss_reason` on deals.
+
+To exclude a standard field:
+
+1. Go to **Admin Settings → AI → Data Minimization**.
+2. Find the field in the **Standard fields** table.
+3. Check the **Excluded** box for that field.
+
+The change takes effect on the user's next AI message — no restart is required. Each
+change is written to the audit log under the `ai_field_exclusion` record type.
+
 #### PII-excluded custom fields
 
-When a custom field definition is marked **PII-excluded** in **Admin Settings → Custom Fields**
-(the `pii_excluded` toggle), the _value_ of that field is stripped from AI payloads. The
-field name and metadata remain so the AI knows the field exists but cannot read its content.
+When a custom field definition is marked **PII-excluded** in **Admin → Settings → Customisation
+→ Custom Fields** (the `pii_excluded` toggle on the field's edit form), the _value_ of that
+field is stripped from AI payloads. The field name and metadata remain so the AI knows the
+field exists but cannot read its content.
 
 To mark a custom field as PII-excluded:
 
-1. Go to **Admin Settings → Custom Fields**.
-2. Open the definition for the field you want to protect.
-3. Enable the **PII-excluded** toggle.
+1. Go to **Admin → Settings → Customisation → Custom Fields**.
+2. Click **Edit** on the field you want to protect.
+3. Enable the **AI Excluded** checkbox.
 4. Save.
+
+The current state of every custom field's PII exclusion is also shown read-only in
+**Admin Settings → AI → Data Minimization**, with a link back to Custom Fields to make changes.
 
 The change takes effect on the user's next AI message — no restart is required.
 
@@ -687,7 +710,57 @@ The change takes effect on the user's next AI message — no restart is required
 Every AI API call that strips at least one field emits a structured server log entry
 containing the session ID, the tool name, and the list of stripped field names (never
 their values). These entries appear in the server log under the tag
-`NLI PII minimization` and can be used for compliance auditing.
+`NLI PII minimization` and can be used for compliance auditing. Admin-configurable
+exclusion toggles (standard fields and custom field PII flags) are additionally recorded
+as structured audit log entries.
+
+---
+
+### AI session retention (MINCRM-447, MINCRM-462)
+
+AI conversation sessions and messages are automatically purged after a configurable
+retention window. This is separate from the AI configuration described above and lives in
+the **Session Retention** section under **Admin Settings → AI**.
+
+#### Configuring the retention window
+
+1. Go to **Admin Settings → AI → Session Retention**.
+2. Enter the desired **Retention window (days)** — minimum 30, default 90.
+3. Click **Save**.
+
+The current count of sessions and messages currently stored is shown alongside the input,
+so you can gauge the impact of a change before it takes effect.
+
+Changes take effect on the **next nightly purge** (02:00 server time), not immediately:
+
+- If you **shorten** the window (e.g. 90 → 60 days), the next nightly purge immediately
+  deletes any sessions older than the new window.
+- If you **extend** the window, there is no immediate effect — sessions simply persist
+  longer going forward.
+
+#### Triggering an immediate purge
+
+Click **Purge now** to run the purge outside the nightly schedule. This uses the exact
+same purge logic as the nightly job and immediately deletes any sessions older than the
+currently configured retention window. A confirmation dialog appears first, since this
+action cannot be undone.
+
+#### Audit logging
+
+Both the retention window value and any manual purge trigger are recorded in the audit
+log under the `ai_settings` record type. The purge job itself also records a summary
+entry (`ai_sessions` record type) noting how many sessions were deleted and the window
+that was applied.
+
+#### What is not covered by this policy
+
+Per-user AI context (personalization preferences shown under **My Context** on the AI
+Assistant page) is explicitly excluded from this retention policy — it is persistent
+configuration, not conversation history, and is only removed via GDPR erasure or when the
+user deletes an entry directly.
+
+Users can see their current retention window on the AI Assistant page itself
+("Your conversation history is retained for X days").
 
 ---
 

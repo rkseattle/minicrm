@@ -2142,14 +2142,16 @@ export const handlers = [
         field_type: body.field_type,
         options: null,
         sort_order: 0,
+        pii_excluded: false,
         created_at: new Date().toISOString(),
       },
       { status: 201 },
     );
   }),
 
-  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition (MINCRM-276) */
-  http.patch('/api/v1/custom-fields/definitions/:id', ({ params }) => {
+  /** Custom fields: PATCH /api/custom-fields/definitions/:id — update definition (MINCRM-276, MINCRM-461) */
+  http.patch('/api/v1/custom-fields/definitions/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { pii_excluded?: boolean };
     return HttpResponse.json({
       id: params['id'],
       entity_type: 'contact',
@@ -2157,6 +2159,7 @@ export const handlers = [
       field_type: 'text',
       options: null,
       sort_order: 0,
+      pii_excluded: body.pii_excluded ?? false,
       created_at: new Date().toISOString(),
     });
   }),
@@ -2780,6 +2783,30 @@ export const handlers = [
   /** AI retention window (user-facing): GET /api/v1/ai/retention-window */
   http.get('/api/v1/ai/retention-window', () => {
     return HttpResponse.json({ ai_session_retention_days: 90 });
+  }),
+
+  // ── AI field exclusion handlers (MINCRM-461) ───────────────────────────────
+
+  /** AI field exclusions: GET /api/v1/admin/ai/field-exclusions */
+  http.get('/api/v1/admin/ai/field-exclusions', () => {
+    return HttpResponse.json({
+      always_excluded: ['password_hash', 'ssn', 'tax_id'],
+      standard_fields: [
+        { entity_type: 'contact', field_name: 'email', excluded: false },
+        { entity_type: 'contact', field_name: 'department', excluded: false },
+      ],
+      custom_fields: [],
+    });
+  }),
+
+  /** AI field exclusions: PATCH /api/v1/admin/ai/field-exclusions */
+  http.patch('/api/v1/admin/ai/field-exclusions', async ({ request }) => {
+    const body = (await request.json()) as {
+      entity_type: string;
+      field_name: string;
+      excluded: boolean;
+    };
+    return HttpResponse.json(body);
   }),
 
   /** Custom roles: GET /api/v1/custom-roles (MINCRM-542) */

@@ -859,7 +859,10 @@
       "saveSuccess": "Field saved.",
       "saveError": "Failed to save. Please try again.",
       "deleteSuccess": "Field deleted.",
-      "deleteError": "Failed to delete. Please try again."
+      "deleteError": "Failed to delete. Please try again.",
+      "aiExcludedLabel": "AI Excluded",
+      "aiExcludedYes": "Excluded from AI",
+      "aiExcludedNo": "—"
     },
     "pipelines": {
       "sectionTitle": "Pipelines",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "Exceeded",
       "orgTotal": "({{total}} tokens org total)",
       "noUsers": "No active users."
+    },
+    "dataMinimization": {
+      "heading": "Data Minimization",
+      "description": "Control which entity fields are excluded from AI payloads. Excluded fields are stripped before any data is sent to the AI provider.",
+      "loadError": "Failed to load field exclusion data. Please try again.",
+      "saveError": "Failed to save field exclusion. Please try again.",
+      "alwaysExcludedHeading": "Always excluded (cannot be changed)",
+      "lockedTooltip": "This field is always excluded from AI payloads and cannot be re-enabled.",
+      "standardFieldsHeading": "Standard fields",
+      "tableField": "Field",
+      "tableEntity": "Entity",
+      "tableExcluded": "Excluded",
+      "customFieldsHeading": "Custom fields currently excluded",
+      "noCustomFields": "No custom fields are currently excluded.",
+      "customFieldsHint": "Custom field exclusions are managed alongside the field definition.",
+      "customFieldsLink": "Manage custom fields",
+      "toggleAriaLabel": "Toggle AI exclusion for {{field}} on {{entity}}",
+      "customFieldEntry": "{{field}} ({{entity}})"
     }
   },
   "aiTokenBudget": {

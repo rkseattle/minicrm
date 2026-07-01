@@ -859,7 +859,10 @@
       "saveSuccess": "字段已保存。",
       "saveError": "保存失败，请重试。",
       "deleteSuccess": "字段已删除。",
-      "deleteError": "删除失败，请重试。"
+      "deleteError": "删除失败，请重试。",
+      "aiExcludedLabel": "AI 排除",
+      "aiExcludedYes": "已从 AI 中排除",
+      "aiExcludedNo": "—"
     },
     "pipelines": {
       "sectionTitle": "销售管道",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "已超限",
       "orgTotal": "（组织总计 {{total}} 个令牌）",
       "noUsers": "没有活跃用户。"
+    },
+    "dataMinimization": {
+      "heading": "数据最小化",
+      "description": "控制哪些实体字段从 AI 负载中排除。被排除的字段会在数据发送给 AI 提供商之前被去除。",
+      "loadError": "加载字段排除数据失败，请重试。",
+      "saveError": "保存字段排除失败，请重试。",
+      "alwaysExcludedHeading": "始终排除（无法更改）",
+      "lockedTooltip": "此字段始终从 AI 负载中排除，且无法重新启用。",
+      "standardFieldsHeading": "标准字段",
+      "tableField": "字段",
+      "tableEntity": "实体",
+      "tableExcluded": "已排除",
+      "customFieldsHeading": "当前已排除的自定义字段",
+      "noCustomFields": "当前没有已排除的自定义字段。",
+      "customFieldsHint": "自定义字段的排除设置与字段定义一起管理。",
+      "customFieldsLink": "管理自定义字段",
+      "toggleAriaLabel": "切换 {{entity}} 上 {{field}} 的 AI 排除状态",
+      "customFieldEntry": "{{field}}（{{entity}}）"
     }
   },
   "aiTokenBudget": {

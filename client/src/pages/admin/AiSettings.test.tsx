@@ -492,3 +492,135 @@ describe('AiSettings — retention stats and manual purge', () => {
     });
   });
 });
+
+// ── Data minimization section (MINCRM-461) ────────────────────────────────────
+
+describe('AiSettings — data minimization section', () => {
+  it('shows loading skeleton while field exclusions are fetching', async () => {
+    server.use(
+      http.get(
+        '/api/v1/admin/ai/field-exclusions',
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-settings-loading')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-field-exclusions-loading')).toBeInTheDocument();
+  });
+
+  it('shows error state when field exclusions fetch fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/field-exclusions', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-field-exclusions-error')).toBeInTheDocument();
+    });
+  });
+
+  it('renders always-excluded fields as locked entries', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-always-excluded-fields')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('always-excluded-field-password_hash')).toBeInTheDocument();
+    expect(screen.getByTestId('always-excluded-field-ssn')).toBeInTheDocument();
+  });
+
+  it('renders standard fields with toggles', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-standard-fields-table')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('field-exclusion-toggle-contact-department')).toBeInTheDocument();
+  });
+
+  it('toggles a standard field exclusion on click', async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.patch('/api/v1/admin/ai/field-exclusions', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(capturedBody);
+      }),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('field-exclusion-toggle-contact-department')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('field-exclusion-toggle-contact-department'));
+
+    await waitFor(() => {
+      expect(capturedBody).toMatchObject({
+        entity_type: 'contact',
+        field_name: 'department',
+        excluded: true,
+      });
+    });
+  });
+
+  it('shows a save error message when toggling fails', async () => {
+    server.use(
+      http.patch(
+        '/api/v1/admin/ai/field-exclusions',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('field-exclusion-toggle-contact-department')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('field-exclusion-toggle-contact-department'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-field-exclusions-save-error')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the empty state when no custom fields are excluded', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-custom-fields-excluded-empty')).toBeInTheDocument();
+    });
+  });
+
+  it('lists excluded custom fields when present', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/field-exclusions', () =>
+        HttpResponse.json({
+          always_excluded: ['password_hash'],
+          standard_fields: [],
+          custom_fields: [
+            { entity_type: 'deal', field_name: 'InternalRiskScore', excluded: true },
+            { entity_type: 'contact', field_name: 'Notes', excluded: false },
+          ],
+        }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-custom-fields-excluded-list')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-custom-fields-excluded-list')).toHaveTextContent(
+      'InternalRiskScore',
+    );
+    expect(screen.getByTestId('ai-custom-fields-excluded-list')).not.toHaveTextContent('Notes');
+  });
+
+  it('links to the custom fields admin page', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-manage-custom-fields-link')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-manage-custom-fields-link')).toHaveAttribute(
+      'href',
+      '/admin/settings?tab=pipelines',
+    );
+  });
+});

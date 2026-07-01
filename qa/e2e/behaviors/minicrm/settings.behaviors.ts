@@ -2786,3 +2786,30 @@ export async function clickAiPurgeConfirm(context: AdminSettingsBehaviorContext)
 export async function getAiPurgeAccepted(context: AdminSettingsBehaviorContext) {
   return new AdminSettingsPage(context).aiPurgeAcceptedLocator();
 }
+
+// ---------------------------------------------------------------------------
+// AI data minimization / field exclusion behaviors (MINCRM-461)
+// ---------------------------------------------------------------------------
+
+/** Returns the always-excluded fields list container locator. */
+export async function getAiAlwaysExcludedFields(context: AdminSettingsBehaviorContext) {
+  return new AdminSettingsPage(context).aiAlwaysExcludedFieldsLocator();
+}
+
+/** Clicks the standard-field exclusion toggle for the given entity type and field name. */
+export async function clickAiFieldExclusionToggle(
+  entityType: string,
+  fieldName: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await new AdminSettingsPage(context).clickAiFieldExclusionToggle(entityType, fieldName);
+}
+
+/** Returns the standard-field exclusion toggle locator for the given entity type and field name. */
+export async function getAiFieldExclusionToggle(
+  entityType: string,
+  fieldName: string,
+  context: AdminSettingsBehaviorContext,
+) {
+  return new AdminSettingsPage(context).aiFieldExclusionToggleLocator(entityType, fieldName);
+}

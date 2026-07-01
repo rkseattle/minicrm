@@ -30,7 +30,10 @@ function isValidEntityType(value: string): value is (typeof ENTITY_TYPES)[number
  * GET /api/custom-fields/definitions?entity_type=contact
  * Returns all definitions for the given entity type.
  */
-export async function listCustomFieldDefinitionsHandler(req: Request, res: Response): Promise<void> {
+export async function listCustomFieldDefinitionsHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const entityType = String(req.query['entity_type'] ?? '');
   if (!isValidEntityType(entityType)) {
     res.status(400).json({
@@ -47,7 +50,10 @@ export async function listCustomFieldDefinitionsHandler(req: Request, res: Respo
  * POST /api/custom-fields/definitions
  * Creates a new custom field definition. Admin only.
  */
-export async function createCustomFieldDefinitionHandler(req: Request, res: Response): Promise<void> {
+export async function createCustomFieldDefinitionHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const parsed = createCustomFieldDefinitionSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -78,7 +84,10 @@ export async function createCustomFieldDefinitionHandler(req: Request, res: Resp
  * PATCH /api/custom-fields/definitions/:id
  * Updates a custom field definition. Admin only.
  */
-export async function updateCustomFieldDefinitionHandler(req: Request, res: Response): Promise<void> {
+export async function updateCustomFieldDefinitionHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const id = String(req.params['id']);
 
   const parsed = updateCustomFieldDefinitionSchema.safeParse(req.body);
@@ -93,7 +102,8 @@ export async function updateCustomFieldDefinitionHandler(req: Request, res: Resp
   }
 
   try {
-    const definition = await updateDefinition(id, parsed.data);
+    const actor = { id: req.user!.id, name: req.user!.name }; // authenticate guarantees req.user
+    const definition = await updateDefinition(id, parsed.data, actor);
     if (!definition) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom field not found' } });
       return;
@@ -115,7 +125,10 @@ export async function updateCustomFieldDefinitionHandler(req: Request, res: Resp
  * DELETE /api/custom-fields/definitions/:id
  * Deletes a custom field definition and cascades to all values. Admin only.
  */
-export async function deleteCustomFieldDefinitionHandler(req: Request, res: Response): Promise<void> {
+export async function deleteCustomFieldDefinitionHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const id = String(req.params['id']);
 
   const definition = await deleteDefinition(id);

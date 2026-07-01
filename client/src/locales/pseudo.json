@@ -859,7 +859,10 @@
       "saveSuccess": "[Fïëld ŝävëd.~~~~]",
       "saveError": "[Fäïlëd tö ŝävë. Plëäŝë try ägäïñ.~~~~~~~~~~]",
       "deleteSuccess": "[Fïëld dëlëtëd.~~~~~]",
-      "deleteError": "[Fäïlëd tö dëlëtë. Plëäŝë try ägäïñ.~~~~~~~~~~~]"
+      "deleteError": "[Fäïlëd tö dëlëtë. Plëäŝë try ägäïñ.~~~~~~~~~~~]",
+      "aiExcludedLabel": "[ÄÏ Ëxĉlüdëd~~~~]",
+      "aiExcludedYes": "[Ëxĉlüdëd fröm ÄÏ~~~~~]",
+      "aiExcludedNo": "[—~]"
     },
     "pipelines": {
       "sectionTitle": "[Pïpëlïñëŝ~~~]",
@@ -2110,6 +2113,24 @@
       "statusExceeded": "[Ëxĉëëdëd~~~]",
       "orgTotal": "[({{total}} tökëñŝ örg tötäl)~~~~~~~~~]",
       "noUsers": "[Ñö äĉtïvë üŝërŝ.~~~~~]"
+    },
+    "dataMinimization": {
+      "heading": "[Dätä Mïñïmïzätïöñ~~~~~~]",
+      "description": "[Ĉöñtröl whïĉh ëñtïty fïëldŝ ärë ëxĉlüdëd fröm ÄÏ päylöädŝ. Ëxĉlüdëd fïëldŝ ärë ŝtrïppëd bëförë äñy dätä ïŝ ŝëñt tö thë ÄÏ prövïdër.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "loadError": "[Fäïlëd tö löäd fïëld ëxĉlüŝïöñ dätä. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~]",
+      "saveError": "[Fäïlëd tö ŝävë fïëld ëxĉlüŝïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~]",
+      "alwaysExcludedHeading": "[Älwäyŝ ëxĉlüdëd (ĉäññöt bë ĉhäñgëd)~~~~~~~~~~~]",
+      "lockedTooltip": "[Thïŝ fïëld ïŝ älwäyŝ ëxĉlüdëd fröm ÄÏ päylöädŝ äñd ĉäññöt bë rë-ëñäblëd.~~~~~~~~~~~~~~~~~~~~~~]",
+      "standardFieldsHeading": "[Ŝtäñdärd fïëldŝ~~~~~]",
+      "tableField": "[Fïëld~~]",
+      "tableEntity": "[Ëñtïty~~]",
+      "tableExcluded": "[Ëxĉlüdëd~~~]",
+      "customFieldsHeading": "[Ĉüŝtöm fïëldŝ ĉürrëñtly ëxĉlüdëd~~~~~~~~~~]",
+      "noCustomFields": "[Ñö ĉüŝtöm fïëldŝ ärë ĉürrëñtly ëxĉlüdëd.~~~~~~~~~~~~]",
+      "customFieldsHint": "[Ĉüŝtöm fïëld ëxĉlüŝïöñŝ ärë mäñägëd älöñgŝïdë thë fïëld dëfïñïtïöñ.~~~~~~~~~~~~~~~~~~~~~]",
+      "customFieldsLink": "[Mäñägë ĉüŝtöm fïëldŝ~~~~~~]",
+      "toggleAriaLabel": "[Tögglë ÄÏ ëxĉlüŝïöñ för {{field}} öñ {{entity}}~~~~~~~~~~~~~~~]",
+      "customFieldEntry": "[{{field}} ({{entity}})~~~~~~~]"
     }
   },
   "aiTokenBudget": {

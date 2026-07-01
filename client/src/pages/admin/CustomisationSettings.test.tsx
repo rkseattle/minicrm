@@ -229,7 +229,7 @@ function mockEmptyCustomFields() {
   );
 }
 
-function mockCustomFieldsWithOne() {
+function mockCustomFieldsWithOne(piiExcluded = false) {
   server.use(
     http.get('/api/v1/custom-fields/definitions', () =>
       HttpResponse.json({
@@ -241,6 +241,7 @@ function mockCustomFieldsWithOne() {
             field_type: 'text',
             options: null,
             sort_order: 0,
+            pii_excluded: piiExcluded,
           },
         ],
       }),
@@ -506,5 +507,79 @@ describe('CustomisationSettings — custom fields section', () => {
     await waitFor(() => {
       expect(screen.getByTestId('custom-field-row-deal-field-1')).toBeInTheDocument();
     });
+  });
+
+  // ── AI field exclusion toggle (MINCRM-461) ─────────────────────────────────
+
+  it('shows the AI-excluded badge when pii_excluded is true', async () => {
+    mockCustomFieldsWithOne(true);
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`custom-field-pii-excluded-badge-${FIELD_ID}`)).toBeInTheDocument();
+    });
+  });
+
+  it('does not show the AI-excluded badge when pii_excluded is false', async () => {
+    mockCustomFieldsWithOne(false);
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`custom-field-row-${FIELD_ID}`)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId(`custom-field-pii-excluded-badge-${FIELD_ID}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the pii_excluded checkbox pre-checked when editing an excluded field', async () => {
+    mockCustomFieldsWithOne(true);
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId(`custom-field-edit-${FIELD_ID}`));
+
+    const checkbox = screen.getByTestId(
+      `custom-field-pii-excluded-toggle-${FIELD_ID}`,
+    ) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('sends pii_excluded in the save request when the checkbox is toggled', async () => {
+    mockCustomFieldsWithOne(false);
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.patch('/api/v1/custom-fields/definitions/:id', async ({ request, params }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: params['id'],
+          entity_type: 'contact',
+          name: 'NPS Score',
+          field_type: 'text',
+          options: null,
+          sort_order: 0,
+          pii_excluded: true,
+        });
+      }),
+    );
+
+    renderWithProviders(<CustomisationSettings />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`custom-field-edit-${FIELD_ID}`)).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByTestId(`custom-field-edit-${FIELD_ID}`));
+    fireEvent.click(screen.getByTestId(`custom-field-pii-excluded-toggle-${FIELD_ID}`));
+    fireEvent.click(screen.getByTestId(`custom-field-save-${FIELD_ID}`));
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+    });
+    expect(capturedBody).toMatchObject({ pii_excluded: true });
   });
 });
