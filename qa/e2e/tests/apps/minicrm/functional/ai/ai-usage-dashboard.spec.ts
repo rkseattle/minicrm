@@ -33,6 +33,7 @@ import {
   getAiUsagePerUserTable,
   selectAiUsageRangePreset,
 } from '@behaviors/minicrm/ai-usage-dashboard.behaviors.js';
+import { resetAiCostRates } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 
 const BASE_URL = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
@@ -147,11 +148,7 @@ test.describe('AI cost rate configuration', () => {
   });
 
   test.afterEach(async ({ restClient }) => {
-    // Restore defaults so this test does not leak state into other AI settings tests.
-    await restClient.patch('/api/v1/admin/ai/cost-rates', {
-      ai_input_cost_per_million_cents: 300,
-      ai_output_cost_per_million_cents: 1500,
-    });
+    await resetAiCostRates(restClient);
   });
 
   test(

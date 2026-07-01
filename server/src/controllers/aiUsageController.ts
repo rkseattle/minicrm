@@ -58,15 +58,20 @@ function resolveDateRange(query: Request['query']): DateRange | null {
   }
 }
 
+/** Sends the shared 400 response for an invalid/unparsable date range query. */
+function sendInvalidDateRangeError(res: Response): void {
+  res.status(400).json({
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
+    },
+  });
+}
+
 export async function getAiUsageSummaryHandler(req: Request, res: Response): Promise<void> {
   const range = resolveDateRange(req.query);
   if (!range) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
-      },
-    });
+    sendInvalidDateRangeError(res);
     return;
   }
 
@@ -77,12 +82,7 @@ export async function getAiUsageSummaryHandler(req: Request, res: Response): Pro
 export async function getAiUsageDailyHandler(req: Request, res: Response): Promise<void> {
   const range = resolveDateRange(req.query);
   if (!range) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
-      },
-    });
+    sendInvalidDateRangeError(res);
     return;
   }
 
@@ -93,12 +93,7 @@ export async function getAiUsageDailyHandler(req: Request, res: Response): Promi
 export async function exportAiUsageCsvHandler(req: Request, res: Response): Promise<void> {
   const range = resolveDateRange(req.query);
   if (!range) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid date range. Provide a valid preset, or start/end ISO dates.',
-      },
-    });
+    sendInvalidDateRangeError(res);
     return;
   }
 

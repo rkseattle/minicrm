@@ -30,29 +30,16 @@ import {
   getAiAlwaysExcludedFields,
   clickAiFieldExclusionToggle,
   getAiFieldExclusionToggle,
+  resetAiFieldExclusion,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/index.js';
-import type { RestClient } from '@framework/clients/index.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 // These tests share the global ai_field_exclusions table — run serially to
 // prevent concurrent PATCH calls racing each other.
 test.describe.configure({ mode: 'serial' });
-
-/** Resets any exclusion override made by these tests back to the default (excluded=false). */
-async function resetFieldExclusion(
-  restClient: RestClient,
-  entityType: string,
-  fieldName: string,
-): Promise<void> {
-  await restClient.patch('/api/v1/admin/ai/field-exclusions', {
-    entity_type: entityType,
-    field_name: fieldName,
-    excluded: false,
-  });
-}
 
 // ---------------------------------------------------------------------------
 // F-AI-FE-1 and F-AI-FE-2 — UI tests
@@ -61,7 +48,7 @@ async function resetFieldExclusion(
 test.describe('AI data minimization UI', () => {
   test.afterEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
-    await resetFieldExclusion(restClient, 'contact', 'department');
+    await resetAiFieldExclusion(restClient, 'contact', 'department');
   });
 
   test(
@@ -115,7 +102,7 @@ test.describe('AI data minimization API', () => {
   });
 
   test.afterEach(async ({ restClient }) => {
-    await resetFieldExclusion(restClient, 'account', 'website');
+    await resetAiFieldExclusion(restClient, 'account', 'website');
   });
 
   test(

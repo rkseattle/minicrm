@@ -7,6 +7,7 @@
 import type { Request, Response } from 'express';
 import { purgeAiSessions, getAiSessionRetentionStats } from '../services/retentionService.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
+import logger from '../logger.js';
 
 export async function getAiSessionRetentionStatsHandler(
   req: Request,
@@ -41,7 +42,12 @@ export async function triggerManualAiPurgeHandler(req: Request, res: Response): 
     changedByName: actor.name,
   });
 
-  void purgeAiSessions();
+  // purgeAiSessions rolls back and rethrows on failure (unlike the GDPR cascade
+  // it otherwise mirrors) — catch here so a transient DB error becomes a logged,
+  // traceable failure instead of an unhandled promise rejection.
+  purgeAiSessions().catch((err: unknown) => {
+    logger.error({ err }, 'aiRetentionController: manual AI session purge failed');
+  });
 
   res.status(202).json({ accepted: true, message: 'AI session purge started' });
 }
