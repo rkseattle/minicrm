@@ -610,7 +610,7 @@ export async function resetAiSettings(restClient: RestClient): Promise<void> {
     restClient
       .patch('/api/v1/admin/ai/config', {
         provider: 'anthropic',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-haiku-4-5-20251001',
         deployment_mode: 'cloud_api',
         base_url: '',
         custom_dpa_url: '',

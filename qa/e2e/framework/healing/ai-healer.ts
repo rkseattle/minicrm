@@ -29,7 +29,7 @@ export const CONFIDENCE_THRESHOLD = 0.75;
 export const DEFAULT_AI_TIMEOUT_MS = 15_000;
 
 /** Model used for AI healing. */
-const HEALING_MODEL = 'claude-sonnet-4-20250514';
+const HEALING_MODEL = 'claude-haiku-4-5-20251001';
 
 /** Result returned by the AI healer on a successful (confident) response. */
 export interface AiHealResult {

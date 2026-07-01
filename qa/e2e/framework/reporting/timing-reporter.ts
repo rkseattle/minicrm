@@ -7,8 +7,8 @@
  *   reflects real test duration rather than fail-fast abort times.
  * - File writes are wrapped in try/catch; errors go to stderr and never throw,
  *   so a disk problem cannot fail the test run.
- * - Output path: qa/e2e/test-timing.jsonl (relative to process.cwd(), which is the
- *   repo root when invoked via npm scripts or npx playwright from the repo root).
+ * - Output path: qa/e2e/test-timing.jsonl, anchored to __dirname (qa/e2e/framework/reporting/)
+ *   so the path is correct regardless of the working directory when playwright runs.
  *   Override with TIMING_JSONL_PATH env var.
  * - test-timing.jsonl is appended, not overwritten, so history accumulates
  *   across runs. It is listed in .gitignore; the committed source of truth is
@@ -23,7 +23,12 @@ import type { FullConfig, Reporter, TestCase, TestResult } from '@playwright/tes
 import { appendTimingRecord } from './timing-utils.js';
 import type { TimingRecord } from './timing-utils.js';
 
-const DEFAULT_JSONL_PATH = 'qa/e2e/test-timing.jsonl';
+// Anchored to qa/e2e/ regardless of working directory when playwright runs.
+// __dirname is this file: qa/e2e/framework/reporting/
+const DEFAULT_JSONL_PATH = path.resolve(__dirname, '../../test-timing.jsonl');
+
+// Repo root for relative file paths in timing records.
+const REPO_ROOT = path.resolve(__dirname, '../../../..');
 
 export class TimingReporter implements Reporter {
   private runId: number = 0;
@@ -31,10 +36,7 @@ export class TimingReporter implements Reporter {
 
   onBegin(_config: FullConfig): void {
     this.runId = Date.now();
-    // Anchor to repo root via process.cwd() — consistent with the scripts that
-    // read this file, which also resolve from process.cwd() when run via npm scripts.
-    this.jsonlPath =
-      process.env['TIMING_JSONL_PATH'] ?? path.join(process.cwd(), DEFAULT_JSONL_PATH);
+    this.jsonlPath = process.env['TIMING_JSONL_PATH'] ?? DEFAULT_JSONL_PATH;
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
@@ -45,7 +47,7 @@ export class TimingReporter implements Reporter {
 
     const record: TimingRecord = {
       runId: this.runId,
-      file: path.relative(process.cwd(), test.location.file),
+      file: path.relative(REPO_ROOT, test.location.file),
       title: test.titlePath().join(' > '),
       duration: result.duration,
       status: result.status as TimingRecord['status'],
