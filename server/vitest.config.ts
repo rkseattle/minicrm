@@ -175,6 +175,12 @@ const SERIAL_FILES = [
   'src/__tests__/piiFilter.test.ts',
   'src/__tests__/aiFieldExclusionService.test.ts',
   'src/__tests__/aiFieldExclusionController.test.ts',
+  // aiUsageDashboardService writes ai_configuration.ai_input/output_cost_per_million_cents
+  // (the same global singleton row aiConfigService/aiConfigController mutate) and reads
+  // ai_token_usage_daily; running in parallel with those files or with aiTokenBudgetService
+  // (which also writes ai_token_usage_daily now) would race on cost-rate resets and usage
+  // aggregation totals. (MINCRM-459)
+  'src/__tests__/aiUsageDashboardService.test.ts',
 ];
 
 const sharedResolve = {

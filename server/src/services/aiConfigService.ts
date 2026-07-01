@@ -27,6 +27,7 @@ import type {
   TestAiConnectionResponse,
 } from '@minicrm/shared/schemas/settingsSchema.js';
 import { AI_PROVIDERS, AI_DEPLOYMENT_MODES } from '@minicrm/shared/schemas/settingsSchema.js';
+import type { SetAiCostRatesInput } from '@minicrm/shared/schemas/aiUsageSchema.js';
 
 // ── Row type for ai_configuration ─────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ interface AiConfigRow {
   custom_dpa_url: string;
   updated_by: string | null;
   ai_session_retention_days: number;
+  ai_input_cost_per_million_cents: number;
+  ai_output_cost_per_million_cents: number;
 }
 
 /** Default values applied when no row exists (should not occur post-migration). */
@@ -61,6 +64,8 @@ const DEFAULTS = {
   dpaAcknowledgedForProvider: '',
   customDpaUrl: '',
   aiSessionRetentionDays: 90,
+  aiInputCostPerMillionCents: 300,
+  aiOutputCostPerMillionCents: 1500,
 };
 
 /**
@@ -166,6 +171,10 @@ function buildResponse(row: AiConfigRow | null): AiConfigResponse {
     available_models: AVAILABLE_MODELS.filter((m) => m.provider === provider),
     provider_dpa_url: PROVIDER_DPA_URLS[provider],
     ai_session_retention_days: row?.ai_session_retention_days ?? DEFAULTS.aiSessionRetentionDays,
+    ai_input_cost_per_million_cents:
+      row?.ai_input_cost_per_million_cents ?? DEFAULTS.aiInputCostPerMillionCents,
+    ai_output_cost_per_million_cents:
+      row?.ai_output_cost_per_million_cents ?? DEFAULTS.aiOutputCostPerMillionCents,
   };
 }
 
@@ -222,6 +231,71 @@ export async function setAiSessionRetention(
       changedById: actor.id,
       changedByName: actor.name,
     });
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return getAiConfig();
+}
+
+/**
+ * Updates the AI cost estimation rates (cents per 1,000,000 tokens, input and
+ * output separately). Writes one audit entry per changed field in the same
+ * transaction as the data write. (MINCRM-459)
+ */
+export async function setAiCostRates(
+  params: SetAiCostRatesInput,
+  actor: AuditActor,
+): Promise<AiConfigResponse> {
+  const client: PoolClient = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const current = await fetchAiRow(client);
+    const previousInputCost =
+      current?.ai_input_cost_per_million_cents ?? DEFAULTS.aiInputCostPerMillionCents;
+    const previousOutputCost =
+      current?.ai_output_cost_per_million_cents ?? DEFAULTS.aiOutputCostPerMillionCents;
+
+    await client.query(
+      `UPDATE ai_configuration SET
+         ai_input_cost_per_million_cents = $1,
+         ai_output_cost_per_million_cents = $2,
+         updated_at = now(),
+         updated_by = $3`,
+      [params.ai_input_cost_per_million_cents, params.ai_output_cost_per_million_cents, actor.id],
+    );
+
+    if (previousInputCost !== params.ai_input_cost_per_million_cents) {
+      await writeAuditEntry(client, {
+        recordType: 'ai_settings',
+        recordName: 'AI Configuration',
+        eventType: 'updated',
+        fieldName: 'ai_input_cost_per_million_cents',
+        oldValue: String(previousInputCost),
+        newValue: String(params.ai_input_cost_per_million_cents),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
+    if (previousOutputCost !== params.ai_output_cost_per_million_cents) {
+      await writeAuditEntry(client, {
+        recordType: 'ai_settings',
+        recordName: 'AI Configuration',
+        eventType: 'updated',
+        fieldName: 'ai_output_cost_per_million_cents',
+        oldValue: String(previousOutputCost),
+        newValue: String(params.ai_output_cost_per_million_cents),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
 
     await client.query('COMMIT');
   } catch (err) {

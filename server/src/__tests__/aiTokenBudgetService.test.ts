@@ -60,6 +60,7 @@ beforeEach(async () => {
   await pool.query(`DELETE FROM ai_token_budgets WHERE user_id IN ($1, $2)`, [adminId, repId]);
   // Clear all usage for the current month for test users.
   await pool.query(`DELETE FROM ai_token_usage WHERE user_id IN ($1, $2)`, [adminId, repId]);
+  await pool.query(`DELETE FROM ai_token_usage_daily WHERE user_id IN ($1, $2)`, [adminId, repId]);
 });
 
 afterAll(async () => {
@@ -295,5 +296,70 @@ describe('getOrgConsumptionSummary', () => {
     expect(repRow!.used).toBe(20_000);
     expect(repRow!.percentage).toBe(20);
     expect(repRow!.status).toBe('ok');
+  });
+});
+
+// ── recordTokenUsage: dual-write to ai_token_usage_daily (MINCRM-459) ────────
+
+describe('recordTokenUsage — daily/per-feature dual-write', () => {
+  it('writes to both ai_token_usage and ai_token_usage_daily', async () => {
+    recordTokenUsage(repId, 1000, 500, 'nli_chat');
+
+    // Both writes are fire-and-forget; poll briefly for the daily row to land.
+    let dailyRow: { input_tokens: number; output_tokens: number; feature: string } | undefined;
+    for (let attempt = 0; attempt < 10 && !dailyRow; attempt++) {
+      const result = await pool.query<{
+        input_tokens: number;
+        output_tokens: number;
+        feature: string;
+      }>(
+        `SELECT input_tokens, output_tokens, feature FROM ai_token_usage_daily
+         WHERE user_id = $1 AND usage_date = CURRENT_DATE AND feature = 'nli_chat'`,
+        [repId],
+      );
+      dailyRow = result.rows[0];
+      if (!dailyRow) await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(dailyRow).toBeDefined();
+    expect(dailyRow!.input_tokens).toBe(1000);
+    expect(dailyRow!.output_tokens).toBe(500);
+
+    const monthlyUsed = await getUserUsageForMonth(repId, CURRENT_MONTH);
+    expect(monthlyUsed).toBeGreaterThanOrEqual(1500);
+  });
+
+  it('accumulates across multiple calls for the same day/feature', async () => {
+    recordTokenUsage(repId, 100, 50, 'nli_chat');
+    recordTokenUsage(repId, 200, 25, 'nli_chat');
+
+    let dailyRow: { input_tokens: number; output_tokens: number } | undefined;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const result = await pool.query<{ input_tokens: number; output_tokens: number }>(
+        `SELECT input_tokens, output_tokens FROM ai_token_usage_daily
+         WHERE user_id = $1 AND usage_date = CURRENT_DATE AND feature = 'nli_chat'`,
+        [repId],
+      );
+      dailyRow = result.rows[0];
+      if (dailyRow && dailyRow.input_tokens === 300) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(dailyRow?.input_tokens).toBe(300);
+    expect(dailyRow?.output_tokens).toBe(75);
+  });
+
+  it('defaults feature to nli_chat when omitted', async () => {
+    recordTokenUsage(repId, 42, 7);
+
+    let dailyRow: { feature: string } | undefined;
+    for (let attempt = 0; attempt < 10 && !dailyRow; attempt++) {
+      const result = await pool.query<{ feature: string }>(
+        `SELECT feature FROM ai_token_usage_daily
+         WHERE user_id = $1 AND usage_date = CURRENT_DATE AND input_tokens = 42`,
+        [repId],
+      );
+      dailyRow = result.rows[0];
+      if (!dailyRow) await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(dailyRow?.feature).toBe('nli_chat');
   });
 });

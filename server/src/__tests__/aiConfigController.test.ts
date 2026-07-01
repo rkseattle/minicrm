@@ -42,6 +42,8 @@ async function resetAiConfig(): Promise<void> {
       dpa_acknowledged_at            = NULL,
       dpa_acknowledged_for_provider  = '',
       custom_dpa_url                 = '',
+      ai_input_cost_per_million_cents  = 300,
+      ai_output_cost_per_million_cents = 1500,
       updated_at                     = now(),
       updated_by                     = NULL
   `);
@@ -128,6 +130,14 @@ describe('role enforcement — rep receives 403', () => {
         model: 'claude-sonnet-4-20250514',
         deployment_mode: 'cloud_api',
       });
+    expect(res.status).toBe(403);
+  });
+
+  it('PATCH /admin/ai/cost-rates', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/ai/cost-rates')
+      .set('Cookie', repCookie)
+      .send({ ai_input_cost_per_million_cents: 300, ai_output_cost_per_million_cents: 1500 });
     expect(res.status).toBe(403);
   });
 });
@@ -310,5 +320,51 @@ describe('POST /admin/ai/test-connection', () => {
       });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// ── PATCH /admin/ai/cost-rates (MINCRM-459) ───────────────────────────────────
+
+describe('PATCH /admin/ai/cost-rates', () => {
+  it('persists both cost rates', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/ai/cost-rates')
+      .set('Cookie', adminCookie)
+      .send({ ai_input_cost_per_million_cents: 250, ai_output_cost_per_million_cents: 1250 });
+    expect(res.status).toBe(200);
+    expect(res.body.ai_input_cost_per_million_cents).toBe(250);
+    expect(res.body.ai_output_cost_per_million_cents).toBe(1250);
+  });
+
+  it('returns 400 when a rate is missing', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/ai/cost-rates')
+      .set('Cookie', adminCookie)
+      .send({ ai_input_cost_per_million_cents: 250 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when a rate is negative', async () => {
+    const res = await request(app)
+      .patch('/api/v1/admin/ai/cost-rates')
+      .set('Cookie', adminCookie)
+      .send({ ai_input_cost_per_million_cents: -1, ai_output_cost_per_million_cents: 1500 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('writes an audit entry per changed field', async () => {
+    await request(app)
+      .patch('/api/v1/admin/ai/cost-rates')
+      .set('Cookie', adminCookie)
+      .send({ ai_input_cost_per_million_cents: 999, ai_output_cost_per_million_cents: 1500 });
+
+    const row = await pool.query<{ field_name: string }>(
+      `SELECT field_name FROM audit_log
+       WHERE record_type = 'ai_settings' AND field_name = 'ai_input_cost_per_million_cents'
+       ORDER BY id DESC LIMIT 1`,
+    );
+    expect(row.rows).toHaveLength(1);
   });
 });
