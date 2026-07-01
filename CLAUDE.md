@@ -191,11 +191,12 @@ bash qa/scripts/check-networkidle.sh
 
 # 6. E2E — always, no exceptions
 date
+env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 rm -rf qa/e2e/test-results/
 # Non-serial: --workers=1 matches CI's LPT file-per-shard isolation (no cross-file races)
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
 # Serial: always single-worker (matches e2e-serial CI job)
-cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional @serial" --workers=1
+cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional.*@serial|@serial.*@functional" --workers=1
 ```
 
 Read `qa/e2e/test-results/results.xml` for pass/fail — never rely on console output or exit code.
@@ -205,11 +206,10 @@ One run per code change. Fix failures on the branch; never re-run to paper over 
 
 **AI eval check:** If any changes add or modify NLI behavior in `server/src/ai/` (new tools, changed tool schemas, new RBAC rules, changes to PII filtering), add or update the corresponding eval test cases in `qa/evals/` in the same commit — intent changes go in `nli-intent.yaml`, semantic behavior in `nli-semantic.yaml`, RBAC in `nli-rbac.yaml`, PII in `nli-pii.yaml`. Never route PII assertions through an LLM judge.
 
-**E2E session setup (once per session):**
+**E2E infrastructure setup (once per dev machine boot):**
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
-npm run e2e:setup
 npm run e2e:client  # separate terminal — hardcodes API_URL=http://localhost:3002 (MINCRM-556)
 ```
 

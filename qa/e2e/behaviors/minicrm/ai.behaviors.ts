@@ -248,8 +248,11 @@ export async function sendAiMessageViaUI(
   )) as number;
 
   // Register before clicking Send so a fast server response isn't missed.
+  // Filter to POST only — GET /messages (React Query refetch) has the same URL
+  // and would otherwise resolve this promise early before the reply is committed.
   const replyReceived = context.page.waitForResponse(
     (res) =>
+      res.request().method() === 'POST' &&
       res.url().includes('/api/v1/ai/sessions') &&
       res.url().includes('/messages') &&
       res.status() === 200,

@@ -3,9 +3,9 @@
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 135 migrations (001–135), so
+ * Captures the full schema as it exists after all 136 migrations (001–136), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 135 individual migrations.
+ * replaying all 136 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
@@ -17,9 +17,9 @@
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–135 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–136 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (136+) run normally via `npm run migrate`
+ *   3. Future migrations (137+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -46,7 +46,7 @@
  * Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–135 fully applied.
+ * with migrations 001–136 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
