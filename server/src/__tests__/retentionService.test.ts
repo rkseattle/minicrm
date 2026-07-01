@@ -6,13 +6,22 @@
  *  - purgeAiSessions is directly callable (exported for the manual purge endpoint)
  *    and respects the configured retention window
  *  - purgeAiSessions writes a purge-result audit entry
+ *  - runRetentionPurge (the full nightly-cron aggregate) completes without throwing
+ *    and purges the AI session portion; the automation_rule_logs/webhook_delivery_logs/
+ *    import_jobs purges are exercised as a side effect but not asserted on directly here
+ *    (their own retention windows are documented in docs/dev/retention.md and are
+ *    exercised indirectly by other suites that populate those tables).
  */
 
 import 'dotenv/config';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
-import { purgeAiSessions, getAiSessionRetentionStats } from '../services/retentionService.js';
+import {
+  purgeAiSessions,
+  getAiSessionRetentionStats,
+  runRetentionPurge,
+} from '../services/retentionService.js';
 
 const FILE_PREFIX = 'retention-svc';
 const USER_EMAIL = `${FILE_PREFIX}-user@example.com`;
@@ -84,5 +93,21 @@ describe('purgeAiSessions', () => {
     );
     expect(row.rows).toHaveLength(1);
     expect(row.rows[0].new_value).toMatch(/Purged \d+ session\(s\)/);
+  });
+});
+
+describe('runRetentionPurge', () => {
+  it('completes without throwing and purges AI sessions past the retention window', async () => {
+    const session = await createSession(userId, { id: userId, name: 'Retention Svc User' });
+    await pool.query(
+      `UPDATE ai_sessions SET created_at = now() - interval '200 days' WHERE id = $1`,
+      [session.id],
+    );
+    await pool.query(`UPDATE ai_configuration SET ai_session_retention_days = 90`);
+
+    await expect(runRetentionPurge()).resolves.toBeUndefined();
+
+    const remaining = await pool.query('SELECT id FROM ai_sessions WHERE id = $1', [session.id]);
+    expect(remaining.rows).toHaveLength(0);
   });
 });
