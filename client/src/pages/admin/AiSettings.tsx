@@ -28,6 +28,7 @@ import {
   AI_FIELD_EXCLUSIONS_QUERY_KEY,
   setAiCostRates,
 } from '@/api/ai.js';
+import { MY_FEATURE_FLAGS_QUERY_KEY } from '@/api/featureFlags.js';
 import type {
   AiDeploymentMode,
   AiProvider,
@@ -1158,6 +1159,11 @@ export default function AiSettings() {
       // while the background refetch is in flight.
       queryClient.setQueryData(AI_CONFIG_QUERY_KEY, freshData);
       void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
+      // The server keeps the ai_nli_page feature flag in sync with this master
+      // toggle (aiConfigService.ts's setAiEnabled), but the nav's own feature-flag
+      // cache doesn't know that happened — invalidate it too so the "AI Assistant"
+      // nav link appears/disappears immediately instead of waiting out its staleTime.
+      void queryClient.invalidateQueries({ queryKey: MY_FEATURE_FLAGS_QUERY_KEY });
       setShowToggleConfirm(false);
       setPendingEnabled(null);
     },

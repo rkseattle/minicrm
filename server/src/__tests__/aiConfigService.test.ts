@@ -181,6 +181,25 @@ describe('setAiEnabled', () => {
     expect(off.enabled).toBe(false);
     expect(off.enabled_updated_at).not.toBeNull();
   });
+
+  it('syncs ai_nli_page.enabled and clears any stale role_overrides', async () => {
+    // Simulate the baseline-seeded state (migration 000) where ai_nli_page has
+    // role_overrides = {"admin": true, "rep": true} — isFlagEnabledForRole()
+    // checks role_overrides before the enabled column, so a stale override
+    // would make this sync a no-op for every role.
+    await pool.query(
+      `UPDATE feature_flags SET enabled = true, role_overrides = '{"admin": true, "rep": true}'::jsonb
+       WHERE flag_key = 'ai_nli_page'`,
+    );
+
+    await setAiEnabled({ enabled: false }, ACTOR);
+
+    const row = await pool.query<{ enabled: boolean; role_overrides: unknown }>(
+      `SELECT enabled, role_overrides FROM feature_flags WHERE flag_key = 'ai_nli_page'`,
+    );
+    expect(row.rows[0].enabled).toBe(false);
+    expect(row.rows[0].role_overrides).toBeNull();
+  });
 });
 
 // ── setAiConfig ────────────────────────────────────────────────────────────────

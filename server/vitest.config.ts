@@ -37,6 +37,11 @@ const SERIAL_FILES = [
   // Also deletes the smtp_configuration singleton row in one test to exercise
   // null-row defaults; any concurrent reader sees an empty table mid-delete. (MINCRM-502)
   'src/__tests__/smtpSettingsService.test.ts',
+  // smtpController mutates the same system_settings SMTP keys as smtpSettingsService
+  // above (via PUT /api/settings/smtp) and resets them in beforeEach; running in
+  // parallel with any other SMTP-writing test causes the GET assertion to see
+  // leftover smtp_host/smtp_enabled values from a concurrent write.
+  'src/__tests__/smtpController.test.ts',
   // automationService creates enabled rules and fires global triggers that match
   // ALL enabled rules for the trigger type — parallel runs cause cross-file log
   // entries that break the toHaveLength(1) assertions.

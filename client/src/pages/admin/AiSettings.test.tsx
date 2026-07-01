@@ -17,8 +17,10 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { QueryClient } from '@tanstack/react-query';
 import { server } from '../../test/setup.js';
 import { renderWithProviders } from '../../test/renderWithProviders.js';
+import { MY_FEATURE_FLAGS_QUERY_KEY } from '../../api/featureFlags.js';
 import AiSettings from './AiSettings.js';
 
 const DEFAULT_CONFIG = {
@@ -139,6 +141,33 @@ describe('AiSettings — master toggle', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('ai-toggle-confirm-dialog')).not.toBeInTheDocument();
     });
+  });
+
+  it('invalidates the feature flags cache so the AI nav link updates immediately', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    // Seed the flags cache as fresh (server's ai_nli_page state before the toggle) —
+    // the server keeps ai_nli_page in sync with this master toggle, but the nav's
+    // own feature-flags query has no way to know that without an invalidation.
+    queryClient.setQueryData(MY_FEATURE_FLAGS_QUERY_KEY, { flags: { ai_nli_page: false } });
+
+    renderWithProviders(<AiSettings />, { queryClient });
+    await waitFor(() => screen.getByTestId('ai-master-toggle'));
+
+    fireEvent.click(screen.getByTestId('ai-master-toggle'));
+    fireEvent.click(screen.getByTestId('ai-toggle-confirm-button'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-toggle-confirm-dialog')).not.toBeInTheDocument();
+    });
+
+    // No component in this test observes MY_FEATURE_FLAGS_QUERY_KEY, so the
+    // background refetch invalidateQueries triggers has nothing to run against —
+    // isInvalidated staying true here is exactly what proves the toggle marked
+    // the cache stale (it would be false/absent entirely without the fix).
+    const state = queryClient.getQueryState(MY_FEATURE_FLAGS_QUERY_KEY);
+    expect(state?.isInvalidated).toBe(true);
   });
 });
 

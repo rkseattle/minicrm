@@ -374,9 +374,15 @@ describe('getOnboardingStatus — admin caller', () => {
 
   it('task smtp_configured is true when smtp_configuration host is non-empty', async () => {
     await pool.query(`UPDATE smtp_configuration SET host = 'mail.example.com', updated_at = now()`);
-    const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
-    const task = status.tasks.find((t) => t.id === 'smtp_configured');
-    expect(task?.completed).toBe(true);
+    try {
+      const status = await getOnboardingStatus({ id: adminUserId, role: 'admin' });
+      const task = status.tasks.find((t) => t.id === 'smtp_configured');
+      expect(task?.completed).toBe(true);
+    } finally {
+      // Reset so this write never leaks into other serial-project test files
+      // (e.g. smtpController.test.ts) that assert on a cleared smtp_configuration.
+      await pool.query(`UPDATE smtp_configuration SET host = '', updated_at = now()`);
+    }
   });
 });
 
