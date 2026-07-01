@@ -128,15 +128,20 @@ export async function createLeadViaUI(
 
   // Wait for the POST response — confirms the mutation completed (success or
   // duplicate 409). Then wait for the DOM to reflect the outcome.
-  await responseReceived;
-  await Promise.race([leadsPage.waitForFormHidden(), leadsPage.waitForDuplicateWarning()]);
-
+  const response = await responseReceived;
   const finalUrl = leadsPage.url();
-  const duplicateWarning = await leadsPage.duplicateWarningIsVisible();
-  const formStillVisible = await leadsPage.formIsVisible();
-  const created = !formStillVisible && !duplicateWarning;
 
-  return { created, duplicateWarning, finalUrl };
+  // Branch on HTTP status — the response determines the outcome, not DOM polling,
+  // which avoids races between React re-renders and the DOM-state checks.
+  if (response.status() === 201) {
+    // Success: wait for the form to close and report created=true.
+    await leadsPage.waitForFormHidden();
+    return { created: true, duplicateWarning: false, finalUrl };
+  }
+
+  // 409 duplicate: wait for the warning to appear and report created=false.
+  await leadsPage.waitForDuplicateWarning();
+  return { created: false, duplicateWarning: true, finalUrl };
 }
 
 // ---------------------------------------------------------------------------
