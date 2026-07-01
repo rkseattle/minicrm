@@ -408,3 +408,87 @@ describe('AiSettings — token budget section', () => {
     });
   });
 });
+
+// ── Retention stats + manual purge (MINCRM-462) ───────────────────────────────
+
+describe('AiSettings — retention stats and manual purge', () => {
+  it('shows loading skeleton while stats are fetching', async () => {
+    server.use(
+      http.get(
+        '/api/v1/admin/ai/retention-stats',
+        () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-settings-loading')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-retention-stats-loading')).toBeInTheDocument();
+  });
+
+  it('shows error state when stats fetch fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/retention-stats', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-retention-stats-error')).toBeInTheDocument();
+    });
+  });
+
+  it('renders session/message counts once loaded', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/retention-stats', () =>
+        HttpResponse.json({ session_count: 12, message_count: 84 }),
+      ),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-retention-stats')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-retention-stats')).toHaveTextContent('12');
+    expect(screen.getByTestId('ai-retention-stats')).toHaveTextContent('84');
+  });
+
+  it('shows the purge confirmation dialog when "Purge now" is clicked', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+    expect(screen.getByTestId('ai-purge-confirm-dialog')).toBeInTheDocument();
+  });
+
+  it('cancels the purge dialog without calling the purge endpoint', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-cancel-button'));
+    expect(screen.queryByTestId('ai-purge-confirm-dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows an accepted message after confirming the purge', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-purge-accepted')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('ai-purge-confirm-dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows an error message when the purge request fails', async () => {
+    server.use(
+      http.post('/api/v1/admin/ai/retention/purge', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-purge-error')).toBeInTheDocument();
+    });
+  });
+});

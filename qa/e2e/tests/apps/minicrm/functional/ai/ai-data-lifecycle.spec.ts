@@ -14,6 +14,10 @@
  *   F-AI-DL-8  — POST /contacts/:id/ai-cascade returns 409 before GDPR erasure
  *   F-AI-DL-9  — After GDPR erasure, POST /contacts/:id/ai-cascade returns 202
  *   F-AI-DL-10 — After manual cascade, GET /contacts/:id/ai-cascade returns log entry
+ *   F-AI-DL-11 — AI settings panel shows session/message retention stats (MINCRM-462)
+ *   F-AI-DL-12 — Admin can manually trigger a purge and see an accepted state (MINCRM-462)
+ *   F-AI-DL-13 — POST /admin/ai/retention/purge returns 202 and writes an audit entry (MINCRM-462)
+ *   F-AI-DL-14 — GET /admin/ai/retention-stats returns session/message counts (MINCRM-462)
  *
  * E2E limitations:
  *   - The nightly purge (retentionService) is NOT triggered here; purge logic
@@ -42,6 +46,10 @@ import {
   clickAiSessionRetentionSave,
   getAiSessionRetentionValidationError,
   getAiSessionRetentionSaveSuccess,
+  getAiRetentionStats,
+  clickAiPurgeNow,
+  clickAiPurgeConfirm,
+  getAiPurgeAccepted,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin, createTestContact } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/index.js';
@@ -291,6 +299,90 @@ test.describe('GDPR AI cascade', () => {
       expect(entries.length, 'at least one cascade log entry must appear').toBeGreaterThan(0);
       expect(entries[0].status).toMatch(/^(completed|failed)$/);
       expect(entries[0].contact_id).toBe(contact.id);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// F-AI-DL-11 and F-AI-DL-12 — Manual purge + retention stats UI (MINCRM-462)
+// ---------------------------------------------------------------------------
+
+test.describe('AI session retention stats and manual purge UI', () => {
+  test.beforeEach(async ({ restClient }) => {
+    await loginAsAdmin(restClient);
+    await resetAiSettings(restClient);
+  });
+
+  test.afterEach(async ({ restClient }) => {
+    await resetAiSettings(restClient);
+  });
+
+  test(
+    'F-AI-DL-11: AI settings panel shows session/message retention stats @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
+
+      await navigateToAdminSettings({ page }, 'ai');
+
+      await expect(await getAiRetentionStats({ page })).toBeVisible({ timeout: 8_000 });
+    },
+  );
+
+  test(
+    'F-AI-DL-12: admin can manually trigger a purge and see an accepted state @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ page, testData, restClient }) => {
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
+
+      await navigateToAdminSettings({ page }, 'ai');
+
+      await expect(await getAiRetentionStats({ page })).toBeVisible({ timeout: 8_000 });
+      await clickAiPurgeNow({ page });
+      await clickAiPurgeConfirm({ page });
+
+      await expect(await getAiPurgeAccepted({ page })).toBeVisible({ timeout: 8_000 });
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// F-AI-DL-13 and F-AI-DL-14 — Manual purge + retention stats API (MINCRM-462)
+// ---------------------------------------------------------------------------
+
+test.describe('AI session retention stats and manual purge API', () => {
+  test.beforeEach(async ({ restClient }) => {
+    await loginAsAdmin(restClient);
+  });
+
+  test(
+    'F-AI-DL-13: POST /admin/ai/retention/purge returns 202 accepted immediately @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ restClient }) => {
+      // The manual-trigger audit entry has no record_id (it's a global settings action),
+      // so it is not queryable via the record-scoped /audit-log/record REST endpoint —
+      // covered instead by server/src/__tests__/aiRetentionController.test.ts.
+      const res = await restClient.post<{ accepted: boolean; message: string }>(
+        '/api/v1/admin/ai/retention/purge',
+        {},
+      );
+      expect(res.status).toBe(202);
+      expect(res.body.accepted).toBe(true);
+    },
+  );
+
+  test(
+    'F-AI-DL-14: GET /admin/ai/retention-stats returns session/message counts @functional @serial',
+    { tag: ['@functional', '@serial'] },
+    async ({ restClient }) => {
+      const res = await restClient.get<{ session_count: number; message_count: number }>(
+        '/api/v1/admin/ai/retention-stats',
+      );
+      expect(res.status).toBe(200);
+      expect(typeof res.body.session_count).toBe('number');
+      expect(typeof res.body.message_count).toBe('number');
     },
   );
 });

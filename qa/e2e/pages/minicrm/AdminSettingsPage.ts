@@ -1569,4 +1569,50 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  // ---------------------------------------------------------------------------
+  // AI retention stats + manual purge (MINCRM-462)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the retention stats summary text. */
+  async aiRetentionStatsLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-retention-stats' },
+          { type: 'text', value: 'storing' },
+        ],
+        { intent: 'session/message counts summary on the AI session retention section' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Purge now" button, opening the manual purge confirmation dialog. */
+  async clickAiPurgeNow() {
+    await this.page.click([
+      { type: 'testId', value: 'ai-purge-now-button' },
+      { type: 'role', value: 'button', options: { name: /purge now/i } },
+    ]);
+  }
+
+  /** Clicks the confirm button inside the manual purge confirmation dialog. */
+  async clickAiPurgeConfirm() {
+    await this.page.click([
+      { type: 'testId', value: 'ai-purge-confirm-button' },
+      { type: 'role', value: 'button', options: { name: /purge now/i } },
+    ]);
+  }
+
+  /** Returns a resolved locator for the manual purge "accepted" confirmation message. */
+  async aiPurgeAcceptedLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-purge-accepted' },
+          { type: 'text', value: 'started' },
+        ],
+        { intent: 'confirmation message shown after the manual AI session purge is accepted' },
+      )
+      .resolve();
+  }
 }

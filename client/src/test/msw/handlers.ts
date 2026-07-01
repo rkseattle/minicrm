@@ -2762,6 +2762,26 @@ export const handlers = [
     });
   }),
 
+  // ── AI retention handlers (MINCRM-462) ─────────────────────────────────────
+
+  /** AI retention stats: GET /api/v1/admin/ai/retention-stats */
+  http.get('/api/v1/admin/ai/retention-stats', () => {
+    return HttpResponse.json({ session_count: 0, message_count: 0 });
+  }),
+
+  /** AI retention manual purge: POST /api/v1/admin/ai/retention/purge */
+  http.post('/api/v1/admin/ai/retention/purge', () => {
+    return HttpResponse.json(
+      { accepted: true, message: 'AI session purge started' },
+      { status: 202 },
+    );
+  }),
+
+  /** AI retention window (user-facing): GET /api/v1/ai/retention-window */
+  http.get('/api/v1/ai/retention-window', () => {
+    return HttpResponse.json({ ai_session_retention_days: 90 });
+  }),
+
   /** Custom roles: GET /api/v1/custom-roles (MINCRM-542) */
   http.get('/api/v1/custom-roles', () => {
     return HttpResponse.json({

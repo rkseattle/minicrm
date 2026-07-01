@@ -24,6 +24,7 @@ import {
   deleteAiSession,
   sendAiMessage,
 } from '@/api/aiSessions.js';
+import { getMyRetentionWindow, MY_RETENTION_WINDOW_QUERY_KEY } from '@/api/ai.js';
 import type { AiSessionResponse, AiMessageResponse } from '@shared/schemas/aiSessionSchema.js';
 
 // ── Message bubble ────────────────────────────────────────────────────────────
@@ -185,6 +186,14 @@ export default function AiPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { enabled: featureEnabled, isLoading: featureFlagLoading } = useFeatureFlag('ai_nli_page');
+
+  // Retention window notice (MINCRM-462) — only fetched once the feature is enabled,
+  // since the endpoint is gated by the same flag.
+  const { data: retentionWindow } = useQuery({
+    queryKey: MY_RETENTION_WINDOW_QUERY_KEY,
+    queryFn: getMyRetentionWindow,
+    enabled: featureEnabled,
+  });
 
   // Explicit user-chosen session. When null, falls back to the first available session
   // from the sessions list (purely derived — no effect or ref needed).
@@ -664,6 +673,16 @@ export default function AiPage() {
               {t('ai.newSession')}
             </button>
           </div>
+
+          {/* Retention window notice (MINCRM-462) */}
+          {retentionWindow && (
+            <p
+              className="px-4 py-1.5 text-xs text-gray-500 border-b border-gray-50 flex-shrink-0"
+              data-testid="ai-retention-window-notice"
+            >
+              {t('ai.retentionWindowNotice', { days: retentionWindow.ai_session_retention_days })}
+            </p>
+          )}
 
           {/* Message thread — scrollable */}
           <div

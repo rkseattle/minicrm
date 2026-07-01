@@ -2071,7 +2071,15 @@
       "saveSuccess": "Fenêtre de rétention des sessions enregistrée.",
       "saveError": "Échec de l'enregistrement de la fenêtre de rétention. Veuillez réessayer.",
       "validationMin": "La fenêtre de rétention doit être d'au moins 30 jours.",
-      "validationMax": "La fenêtre de rétention doit être d'au plus 3 650 jours."
+      "validationMax": "La fenêtre de rétention doit être d'au plus 3 650 jours.",
+      "statsSummary": "Actuellement, {{sessions}} session(s) et {{messages}} message(s) sont stockés.",
+      "statsLoadError": "Échec du chargement du nombre de sessions/messages.",
+      "purgeNow": "Purger maintenant",
+      "purgeConfirmTitle": "Purger les sessions IA maintenant ?",
+      "purgeConfirmBody": "Cela supprime immédiatement toutes les sessions et messages IA antérieurs à la fenêtre de rétention configurée, en dehors du calendrier nocturne. Cette action est irréversible.",
+      "purgeConfirmAction": "Purger maintenant",
+      "purgeAccepted": "Purge démarrée. Le nombre de sessions et de messages sera bientôt mis à jour.",
+      "purgeError": "Échec du démarrage de la purge. Veuillez réessayer."
     },
     "tokenBudgets": {
       "heading": "Budgets de tokens",
@@ -2254,6 +2262,7 @@
   },
   "ai": {
     "pageTitle": "Assistant IA",
+    "retentionWindowNotice": "Votre historique de conversation est conservé pendant {{days}} jours.",
     "newSession": "Nouvelle session",
     "deleteSession": "Supprimer la session",
     "confirmDeleteTitle": "Supprimer cette conversation ?",
