@@ -2112,7 +2112,18 @@
       "statusWarning": "Avertissement",
       "statusExceeded": "Dépassé",
       "orgTotal": "({{total}} tokens total org)",
-      "noUsers": "Aucun utilisateur actif."
+      "noUsers": "Aucun utilisateur actif.",
+      "usageDashboardLink": "Voir le tableau de bord d'utilisation et de coûts"
+    },
+    "costRates": {
+      "heading": "Taux d'estimation des coûts",
+      "description": "Configurez le taux utilisé pour estimer les dépenses IA sur le tableau de bord d'utilisation. Les estimations sont calculées à partir du nombre de jetons auto-déclarés — ceci n'est pas rapproché de la facturation du fournisseur.",
+      "inputLabel": "Coût d'entrée (cents par million de jetons)",
+      "outputLabel": "Coût de sortie (cents par million de jetons)",
+      "save": "Enregistrer",
+      "saveSuccess": "Taux de coût enregistrés.",
+      "saveError": "Échec de l'enregistrement des taux de coût. Veuillez réessayer.",
+      "validationError": "Les taux de coût doivent être des nombres non négatifs."
     },
     "dataMinimization": {
       "heading": "Minimisation des données",
@@ -2280,6 +2291,38 @@
     },
     "empty": "Aucune équipe n'a encore été créée.",
     "loading": "Chargement des équipes…"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "Tableau de bord d'utilisation et de coûts IA",
+    "description": "Surveillez l'utilisation des tokens IA et les dépenses estimées dans votre organisation.",
+    "exportCsv": "Exporter CSV",
+    "exporting": "Exportation…",
+    "exportError": "Échec de l'exportation des données d'utilisation. Veuillez réessayer.",
+    "disclaimer": "Les estimations sont calculées à partir du nombre de jetons auto-déclarés multiplié par votre taux de coût configuré. Ceci n'est pas rapproché de la facturation du fournisseur.",
+    "disclaimerLink": "Configurer les taux de coût",
+    "presetCurrentMonth": "Mois en cours",
+    "presetLastMonth": "Mois dernier",
+    "presetLast3Months": "3 derniers mois",
+    "presetCustom": "Plage personnalisée",
+    "customStartLabel": "Date de début",
+    "customEndLabel": "Date de fin",
+    "loadError": "Échec du chargement des données d'utilisation. Veuillez réessayer.",
+    "totalTokens": "Total des tokens",
+    "tokenBreakdown": "{{input}} entrée / {{output}} sortie",
+    "estimatedCost": "Coût estimé",
+    "trend": "Tendance vs période précédente",
+    "trendUnavailable": "N/D",
+    "dailyChartHeading": "Consommation quotidienne de tokens",
+    "noDailyData": "Aucune donnée d'utilisation pour cette plage.",
+    "perUserHeading": "Utilisation par utilisateur",
+    "perFeatureHeading": "Utilisation par fonctionnalité",
+    "tableUser": "Utilisateur",
+    "tableTokens": "Tokens",
+    "tableCost": "Coût estimé",
+    "tableBudget": "% du budget",
+    "tableTopFeature": "Fonctionnalité principale",
+    "tableFeature": "Fonctionnalité",
+    "noUsageData": "Aucune donnée d'utilisation pour cette plage."
   },
   "ai": {
     "pageTitle": "Assistant IA",

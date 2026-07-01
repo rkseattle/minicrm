@@ -2601,6 +2601,9 @@ export const handlers = [
         { id: 'claude-opus-4-8', display_name: 'Claude Opus 4.8', provider: 'anthropic' },
       ],
       provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+      ai_session_retention_days: 90,
+      ai_input_cost_per_million_cents: 300,
+      ai_output_cost_per_million_cents: 1500,
     });
   }),
 
@@ -2630,6 +2633,9 @@ export const handlers = [
         },
       ],
       provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+      ai_session_retention_days: 90,
+      ai_input_cost_per_million_cents: 300,
+      ai_output_cost_per_million_cents: 1500,
     });
   }),
 
@@ -2653,6 +2659,9 @@ export const handlers = [
       data_posture: 'amber',
       available_models: [],
       provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+      ai_session_retention_days: 90,
+      ai_input_cost_per_million_cents: 300,
+      ai_output_cost_per_million_cents: 1500,
     });
   }),
 
@@ -2677,6 +2686,9 @@ export const handlers = [
       data_posture: acknowledged ? 'green' : 'amber',
       available_models: [],
       provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+      ai_session_retention_days: 90,
+      ai_input_cost_per_million_cents: 300,
+      ai_output_cost_per_million_cents: 1500,
     });
   }),
 
@@ -2807,6 +2819,88 @@ export const handlers = [
       excluded: boolean;
     };
     return HttpResponse.json(body);
+  }),
+
+  // ── AI usage dashboard handlers (MINCRM-459) ───────────────────────────────
+
+  /** AI usage: GET /api/v1/admin/ai/usage/summary */
+  http.get('/api/v1/admin/ai/usage/summary', () => {
+    return HttpResponse.json({
+      range_start: '2026-06-01T00:00:00.000Z',
+      range_end: '2026-07-01T00:00:00.000Z',
+      input_tokens: 10000,
+      output_tokens: 5000,
+      estimated_cost_cents: 105,
+      prior_period_estimated_cost_cents: 90,
+      per_user: [
+        {
+          user_id: 'uid-1',
+          user_name: 'Alice Admin',
+          user_email: 'alice@example.com',
+          input_tokens: 10000,
+          output_tokens: 5000,
+          estimated_cost_cents: 105,
+          budget_percentage: 20,
+          top_feature: 'nli_chat',
+        },
+      ],
+      per_feature: [
+        {
+          feature: 'nli_chat',
+          input_tokens: 10000,
+          output_tokens: 5000,
+          estimated_cost_cents: 105,
+        },
+      ],
+      ai_input_cost_per_million_cents: 300,
+      ai_output_cost_per_million_cents: 1500,
+    });
+  }),
+
+  /** AI usage: GET /api/v1/admin/ai/usage/daily */
+  http.get('/api/v1/admin/ai/usage/daily', () => {
+    return HttpResponse.json({
+      range_start: '2026-06-01T00:00:00.000Z',
+      range_end: '2026-07-01T00:00:00.000Z',
+      points: [{ date: '2026-06-15', input_tokens: 1000, output_tokens: 500 }],
+    });
+  }),
+
+  /** AI usage: GET /api/v1/admin/ai/usage/export */
+  http.get('/api/v1/admin/ai/usage/export', () => {
+    return new HttpResponse('date,user\n2026-06-15,Alice', {
+      status: 200,
+      headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+    });
+  }),
+
+  /** AI usage: PATCH /api/v1/admin/ai/cost-rates */
+  http.patch('/api/v1/admin/ai/cost-rates', async ({ request }) => {
+    const body = (await request.json()) as {
+      ai_input_cost_per_million_cents: number;
+      ai_output_cost_per_million_cents: number;
+    };
+    return HttpResponse.json({
+      enabled: false,
+      enabled_updated_at: null,
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      api_key_set: false,
+      deployment_mode: 'cloud_api',
+      base_url: '',
+      dpa_acknowledged: false,
+      dpa_acknowledged_by: '',
+      dpa_acknowledged_at: null,
+      dpa_acknowledged_for_provider: '',
+      custom_dpa_url: '',
+      dpa_status: 'not_acknowledged',
+      data_posture: 'amber',
+      available_models: [],
+      provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
+      ai_session_retention_days: 90,
+      ai_input_cost_per_million_cents: body.ai_input_cost_per_million_cents,
+      ai_output_cost_per_million_cents: body.ai_output_cost_per_million_cents,
+    });
   }),
 
   /** Custom roles: GET /api/v1/custom-roles (MINCRM-542) */

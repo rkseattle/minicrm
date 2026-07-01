@@ -2112,7 +2112,18 @@
       "statusWarning": "Warning",
       "statusExceeded": "Exceeded",
       "orgTotal": "({{total}} tokens org total)",
-      "noUsers": "No active users."
+      "noUsers": "No active users.",
+      "usageDashboardLink": "View usage & cost dashboard"
+    },
+    "costRates": {
+      "heading": "Cost Estimation Rates",
+      "description": "Configure the rate used to estimate AI spend on the usage dashboard. Estimates are calculated from self-reported token counts — this is not reconciled against provider billing.",
+      "inputLabel": "Input cost (cents per 1M tokens)",
+      "outputLabel": "Output cost (cents per 1M tokens)",
+      "save": "Save",
+      "saveSuccess": "Cost rates saved.",
+      "saveError": "Failed to save cost rates. Please try again.",
+      "validationError": "Cost rates must be nonnegative numbers."
     },
     "dataMinimization": {
       "heading": "Data Minimization",
@@ -2280,6 +2291,38 @@
     },
     "empty": "No teams have been created yet.",
     "loading": "Loading teams…"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "AI Usage & Cost Dashboard",
+    "description": "Monitor AI token usage and estimated spend across your organization.",
+    "exportCsv": "Export CSV",
+    "exporting": "Exporting…",
+    "exportError": "Failed to export usage data. Please try again.",
+    "disclaimer": "Estimates are calculated from self-reported token counts multiplied by your configured cost rate. This is not reconciled against provider billing.",
+    "disclaimerLink": "Configure cost rates",
+    "presetCurrentMonth": "Current month",
+    "presetLastMonth": "Last month",
+    "presetLast3Months": "Last 3 months",
+    "presetCustom": "Custom range",
+    "customStartLabel": "Start date",
+    "customEndLabel": "End date",
+    "loadError": "Failed to load usage data. Please try again.",
+    "totalTokens": "Total Tokens",
+    "tokenBreakdown": "{{input}} input / {{output}} output",
+    "estimatedCost": "Estimated Cost",
+    "trend": "Trend vs Prior Period",
+    "trendUnavailable": "N/A",
+    "dailyChartHeading": "Daily Token Consumption",
+    "noDailyData": "No usage data for this range.",
+    "perUserHeading": "Usage by User",
+    "perFeatureHeading": "Usage by Feature",
+    "tableUser": "User",
+    "tableTokens": "Tokens",
+    "tableCost": "Estimated Cost",
+    "tableBudget": "Budget %",
+    "tableTopFeature": "Top Feature",
+    "tableFeature": "Feature",
+    "noUsageData": "No usage data for this range."
   },
   "ai": {
     "pageTitle": "AI Assistant",

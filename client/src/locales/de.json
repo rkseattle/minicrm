@@ -2112,7 +2112,18 @@
       "statusWarning": "Warnung",
       "statusExceeded": "Überschritten",
       "orgTotal": "({{total}} Token gesamt org)",
-      "noUsers": "Keine aktiven Benutzer."
+      "noUsers": "Keine aktiven Benutzer.",
+      "usageDashboardLink": "Nutzungs- und Kosten-Dashboard anzeigen"
+    },
+    "costRates": {
+      "heading": "Kostenschätzungssätze",
+      "description": "Legen Sie den Satz fest, der zur Schätzung der KI-Ausgaben im Nutzungs-Dashboard verwendet wird. Schätzungen basieren auf selbst gemeldeten Token-Zahlen — dies wird nicht mit der Abrechnung des Anbieters abgeglichen.",
+      "inputLabel": "Eingabekosten (Cent pro 1 Mio. Token)",
+      "outputLabel": "Ausgabekosten (Cent pro 1 Mio. Token)",
+      "save": "Speichern",
+      "saveSuccess": "Kostensätze gespeichert.",
+      "saveError": "Fehler beim Speichern der Kostensätze. Bitte erneut versuchen.",
+      "validationError": "Kostensätze müssen nichtnegative Zahlen sein."
     },
     "dataMinimization": {
       "heading": "Datenminimierung",
@@ -2280,6 +2291,38 @@
     },
     "empty": "Es wurden noch keine Teams erstellt.",
     "loading": "Teams werden geladen…"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "KI-Nutzungs- und Kosten-Dashboard",
+    "description": "Überwachen Sie den KI-Token-Verbrauch und die geschätzten Ausgaben in Ihrer Organisation.",
+    "exportCsv": "CSV exportieren",
+    "exporting": "Wird exportiert…",
+    "exportError": "Fehler beim Exportieren der Nutzungsdaten. Bitte erneut versuchen.",
+    "disclaimer": "Schätzungen basieren auf selbst gemeldeten Token-Zahlen multipliziert mit Ihrem konfigurierten Kostensatz. Dies wird nicht mit der Abrechnung des Anbieters abgeglichen.",
+    "disclaimerLink": "Kostensätze konfigurieren",
+    "presetCurrentMonth": "Aktueller Monat",
+    "presetLastMonth": "Letzter Monat",
+    "presetLast3Months": "Letzte 3 Monate",
+    "presetCustom": "Benutzerdefinierter Zeitraum",
+    "customStartLabel": "Startdatum",
+    "customEndLabel": "Enddatum",
+    "loadError": "Fehler beim Laden der Nutzungsdaten. Bitte erneut versuchen.",
+    "totalTokens": "Token gesamt",
+    "tokenBreakdown": "{{input}} Eingabe / {{output}} Ausgabe",
+    "estimatedCost": "Geschätzte Kosten",
+    "trend": "Trend im Vergleich zum Vorzeitraum",
+    "trendUnavailable": "Nicht verfügbar",
+    "dailyChartHeading": "Täglicher Token-Verbrauch",
+    "noDailyData": "Keine Nutzungsdaten für diesen Zeitraum.",
+    "perUserHeading": "Nutzung nach Benutzer",
+    "perFeatureHeading": "Nutzung nach Funktion",
+    "tableUser": "Benutzer",
+    "tableTokens": "Token",
+    "tableCost": "Geschätzte Kosten",
+    "tableBudget": "Budget %",
+    "tableTopFeature": "Top-Funktion",
+    "tableFeature": "Funktion",
+    "noUsageData": "Keine Nutzungsdaten für diesen Zeitraum."
   },
   "ai": {
     "pageTitle": "KI-Assistent",

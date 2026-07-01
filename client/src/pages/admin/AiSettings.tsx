@@ -26,6 +26,7 @@ import {
   getEffectiveFieldExclusions,
   setFieldExclusion,
   AI_FIELD_EXCLUSIONS_QUERY_KEY,
+  setAiCostRates,
 } from '@/api/ai.js';
 import type {
   AiDeploymentMode,
@@ -626,9 +627,18 @@ function TokenBudgetSection() {
 
   return (
     <section aria-labelledby="token-budgets-heading" data-testid="ai-token-budgets-section">
-      <h2 id="token-budgets-heading" className="text-base font-semibold text-gray-900">
-        {t('aiSettings.tokenBudgets.heading')}
-      </h2>
+      <div className="flex items-start justify-between gap-4">
+        <h2 id="token-budgets-heading" className="text-base font-semibold text-gray-900">
+          {t('aiSettings.tokenBudgets.heading')}
+        </h2>
+        <Link
+          to="/admin/ai/usage"
+          className="text-sm text-indigo-600 hover:text-indigo-800 underline whitespace-nowrap"
+          data-testid="ai-usage-dashboard-link"
+        >
+          {t('aiSettings.tokenBudgets.usageDashboardLink')}
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-gray-600">{t('aiSettings.tokenBudgets.description')}</p>
 
       {/* Org-wide limit */}
@@ -732,6 +742,125 @@ function TokenBudgetSection() {
           </table>
         </div>
       </div>
+    </section>
+  );
+}
+
+// ── Cost rates section (MINCRM-459) ────────────────────────────────────────────
+
+function CostRatesSection({
+  inputCentsPerMillion,
+  outputCentsPerMillion,
+}: {
+  inputCentsPerMillion: number;
+  outputCentsPerMillion: number;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const [inputRate, setInputRate] = useState(String(inputCentsPerMillion));
+  const [outputRate, setOutputRate] = useState(String(outputCentsPerMillion));
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInputRate(String(inputCentsPerMillion));
+    setOutputRate(String(outputCentsPerMillion));
+  }, [inputCentsPerMillion, outputCentsPerMillion]);
+
+  const mutation = useMutation({
+    mutationFn: setAiCostRates,
+    onSuccess: (freshData) => {
+      queryClient.setQueryData(AI_CONFIG_QUERY_KEY, freshData);
+      void queryClient.invalidateQueries({ queryKey: AI_CONFIG_QUERY_KEY });
+      setSaveSuccess(true);
+      setSaveError('');
+      setTimeout(() => setSaveSuccess(false), 3000);
+    },
+    onError: () => {
+      setSaveError(t('aiSettings.costRates.saveError'));
+      setSaveSuccess(false);
+    },
+  });
+
+  const handleSave = () => {
+    const parsedInput = parseInt(inputRate, 10);
+    const parsedOutput = parseInt(outputRate, 10);
+    if (isNaN(parsedInput) || isNaN(parsedOutput) || parsedInput < 0 || parsedOutput < 0) {
+      setSaveError(t('aiSettings.costRates.validationError'));
+      return;
+    }
+    setSaveError('');
+    mutation.mutate({
+      ai_input_cost_per_million_cents: parsedInput,
+      ai_output_cost_per_million_cents: parsedOutput,
+    });
+  };
+
+  return (
+    <section aria-labelledby="cost-rates-heading" data-testid="ai-cost-rates-section">
+      <h2 id="cost-rates-heading" className="text-base font-semibold text-gray-900">
+        {t('aiSettings.costRates.heading')}
+      </h2>
+      <p className="mt-1 text-sm text-gray-600">{t('aiSettings.costRates.description')}</p>
+
+      <div className="mt-4 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 max-w-xs">
+          <label
+            htmlFor="ai-input-cost-rate"
+            className="block text-xs font-medium text-gray-700 mb-1"
+          >
+            {t('aiSettings.costRates.inputLabel')}
+          </label>
+          <input
+            id="ai-input-cost-rate"
+            type="number"
+            min={0}
+            value={inputRate}
+            onChange={(e) => setInputRate(e.target.value)}
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid="ai-input-cost-rate-input"
+          />
+        </div>
+        <div className="flex-1 max-w-xs">
+          <label
+            htmlFor="ai-output-cost-rate"
+            className="block text-xs font-medium text-gray-700 mb-1"
+          >
+            {t('aiSettings.costRates.outputLabel')}
+          </label>
+          <input
+            id="ai-output-cost-rate"
+            type="number"
+            min={0}
+            value={outputRate}
+            onChange={(e) => setOutputRate(e.target.value)}
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            data-testid="ai-output-cost-rate-input"
+          />
+        </div>
+        <div className="pt-6">
+          <Button
+            onClick={handleSave}
+            disabled={mutation.isPending}
+            data-testid="ai-cost-rates-save-button"
+          >
+            {mutation.isPending ? t('common.saving') : t('aiSettings.costRates.save')}
+          </Button>
+        </div>
+      </div>
+
+      {saveSuccess && (
+        <p className="mt-2 text-sm text-green-600" data-testid="ai-cost-rates-save-success">
+          {t('aiSettings.costRates.saveSuccess')}
+        </p>
+      )}
+      {saveError && (
+        <p className="mt-2 text-sm text-red-600" data-testid="ai-cost-rates-save-error">
+          {saveError}
+        </p>
+      )}
     </section>
   );
 }
@@ -1525,6 +1654,14 @@ export default function AiSettings() {
       {/* Token budget section (MINCRM-458) */}
       <div className="border-t border-gray-200 pt-6">
         <TokenBudgetSection />
+      </div>
+
+      {/* Cost rates section (MINCRM-459) */}
+      <div className="border-t border-gray-200 pt-6">
+        <CostRatesSection
+          inputCentsPerMillion={data.ai_input_cost_per_million_cents}
+          outputCentsPerMillion={data.ai_output_cost_per_million_cents}
+        />
       </div>
 
       {/* Data minimization section (MINCRM-461) */}

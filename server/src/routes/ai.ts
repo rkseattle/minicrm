@@ -30,6 +30,7 @@ import {
 import {
   getAiUsageSummaryHandler,
   getAiUsageDailyHandler,
+  exportAiUsageCsvHandler,
 } from '../controllers/aiUsageController.js';
 import {
   getAiSessionRetentionStatsHandler,
@@ -569,6 +570,44 @@ router.get(
   authenticate,
   requireRole('admin'),
   asyncHandler(getAiUsageDailyHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/usage/export:
+ *   get:
+ *     tags: [AI]
+ *     summary: Export AI usage data as CSV (per-user, per-day, per-feature)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: preset
+ *         schema: { type: string, enum: [current_month, last_month, last_3_months] }
+ *       - in: query
+ *         name: start
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: end
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: CSV file
+ *         content:
+ *           text/csv:
+ *             schema: { type: string }
+ *       400:
+ *         description: Invalid date range
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/usage/export',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(exportAiUsageCsvHandler),
 );
 
 /**

@@ -2112,7 +2112,18 @@
       "statusWarning": "Advertencia",
       "statusExceeded": "Superado",
       "orgTotal": "({{total}} tokens en total org)",
-      "noUsers": "No hay usuarios activos."
+      "noUsers": "No hay usuarios activos.",
+      "usageDashboardLink": "Ver panel de uso y costos"
+    },
+    "costRates": {
+      "heading": "Tarifas de estimación de costos",
+      "description": "Configura la tarifa utilizada para estimar el gasto en IA en el panel de uso. Las estimaciones se calculan a partir de recuentos de tokens autoinformados — esto no se concilia con la facturación del proveedor.",
+      "inputLabel": "Costo de entrada (centavos por 1M de tokens)",
+      "outputLabel": "Costo de salida (centavos por 1M de tokens)",
+      "save": "Guardar",
+      "saveSuccess": "Tarifas de costo guardadas.",
+      "saveError": "Error al guardar las tarifas de costo. Por favor, inténtalo de nuevo.",
+      "validationError": "Las tarifas de costo deben ser números no negativos."
     },
     "dataMinimization": {
       "heading": "Minimización de datos",
@@ -2280,6 +2291,38 @@
     },
     "empty": "Todavía no se han creado equipos.",
     "loading": "Cargando equipos…"
+  },
+  "aiUsageDashboard": {
+    "pageTitle": "Panel de uso y costos de IA",
+    "description": "Supervisa el uso de tokens de IA y el gasto estimado en tu organización.",
+    "exportCsv": "Exportar CSV",
+    "exporting": "Exportando…",
+    "exportError": "Error al exportar los datos de uso. Por favor, inténtalo de nuevo.",
+    "disclaimer": "Las estimaciones se calculan a partir de recuentos de tokens autoinformados multiplicados por tu tarifa de costo configurada. Esto no se concilia con la facturación del proveedor.",
+    "disclaimerLink": "Configurar tarifas de costo",
+    "presetCurrentMonth": "Mes actual",
+    "presetLastMonth": "Mes anterior",
+    "presetLast3Months": "Últimos 3 meses",
+    "presetCustom": "Rango personalizado",
+    "customStartLabel": "Fecha de inicio",
+    "customEndLabel": "Fecha de fin",
+    "loadError": "Error al cargar los datos de uso. Por favor, inténtalo de nuevo.",
+    "totalTokens": "Tokens totales",
+    "tokenBreakdown": "{{input}} entrada / {{output}} salida",
+    "estimatedCost": "Costo estimado",
+    "trend": "Tendencia vs. período anterior",
+    "trendUnavailable": "N/D",
+    "dailyChartHeading": "Consumo diario de tokens",
+    "noDailyData": "No hay datos de uso para este rango.",
+    "perUserHeading": "Uso por usuario",
+    "perFeatureHeading": "Uso por función",
+    "tableUser": "Usuario",
+    "tableTokens": "Tokens",
+    "tableCost": "Costo estimado",
+    "tableBudget": "% de presupuesto",
+    "tableTopFeature": "Función principal",
+    "tableFeature": "Función",
+    "noUsageData": "No hay datos de uso para este rango."
   },
   "ai": {
     "pageTitle": "Asistente IA",
