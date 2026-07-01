@@ -709,8 +709,9 @@ export async function cascadeGdprErasureToAiData(
   contactEmail: string,
   actor: AuditActor | null,
 ): Promise<void> {
-  const client: PoolClient = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
 
     // Build case-insensitive ILIKE search patterns for PII identifiers.
@@ -856,7 +857,9 @@ export async function cascadeGdprErasureToAiData(
 
     await client.query('COMMIT');
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) {
+      await client.query('ROLLBACK');
+    }
 
     // Log the error and record it in the cascade log (best-effort, outside tx).
     // original_name/original_email are stored on failed rows so a re-run can
@@ -877,7 +880,7 @@ export async function cascadeGdprErasureToAiData(
     // Errors are intentionally not re-thrown — this is fire-and-forget.
     logger.error({ err, contactId }, 'gdpr: AI cascade failed');
   } finally {
-    client.release();
+    client?.release();
   }
 }
 
