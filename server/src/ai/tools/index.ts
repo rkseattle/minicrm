@@ -117,6 +117,21 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['getEmailTemplate', 'settings:manage' as Capability],
 ]);
 
+// ── Feature flag map ───────────────────────────────────────────────────────────
+//
+// Maps a tool name to the feature flag that must be enabled for the calling user
+// before the tool may execute. Mirrors the flag each tool's equivalent HTTP
+// endpoint is gated by — an NLI tool must not expose data or actions the same
+// user couldn't reach via the UI when the flag is off. Tools absent from this
+// map are not gated by any feature flag (only by TOOL_CAPABILITY_MAP, if present).
+export const TOOL_FEATURE_FLAG_MAP: ReadonlyMap<string, string> = new Map([
+  ['getWinLossPatterns', 'ai_win_loss_insights'],
+  ['getContactChampionBlockerStatus', 'ai_champion_blocker_detection'],
+  ['getAccountChurnExpansionSignal', 'ai_churn_expansion_detection'],
+  ['getAtRiskAndExpansionAccounts', 'ai_churn_expansion_detection'],
+  ['getObjectionPrecedents', 'ai_objection_pattern_matching'],
+]);
+
 // ── Built-in role capability fallback ─────────────────────────────────────────
 //
 // Static snapshot of the capability matrix seeded by migrations 106, 109, and 114.

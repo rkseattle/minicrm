@@ -69,6 +69,7 @@ export default function ProposalDraftEditor({
   const [focusNotes, setFocusNotes] = useState('');
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const regenerateMutation = useMutation({
     mutationFn: (notes: string) => generateProposalDraft(dealId, notes),
@@ -115,9 +116,14 @@ export default function ProposalDraftEditor({
   }
 
   async function handleCopyToClipboard(): Promise<void> {
-    await navigator.clipboard.writeText(draftToMarkdown(draft, dealName));
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
+    try {
+      await navigator.clipboard.writeText(draftToMarkdown(draft, dealName));
+      setCopyError(null);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      setCopyError(t('proposalDraft.clipboardError'));
+    }
   }
 
   function handleDownloadMarkdown(): void {
@@ -185,10 +191,22 @@ export default function ProposalDraftEditor({
             data-testid="proposal-draft-dismiss-button"
             onClick={onDismiss}
           >
-            {t('common.close')}
+            {t('nav.close')}
           </Button>
         </div>
       </header>
+
+      {(docxMutation.isError || copyError) && (
+        <div className="border-b border-gray-200 bg-red-50 px-6 py-2 shrink-0">
+          <p
+            role="alert"
+            className="text-sm text-red-600"
+            data-testid="proposal-draft-export-error"
+          >
+            {docxMutation.isError ? t('proposalDraft.docxExportError') : copyError}
+          </p>
+        </div>
+      )}
 
       {showRegenerateForm && (
         <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 shrink-0">

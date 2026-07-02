@@ -2345,6 +2345,8 @@
     "downloadMarkdown": "Télécharger en Markdown",
     "downloadDocx": "Télécharger en DOCX",
     "exporting": "Exportation…",
+    "docxExportError": "Échec de l'exportation du DOCX. Veuillez réessayer.",
+    "clipboardError": "Échec de la copie dans le presse-papiers. Veuillez réessayer.",
     "regenerate": "Régénérer",
     "regenerating": "Régénération…",
     "regenerateSubmit": "Régénérer",
@@ -2372,6 +2374,7 @@
       "Other": "Autre"
     },
     "aiInferredLabel": "Catégorie d'objection déduite par l'IA",
+    "classificationFailed": "Impossible de vérifier si cette note contient une objection.",
     "howHandledBefore": "Comment cela a-t-il été géré auparavant ?",
     "precedentsPanelLabel": "Précédents d'objections passées",
     "loadFailed": "Échec du chargement des précédents.",

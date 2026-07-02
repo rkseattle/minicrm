@@ -2345,6 +2345,8 @@
     "downloadMarkdown": "Download as Markdown",
     "downloadDocx": "Download as DOCX",
     "exporting": "Exporting…",
+    "docxExportError": "Failed to export DOCX. Please try again.",
+    "clipboardError": "Failed to copy to clipboard. Please try again.",
     "regenerate": "Regenerate",
     "regenerating": "Regenerating…",
     "regenerateSubmit": "Regenerate",
@@ -2372,6 +2374,7 @@
       "Other": "Other"
     },
     "aiInferredLabel": "AI-inferred objection category",
+    "classificationFailed": "Couldn't check this note for objections.",
     "howHandledBefore": "How was this handled before?",
     "precedentsPanelLabel": "Past objection precedents",
     "loadFailed": "Failed to load precedents.",

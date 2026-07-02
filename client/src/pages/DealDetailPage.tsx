@@ -36,7 +36,11 @@ import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import { runDealHealthCheck } from '@/api/dealHealth.js';
 import { getStageAdvancement, stageAdvancementQueryKey } from '@/api/stageAdvancement.js';
-import { getDealStakeholderMap, dealStakeholderMapQueryKey } from '@/api/championBlocker.js';
+import {
+  getDealStakeholderMap,
+  dealStakeholderMapQueryKey,
+  dismissContactChampionBlocker,
+} from '@/api/championBlocker.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
 import { generateProposalDraft } from '@/api/proposalDraft.js';
 import ProposalDraftEditor from '@/components/ProposalDraftEditor.js';
@@ -97,10 +101,26 @@ export default function DealDetailPage() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState('');
-  const [dealHealth, setDealHealth] = useState<DealHealthCheckResponse | null>(null);
+  // Not persisted, on-demand AI results. Each is tagged with the deal id it was generated
+  // for and only rendered when that id still matches the current :id param — otherwise a
+  // client-side navigation to a different deal (React Router does not remount on :id param
+  // change alone) would keep showing deal A's health check / proposal draft under deal B.
+  const [dealHealthResult, setDealHealthResult] = useState<{
+    dealId: string;
+    data: DealHealthCheckResponse;
+  } | null>(null);
   const [dealHealthError, setDealHealthError] = useState<string | null>(null);
-  const [generatedProposalDraft, setGeneratedProposalDraft] = useState<ProposalDraft | null>(null);
+  const [proposalDraftResult, setProposalDraftResult] = useState<{
+    dealId: string;
+    data: ProposalDraft;
+  } | null>(null);
   const [proposalDraftError, setProposalDraftError] = useState<string | null>(null);
+  const dealHealth =
+    dealHealthResult !== null && dealHealthResult.dealId === id ? dealHealthResult.data : null;
+  const generatedProposalDraft =
+    proposalDraftResult !== null && proposalDraftResult.dealId === id
+      ? proposalDraftResult.data
+      : null;
   const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
   const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
@@ -146,6 +166,17 @@ export default function DealDetailPage() {
     queryKey: dealStakeholderMapQueryKey(id ?? ''),
     queryFn: () => getDealStakeholderMap(id!),
     enabled: Boolean(id) && championBlockerEnabled && Boolean(data?.deal),
+  });
+
+  // Tracks which contact's badge is currently being dismissed, since one mutation
+  // is shared across every badge in the linked-contacts list.
+  const [dismissingContactId, setDismissingContactId] = useState<string | null>(null);
+  const dismissChampionBlockerMutation = useMutation({
+    mutationFn: (contactId: string) => dismissContactChampionBlocker(contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dealStakeholderMapQueryKey(id ?? '') });
+    },
+    onSettled: () => setDismissingContactId(null),
   });
 
   const { data: accountsData } = useQuery({
@@ -298,7 +329,7 @@ export default function DealDetailPage() {
   const dealHealthMutation = useMutation({
     mutationFn: () => runDealHealthCheck(id!),
     onSuccess: (result) => {
-      setDealHealth(result);
+      setDealHealthResult({ dealId: id!, data: result });
       setDealHealthError(null);
     },
     onError: (error: unknown) => {
@@ -309,7 +340,7 @@ export default function DealDetailPage() {
   const proposalDraftMutation = useMutation({
     mutationFn: () => generateProposalDraft(id!),
     onSuccess: (result) => {
-      setGeneratedProposalDraft(result.draft);
+      setProposalDraftResult({ dealId: id!, data: result.draft });
       setProposalDraftError(null);
     },
     onError: (error: unknown) => {
@@ -700,7 +731,7 @@ export default function DealDetailPage() {
                 dealId={id}
                 dealName={deal.name}
                 initialDraft={generatedProposalDraft}
-                onDismiss={() => setGeneratedProposalDraft(null)}
+                onDismiss={() => setProposalDraftResult(null)}
               />
             )}
 
@@ -788,6 +819,11 @@ export default function DealDetailPage() {
                                       contactId={contact.id}
                                       status={stakeholder.status}
                                       isOverridden={stakeholder.is_overridden}
+                                      onDismiss={() => {
+                                        setDismissingContactId(contact.id);
+                                        dismissChampionBlockerMutation.mutate(contact.id);
+                                      }}
+                                      isDismissing={dismissingContactId === contact.id}
                                     />
                                   )}
                               </div>

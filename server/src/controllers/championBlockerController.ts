@@ -20,6 +20,14 @@ const overrideSchema = z.object({
   reason: z.string().trim().max(1000).nullable().optional(),
 });
 
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only dismiss or override champion/blocker classifications for contacts you own. Contact an admin to act on contacts owned by others.',
+  },
+};
+
 /**
  * GET /api/contacts/:id/champion-blocker
  * Returns the effective champion/blocker classification for the contact.
@@ -51,7 +59,12 @@ export async function dismissContactChampionBlockerHandler(
     return;
   }
 
-  await dismissContactClassification(id, req.user!.id);
+  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+    return;
+  }
+
+  await dismissContactClassification(id, { id: req.user!.id, name: req.user!.name });
   const result = await getContactChampionBlockerStatus(id);
   res.status(200).json(result);
 }
@@ -79,12 +92,15 @@ export async function overrideContactChampionBlockerHandler(
     return;
   }
 
-  await overrideContactClassification(
-    id,
-    parsed.data.status,
-    parsed.data.reason ?? null,
-    req.user!.id,
-  );
+  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+    return;
+  }
+
+  await overrideContactClassification(id, parsed.data.status, parsed.data.reason ?? null, {
+    id: req.user!.id,
+    name: req.user!.name,
+  });
   const result = await getContactChampionBlockerStatus(id);
   res.status(200).json(result);
 }

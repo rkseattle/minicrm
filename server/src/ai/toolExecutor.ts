@@ -20,7 +20,8 @@
 
 import logger from '../logger.js';
 import type { AuditActor } from '../services/auditService.js';
-import { ADMIN_ONLY_TOOL_NAMES } from './tools/index.js';
+import { ADMIN_ONLY_TOOL_NAMES, TOOL_FEATURE_FLAG_MAP } from './tools/index.js';
+import { isFlagEnabledForUser } from '../services/featureFlagService.js';
 import type { AiPendingAction } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import { STAGE_TREND_DAYS_OPTIONS } from '../services/reportService.js';
 import type { NoteEntityType } from '@minicrm/shared/schemas/noteSchema.js';
@@ -161,6 +162,26 @@ export async function executeToolCall(
       'NLI permission denied: admin-only tool called by non-admin (MINCRM-434)',
     );
     throw Object.assign(new Error(`Tool '${toolName}' requires admin role`), { statusCode: 403 });
+  }
+
+  // A tool tied to a feature-flagged AI capability must not be reachable via NLI
+  // when that flag is off for the user — the equivalent HTTP endpoint enforces the
+  // same flag via requireFeatureEnabled(), and buildToolSet does not filter by flag.
+  const requiredFlag = TOOL_FEATURE_FLAG_MAP.get(toolName);
+  if (requiredFlag) {
+    const enabled = await isFlagEnabledForUser(requiredFlag, ctx.userId, ctx.userRole);
+    if (!enabled) {
+      logger.warn(
+        { toolName, userId: ctx.userId, requiredFlag },
+        'NLI permission denied: feature flag disabled for tool',
+      );
+      throw Object.assign(
+        new Error(`Tool '${toolName}' requires the '${requiredFlag}' feature to be enabled`),
+        {
+          statusCode: 403,
+        },
+      );
+    }
   }
 
   const requestingUser = { id: ctx.userId, role: ctx.userRole };

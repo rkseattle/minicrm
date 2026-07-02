@@ -14,12 +14,13 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 import { createNotification } from './notificationFeedService.js';
-import { SYSTEM_ACTOR, writeAuditEntryBestEffort } from './auditService.js';
+import { SYSTEM_ACTOR, writeAuditEntry } from './auditService.js';
 import type {
   AccountChurnExpansionSignal,
   AccountChurnExpansionResponse,
@@ -31,6 +32,25 @@ const IS_E2E = process.env.E2E === 'true';
 
 /** Signals above this confidence trigger an in-app notification to the account owner. */
 const HIGH_CONFIDENCE_NOTIFICATION_THRESHOLD = 0.85;
+
+/**
+ * Runs fn inside a BEGIN/COMMIT/ROLLBACK transaction on a single client, so the
+ * signal clear+insert and its audit entry can never be observed half-applied.
+ */
+async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
 
 interface AiConfigRow {
   model: string;
@@ -255,10 +275,23 @@ async function processAccount(
     // No signal this run — clear a prior active signal since positive/neutral activity
     // contradicts it, per the ticket's "signals cleared when new positive activity" AC.
     if (existing) {
-      await pool.query(
-        `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
-        [existing.id],
-      );
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
+          [existing.id],
+        );
+        await writeAuditEntry(client, {
+          recordType: 'account',
+          recordId: account.id,
+          recordName: account.name,
+          eventType: 'updated',
+          fieldName: 'churn_expansion_signal',
+          oldValue: existing.signal_type,
+          newValue: null,
+          changedById: SYSTEM_ACTOR.id,
+          changedByName: SYSTEM_ACTOR.name,
+        });
+      });
     }
     return;
   }
@@ -266,34 +299,36 @@ async function processAccount(
   // Same signal type already active — do not insert a duplicate row.
   if (existing && existing.signal_type === result.signalType) return;
 
-  if (existing) {
-    await pool.query(
-      `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
-      [existing.id],
+  await withTransaction(async (client) => {
+    if (existing) {
+      await client.query(
+        `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
+        [existing.id],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO account_churn_expansion_signals (account_id, signal_type, confidence, contributing_factors)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        account.id,
+        result.signalType,
+        result.confidence,
+        JSON.stringify(result.factors.map((description) => ({ description }))),
+      ],
     );
-  }
 
-  await pool.query(
-    `INSERT INTO account_churn_expansion_signals (account_id, signal_type, confidence, contributing_factors)
-     VALUES ($1, $2, $3, $4)`,
-    [
-      account.id,
-      result.signalType,
-      result.confidence,
-      JSON.stringify(result.factors.map((description) => ({ description }))),
-    ],
-  );
-
-  await writeAuditEntryBestEffort({
-    recordType: 'account',
-    recordId: account.id,
-    recordName: account.name,
-    eventType: 'updated',
-    fieldName: 'churn_expansion_signal',
-    oldValue: existing?.signal_type ?? null,
-    newValue: result.signalType,
-    changedById: SYSTEM_ACTOR.id,
-    changedByName: SYSTEM_ACTOR.name,
+    await writeAuditEntry(client, {
+      recordType: 'account',
+      recordId: account.id,
+      recordName: account.name,
+      eventType: 'updated',
+      fieldName: 'churn_expansion_signal',
+      oldValue: existing?.signal_type ?? null,
+      newValue: result.signalType,
+      changedById: SYSTEM_ACTOR.id,
+      changedByName: SYSTEM_ACTOR.name,
+    });
   });
 
   if (

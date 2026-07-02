@@ -41,12 +41,32 @@ export default function ObjectionInsights({ activityId, hasNotes }: ObjectionIns
   const category = classificationQuery.data?.category;
 
   const precedentsQuery = useQuery({
-    queryKey: category ? objectionPrecedentsQueryKey(category) : ['objectionPrecedents', 'none'],
+    queryKey: category
+      ? objectionPrecedentsQueryKey(activityId, category)
+      : ['objectionPrecedents', activityId, 'none'],
     queryFn: () => getObjectionPrecedents(activityId, category!),
     enabled: showPrecedents && Boolean(category),
   });
 
-  if (!featureEnabled || !hasNotes || !category) {
+  if (!featureEnabled || !hasNotes) {
+    return null;
+  }
+
+  // Distinguish a genuine classification failure from "no objection detected" —
+  // both otherwise render nothing, which hid provider/network errors from the rep.
+  if (classificationQuery.isError) {
+    return (
+      <p
+        role="alert"
+        className="mt-2 text-xs text-red-600"
+        data-testid={`objection-classification-error-${activityId}`}
+      >
+        {t('objections.classificationFailed')}
+      </p>
+    );
+  }
+
+  if (!category) {
     return null;
   }
 

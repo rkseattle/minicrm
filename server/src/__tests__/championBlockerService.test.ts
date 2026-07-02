@@ -249,12 +249,15 @@ describe('analyzeContactSignals', () => {
 describe('dismissContactClassification / overrideContactClassification', () => {
   it('dismissal suppresses the classification without changing the underlying status', async () => {
     const contactId = await createTestContact();
-    await overrideContactClassification(contactId, 'champion', null, ownerId);
+    await overrideContactClassification(contactId, 'champion', null, {
+      id: ownerId,
+      name: OWNER_USER.name,
+    });
 
     let status = await getContactChampionBlockerStatus(contactId);
     expect(status.dismissed).toBe(false);
 
-    await dismissContactClassification(contactId, ownerId);
+    await dismissContactClassification(contactId, { id: ownerId, name: OWNER_USER.name });
     status = await getContactChampionBlockerStatus(contactId);
     expect(status.dismissed).toBe(true);
     // Override status is still reported — dismissal is a separate feedback signal per the ticket.
@@ -286,12 +289,10 @@ describe('dismissContactClassification / overrideContactClassification', () => {
     expect(status.status).toBe('likely_blocker');
     expect(status.is_overridden).toBe(false);
 
-    await overrideContactClassification(
-      contactId,
-      'neutral',
-      'Not accurate — this was sarcasm',
-      ownerId,
-    );
+    await overrideContactClassification(contactId, 'neutral', 'Not accurate — this was sarcasm', {
+      id: ownerId,
+      name: OWNER_USER.name,
+    });
     status = await getContactChampionBlockerStatus(contactId);
     expect(status.status).toBe('neutral');
     expect(status.is_overridden).toBe(true);

@@ -28,6 +28,11 @@ COPY --from=builder /app/server/dist/server/src ./server/dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/server/node_modules ./server/node_modules
 
+# node_modules/@minicrm/shared is a workspace symlink to ../../shared — tsc emits
+# shared's compiled .js in-place next to the .ts sources (no outDir), so that
+# directory must exist in the runtime image or the symlink resolves to nothing.
+COPY --from=builder /app/shared ./shared
+
 # Migration files are required at startup
 COPY db/ ./db/
 

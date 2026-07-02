@@ -2345,6 +2345,8 @@
     "downloadMarkdown": "下载为 Markdown",
     "downloadDocx": "下载为 DOCX",
     "exporting": "导出中…",
+    "docxExportError": "导出 DOCX 失败，请重试。",
+    "clipboardError": "复制到剪贴板失败，请重试。",
     "regenerate": "重新生成",
     "regenerating": "重新生成中…",
     "regenerateSubmit": "重新生成",
@@ -2372,6 +2374,7 @@
       "Other": "其他"
     },
     "aiInferredLabel": "AI 推断的异议类别",
+    "classificationFailed": "无法检查此备注是否包含异议。",
     "howHandledBefore": "以前是如何处理的？",
     "precedentsPanelLabel": "以往异议处理案例",
     "loadFailed": "加载案例失败。",
