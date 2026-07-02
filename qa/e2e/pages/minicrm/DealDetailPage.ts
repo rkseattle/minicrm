@@ -509,4 +509,32 @@ export class DealDetailPage {
       )
       .resolve();
   }
+
+  // ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
+
+  /** Returns a resolved locator for a specific activity's objection category badge. */
+  async objectionCategoryBadgeLocator(activityId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `objection-category-badge-${activityId}` },
+          { type: 'css', value: `[data-testid="objection-category-badge-${activityId}"]` },
+        ],
+        { intent: 'AI objection category badge on an activity in the timeline' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for a specific activity's card in the timeline. */
+  async activityItemLocator(activityId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `activity-item-${activityId}` },
+          { type: 'css', value: `[data-testid="activity-item-${activityId}"]` },
+        ],
+        { intent: 'activity timeline card for a specific activity' },
+      )
+      .resolve();
+  }
 }

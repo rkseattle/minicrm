@@ -113,6 +113,8 @@ import {
   getAccountChurnExpansionSignal,
   listChurnExpansionSignals,
 } from '../services/churnExpansionService.js';
+import { findObjectionPrecedents } from '../services/objectionMatchingService.js';
+import type { ObjectionCategory } from '@minicrm/shared/schemas/objectionSchema.js';
 
 // ── Pipeline / Stage ───────────────────────────────────────────────────────────
 import { listPipelines, findPipelineById } from '../services/pipelineService.js';
@@ -628,6 +630,11 @@ export async function executeToolCall(
       case 'deleteActivity': {
         await deleteActivity(toolInput.id as string, ctx.actor);
         return { deleted: true, id: toolInput.id };
+      }
+
+      case 'getObjectionPrecedents': {
+        const category = toolInput.category as ObjectionCategory;
+        return await findObjectionPrecedents(category);
       }
 
       // ── Notes ────────────────────────────────────────────────────────────────

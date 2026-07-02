@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge.js';
 import { Button } from '@/components/ui/Button.js';
 import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
+import ObjectionInsights from '@/components/ObjectionInsights.js';
 import {
   listActivities,
   createActivity,
@@ -364,6 +365,10 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                             {activity.notes}
                           </p>
                         )}
+                        <ObjectionInsights
+                          activityId={activity.id}
+                          hasNotes={Boolean(activity.notes)}
+                        />
                         {activity.outcome && (
                           <p
                             className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"

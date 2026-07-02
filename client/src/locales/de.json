@@ -2335,6 +2335,25 @@
     "tableFeature": "Funktion",
     "noUsageData": "Keine Nutzungsdaten für diesen Zeitraum."
   },
+  "objections": {
+    "category": {
+      "Price": "Preis",
+      "Timing": "Zeitpunkt",
+      "Competitor": "Mitbewerber",
+      "ProductFit": "Produkt-Fit",
+      "Authority": "Entscheidungsbefugnis",
+      "Risk": "Risiko",
+      "Other": "Sonstiges"
+    },
+    "aiInferredLabel": "KI-abgeleitete Einwandkategorie",
+    "howHandledBefore": "Wie wurde das bisher gehandhabt?",
+    "precedentsPanelLabel": "Frühere Einwandfälle",
+    "loadFailed": "Präzedenzfälle konnten nicht geladen werden.",
+    "objectionQuote": "„{{quote}}“",
+    "insufficientData": "Noch nicht genügend gewonnene Abschlüsse ({{count}} von {{required}} erforderlich).",
+    "noPrecedentsFound": "Keine ähnlichen Einwände in früheren gewonnenen Abschlüssen gefunden.",
+    "timeToClose": "Abgeschlossen in {{days}} Tagen nach diesem Einwand"
+  },
   "churnExpansion": {
     "churnRiskDetected": "Abwanderungsrisiko erkannt",
     "expansionSignalDetected": "Expansionssignal erkannt",

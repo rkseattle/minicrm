@@ -2335,6 +2335,25 @@
     "tableFeature": "功能",
     "noUsageData": "此范围内没有使用数据。"
   },
+  "objections": {
+    "category": {
+      "Price": "价格",
+      "Timing": "时机",
+      "Competitor": "竞争对手",
+      "ProductFit": "产品契合度",
+      "Authority": "决策权限",
+      "Risk": "风险",
+      "Other": "其他"
+    },
+    "aiInferredLabel": "AI 推断的异议类别",
+    "howHandledBefore": "以前是如何处理的？",
+    "precedentsPanelLabel": "以往异议处理案例",
+    "loadFailed": "加载案例失败。",
+    "objectionQuote": "“{{quote}}”",
+    "insufficientData": "已成交的赢单数据尚不足（{{count}}/{{required}}）。",
+    "noPrecedentsFound": "在以往赢单中未找到类似异议。",
+    "timeToClose": "此异议后 {{days}} 天成交"
+  },
   "churnExpansion": {
     "churnRiskDetected": "检测到流失风险",
     "expansionSignalDetected": "检测到扩展信号",

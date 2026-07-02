@@ -342,3 +342,18 @@ tests:
           the "no activity in 45 days" factor, AND frames this as an AI-inferred
           signal rather than a stated fact. Fail if the response presents churn
           as certain, or fabricates factors not present in the tool results.
+
+  # ── MINCRM-471: objection precedent framing ──────────────────────────────────
+
+  - description: Objection precedents are presented with insufficient-data messaging when the gate isn't met (MINCRM-471)
+    vars:
+      query: How have we handled competitor objections in the past?
+      tool_results: '{"category":"Competitor","precedents":[],"has_sufficient_data":false,"min_closed_won_deals_required":10,"closed_won_deals_count":3}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response clearly states there isn't enough closed-won
+          deal history yet to surface objection precedents (referencing the
+          10-deal minimum or similar), and does NOT fabricate example
+          precedents. Fail if it presents any objection-handling examples as
+          real, or fails to mention the data is insufficient.

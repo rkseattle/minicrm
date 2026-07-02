@@ -2499,6 +2499,26 @@ export const handlers = [
     });
   }),
 
+  // ── Objection pattern matching (MINCRM-471) ─────────────────────────────────────
+
+  /** Activities: POST /api/activities/:id/classify-objection — defaults to no objection detected. */
+  http.post('/api/v1/activities/:id/classify-objection', () => {
+    return HttpResponse.json(null);
+  }),
+
+  /** Activities: GET /api/activities/:id/objection-precedents — defaults to insufficient data. */
+  http.get('/api/v1/activities/:id/objection-precedents', ({ request }) => {
+    const url = new URL(request.url);
+    const category = url.searchParams.get('category') ?? 'Price';
+    return HttpResponse.json({
+      category,
+      precedents: [],
+      has_sufficient_data: false,
+      min_closed_won_deals_required: 10,
+      closed_won_deals_count: 0,
+    });
+  }),
+
   // ── Churn/expansion detection (MINCRM-469) ──────────────────────────────────────
 
   /** Accounts: GET /api/accounts/:id/churn-expansion-signal — defaults to no active signal. */
