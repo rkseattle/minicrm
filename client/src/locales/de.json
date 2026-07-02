@@ -2335,6 +2335,41 @@
     "tableFeature": "Funktion",
     "noUsageData": "Keine Nutzungsdaten für diesen Zeitraum."
   },
+  "championBlocker": {
+    "status": {
+      "champion": "Fürsprecher",
+      "likely_champion": "Wahrscheinlicher Fürsprecher",
+      "neutral": "Neutral",
+      "likely_blocker": "Wahrscheinlicher Blockierer",
+      "blocker": "Blockierer"
+    },
+    "whyButton": "Warum?",
+    "whyLabel": "Warum wurde dieser Kontakt so eingestuft?",
+    "aiInferredLabel": "KI-abgeleitet, kein Fakt",
+    "notAccurate": "Nicht zutreffend",
+    "dismissing": "Wird verworfen…",
+    "stakeholderMapHeading": "Stakeholder-Karte",
+    "singleThreadedRiskWarning": "Risiko durch Einzelkontakt — nur ein Kontakt ist bei diesem Geschäft eingebunden.",
+    "stakeholderMapSummary": "{{engaged}} Kontakte eingebunden · {{champions}} Fürsprecher · {{blockers}} Blockierer"
+  },
+  "insights": {
+    "winLossHeading": "Gewinn-/Verlust-Muster-Insights",
+    "notAvailable": "Diese Funktion ist nicht verfügbar.",
+    "loadFailed": "Gewinn-/Verlust-Insights konnten nicht geladen werden.",
+    "exportCsv": "CSV exportieren",
+    "exportPdf": "PDF exportieren",
+    "exporting": "Wird exportiert…",
+    "exportFailed": "Export fehlgeschlagen. Bitte erneut versuchen.",
+    "insufficientData": "Noch nicht genügend Verlaufsdaten zu abgeschlossenen Geschäften — Muster erscheinen ab {{count}}+ abgeschlossenen Geschäften.",
+    "winPatternsHeading": "Erfolgsmuster",
+    "winPatternsEmpty": "Noch keine Erfolgsmuster verfügbar.",
+    "lossPatternsHeading": "Verlustmuster",
+    "lossPatternsEmpty": "Noch keine Verlustmuster verfügbar.",
+    "lossReasonTrendsHeading": "Trends bei Verlustgründen",
+    "lossReasonTrendsEmpty": "Noch keine Trends bei Verlustgründen verfügbar.",
+    "trendBadge": "Trend",
+    "insightStats": "{{winRateWith}} vs {{winRateWithout}} · {{count}} Geschäfte"
+  },
   "ai": {
     "pageTitle": "KI-Assistent",
     "retentionWindowNotice": "Ihr Gesprächsverlauf wird {{days}} Tage lang aufbewahrt.",

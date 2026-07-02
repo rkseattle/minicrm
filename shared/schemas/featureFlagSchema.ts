@@ -7,9 +7,9 @@
 import { z } from 'zod';
 
 /**
- * All valid feature flag keys — must match the seed rows in migrations 066 and 071.
+ * All valid feature flag keys — must match the seed rows in migrations 066, 071, and 140.
  * AI sub-feature keys (ai_nli_page through ai_stage_advancement) were added in
- * migration 071 (MINCRM-460).
+ * migration 071 (MINCRM-460). ai_win_loss_insights was added in migration 140 (MINCRM-464).
  */
 export const FEATURE_FLAG_KEYS = [
   'notes',
@@ -40,6 +40,8 @@ export const FEATURE_FLAG_KEYS = [
   'ai_lead_score_narrative',
   'ai_deal_health_check',
   'ai_stage_advancement',
+  'ai_win_loss_insights',
+  'ai_champion_blocker_detection',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

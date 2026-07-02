@@ -24,6 +24,92 @@ describe('ContactDetailPage', () => {
     });
   });
 
+  // ── AI champion/blocker classification (MINCRM-466) ─────────────────────────────
+
+  it('shows no badge for the default neutral classification', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId(`champion-blocker-badge-${CONTACT_1.id}`)).not.toBeInTheDocument();
+  });
+
+  it('shows the champion badge when the classification is champion', async () => {
+    server.use(
+      http.get('/api/v1/contacts/:id/champion-blocker', () =>
+        HttpResponse.json({
+          contact_id: CONTACT_1.id,
+          status: 'champion',
+          is_overridden: false,
+          recent_signals: [
+            {
+              description: 'Mentioned sharing proposal with VP Finance',
+              detected_at: '2026-06-28T00:00:00.000Z',
+            },
+          ],
+          dismissed: false,
+          updated_at: '2026-06-28T00:00:00.000Z',
+        }),
+      ),
+    );
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`champion-blocker-badge-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`champion-blocker-badge-${CONTACT_1.id}`)).toHaveTextContent(
+      'Champion',
+    );
+  });
+
+  it('dismisses the classification when Not accurate is clicked', async () => {
+    // Stateful mock: the GET handler reflects whatever the dismiss POST last wrote, so the
+    // query-invalidation refetch after dismissing sees dismissed=true, matching real backend behavior.
+    let dismissed = false;
+    server.use(
+      http.get('/api/v1/contacts/:id/champion-blocker', () =>
+        HttpResponse.json({
+          contact_id: CONTACT_1.id,
+          status: 'likely_blocker',
+          is_overridden: false,
+          recent_signals: [],
+          dismissed,
+          updated_at: '2026-06-28T00:00:00.000Z',
+        }),
+      ),
+      http.post('/api/v1/contacts/:id/champion-blocker/dismiss', () => {
+        dismissed = true;
+        return HttpResponse.json({
+          contact_id: CONTACT_1.id,
+          status: 'likely_blocker',
+          is_overridden: false,
+          recent_signals: [],
+          dismissed: true,
+          updated_at: '2026-06-28T00:00:00.000Z',
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`champion-blocker-dismiss-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId(`champion-blocker-dismiss-${CONTACT_1.id}`));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId(`champion-blocker-badge-${CONTACT_1.id}`),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('renders contact detail fields', async () => {
     renderWithProviders(<ContactDetailPage />, {
       initialEntries: [`/contacts/${CONTACT_1.id}`],

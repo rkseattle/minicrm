@@ -20,6 +20,7 @@ import {
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
+import { analyzeContactSignals } from './championBlockerService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -128,6 +129,15 @@ export async function createActivity(
   const activity = (await findActivityById(insertResult.rows[0].id))!;
 
   void dispatchWebhookEvent('activity.created', activity as unknown as Record<string, unknown>);
+
+  // Fire-and-forget: analyzeContactSignals swallows all internal errors and logs them.
+  // Unhandled rejections are caught by the global handler in server.ts (MINCRM-122).
+  void analyzeContactSignals({
+    activityId: activity.id,
+    contactId: activity.contact_id,
+    notes: activity.notes,
+    subject: activity.subject,
+  });
 
   void writeAuditEntryBestEffort({
     recordType: 'activity',

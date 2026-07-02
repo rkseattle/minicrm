@@ -2335,6 +2335,41 @@
     "tableFeature": "Fonctionnalité",
     "noUsageData": "Aucune donnée d'utilisation pour cette plage."
   },
+  "championBlocker": {
+    "status": {
+      "champion": "Champion",
+      "likely_champion": "Champion probable",
+      "neutral": "Neutre",
+      "likely_blocker": "Frein probable",
+      "blocker": "Frein"
+    },
+    "whyButton": "Pourquoi ?",
+    "whyLabel": "Pourquoi ce contact a-t-il été classé ainsi ?",
+    "aiInferredLabel": "Déduit par l'IA, non factuel",
+    "notAccurate": "Inexact",
+    "dismissing": "Rejet…",
+    "stakeholderMapHeading": "Carte des parties prenantes",
+    "singleThreadedRiskWarning": "Risque de contact unique — un seul contact est impliqué dans cette opportunité.",
+    "stakeholderMapSummary": "{{engaged}} contacts impliqués · {{champions}} champion(s) · {{blockers}} frein(s)"
+  },
+  "insights": {
+    "winLossHeading": "Analyse des tendances gains/pertes",
+    "notAvailable": "Cette fonctionnalité n'est pas disponible.",
+    "loadFailed": "Échec du chargement des données gains/pertes.",
+    "exportCsv": "Exporter en CSV",
+    "exportPdf": "Exporter en PDF",
+    "exporting": "Exportation…",
+    "exportFailed": "Échec de l'exportation. Veuillez réessayer.",
+    "insufficientData": "Pas encore assez d'historique d'affaires clôturées — les tendances apparaîtront à partir de {{count}}+ affaires clôturées.",
+    "winPatternsHeading": "Tendances gagnantes",
+    "winPatternsEmpty": "Aucune tendance gagnante disponible pour le moment.",
+    "lossPatternsHeading": "Tendances perdantes",
+    "lossPatternsEmpty": "Aucune tendance perdante disponible pour le moment.",
+    "lossReasonTrendsHeading": "Tendances des motifs de perte",
+    "lossReasonTrendsEmpty": "Aucune tendance de motif de perte disponible pour le moment.",
+    "trendBadge": "Tendance",
+    "insightStats": "{{winRateWith}} vs {{winRateWithout}} · {{count}} affaires"
+  },
   "ai": {
     "pageTitle": "Assistant IA",
     "retentionWindowNotice": "Votre historique de conversation est conservé pendant {{days}} jours.",

@@ -2335,6 +2335,41 @@
     "tableFeature": "Feature",
     "noUsageData": "No usage data for this range."
   },
+  "championBlocker": {
+    "status": {
+      "champion": "Champion",
+      "likely_champion": "Likely Champion",
+      "neutral": "Neutral",
+      "likely_blocker": "Likely Blocker",
+      "blocker": "Blocker"
+    },
+    "whyButton": "Why?",
+    "whyLabel": "Why was this contact classified this way?",
+    "aiInferredLabel": "AI-inferred, not factual",
+    "notAccurate": "Not accurate",
+    "dismissing": "Dismissing…",
+    "stakeholderMapHeading": "Stakeholder Map",
+    "singleThreadedRiskWarning": "Single-threaded risk — only one contact is engaged on this deal.",
+    "stakeholderMapSummary": "{{engaged}} contacts engaged · {{champions}} champion(s) · {{blockers}} blocker(s)"
+  },
+  "insights": {
+    "winLossHeading": "Win/Loss Pattern Insights",
+    "notAvailable": "This feature is not available.",
+    "loadFailed": "Failed to load win/loss insights.",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "exporting": "Exporting…",
+    "exportFailed": "Export failed. Please try again.",
+    "insufficientData": "Not enough closed deal history yet — patterns will appear once you have {{count}}+ closed deals.",
+    "winPatternsHeading": "Win Patterns",
+    "winPatternsEmpty": "No win patterns available yet.",
+    "lossPatternsHeading": "Loss Patterns",
+    "lossPatternsEmpty": "No loss patterns available yet.",
+    "lossReasonTrendsHeading": "Loss Reason Trends",
+    "lossReasonTrendsEmpty": "No loss reason trends available yet.",
+    "trendBadge": "Trend",
+    "insightStats": "{{winRateWith}} vs {{winRateWithout}} · {{count}} deals"
+  },
   "ai": {
     "pageTitle": "AI Assistant",
     "retentionWindowNotice": "Your conversation history is retained for {{days}} days.",

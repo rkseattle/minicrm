@@ -129,4 +129,16 @@ export const contactTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'getContactChampionBlockerStatus',
+    description:
+      'Returns the AI-inferred champion/blocker classification for a contact (champion, likely_champion, neutral, likely_blocker, blocker), based on language patterns detected in activity notes. Clearly AI-inferred, not factual — present it as a signal, not a certainty. (MINCRM-466)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'UUID of the contact.' },
+      },
+      required: ['id'],
+    },
+  },
 ];

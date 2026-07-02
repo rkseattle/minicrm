@@ -87,4 +87,14 @@ export const reportTools: Anthropic.Messages.Tool[] = [
       required: ['name', 'report_type'],
     },
   },
+  {
+    name: 'getWinLossPatterns',
+    description:
+      'Returns the cached results of the nightly AI win/loss pattern analysis — plain-language observations about what correlates with winning and losing deals (e.g. "deals with a demo in week 1 close at 2.3x the rate"), plus loss reason trends. Does not trigger a new analysis; always serves the latest cached nightly run. Returns has_sufficient_data=false when there is not yet enough closed deal history. (MINCRM-464)',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
 ];

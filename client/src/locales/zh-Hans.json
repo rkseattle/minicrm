@@ -2335,6 +2335,41 @@
     "tableFeature": "功能",
     "noUsageData": "此范围内没有使用数据。"
   },
+  "championBlocker": {
+    "status": {
+      "champion": "支持者",
+      "likely_champion": "疑似支持者",
+      "neutral": "中立",
+      "likely_blocker": "疑似阻碍者",
+      "blocker": "阻碍者"
+    },
+    "whyButton": "原因？",
+    "whyLabel": "为什么该联系人被如此分类？",
+    "aiInferredLabel": "AI 推断，非事实",
+    "notAccurate": "不准确",
+    "dismissing": "正在忽略…",
+    "stakeholderMapHeading": "利益相关方地图",
+    "singleThreadedRiskWarning": "单线风险——此商机仅有一位联系人参与。",
+    "stakeholderMapSummary": "{{engaged}} 位联系人参与 · {{champions}} 位支持者 · {{blockers}} 位阻碍者"
+  },
+  "insights": {
+    "winLossHeading": "赢单/丢单模式洞察",
+    "notAvailable": "此功能不可用。",
+    "loadFailed": "加载赢单/丢单洞察失败。",
+    "exportCsv": "导出 CSV",
+    "exportPdf": "导出 PDF",
+    "exporting": "导出中…",
+    "exportFailed": "导出失败，请重试。",
+    "insufficientData": "已完成的商机历史数据尚不足——达到 {{count}}+ 个已完成商机后将显示模式。",
+    "winPatternsHeading": "获胜模式",
+    "winPatternsEmpty": "暂无获胜模式。",
+    "lossPatternsHeading": "失败模式",
+    "lossPatternsEmpty": "暂无失败模式。",
+    "lossReasonTrendsHeading": "失败原因趋势",
+    "lossReasonTrendsEmpty": "暂无失败原因趋势。",
+    "trendBadge": "趋势",
+    "insightStats": "{{winRateWith}} 对比 {{winRateWithout}} · {{count}} 个商机"
+  },
   "ai": {
     "pageTitle": "AI 助手",
     "retentionWindowNotice": "您的对话记录将保留 {{days}} 天。",

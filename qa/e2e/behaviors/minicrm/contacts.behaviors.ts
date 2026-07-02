@@ -1530,3 +1530,17 @@ export async function clickAllOwnerFilter(context: ContactsBehaviorContext): Pro
 export function getContactsPageUrl(context: ContactsBehaviorContext): string {
   return context.page.url();
 }
+
+// ---------------------------------------------------------------------------
+// AI champion/blocker detection (MINCRM-466)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the champion/blocker badge is currently visible for a contact. */
+export async function isChampionBlockerBadgeVisible(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const detail = new ContactDetailPage(context);
+  const locator = await detail.championBlockerBadgeLocator(contactId);
+  return locator.isVisible().catch(() => false);
+}

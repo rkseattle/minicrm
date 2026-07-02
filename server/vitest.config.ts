@@ -194,6 +194,17 @@ const SERIAL_FILES = [
   // dealHealthService AND creates non-default pipelines/stages (same pipelines-table
   // race as pipelineService/pipelineStageService/pipelineController/dealService). (MINCRM-443)
   'src/__tests__/stageAdvancementService.test.ts',
+  // winLossAnalysisService toggles ai_configuration.enabled/win_loss_* thresholds (same
+  // global singleton row) and truncates the global deal_win_loss_insights cache table on
+  // every run — parallel runs would race on both. (MINCRM-464)
+  'src/__tests__/winLossAnalysisService.test.ts',
+  // winLossInsightController calls the global feature-flag cache-clear (__clearCacheForTest)
+  // while toggling the ai_win_loss_insights row — same class of race as featureFlagService/
+  // featureFlagController above, since the cache is process-wide, not per-file. (MINCRM-464)
+  'src/__tests__/winLossInsightController.test.ts',
+  // championBlockerService toggles ai_configuration.enabled/api_key_encrypted (same global
+  // singleton row as dealHealthService/stageAdvancementService/winLossAnalysisService). (MINCRM-466)
+  'src/__tests__/championBlockerService.test.ts',
 ];
 
 const sharedResolve = {

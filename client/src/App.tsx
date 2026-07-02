@@ -45,6 +45,7 @@ const AuditLogPage = lazy(() => import('@/pages/AuditLogPage.js'));
 const LeadsPage = lazy(() => import('@/pages/LeadsPage.js'));
 const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
 const AiPage = lazy(() => import('@/pages/AiPage.js'));
+const WinLossInsightsPage = lazy(() => import('@/pages/WinLossInsightsPage.js'));
 const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
 
 /**
@@ -124,6 +125,8 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
             {/* MINCRM-420: AI Assistant page */}
             <Route path="/ai" element={<AiPage />} />
+            {/* MINCRM-464: AI win/loss pattern insights — distinct from the live /reports/win-loss aggregate */}
+            <Route path="/insights/win-loss" element={<WinLossInsightsPage />} />
           </Route>
         </Route>
 
