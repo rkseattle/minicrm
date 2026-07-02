@@ -16,6 +16,7 @@ import { createUser } from '../services/userService.js';
 import { createSession } from '../services/aiSessionService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
+import { __clearCacheForTest } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'ai-retention-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -52,15 +53,17 @@ beforeAll(async () => {
   repId = rep.id;
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, role: rep.role, name: rep.name });
 
-  // ai_nli_page can be left disabled (or, on some local test DBs, absent) by other
-  // test runs that toggle or reset the AI master switch (it is kept in sync with
-  // ai_configuration.enabled). This file only asserts retention-window behavior,
-  // so seed/force it enabled regardless of ambient state.
+  // ai_nli_page (and its ai_features master toggle — see featureFlagService's
+  // master-gate, MINCRM-460) can be left disabled by other test runs that toggle
+  // or reset the AI master switch. This file only asserts retention-window
+  // behavior, so seed/force both enabled regardless of ambient state.
   await pool.query(
     `INSERT INTO feature_flags (flag_key, label, description, category, enabled, role_overrides, system_flag)
      VALUES ('ai_nli_page', 'NLI Page', 'Natural language interface page.', 'AI', true, '{"admin":true,"rep":true}', true)
      ON CONFLICT (flag_key) DO UPDATE SET enabled = true`,
   );
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_features'`);
+  __clearCacheForTest();
 });
 
 afterAll(async () => {
