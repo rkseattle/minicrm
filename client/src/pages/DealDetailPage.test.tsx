@@ -199,6 +199,80 @@ describe('DealDetailPage', () => {
     expect(screen.queryByTestId('deal-health-heading')).not.toBeInTheDocument();
   });
 
+  // ── AI stage advancement suggestion (MINCRM-443) ───────────────────────────────
+
+  it('shows no indicator when the stage advancement check returns not ready', async () => {
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('stage-advancement-indicator')).not.toBeInTheDocument();
+  });
+
+  it('shows the indicator with rationale when the stage advancement check returns ready', async () => {
+    server.use(
+      http.get('/api/v1/deals/:id/stage-advancement', () =>
+        HttpResponse.json({
+          ready: true,
+          next_stage_id: 'stage-2',
+          next_stage_name: 'Negotiation',
+          rationale: 'Proposal was sent and the contact confirmed receipt.',
+        }),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advancement-indicator')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Ready to advance to Negotiation?')).toBeInTheDocument();
+    expect(screen.getByTestId('stage-advancement-rationale')).toHaveTextContent(
+      'Proposal was sent and the contact confirmed receipt.',
+    );
+  });
+
+  it('opens the edit form pre-set to the suggested stage when the indicator is clicked', async () => {
+    server.use(
+      http.get('/api/v1/deals/:id/stage-advancement', () =>
+        HttpResponse.json({
+          ready: true,
+          next_stage_id: 'stage-2',
+          next_stage_name: 'Negotiation',
+          rationale: 'Proposal was sent and the contact confirmed receipt.',
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('stage-advancement-indicator')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('stage-advancement-indicator'));
+
+    expect(screen.getByTestId('deal-form')).toBeInTheDocument();
+    expect(screen.getByTestId('deal-stage-select')).toHaveValue('Negotiation');
+  });
+
+  it('hides the indicator when the ai_stage_advancement flag is disabled', async () => {
+    server.use(
+      http.get('/api/v1/feature-flags/me', () =>
+        HttpResponse.json({ flags: { ai_stage_advancement: false } }),
+      ),
+      http.get('/api/v1/deals/:id/stage-advancement', () =>
+        HttpResponse.json({
+          ready: true,
+          next_stage_id: 'stage-2',
+          next_stage_name: 'Negotiation',
+          rationale: 'Should not render because the flag is off.',
+        }),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('stage-advancement-indicator')).not.toBeInTheDocument();
+  });
+
   it('shows a loading state while fetching', async () => {
     server.use(
       http.get('/api/v1/deals/:id', async () => {

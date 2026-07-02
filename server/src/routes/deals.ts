@@ -20,6 +20,7 @@ import {
   exportDealsHandler,
 } from '../controllers/dealController.js';
 import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
+import { getStageAdvancementHandler } from '../controllers/stageAdvancementController.js';
 import {
   listDealTagsHandler,
   attachDealTagHandler,
@@ -789,6 +790,71 @@ router.post(
   authenticate,
   requireFeatureEnabled('ai_deal_health_check'),
   asyncHandler(runDealHealthCheckHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/deals/{id}/stage-advancement:
+ *   get:
+ *     tags: [Deals]
+ *     operationId: getStageAdvancement
+ *     summary: Get an AI stage advancement suggestion
+ *     description: >
+ *       Runs a passive on-demand AI check for whether the deal looks ready to advance to its
+ *       next pipeline stage. Returns { ready: false } (not an error) when the deal is in a
+ *       terminal stage, has no next stage configured, or the AI is not confident — the client
+ *       should render no indicator in that case. Reps may only check deals they own; admins
+ *       may check any deal. Gated by the ai_stage_advancement feature flag. (MINCRM-443)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Deal ID
+ *     responses:
+ *       200:
+ *         description: Stage advancement check result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     ready:
+ *                       type: boolean
+ *                       enum: [true]
+ *                     next_stage_id:
+ *                       type: string
+ *                       format: uuid
+ *                     next_stage_name:
+ *                       type: string
+ *                     rationale:
+ *                       type: string
+ *                 - type: object
+ *                   properties:
+ *                     ready:
+ *                       type: boolean
+ *                       enum: [false]
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Rep attempting to check a deal they do not own, or the ai_stage_advancement flag is disabled
+ *       404:
+ *         description: Deal not found
+ *       502:
+ *         description: AI provider error
+ *       503:
+ *         description: AI is not configured or enabled
+ */
+router.get(
+  '/:id/stage-advancement',
+  authenticate,
+  requireFeatureEnabled('ai_stage_advancement'),
+  asyncHandler(getStageAdvancementHandler),
 );
 
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────

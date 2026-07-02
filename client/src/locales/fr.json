@@ -451,6 +451,7 @@
       "at_risk": "À risque",
       "stalled": "Bloquée"
     },
+    "stageAdvancementReadyLabel": "Prête à passer à {{stage}} ?",
     "linkedContactsHeading": "Contacts associés",
     "linkedContactsEmpty": "Aucun contact associé à cette opportunité.",
     "linkContact": "Associer un contact",

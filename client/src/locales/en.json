@@ -451,6 +451,7 @@
       "at_risk": "At Risk",
       "stalled": "Stalled"
     },
+    "stageAdvancementReadyLabel": "Ready to advance to {{stage}}?",
     "linkedContactsHeading": "Linked Contacts",
     "linkedContactsEmpty": "No contacts linked to this deal.",
     "linkContact": "Link contact",

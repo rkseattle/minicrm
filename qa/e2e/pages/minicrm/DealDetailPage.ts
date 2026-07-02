@@ -492,4 +492,21 @@ export class DealDetailPage {
       )
       .resolve();
   }
+
+  // ── AI stage advancement suggestion (MINCRM-443) ───────────────────────────────
+
+  /**
+   * Returns a resolved locator for the "Ready to advance?" indicator button.
+   */
+  async stageAdvancementIndicatorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'stage-advancement-indicator' },
+          { type: 'role', value: 'button', options: { name: /ready to advance/i } },
+        ],
+        { intent: 'AI stage advancement indicator on the deal detail page' },
+      )
+      .resolve();
+  }
 }

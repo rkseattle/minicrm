@@ -451,6 +451,7 @@
       "at_risk": "存在风险",
       "stalled": "已停滞"
     },
+    "stageAdvancementReadyLabel": "是否准备好推进到{{stage}}？",
     "linkedContactsHeading": "关联联系人",
     "linkedContactsEmpty": "此商机暂无关联联系人。",
     "linkContact": "关联联系人",

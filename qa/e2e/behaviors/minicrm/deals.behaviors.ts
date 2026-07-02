@@ -1076,3 +1076,51 @@ export async function isDealHealthHeadingVisible(context: DealsBehaviorContext):
   const locator = await detail.healthCheckHeadingLocator();
   return locator.isVisible().catch(() => false);
 }
+
+// ---------------------------------------------------------------------------
+// AI stage advancement suggestion (MINCRM-443)
+// ---------------------------------------------------------------------------
+
+/**
+ * Waits for the "Ready to advance?" indicator to be visible.
+ */
+export async function waitForStageAdvancementIndicator(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.stageAdvancementIndicatorLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Returns true when the "Ready to advance?" indicator is currently visible.
+ */
+export async function isStageAdvancementIndicatorVisible(
+  context: DealsBehaviorContext,
+): Promise<boolean> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.stageAdvancementIndicatorLocator();
+  return locator.isVisible().catch(() => false);
+}
+
+/**
+ * Clicks the "Ready to advance?" indicator, which opens the edit form
+ * pre-set to the suggested next stage.
+ */
+export async function clickStageAdvancementIndicator(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.stageAdvancementIndicatorLocator();
+  await locator.click();
+}
+
+/**
+ * Returns the currently selected value of the stage select on the deal form.
+ * Used to assert the indicator pre-set the form to the suggested stage.
+ */
+export async function getSelectedDealFormStage(context: DealsBehaviorContext): Promise<string> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.stageSelectLocator();
+  return locator.inputValue();
+}

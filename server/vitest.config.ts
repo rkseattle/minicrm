@@ -190,6 +190,10 @@ const SERIAL_FILES = [
   // singleton row aiConfigService/aiConfigController/aiUsageDashboardService mutate); running
   // in parallel would race on the enabled flag and cause spurious 503s in either suite. (MINCRM-442)
   'src/__tests__/dealHealthService.test.ts',
+  // stageAdvancementService toggles the same ai_configuration singleton row as
+  // dealHealthService AND creates non-default pipelines/stages (same pipelines-table
+  // race as pipelineService/pipelineStageService/pipelineController/dealService). (MINCRM-443)
+  'src/__tests__/stageAdvancementService.test.ts',
 ];
 
 const sharedResolve = {
