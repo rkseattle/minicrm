@@ -210,10 +210,9 @@ export async function checkStageAdvancement(
     return { ready: false };
   }
 
-  if (IS_E2E) {
-    return E2E_STUB_NO_SUGGESTION;
-  }
-
+  // AI-disabled must be checked before the E2E stub branches out, so E2E mode can
+  // still exercise (and regress-test) the "503 when AI not enabled" guard — matching
+  // objectionMatchingService.ts's ordering. (Greptile self-review finding)
   const configResult = await pool.query<AiConfigRow>(
     `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled
      FROM ai_configuration
@@ -223,6 +222,11 @@ export async function checkStageAdvancement(
   if (!row?.enabled) {
     throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
   }
+
+  if (IS_E2E) {
+    return E2E_STUB_NO_SUGGESTION;
+  }
+
   if (!row.api_key_encrypted || row.api_key_encrypted.trim() === '') {
     throw Object.assign(new Error('AI API key is not configured'), { statusCode: 503 });
   }

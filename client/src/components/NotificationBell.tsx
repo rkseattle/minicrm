@@ -31,14 +31,19 @@ export default function NotificationBell() {
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationRead(id),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      // Cancel any in-flight 60s poll before seeding the cache — otherwise a poll
+      // response that resolves after this mutation can silently overwrite the
+      // just-applied read state back to unread.
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_FEED_QUERY_KEY });
       queryClient.setQueryData(NOTIFICATION_FEED_QUERY_KEY, result);
     },
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: markAllNotificationsRead,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
+      await queryClient.cancelQueries({ queryKey: NOTIFICATION_FEED_QUERY_KEY });
       queryClient.setQueryData(NOTIFICATION_FEED_QUERY_KEY, result);
     },
   });

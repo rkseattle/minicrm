@@ -15,9 +15,10 @@ export function activityObjectionQueryKey(activityId: string): readonly [string,
 }
 
 export function objectionPrecedentsQueryKey(
+  activityId: string,
   category: ObjectionCategory,
-): readonly [string, ObjectionCategory] {
-  return ['objectionPrecedents', category] as const;
+): readonly [string, string, ObjectionCategory] {
+  return ['objectionPrecedents', activityId, category] as const;
 }
 
 export async function classifyActivityObjection(

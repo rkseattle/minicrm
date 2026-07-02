@@ -12,6 +12,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell } from 'docx';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
@@ -223,10 +224,9 @@ export async function generateProposalDraft(
   const context = await gatherProposalContext(dealId);
   if (!context) return null;
 
-  if (IS_E2E) {
-    return buildE2eStubResponse(context.deal_value, context.currency);
-  }
-
+  // AI-disabled must be checked before the E2E stub branches out, so E2E mode can
+  // still exercise (and regress-test) the "503 when AI not enabled" guard — matching
+  // objectionMatchingService.ts's ordering. (Greptile self-review finding)
   const configResult = await pool.query<AiConfigRow>(
     `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled
      FROM ai_configuration
@@ -235,6 +235,10 @@ export async function generateProposalDraft(
   const row = configResult.rows[0];
   if (!row?.enabled) {
     throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
+  }
+
+  if (IS_E2E) {
+    return buildE2eStubResponse(context.deal_value, context.currency);
   }
   if (!row.api_key_encrypted || row.api_key_encrypted.trim() === '') {
     throw Object.assign(new Error('AI API key is not configured'), { statusCode: 503 });
@@ -329,4 +333,78 @@ export async function generateProposalDraft(
   };
 
   return { draft };
+}
+
+/**
+ * Strips characters that are unsafe inside an HTTP Content-Disposition
+ * filename (quotes, backslashes, and control characters including CR/LF)
+ * from a user-controlled deal name. Deal names are free text with no
+ * character restrictions at the schema level (shared/schemas/dealSchema.ts),
+ * so this must run on every use of a deal name in a response header.
+ */
+function sanitizeForFilename(name: string): string {
+  return name.replace(/["\\\x00-\x1f]/g, '').trim() || 'proposal';
+}
+
+/** Returns the safe filename (no extension) to use when exporting a deal's proposal draft. */
+export function buildProposalDraftFilenameBase(dealName: string): string {
+  return `proposal-${sanitizeForFilename(dealName)}`;
+}
+
+/** Builds the DOCX document for a proposal draft, ready for Packer.toBuffer(). */
+export function buildProposalDraftDocxDocument(draft: ProposalDraft, dealName: string): Document {
+  return new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({ text: `Proposal: ${dealName}`, heading: HeadingLevel.TITLE }),
+          new Paragraph({ text: `Prepared for: ${draft.prepared_for}` }),
+          new Paragraph({ text: `Prepared by: ${draft.prepared_by}` }),
+          new Paragraph({ text: 'Executive Summary', heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({ text: draft.executive_summary }),
+          new Paragraph({ text: 'Problem Statement', heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({ text: draft.problem_statement }),
+          new Paragraph({ text: 'Proposed Solution', heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({ text: draft.proposed_solution }),
+          new Paragraph({ text: 'Proposed Investment', heading: HeadingLevel.HEADING_1 }),
+          new Table({
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: 'Description' })] }),
+                  new TableCell({ children: [new Paragraph({ text: 'Amount' })] }),
+                ],
+              }),
+              ...draft.pricing_line_items.map(
+                (item) =>
+                  new TableRow({
+                    children: [
+                      new TableCell({ children: [new Paragraph({ text: item.description })] }),
+                      new TableCell({
+                        children: [
+                          new Paragraph({
+                            text: `${draft.pricing_currency} ${item.amount.toFixed(2)}`,
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+              ),
+            ],
+          }),
+          new Paragraph({ text: 'Next Steps', heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({ text: draft.next_steps }),
+        ],
+      },
+    ],
+  });
+}
+
+/** Generates the DOCX file bytes for an (possibly rep-edited) proposal draft. */
+export async function exportProposalDraftDocx(
+  draft: ProposalDraft,
+  dealName: string,
+): Promise<Buffer> {
+  const document = buildProposalDraftDocxDocument(draft, dealName);
+  return Packer.toBuffer(document);
 }

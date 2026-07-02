@@ -128,7 +128,7 @@ describe('analyzeWinLossPatterns', () => {
           input: {
             patterns: [
               {
-                signal_type: 'fast_stage_velocity',
+                signal_type: 'fast_creation_to_close',
                 observation: 'Deals that close quickly win more often (based on 5 deals).',
               },
             ],
@@ -146,7 +146,7 @@ describe('analyzeWinLossPatterns', () => {
     const result = await getWinLossInsights();
     expect(result.has_sufficient_data).toBe(true);
     expect(result.closed_deals_count).toBe(5);
-    expect(result.insights.some((i) => i.signal_type === 'fast_stage_velocity')).toBe(true);
+    expect(result.insights.some((i) => i.signal_type === 'fast_creation_to_close')).toBe(true);
     expect(result.loss_reason_trends).toHaveLength(1);
     expect(result.loss_reason_trends[0].observation).toContain('Price objections');
   });
@@ -163,7 +163,7 @@ describe('analyzeWinLossPatterns', () => {
           name: 'report_win_loss_insights',
           input: {
             patterns: [
-              { signal_type: 'fast_stage_velocity', observation: 'First run observation.' },
+              { signal_type: 'fast_creation_to_close', observation: 'First run observation.' },
             ],
             loss_reason_trends: [],
           },
@@ -180,7 +180,7 @@ describe('analyzeWinLossPatterns', () => {
           name: 'report_win_loss_insights',
           input: {
             patterns: [
-              { signal_type: 'fast_stage_velocity', observation: 'Second run observation.' },
+              { signal_type: 'fast_creation_to_close', observation: 'Second run observation.' },
             ],
             loss_reason_trends: [],
           },
@@ -190,7 +190,7 @@ describe('analyzeWinLossPatterns', () => {
     await analyzeWinLossPatterns();
 
     const result = await getWinLossInsights();
-    const matching = result.insights.filter((i) => i.signal_type === 'fast_stage_velocity');
+    const matching = result.insights.filter((i) => i.signal_type === 'fast_creation_to_close');
     expect(matching).toHaveLength(1);
     expect(matching[0].observation).toBe('Second run observation.');
   });

@@ -17,6 +17,8 @@ import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 import { findDealById } from './dealService.js';
+import { writeAuditEntryBestEffort, type AuditActor } from './auditService.js';
+import { isFeatureEnabled } from './featureFlagService.js';
 import type {
   ChampionBlockerStatus,
   ChampionBlockerSignal,
@@ -101,6 +103,11 @@ export async function analyzeContactSignals(params: AnalyzeContactSignalsParams)
     const noteText = [params.subject, params.notes].filter(Boolean).join('\n').trim();
     if (!noteText) return;
 
+    // The read-side endpoints (GET .../champion-blocker, GET .../stakeholder-map) are
+    // gated by ai_champion_blocker_detection — this background job must not keep writing
+    // new signals once an admin turns the feature off. (Greptile self-review finding)
+    if (!(await isFeatureEnabled('ai_champion_blocker_detection'))) return;
+
     const configResult = await pool.query<AiConfigRow>(
       `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled,
               champion_blocker_deal_value_threshold
@@ -169,37 +176,56 @@ async function applySignal(
   activityId: string,
   signal: { direction: 'champion' | 'blocker'; description: string },
 ): Promise<void> {
-  const existingResult = await pool.query<{ contributing_signals: ChampionBlockerSignal[] }>(
-    `SELECT contributing_signals FROM contact_champion_blocker_signals WHERE contact_id = $1`,
-    [contactId],
-  );
-  const existingSignals: ChampionBlockerSignal[] =
-    existingResult.rows[0]?.contributing_signals ?? [];
+  // Read-merge-write must be atomic: two activities logged for the same contact in
+  // quick succession would otherwise both read the same pre-merge signal list and
+  // the second write would silently clobber the first signal. INSERT ... ON
+  // CONFLICT DO UPDATE alone does not protect the client-side merge that happens
+  // between the SELECT and the write, so this locks the row for the transaction's
+  // duration via SELECT ... FOR UPDATE (a no-op lock when the row doesn't exist yet).
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const newSignal: ChampionBlockerSignal & { direction: 'champion' | 'blocker' } = {
-    description: signal.description,
-    detected_at: new Date().toISOString(),
-    direction: signal.direction,
-  };
-  const mergedSignals = [newSignal, ...existingSignals].slice(0, MAX_SIGNALS);
+    const existingResult = await client.query<{ contributing_signals: ChampionBlockerSignal[] }>(
+      `SELECT contributing_signals FROM contact_champion_blocker_signals
+       WHERE contact_id = $1 FOR UPDATE`,
+      [contactId],
+    );
+    const existingSignals: ChampionBlockerSignal[] =
+      existingResult.rows[0]?.contributing_signals ?? [];
 
-  const status = classifyFromSignals(
-    mergedSignals as Array<ChampionBlockerSignal & { direction?: string }>,
-  );
+    const newSignal: ChampionBlockerSignal & { direction: 'champion' | 'blocker' } = {
+      description: signal.description,
+      detected_at: new Date().toISOString(),
+      direction: signal.direction,
+    };
+    const mergedSignals = [newSignal, ...existingSignals].slice(0, MAX_SIGNALS);
 
-  await pool.query(
-    `INSERT INTO contact_champion_blocker_signals (contact_id, status, confidence, contributing_signals, last_activity_id, updated_at)
-     VALUES ($1, $2, $3, $4, $5, now())
-     ON CONFLICT (contact_id) DO UPDATE
-       SET status = $2, confidence = $3, contributing_signals = $4, last_activity_id = $5, updated_at = now()`,
-    [
-      contactId,
-      status,
-      computeConfidence(mergedSignals.length),
-      JSON.stringify(mergedSignals),
-      activityId,
-    ],
-  );
+    const status = classifyFromSignals(
+      mergedSignals as Array<ChampionBlockerSignal & { direction?: string }>,
+    );
+
+    await client.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, status, confidence, contributing_signals, last_activity_id, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (contact_id) DO UPDATE
+         SET status = $2, confidence = $3, contributing_signals = $4, last_activity_id = $5, updated_at = now()`,
+      [
+        contactId,
+        status,
+        computeConfidence(mergedSignals.length),
+        JSON.stringify(mergedSignals),
+        activityId,
+      ],
+    );
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /** Recency-weighted decay: signals older than SIGNAL_DECAY_DAYS no longer count. */
@@ -270,15 +296,26 @@ export async function getContactChampionBlockerStatus(
 /** Rep-initiated "Not accurate" dismissal — suppresses the badge until new signals arrive. */
 export async function dismissContactClassification(
   contactId: string,
-  userId: string,
+  actor: AuditActor,
 ): Promise<void> {
   await pool.query(
     `INSERT INTO contact_champion_blocker_signals (contact_id, dismissed_by, dismissed_at, updated_at)
      VALUES ($1, $2, now(), now())
      ON CONFLICT (contact_id) DO UPDATE
        SET dismissed_by = $2, dismissed_at = now(), updated_at = now()`,
-    [contactId, userId],
+    [contactId, actor.id],
   );
+
+  await writeAuditEntryBestEffort({
+    recordType: 'contact',
+    recordId: contactId,
+    eventType: 'updated',
+    fieldName: 'champion_blocker_dismissed',
+    oldValue: null,
+    newValue: 'true',
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
 }
 
 /** Rep-initiated manual override, with an optional reason. Persists until new signals shift it. */
@@ -286,15 +323,26 @@ export async function overrideContactClassification(
   contactId: string,
   status: ChampionBlockerStatus,
   reason: string | null,
-  userId: string,
+  actor: AuditActor,
 ): Promise<void> {
   await pool.query(
     `INSERT INTO contact_champion_blocker_signals (contact_id, override_status, override_reason, overridden_by, overridden_at, updated_at)
      VALUES ($1, $2, $3, $4, now(), now())
      ON CONFLICT (contact_id) DO UPDATE
        SET override_status = $2, override_reason = $3, overridden_by = $4, overridden_at = now(), updated_at = now()`,
-    [contactId, status, reason, userId],
+    [contactId, status, reason, actor.id],
   );
+
+  await writeAuditEntryBestEffort({
+    recordType: 'contact',
+    recordId: contactId,
+    eventType: 'updated',
+    fieldName: 'champion_blocker_override',
+    oldValue: null,
+    newValue: status,
+    changedById: actor.id,
+    changedByName: actor.name,
+  });
 }
 
 /**

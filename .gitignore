@@ -28,6 +28,10 @@ server/dist/
 # tsc side-emits compiled shared schemas when building from server/ (MINCRM-288)
 shared/schemas/*.js
 shared/schemas/*.d.ts
+# tsc also compiles shared/generated (buf-generated protobuf code) at build time —
+# the Docker runtime image needs this .js output present alongside the checked-in .ts.
+shared/generated/*.js
+shared/generated/*.d.ts
 
 # ─── Generated API spec (produced by npm run generate-spec) ───────────────────
 server/openapi.json

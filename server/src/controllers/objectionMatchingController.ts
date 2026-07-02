@@ -25,8 +25,25 @@ export async function classifyActivityObjectionHandler(req: Request, res: Respon
     return;
   }
 
-  const result = await classifyActivityObjection(id, req.user!.id);
-  res.status(200).json(result);
+  try {
+    const result = await classifyActivityObjection(id, req.user!.id);
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const tagged = err as { statusCode?: number; message?: string };
+    if (tagged.statusCode === 502) {
+      res.status(502).json({
+        error: { code: 'AI_PROVIDER_ERROR', message: tagged.message ?? 'AI provider error' },
+      });
+      return;
+    }
+    if (tagged.statusCode === 503) {
+      res.status(503).json({
+        error: { code: 'AI_NOT_CONFIGURED', message: tagged.message ?? 'AI is not configured' },
+      });
+      return;
+    }
+    throw err;
+  }
 }
 
 const precedentsQuerySchema = z.object({

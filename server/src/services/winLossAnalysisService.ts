@@ -41,7 +41,6 @@ interface AiConfigRow {
 interface ClosedDealSignals {
   id: string;
   won: boolean;
-  stage_velocity_days: number;
   activity_count: number;
   had_demo_in_week_1: boolean;
   contacts_engaged: number;
@@ -106,10 +105,6 @@ async function gatherClosedDealSignals(): Promise<ClosedDealSignals[]> {
     return {
       id: row.id,
       won: row.stage === 'Closed Won',
-      stage_velocity_days: Math.max(
-        0,
-        Math.floor((closedAt.getTime() - row.created_at.getTime()) / (1000 * 60 * 60 * 24)),
-      ),
       activity_count: parseInt(row.activity_count, 10),
       had_demo_in_week_1: parseInt(row.demo_week1_count, 10) > 0,
       contacts_engaged: parseInt(row.contacts_engaged, 10),
@@ -150,7 +145,12 @@ const SIGNAL_DEFINITIONS: Array<{
   { signalType: 'demo_in_week_1', predicate: (d) => d.had_demo_in_week_1 },
   { signalType: 'multiple_contacts_engaged', predicate: (d) => d.contacts_engaged >= 2 },
   { signalType: 'objection_logged', predicate: (d) => d.objection_logged },
-  { signalType: 'fast_stage_velocity', predicate: (d) => d.stage_velocity_days <= 30 },
+  // Renamed from 'fast_stage_velocity': there is no per-stage transition history table in
+  // this schema, so this can only ever measure total deal lifecycle length (creation to
+  // close) — not per-stage pipeline velocity. The old name/threshold duplicated
+  // creation_to_close_days verbatim and implied a metric this data can't support.
+  // (Greptile self-review finding)
+  { signalType: 'fast_creation_to_close', predicate: (d) => d.creation_to_close_days <= 30 },
   { signalType: 'high_activity_count', predicate: (d) => d.activity_count >= 5 },
 ];
 

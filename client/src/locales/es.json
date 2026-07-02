@@ -2345,6 +2345,8 @@
     "downloadMarkdown": "Descargar como Markdown",
     "downloadDocx": "Descargar como DOCX",
     "exporting": "Exportando…",
+    "docxExportError": "Error al exportar el DOCX. Inténtalo de nuevo.",
+    "clipboardError": "Error al copiar al portapapeles. Inténtalo de nuevo.",
     "regenerate": "Regenerar",
     "regenerating": "Regenerando…",
     "regenerateSubmit": "Regenerar",
@@ -2372,6 +2374,7 @@
       "Other": "Otro"
     },
     "aiInferredLabel": "Categoría de objeción inferida por IA",
+    "classificationFailed": "No se pudo comprobar si esta nota contiene objeciones.",
     "howHandledBefore": "¿Cómo se manejó esto antes?",
     "precedentsPanelLabel": "Precedentes de objeciones anteriores",
     "loadFailed": "Error al cargar los precedentes.",

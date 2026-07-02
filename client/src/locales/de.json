@@ -2345,6 +2345,8 @@
     "downloadMarkdown": "Als Markdown herunterladen",
     "downloadDocx": "Als DOCX herunterladen",
     "exporting": "Wird exportiert…",
+    "docxExportError": "DOCX-Export fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "clipboardError": "Kopieren in die Zwischenablage fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "regenerate": "Neu generieren",
     "regenerating": "Wird neu generiert…",
     "regenerateSubmit": "Neu generieren",
@@ -2372,6 +2374,7 @@
       "Other": "Sonstiges"
     },
     "aiInferredLabel": "KI-abgeleitete Einwandkategorie",
+    "classificationFailed": "Diese Notiz konnte nicht auf Einwände geprüft werden.",
     "howHandledBefore": "Wie wurde das bisher gehandhabt?",
     "precedentsPanelLabel": "Frühere Einwandfälle",
     "loadFailed": "Präzedenzfälle konnten nicht geladen werden.",
