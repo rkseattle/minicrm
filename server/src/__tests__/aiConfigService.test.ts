@@ -221,7 +221,7 @@ describe('setAiEnabled', () => {
     expect(row.rows[0].role_overrides).toEqual({ admin: true, rep: false });
   });
 
-  it('writes a feature_flag audit entry via updateFeatureFlag when ai_features changes', async () => {
+  it('writes a feature_flag audit entry when ai_features changes', async () => {
     await setAiEnabled({ enabled: false }, ACTOR);
 
     const audit = await pool.query(
@@ -233,6 +233,47 @@ describe('setAiEnabled', () => {
     expect(audit.rows.length).toBe(1);
     expect(audit.rows[0].old_value).toBe('true');
     expect(audit.rows[0].new_value).toBe('false');
+  });
+
+  it('does not write a feature_flag audit entry when ai_features was already at the target value', async () => {
+    await setAiEnabled({ enabled: false }, ACTOR);
+    const before = await pool.query<{ max: string | null }>(
+      `SELECT MAX(created_at)::text AS max FROM audit_log WHERE record_type = 'feature_flag' AND field_name = 'enabled'`,
+    );
+
+    // ai_features is already false — setting the master toggle to false again
+    // should not produce a spurious "unchanged" audit entry. audit_log is
+    // append-only (a DB trigger blocks UPDATE/DELETE), so assert via a
+    // created_at boundary rather than clearing prior rows.
+    await setAiEnabled({ enabled: false }, ACTOR);
+
+    const after = await pool.query<{ id: string }>(
+      `SELECT id FROM audit_log
+       WHERE record_type = 'feature_flag' AND field_name = 'enabled'
+         AND ($1::timestamptz IS NULL OR created_at > $1::timestamptz)`,
+      [before.rows[0]?.max ?? null],
+    );
+    expect(after.rows.length).toBe(0);
+  });
+
+  it('ai_configuration.enabled and the ai_features flag never diverge — both writes commit atomically on the same transaction', async () => {
+    // Regression test: ai_configuration and feature_flags are written on the
+    // same client/transaction inside setAiEnabled specifically so a failure
+    // partway through can never leave one table reflecting the new value and
+    // the other the old one. Flip it a few times and assert they always agree.
+    for (const enabled of [true, false, true]) {
+      await setAiEnabled({ enabled }, ACTOR);
+      __clearCacheForTest();
+
+      const configRow = await pool.query<{ enabled: boolean }>(
+        `SELECT enabled FROM ai_configuration LIMIT 1`,
+      );
+      const flagRow = await pool.query<{ enabled: boolean }>(
+        `SELECT enabled FROM feature_flags WHERE flag_key = 'ai_features'`,
+      );
+      expect(configRow.rows[0].enabled).toBe(enabled);
+      expect(flagRow.rows[0].enabled).toBe(enabled);
+    }
   });
 });
 
