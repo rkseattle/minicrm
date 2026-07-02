@@ -14,10 +14,20 @@ import {
 import type { DateRange } from '../services/aiUsageDashboardService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 
+/** One day in milliseconds, used to convert an inclusive calendar-day `end` param into the exclusive boundary every query in aiUsageDashboardService.ts filters against. */
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Resolves the requested date range from query params. Supports either a
  * `preset` (current_month | last_month | last_3_months) or an explicit
- * `start`/`end` pair (ISO date strings, end exclusive).
+ * `start`/`end` pair (ISO date strings). `start` and `end` are both treated
+ * as inclusive calendar days — `end` is advanced by one day internally to
+ * produce the exclusive boundary every query filters against, so a caller
+ * asking for `end=2026-07-01` sees that day's data (matching what a date
+ * picker labeled "End date" implies), not "up to but excluding" it.
+ *
+ * Both `start` and `end` must be supplied together — a lone one returns null
+ * rather than silently falling back to the preset path.
  *
  * Returns null if the query params are invalid, so the caller can respond 400.
  */
@@ -25,10 +35,17 @@ function resolveDateRange(query: Request['query']): DateRange | null {
   const startParam = typeof query['start'] === 'string' ? query['start'] : undefined;
   const endParam = typeof query['end'] === 'string' ? query['end'] : undefined;
 
-  if (startParam && endParam) {
+  if (startParam || endParam) {
+    if (!startParam || !endParam) {
+      return null;
+    }
     const start = new Date(startParam);
-    const end = new Date(endParam);
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+    const inclusiveEnd = new Date(endParam);
+    if (isNaN(start.getTime()) || isNaN(inclusiveEnd.getTime())) {
+      return null;
+    }
+    const end = new Date(inclusiveEnd.getTime() + ONE_DAY_MS);
+    if (start >= end) {
       return null;
     }
     return { start, end };

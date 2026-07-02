@@ -111,6 +111,34 @@ describe('GET /admin/ai/usage/summary', () => {
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 when only start is provided (no silent preset fallback)', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ start: '2026-01-01' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when only end is provided (no silent preset fallback)', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ end: '2026-01-31' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('treats a date-only end param as inclusive of that day', async () => {
+    // A single-day range (start === end as date-only strings) must be valid,
+    // since end is advanced by one day internally to become the exclusive bound.
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ start: '2026-01-01', end: '2026-01-01' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+  });
+
   it('returns 401 when not authenticated', async () => {
     const res = await request(app).get('/api/v1/admin/ai/usage/summary');
     expect(res.status).toBe(401);
