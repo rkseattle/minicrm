@@ -2499,6 +2499,96 @@ export const handlers = [
     });
   }),
 
+  // ── Champion/blocker detection (MINCRM-466) ─────────────────────────────────────
+
+  /** Contacts: GET /api/contacts/:id/champion-blocker — defaults to neutral (no badge rendered). */
+  http.get('/api/v1/contacts/:id/champion-blocker', ({ params }) => {
+    return HttpResponse.json({
+      contact_id: params['id'] as string,
+      status: 'neutral',
+      is_overridden: false,
+      recent_signals: [],
+      dismissed: false,
+      updated_at: '2026-07-01T00:00:00.000Z',
+    });
+  }),
+
+  /** Contacts: POST /api/contacts/:id/champion-blocker/dismiss */
+  http.post('/api/v1/contacts/:id/champion-blocker/dismiss', ({ params }) => {
+    return HttpResponse.json({
+      contact_id: params['id'] as string,
+      status: 'neutral',
+      is_overridden: false,
+      recent_signals: [],
+      dismissed: true,
+      updated_at: '2026-07-01T00:00:00.000Z',
+    });
+  }),
+
+  /** Contacts: PATCH /api/contacts/:id/champion-blocker/override */
+  http.patch('/api/v1/contacts/:id/champion-blocker/override', async ({ params, request }) => {
+    const body = (await request.json()) as { status: string };
+    return HttpResponse.json({
+      contact_id: params['id'] as string,
+      status: body.status,
+      is_overridden: true,
+      recent_signals: [],
+      dismissed: false,
+      updated_at: '2026-07-01T00:00:00.000Z',
+    });
+  }),
+
+  /** Deals: GET /api/deals/:id/stakeholder-map — defaults to an empty stakeholder map. */
+  http.get('/api/v1/deals/:id/stakeholder-map', () => {
+    return HttpResponse.json({
+      contacts: [],
+      champion_count: 0,
+      blocker_count: 0,
+      single_threaded_risk: false,
+    });
+  }),
+
+  // ── Win/loss pattern insights (MINCRM-464) ──────────────────────────────────────
+
+  /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */
+  http.get('/api/v1/insights/win-loss', () => {
+    return HttpResponse.json({
+      insights: [
+        {
+          id: 'insight-1',
+          signal_type: 'demo_in_week_1',
+          observation:
+            "Deals that include a live demo in week 1 close at 2.3x the rate of those that don't (based on 47 deals).",
+          win_rate_with: 0.65,
+          win_rate_without: 0.28,
+          sample_size: 47,
+          is_win_pattern: true,
+          generated_at: '2026-07-01T03:00:00.000Z',
+        },
+      ],
+      loss_reason_trends: [],
+      has_sufficient_data: true,
+      min_closed_deals_required: 20,
+      closed_deals_count: 85,
+    });
+  }),
+
+  /** Insights: GET /api/insights/win-loss/export.csv */
+  http.get('/api/v1/insights/win-loss/export.csv', () => {
+    return new HttpResponse('Type,Signal,Observation\n', {
+      status: 200,
+      headers: { 'Content-Type': 'text/csv' },
+    });
+  }),
+
+  /** Insights: GET /api/insights/win-loss/export.pdf */
+  http.get('/api/v1/insights/win-loss/export.pdf', () => {
+    return new HttpResponse(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/pdf' },
+    });
+  }),
+
   // ── Feature flags (MINCRM-463) ────────────────────────────────────────────────
 
   /**

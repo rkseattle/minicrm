@@ -54,6 +54,12 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
+import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
+import {
+  getContactChampionBlocker,
+  dismissContactChampionBlocker,
+  contactChampionBlockerQueryKey,
+} from '@/api/championBlocker.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -106,6 +112,7 @@ export default function ContactDetailPage() {
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const { enabled: sequencingEnabled, isLoading: sequencingLoading } = useFeatureFlag('sequencing');
+  const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
 
   // Sequence enrollment state (MINCRM-403)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -126,6 +133,20 @@ export default function ContactDetailPage() {
     queryKey: contactQueryKey,
     queryFn: () => getContact(id!),
     enabled: Boolean(id),
+  });
+
+  // AI champion/blocker classification (MINCRM-466) — passive, page-load read of the cached signal.
+  const { data: championBlocker } = useQuery({
+    queryKey: contactChampionBlockerQueryKey(id ?? ''),
+    queryFn: () => getContactChampionBlocker(id!),
+    enabled: Boolean(id) && championBlockerEnabled,
+  });
+
+  const dismissChampionBlockerMutation = useMutation({
+    mutationFn: () => dismissContactChampionBlocker(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: contactChampionBlockerQueryKey(id ?? '') });
+    },
   });
 
   const { data: accountsData } = useQuery({
@@ -414,9 +435,21 @@ export default function ContactDetailPage() {
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900" data-testid="contact-name">
-            {contact.first_name} {contact.last_name}
-          </h1>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900" data-testid="contact-name">
+              {contact.first_name} {contact.last_name}
+            </h1>
+            {championBlockerEnabled && championBlocker && !championBlocker.dismissed && (
+              <ChampionBlockerBadge
+                contactId={contact.id}
+                status={championBlocker.status}
+                isOverridden={championBlocker.is_overridden}
+                recentSignals={championBlocker.recent_signals}
+                onDismiss={() => dismissChampionBlockerMutation.mutate()}
+                isDismissing={dismissChampionBlockerMutation.isPending}
+              />
+            )}
+          </div>
 
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">

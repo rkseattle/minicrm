@@ -485,4 +485,19 @@ export class ContactDetailPage {
   url(): string {
     return this.page.url();
   }
+
+  // ── AI champion/blocker detection (MINCRM-466) ──────────────────────────────────
+
+  /** Returns a resolved locator for the champion/blocker badge, scoped to a contact ID. */
+  async championBlockerBadgeLocator(contactId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `champion-blocker-badge-${contactId}` },
+          { type: 'css', value: `[data-testid="champion-blocker-badge-${contactId}"]` },
+        ],
+        { intent: 'AI champion/blocker classification badge on the contact detail page' },
+      )
+      .resolve();
+  }
 }

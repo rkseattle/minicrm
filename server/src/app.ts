@@ -19,6 +19,7 @@ import dealRoutes from './routes/deals.js';
 import activityRoutes from './routes/activities.js';
 import dashboardRoutes from './routes/dashboard.js';
 import reportRoutes from './routes/reports.js';
+import insightsRoutes from './routes/insights.js';
 import settingsRoutes from './routes/settings.js';
 import automationRoutes from './routes/automation.js';
 import webhookRoutes from './routes/webhooks.js';
@@ -132,6 +133,7 @@ app.use(`${API_V1}/dashboard`, dashboardRoutes);
 // /api/v1/reports/custom/* is matched before Express hands control to reportRoutes.
 app.use(`${API_V1}/reports/custom`, customReportRoutes);
 app.use(`${API_V1}/reports`, reportRoutes);
+app.use(`${API_V1}/insights`, insightsRoutes);
 app.use(`${API_V1}/settings`, settingsRoutes);
 app.use(`${API_V1}/automation/rules`, automationRoutes);
 app.use(`${API_V1}/admin/webhooks`, webhookRoutes);

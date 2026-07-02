@@ -107,6 +107,8 @@ import {
   getStageTrendReport,
 } from '../services/reportService.js';
 import { saveNliReport } from '../services/customReportService.js';
+import { getWinLossInsights } from '../services/winLossAnalysisService.js';
+import { getContactChampionBlockerStatus } from '../services/championBlockerService.js';
 
 // ── Pipeline / Stage ───────────────────────────────────────────────────────────
 import { listPipelines, findPipelineById } from '../services/pipelineService.js';
@@ -299,6 +301,13 @@ export async function executeToolCall(
       case 'deleteContact': {
         await deleteContact(toolInput.id as string, ctx.actor);
         return { deleted: true, id: toolInput.id };
+      }
+
+      case 'getContactChampionBlockerStatus': {
+        const id = toolInput.id as string;
+        const contact = await findContactById(id);
+        if (!contact) return notFound('Contact', id);
+        return await getContactChampionBlockerStatus(id);
       }
 
       // ── Accounts ─────────────────────────────────────────────────────────────
@@ -777,6 +786,10 @@ export async function executeToolCall(
       // ── Reports ──────────────────────────────────────────────────────────────
       case 'generateReport': {
         return await dispatchReport(toolInput, ctx);
+      }
+
+      case 'getWinLossPatterns': {
+        return await getWinLossInsights();
       }
 
       case 'saveReport': {

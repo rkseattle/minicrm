@@ -32,7 +32,8 @@ prompts:
     searchActivities, getActivity, createActivity, updateActivity, deleteActivity,
     searchNotes, getNote, createNote, updateNote, deleteNote,
     listTags, attachTag, detachTag, renameTag,
-    generateReport, saveReport, exportEntities.
+    generateReport, saveReport, exportEntities, getWinLossPatterns,
+    getContactChampionBlockerStatus.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -201,3 +202,27 @@ tests:
           const parsed = JSON.parse(text);
           // saveReport persists data; confirmation is required before writing
           return parsed.tool === 'requestMutationConfirmation';
+
+  # ── MINCRM-464: win/loss pattern insights ────────────────────────────────────
+
+  - description: Win/loss pattern question maps to getWinLossPatterns (MINCRM-464)
+    vars:
+      query: What patterns correlate with winning deals versus losing them?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getWinLossPatterns';
+
+  # ── MINCRM-466: champion/blocker status ──────────────────────────────────────
+
+  - description: Champion/blocker question maps to getContactChampionBlockerStatus (MINCRM-466)
+    vars:
+      query: Is Jane Doe a champion or a blocker on this deal?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getContactChampionBlockerStatus';

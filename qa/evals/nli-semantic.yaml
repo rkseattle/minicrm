@@ -284,3 +284,47 @@ tests:
           the response claims the save failed, invents a different report name,
           invents file paths or access URLs absent from the tool results, or
           does not acknowledge the save was successful.
+
+  # ── MINCRM-464: win/loss pattern insights semantics ──────────────────────────
+
+  - description: Win/loss pattern summary uses only the cached observations provided (MINCRM-464)
+    vars:
+      query: What patterns correlate with winning deals?
+      tool_results: '{"insights":[{"id":"i1","signal_type":"demo_in_week_1","observation":"Deals that include a live demo in week 1 close at 2.3x the rate of those that don''t (based on 47 deals)","win_rate_with":0.65,"win_rate_without":0.28,"sample_size":47,"is_win_pattern":true,"generated_at":"2026-07-01T03:00:00.000Z"}],"loss_reason_trends":[],"has_sufficient_data":true,"min_closed_deals_required":20,"closed_deals_count":85}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response reports the demo-in-week-1 pattern using only the
+          statistics from the tool results: a live demo in week 1 correlates with
+          roughly 2.3x higher win rate, based on 47 deals. Fail if the response
+          fabricates a different multiplier, sample size, or signal not present in
+          the tool results.
+
+  - description: Insufficient closed-deal history is communicated, not fabricated patterns (MINCRM-464)
+    vars:
+      query: What patterns correlate with winning deals?
+      tool_results: '{"insights":[],"loss_reason_trends":[],"has_sufficient_data":false,"min_closed_deals_required":20,"closed_deals_count":6}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response tells the user there is not yet enough closed deal
+          history for patterns to be surfaced (mentioning the 20-deal minimum or
+          the current count of 6 is acceptable but not required). Fail if the
+          response invents any win/loss pattern, statistic, or observation.
+
+  # ── MINCRM-466: champion/blocker classification framing ──────────────────────
+
+  - description: Champion/blocker status is presented as AI-inferred, not as fact (MINCRM-466)
+    vars:
+      query: Is Jane Doe a champion or a blocker on this deal?
+      tool_results: '{"contact_id":"c1","status":"likely_champion","is_overridden":false,"recent_signals":[{"description":"Mentioned sharing proposal with VP Finance","detected_at":"2026-06-28T00:00:00.000Z"}],"dismissed":false,"updated_at":"2026-06-28T00:00:00.000Z"}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response reports Jane Doe as a likely champion, citing the
+          "shared proposal with VP Finance" signal, AND frames this as an
+          AI-inferred signal rather than a stated fact (e.g. using language like
+          "appears to be", "signals suggest", "based on recent activity" rather
+          than an unqualified assertion). Fail if the response presents the
+          classification as certain/factual, or fabricates signals not present
+          in the tool results.

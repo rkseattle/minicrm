@@ -21,6 +21,7 @@ import {
 } from '../controllers/dealController.js';
 import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
 import { getStageAdvancementHandler } from '../controllers/stageAdvancementController.js';
+import { getDealStakeholderMapHandler } from '../controllers/championBlockerController.js';
 import {
   listDealTagsHandler,
   attachDealTagHandler,
@@ -855,6 +856,14 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_stage_advancement'),
   asyncHandler(getStageAdvancementHandler),
+);
+
+/** Returns the AI champion/blocker stakeholder map for the deal's linked contacts. (MINCRM-466) */
+router.get(
+  '/:id/stakeholder-map',
+  authenticate,
+  requireFeatureEnabled('ai_champion_blocker_detection'),
+  asyncHandler(getDealStakeholderMapHandler),
 );
 
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────

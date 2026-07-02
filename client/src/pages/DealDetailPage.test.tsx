@@ -273,6 +273,56 @@ describe('DealDetailPage', () => {
     expect(screen.queryByTestId('stage-advancement-indicator')).not.toBeInTheDocument();
   });
 
+  // ── AI champion/blocker stakeholder map (MINCRM-466) ────────────────────────────
+
+  it('does not show the stakeholder map when no contacts are linked', async () => {
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('stakeholder-map-heading')).not.toBeInTheDocument();
+  });
+
+  it('shows the stakeholder map with a single-threaded-risk warning', async () => {
+    server.use(
+      http.get('/api/v1/deals/:id', ({ params }) => {
+        if (params.id === DEAL_1.id) {
+          return HttpResponse.json({ deal: DEAL_1, contacts: [CONTACT_1] });
+        }
+        return HttpResponse.json(
+          { error: { code: 'NOT_FOUND', message: 'Not found' } },
+          { status: 404 },
+        );
+      }),
+      http.get('/api/v1/deals/:id/stakeholder-map', () =>
+        HttpResponse.json({
+          contacts: [
+            {
+              contact_id: CONTACT_1.id,
+              first_name: CONTACT_1.first_name,
+              last_name: CONTACT_1.last_name,
+              status: 'champion',
+              is_overridden: false,
+              dismissed: false,
+              last_activity_at: null,
+            },
+          ],
+          champion_count: 1,
+          blocker_count: 0,
+          single_threaded_risk: true,
+        }),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('stakeholder-map-heading')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('single-threaded-risk-warning')).toBeInTheDocument();
+    expect(screen.getByTestId(`champion-blocker-badge-${CONTACT_1.id}`)).toHaveTextContent(
+      'Champion',
+    );
+  });
+
   it('shows a loading state while fetching', async () => {
     server.use(
       http.get('/api/v1/deals/:id', async () => {

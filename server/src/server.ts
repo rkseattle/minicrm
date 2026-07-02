@@ -16,6 +16,7 @@ import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
 import { runRetentionPurge } from './services/retentionService.js';
+import { analyzeWinLossPatterns } from './services/winLossAnalysisService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
@@ -195,6 +196,18 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => retentionCron.stop());
   process.once('SIGINT', () => retentionCron.stop());
+
+  // Win/loss pattern analysis — runs daily at 03:00 server time (MINCRM-464).
+  // No-ops below the admin-configured minimum closed-deal threshold or when AI is
+  // not enabled; replaces the full deal_win_loss_insights table contents on each run.
+  const winLossAnalysisCron = cron.schedule('0 3 * * *', () => {
+    logger.info('cron: running win/loss pattern analysis');
+    void analyzeWinLossPatterns();
+  });
+  logger.info('Win/loss pattern analysis cron scheduled (daily at 03:00)');
+
+  process.once('SIGTERM', () => winLossAnalysisCron.stop());
+  process.once('SIGINT', () => winLossAnalysisCron.stop());
 
   // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,

@@ -2335,6 +2335,41 @@
     "tableFeature": "Función",
     "noUsageData": "No hay datos de uso para este rango."
   },
+  "championBlocker": {
+    "status": {
+      "champion": "Defensor",
+      "likely_champion": "Probable defensor",
+      "neutral": "Neutral",
+      "likely_blocker": "Probable obstáculo",
+      "blocker": "Obstáculo"
+    },
+    "whyButton": "¿Por qué?",
+    "whyLabel": "¿Por qué se clasificó así a este contacto?",
+    "aiInferredLabel": "Inferido por IA, no es un hecho",
+    "notAccurate": "No es exacto",
+    "dismissing": "Descartando…",
+    "stakeholderMapHeading": "Mapa de partes interesadas",
+    "singleThreadedRiskWarning": "Riesgo de un solo contacto — solo hay un contacto involucrado en esta oportunidad.",
+    "stakeholderMapSummary": "{{engaged}} contactos involucrados · {{champions}} defensor(es) · {{blockers}} obstáculo(s)"
+  },
+  "insights": {
+    "winLossHeading": "Análisis de patrones de ganancias/pérdidas",
+    "notAvailable": "Esta función no está disponible.",
+    "loadFailed": "Error al cargar los datos de ganancias/pérdidas.",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "exporting": "Exportando…",
+    "exportFailed": "Error al exportar. Inténtalo de nuevo.",
+    "insufficientData": "Aún no hay suficiente historial de oportunidades cerradas — los patrones aparecerán cuando tengas {{count}}+ oportunidades cerradas.",
+    "winPatternsHeading": "Patrones de éxito",
+    "winPatternsEmpty": "Todavía no hay patrones de éxito disponibles.",
+    "lossPatternsHeading": "Patrones de pérdida",
+    "lossPatternsEmpty": "Todavía no hay patrones de pérdida disponibles.",
+    "lossReasonTrendsHeading": "Tendencias de motivos de pérdida",
+    "lossReasonTrendsEmpty": "Todavía no hay tendencias de motivos de pérdida disponibles.",
+    "trendBadge": "Tendencia",
+    "insightStats": "{{winRateWith}} vs {{winRateWithout}} · {{count}} oportunidades"
+  },
   "ai": {
     "pageTitle": "Asistente IA",
     "retentionWindowNotice": "Tu historial de conversaciones se conserva durante {{days}} días.",

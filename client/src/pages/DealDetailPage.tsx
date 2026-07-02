@@ -36,6 +36,8 @@ import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import { runDealHealthCheck } from '@/api/dealHealth.js';
 import { getStageAdvancement, stageAdvancementQueryKey } from '@/api/stageAdvancement.js';
+import { getDealStakeholderMap, dealStakeholderMapQueryKey } from '@/api/championBlocker.js';
+import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
@@ -96,6 +98,7 @@ export default function DealDetailPage() {
   const [dealHealthError, setDealHealthError] = useState<string | null>(null);
   const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
   const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
+  const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
   /** Suggested next stage pre-set into DealForm when the advancement indicator is clicked */
   const [suggestedStage, setSuggestedStage] = useState<string | null>(null);
 
@@ -129,6 +132,14 @@ export default function DealDetailPage() {
     queryKey: stageAdvancementQueryKey(id ?? ''),
     queryFn: () => getStageAdvancement(id!),
     enabled: Boolean(id) && stageAdvancementEnabled && Boolean(data?.deal),
+  });
+
+  // AI champion/blocker stakeholder map (MINCRM-466) — one query serves both the per-contact
+  // badges in the linked-contacts list and the stakeholder map panel below.
+  const { data: stakeholderMap } = useQuery({
+    queryKey: dealStakeholderMapQueryKey(id ?? ''),
+    queryFn: () => getDealStakeholderMap(id!),
+    enabled: Boolean(id) && championBlockerEnabled && Boolean(data?.deal),
   });
 
   const { data: accountsData } = useQuery({
@@ -635,6 +646,37 @@ export default function DealDetailPage() {
                 entityQueryKey={DEALS_QUERY_KEY}
                 isEditing={isEditing}
               >
+                {/* AI stakeholder map (MINCRM-466) */}
+                {championBlockerEnabled && stakeholderMap && stakeholderMap.contacts.length > 0 && (
+                  <section className="mt-8" aria-labelledby="stakeholder-map-heading">
+                    <h2
+                      id="stakeholder-map-heading"
+                      className="text-sm font-semibold text-gray-900 mb-3"
+                      data-testid="stakeholder-map-heading"
+                    >
+                      {t('championBlocker.stakeholderMapHeading')}
+                    </h2>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      {stakeholderMap.single_threaded_risk && (
+                        <p
+                          role="alert"
+                          className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+                          data-testid="single-threaded-risk-warning"
+                        >
+                          {t('championBlocker.singleThreadedRiskWarning')}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500" data-testid="stakeholder-map-summary">
+                        {t('championBlocker.stakeholderMapSummary', {
+                          engaged: stakeholderMap.contacts.length,
+                          champions: stakeholderMap.champion_count,
+                          blockers: stakeholderMap.blocker_count,
+                        })}
+                      </p>
+                    </div>
+                  </section>
+                )}
+
                 {/* Linked contacts */}
                 <section className="mt-8" aria-labelledby="linked-contacts-heading">
                   <h2
@@ -654,35 +696,51 @@ export default function DealDetailPage() {
                       </p>
                     ) : (
                       <ul className="divide-y divide-gray-100" data-testid="linked-contacts-list">
-                        {linkedContacts.map((contact) => (
-                          <li
-                            key={contact.id}
-                            className="px-6 py-3 flex items-center justify-between gap-3"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Link
-                                to={`/contacts/${contact.id}`}
-                                data-testid={`linked-contact-${contact.id}`}
-                                className="text-sm font-medium text-primary-600 hover:underline"
-                              >
-                                {contact.first_name} {contact.last_name}
-                              </Link>
-                              {contact.title && (
-                                <span className="text-sm text-gray-500">{contact.title}</span>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              data-testid={`unlink-contact-${contact.id}`}
-                              onClick={() => unlinkMutation.mutate(contact.id)}
-                              disabled={unlinkMutation.isPending}
+                        {linkedContacts.map((contact) => {
+                          const stakeholder = stakeholderMap?.contacts.find(
+                            (c) => c.contact_id === contact.id,
+                          );
+                          return (
+                            <li
+                              key={contact.id}
+                              className="px-6 py-3 flex items-center justify-between gap-3"
                             >
-                              {unlinkMutation.isPending ? t('deals.unlinking') : t('deals.unlink')}
-                            </Button>
-                          </li>
-                        ))}
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Link
+                                  to={`/contacts/${contact.id}`}
+                                  data-testid={`linked-contact-${contact.id}`}
+                                  className="text-sm font-medium text-primary-600 hover:underline"
+                                >
+                                  {contact.first_name} {contact.last_name}
+                                </Link>
+                                {contact.title && (
+                                  <span className="text-sm text-gray-500">{contact.title}</span>
+                                )}
+                                {championBlockerEnabled &&
+                                  stakeholder &&
+                                  !stakeholder.dismissed && (
+                                    <ChampionBlockerBadge
+                                      contactId={contact.id}
+                                      status={stakeholder.status}
+                                      isOverridden={stakeholder.is_overridden}
+                                    />
+                                  )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                data-testid={`unlink-contact-${contact.id}`}
+                                onClick={() => unlinkMutation.mutate(contact.id)}
+                                disabled={unlinkMutation.isPending}
+                              >
+                                {unlinkMutation.isPending
+                                  ? t('deals.unlinking')
+                                  : t('deals.unlink')}
+                              </Button>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>

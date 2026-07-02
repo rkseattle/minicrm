@@ -50,6 +50,7 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['createContact', 'contacts:create' as Capability],
   ['updateContact', 'contacts:edit' as Capability],
   ['deleteContact', 'contacts:delete' as Capability],
+  ['getContactChampionBlockerStatus', 'contacts:view' as Capability],
 
   // ── Accounts (no dedicated account capabilities — use contacts:* as proxy) ─
   ['searchAccounts', 'contacts:view' as Capability],
@@ -96,6 +97,7 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   // ── Reports ───────────────────────────────────────────────────────────────
   ['generateReport', 'reports:view' as Capability],
   ['saveReport', 'reports:create' as Capability],
+  ['getWinLossPatterns', 'reports:view' as Capability],
 
   // ── Export ────────────────────────────────────────────────────────────────
   ['exportEntities', 'data:export' as Capability],

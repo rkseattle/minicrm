@@ -36,6 +36,11 @@ import {
   bulkDeleteContactsHandler,
 } from '../controllers/bulkV2Controller.js';
 import { eraseContactHandler, gdprExportContactHandler } from '../controllers/gdprController.js';
+import {
+  getContactChampionBlockerHandler,
+  dismissContactChampionBlockerHandler,
+  overrideContactChampionBlockerHandler,
+} from '../controllers/championBlockerController.js';
 import { requireRole } from '../middleware/requireRole.js';
 import {
   enrollContactHandler,
@@ -940,6 +945,32 @@ router.get(
   authenticate,
   requireRole('admin'),
   asyncHandler(gdprExportContactHandler),
+);
+
+// ── AI champion/blocker detection (MINCRM-466) ──────────────────────────────────
+
+/** Returns the effective champion/blocker classification for the contact. */
+router.get(
+  '/:id/champion-blocker',
+  authenticate,
+  requireFeatureEnabled('ai_champion_blocker_detection'),
+  asyncHandler(getContactChampionBlockerHandler),
+);
+
+/** Records a rep's "Not accurate" feedback, suppressing the badge until new signals arrive. */
+router.post(
+  '/:id/champion-blocker/dismiss',
+  authenticate,
+  requireFeatureEnabled('ai_champion_blocker_detection'),
+  asyncHandler(dismissContactChampionBlockerHandler),
+);
+
+/** Records a rep's manual override, with an optional reason. */
+router.patch(
+  '/:id/champion-blocker/override',
+  authenticate,
+  requireFeatureEnabled('ai_champion_blocker_detection'),
+  asyncHandler(overrideContactChampionBlockerHandler),
 );
 
 export default router;
