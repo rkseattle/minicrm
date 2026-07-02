@@ -234,6 +234,28 @@ describe('AiSettings — API key', () => {
     expect(screen.getByTestId('ai-api-key-input')).toBeInTheDocument();
     expect(screen.getByTestId('ai-api-key-cancel-button')).toBeInTheDocument();
   });
+
+  it('includes a freshly-typed api_key when saving on first-time setup (no key previously stored)', async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.patch('/api/v1/admin/ai/config', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...DEFAULT_CONFIG, api_key_set: true });
+      }),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-api-key-input'));
+
+    fireEvent.change(screen.getByTestId('ai-api-key-input'), {
+      target: { value: 'sk-ant-freshly-typed-key' },
+    });
+    fireEvent.click(screen.getByTestId('ai-config-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-config-save-success')).toBeInTheDocument();
+    });
+    expect(capturedBody?.['api_key']).toBe('sk-ant-freshly-typed-key');
+  });
 });
 
 // ── DPA acknowledgment ────────────────────────────────────────────────────────
@@ -317,6 +339,28 @@ describe('AiSettings — test connection', () => {
       expect(screen.getByTestId('ai-test-connection-result')).toBeInTheDocument();
     });
     expect(screen.getByTestId('ai-test-connection-result').textContent).toContain('successful');
+  });
+
+  it('includes a freshly-typed api_key in the test-connection request when no key was previously set', async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.post('/api/v1/admin/ai/test-connection', async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, message: 'Connection successful' });
+      }),
+    );
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-api-key-input'));
+
+    fireEvent.change(screen.getByTestId('ai-api-key-input'), {
+      target: { value: 'sk-ant-freshly-typed-key' },
+    });
+    fireEvent.click(screen.getByTestId('ai-test-connection-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-test-connection-result')).toBeInTheDocument();
+    });
+    expect(capturedBody?.['api_key']).toBe('sk-ant-freshly-typed-key');
   });
 });
 
