@@ -15,7 +15,7 @@
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { QueryClient } from '@tanstack/react-query';
 import { server } from '../../test/setup.js';
@@ -519,6 +519,36 @@ describe('AiSettings — retention stats and manual purge', () => {
     await waitFor(() => {
       expect(screen.getByTestId('ai-purge-error')).toBeInTheDocument();
     });
+  });
+
+  it('does not refetch retention stats immediately after purge, only after the delay', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let statsRequestCount = 0;
+    server.use(
+      http.get('/api/v1/admin/ai/retention-stats', () => {
+        statsRequestCount++;
+        return HttpResponse.json({ session_count: 5, message_count: 20 });
+      }),
+    );
+
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+    expect(statsRequestCount).toBe(1); // initial mount fetch
+
+    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+    fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-purge-accepted')).toBeInTheDocument();
+    });
+
+    // Immediately after the 202 response, no refetch should have fired yet —
+    // the purge is still running asynchronously on the server.
+    expect(statsRequestCount).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    await waitFor(() => expect(statsRequestCount).toBe(2));
+
+    vi.useRealTimers();
   });
 });
 

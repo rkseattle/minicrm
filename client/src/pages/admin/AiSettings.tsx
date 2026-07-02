@@ -327,6 +327,9 @@ function UserBudgetRow({ row, onSave, isSaving }: UserBudgetRowProps) {
   );
 }
 
+/** Delay before refetching retention stats after a manual purge, long enough for the server's async DELETE to complete in practice. */
+const PURGE_REFETCH_DELAY_MS = 3000;
+
 // ── Session retention section (MINCRM-447) ────────────────────────────────────
 
 function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
@@ -352,6 +355,7 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
   const [purgeAccepted, setPurgeAccepted] = useState(false);
   const [purgeError, setPurgeError] = useState('');
+  const purgeRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const purgeMutation = useMutation({
     mutationFn: triggerManualAiPurge,
@@ -359,9 +363,15 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
       setShowPurgeConfirm(false);
       setPurgeAccepted(true);
       setPurgeError('');
-      // The purge runs asynchronously — invalidate stats so the count updates
-      // once it completes, rather than showing a stale "still N sessions" value.
-      void queryClient.invalidateQueries({ queryKey: AI_RETENTION_STATS_QUERY_KEY });
+      // The purge runs asynchronously on the server (202 response returns before
+      // it finishes) — an immediate invalidation would just refetch the
+      // pre-purge counts. Schedule the refetch after a short delay instead, long
+      // enough for the purge's DELETE to complete in practice; the UI copy sets
+      // the expectation ("will update shortly") rather than promising instant sync.
+      if (purgeRefetchTimerRef.current) clearTimeout(purgeRefetchTimerRef.current);
+      purgeRefetchTimerRef.current = setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: AI_RETENTION_STATS_QUERY_KEY });
+      }, PURGE_REFETCH_DELAY_MS);
     },
     onError: () => {
       setPurgeError(t('aiSettings.sessionRetention.purgeError'));
@@ -373,12 +383,15 @@ function SessionRetentionSection({ retentionDays }: { retentionDays: number }) {
     setInputValue(String(retentionDays));
   }, [retentionDays]);
 
-  // Clear the success-message timer on unmount to prevent setState on an
-  // unmounted component when the admin navigates away within 3 seconds of saving.
+  // Clear the success-message and purge-refetch timers on unmount to prevent
+  // setState/refetch scheduling on an unmounted component.
   useEffect(() => {
     return () => {
       if (successTimerRef.current !== null) {
         clearTimeout(successTimerRef.current);
+      }
+      if (purgeRefetchTimerRef.current !== null) {
+        clearTimeout(purgeRefetchTimerRef.current);
       }
     };
   }, []);

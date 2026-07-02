@@ -89,12 +89,34 @@ describe('AiUsageDashboardPage — default state', () => {
     expect(screen.getByTestId('ai-usage-daily-bar-2026-06-15')).toBeInTheDocument();
   });
 
-  it('shows the empty state when there is no daily data', async () => {
+  it('fills in zero-usage days for a range with no recorded usage rather than showing empty state', async () => {
+    // A month-long range with zero points from the server should still render
+    // one bar per calendar day (all at minimum height), not the "no data" message —
+    // the calendar days occurred, they just had no usage.
     server.use(
       http.get('/api/v1/admin/ai/usage/daily', () =>
         HttpResponse.json({
           range_start: '2026-06-01T00:00:00.000Z',
-          range_end: '2026-07-01T00:00:00.000Z',
+          range_end: '2026-06-03T00:00:00.000Z',
+          points: [],
+        }),
+      ),
+    );
+    renderWithProviders(<AiUsageDashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-usage-daily-bars')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('ai-usage-daily-empty')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ai-usage-daily-bar-2026-06-01')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-usage-daily-bar-2026-06-02')).toBeInTheDocument();
+  });
+
+  it('shows the empty state only for a genuinely empty (zero-day) range', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/usage/daily', () =>
+        HttpResponse.json({
+          range_start: '2026-06-01T00:00:00.000Z',
+          range_end: '2026-06-01T00:00:00.000Z',
           points: [],
         }),
       ),
@@ -103,6 +125,26 @@ describe('AiUsageDashboardPage — default state', () => {
     await waitFor(() => {
       expect(screen.getByTestId('ai-usage-daily-empty')).toBeInTheDocument();
     });
+  });
+
+  it('fills gaps between sparse active days so the chart shows one bar per calendar day', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/usage/daily', () =>
+        HttpResponse.json({
+          range_start: '2026-06-01T00:00:00.000Z',
+          range_end: '2026-06-04T00:00:00.000Z',
+          points: [{ date: '2026-06-01', input_tokens: 100, output_tokens: 50 }],
+        }),
+      ),
+    );
+    renderWithProviders(<AiUsageDashboardPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-usage-daily-bars')).toBeInTheDocument();
+    });
+    // 2026-06-01, -02, -03 should all render, even though only -01 has usage.
+    expect(screen.getByTestId('ai-usage-daily-bar-2026-06-01')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-usage-daily-bar-2026-06-02')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-usage-daily-bar-2026-06-03')).toBeInTheDocument();
   });
 
   it('shows the empty state when there is no per-user usage data', async () => {

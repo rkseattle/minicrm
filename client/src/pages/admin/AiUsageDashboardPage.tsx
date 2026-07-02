@@ -25,7 +25,11 @@ import {
   AI_USAGE_DAILY_QUERY_KEY,
 } from '@/api/ai.js';
 import type { UsageDateRangeQuery } from '@/api/ai.js';
-import type { UsageDateRangePreset } from '@shared/schemas/aiUsageSchema.js';
+import type {
+  UsageDateRangePreset,
+  DailyUsagePoint,
+  UsageDailySeriesResponse,
+} from '@shared/schemas/aiUsageSchema.js';
 
 const PRESETS: UsageDateRangePreset[] = ['current_month', 'last_month', 'last_3_months'];
 
@@ -51,6 +55,25 @@ function todayIso(): string {
 function firstOfMonthIso(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+/**
+ * Fills in zero-usage days the server omits (it only returns rows for dates
+ * with recorded usage), so the chart renders one bar per calendar day in the
+ * range instead of compressing sparse active days into evenly-spaced bars
+ * that hide gaps (weekends, outages) and distort the timeline.
+ */
+function fillMissingDays(series: UsageDailySeriesResponse): DailyUsagePoint[] {
+  const byDate = new Map(series.points.map((p) => [p.date, p]));
+  const points: DailyUsagePoint[] = [];
+  const cursor = new Date(series.range_start);
+  const end = new Date(series.range_end);
+  while (cursor < end) {
+    const date = cursor.toISOString().slice(0, 10);
+    points.push(byDate.get(date) ?? { date, input_tokens: 0, output_tokens: 0 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return points;
 }
 
 export default function AiUsageDashboardPage() {
@@ -106,9 +129,8 @@ export default function AiUsageDashboardPage() {
         )
       : null;
 
-  const maxDailyTokens = daily
-    ? Math.max(1, ...daily.points.map((p) => p.input_tokens + p.output_tokens))
-    : 1;
+  const dailyPoints = daily ? fillMissingDays(daily) : [];
+  const maxDailyTokens = Math.max(1, ...dailyPoints.map((p) => p.input_tokens + p.output_tokens));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -300,13 +322,13 @@ export default function AiUsageDashboardPage() {
               )}
               {daily && !dailyLoading && !dailyError && (
                 <>
-                  {daily.points.length === 0 ? (
+                  {dailyPoints.length === 0 ? (
                     <p className="text-sm text-gray-500" data-testid="ai-usage-daily-empty">
                       {t('aiUsageDashboard.noDailyData')}
                     </p>
                   ) : (
                     <div className="flex items-end gap-1 h-32" data-testid="ai-usage-daily-bars">
-                      {daily.points.map((point) => {
+                      {dailyPoints.map((point) => {
                         const total = point.input_tokens + point.output_tokens;
                         const heightPct = Math.max(2, (total / maxDailyTokens) * 100);
                         return (
