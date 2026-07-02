@@ -92,6 +92,16 @@ function priorPeriod(range: DateRange): DateRange {
   };
 }
 
+/** Returns the summed input/output tokens across all users and features in a date range. */
+function queryTotals(range: DateRange): Promise<{ rows: UsageRow[] }> {
+  return pool.query<UsageRow>(
+    `SELECT COALESCE(SUM(input_tokens), 0) AS input_tokens, COALESCE(SUM(output_tokens), 0) AS output_tokens
+     FROM ai_token_usage_daily
+     WHERE usage_date >= $1 AND usage_date < $2`,
+    [range.start, range.end],
+  );
+}
+
 /**
  * Returns the aggregated usage summary for the given date range: org totals,
  * trend vs. the prior equivalent-length period, per-user and per-feature
@@ -100,14 +110,11 @@ function priorPeriod(range: DateRange): DateRange {
 export async function getUsageSummary(range: DateRange): Promise<UsageSummaryResponse> {
   const rates = await getCostRates();
 
+  const prior = priorPeriod(range);
+
   const [totalResult, perUserResult, perUserFeatureResult, perFeatureResult, priorTotalResult] =
     await Promise.all([
-      pool.query<UsageRow>(
-        `SELECT COALESCE(SUM(input_tokens), 0) AS input_tokens, COALESCE(SUM(output_tokens), 0) AS output_tokens
-         FROM ai_token_usage_daily
-         WHERE usage_date >= $1 AND usage_date < $2`,
-        [range.start, range.end],
-      ),
+      queryTotals(range),
       pool.query<PerUserRawRow>(
         `SELECT d.user_id, u.name AS user_name, u.email AS user_email,
                 COALESCE(SUM(d.input_tokens), 0) AS input_tokens,
@@ -138,15 +145,7 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
          ORDER BY feature`,
         [range.start, range.end],
       ),
-      (() => {
-        const prior = priorPeriod(range);
-        return pool.query<UsageRow>(
-          `SELECT COALESCE(SUM(input_tokens), 0) AS input_tokens, COALESCE(SUM(output_tokens), 0) AS output_tokens
-           FROM ai_token_usage_daily
-           WHERE usage_date >= $1 AND usage_date < $2`,
-          [prior.start, prior.end],
-        );
-      })(),
+      queryTotals(prior),
     ]);
 
   const totalInput = parseInt(totalResult.rows[0]?.input_tokens ?? '0', 10);

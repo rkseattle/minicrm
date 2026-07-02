@@ -1259,3 +1259,59 @@ describe('PATCH /api/v1/admin/feature-flags/:key group assignment', () => {
     expect(res.body.flags['mobile_access']).toBe(false);
   });
 });
+
+// ── GET /me — ai_features master gate + query efficiency (MINCRM-460) ────────
+
+describe('GET /api/v1/feature-flags/me — ai_features master gate', () => {
+  beforeEach(async () => {
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/ai_features')
+      .set('Cookie', adminCookie)
+      .send({ enabled: true });
+    __clearCacheForTest();
+  });
+
+  it('disabling ai_features is reflected in every ai_* sub-feature flag in one /me response', async () => {
+    await request(app)
+      .patch('/api/v1/admin/feature-flags/ai_features')
+      .set('Cookie', adminCookie)
+      .send({ enabled: false });
+    __clearCacheForTest();
+
+    const res = await request(app).get('/api/v1/feature-flags/me').set('Cookie', repCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.flags['ai_features']).toBe(false);
+    expect(res.body.flags['ai_nli_page']).toBe(false);
+    expect(res.body.flags['ai_activity_summarizer']).toBe(false);
+    expect(res.body.flags['ai_stage_advancement']).toBe(false);
+  });
+
+  it('enabled ai_features leaves each ai_* sub-feature flag to its own resolution', async () => {
+    const res = await request(app).get('/api/v1/feature-flags/me').set('Cookie', repCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.flags['ai_features']).toBe(true);
+    expect(res.body.flags['ai_nli_page']).toBe(true);
+  });
+
+  it('resolves ai_features once and reuses it for every ai_* sub-flag instead of re-querying per flag', async () => {
+    const overrideQuerySpy = vi.spyOn(pool, 'query');
+
+    await request(app).get('/api/v1/feature-flags/me').set('Cookie', repCookie);
+
+    // Every ai_* sub-feature flag's per-user-override lookup targets
+    // feature_flag_user_overrides with a literal flag_key parameter — count how
+    // many times 'ai_features' appears as that parameter. Passing the
+    // precomputed result through means this happens exactly once (for
+    // ai_features' own resolution), not once per sub-flag on top of that.
+    const aiFeaturesOverrideChecks = overrideQuerySpy.mock.calls.filter(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].includes('feature_flag_user_overrides') &&
+        Array.isArray(call[1]) &&
+        call[1][0] === 'ai_features',
+    );
+    expect(aiFeaturesOverrideChecks.length).toBe(1);
+
+    overrideQuerySpy.mockRestore();
+  });
+});

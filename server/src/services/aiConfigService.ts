@@ -12,6 +12,7 @@ import logger from '../logger.js';
 import { encryptVersioned, decryptVersioned } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { updateFeatureFlag } from './featureFlagService.js';
 import type {
   AiProvider,
   AiDeploymentMode,
@@ -482,19 +483,6 @@ export async function setAiEnabled(
       [params.enabled, actor.id],
     );
 
-    // Keep the ai_nli_page feature flag in sync with the master toggle so the
-    // nav link appears/disappears immediately when AI is enabled/disabled.
-    // role_overrides is cleared here too: the baseline seed (migration 000) set
-    // role_overrides to {"admin":true,"rep":true} for this flag, and
-    // isFlagEnabledForRole() checks role_overrides BEFORE the enabled column
-    // (see featureFlagService.ts), so leaving a stale override in place meant
-    // this UPDATE never actually took effect for any role — admins and reps
-    // kept seeing the AI Assistant nav link even after disabling AI here.
-    await client.query(
-      `UPDATE feature_flags SET enabled = $1, role_overrides = NULL WHERE flag_key = 'ai_nli_page'`,
-      [params.enabled],
-    );
-
     await writeAuditEntry(client, {
       recordType: 'ai_settings',
       recordName: 'AI Configuration',
@@ -513,6 +501,15 @@ export async function setAiEnabled(
   } finally {
     client.release();
   }
+
+  // Keep the ai_features feature flag in sync with this master toggle so the
+  // nav link and every ai_* sub-feature flag update immediately when AI is
+  // enabled/disabled (featureFlagService.isFlagEnabledForUser gates every
+  // ai_* flag on ai_features — see MINCRM-460). Runs through updateFeatureFlag
+  // rather than a direct UPDATE so it gets that function's cache invalidation
+  // and audit entry for free, and never touches ai_nli_page's own
+  // role_overrides — those stay under the Feature Flags page's control.
+  await updateFeatureFlag('ai_features', { enabled: params.enabled }, actor);
 
   return getAiConfig();
 }
