@@ -109,6 +109,10 @@ import {
 import { saveNliReport } from '../services/customReportService.js';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { getContactChampionBlockerStatus } from '../services/championBlockerService.js';
+import {
+  getAccountChurnExpansionSignal,
+  listChurnExpansionSignals,
+} from '../services/churnExpansionService.js';
 
 // ── Pipeline / Stage ───────────────────────────────────────────────────────────
 import { listPipelines, findPipelineById } from '../services/pipelineService.js';
@@ -384,6 +388,17 @@ export async function executeToolCall(
       case 'deleteAccount': {
         await deleteAccount(toolInput.id as string, ctx.actor);
         return { deleted: true, id: toolInput.id };
+      }
+
+      case 'getAccountChurnExpansionSignal': {
+        const id = toolInput.id as string;
+        const account = await findAccountById(id);
+        if (!account) return notFound('Account', id);
+        return await getAccountChurnExpansionSignal(id);
+      }
+
+      case 'getAtRiskAndExpansionAccounts': {
+        return await listChurnExpansionSignals();
       }
 
       // ── Leads ────────────────────────────────────────────────────────────────

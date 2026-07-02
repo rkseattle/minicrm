@@ -23,6 +23,7 @@ import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFie
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
+import ChurnExpansionBanner from '@/components/ChurnExpansionBanner.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
@@ -198,6 +199,8 @@ export default function AccountDetailPage() {
           </svg>
           {t('common.backToAccounts')}
         </Link>
+
+        {id && <ChurnExpansionBanner accountId={id} />}
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
           <h1 className="text-2xl font-bold text-gray-900" data-testid="account-name">

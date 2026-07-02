@@ -19,6 +19,7 @@ import { LOCALE_NATIVE_NAME } from './navLinks.js';
 import GlobalSearch from './GlobalSearch.js';
 import { useBranding } from '@/context/BrandingContext.js';
 import PoweredByBadge from './PoweredByBadge.js';
+import NotificationBell from './NotificationBell.js';
 
 /** Props for the optional hamburger toggle button. */
 export interface HamburgerProps {
@@ -139,6 +140,7 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
 
       {/* Right controls */}
       <div className="flex items-center gap-3 ms-auto">
+        {user && <NotificationBell />}
         {user && (
           <span className="text-sm text-gray-500 hidden sm:block truncate max-w-[12rem]">
             {user.name}

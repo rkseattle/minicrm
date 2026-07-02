@@ -205,6 +205,9 @@ const SERIAL_FILES = [
   // championBlockerService toggles ai_configuration.enabled/api_key_encrypted (same global
   // singleton row as dealHealthService/stageAdvancementService/winLossAnalysisService). (MINCRM-466)
   'src/__tests__/championBlockerService.test.ts',
+  // churnExpansionService toggles the same ai_configuration singleton row as the other
+  // nightly-job test suites above. (MINCRM-469)
+  'src/__tests__/churnExpansionService.test.ts',
 ];
 
 const sharedResolve = {

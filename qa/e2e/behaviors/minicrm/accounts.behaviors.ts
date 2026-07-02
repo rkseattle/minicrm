@@ -685,3 +685,23 @@ export async function isAccountDetailLoaded(context: AccountsBehaviorContext): P
   const detailPage = new AccountDetailPage(context);
   return detailPage.isLoaded();
 }
+
+// ---------------------------------------------------------------------------
+// AI churn/expansion signal banner (MINCRM-469)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the churn-risk banner is currently visible. */
+export async function isChurnRiskBannerVisible(context: AccountsBehaviorContext): Promise<boolean> {
+  const detailPage = new AccountDetailPage(context);
+  const locator = await detailPage.churnRiskBannerLocator();
+  return locator.isVisible().catch(() => false);
+}
+
+/** Returns true when the expansion signal banner is currently visible. */
+export async function isExpansionSignalBannerVisible(
+  context: AccountsBehaviorContext,
+): Promise<boolean> {
+  const detailPage = new AccountDetailPage(context);
+  const locator = await detailPage.expansionSignalBannerLocator();
+  return locator.isVisible().catch(() => false);
+}

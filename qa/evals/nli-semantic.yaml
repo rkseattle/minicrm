@@ -328,3 +328,17 @@ tests:
           than an unqualified assertion). Fail if the response presents the
           classification as certain/factual, or fabricates signals not present
           in the tool results.
+
+  # ── MINCRM-469: churn/expansion signal framing ───────────────────────────────
+
+  - description: Churn signal is presented as AI-inferred, not as fact (MINCRM-469)
+    vars:
+      query: Is Acme Corp at risk of churning?
+      tool_results: '{"signal":{"id":"s1","signal_type":"churn_risk","confidence":0.88,"contributing_factors":[{"description":"No activity logged in 45 days"}],"detected_at":"2026-07-01T04:00:00.000Z"}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response reports a churn risk signal for Acme Corp, citing
+          the "no activity in 45 days" factor, AND frames this as an AI-inferred
+          signal rather than a stated fact. Fail if the response presents churn
+          as certain, or fabricates factors not present in the tool results.

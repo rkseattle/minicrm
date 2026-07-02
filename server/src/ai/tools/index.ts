@@ -55,6 +55,8 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   // ── Accounts (no dedicated account capabilities — use contacts:* as proxy) ─
   ['searchAccounts', 'contacts:view' as Capability],
   ['getAccount', 'contacts:view' as Capability],
+  ['getAccountChurnExpansionSignal', 'contacts:view' as Capability],
+  ['getAtRiskAndExpansionAccounts', 'contacts:view' as Capability],
   ['createAccount', 'contacts:create' as Capability],
   ['updateAccount', 'contacts:edit' as Capability],
   ['deleteAccount', 'contacts:delete' as Capability],

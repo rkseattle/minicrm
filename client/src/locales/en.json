@@ -2335,6 +2335,25 @@
     "tableFeature": "Feature",
     "noUsageData": "No usage data for this range."
   },
+  "churnExpansion": {
+    "churnRiskDetected": "Churn risk detected",
+    "expansionSignalDetected": "Expansion signal detected",
+    "detectedOn": "Detected on {{date}}",
+    "insightsHeading": "At-Risk & Expansion Accounts",
+    "notAvailable": "This feature is not available.",
+    "loadFailed": "Failed to load churn/expansion insights.",
+    "atRiskHeading": "At-Risk Accounts",
+    "atRiskEmpty": "No accounts currently at risk.",
+    "expansionHeading": "Expansion Opportunities",
+    "expansionEmpty": "No expansion opportunities detected.",
+    "confidenceLabel": "{{confidence}}% confidence"
+  },
+  "notifications": {
+    "bellLabel": "Notifications ({{count}} unread)",
+    "heading": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet."
+  },
   "championBlocker": {
     "status": {
       "champion": "Champion",

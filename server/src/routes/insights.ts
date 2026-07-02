@@ -12,6 +12,7 @@ import {
   exportWinLossInsightsCsvHandler,
   exportWinLossInsightsPdfHandler,
 } from '../controllers/winLossInsightController.js';
+import { listChurnExpansionSignalsHandler } from '../controllers/churnExpansionController.js';
 
 const router = Router();
 
@@ -59,6 +60,34 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_win_loss_insights'),
   asyncHandler(exportWinLossInsightsPdfHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/insights/churn-expansion:
+ *   get:
+ *     tags: [Insights]
+ *     operationId: listChurnExpansionSignals
+ *     summary: Get all active AI churn/expansion account signals
+ *     description: >
+ *       Returns all active (non-cleared) churn-risk and expansion signals from the most
+ *       recent nightly detection run, across all closed-won accounts. Gated by the
+ *       ai_churn_expansion_detection feature flag. (MINCRM-469)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Active churn/expansion signals
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: The ai_churn_expansion_detection flag is disabled
+ */
+router.get(
+  '/churn-expansion',
+  authenticate,
+  requireFeatureEnabled('ai_churn_expansion_detection'),
+  asyncHandler(listChurnExpansionSignalsHandler),
 );
 
 export default router;

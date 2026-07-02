@@ -2335,6 +2335,25 @@
     "tableFeature": "Fonctionnalité",
     "noUsageData": "Aucune donnée d'utilisation pour cette plage."
   },
+  "churnExpansion": {
+    "churnRiskDetected": "Risque de résiliation détecté",
+    "expansionSignalDetected": "Signal d'expansion détecté",
+    "detectedOn": "Détecté le {{date}}",
+    "insightsHeading": "Comptes à risque et d'expansion",
+    "notAvailable": "Cette fonctionnalité n'est pas disponible.",
+    "loadFailed": "Échec du chargement des données de résiliation/expansion.",
+    "atRiskHeading": "Comptes à risque",
+    "atRiskEmpty": "Aucun compte à risque actuellement.",
+    "expansionHeading": "Opportunités d'expansion",
+    "expansionEmpty": "Aucune opportunité d'expansion détectée.",
+    "confidenceLabel": "{{confidence}} % de confiance"
+  },
+  "notifications": {
+    "bellLabel": "Notifications ({{count}} non lues)",
+    "heading": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "empty": "Aucune notification pour le moment."
+  },
   "championBlocker": {
     "status": {
       "champion": "Champion",

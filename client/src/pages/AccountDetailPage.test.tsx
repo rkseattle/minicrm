@@ -27,6 +27,37 @@ describe('AccountDetailPage', () => {
     });
   });
 
+  // ── AI churn/expansion signal banner (MINCRM-469) ───────────────────────────────
+
+  it('shows no churn/expansion banner when there is no active signal', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('account-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('churn-risk-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('expansion-signal-banner')).not.toBeInTheDocument();
+  });
+
+  it('shows the churn-risk banner when an active signal exists', async () => {
+    server.use(
+      http.get('/api/v1/accounts/:id/churn-expansion-signal', () =>
+        HttpResponse.json({
+          signal: {
+            id: 's1',
+            signal_type: 'churn_risk',
+            confidence: 0.9,
+            contributing_factors: [{ description: 'No activity logged in 45 days' }],
+            detected_at: '2026-07-01T04:00:00.000Z',
+          },
+        }),
+      ),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('churn-risk-banner')).toBeInTheDocument();
+    });
+  });
+
   it('renders industry in the detail card', async () => {
     renderAccountDetail();
     await waitFor(() => {
