@@ -13,7 +13,11 @@
  */
 
 import pool from '../db.js';
-import { getUserBudgetSnapshots } from './aiTokenBudgetService.js';
+import {
+  getUserBudgetSnapshots,
+  currentYearMonth,
+  type UserBudgetSnapshot,
+} from './aiTokenBudgetService.js';
 import type {
   UsageSummaryResponse,
   UsageDailySeriesResponse,
@@ -74,6 +78,22 @@ interface DailyRawRow {
  */
 function toDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * True when `range` covers the current UTC calendar month at all (even
+ * partially). getUserBudgetSnapshots always reports the current month's
+ * consumption against the monthly limit — that's only a meaningful
+ * "% of budget used" figure when the selected range is the current month;
+ * for a purely historical range (e.g. "last month") it would silently pair
+ * this month's percentage with a different month's token counts.
+ */
+function rangeIncludesCurrentMonth(range: DateRange): boolean {
+  const [year, month] = currentYearMonth().split('-').map(Number);
+  // month is 1-indexed from currentYearMonth(); Date.UTC's month param is 0-indexed.
+  const currentMonthStart = new Date(Date.UTC(year, month - 1, 1));
+  const currentMonthEnd = new Date(Date.UTC(year, month, 1));
+  return range.start < currentMonthEnd && range.end > currentMonthStart;
 }
 
 function estimateCostCents(inputTokens: number, outputTokens: number, rates: CostRates): number {
@@ -180,9 +200,13 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
     }
   }
 
-  const budgetSnapshots = await getUserBudgetSnapshots(
-    perUserResult.rows.map((row) => row.user_id),
-  );
+  // budget_percentage only means something when the selected range includes
+  // the current month (see rangeIncludesCurrentMonth's doc comment) — skip
+  // the query entirely for a purely historical range rather than compute
+  // snapshots that would just be discarded below.
+  const budgetSnapshots = rangeIncludesCurrentMonth(range)
+    ? await getUserBudgetSnapshots(perUserResult.rows.map((row) => row.user_id))
+    : new Map<string, UserBudgetSnapshot>();
 
   const perUser: PerUserUsageRow[] = perUserResult.rows.map((row) => {
     const inputTokens = parseInt(row.input_tokens, 10);

@@ -47,9 +47,21 @@ function todayMinus(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// UTC-based to match aiTokenBudgetService.ts's currentYearMonth() and
+// aiUsageDashboardService.ts's rangeIncludesCurrentMonth() — using local
+// time here would drift from the DB's own UTC "today" and could flake near
+// a local midnight that isn't also UTC midnight.
 function currentYearMonth(): string {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function currentMonthUtcRange(): { start: Date; end: Date } {
+  const [year, month] = currentYearMonth().split('-').map(Number);
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1)),
+    end: new Date(Date.UTC(year, month, 1)),
+  };
 }
 
 describe('getUsageSummary', () => {
@@ -124,9 +136,7 @@ describe('getUsageSummary', () => {
       userId,
     ]);
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const summary = await getUsageSummary({ start, end });
 
@@ -134,6 +144,35 @@ describe('getUsageSummary', () => {
     expect(userRow).toBeDefined();
     // 5000 tokens used / 10000 limit = 50%.
     expect(userRow!.budget_percentage).toBe(50);
+  });
+
+  it("returns budget_percentage: null for a purely historical range — pairing a stale current-month percentage with a different month's token counts would be misleading", async () => {
+    await pool.query(
+      `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens)
+       VALUES ($1, '2020-01-15', 'nli_chat', 500, 100)`,
+      [userId],
+    );
+    // Even though this user has current-month usage and a budget, a request
+    // for a strictly historical range must not surface this month's
+    // percentage alongside January 2020's token counts.
+    await pool.query(
+      `INSERT INTO ai_token_usage (user_id, year_month, input_tokens, output_tokens)
+       VALUES ($1, $2, 4000, 1000)`,
+      [userId, currentYearMonth()],
+    );
+    await pool.query(`INSERT INTO ai_token_budgets (user_id, monthly_limit) VALUES ($1, 10000)`, [
+      userId,
+    ]);
+
+    const summary = await getUsageSummary({
+      start: new Date('2020-01-01'),
+      end: new Date('2020-02-01'),
+    });
+
+    const userRow = summary.per_user.find((u) => u.user_id === userId);
+    expect(userRow).toBeDefined();
+    expect(userRow!.input_tokens).toBe(500);
+    expect(userRow!.budget_percentage).toBeNull();
   });
 
   it('returns a per-feature breakdown', async () => {

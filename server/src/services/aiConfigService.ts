@@ -12,7 +12,7 @@ import logger from '../logger.js';
 import { encryptVersioned, decryptVersioned } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
-import { updateFeatureFlag } from './featureFlagService.js';
+import { invalidateFeatureFlagCache } from './featureFlagService.js';
 import type {
   AiProvider,
   AiDeploymentMode,
@@ -494,6 +494,39 @@ export async function setAiEnabled(
       changedByName: actor.name,
     });
 
+    // Keep the ai_features feature flag in sync with this master toggle, in
+    // the SAME transaction as the ai_configuration write above, so the nav
+    // link and every ai_* sub-feature flag can never observe a state where
+    // one table reflects the new enabled value and the other doesn't
+    // (featureFlagService.isFlagEnabledForUser gates every ai_* flag on
+    // ai_features — see MINCRM-460). Written inline rather than through
+    // updateFeatureFlag() because that function owns its own connection and
+    // transaction and can't participate in this one; it only ever needs to
+    // touch the `enabled` column here, never role_overrides — those stay
+    // under the Feature Flags page's control.
+    const previousFlagRow = await client.query<{ enabled: boolean; label: string }>(
+      `SELECT enabled, label FROM feature_flags WHERE flag_key = 'ai_features' FOR UPDATE`,
+    );
+    const previousFlagEnabled = previousFlagRow.rows[0]?.enabled ?? false;
+    const flagLabel = previousFlagRow.rows[0]?.label ?? 'AI Features';
+    await client.query(
+      `UPDATE feature_flags SET enabled = $1, updated_by = $2, updated_at = now()
+       WHERE flag_key = 'ai_features'`,
+      [params.enabled, actor.id],
+    );
+    if (params.enabled !== previousFlagEnabled) {
+      await writeAuditEntry(client, {
+        recordType: 'feature_flag',
+        recordName: flagLabel,
+        eventType: 'updated',
+        fieldName: 'enabled',
+        oldValue: String(previousFlagEnabled),
+        newValue: String(params.enabled),
+        changedById: actor.id,
+        changedByName: actor.name,
+      });
+    }
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -502,14 +535,9 @@ export async function setAiEnabled(
     client.release();
   }
 
-  // Keep the ai_features feature flag in sync with this master toggle so the
-  // nav link and every ai_* sub-feature flag update immediately when AI is
-  // enabled/disabled (featureFlagService.isFlagEnabledForUser gates every
-  // ai_* flag on ai_features — see MINCRM-460). Runs through updateFeatureFlag
-  // rather than a direct UPDATE so it gets that function's cache invalidation
-  // and audit entry for free, and never touches ai_nli_page's own
-  // role_overrides — those stay under the Feature Flags page's control.
-  await updateFeatureFlag('ai_features', { enabled: params.enabled }, actor);
+  // Cache invalidation happens only after a successful commit — a failed/
+  // rolled-back write must never invalidate stale-but-still-correct cached data.
+  invalidateFeatureFlagCache();
 
   return getAiConfig();
 }

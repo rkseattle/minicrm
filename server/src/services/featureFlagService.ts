@@ -97,6 +97,18 @@ function invalidateCache(): void {
 }
 
 /**
+ * Public alias for invalidateCache — for services that write feature_flags
+ * directly on their own transaction's client rather than going through
+ * updateFeatureFlag (which can't participate in a caller's transaction since
+ * it owns its own connection/BEGIN/COMMIT). See aiConfigService.ts's
+ * setAiEnabled for the motivating case: syncing the ai_features flag must be
+ * atomic with the ai_configuration write it's derived from.
+ */
+export function invalidateFeatureFlagCache(): void {
+  invalidateCache();
+}
+
+/**
  * Exported for test use only — clears the TTL cache so a test's DB mutations
  * are visible to the next service call without waiting for TTL expiry.
  * Do not call this from application code.
