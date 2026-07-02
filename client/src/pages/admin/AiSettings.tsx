@@ -1098,7 +1098,20 @@ function DataMinimizationSection() {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function AiSettings() {
+interface AiSettingsProps {
+  /**
+   * Disables every section except the master toggle. Driven by the
+   * ai_features flag (AdminSettingsPage.tsx) when an admin has turned AI
+   * off — the master toggle must stay interactive even then, since it's the
+   * only way to turn AI back on. Wrapping the whole panel (toggle included)
+   * in a disabled fieldset was the original MINCRM-566 behavior, but became
+   * a self-lockout once setAiEnabled started syncing ai_features to the
+   * toggle's own state (see aiConfigService.ts).
+   */
+  disabled?: boolean;
+}
+
+export default function AiSettings({ disabled = false }: AiSettingsProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -1281,42 +1294,18 @@ export default function AiSettings() {
 
   return (
     <div className="space-y-8" data-testid="ai-settings-panel" role="region">
-      {/* ── Header status bar ──────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-gray-200">
-        <span className="text-sm font-medium text-gray-700">
-          {t('aiSettings.header.deploymentMode')}:{' '}
-          <span className="font-semibold" data-testid="ai-deployment-mode-badge">
-            {t(`aiSettings.deploymentMode.${deploymentMode}.label`)}
-          </span>
-        </span>
-        <DpaStatusBadge status={data.dpa_status} />
-        <DataPostureBadge posture={data.data_posture} />
-      </div>
-
-      {/* DPA unacknowledged warning banner */}
-      {data.dpa_status !== 'acknowledged' && data.deployment_mode !== 'self_hosted' && (
-        <div
-          className="flex items-start gap-3 px-4 py-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800"
-          role="alert"
-          data-testid="ai-dpa-warning-banner"
+      {disabled && (
+        <p
+          className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+          data-testid="ai-panel-disabled-banner"
         >
-          <svg
-            className="shrink-0 mt-0.5 h-4 w-4"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <span>{t('aiSettings.dpa.warningBanner')}</span>
-        </div>
+          {t('settings.featureDisabledBanner')}
+        </p>
       )}
 
-      {/* ── Section 1: Master AI toggle ────────────────────────────────────── */}
+      {/* ── Section 1: Master AI toggle — always interactive, even when      */}
+      {/* `disabled` is true, since it's the only way to recover from that   */}
+      {/* state (see the disabled prop's doc comment above). ─────────────── */}
       <section aria-labelledby="ai-toggle-heading">
         <h2 id="ai-toggle-heading" className="text-base font-semibold text-gray-900 mb-1">
           {t('aiSettings.toggle.heading')}
@@ -1355,349 +1344,8 @@ export default function AiSettings() {
         </div>
       </section>
 
-      {/* ── Section 2: Provider & Model ────────────────────────────────────── */}
-      <section aria-labelledby="ai-provider-heading">
-        <h2 id="ai-provider-heading" className="text-base font-semibold text-gray-900 mb-1">
-          {t('aiSettings.provider.heading')}
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">{t('aiSettings.provider.description')}</p>
-
-        <form onSubmit={handleConfigSubmit} className="space-y-5">
-          {/* Provider */}
-          <div>
-            <label
-              htmlFor="ai-provider-select"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('aiSettings.provider.providerLabel')}
-            </label>
-            <select
-              id="ai-provider-select"
-              value={provider}
-              onChange={(e) => handleProviderChange(e.target.value as AiProvider)}
-              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              data-testid="ai-provider-select"
-            >
-              {AI_PROVIDERS.map((p) => (
-                <option key={p} value={p}>
-                  {t(`aiSettings.provider.providers.${p}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Model */}
-          <div>
-            <label
-              htmlFor="ai-model-select"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('aiSettings.provider.modelLabel')}
-            </label>
-            <select
-              id="ai-model-select"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              data-testid="ai-model-select"
-            >
-              {availableModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Deployment mode */}
-          <fieldset>
-            <legend className="block text-sm font-medium text-gray-700 mb-2">
-              {t('aiSettings.deploymentMode.label')}
-            </legend>
-            <div className="space-y-3">
-              {AI_DEPLOYMENT_MODES.map((mode) => (
-                <label
-                  key={mode}
-                  htmlFor={`ai-deployment-mode-radio-${mode}`}
-                  aria-label={t(`aiSettings.deploymentMode.${mode}.label`)}
-                  className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${deploymentMode === mode ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
-                  data-testid={`ai-deployment-mode-${mode}`}
-                >
-                  <input
-                    id={`ai-deployment-mode-radio-${mode}`}
-                    type="radio"
-                    name="deployment_mode"
-                    value={mode}
-                    checked={deploymentMode === mode}
-                    onChange={() => setDeploymentMode(mode)}
-                    className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                    data-testid={`ai-deployment-mode-radio-${mode}`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {t(`aiSettings.deploymentMode.${mode}.label`)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {t(`aiSettings.deploymentMode.${mode}.description`)}
-                    </p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          {/* Base URL (required for private_endpoint / self_hosted) */}
-          {requiresBaseUrl && (
-            <div>
-              <label htmlFor="ai-base-url" className="block text-sm font-medium text-gray-700 mb-1">
-                {t('aiSettings.provider.baseUrlLabel')} <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="ai-base-url"
-                type="url"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://your-endpoint.example.com"
-                required={requiresBaseUrl}
-                className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                data-testid="ai-base-url-input"
-              />
-            </div>
-          )}
-
-          {/* API key */}
-          <div>
-            <label htmlFor="ai-api-key" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('aiSettings.provider.apiKeyLabel')}
-            </label>
-            {!apiKeyEditing && data.api_key_set ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500 font-mono" data-testid="ai-api-key-masked">
-                  {t('aiSettings.provider.apiKeyMasked')}
-                </span>
-                <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
-                  {t('aiSettings.provider.apiKeySet')}
-                </span>
-                <button
-                  type="button"
-                  className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                  onClick={() => setApiKeyEditing(true)}
-                  data-testid="ai-api-key-change-button"
-                >
-                  {t('aiSettings.provider.changeApiKey')}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <input
-                  id="ai-api-key"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  autoComplete="new-password"
-                  placeholder={
-                    data.api_key_set
-                      ? t('aiSettings.provider.apiKeyPlaceholderChange')
-                      : t('aiSettings.provider.apiKeyPlaceholder')
-                  }
-                  className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  data-testid="ai-api-key-input"
-                />
-                {apiKeyEditing && data.api_key_set && (
-                  <button
-                    type="button"
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                    onClick={() => {
-                      setApiKeyEditing(false);
-                      setApiKey('');
-                    }}
-                    data-testid="ai-api-key-cancel-button"
-                  >
-                    {t('common.cancel')}
-                  </button>
-                )}
-              </div>
-            )}
-            <p className="mt-1 text-xs text-gray-400">{t('aiSettings.provider.apiKeyHint')}</p>
-          </div>
-
-          {/* Test connection */}
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => void handleTestConnection()}
-              disabled={testStatus === 'testing'}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-              data-testid="ai-test-connection-button"
-            >
-              {testStatus === 'testing'
-                ? t('aiSettings.provider.testingConnection')
-                : t('aiSettings.provider.testConnection')}
-            </button>
-            {testStatus !== 'idle' && testStatus !== 'testing' && (
-              <span
-                className={`text-sm ${testStatus === 'ok' ? 'text-green-700' : 'text-red-600'}`}
-                data-testid="ai-test-connection-result"
-                role="status"
-                aria-live="polite"
-              >
-                {testMessage}
-              </span>
-            )}
-          </div>
-
-          {/* Save */}
-          <div className="flex items-center gap-4 pt-2">
-            <Button
-              type="submit"
-              disabled={configMutation.isPending}
-              data-testid="ai-config-save-button"
-            >
-              {configMutation.isPending ? t('common.saving') : t('common.save')}
-            </Button>
-            {configSaveSuccess && (
-              <span className="text-sm text-green-700" data-testid="ai-config-save-success">
-                {t('aiSettings.provider.saveSuccess')}
-              </span>
-            )}
-            {configSaveError && (
-              <span className="text-sm text-red-600" data-testid="ai-config-save-error">
-                {configSaveError}
-              </span>
-            )}
-          </div>
-        </form>
-      </section>
-
-      {/* ── Section 3: Data Processing Agreement ──────────────────────────── */}
-      <section aria-labelledby="ai-dpa-heading">
-        <h2 id="ai-dpa-heading" className="text-base font-semibold text-gray-900 mb-1">
-          {t('aiSettings.dpa.heading')}
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">{t('aiSettings.dpa.description')}</p>
-
-        <div className="space-y-4">
-          {/* Provider DPA link */}
-          <div>
-            <p className="text-sm text-gray-700">
-              {t('aiSettings.dpa.providerDpaLabel', {
-                provider: t(`aiSettings.provider.providers.${data.provider}`),
-              })}
-              {': '}
-              <a
-                href={data.provider_dpa_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-indigo-600 hover:text-indigo-800 underline"
-                data-testid="ai-provider-dpa-link"
-              >
-                {data.provider_dpa_url}
-              </a>
-            </p>
-          </div>
-
-          {/* Custom DPA URL */}
-          <div>
-            <label
-              htmlFor="ai-custom-dpa-url"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              {t('aiSettings.dpa.customDpaUrlLabel')}
-            </label>
-            <input
-              id="ai-custom-dpa-url"
-              type="url"
-              value={customDpaUrl}
-              onChange={(e) => setCustomDpaUrl(e.target.value)}
-              placeholder="https://your-sharepoint.example.com/signed-dpa.pdf"
-              className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              data-testid="ai-custom-dpa-url-input"
-            />
-            <p className="mt-1 text-xs text-gray-400">{t('aiSettings.dpa.customDpaUrlHint')}</p>
-          </div>
-
-          {/* Current acknowledgment state */}
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-            {data.dpa_acknowledged ? (
-              <p className="text-sm text-gray-700" data-testid="ai-dpa-acknowledged-state">
-                {t('aiSettings.dpa.acknowledgedBy', {
-                  name: data.dpa_acknowledged_by,
-                  date: formatTimestamp(data.dpa_acknowledged_at),
-                })}
-              </p>
-            ) : (
-              <p className="text-sm text-gray-500" data-testid="ai-dpa-not-acknowledged-state">
-                {t('aiSettings.dpa.notAcknowledged')}
-              </p>
-            )}
-          </div>
-
-          {/* Acknowledgment checkbox + button — hidden once acknowledged */}
-          {!data.dpa_acknowledged && data.deployment_mode !== 'self_hosted' && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <input
-                  id="ai-dpa-checkbox"
-                  type="checkbox"
-                  checked={false}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  onChange={() => {
-                    handleDpaAcknowledge();
-                  }}
-                  data-testid="ai-dpa-checkbox"
-                />
-                <label htmlFor="ai-dpa-checkbox" className="text-sm text-gray-700">
-                  {t('aiSettings.dpa.checkboxLabel')}
-                </label>
-              </div>
-              {dpaSaveSuccess && (
-                <p className="text-sm text-green-700" data-testid="ai-dpa-save-success">
-                  {t('aiSettings.dpa.saveSuccess')}
-                </p>
-              )}
-              {dpaSaveError && (
-                <p className="text-sm text-red-600" data-testid="ai-dpa-save-error">
-                  {dpaSaveError}
-                </p>
-              )}
-            </div>
-          )}
-
-          {data.deployment_mode === 'self_hosted' && (
-            <p
-              className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2"
-              data-testid="ai-dpa-self-hosted-notice"
-            >
-              {t('aiSettings.dpa.selfHostedNotice')}
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* Session retention section (MINCRM-447) */}
-      <div className="border-t border-gray-200 pt-6">
-        <SessionRetentionSection retentionDays={data.ai_session_retention_days} />
-      </div>
-
-      {/* Token budget section (MINCRM-458) */}
-      <div className="border-t border-gray-200 pt-6">
-        <TokenBudgetSection />
-      </div>
-
-      {/* Cost rates section (MINCRM-459) */}
-      <div className="border-t border-gray-200 pt-6">
-        <CostRatesSection
-          inputCentsPerMillion={data.ai_input_cost_per_million_cents}
-          outputCentsPerMillion={data.ai_output_cost_per_million_cents}
-        />
-      </div>
-
-      {/* Data minimization section (MINCRM-461) */}
-      <div className="border-t border-gray-200 pt-6">
-        <DataMinimizationSection />
-      </div>
-
-      {/* Toggle confirmation dialog */}
+      {/* Toggle confirmation dialog — also outside the disabled fieldset,    */}
+      {/* since it's part of the master-toggle interaction flow. ──────────── */}
       {showToggleConfirm && pendingEnabled !== null && (
         <ToggleConfirmDialog
           enabling={pendingEnabled}
@@ -1709,6 +1357,388 @@ export default function AiSettings() {
           isPending={toggleMutation.isPending}
         />
       )}
+
+      <fieldset disabled={disabled} className="contents">
+        {/* ── Header status bar ──────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-gray-200">
+          <span className="text-sm font-medium text-gray-700">
+            {t('aiSettings.header.deploymentMode')}:{' '}
+            <span className="font-semibold" data-testid="ai-deployment-mode-badge">
+              {t(`aiSettings.deploymentMode.${deploymentMode}.label`)}
+            </span>
+          </span>
+          <DpaStatusBadge status={data.dpa_status} />
+          <DataPostureBadge posture={data.data_posture} />
+        </div>
+
+        {/* DPA unacknowledged warning banner */}
+        {data.dpa_status !== 'acknowledged' && data.deployment_mode !== 'self_hosted' && (
+          <div
+            className="flex items-start gap-3 px-4 py-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800"
+            role="alert"
+            data-testid="ai-dpa-warning-banner"
+          >
+            <svg
+              className="shrink-0 mt-0.5 h-4 w-4"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{t('aiSettings.dpa.warningBanner')}</span>
+          </div>
+        )}
+
+        {/* ── Section 2: Provider & Model ────────────────────────────────────── */}
+        <section aria-labelledby="ai-provider-heading">
+          <h2 id="ai-provider-heading" className="text-base font-semibold text-gray-900 mb-1">
+            {t('aiSettings.provider.heading')}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">{t('aiSettings.provider.description')}</p>
+
+          <form onSubmit={handleConfigSubmit} className="space-y-5">
+            {/* Provider */}
+            <div>
+              <label
+                htmlFor="ai-provider-select"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('aiSettings.provider.providerLabel')}
+              </label>
+              <select
+                id="ai-provider-select"
+                value={provider}
+                onChange={(e) => handleProviderChange(e.target.value as AiProvider)}
+                className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                data-testid="ai-provider-select"
+              >
+                {AI_PROVIDERS.map((p) => (
+                  <option key={p} value={p}>
+                    {t(`aiSettings.provider.providers.${p}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Model */}
+            <div>
+              <label
+                htmlFor="ai-model-select"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('aiSettings.provider.modelLabel')}
+              </label>
+              <select
+                id="ai-model-select"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="block w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                data-testid="ai-model-select"
+              >
+                {availableModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Deployment mode */}
+            <fieldset>
+              <legend className="block text-sm font-medium text-gray-700 mb-2">
+                {t('aiSettings.deploymentMode.label')}
+              </legend>
+              <div className="space-y-3">
+                {AI_DEPLOYMENT_MODES.map((mode) => (
+                  <label
+                    key={mode}
+                    htmlFor={`ai-deployment-mode-radio-${mode}`}
+                    aria-label={t(`aiSettings.deploymentMode.${mode}.label`)}
+                    className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${deploymentMode === mode ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    data-testid={`ai-deployment-mode-${mode}`}
+                  >
+                    <input
+                      id={`ai-deployment-mode-radio-${mode}`}
+                      type="radio"
+                      name="deployment_mode"
+                      value={mode}
+                      checked={deploymentMode === mode}
+                      onChange={() => setDeploymentMode(mode)}
+                      className="mt-0.5 h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                      data-testid={`ai-deployment-mode-radio-${mode}`}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {t(`aiSettings.deploymentMode.${mode}.label`)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {t(`aiSettings.deploymentMode.${mode}.description`)}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {/* Base URL (required for private_endpoint / self_hosted) */}
+            {requiresBaseUrl && (
+              <div>
+                <label
+                  htmlFor="ai-base-url"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  {t('aiSettings.provider.baseUrlLabel')} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="ai-base-url"
+                  type="url"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://your-endpoint.example.com"
+                  required={requiresBaseUrl}
+                  className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  data-testid="ai-base-url-input"
+                />
+              </div>
+            )}
+
+            {/* API key */}
+            <div>
+              <label htmlFor="ai-api-key" className="block text-sm font-medium text-gray-700 mb-1">
+                {t('aiSettings.provider.apiKeyLabel')}
+              </label>
+              {!apiKeyEditing && data.api_key_set ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500 font-mono" data-testid="ai-api-key-masked">
+                    {t('aiSettings.provider.apiKeyMasked')}
+                  </span>
+                  <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                    {t('aiSettings.provider.apiKeySet')}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                    onClick={() => setApiKeyEditing(true)}
+                    data-testid="ai-api-key-change-button"
+                  >
+                    {t('aiSettings.provider.changeApiKey')}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input
+                    id="ai-api-key"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    autoComplete="new-password"
+                    placeholder={
+                      data.api_key_set
+                        ? t('aiSettings.provider.apiKeyPlaceholderChange')
+                        : t('aiSettings.provider.apiKeyPlaceholder')
+                    }
+                    className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm font-mono shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    data-testid="ai-api-key-input"
+                  />
+                  {apiKeyEditing && data.api_key_set && (
+                    <button
+                      type="button"
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                      onClick={() => {
+                        setApiKeyEditing(false);
+                        setApiKey('');
+                      }}
+                      data-testid="ai-api-key-cancel-button"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  )}
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-400">{t('aiSettings.provider.apiKeyHint')}</p>
+            </div>
+
+            {/* Test connection */}
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => void handleTestConnection()}
+                disabled={testStatus === 'testing'}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                data-testid="ai-test-connection-button"
+              >
+                {testStatus === 'testing'
+                  ? t('aiSettings.provider.testingConnection')
+                  : t('aiSettings.provider.testConnection')}
+              </button>
+              {testStatus !== 'idle' && testStatus !== 'testing' && (
+                <span
+                  className={`text-sm ${testStatus === 'ok' ? 'text-green-700' : 'text-red-600'}`}
+                  data-testid="ai-test-connection-result"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {testMessage}
+                </span>
+              )}
+            </div>
+
+            {/* Save */}
+            <div className="flex items-center gap-4 pt-2">
+              <Button
+                type="submit"
+                disabled={configMutation.isPending}
+                data-testid="ai-config-save-button"
+              >
+                {configMutation.isPending ? t('common.saving') : t('common.save')}
+              </Button>
+              {configSaveSuccess && (
+                <span className="text-sm text-green-700" data-testid="ai-config-save-success">
+                  {t('aiSettings.provider.saveSuccess')}
+                </span>
+              )}
+              {configSaveError && (
+                <span className="text-sm text-red-600" data-testid="ai-config-save-error">
+                  {configSaveError}
+                </span>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {/* ── Section 3: Data Processing Agreement ──────────────────────────── */}
+        <section aria-labelledby="ai-dpa-heading">
+          <h2 id="ai-dpa-heading" className="text-base font-semibold text-gray-900 mb-1">
+            {t('aiSettings.dpa.heading')}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">{t('aiSettings.dpa.description')}</p>
+
+          <div className="space-y-4">
+            {/* Provider DPA link */}
+            <div>
+              <p className="text-sm text-gray-700">
+                {t('aiSettings.dpa.providerDpaLabel', {
+                  provider: t(`aiSettings.provider.providers.${data.provider}`),
+                })}
+                {': '}
+                <a
+                  href={data.provider_dpa_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:text-indigo-800 underline"
+                  data-testid="ai-provider-dpa-link"
+                >
+                  {data.provider_dpa_url}
+                </a>
+              </p>
+            </div>
+
+            {/* Custom DPA URL */}
+            <div>
+              <label
+                htmlFor="ai-custom-dpa-url"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {t('aiSettings.dpa.customDpaUrlLabel')}
+              </label>
+              <input
+                id="ai-custom-dpa-url"
+                type="url"
+                value={customDpaUrl}
+                onChange={(e) => setCustomDpaUrl(e.target.value)}
+                placeholder="https://your-sharepoint.example.com/signed-dpa.pdf"
+                className="block w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                data-testid="ai-custom-dpa-url-input"
+              />
+              <p className="mt-1 text-xs text-gray-400">{t('aiSettings.dpa.customDpaUrlHint')}</p>
+            </div>
+
+            {/* Current acknowledgment state */}
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+              {data.dpa_acknowledged ? (
+                <p className="text-sm text-gray-700" data-testid="ai-dpa-acknowledged-state">
+                  {t('aiSettings.dpa.acknowledgedBy', {
+                    name: data.dpa_acknowledged_by,
+                    date: formatTimestamp(data.dpa_acknowledged_at),
+                  })}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500" data-testid="ai-dpa-not-acknowledged-state">
+                  {t('aiSettings.dpa.notAcknowledged')}
+                </p>
+              )}
+            </div>
+
+            {/* Acknowledgment checkbox + button — hidden once acknowledged */}
+            {!data.dpa_acknowledged && data.deployment_mode !== 'self_hosted' && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    id="ai-dpa-checkbox"
+                    type="checkbox"
+                    checked={false}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    onChange={() => {
+                      handleDpaAcknowledge();
+                    }}
+                    data-testid="ai-dpa-checkbox"
+                  />
+                  <label htmlFor="ai-dpa-checkbox" className="text-sm text-gray-700">
+                    {t('aiSettings.dpa.checkboxLabel')}
+                  </label>
+                </div>
+                {dpaSaveSuccess && (
+                  <p className="text-sm text-green-700" data-testid="ai-dpa-save-success">
+                    {t('aiSettings.dpa.saveSuccess')}
+                  </p>
+                )}
+                {dpaSaveError && (
+                  <p className="text-sm text-red-600" data-testid="ai-dpa-save-error">
+                    {dpaSaveError}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {data.deployment_mode === 'self_hosted' && (
+              <p
+                className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2"
+                data-testid="ai-dpa-self-hosted-notice"
+              >
+                {t('aiSettings.dpa.selfHostedNotice')}
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Session retention section (MINCRM-447) */}
+        <div className="border-t border-gray-200 pt-6">
+          <SessionRetentionSection retentionDays={data.ai_session_retention_days} />
+        </div>
+
+        {/* Token budget section (MINCRM-458) */}
+        <div className="border-t border-gray-200 pt-6">
+          <TokenBudgetSection />
+        </div>
+
+        {/* Cost rates section (MINCRM-459) */}
+        <div className="border-t border-gray-200 pt-6">
+          <CostRatesSection
+            inputCentsPerMillion={data.ai_input_cost_per_million_cents}
+            outputCentsPerMillion={data.ai_output_cost_per_million_cents}
+          />
+        </div>
+
+        {/* Data minimization section (MINCRM-461) */}
+        <div className="border-t border-gray-200 pt-6">
+          <DataMinimizationSection />
+        </div>
+      </fieldset>
     </div>
   );
 }

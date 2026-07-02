@@ -49,6 +49,7 @@ import {
   clickAiTestConnectionButton,
   expectAiTestConnectionResultVisible,
   resetAiSettings,
+  setAiEnabled,
 } from '@behaviors/minicrm/settings.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -174,6 +175,12 @@ test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
+  // The DPA checkbox lives inside the panel region that AiSettings disables
+  // whenever ai_features is off (everything except the master toggle itself
+  // — see AiSettings.tsx's `disabled` prop doc comment) — enable AI first so
+  // the checkbox is actually interactive.
+  await setAiEnabled(restClient, true);
+
   await navigateToAdminSettings({ page }, 'ai');
   await expectAiSettingsPanelVisible({ page }, 10_000);
 
@@ -241,6 +248,11 @@ test('@functional F-AI8: Test Connection button is visible and shows a result on
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
+
+  // The Test Connection button lives inside the panel region that AiSettings
+  // disables whenever ai_features is off (everything except the master
+  // toggle itself — see AiSettings.tsx's `disabled` prop doc comment).
+  await setAiEnabled(restClient, true);
 
   await navigateToAdminSettings({ page }, 'ai');
   await expectAiSettingsPanelVisible({ page }, 10_000);

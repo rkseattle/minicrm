@@ -31,6 +31,7 @@ import {
   clickAiFieldExclusionToggle,
   getAiFieldExclusionToggle,
   resetAiFieldExclusion,
+  setAiEnabled,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/index.js';
@@ -70,6 +71,11 @@ test.describe('AI data minimization UI', () => {
     { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
       await loginAsAdmin(restClient);
+      // The field exclusion toggles live inside the panel region AiSettings
+      // disables whenever ai_features is off (everything except the master
+      // toggle itself) — depend on ambient DB state otherwise, which other
+      // specs can leave disabled.
+      await setAiEnabled(restClient, true);
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 

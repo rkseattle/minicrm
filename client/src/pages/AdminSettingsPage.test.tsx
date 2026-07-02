@@ -833,13 +833,17 @@ describe('AdminSettingsPage', () => {
       expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
     });
 
-    it('shows the AI tab enabled (not disabled) when ai_features flag is off — panel shows disabled banner instead (MINCRM-566)', () => {
+    it('shows the AI tab enabled (not disabled) when ai_features flag is off — panel shows disabled banner instead (MINCRM-566)', async () => {
       flagOverrides['ai_features'] = false;
       renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
       expect(screen.getByTestId('settings-tab-ai')).toBeInTheDocument();
       expect(screen.getByTestId('settings-tab-ai')).not.toBeDisabled();
-      // The panel must show a disabled banner rather than hiding the tab entirely.
-      expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
+      // The banner now renders inside AiSettings itself once its own
+      // getAiConfig query resolves (MINCRM-459/461/462) rather than in a
+      // wrapper rendered before any data fetch — needs a waitFor.
+      await waitFor(() => {
+        expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
+      });
     });
 
     it('navigates to the AI tab when ai_features is disabled and shows disabled banner (MINCRM-566)', async () => {
@@ -849,6 +853,17 @@ describe('AdminSettingsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
       });
+    });
+
+    it('keeps the master AI toggle interactive even when ai_features is off — it is the only way to turn AI back on, so it must never be locked inside the disabled panel', async () => {
+      flagOverrides['ai_features'] = false;
+      renderWithProviders(<AdminSettingsPage />, { initialEntries: ['/?tab=ai'] });
+      await waitFor(() => {
+        expect(screen.getByTestId('ai-panel-disabled-banner')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('ai-master-toggle')).not.toBeDisabled();
+      // Every other control in the panel stays disabled.
+      expect(screen.getByTestId('ai-provider-select')).toBeDisabled();
     });
 
     it('shows the Feature Flags tab last in the tab list', () => {

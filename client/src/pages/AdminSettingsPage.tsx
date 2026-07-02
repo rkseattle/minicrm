@@ -144,7 +144,9 @@ export default function AdminSettingsPage() {
               aria-labelledby={`settings-tab-${activeTab}`}
               data-testid={`settings-panel-${activeTab}`}
             >
-              {aiPanelDisabled ? (
+              {activeTab === 'ai' ? (
+                <AiSettings disabled={aiPanelDisabled} />
+              ) : aiPanelDisabled ? (
                 <DisabledPanelWrapper
                   Panel={ActivePanel}
                   banner={t('settings.featureDisabledBanner')}
@@ -172,7 +174,9 @@ export default function AdminSettingsPage() {
               aria-labelledby={isMobile ? 'settings-tab-list-select' : `settings-tab-${activeTab}`}
               data-testid={`settings-panel-${activeTab}`}
             >
-              {aiPanelDisabled ? (
+              {activeTab === 'ai' ? (
+                <AiSettings disabled={aiPanelDisabled} />
+              ) : aiPanelDisabled ? (
                 <DisabledPanelWrapper
                   Panel={ActivePanel}
                   banner={t('settings.featureDisabledBanner')}
