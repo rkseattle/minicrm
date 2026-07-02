@@ -98,6 +98,11 @@ const PERSISTABLE_TOOL_NAMES = new Set([
   'searchLeads',
   'getLead',
   'requestMutationConfirmation',
+  'getWinLossPatterns',
+  'getContactChampionBlockerStatus',
+  'getAccountChurnExpansionSignal',
+  'getAtRiskAndExpansionAccounts',
+  'getObjectionPrecedents',
 ]);
 
 /** Deterministic response returned in E2E environments instead of calling Anthropic. */

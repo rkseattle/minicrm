@@ -176,6 +176,12 @@ export async function detectChurnExpansionSignals(): Promise<void> {
   const accounts = await gatherClosedWonAccounts();
   logger.info({ accountCount: accounts.length }, 'churnExpansion: nightly run starting');
 
+  // Serial, not batched: each account requires its own Anthropic call (the LLM
+  // judgment can't be computed in bulk SQL), and the per-account round trip is
+  // network-bound on that call, not on the couple of small queries alongside it —
+  // batching the SQL wouldn't reduce wall-clock time. Serial processing also
+  // avoids bursting the AI provider's rate limits and matches the established
+  // nightly-job shape in winLossAnalysisService.ts.
   for (const account of accounts) {
     try {
       await processAccount(account, config);

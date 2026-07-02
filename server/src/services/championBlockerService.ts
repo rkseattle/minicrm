@@ -12,12 +12,13 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { decryptVersioned } from './cryptoService.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
 import { findDealById } from './dealService.js';
-import { writeAuditEntryBestEffort, type AuditActor } from './auditService.js';
+import { writeAuditEntry, type AuditActor } from './auditService.js';
 import { isFeatureEnabled } from './featureFlagService.js';
 import type {
   ChampionBlockerStatus,
@@ -293,28 +294,47 @@ export async function getContactChampionBlockerStatus(
   };
 }
 
+/** Runs fn inside a BEGIN/COMMIT/ROLLBACK transaction on a single client, so the
+ * classification write and its audit entry can never be observed half-applied. */
+async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /** Rep-initiated "Not accurate" dismissal — suppresses the badge until new signals arrive. */
 export async function dismissContactClassification(
   contactId: string,
   actor: AuditActor,
 ): Promise<void> {
-  await pool.query(
-    `INSERT INTO contact_champion_blocker_signals (contact_id, dismissed_by, dismissed_at, updated_at)
-     VALUES ($1, $2, now(), now())
-     ON CONFLICT (contact_id) DO UPDATE
-       SET dismissed_by = $2, dismissed_at = now(), updated_at = now()`,
-    [contactId, actor.id],
-  );
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, dismissed_by, dismissed_at, updated_at)
+       VALUES ($1, $2, now(), now())
+       ON CONFLICT (contact_id) DO UPDATE
+         SET dismissed_by = $2, dismissed_at = now(), updated_at = now()`,
+      [contactId, actor.id],
+    );
 
-  await writeAuditEntryBestEffort({
-    recordType: 'contact',
-    recordId: contactId,
-    eventType: 'updated',
-    fieldName: 'champion_blocker_dismissed',
-    oldValue: null,
-    newValue: 'true',
-    changedById: actor.id,
-    changedByName: actor.name,
+    await writeAuditEntry(client, {
+      recordType: 'contact',
+      recordId: contactId,
+      eventType: 'updated',
+      fieldName: 'champion_blocker_dismissed',
+      oldValue: null,
+      newValue: 'true',
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
   });
 }
 
@@ -325,23 +345,25 @@ export async function overrideContactClassification(
   reason: string | null,
   actor: AuditActor,
 ): Promise<void> {
-  await pool.query(
-    `INSERT INTO contact_champion_blocker_signals (contact_id, override_status, override_reason, overridden_by, overridden_at, updated_at)
-     VALUES ($1, $2, $3, $4, now(), now())
-     ON CONFLICT (contact_id) DO UPDATE
-       SET override_status = $2, override_reason = $3, overridden_by = $4, overridden_at = now(), updated_at = now()`,
-    [contactId, status, reason, actor.id],
-  );
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO contact_champion_blocker_signals (contact_id, override_status, override_reason, overridden_by, overridden_at, updated_at)
+       VALUES ($1, $2, $3, $4, now(), now())
+       ON CONFLICT (contact_id) DO UPDATE
+         SET override_status = $2, override_reason = $3, overridden_by = $4, overridden_at = now(), updated_at = now()`,
+      [contactId, status, reason, actor.id],
+    );
 
-  await writeAuditEntryBestEffort({
-    recordType: 'contact',
-    recordId: contactId,
-    eventType: 'updated',
-    fieldName: 'champion_blocker_override',
-    oldValue: null,
-    newValue: status,
-    changedById: actor.id,
-    changedByName: actor.name,
+    await writeAuditEntry(client, {
+      recordType: 'contact',
+      recordId: contactId,
+      eventType: 'updated',
+      fieldName: 'champion_blocker_override',
+      oldValue: null,
+      newValue: status,
+      changedById: actor.id,
+      changedByName: actor.name,
+    });
   });
 }
 

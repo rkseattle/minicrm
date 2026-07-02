@@ -34,6 +34,20 @@ const READ_TOOL_NAMES = new Set([
   'searchLeads',
   'getLead',
   'generateReport',
+  'getWinLossPatterns',
+  'getContactChampionBlockerStatus',
+  'getAccountChurnExpansionSignal',
+  'getAtRiskAndExpansionAccounts',
+  'getObjectionPrecedents',
+]);
+
+/** Tool names rendered via a generic key/value fallback rather than a dedicated card. */
+const GENERIC_JSON_TOOL_NAMES = new Set([
+  'getWinLossPatterns',
+  'getContactChampionBlockerStatus',
+  'getAccountChurnExpansionSignal',
+  'getAtRiskAndExpansionAccounts',
+  'getObjectionPrecedents',
 ]);
 
 /** Extracts an array of records from list or single-record tool output */
@@ -120,6 +134,16 @@ function extractReport(output: unknown): { report_type: string; data: unknown } 
   return null;
 }
 
+/** Generic key/value fallback for tool outputs without a dedicated result card yet. */
+function renderGenericJson(output: unknown): ReactNode {
+  if (output === null || output === undefined) return null;
+  return (
+    <pre className="text-xs bg-gray-50 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words">
+      {JSON.stringify(output, null, 2)}
+    </pre>
+  );
+}
+
 export default function NliResultBlock({ toolResults, isLoading = false }: NliResultBlockProps) {
   const { t } = useTranslation();
 
@@ -148,6 +172,18 @@ export default function NliResultBlock({ toolResults, isLoading = false }: NliRe
           return (
             <div key={blockIdx} data-testid={`nli-result-group-${blockIdx}`}>
               <ReportResultCard report={typedReport} />
+            </div>
+          );
+        }
+
+        // Deal-intelligence tools don't have a dedicated result card yet — render
+        // the raw JSON rather than silently dropping the result.
+        if (GENERIC_JSON_TOOL_NAMES.has(result.toolName)) {
+          const rendered = renderGenericJson(result.output);
+          if (!rendered) return null;
+          return (
+            <div key={blockIdx} data-testid={`nli-result-group-${blockIdx}`}>
+              {rendered}
             </div>
           );
         }
