@@ -2499,6 +2499,33 @@ export const handlers = [
     });
   }),
 
+  // ── Proposal draft generation (MINCRM-473) ──────────────────────────────────────
+
+  /** Deals: POST /api/deals/:id/proposal-draft — default stub draft. */
+  http.post('/api/v1/deals/:id/proposal-draft', () => {
+    return HttpResponse.json({
+      draft: {
+        executive_summary: 'Executive summary text.',
+        problem_statement: 'Problem statement text.',
+        proposed_solution: 'Proposed solution text.',
+        pricing_line_items: [{ description: 'Core package', amount: 10000 }],
+        pricing_currency: 'USD',
+        next_steps: 'Next steps text.',
+        prepared_for: 'Jane Doe, VP Sales',
+        prepared_by: 'Test Rep',
+      },
+    });
+  }),
+
+  /** Deals: POST /api/deals/:id/proposal-draft/export-docx — default stub blob. */
+  http.post('/api/v1/deals/:id/proposal-draft/export-docx', () => {
+    return new HttpResponse(new Blob(['stub-docx-content']), {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      },
+    });
+  }),
+
   // ── Objection pattern matching (MINCRM-471) ─────────────────────────────────────
 
   /** Activities: POST /api/activities/:id/classify-objection — defaults to no objection detected. */

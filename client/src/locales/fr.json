@@ -2335,6 +2335,32 @@
     "tableFeature": "Fonctionnalité",
     "noUsageData": "Aucune donnée d'utilisation pour cette plage."
   },
+  "proposalDraft": {
+    "sectionHeading": "Brouillon de proposition",
+    "generateButton": "Générer un brouillon de proposition",
+    "generating": "Génération…",
+    "editorTitle": "Brouillon de proposition",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "copied": "Copié !",
+    "downloadMarkdown": "Télécharger en Markdown",
+    "downloadDocx": "Télécharger en DOCX",
+    "exporting": "Exportation…",
+    "regenerate": "Régénérer",
+    "regenerating": "Régénération…",
+    "regenerateSubmit": "Régénérer",
+    "focusNotesLabel": "Orienter ce brouillon sur",
+    "focusNotesPlaceholder": "ex. ROI, public dirigeant, détails techniques",
+    "preparedForLabel": "Préparé pour",
+    "preparedByLabel": "Préparé par",
+    "executiveSummaryHeading": "Résumé exécutif",
+    "problemStatementHeading": "Énoncé du problème",
+    "proposedSolutionHeading": "Solution proposée",
+    "pricingHeading": "Investissement proposé",
+    "lineItemDescriptionPlaceholder": "Description de la ligne",
+    "removeLineItem": "Supprimer la ligne",
+    "addLineItem": "Ajouter une ligne",
+    "nextStepsHeading": "Prochaines étapes"
+  },
   "objections": {
     "category": {
       "Price": "Prix",

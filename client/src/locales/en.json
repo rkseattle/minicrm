@@ -2335,6 +2335,32 @@
     "tableFeature": "Feature",
     "noUsageData": "No usage data for this range."
   },
+  "proposalDraft": {
+    "sectionHeading": "Proposal Draft",
+    "generateButton": "Generate Proposal Draft",
+    "generating": "Generating…",
+    "editorTitle": "Proposal Draft",
+    "copyToClipboard": "Copy to clipboard",
+    "copied": "Copied!",
+    "downloadMarkdown": "Download as Markdown",
+    "downloadDocx": "Download as DOCX",
+    "exporting": "Exporting…",
+    "regenerate": "Regenerate",
+    "regenerating": "Regenerating…",
+    "regenerateSubmit": "Regenerate",
+    "focusNotesLabel": "Focus this draft on",
+    "focusNotesPlaceholder": "e.g. ROI, executive audience, technical detail",
+    "preparedForLabel": "Prepared for",
+    "preparedByLabel": "Prepared by",
+    "executiveSummaryHeading": "Executive Summary",
+    "problemStatementHeading": "Problem Statement",
+    "proposedSolutionHeading": "Proposed Solution",
+    "pricingHeading": "Proposed Investment",
+    "lineItemDescriptionPlaceholder": "Line item description",
+    "removeLineItem": "Remove line item",
+    "addLineItem": "Add line item",
+    "nextStepsHeading": "Next Steps"
+  },
   "objections": {
     "category": {
       "Price": "Price",

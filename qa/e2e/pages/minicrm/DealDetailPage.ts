@@ -537,4 +537,55 @@ export class DealDetailPage {
       )
       .resolve();
   }
+
+  // ── AI proposal draft generation (MINCRM-473) ───────────────────────────────────
+
+  /** Returns a resolved locator for the "Generate Proposal Draft" button. */
+  async generateProposalDraftButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'generate-proposal-draft-button' },
+          { type: 'role', value: 'button', options: { name: /generate proposal draft/i } },
+        ],
+        { intent: 'button to generate an AI proposal draft on the deal detail page' },
+      )
+      .resolve();
+  }
+
+  /** Returns true when the "Generate Proposal Draft" button is currently visible. */
+  async isGenerateProposalDraftButtonVisible(): Promise<boolean> {
+    const locator = await this.generateProposalDraftButtonLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
+  /** Returns a resolved locator for the full-screen proposal draft editor. */
+  async proposalDraftEditorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'proposal-draft-editor' },
+          { type: 'role', value: 'dialog' },
+        ],
+        { intent: 'full-screen AI proposal draft editor panel' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the proposal draft editor's dismiss button. */
+  async proposalDraftDismissButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'proposal-draft-dismiss-button' },
+          {
+            type: 'css',
+            value:
+              '[data-testid="proposal-draft-editor"] [data-testid="proposal-draft-dismiss-button"]',
+          },
+        ],
+        { intent: 'button to dismiss the AI proposal draft editor without exporting' },
+      )
+      .resolve();
+  }
 }
