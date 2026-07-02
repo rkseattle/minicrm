@@ -213,6 +213,11 @@ const SERIAL_FILES = [
   'src/__tests__/objectionMatchingService.test.ts',
   // objectionMatchingController toggles the same ai_configuration singleton row. (MINCRM-471)
   'src/__tests__/objectionMatchingController.test.ts',
+  // proposalDraftService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-473)
+  'src/__tests__/proposalDraftService.test.ts',
+  // proposalDraftController toggles the same ai_configuration/ai_features rows. (MINCRM-473)
+  'src/__tests__/proposalDraftController.test.ts',
 ];
 
 const sharedResolve = {

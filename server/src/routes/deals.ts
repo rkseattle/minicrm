@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireAiTokenBudget } from '../middleware/requireAiTokenBudget.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createDealHandler,
@@ -22,6 +23,10 @@ import {
 import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
 import { getStageAdvancementHandler } from '../controllers/stageAdvancementController.js';
 import { getDealStakeholderMapHandler } from '../controllers/championBlockerController.js';
+import {
+  generateProposalDraftHandler,
+  exportProposalDraftDocxHandler,
+} from '../controllers/proposalDraftController.js';
 import {
   listDealTagsHandler,
   attachDealTagHandler,
@@ -864,6 +869,29 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_champion_blocker_detection'),
   asyncHandler(getDealStakeholderMapHandler),
+);
+
+// ── AI proposal draft generation (MINCRM-473) ───────────────────────────────────
+
+/**
+ * Generates (or regenerates, with optional focus_notes) an AI proposal draft
+ * for the deal. High-token operation — gated by requireAiTokenBudget after
+ * the feature flag check, per MINCRM-458.
+ */
+router.post(
+  '/:id/proposal-draft',
+  authenticate,
+  requireFeatureEnabled('ai_proposal_draft_generation'),
+  requireAiTokenBudget,
+  asyncHandler(generateProposalDraftHandler),
+);
+
+/** Converts a client-held (possibly rep-edited) draft into a downloadable DOCX file. */
+router.post(
+  '/:id/proposal-draft/export-docx',
+  authenticate,
+  requireFeatureEnabled('ai_proposal_draft_generation'),
+  asyncHandler(exportProposalDraftDocxHandler),
 );
 
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────

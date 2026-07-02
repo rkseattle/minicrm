@@ -44,6 +44,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_champion_blocker_detection',
   'ai_churn_expansion_detection',
   'ai_objection_pattern_matching',
+  'ai_proposal_draft_generation',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

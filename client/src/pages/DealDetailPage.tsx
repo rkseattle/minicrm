@@ -38,10 +38,13 @@ import { runDealHealthCheck } from '@/api/dealHealth.js';
 import { getStageAdvancement, stageAdvancementQueryKey } from '@/api/stageAdvancement.js';
 import { getDealStakeholderMap, dealStakeholderMapQueryKey } from '@/api/championBlocker.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
+import { generateProposalDraft } from '@/api/proposalDraft.js';
+import ProposalDraftEditor from '@/components/ProposalDraftEditor.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import type { DealFormValues } from '@/components/DealForm.js';
+import type { ProposalDraft } from '@shared/schemas/proposalDraftSchema.js';
 import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
@@ -96,9 +99,12 @@ export default function DealDetailPage() {
   const [selectedContactId, setSelectedContactId] = useState('');
   const [dealHealth, setDealHealth] = useState<DealHealthCheckResponse | null>(null);
   const [dealHealthError, setDealHealthError] = useState<string | null>(null);
+  const [generatedProposalDraft, setGeneratedProposalDraft] = useState<ProposalDraft | null>(null);
+  const [proposalDraftError, setProposalDraftError] = useState<string | null>(null);
   const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
   const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
+  const { enabled: proposalDraftEnabled } = useFeatureFlag('ai_proposal_draft_generation');
   /** Suggested next stage pre-set into DealForm when the advancement indicator is clicked */
   const [suggestedStage, setSuggestedStage] = useState<string | null>(null);
 
@@ -297,6 +303,17 @@ export default function DealDetailPage() {
     },
     onError: (error: unknown) => {
       setDealHealthError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
+    },
+  });
+
+  const proposalDraftMutation = useMutation({
+    mutationFn: () => generateProposalDraft(id!),
+    onSuccess: (result) => {
+      setGeneratedProposalDraft(result.draft);
+      setProposalDraftError(null);
+    },
+    onError: (error: unknown) => {
+      setProposalDraftError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -637,6 +654,54 @@ export default function DealDetailPage() {
                   )}
                 </div>
               </section>
+            )}
+
+            {/* AI proposal draft generation (MINCRM-473) */}
+            {id && proposalDraftEnabled && (
+              <section className="mt-8" aria-labelledby="proposal-draft-heading">
+                <h2
+                  id="proposal-draft-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="proposal-draft-heading"
+                >
+                  {t('proposalDraft.sectionHeading')}
+                </h2>
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="generate-proposal-draft-button"
+                    disabled={proposalDraftMutation.isPending}
+                    onClick={() => {
+                      setProposalDraftError(null);
+                      proposalDraftMutation.mutate();
+                    }}
+                  >
+                    {proposalDraftMutation.isPending
+                      ? t('proposalDraft.generating')
+                      : t('proposalDraft.generateButton')}
+                  </Button>
+                  {proposalDraftError && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-sm text-red-600"
+                      data-testid="proposal-draft-error"
+                    >
+                      {proposalDraftError}
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {generatedProposalDraft && id && (
+              <ProposalDraftEditor
+                dealId={id}
+                dealName={deal.name}
+                initialDraft={generatedProposalDraft}
+                onDismiss={() => setGeneratedProposalDraft(null)}
+              />
             )}
 
             {id && (

@@ -2335,6 +2335,32 @@
     "tableFeature": "Funktion",
     "noUsageData": "Keine Nutzungsdaten für diesen Zeitraum."
   },
+  "proposalDraft": {
+    "sectionHeading": "Angebotsentwurf",
+    "generateButton": "Angebotsentwurf erstellen",
+    "generating": "Wird erstellt…",
+    "editorTitle": "Angebotsentwurf",
+    "copyToClipboard": "In Zwischenablage kopieren",
+    "copied": "Kopiert!",
+    "downloadMarkdown": "Als Markdown herunterladen",
+    "downloadDocx": "Als DOCX herunterladen",
+    "exporting": "Wird exportiert…",
+    "regenerate": "Neu generieren",
+    "regenerating": "Wird neu generiert…",
+    "regenerateSubmit": "Neu generieren",
+    "focusNotesLabel": "Diesen Entwurf fokussieren auf",
+    "focusNotesPlaceholder": "z. B. ROI, Führungsebene, technische Details",
+    "preparedForLabel": "Erstellt für",
+    "preparedByLabel": "Erstellt von",
+    "executiveSummaryHeading": "Zusammenfassung",
+    "problemStatementHeading": "Problemstellung",
+    "proposedSolutionHeading": "Vorgeschlagene Lösung",
+    "pricingHeading": "Vorgeschlagene Investition",
+    "lineItemDescriptionPlaceholder": "Positionsbeschreibung",
+    "removeLineItem": "Position entfernen",
+    "addLineItem": "Position hinzufügen",
+    "nextStepsHeading": "Nächste Schritte"
+  },
   "objections": {
     "category": {
       "Price": "Preis",

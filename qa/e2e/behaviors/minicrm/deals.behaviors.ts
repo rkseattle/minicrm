@@ -1150,3 +1150,51 @@ export async function waitForActivityItem(
   const locator = await detail.activityItemLocator(activityId);
   await expect(locator).toBeVisible({ timeout });
 }
+
+// ---------------------------------------------------------------------------
+// AI proposal draft generation (MINCRM-473)
+// ---------------------------------------------------------------------------
+
+/** Clicks the "Generate Proposal Draft" button. */
+export async function clickGenerateProposalDraft(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.generateProposalDraftButtonLocator();
+  await locator.click();
+}
+
+/** Returns true when the "Generate Proposal Draft" button is currently visible. */
+export async function isGenerateProposalDraftButtonVisible(
+  context: DealsBehaviorContext,
+): Promise<boolean> {
+  const detail = new DealDetailPage(context);
+  return detail.isGenerateProposalDraftButtonVisible();
+}
+
+/** Waits for the full-screen proposal draft editor to be visible. */
+export async function waitForProposalDraftEditor(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.proposalDraftEditorLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/** Dismisses the proposal draft editor. */
+export async function dismissProposalDraftEditor(context: DealsBehaviorContext): Promise<void> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.proposalDraftDismissButtonLocator();
+  await locator.click();
+}
+
+/** Waits for the proposal draft editor to no longer be visible. */
+export async function waitForProposalDraftEditorClosed(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.proposalDraftEditorLocator();
+  await expect(locator).not.toBeVisible({ timeout });
+}

@@ -2335,6 +2335,32 @@
     "tableFeature": "功能",
     "noUsageData": "此范围内没有使用数据。"
   },
+  "proposalDraft": {
+    "sectionHeading": "提案草稿",
+    "generateButton": "生成提案草稿",
+    "generating": "生成中…",
+    "editorTitle": "提案草稿",
+    "copyToClipboard": "复制到剪贴板",
+    "copied": "已复制！",
+    "downloadMarkdown": "下载为 Markdown",
+    "downloadDocx": "下载为 DOCX",
+    "exporting": "导出中…",
+    "regenerate": "重新生成",
+    "regenerating": "重新生成中…",
+    "regenerateSubmit": "重新生成",
+    "focusNotesLabel": "本次草稿重点关注",
+    "focusNotesPlaceholder": "例如：投资回报率、高管受众、技术细节",
+    "preparedForLabel": "提交对象",
+    "preparedByLabel": "提交人",
+    "executiveSummaryHeading": "执行摘要",
+    "problemStatementHeading": "问题陈述",
+    "proposedSolutionHeading": "解决方案",
+    "pricingHeading": "投资明细",
+    "lineItemDescriptionPlaceholder": "明细项描述",
+    "removeLineItem": "删除明细项",
+    "addLineItem": "添加明细项",
+    "nextStepsHeading": "后续步骤"
+  },
   "objections": {
     "category": {
       "Price": "价格",

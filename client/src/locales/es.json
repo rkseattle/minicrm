@@ -2335,6 +2335,32 @@
     "tableFeature": "Función",
     "noUsageData": "No hay datos de uso para este rango."
   },
+  "proposalDraft": {
+    "sectionHeading": "Borrador de propuesta",
+    "generateButton": "Generar borrador de propuesta",
+    "generating": "Generando…",
+    "editorTitle": "Borrador de propuesta",
+    "copyToClipboard": "Copiar al portapapeles",
+    "copied": "¡Copiado!",
+    "downloadMarkdown": "Descargar como Markdown",
+    "downloadDocx": "Descargar como DOCX",
+    "exporting": "Exportando…",
+    "regenerate": "Regenerar",
+    "regenerating": "Regenerando…",
+    "regenerateSubmit": "Regenerar",
+    "focusNotesLabel": "Enfocar este borrador en",
+    "focusNotesPlaceholder": "p. ej. ROI, audiencia ejecutiva, detalle técnico",
+    "preparedForLabel": "Preparado para",
+    "preparedByLabel": "Preparado por",
+    "executiveSummaryHeading": "Resumen ejecutivo",
+    "problemStatementHeading": "Planteamiento del problema",
+    "proposedSolutionHeading": "Solución propuesta",
+    "pricingHeading": "Inversión propuesta",
+    "lineItemDescriptionPlaceholder": "Descripción de la línea",
+    "removeLineItem": "Eliminar línea",
+    "addLineItem": "Agregar línea",
+    "nextStepsHeading": "Próximos pasos"
+  },
   "objections": {
     "category": {
       "Price": "Precio",
