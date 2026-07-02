@@ -55,6 +55,7 @@ test.describe('AI data minimization UI', () => {
     'F-AI-FE-1: AI settings panel shows the always-excluded fields list @functional @serial',
     { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
+      await loginAsAdmin(restClient);
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
@@ -68,6 +69,7 @@ test.describe('AI data minimization UI', () => {
     'F-AI-FE-2: admin can toggle a standard field exclusion on and it persists @functional @serial',
     { tag: ['@functional', '@serial'] },
     async ({ page, testData, restClient }) => {
+      await loginAsAdmin(restClient);
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 

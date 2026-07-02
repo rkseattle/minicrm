@@ -49,6 +49,7 @@ test.describe('AI usage dashboard UI', () => {
     'F-AI-UD-1: dashboard renders summary card and per-user table @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
+      await loginAsAdmin(restClient);
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
@@ -63,6 +64,7 @@ test.describe('AI usage dashboard UI', () => {
     'F-AI-UD-2: admin can switch date range presets @functional',
     { tag: ['@functional'] },
     async ({ page, testData, restClient }) => {
+      await loginAsAdmin(restClient);
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 

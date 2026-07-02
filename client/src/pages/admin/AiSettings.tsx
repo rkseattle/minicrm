@@ -327,7 +327,16 @@ function UserBudgetRow({ row, onSave, isSaving }: UserBudgetRowProps) {
   );
 }
 
-/** Delay before refetching retention stats after a manual purge, long enough for the server's async DELETE to complete in practice. */
+/**
+ * Delay before refetching retention stats after a manual purge. 3s comfortably
+ * covers the purge's single DELETE statement at realistic session-table sizes.
+ * This is a heuristic, not a completion signal — the server gives no way to
+ * know when the async purge actually finishes, so a purge on an unusually
+ * large table could still show pre-purge counts after this delay; the
+ * "will update shortly" copy (aiSettings.sessionRetention.purgeAccepted)
+ * deliberately doesn't promise an exact time for this reason, and an admin
+ * can always refresh manually to see the current counts.
+ */
 const PURGE_REFETCH_DELAY_MS = 3000;
 
 // ── Session retention section (MINCRM-447) ────────────────────────────────────

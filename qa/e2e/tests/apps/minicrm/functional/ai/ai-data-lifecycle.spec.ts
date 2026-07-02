@@ -40,6 +40,7 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   navigateToAdminSettings,
   resetAiSettings,
+  setAiEnabled,
   getAiConfig,
   getAiSessionRetentionDaysInput,
   fillAiSessionRetentionDays,
@@ -68,6 +69,12 @@ test.describe('AI session retention UI', () => {
   test.beforeEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
     await resetAiSettings(restClient);
+    // resetAiSettings disables AI (ai_configuration.enabled: false), which now
+    // also disables ai_features (see aiConfigService.setAiEnabled's sync) — the
+    // AI Settings panel wraps its whole form in <fieldset disabled> whenever
+    // ai_features is off, so this describe block's tests need it re-enabled to
+    // interact with the session retention input at all.
+    await setAiEnabled(restClient, true);
   });
 
   test.afterEach(async ({ restClient }) => {
@@ -311,6 +318,9 @@ test.describe('AI session retention stats and manual purge UI', () => {
   test.beforeEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
     await resetAiSettings(restClient);
+    // See the identical comment in the 'AI session retention UI' describe block
+    // above — the purge button lives inside the same ai_features-gated fieldset.
+    await setAiEnabled(restClient, true);
   });
 
   test.afterEach(async ({ restClient }) => {
