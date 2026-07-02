@@ -7,13 +7,15 @@
  * This means a migration cannot mark later migrations as "already applied" during its own
  * up() call — the runner has already decided to run them.
  *
- * To bootstrap a fresh database without replaying 107 individual migrations, this script:
+ * To bootstrap a fresh database without replaying every individual migration, this script:
  *   1. Runs ONLY `000_baseline` (count: 1) — creates the full schema via one migration
- *   2. Runs all remaining migrations with `fake: true` — records them in pgmigrations
- *      without executing their SQL (safe because the schema already contains everything
- *      those migrations would have created)
- *   3. From this point, `npm run migrate` behaves normally: only future migrations (114+)
- *      are pending and will be run for real.
+ *   2. Fake-marks the migrations 000_baseline was last regenerated to cover (see
+ *      countBaselineCoveredMigrations() in migrate.ts) with `fake: true` — records
+ *      them in pgmigrations without executing their SQL (safe because the schema
+ *      already contains everything those migrations would have created)
+ *   3. Runs all remaining truly-pending migrations for real — any migration added
+ *      after the last baseline regeneration is NOT covered by step 2 and must
+ *      actually execute here for its schema changes to take effect.
  *
  * USAGE
  * -----
@@ -22,10 +24,9 @@
  * Required environment variables: DATABASE_URL
  * Optional: DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME (used as DATABASE_URL fallback)
  *
- * This script is idempotent: if 000_baseline has already been applied, step 1 is a no-op.
- * If run against a database that already has 001–101 applied, step 2 is also a no-op.
+ * This script is idempotent: every step is a no-op if already applied/recorded.
  *
- * The startup migration path in migrate.ts now uses the same two-step strategy, so
+ * The startup migration path in migrate.ts now uses the same three-step strategy, so
  * `docker compose up` on a fresh database works without running this script first.
  * This script is kept for CI and for explicit fresh-bootstrap use cases.
  *
@@ -76,6 +77,15 @@ async function main(): Promise<void> {
     console.log('[migrate:fresh] No pending migrations to fake-mark — already up to date.');
   } else {
     console.log(`[migrate:fresh] Fake-marked ${fakeResult.length} migration(s) as applied.`);
+  }
+
+  console.log('[migrate:fresh] Step 3 — running any remaining migrations for real...');
+  const realResult = await migrationRunner(SHARED_OPTIONS);
+
+  if (realResult.length === 0) {
+    console.log('[migrate:fresh] No pending migrations to run — already up to date.');
+  } else {
+    console.log(`[migrate:fresh] Ran ${realResult.length} migration(s).`);
   }
 
   console.log('[migrate:fresh] Done. Database is ready for use.');

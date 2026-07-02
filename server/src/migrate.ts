@@ -12,7 +12,6 @@
 
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
-import { readdirSync } from 'fs';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import logger from './logger.js';
 
@@ -22,13 +21,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
 
 /**
- * Count of migration files covered by 000_baseline (every .js file except the
- * baseline itself). Used to bound the fake-mark step so post-baseline migrations
- * are not skipped.
+ * Number of migrations (001-N) that 000_baseline.js was last regenerated to cover.
+ * This MUST be updated whenever 000_baseline.js is regenerated (see
+ * docs/dev/migrations.md "Regenerating the Baseline") — it bounds the fake-mark
+ * step so only migrations baseline actually captures are skipped; any migration
+ * added after the last baseline regeneration is left pending and runs for real.
+ *
+ * Counting every .js file on disk except the baseline (the previous approach)
+ * is wrong: it silently fake-marks (i.e. never executes) every migration added
+ * since the baseline snapshot was taken, so their schema changes are never
+ * applied on a fresh bootstrap (globalSetup.ts, migrate:fresh) — this broke
+ * silently for the first migration added after MINCRM-528 shipped baseline
+ * coverage through migration 136.
+ */
+export const BASELINE_COVERED_MIGRATION_COUNT = 136;
+
+/**
+ * Count of migration files covered by 000_baseline. Used to bound the fake-mark
+ * step so post-baseline migrations are not skipped.
  */
 export function countBaselineCoveredMigrations(): number {
-  return readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.js') && f !== '000_baseline.js')
-    .length;
+  return BASELINE_COVERED_MIGRATION_COUNT;
 }
 
 export async function runMigrations(): Promise<void> {

@@ -15,13 +15,9 @@
  */
 
 import 'dotenv/config';
-import { readdirSync } from 'fs';
-import { resolve } from 'path';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
-
-/** CWD is the server/ directory when running via npm --workspace=minicrm-server */
-const MIGRATIONS_DIR = resolve(process.cwd(), '../db/migrations');
+import { MIGRATIONS_DIR, countBaselineCoveredMigrations } from '../migrate.js';
 
 const E2E_DB_NAME = 'minicrm_e2e';
 
@@ -61,9 +57,10 @@ async function main(): Promise<void> {
 
   const databaseUrl = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${E2E_DB_NAME}`;
 
-  // Use the two-step fresh-bootstrap approach (MINCRM-528):
-  // Step 1 runs only 000_baseline; step 2 fake-marks 001-101 without re-executing their SQL.
-  // Prevents "relation already exists" on fresh databases (e.g. first-time local setup, CI).
+  // Use the three-step fresh-bootstrap approach (MINCRM-528): step 1 runs only
+  // 000_baseline (prevents "relation already exists" on fresh databases); step 2
+  // fake-marks the migrations 000_baseline was last regenerated to cover; step 3
+  // runs any migrations added since then for real, so their schema changes apply.
   const SHARED_OPTIONS = {
     databaseUrl,
     dir: MIGRATIONS_DIR,
@@ -72,11 +69,13 @@ async function main(): Promise<void> {
     checkOrder: false,
     log: () => {},
   };
-  const baselineCoveredCount = readdirSync(MIGRATIONS_DIR).filter(
-    (f) => f.endsWith('.js') && f !== '000_baseline.js',
-  ).length;
   await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-  await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
+  await migrationRunner({
+    ...SHARED_OPTIONS,
+    fake: true,
+    count: countBaselineCoveredMigrations(),
+  });
+  await migrationRunner(SHARED_OPTIONS);
 
   console.log(`[create-e2e-db] Migrations complete on ${E2E_DB_NAME}.`);
 }

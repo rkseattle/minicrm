@@ -49,20 +49,27 @@ interface ActiveUserRow {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Returns the current calendar month in 'YYYY-MM' format. */
+/**
+ * Returns the current calendar month in 'YYYY-MM' format, computed in UTC.
+ * Postgres sessions in this stack default to the Etc/UTC timezone (dev, CI, and
+ * production containers), so year_month/usage_date columns are always written
+ * and compared against a UTC "today" — using the Node process's local timezone
+ * here would drift from the DB's CURRENT_DATE near local midnight whenever the
+ * process's timezone isn't also UTC (e.g. a developer running tests locally).
+ */
 export function currentYearMonth(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 }
 
-/** Returns the current calendar date in 'YYYY-MM-DD' format. */
+/** Returns the current calendar date in 'YYYY-MM-DD' format, computed in UTC (see currentYearMonth). */
 function currentDate(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
