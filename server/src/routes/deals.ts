@@ -19,6 +19,7 @@ import {
   unlinkContactHandler,
   exportDealsHandler,
 } from '../controllers/dealController.js';
+import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
 import {
   listDealTagsHandler,
   attachDealTagHandler,
@@ -727,6 +728,67 @@ router.delete(
   authenticate,
   requireCapability(Capability.DealsEdit),
   asyncHandler(unlinkContactHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/deals/{id}/health-check:
+ *   post:
+ *     tags: [Deals]
+ *     operationId: runDealHealthCheck
+ *     summary: Run an AI deal health check
+ *     description: >
+ *       Generates an on-demand AI assessment of the deal's health (On Track / At Risk /
+ *       Stalled) with a narrative and recommended next actions. Not persisted — the
+ *       assessment is regenerated on every call. Reps may only run this on deals they
+ *       own; admins may run it on any deal. Gated by the ai_deal_health_check feature
+ *       flag. (MINCRM-442)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Deal ID
+ *     responses:
+ *       200:
+ *         description: Deal health assessment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [on_track, at_risk, stalled]
+ *                 narrative:
+ *                   type: string
+ *                 next_actions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Rep attempting to check a deal they do not own, or the ai_deal_health_check flag is disabled
+ *       404:
+ *         description: Deal not found
+ *       502:
+ *         description: AI provider error
+ *       503:
+ *         description: AI is not configured or enabled
+ */
+router.post(
+  '/:id/health-check',
+  authenticate,
+  requireFeatureEnabled('ai_deal_health_check'),
+  asyncHandler(runDealHealthCheckHandler),
 );
 
 // ── Deal Tag Routes (MINCRM-186) ───────────────────────────────────────────────

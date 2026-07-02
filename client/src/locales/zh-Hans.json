@@ -442,6 +442,15 @@
     "filteredEmptyTitle": "没有商机符合您的筛选条件",
     "notFound": "未找到商机。",
     "backToDeals": "返回商机列表",
+    "dealHealthHeading": "商机健康状况",
+    "dealHealthRunCheck": "检查健康状况",
+    "dealHealthRunning": "检查中…",
+    "dealHealthEmpty": "运行健康检查以查看 AI 为此商机识别出的风险信号。",
+    "dealHealthStatus": {
+      "on_track": "进展顺利",
+      "at_risk": "存在风险",
+      "stalled": "已停滞"
+    },
     "linkedContactsHeading": "关联联系人",
     "linkedContactsEmpty": "此商机暂无关联联系人。",
     "linkContact": "关联联系人",

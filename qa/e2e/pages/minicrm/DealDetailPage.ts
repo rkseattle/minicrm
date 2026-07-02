@@ -393,4 +393,103 @@ export class DealDetailPage {
   url(): string {
     return this.page.url();
   }
+
+  // ── AI deal health check (MINCRM-442) ──────────────────────────────────────────
+
+  /**
+   * Returns a resolved locator for the deal health section heading.
+   */
+  async healthCheckHeadingLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deal-health-heading' },
+          { type: 'role', value: 'heading', options: { name: /health/i } },
+        ],
+        { intent: 'heading for the AI deal health section on the deal detail page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the empty state shown before any check has run.
+   * CSS fallback scopes to the deal health section to avoid matching unrelated
+   * empty-state text elsewhere on the page.
+   */
+  async healthCheckEmptyStateLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deal-health-empty' },
+          {
+            type: 'css',
+            value:
+              'section:has([data-testid="deal-health-heading"]) [data-testid="deal-health-empty"]',
+          },
+        ],
+        { intent: 'empty state message shown before a deal health check has been run' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the "Check health" action button.
+   */
+  async runHealthCheckButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'run-deal-health-check-button' },
+          { type: 'role', value: 'button', options: { name: /check health/i } },
+        ],
+        { intent: 'button to run the AI deal health check on the deal detail page' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the rendered health check result container.
+   * CSS fallback anchors on the heading's data-testid, scoped to the deal
+   * health section, since the result container has no accessible role or
+   * text that is stable independent of the AI-generated content.
+   */
+  async healthCheckResultLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deal-health-result' },
+          {
+            type: 'css',
+            value:
+              'section:has([data-testid="deal-health-heading"]) [data-testid="deal-health-result"]',
+          },
+        ],
+        {
+          intent:
+            'container for the AI deal health check result — status badge, narrative, next actions',
+        },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the health check error message.
+   * CSS fallback scopes to the deal health section specifically — role="alert"
+   * alone would be ambiguous since several other error banners on this page
+   * also use role="alert".
+   */
+  async healthCheckErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deal-health-error' },
+          {
+            type: 'css',
+            value: 'section:has([data-testid="deal-health-heading"]) [role="alert"]',
+          },
+        ],
+        { intent: 'error message shown when the AI deal health check request fails' },
+      )
+      .resolve();
+  }
 }

@@ -186,6 +186,10 @@ const SERIAL_FILES = [
   // (which also writes ai_token_usage_daily now) would race on cost-rate resets and usage
   // aggregation totals. (MINCRM-459)
   'src/__tests__/aiUsageDashboardService.test.ts',
+  // dealHealthService toggles ai_configuration.enabled/api_key_encrypted (the same global
+  // singleton row aiConfigService/aiConfigController/aiUsageDashboardService mutate); running
+  // in parallel would race on the enabled flag and cause spurious 503s in either suite. (MINCRM-442)
+  'src/__tests__/dealHealthService.test.ts',
 ];
 
 const sharedResolve = {

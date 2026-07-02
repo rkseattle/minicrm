@@ -442,6 +442,15 @@
     "filteredEmptyTitle": "Keine Geschäfte entsprechen Ihren Filtern",
     "notFound": "Geschäft nicht gefunden.",
     "backToDeals": "Zurück zu Geschäften",
+    "dealHealthHeading": "Geschäftsstatus",
+    "dealHealthRunCheck": "Status prüfen",
+    "dealHealthRunning": "Wird geprüft…",
+    "dealHealthEmpty": "Führen Sie eine Statusprüfung durch, um die von der KI erkannten Risikosignale für dieses Geschäft zu sehen.",
+    "dealHealthStatus": {
+      "on_track": "Im Plan",
+      "at_risk": "Gefährdet",
+      "stalled": "Stagniert"
+    },
     "linkedContactsHeading": "Verknüpfte Kontakte",
     "linkedContactsEmpty": "Keine Kontakte mit diesem Geschäft verknüpft.",
     "linkContact": "Kontakt verknüpfen",
