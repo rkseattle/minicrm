@@ -1243,7 +1243,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
       deployment_mode: deploymentMode,
       base_url: baseUrl,
       custom_dpa_url: customDpaUrl,
-      ...(apiKeyEditing && apiKey ? { api_key: apiKey } : {}),
+      ...(apiKey ? { api_key: apiKey } : {}),
     });
   }
 
@@ -1256,7 +1256,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
         model,
         deployment_mode: deploymentMode,
         base_url: baseUrl,
-        ...(apiKeyEditing && apiKey ? { api_key: apiKey } : {}),
+        ...(apiKey ? { api_key: apiKey } : {}),
       });
       setTestStatus(result.ok ? 'ok' : 'fail');
       setTestMessage(result.message);
