@@ -19,6 +19,7 @@ const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
 
 let adminCookie: string;
+let adminUserId: string;
 let repCookie: string;
 
 beforeAll(async () => {
@@ -31,6 +32,7 @@ beforeAll(async () => {
     passwordHash: '$2b$12$placeholder',
     status: 'active',
   });
+  adminUserId = admin.id;
   adminCookie = makeAuthCookie({
     id: admin.id,
     email: admin.email,
@@ -87,11 +89,40 @@ describe('GET /admin/ai/usage/summary', () => {
   });
 
   it('accepts an explicit start/end range', async () => {
+    // start/end are date-only strings from the client's date pickers (see
+    // resolveDateRange's doc comment) — not full ISO datetimes.
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/summary')
-      .query({ start: '2026-01-01T00:00:00Z', end: '2026-02-01T00:00:00Z' })
+      .query({ start: '2026-01-01', end: '2026-01-31' })
       .set('Cookie', adminCookie);
     expect(res.status).toBe(200);
+  });
+
+  it('treats the end date as inclusive — usage recorded on the end date itself is included', async () => {
+    // Regression test for the exclusive-end-date bug: resolveDateRange must
+    // advance a date-only `end` param by one day internally so the caller's
+    // selected end day's own data is included, not silently excluded.
+    await pool.query(
+      `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens)
+       VALUES ($1, '2099-03-15', 'nli_chat', 500, 200)
+       ON CONFLICT (user_id, usage_date, feature) DO UPDATE
+         SET input_tokens = 500, output_tokens = 200`,
+      [adminUserId],
+    );
+
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ start: '2099-03-15', end: '2099-03-15' })
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.input_tokens).toBeGreaterThanOrEqual(500);
+    expect(res.body.output_tokens).toBeGreaterThanOrEqual(200);
+
+    await pool.query(
+      `DELETE FROM ai_token_usage_daily WHERE user_id = $1 AND usage_date = '2099-03-15'`,
+      [adminUserId],
+    );
   });
 
   it('returns 400 for an unknown preset', async () => {
@@ -106,7 +137,7 @@ describe('GET /admin/ai/usage/summary', () => {
   it('returns 400 when start is after end', async () => {
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/summary')
-      .query({ start: '2026-02-01T00:00:00Z', end: '2026-01-01T00:00:00Z' })
+      .query({ start: '2026-02-01', end: '2026-01-01' })
       .set('Cookie', adminCookie);
     expect(res.status).toBe(400);
   });

@@ -63,6 +63,19 @@ interface DailyRawRow {
   output_tokens: string;
 }
 
+/**
+ * Formats a Date as a UTC 'YYYY-MM-DD' string for binding against `date`-typed
+ * columns (usage_date). node-postgres infers the wire type for a bare Date
+ * parameter from the target column and serializes `date` params using the
+ * JS Date's LOCAL calendar fields (getFullYear/getMonth/getDate), not UTC —
+ * so passing a Date directly silently shifts the bound date by one day
+ * whenever the server process's timezone isn't UTC. Always bind an explicit
+ * date string instead of a Date object against `usage_date`.
+ */
+function toDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 function estimateCostCents(inputTokens: number, outputTokens: number, rates: CostRates): number {
   const inputCost = (inputTokens / 1_000_000) * rates.inputCentsPerMillion;
   const outputCost = (outputTokens / 1_000_000) * rates.outputCentsPerMillion;
@@ -98,7 +111,7 @@ function queryTotals(range: DateRange): Promise<{ rows: UsageRow[] }> {
     `SELECT COALESCE(SUM(input_tokens), 0) AS input_tokens, COALESCE(SUM(output_tokens), 0) AS output_tokens
      FROM ai_token_usage_daily
      WHERE usage_date >= $1 AND usage_date < $2`,
-    [range.start, range.end],
+    [toDateString(range.start), toDateString(range.end)],
   );
 }
 
@@ -111,6 +124,8 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
   const rates = await getCostRates();
 
   const prior = priorPeriod(range);
+  const rangeStartStr = toDateString(range.start);
+  const rangeEndStr = toDateString(range.end);
 
   const [totalResult, perUserResult, perUserFeatureResult, perFeatureResult, priorTotalResult] =
     await Promise.all([
@@ -124,7 +139,7 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
          WHERE d.usage_date >= $1 AND d.usage_date < $2
          GROUP BY d.user_id, u.name, u.email
          ORDER BY u.name`,
-        [range.start, range.end],
+        [rangeStartStr, rangeEndStr],
       ),
       // Per-user-per-feature totals, used to derive each user's single top feature
       // without an N+1 query per user.
@@ -133,7 +148,7 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
          FROM ai_token_usage_daily
          WHERE usage_date >= $1 AND usage_date < $2
          GROUP BY user_id, feature`,
-        [range.start, range.end],
+        [rangeStartStr, rangeEndStr],
       ),
       pool.query<PerFeatureRawRow>(
         `SELECT feature,
@@ -143,7 +158,7 @@ export async function getUsageSummary(range: DateRange): Promise<UsageSummaryRes
          WHERE usage_date >= $1 AND usage_date < $2
          GROUP BY feature
          ORDER BY feature`,
-        [range.start, range.end],
+        [rangeStartStr, rangeEndStr],
       ),
       queryTotals(prior),
     ]);
@@ -247,7 +262,7 @@ export async function getUsageExportRows(range: DateRange): Promise<UsageExportR
      JOIN users u ON u.id = d.user_id
      WHERE d.usage_date >= $1 AND d.usage_date < $2
      ORDER BY d.usage_date, u.name, d.feature`,
-    [range.start, range.end],
+    [toDateString(range.start), toDateString(range.end)],
   );
 
   return result.rows.map((row) => {
@@ -278,7 +293,7 @@ export async function getDailyUsageSeries(range: DateRange): Promise<UsageDailyS
      WHERE usage_date >= $1 AND usage_date < $2
      GROUP BY usage_date
      ORDER BY usage_date`,
-    [range.start, range.end],
+    [toDateString(range.start), toDateString(range.end)],
   );
 
   const points: DailyUsagePoint[] = result.rows.map((row) => ({
