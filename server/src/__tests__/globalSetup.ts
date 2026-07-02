@@ -8,13 +8,9 @@
  */
 
 import 'dotenv/config';
-import { readdirSync } from 'fs';
-import { resolve } from 'path';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
-
-/** CWD is the server/ directory when running via npm test --workspace=minicrm-server */
-const MIGRATIONS_DIR = resolve(process.cwd(), '../db/migrations');
+import { MIGRATIONS_DIR, countBaselineCoveredMigrations } from '../migrate.js';
 
 export default async function globalSetup(): Promise<void> {
   const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
@@ -44,10 +40,12 @@ export default async function globalSetup(): Promise<void> {
   // Run migrations against the test database
   const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
-  // Use the two-step fresh-bootstrap approach (MINCRM-528):
-  // Step 1 runs only 000_baseline; step 2 fake-marks 001-101 without re-executing their SQL.
-  // This prevents "relation already exists" errors on fresh CI databases where 000_baseline
-  // and 001-101 would otherwise both try to CREATE TABLE.
+  // Use the same three-step fresh-bootstrap approach as runMigrations() in
+  // ../migrate.ts (MINCRM-528): step 1 runs only 000_baseline; step 2 fake-marks
+  // the fixed number of migrations 000_baseline was last regenerated to cover
+  // (countBaselineCoveredMigrations() — NOT every file on disk, which would
+  // silently skip real execution of any migration added since); step 3 runs
+  // all remaining truly-pending migrations for real.
   const SHARED_OPTIONS = {
     databaseUrl,
     dir: MIGRATIONS_DIR,
@@ -56,9 +54,11 @@ export default async function globalSetup(): Promise<void> {
     checkOrder: false,
     log: () => {},
   };
-  const baselineCoveredCount = readdirSync(MIGRATIONS_DIR).filter(
-    (f) => f.endsWith('.js') && f !== '000_baseline.js',
-  ).length;
   await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-  await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
+  await migrationRunner({
+    ...SHARED_OPTIONS,
+    fake: true,
+    count: countBaselineCoveredMigrations(),
+  });
+  await migrationRunner(SHARED_OPTIONS);
 }
