@@ -765,6 +765,40 @@ Users can see their current retention window on the AI Assistant page itself
 
 ---
 
+### AI deal-intelligence thresholds (MINCRM-464, MINCRM-466, MINCRM-469)
+
+Several of the AI deal-intelligence features introduced alongside win/loss insights,
+champion/blocker detection, and churn/expansion detection read admin-tunable threshold
+values from the AI configuration:
+
+| Threshold                             | Default | Feature                       | What it controls                                                                                                            |
+| ------------------------------------- | ------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Win/loss minimum closed deals         | 20      | AI Win/Loss Pattern Analysis  | Total closed (Won + Lost) deals required org-wide before any win/loss patterns are surfaced at all.                         |
+| Win/loss minimum sample size          | 5       | AI Win/Loss Pattern Analysis  | Minimum number of supporting deals a specific behavioral pattern must have before it is shown.                              |
+| Champion/blocker deal-value threshold | $10,000 | AI Champion/Blocker Detection | Deal value above which the single-threaded-risk warning appears when only one contact is linked.                            |
+| Churn/expansion confidence threshold  | 0.70    | AI Churn/Expansion Detection  | Minimum AI-reported confidence (0–1) for a churn-risk or expansion signal to be surfaced; signals below this are discarded. |
+
+> **Current limitation:** these four values are set by database migration default and
+> are not yet exposed in the **Admin Settings → AI** UI — there is no screen to change
+> them today. Changing them currently requires a direct database update. Contact
+> engineering if your organisation needs different values.
+
+### AI deal-intelligence nightly jobs
+
+Two of the AI deal-intelligence features run as nightly background jobs rather than
+on demand:
+
+| Job                          | Schedule                 | What it does                                                                                                                                                                                   |
+| ---------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI Win/Loss Pattern Analysis | Daily, 03:00 server time | Recomputes win/loss behavioral patterns from all closed deals and refreshes `/insights/win-loss`. No-ops if AI is disabled or the org has fewer closed deals than the minimum threshold above. |
+| AI Churn/Expansion Detection | Daily, 04:00 server time | Rescans closed-won accounts with activity history for churn-risk or expansion signals and refreshes `/insights/churn-expansion`. No-ops if AI is disabled.                                     |
+
+Both jobs run automatically — there is no manual "run now" trigger for either, unlike
+the AI session retention purge above. A failed run leaves the previous night's results
+in place until the next successful run.
+
+---
+
 ## 10. AI Token Budgets
 
 > **Feature flags:** `ai_features`
@@ -878,7 +912,10 @@ when the tokens were originally consumed.
 
 > **Feature flags:** `ai_nli_page`, `ai_activity_summarizer`, `ai_email_draft`,
 > `ai_task_suggestions`, `ai_contact_enrichment`, `ai_duplicate_explanation`,
-> `ai_lead_score_narrative`, `ai_deal_health_check`, `ai_stage_advancement`
+> `ai_lead_score_narrative`, `ai_deal_health_check`, `ai_stage_advancement`,
+> `ai_win_loss_insights`, `ai_champion_blocker_detection`,
+> `ai_churn_expansion_detection`, `ai_objection_pattern_matching`,
+> `ai_proposal_draft_generation`
 
 Individual AI sub-features can be enabled or disabled per role. This lets you roll out
 specific AI capabilities to admins first, or restrict certain features to admins only,
@@ -886,17 +923,22 @@ without disabling AI entirely.
 
 ### Available AI sub-features
 
-| Flag key                   | Feature                                                    |
-| -------------------------- | ---------------------------------------------------------- |
-| `ai_nli_page`              | Natural-language query page (ask questions in plain text)  |
-| `ai_activity_summarizer`   | Summarize recent activities on a contact, deal, or account |
-| `ai_email_draft`           | Draft outbound emails from a prompt                        |
-| `ai_task_suggestions`      | Suggest follow-up tasks after an activity                  |
-| `ai_contact_enrichment`    | Enrich contact profiles with public data                   |
-| `ai_duplicate_explanation` | Explain why two records were flagged as duplicates         |
-| `ai_lead_score_narrative`  | Narrative explanation of a lead's score                    |
-| `ai_deal_health_check`     | Health assessment and risk flags for a deal                |
-| `ai_stage_advancement`     | Suggested next pipeline stage and supporting rationale     |
+| Flag key                        | Feature                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `ai_nli_page`                   | Natural-language query page (ask questions in plain text)                                         |
+| `ai_activity_summarizer`        | Summarize recent activities on a contact, deal, or account                                        |
+| `ai_email_draft`                | Draft outbound emails from a prompt                                                               |
+| `ai_task_suggestions`           | Suggest follow-up tasks after an activity                                                         |
+| `ai_contact_enrichment`         | Enrich contact profiles with public data                                                          |
+| `ai_duplicate_explanation`      | Explain why two records were flagged as duplicates                                                |
+| `ai_lead_score_narrative`       | Narrative explanation of a lead's score                                                           |
+| `ai_deal_health_check`          | Health assessment and risk flags for a deal                                                       |
+| `ai_stage_advancement`          | Suggested next pipeline stage and supporting rationale                                            |
+| `ai_win_loss_insights`          | Nightly AI-narrated win/loss behavioral pattern analysis (`/insights/win-loss`)                   |
+| `ai_champion_blocker_detection` | Champion/blocker classification for deal contacts and the stakeholder map                         |
+| `ai_churn_expansion_detection`  | Nightly churn-risk and expansion-opportunity detection for accounts (`/insights/churn-expansion`) |
+| `ai_objection_pattern_matching` | On-demand objection categorization and precedent matching from won deals                          |
+| `ai_proposal_draft_generation`  | AI-drafted, editable proposal documents from a deal's context                                     |
 
 ### How role overrides interact with the master toggle
 

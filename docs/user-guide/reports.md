@@ -208,3 +208,34 @@ after running a report). Requires the **CSV Export** feature flag to be enabled.
 
 Set a saved report to _Public_ or _Public – Read Only_ so other team members can find
 and run it from their own **Saved reports** list.
+
+### AI Win/Loss Pattern Analysis
+
+> **Feature flag:** `ai_win_loss_insights`. This is a separate page from the Win/Loss
+> Report above — currently reached by navigating directly to `/insights/win-loss`
+> rather than from the Reports navigation item.
+
+The built-in **Win/Loss Report** described above shows live counts and totals for a
+date range you choose. **Win/Loss Pattern Insights**, at `/insights/win-loss`, is a
+different, AI-narrated view: instead of totals, it looks for behavioral patterns that
+correlate with winning or losing, refreshed automatically overnight.
+
+Once your organisation has enough closed deal history, the page shows three sections:
+
+- **Win Patterns** — behaviors more common in won deals (for example, a demo held in
+  the first week, or high activity volume), each with a plain-language observation and
+  a win-rate comparison (e.g. "65% vs 28% · 47 deals").
+- **Loss Patterns** — the same comparison for behaviors more common in lost deals.
+- **Loss Reason Trends** — commentary on how recorded loss reasons are trending over
+  time.
+
+If your organisation does not yet have enough closed deals, the page shows how many
+more are needed instead of any patterns.
+
+Use **Export CSV** or **Export PDF** at the top of the page to download the current set
+of insights.
+
+> **AI-generated observations, not statistical proof.** These patterns are correlations
+> found in your historical data and narrated by AI — they are not a controlled
+> experiment and do not imply that one behavior _causes_ deals to win or lose. Use them
+> as a starting point for coaching conversations, not as a rulebook.

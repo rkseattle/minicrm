@@ -79,3 +79,40 @@ Account type is optional — you can leave it blank if it does not apply.
 - An account can have one parent and any number of children.
 - The parent account's detail page shows all subsidiaries.
 - There is no limit on hierarchy depth, but circular relationships are not allowed.
+
+### AI Churn/Expansion Detection
+
+> **Feature flag:** `ai_churn_expansion_detection`. Signals are computed by a nightly
+> job, not on demand — there is nothing to click to trigger this.
+
+For accounts with at least one Closed Won deal and some activity history, MiniCRM
+periodically scans recent activity notes for signs of churn risk (declining activity,
+negative sentiment, missed check-ins, rep silence, a competitor mentioned) or expansion
+opportunity (new teams or use cases mentioned, growing headcount, more frequent
+engagement, inbound contact from a new stakeholder).
+
+If a clear signal is found, a banner appears at the top of the account's detail page:
+
+- An amber **Churn risk detected** banner, or
+- A green **Expansion signal detected** banner,
+
+each listing the one or two contributing factors the AI found and the date the signal
+was detected. A signal clears automatically the next time the account shows new,
+contradicting activity — there is nothing to dismiss manually.
+
+For an org-wide view, admins and reps with access can browse every account currently
+flagged at `/insights/churn-expansion`, split into **At-Risk Accounts** and **Expansion
+Opportunities**, each showing a confidence percentage.
+
+> Churn/expansion signals are AI-generated from recent notes and activity patterns —
+> treat the confidence percentage and contributing factors as a prompt to check in with
+> the account, not as a guaranteed outcome.
+
+### Notifications
+
+When a churn risk signal is detected with high confidence, MiniCRM sends the account's
+owner an in-app notification. Click the bell icon in the navigation header to see your
+notifications — a red badge shows how many are unread. Click a notification to jump
+straight to the account it concerns; click **Mark all as read** to clear the unread
+count. As of this release, churn/expansion detection is the only feature that generates
+in-app notifications.

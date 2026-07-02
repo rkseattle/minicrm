@@ -95,3 +95,16 @@ deals, activities, and notes are moved to the winner automatically.
 - After erasure the contact still appears in lists (with a placeholder name) so that
   historical deal and activity records are not orphaned.
 - An erasure event is written to the audit log with the requesting admin's name.
+
+### AI Champion/Blocker badge
+
+> **Feature flag:** `ai_champion_blocker_detection`.
+
+If this contact is linked to a deal, a **Champion**, **Likely Champion**, **Likely
+Blocker**, or **Blocker** badge may appear next to their name at the top of the contact
+detail page — an AI-inferred read on whether their recent activity notes show signs of
+internal advocacy or resistance. Click **Why?** to see the specific signals behind the
+classification, or **Not accurate** to dismiss it. See
+[Deals — AI Champion/Blocker Detection](deals.md#ai-championblocker-detection) for the
+full explanation of how this is determined. The badge is internal only — it is never
+shown to the contact.

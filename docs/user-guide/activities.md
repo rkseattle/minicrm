@@ -75,3 +75,29 @@ assigned to you, ordered by due date. Overdue tasks are highlighted.
 If your admin has enabled email notifications, you will receive a daily digest of
 overdue tasks (tasks past their due date that are still open). You can control this
 in your notification preferences (see the profile menu → Notification preferences).
+
+### AI Objection Pattern Matching
+
+> **Feature flag:** `ai_objection_pattern_matching`.
+
+When an activity has note text, MiniCRM automatically checks whether the note logs a
+sales objection and, if so, shows a small category badge next to it in the timeline:
+**Price**, **Timing**, **Competitor**, **Product Fit**, **Authority**, **Risk**, or
+**Other**. Hover the badge to see a reminder that the category is AI-inferred. Not
+every note is classified — only ones that clearly describe an objection the contact
+raised.
+
+Click **How was this handled before?** below the badge to see up to three similar
+objections from past deals your team won, each showing:
+
+- The deal it came from (click through to view it).
+- A quote of the past objection.
+- What the rep did next (the following logged activity on that deal).
+- How many days later the deal closed.
+
+If your organisation does not yet have enough won-deal history, the panel tells you how
+many more closed-won deals are needed before precedents can be shown.
+
+> The category and matched precedents are **AI-inferred** — use them as a quick
+> reference for how similar pushback has been handled before, not as a guarantee that
+> the same approach will work again.
