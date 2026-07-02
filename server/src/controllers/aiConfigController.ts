@@ -116,7 +116,7 @@ export async function setAiCostRatesHandler(req: Request, res: Response): Promis
     return;
   }
 
-  const actor = { id: req.user!.id, name: req.user!.name };
+  const actor = { id: req.user!.id, name: req.user!.name }; // authenticate guarantees req.user
   const updated = await setAiCostRates(parsed.data, actor);
   res.status(200).json(updated);
 }

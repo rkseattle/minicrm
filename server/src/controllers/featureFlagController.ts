@@ -43,6 +43,9 @@ export async function listFeatureFlagsHandler(req: Request, res: Response): Prom
   res.json({ flags });
 }
 
+/** The ai_features master toggle's key — every other ai_* flag is its child (MINCRM-460). */
+const AI_MASTER_FEATURE_FLAG_KEY = 'ai_features';
+
 /**
  * GET /api/v1/feature-flags/me
  * Returns the resolved enabled state for every feature flag for the calling user's role.
@@ -50,10 +53,20 @@ export async function listFeatureFlagsHandler(req: Request, res: Response): Prom
  */
 export async function getMyFeatureFlagsHandler(req: Request, res: Response): Promise<void> {
   const { id: userId, role } = req.user!; // authenticate ensures req.user exists
+
+  // Resolve ai_features once and pass it into every ai_* sub-feature flag's
+  // resolution instead of letting each one recompute it — isFlagEnabledForUser's
+  // own master-gate step otherwise reruns 2 fresh, uncached queries per sub-flag
+  // for what is always the same result within a single request.
+  const aiFeaturesEnabled = await isFlagEnabledForUser(AI_MASTER_FEATURE_FLAG_KEY, userId, role);
+
   const entries = await Promise.all(
-    FEATURE_FLAG_KEYS.map(
-      async (key) => [key, await isFlagEnabledForUser(key, userId, role)] as const,
-    ),
+    FEATURE_FLAG_KEYS.map(async (key) => {
+      if (key === AI_MASTER_FEATURE_FLAG_KEY) {
+        return [key, aiFeaturesEnabled] as const;
+      }
+      return [key, await isFlagEnabledForUser(key, userId, role, aiFeaturesEnabled)] as const;
+    }),
   );
   const flags = Object.fromEntries(entries) as MyFeatureFlagsResponse;
   res.json({ flags });

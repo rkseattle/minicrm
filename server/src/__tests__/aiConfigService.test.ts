@@ -23,6 +23,7 @@ import {
   setAiDpaAcknowledgment,
   isAiEnabled,
 } from '../services/aiConfigService.js';
+import { isFlagEnabledForUser, __clearCacheForTest } from '../services/featureFlagService.js';
 
 // ACTOR must reference a real users row because dpa_acknowledged_by is a UUID FK.
 // We create the user in beforeAll and record its generated id at runtime.
@@ -61,6 +62,17 @@ async function resetAiConfig(): Promise<void> {
       updated_at                     = now(),
       updated_by                     = NULL
   `);
+  // setAiEnabled syncs the ai_features flag (and role_overrides tests mutate
+  // ai_nli_page directly) — reset both to their seeded defaults so tests in
+  // this file don't leak state to each other or to other serial files.
+  await pool.query(
+    `UPDATE feature_flags SET enabled = true, role_overrides = NULL WHERE flag_key = 'ai_features'`,
+  );
+  await pool.query(
+    `UPDATE feature_flags SET role_overrides = '{"admin": true, "rep": true}'::jsonb
+     WHERE flag_key = 'ai_nli_page'`,
+  );
+  __clearCacheForTest();
 }
 
 beforeEach(async () => {
@@ -182,23 +194,45 @@ describe('setAiEnabled', () => {
     expect(off.enabled_updated_at).not.toBeNull();
   });
 
-  it('syncs ai_nli_page.enabled and clears any stale role_overrides', async () => {
-    // Simulate the baseline-seeded state (migration 000) where ai_nli_page has
-    // role_overrides = {"admin": true, "rep": true} — isFlagEnabledForRole()
-    // checks role_overrides before the enabled column, so a stale override
-    // would make this sync a no-op for every role.
+  it('syncs the ai_features master flag so every ai_* sub-feature (e.g. ai_nli_page) is gated', async () => {
+    await setAiEnabled({ enabled: false }, ACTOR);
+    __clearCacheForTest();
+
+    const row = await pool.query<{ enabled: boolean }>(
+      `SELECT enabled FROM feature_flags WHERE flag_key = 'ai_features'`,
+    );
+    expect(row.rows[0].enabled).toBe(false);
+    // ai_features gates every ai_* sub-feature flag (featureFlagService's
+    // master-gate) — confirm the effect actually reaches ai_nli_page.
+    expect(await isFlagEnabledForUser('ai_nli_page', ACTOR.id, 'admin')).toBe(false);
+  });
+
+  it('does not touch ai_nli_page.role_overrides — those stay under the Feature Flags page', async () => {
     await pool.query(
-      `UPDATE feature_flags SET enabled = true, role_overrides = '{"admin": true, "rep": true}'::jsonb
+      `UPDATE feature_flags SET role_overrides = '{"admin": true, "rep": false}'::jsonb
        WHERE flag_key = 'ai_nli_page'`,
     );
 
+    await setAiEnabled({ enabled: true }, ACTOR);
+
+    const row = await pool.query<{ role_overrides: unknown }>(
+      `SELECT role_overrides FROM feature_flags WHERE flag_key = 'ai_nli_page'`,
+    );
+    expect(row.rows[0].role_overrides).toEqual({ admin: true, rep: false });
+  });
+
+  it('writes a feature_flag audit entry via updateFeatureFlag when ai_features changes', async () => {
     await setAiEnabled({ enabled: false }, ACTOR);
 
-    const row = await pool.query<{ enabled: boolean; role_overrides: unknown }>(
-      `SELECT enabled, role_overrides FROM feature_flags WHERE flag_key = 'ai_nli_page'`,
+    const audit = await pool.query(
+      `SELECT * FROM audit_log
+       WHERE record_type = 'feature_flag' AND field_name = 'enabled' AND changed_by_id = $1
+       ORDER BY created_at DESC LIMIT 1`,
+      [ACTOR.id],
     );
-    expect(row.rows[0].enabled).toBe(false);
-    expect(row.rows[0].role_overrides).toBeNull();
+    expect(audit.rows.length).toBe(1);
+    expect(audit.rows[0].old_value).toBe('true');
+    expect(audit.rows[0].new_value).toBe('false');
   });
 });
 

@@ -674,16 +674,25 @@ function isAiSubFeatureFlag(key: string): boolean {
  *   4. Org-wide enabled / enable_at / role overrides.
  *
  * Steps 1 and 2 always query fresh — never served from the flag cache.
+ *
+ * @param precomputedMasterEnabled - Optional pre-resolved ai_features result for
+ *   this user, to avoid re-running step 0's full resolution (2 fresh, uncached
+ *   queries) on every one of the ai_* sub-feature flags when a caller resolves
+ *   many keys for the same user in one request (see getMyFeatureFlagsHandler).
+ *   Callers resolving a single key should omit this and let step 0 compute it.
  */
 export async function isFlagEnabledForUser(
   key: string,
   userId: string,
   role: string,
+  precomputedMasterEnabled?: boolean,
 ): Promise<boolean> {
   // Step 0: the ai_features master toggle gates every ai_* sub-feature flag before
   // any of its own targeting rules are consulted.
   if (isAiSubFeatureFlag(key)) {
-    const masterEnabled = await isFlagEnabledForUser(AI_MASTER_FEATURE_FLAG_KEY, userId, role);
+    const masterEnabled =
+      precomputedMasterEnabled ??
+      (await isFlagEnabledForUser(AI_MASTER_FEATURE_FLAG_KEY, userId, role));
     if (!masterEnabled) return false;
   }
 
