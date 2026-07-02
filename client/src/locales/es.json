@@ -2335,6 +2335,25 @@
     "tableFeature": "Función",
     "noUsageData": "No hay datos de uso para este rango."
   },
+  "churnExpansion": {
+    "churnRiskDetected": "Riesgo de abandono detectado",
+    "expansionSignalDetected": "Señal de expansión detectada",
+    "detectedOn": "Detectado el {{date}}",
+    "insightsHeading": "Cuentas en riesgo y de expansión",
+    "notAvailable": "Esta función no está disponible.",
+    "loadFailed": "Error al cargar los datos de abandono/expansión.",
+    "atRiskHeading": "Cuentas en riesgo",
+    "atRiskEmpty": "No hay cuentas en riesgo actualmente.",
+    "expansionHeading": "Oportunidades de expansión",
+    "expansionEmpty": "No se detectaron oportunidades de expansión.",
+    "confidenceLabel": "{{confidence}}% de confianza"
+  },
+  "notifications": {
+    "bellLabel": "Notificaciones ({{count}} sin leer)",
+    "heading": "Notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "empty": "Aún no hay notificaciones."
+  },
   "championBlocker": {
     "status": {
       "champion": "Defensor",

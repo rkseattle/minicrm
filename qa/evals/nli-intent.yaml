@@ -33,7 +33,8 @@ prompts:
     searchNotes, getNote, createNote, updateNote, deleteNote,
     listTags, attachTag, detachTag, renameTag,
     generateReport, saveReport, exportEntities, getWinLossPatterns,
-    getContactChampionBlockerStatus.
+    getContactChampionBlockerStatus, getAccountChurnExpansionSignal,
+    getAtRiskAndExpansionAccounts.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -226,3 +227,25 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'getContactChampionBlockerStatus';
+
+  # ── MINCRM-469: churn/expansion signals ──────────────────────────────────────
+
+  - description: Single-account churn risk question maps to getAccountChurnExpansionSignal (MINCRM-469)
+    vars:
+      query: Is Acme Corp at risk of churning?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getAccountChurnExpansionSignal';
+
+  - description: Org-wide at-risk accounts question maps to getAtRiskAndExpansionAccounts (MINCRM-469)
+    vars:
+      query: Which accounts are at risk of churning right now?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getAtRiskAndExpansionAccounts';

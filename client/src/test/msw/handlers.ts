@@ -2499,6 +2499,35 @@ export const handlers = [
     });
   }),
 
+  // ── Churn/expansion detection (MINCRM-469) ──────────────────────────────────────
+
+  /** Accounts: GET /api/accounts/:id/churn-expansion-signal — defaults to no active signal. */
+  http.get('/api/v1/accounts/:id/churn-expansion-signal', () => {
+    return HttpResponse.json({ signal: null });
+  }),
+
+  /** Insights: GET /api/insights/churn-expansion — defaults to no active signals. */
+  http.get('/api/v1/insights/churn-expansion', () => {
+    return HttpResponse.json({ at_risk: [], expansion: [] });
+  }),
+
+  // ── In-app notification feed (MINCRM-469) ───────────────────────────────────────
+
+  /** Notifications: GET /api/notifications — defaults to an empty feed. */
+  http.get('/api/v1/notifications', () => {
+    return HttpResponse.json({ notifications: [], unread_count: 0 });
+  }),
+
+  /** Notifications: POST /api/notifications/:id/read */
+  http.post('/api/v1/notifications/:id/read', () => {
+    return HttpResponse.json({ notifications: [], unread_count: 0 });
+  }),
+
+  /** Notifications: POST /api/notifications/read-all */
+  http.post('/api/v1/notifications/read-all', () => {
+    return HttpResponse.json({ notifications: [], unread_count: 0 });
+  }),
+
   // ── Champion/blocker detection (MINCRM-466) ─────────────────────────────────────
 
   /** Contacts: GET /api/contacts/:id/champion-blocker — defaults to neutral (no badge rendered). */

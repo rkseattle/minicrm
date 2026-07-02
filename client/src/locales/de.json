@@ -2335,6 +2335,25 @@
     "tableFeature": "Funktion",
     "noUsageData": "Keine Nutzungsdaten für diesen Zeitraum."
   },
+  "churnExpansion": {
+    "churnRiskDetected": "Abwanderungsrisiko erkannt",
+    "expansionSignalDetected": "Expansionssignal erkannt",
+    "detectedOn": "Erkannt am {{date}}",
+    "insightsHeading": "Gefährdete & Expansionskonten",
+    "notAvailable": "Diese Funktion ist nicht verfügbar.",
+    "loadFailed": "Abwanderungs-/Expansionsdaten konnten nicht geladen werden.",
+    "atRiskHeading": "Gefährdete Konten",
+    "atRiskEmpty": "Derzeit keine gefährdeten Konten.",
+    "expansionHeading": "Expansionsmöglichkeiten",
+    "expansionEmpty": "Keine Expansionsmöglichkeiten erkannt.",
+    "confidenceLabel": "{{confidence}} % Konfidenz"
+  },
+  "notifications": {
+    "bellLabel": "Benachrichtigungen ({{count}} ungelesen)",
+    "heading": "Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "empty": "Noch keine Benachrichtigungen."
+  },
   "championBlocker": {
     "status": {
       "champion": "Fürsprecher",

@@ -116,4 +116,26 @@ export const accountTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'getAccountChurnExpansionSignal',
+    description:
+      'Returns the AI-inferred churn risk or expansion opportunity signal for a single closed-won account, from the nightly churn/expansion detection run. AI-inferred, not factual — present as a signal, not certainty. (MINCRM-469)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'UUID of the account.' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'getAtRiskAndExpansionAccounts',
+    description:
+      'Returns the cached results of the nightly AI churn/expansion detection run — all closed-won accounts currently flagged as at-risk of churn or as expansion opportunities. Does not trigger a new analysis; always serves the latest cached run. (MINCRM-469)',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
 ];

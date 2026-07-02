@@ -2335,6 +2335,25 @@
     "tableFeature": "功能",
     "noUsageData": "此范围内没有使用数据。"
   },
+  "churnExpansion": {
+    "churnRiskDetected": "检测到流失风险",
+    "expansionSignalDetected": "检测到扩展信号",
+    "detectedOn": "检测于 {{date}}",
+    "insightsHeading": "风险与扩展客户",
+    "notAvailable": "此功能不可用。",
+    "loadFailed": "加载流失/扩展数据失败。",
+    "atRiskHeading": "风险客户",
+    "atRiskEmpty": "目前没有风险客户。",
+    "expansionHeading": "扩展机会",
+    "expansionEmpty": "未检测到扩展机会。",
+    "confidenceLabel": "置信度 {{confidence}}%"
+  },
+  "notifications": {
+    "bellLabel": "通知（{{count}} 条未读）",
+    "heading": "通知",
+    "markAllRead": "全部标为已读",
+    "empty": "暂无通知。"
+  },
   "championBlocker": {
     "status": {
       "champion": "支持者",

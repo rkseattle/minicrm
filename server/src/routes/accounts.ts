@@ -25,6 +25,7 @@ import {
   detachAccountTagHandler,
 } from '../controllers/tagController.js';
 import { bulkAccountsHandler } from '../controllers/bulkController.js';
+import { getAccountChurnExpansionSignalHandler } from '../controllers/churnExpansionController.js';
 
 const router = Router();
 
@@ -573,6 +574,14 @@ router.delete(
   requireCapability(Capability.ContactsEdit),
   requireFeatureEnabled('tags'),
   asyncHandler(detachAccountTagHandler),
+);
+
+/** Returns the active AI churn/expansion signal for the account, or null when none is active. (MINCRM-469) */
+router.get(
+  '/:id/churn-expansion-signal',
+  authenticate,
+  requireFeatureEnabled('ai_churn_expansion_detection'),
+  asyncHandler(getAccountChurnExpansionSignalHandler),
 );
 
 export default router;

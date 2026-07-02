@@ -17,6 +17,7 @@ import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
 import { runRetentionPurge } from './services/retentionService.js';
 import { analyzeWinLossPatterns } from './services/winLossAnalysisService.js';
+import { detectChurnExpansionSignals } from './services/churnExpansionService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
@@ -208,6 +209,17 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => winLossAnalysisCron.stop());
   process.once('SIGINT', () => winLossAnalysisCron.stop());
+
+  // Churn/expansion signal detection — runs daily at 04:00 server time (MINCRM-469).
+  // Scans closed-won accounts with activity history; no-ops when AI is not enabled.
+  const churnExpansionCron = cron.schedule('0 4 * * *', () => {
+    logger.info('cron: running churn/expansion signal detection');
+    void detectChurnExpansionSignals();
+  });
+  logger.info('Churn/expansion signal detection cron scheduled (daily at 04:00)');
+
+  process.once('SIGTERM', () => churnExpansionCron.stop());
+  process.once('SIGINT', () => churnExpansionCron.stop());
 
   // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,

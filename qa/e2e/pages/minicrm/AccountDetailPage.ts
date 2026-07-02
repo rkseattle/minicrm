@@ -246,4 +246,32 @@ export class AccountDetailPage {
   url(): string {
     return this.page.url();
   }
+
+  // ── AI churn/expansion signal banner (MINCRM-469) ───────────────────────────────
+
+  /** Returns a resolved locator for the churn-risk banner. */
+  async churnRiskBannerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'churn-risk-banner' },
+          { type: 'css', value: '[data-testid="churn-risk-banner"]' },
+        ],
+        { intent: 'AI churn risk banner on the account detail page' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the expansion signal banner. */
+  async expansionSignalBannerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'expansion-signal-banner' },
+          { type: 'css', value: '[data-testid="expansion-signal-banner"]' },
+        ],
+        { intent: 'AI expansion signal banner on the account detail page' },
+      )
+      .resolve();
+  }
 }
