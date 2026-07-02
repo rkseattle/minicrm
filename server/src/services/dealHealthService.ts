@@ -210,9 +210,13 @@ export async function generateDealHealthCheck(
   const context = await gatherDealHealthContext(dealId);
   if (!context) return null;
 
-  // AI-disabled must be checked before the E2E stub branches out, so E2E mode can
-  // still exercise (and regress-test) the "503 when AI not enabled" guard — matching
-  // objectionMatchingService.ts's ordering. (Greptile self-review finding)
+  // IS_E2E must short-circuit before the ai_configuration.enabled check —
+  // reset-e2e-data.ts always sets enabled=false in the E2E database, so
+  // checking it first would 503 every E2E run before reaching the stub.
+  if (IS_E2E) {
+    return E2E_STUB_RESPONSE;
+  }
+
   const configResult = await pool.query<AiConfigRow>(
     `SELECT model, api_key_encrypted, api_key_key_version, base_url, enabled
      FROM ai_configuration
@@ -221,10 +225,6 @@ export async function generateDealHealthCheck(
   const row = configResult.rows[0];
   if (!row?.enabled) {
     throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
-  }
-
-  if (IS_E2E) {
-    return E2E_STUB_RESPONSE;
   }
 
   if (!row.api_key_encrypted || row.api_key_encrypted.trim() === '') {

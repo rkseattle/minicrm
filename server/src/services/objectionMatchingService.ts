@@ -104,16 +104,18 @@ export async function classifyActivityObjection(
   const activity = await findActivityById(activityId);
   if (!activity?.notes || activity.notes.trim() === '') return null;
 
-  const config = await getAiConfig();
-  if (!config?.enabled) {
-    throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
-  }
-
   let category: ObjectionCategory | null = null;
 
+  // IS_E2E must short-circuit before the ai_configuration.enabled check —
+  // reset-e2e-data.ts always sets enabled=false in the E2E database, so
+  // checking it first would 503 every E2E run before reaching the stub.
   if (IS_E2E) {
     category = null;
   } else {
+    const config = await getAiConfig();
+    if (!config?.enabled) {
+      throw Object.assign(new Error('AI features are not enabled'), { statusCode: 503 });
+    }
     if (!config.api_key_encrypted || config.api_key_encrypted.trim() === '') {
       throw Object.assign(new Error('AI API key is not configured'), { statusCode: 503 });
     }
@@ -241,22 +243,35 @@ export async function findObjectionPrecedents(
     [category, MAX_PRECEDENTS],
   );
 
-  const precedents = result.rows.map((row) => {
-    const closeDate = row.close_date ? new Date(row.close_date) : null;
-    const timeToCloseDays = closeDate
-      ? Math.max(
-          0,
-          Math.floor((closeDate.getTime() - row.objection_date.getTime()) / (1000 * 60 * 60 * 24)),
-        )
-      : 0;
-    return {
-      deal_id: row.deal_id,
-      deal_name: row.deal_name,
-      objection_quote: row.objection_quote,
-      response_summary: row.response_summary ?? '',
-      time_to_close_days: timeToCloseDays,
-    };
-  });
+  const precedents = await Promise.all(
+    result.rows.map(async (row) => {
+      const closeDate = row.close_date ? new Date(row.close_date) : null;
+      const timeToCloseDays = closeDate
+        ? Math.max(
+            0,
+            Math.floor(
+              (closeDate.getTime() - row.objection_date.getTime()) / (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 0;
+      // Precedent quotes surface another rep's raw activity note text org-wide by
+      // design (coaching value, same as win-loss patterns) — route through the same
+      // admin-configured PII exclusion pass every other AI-adjacent read in this
+      // feature set uses, for consistency and defense-in-depth.
+      const { sanitised } = await applyPiiFilter(
+        { objection_quote: row.objection_quote, response_summary: row.response_summary ?? '' },
+        'deal',
+      );
+      const clean = sanitised as { objection_quote: string; response_summary: string };
+      return {
+        deal_id: row.deal_id,
+        deal_name: row.deal_name,
+        objection_quote: clean.objection_quote,
+        response_summary: clean.response_summary,
+        time_to_close_days: timeToCloseDays,
+      };
+    }),
+  );
 
   return {
     category,
