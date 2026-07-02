@@ -125,6 +125,80 @@ describe('DealDetailPage', () => {
     expect(screen.getByText(`${CONTACT_1.first_name} ${CONTACT_1.last_name}`)).toBeInTheDocument();
   });
 
+  // ── AI deal health check (MINCRM-442) ──────────────────────────────────────────
+
+  it('shows the deal health panel with an empty state before a check is run', async () => {
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-health-heading')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('deal-health-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('deal-health-result')).not.toBeInTheDocument();
+  });
+
+  it('runs a health check and renders the status badge, narrative, and next actions', async () => {
+    server.use(
+      http.post('/api/v1/deals/:id/health-check', () =>
+        HttpResponse.json({
+          status: 'at_risk',
+          narrative: 'No activity in 14 days and the last email was never replied to.',
+          next_actions: ['Follow up with the primary contact.'],
+          generated_at: '2026-07-02T00:00:00.000Z',
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('run-deal-health-check-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('run-deal-health-check-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-health-result')).toBeInTheDocument();
+    });
+    expect(screen.getByText('At Risk')).toBeInTheDocument();
+    expect(screen.getByTestId('deal-health-narrative')).toHaveTextContent('No activity in 14 days');
+    expect(screen.getByTestId('deal-health-next-actions')).toHaveTextContent(
+      'Follow up with the primary contact.',
+    );
+  });
+
+  it('shows an error message when the health check fails', async () => {
+    server.use(
+      http.post('/api/v1/deals/:id/health-check', () =>
+        HttpResponse.json(
+          { error: { code: 'AI_PROVIDER_ERROR', message: 'AI provider error' } },
+          { status: 502 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('run-deal-health-check-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('run-deal-health-check-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-health-error')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('deal-health-result')).not.toBeInTheDocument();
+  });
+
+  it('hides the deal health panel when the ai_deal_health_check flag is disabled', async () => {
+    server.use(
+      http.get('/api/v1/feature-flags/me', () =>
+        HttpResponse.json({ flags: { ai_deal_health_check: false } }),
+      ),
+    );
+    renderDealDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('deal-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('deal-health-heading')).not.toBeInTheDocument();
+  });
+
   it('shows a loading state while fetching', async () => {
     server.use(
       http.get('/api/v1/deals/:id', async () => {

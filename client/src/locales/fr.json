@@ -442,6 +442,15 @@
     "filteredEmptyTitle": "Aucune opportunité ne correspond à vos filtres",
     "notFound": "Opportunité introuvable.",
     "backToDeals": "Retour aux opportunités",
+    "dealHealthHeading": "Santé de l'opportunité",
+    "dealHealthRunCheck": "Vérifier l'état",
+    "dealHealthRunning": "Vérification…",
+    "dealHealthEmpty": "Lancez une vérification pour voir les signaux de risque identifiés par l'IA pour cette opportunité.",
+    "dealHealthStatus": {
+      "on_track": "Sur la bonne voie",
+      "at_risk": "À risque",
+      "stalled": "Bloquée"
+    },
     "linkedContactsHeading": "Contacts associés",
     "linkedContactsEmpty": "Aucun contact associé à cette opportunité.",
     "linkContact": "Associer un contact",

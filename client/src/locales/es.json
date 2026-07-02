@@ -442,6 +442,15 @@
     "filteredEmptyTitle": "Ninguna oportunidad coincide con tus filtros",
     "notFound": "Oportunidad no encontrada.",
     "backToDeals": "Volver a oportunidades",
+    "dealHealthHeading": "Estado de la oportunidad",
+    "dealHealthRunCheck": "Comprobar estado",
+    "dealHealthRunning": "Comprobando…",
+    "dealHealthEmpty": "Ejecuta una comprobación de estado para ver las señales de riesgo identificadas por la IA para esta oportunidad.",
+    "dealHealthStatus": {
+      "on_track": "En buen camino",
+      "at_risk": "En riesgo",
+      "stalled": "Estancada"
+    },
     "linkedContactsHeading": "Contactos vinculados",
     "linkedContactsEmpty": "No hay contactos vinculados a esta oportunidad.",
     "linkContact": "Vincular contacto",

@@ -984,3 +984,95 @@ export async function waitForDealsListUrl(
   await context.page.waitForURL('/deals', { timeout });
   return new URL(context.page.url()).pathname;
 }
+
+// ---------------------------------------------------------------------------
+// AI deal health check (MINCRM-442)
+// ---------------------------------------------------------------------------
+
+/** Result returned by runDealHealthCheck. */
+export interface RunDealHealthCheckResult {
+  /** HTTP status code returned by POST /deals/:id/health-check. */
+  status: number;
+}
+
+/**
+ * Clicks the "Check health" action and waits for the health-check POST to
+ * resolve. Registers the response wait before clicking so a fast server
+ * response is never missed. Does not assert — callers branch on `status`
+ * per the network-response-first pattern (MINCRM-418).
+ */
+export async function runDealHealthCheck(
+  context: DealsBehaviorContext,
+): Promise<RunDealHealthCheckResult> {
+  const detail = new DealDetailPage(context);
+  const button = await detail.runHealthCheckButtonLocator();
+
+  const responseReceived = context.page.waitForResponse(
+    (res) => res.request().method() === 'POST' && res.url().includes('/health-check'),
+    { timeout: 30_000 },
+  );
+  await button.click();
+  const response = await responseReceived;
+
+  return { status: response.status() };
+}
+
+/**
+ * Waits for the AI deal health check result (badge, narrative, next actions)
+ * to be visible after a successful check.
+ */
+export async function waitForDealHealthResult(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.healthCheckResultLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Waits for the AI deal health check error message to be visible after a
+ * failed check.
+ */
+export async function waitForDealHealthError(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.healthCheckErrorLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Waits for the deal health empty state (shown before any check has run) to be visible.
+ */
+export async function waitForDealHealthEmptyState(
+  context: DealsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.healthCheckEmptyStateLocator();
+  await expect(locator).toBeVisible({ timeout });
+}
+
+/**
+ * Returns true when the deal health result container is currently visible.
+ */
+export async function isDealHealthResultVisible(context: DealsBehaviorContext): Promise<boolean> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.healthCheckResultLocator();
+  return locator.isVisible().catch(() => false);
+}
+
+/**
+ * Returns true when the deal health section heading is currently visible.
+ * Used to assert the panel is hidden when the ai_deal_health_check flag is off.
+ */
+export async function isDealHealthHeadingVisible(context: DealsBehaviorContext): Promise<boolean> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.healthCheckHeadingLocator();
+  return locator.isVisible().catch(() => false);
+}

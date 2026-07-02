@@ -442,6 +442,15 @@
     "filteredEmptyTitle": "No deals match your filters",
     "notFound": "Deal not found.",
     "backToDeals": "Back to deals",
+    "dealHealthHeading": "Deal Health",
+    "dealHealthRunCheck": "Check health",
+    "dealHealthRunning": "Checking…",
+    "dealHealthEmpty": "Run a health check to see AI-identified risk signals for this deal.",
+    "dealHealthStatus": {
+      "on_track": "On Track",
+      "at_risk": "At Risk",
+      "stalled": "Stalled"
+    },
     "linkedContactsHeading": "Linked Contacts",
     "linkedContactsEmpty": "No contacts linked to this deal.",
     "linkContact": "Link contact",

@@ -20,6 +20,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
 import { Select } from '@/components/ui/Select.js';
+import { Badge } from '@/components/ui/Badge.js';
 import {
   getDeal,
   updateDeal,
@@ -33,6 +34,7 @@ import { listAccounts } from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
+import { runDealHealthCheck } from '@/api/dealHealth.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
@@ -41,9 +43,21 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import type { AccountResponse } from '@shared/schemas/accountSchema.js';
 import type { DealContact } from '@/api/deals.js';
+import type {
+  DealHealthCheckResponse,
+  DealHealthStatus,
+} from '@shared/schemas/dealHealthSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+
+/** Maps a deal health status to the Badge color variant. */
+const HEALTH_STATUS_VARIANT: Record<DealHealthStatus, 'success' | 'warning' | 'error'> = {
+  on_track: 'success',
+  at_risk: 'warning',
+  stalled: 'error',
+};
 
 /**
  * Formats a deal value using the deal's own currency and the active locale. (MINCRM-189)
@@ -77,6 +91,9 @@ export default function DealDetailPage() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState('');
+  const [dealHealth, setDealHealth] = useState<DealHealthCheckResponse | null>(null);
+  const [dealHealthError, setDealHealthError] = useState<string | null>(null);
+  const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
 
   /** Close deal modal state — null when closed */
   const [pendingClose, setPendingClose] = useState<{
@@ -243,6 +260,17 @@ export default function DealDetailPage() {
         return;
       }
       setCloseError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
+    },
+  });
+
+  const dealHealthMutation = useMutation({
+    mutationFn: () => runDealHealthCheck(id!),
+    onSuccess: (result) => {
+      setDealHealth(result);
+      setDealHealthError(null);
+    },
+    onError: (error: unknown) => {
+      setDealHealthError(resolveApiError(error as Parameters<typeof resolveApiError>[0], t));
     },
   });
 
@@ -487,6 +515,79 @@ export default function DealDetailPage() {
             </div>
 
             {id && <CustomFieldsSection entityType="deal" recordId={id} isEditing={false} />}
+
+            {/* AI deal health check (MINCRM-442) */}
+            {id && dealHealthCheckEnabled && (
+              <section className="mt-8" aria-labelledby="deal-health-heading">
+                <h2
+                  id="deal-health-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="deal-health-heading"
+                >
+                  {t('deals.dealHealthHeading')}
+                </h2>
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="run-deal-health-check-button"
+                    disabled={dealHealthMutation.isPending}
+                    onClick={() => {
+                      setDealHealthError(null);
+                      dealHealthMutation.mutate();
+                    }}
+                  >
+                    {dealHealthMutation.isPending
+                      ? t('deals.dealHealthRunning')
+                      : t('deals.dealHealthRunCheck')}
+                  </Button>
+
+                  {dealHealthMutation.isPending && (
+                    <div className="mt-4 space-y-2" aria-hidden="true">
+                      <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
+                      <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
+                      <div className="h-3 w-5/6 bg-gray-100 rounded animate-pulse" />
+                    </div>
+                  )}
+
+                  {dealHealthError && (
+                    <p
+                      role="alert"
+                      className="mt-3 text-xs text-red-600"
+                      data-testid="deal-health-error"
+                    >
+                      {dealHealthError}
+                    </p>
+                  )}
+
+                  {!dealHealthMutation.isPending && dealHealth && (
+                    <div className="mt-4" data-testid="deal-health-result">
+                      <Badge variant={HEALTH_STATUS_VARIANT[dealHealth.status]}>
+                        {t(`deals.dealHealthStatus.${dealHealth.status}`)}
+                      </Badge>
+                      <p className="mt-3 text-sm text-gray-700" data-testid="deal-health-narrative">
+                        {dealHealth.narrative}
+                      </p>
+                      <ul
+                        className="mt-3 list-disc ps-5 space-y-1 text-sm text-gray-700"
+                        data-testid="deal-health-next-actions"
+                      >
+                        {dealHealth.next_actions.map((action, index) => (
+                          <li key={index}>{action}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {!dealHealthMutation.isPending && !dealHealth && !dealHealthError && (
+                    <p className="mt-3 text-sm text-gray-500" data-testid="deal-health-empty">
+                      {t('deals.dealHealthEmpty')}
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
 
             {id && (
               <EntityDetailSidebar
