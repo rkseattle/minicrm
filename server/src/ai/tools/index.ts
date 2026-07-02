@@ -82,6 +82,7 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['createActivity', 'activities:create' as Capability],
   ['updateActivity', 'activities:edit' as Capability],
   ['deleteActivity', 'activities:delete' as Capability],
+  ['getObjectionPrecedents', 'activities:view' as Capability],
 
   // ── Notes (access gated by entity ownership; at minimum need contacts:view) ─
   ['searchNotes', 'contacts:view' as Capability],

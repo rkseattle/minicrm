@@ -208,6 +208,11 @@ const SERIAL_FILES = [
   // churnExpansionService toggles the same ai_configuration singleton row as the other
   // nightly-job test suites above. (MINCRM-469)
   'src/__tests__/churnExpansionService.test.ts',
+  // objectionMatchingService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-471)
+  'src/__tests__/objectionMatchingService.test.ts',
+  // objectionMatchingController toggles the same ai_configuration singleton row. (MINCRM-471)
+  'src/__tests__/objectionMatchingController.test.ts',
 ];
 
 const sharedResolve = {

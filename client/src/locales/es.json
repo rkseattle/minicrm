@@ -2335,6 +2335,25 @@
     "tableFeature": "Función",
     "noUsageData": "No hay datos de uso para este rango."
   },
+  "objections": {
+    "category": {
+      "Price": "Precio",
+      "Timing": "Momento",
+      "Competitor": "Competidor",
+      "ProductFit": "Ajuste del producto",
+      "Authority": "Autoridad",
+      "Risk": "Riesgo",
+      "Other": "Otro"
+    },
+    "aiInferredLabel": "Categoría de objeción inferida por IA",
+    "howHandledBefore": "¿Cómo se manejó esto antes?",
+    "precedentsPanelLabel": "Precedentes de objeciones anteriores",
+    "loadFailed": "Error al cargar los precedentes.",
+    "objectionQuote": "«{{quote}}»",
+    "insufficientData": "Aún no hay suficiente historial de negocios ganados ({{count}} de {{required}} requeridos).",
+    "noPrecedentsFound": "No se encontraron objeciones similares en negocios ganados anteriores.",
+    "timeToClose": "Cerrado en {{days}} días después de esta objeción"
+  },
   "churnExpansion": {
     "churnRiskDetected": "Riesgo de abandono detectado",
     "expansionSignalDetected": "Señal de expansión detectada",

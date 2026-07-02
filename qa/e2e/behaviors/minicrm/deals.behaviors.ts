@@ -1124,3 +1124,29 @@ export async function getSelectedDealFormStage(context: DealsBehaviorContext): P
   const locator = await detail.stageSelectLocator();
   return locator.inputValue();
 }
+
+// ---------------------------------------------------------------------------
+// AI objection pattern matching (MINCRM-471)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the given activity's objection category badge is currently visible. */
+export async function isObjectionCategoryBadgeVisible(
+  context: DealsBehaviorContext,
+  activityId: string,
+): Promise<boolean> {
+  const detail = new DealDetailPage(context);
+  const locator = await detail.objectionCategoryBadgeLocator(activityId);
+  return locator.isVisible().catch(() => false);
+}
+
+/** Waits for the given activity's card to be visible in the timeline. */
+export async function waitForActivityItem(
+  context: DealsBehaviorContext,
+  activityId: string,
+  timeout = 10_000,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new DealDetailPage(context);
+  const locator = await detail.activityItemLocator(activityId);
+  await expect(locator).toBeVisible({ timeout });
+}

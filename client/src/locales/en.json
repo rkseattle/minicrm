@@ -2335,6 +2335,25 @@
     "tableFeature": "Feature",
     "noUsageData": "No usage data for this range."
   },
+  "objections": {
+    "category": {
+      "Price": "Price",
+      "Timing": "Timing",
+      "Competitor": "Competitor",
+      "ProductFit": "Product Fit",
+      "Authority": "Authority",
+      "Risk": "Risk",
+      "Other": "Other"
+    },
+    "aiInferredLabel": "AI-inferred objection category",
+    "howHandledBefore": "How was this handled before?",
+    "precedentsPanelLabel": "Past objection precedents",
+    "loadFailed": "Failed to load precedents.",
+    "objectionQuote": "“{{quote}}”",
+    "insufficientData": "Not enough closed-won deal history yet ({{count}} of {{required}} required).",
+    "noPrecedentsFound": "No similar objections found in past won deals.",
+    "timeToClose": "Closed in {{days}} days after this objection"
+  },
   "churnExpansion": {
     "churnRiskDetected": "Churn risk detected",
     "expansionSignalDetected": "Expansion signal detected",

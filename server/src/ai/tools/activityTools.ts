@@ -148,4 +148,20 @@ export const activityTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'getObjectionPrecedents',
+    description:
+      'Returns the top 3 similar objections from past won deals for a given category, showing how the objection was raised, how the rep responded, and time-to-close. Requires at least 10 closed-won deals with logged activities — has_sufficient_data is false otherwise. AI-inferred category matching, not a factual database query. (MINCRM-471)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['Price', 'Timing', 'Competitor', 'Product Fit', 'Authority', 'Risk', 'Other'],
+          description: 'Objection category to find precedents for.',
+        },
+      },
+      required: ['category'],
+    },
+  },
 ];

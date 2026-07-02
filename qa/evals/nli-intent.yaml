@@ -34,7 +34,7 @@ prompts:
     listTags, attachTag, detachTag, renameTag,
     generateReport, saveReport, exportEntities, getWinLossPatterns,
     getContactChampionBlockerStatus, getAccountChurnExpansionSignal,
-    getAtRiskAndExpansionAccounts.
+    getAtRiskAndExpansionAccounts, getObjectionPrecedents.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -249,3 +249,15 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'getAtRiskAndExpansionAccounts';
+
+  # ── MINCRM-471: objection pattern matching ───────────────────────────────────
+
+  - description: Objection precedent question maps to getObjectionPrecedents (MINCRM-471)
+    vars:
+      query: How have we handled price objections in the past?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getObjectionPrecedents' && parsed.input?.category === 'Price';

@@ -2335,6 +2335,25 @@
     "tableFeature": "Fonctionnalité",
     "noUsageData": "Aucune donnée d'utilisation pour cette plage."
   },
+  "objections": {
+    "category": {
+      "Price": "Prix",
+      "Timing": "Calendrier",
+      "Competitor": "Concurrent",
+      "ProductFit": "Adéquation produit",
+      "Authority": "Autorité",
+      "Risk": "Risque",
+      "Other": "Autre"
+    },
+    "aiInferredLabel": "Catégorie d'objection déduite par l'IA",
+    "howHandledBefore": "Comment cela a-t-il été géré auparavant ?",
+    "precedentsPanelLabel": "Précédents d'objections passées",
+    "loadFailed": "Échec du chargement des précédents.",
+    "objectionQuote": "« {{quote}} »",
+    "insufficientData": "Historique de contrats gagnés insuffisant ({{count}} sur {{required}} requis).",
+    "noPrecedentsFound": "Aucune objection similaire trouvée dans les contrats gagnés précédents.",
+    "timeToClose": "Conclu en {{days}} jours après cette objection"
+  },
   "churnExpansion": {
     "churnRiskDetected": "Risque de résiliation détecté",
     "expansionSignalDetected": "Signal d'expansion détecté",

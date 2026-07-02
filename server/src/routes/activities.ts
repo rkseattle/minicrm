@@ -21,6 +21,10 @@ import {
   bulkPatchActivitiesHandler,
   bulkDeleteActivitiesHandler,
 } from '../controllers/bulkV2Controller.js';
+import {
+  classifyActivityObjectionHandler,
+  getObjectionPrecedentsHandler,
+} from '../controllers/objectionMatchingController.js';
 
 const router = Router();
 
@@ -639,6 +643,24 @@ router.delete(
   requireCapability(Capability.ActivitiesDelete),
   requireFeatureEnabled('activities'),
   asyncHandler(deleteActivityHandler),
+);
+
+// ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
+
+/** Classifies the activity's note text into an objection category on demand. */
+router.post(
+  '/:id/classify-objection',
+  authenticate,
+  requireFeatureEnabled('ai_objection_pattern_matching'),
+  asyncHandler(classifyActivityObjectionHandler),
+);
+
+/** Returns the top 3 similar objections from past won deals for a given category. */
+router.get(
+  '/:id/objection-precedents',
+  authenticate,
+  requireFeatureEnabled('ai_objection_pattern_matching'),
+  asyncHandler(getObjectionPrecedentsHandler),
 );
 
 // ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────
