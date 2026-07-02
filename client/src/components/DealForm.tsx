@@ -91,6 +91,12 @@ interface DealFormProps {
    * Used by DealDetailPage to allow moving a deal to a different pipeline. (MINCRM-408)
    */
   showPipelineSelector?: boolean;
+  /**
+   * When provided, pre-selects this stage instead of initialValues.stage on mount.
+   * Used by DealDetailPage to pre-set the AI-suggested next stage when the rep
+   * clicks the stage advancement indicator. (MINCRM-443)
+   */
+  initialStageOverride?: string;
 }
 
 /**
@@ -103,11 +109,12 @@ interface DealFormProps {
 function buildInitialState(
   initial?: Partial<DealResponse>,
   defaultCurrency = 'USD',
+  stageOverride?: string,
 ): DealFormValues {
   return {
     name: initial?.name ?? '',
     pipeline_id: initial?.pipeline_id ?? '',
-    stage: initial?.stage ?? PIPELINE_STAGES[0], // fallback; overridden once live stages load
+    stage: stageOverride ?? initial?.stage ?? PIPELINE_STAGES[0], // fallback; overridden once live stages load
     value: initial?.value ?? '',
     currency: initial?.currency ?? defaultCurrency,
     close_date: initial?.close_date ?? '',
@@ -135,6 +142,7 @@ export default function DealForm({
   triggerRef,
   pipelineId,
   showPipelineSelector = false,
+  initialStageOverride,
 }: DealFormProps) {
   const { t } = useTranslation();
   const { pipelines } = usePipelines();
@@ -149,7 +157,7 @@ export default function DealForm({
   const defaultCurrency = defaultCurrencyData?.currency ?? 'USD';
 
   const [formData, setFormData] = useState<DealFormValues>(() =>
-    buildInitialState(initialValues, 'USD'),
+    buildInitialState(initialValues, 'USD', initialStageOverride),
   );
 
   // True once the user explicitly picks a currency from the selector (or when editing

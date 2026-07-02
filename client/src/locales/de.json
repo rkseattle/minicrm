@@ -451,6 +451,7 @@
       "at_risk": "Gefährdet",
       "stalled": "Stagniert"
     },
+    "stageAdvancementReadyLabel": "Bereit für den Wechsel zu {{stage}}?",
     "linkedContactsHeading": "Verknüpfte Kontakte",
     "linkedContactsEmpty": "Keine Kontakte mit diesem Geschäft verknüpft.",
     "linkContact": "Kontakt verknüpfen",

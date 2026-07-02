@@ -35,6 +35,7 @@ import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
 import { runDealHealthCheck } from '@/api/dealHealth.js';
+import { getStageAdvancement, stageAdvancementQueryKey } from '@/api/stageAdvancement.js';
 import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
@@ -94,6 +95,9 @@ export default function DealDetailPage() {
   const [dealHealth, setDealHealth] = useState<DealHealthCheckResponse | null>(null);
   const [dealHealthError, setDealHealthError] = useState<string | null>(null);
   const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
+  const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
+  /** Suggested next stage pre-set into DealForm when the advancement indicator is clicked */
+  const [suggestedStage, setSuggestedStage] = useState<string | null>(null);
 
   /** Close deal modal state — null when closed */
   const [pendingClose, setPendingClose] = useState<{
@@ -116,6 +120,15 @@ export default function DealDetailPage() {
     queryKey: dealQueryKey,
     queryFn: () => getDeal(id!),
     enabled: Boolean(id),
+  });
+
+  // Passive, page-load stage advancement check (MINCRM-443). The service itself
+  // returns { ready: false } for terminal-stage or no-next-stage deals, so no
+  // client-side stage filtering is needed beyond waiting for the deal to load.
+  const { data: stageAdvancement } = useQuery({
+    queryKey: stageAdvancementQueryKey(id ?? ''),
+    queryFn: () => getStageAdvancement(id!),
+    enabled: Boolean(id) && stageAdvancementEnabled && Boolean(data?.deal),
   });
 
   const { data: accountsData } = useQuery({
@@ -169,8 +182,10 @@ export default function DealDetailPage() {
       queryClient.invalidateQueries({ queryKey: dealQueryKey });
       queryClient.invalidateQueries({ queryKey: DEALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: WIN_LOSS_REPORT_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: stageAdvancementQueryKey(id ?? '') });
       setIsEditing(false);
       setUpdateError(null);
+      setSuggestedStage(null);
       clearConflict();
     },
     onError: (error: unknown, variables) => {
@@ -395,6 +410,28 @@ export default function DealDetailPage() {
           </div>
         )}
 
+        {/* AI stage advancement suggestion (MINCRM-443) — passive, page-load indicator.
+            No indicator is rendered for { ready: false } (terminal stage, no next stage,
+            or the AI was not confident) per the ticket's AC. */}
+        {!isEditing && stageAdvancementEnabled && stageAdvancement?.ready && (
+          <button
+            type="button"
+            data-testid="stage-advancement-indicator"
+            onClick={() => {
+              setSuggestedStage(stageAdvancement.next_stage_name);
+              setIsEditing(true);
+            }}
+            className="mb-4 w-full text-start rounded border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800 hover:bg-primary-100"
+          >
+            <span className="font-medium">
+              {t('deals.stageAdvancementReadyLabel', { stage: stageAdvancement.next_stage_name })}
+            </span>
+            <p className="mt-1 text-primary-700" data-testid="stage-advancement-rationale">
+              {stageAdvancement.rationale}
+            </p>
+          </button>
+        )}
+
         {isEditing ? (
           <>
             <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -404,6 +441,7 @@ export default function DealDetailPage() {
                 accounts={accounts}
                 users={activeUsers}
                 showPipelineSelector
+                initialStageOverride={suggestedStage ?? undefined}
                 onCloseRequested={(stage, formValues) => {
                   setCloseError(null);
                   setPendingClose({ stage, formValues });
@@ -415,6 +453,7 @@ export default function DealDetailPage() {
                 onCancel={() => {
                   setIsEditing(false);
                   setUpdateError(null);
+                  setSuggestedStage(null);
                   clearConflict();
                 }}
                 isSubmitting={updateMutation.isPending}

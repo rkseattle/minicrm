@@ -1146,6 +1146,16 @@ export const handlers = [
     return HttpResponse.json({ contacts: [] });
   }),
 
+  /**
+   * Deals: GET /api/deals/:id/stage-advancement (MINCRM-443)
+   * Fired passively on every DealDetailPage mount when the ai_stage_advancement flag is
+   * enabled (the default in tests) — defaults to { ready: false } so no indicator renders
+   * unless a test explicitly overrides this handler.
+   */
+  http.get('/api/v1/deals/:id/stage-advancement', () => {
+    return HttpResponse.json({ ready: false });
+  }),
+
   /** Dashboard: GET /api/dashboard/summary — returns dashboard summary metrics */
   http.get('/api/v1/dashboard/summary', () => {
     return HttpResponse.json(DASHBOARD_SUMMARY);

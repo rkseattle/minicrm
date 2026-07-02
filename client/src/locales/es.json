@@ -451,6 +451,7 @@
       "at_risk": "En riesgo",
       "stalled": "Estancada"
     },
+    "stageAdvancementReadyLabel": "¿Lista para avanzar a {{stage}}?",
     "linkedContactsHeading": "Contactos vinculados",
     "linkedContactsEmpty": "No hay contactos vinculados a esta oportunidad.",
     "linkContact": "Vincular contacto",
