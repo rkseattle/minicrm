@@ -88,6 +88,27 @@ afterAll(async () => {
   // DELETE cascades to feature_flag_group_beta_users and sets feature_flags.group_key = null.
   await pool.query('DELETE FROM feature_flag_groups');
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  // The last test in the 'ai_features master toggle' describe block disables
+  // ai_features and nothing after it re-enables it. Without this reset, that
+  // leaks into every other serial test file run afterward (e.g.
+  // winLossInsightController.test.ts expects ai_features enabled by default).
+  await pool.query(
+    `UPDATE feature_flags
+     SET enabled = CASE
+       WHEN flag_key IN ('mobile_access', 'demo_data') THEN false
+       ELSE true
+     END,
+     role_overrides = CASE
+       WHEN flag_key IN ('reporting', 'csv_export') THEN '{"admin":true,"rep":true}'::jsonb
+       ELSE null
+     END,
+     enable_at = null,
+     rollout_percentage = null,
+     rollout_stages = null,
+     updated_by = null,
+     updated_at = now()`,
+  );
+  __clearCacheForTest();
 });
 
 // ── listFeatureFlags ──────────────────────────────────────────────────────────
