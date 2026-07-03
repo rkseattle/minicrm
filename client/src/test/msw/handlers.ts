@@ -2517,9 +2517,16 @@ export const handlers = [
     });
   }),
 
-  /** Deals: POST /api/deals/:id/proposal-draft/export-docx — default stub blob. */
+  /**
+   * Deals: POST /api/deals/:id/proposal-draft/export-docx — default stub blob.
+   * Body is a plain string, not `new Blob([...])` — MSW's node interceptor has
+   * intermittently failed to settle the response when the body is a Blob
+   * (observed as the client mutation never resolving in CI only), matching the
+   * plain-string/Uint8Array pattern already used by the other blob-response
+   * handlers below (win-loss CSV/PDF export). (MINCRM-473)
+   */
   http.post('/api/v1/deals/:id/proposal-draft/export-docx', () => {
-    return new HttpResponse(new Blob(['stub-docx-content']), {
+    return new HttpResponse('stub-docx-content', {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       },
