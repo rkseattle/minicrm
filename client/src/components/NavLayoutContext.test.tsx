@@ -29,7 +29,7 @@ function makeQueryClient() {
 function renderInProvider(ui: React.ReactElement) {
   return render(
     <QueryClientProvider client={makeQueryClient()}>
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <BreakpointProvider>
           <NavLayoutProvider>{ui}</NavLayoutProvider>
         </BreakpointProvider>
@@ -103,7 +103,7 @@ describe('NavLayoutContext', () => {
     expect(() => {
       render(
         <QueryClientProvider client={makeQueryClient()}>
-          <MemoryRouter>
+          <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Bare />
           </MemoryRouter>
         </QueryClientProvider>,
