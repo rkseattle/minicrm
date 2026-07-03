@@ -111,7 +111,7 @@ jobs:
         run: npm ci
 
       - name: Lint (root + server + client)
-        run: npm run lint --workspaces --if-present
+        run: npm run lint
 
       - name: Typecheck client
         run: npm run typecheck --workspace=minicrm-client

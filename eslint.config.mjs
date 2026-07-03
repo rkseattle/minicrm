@@ -30,6 +30,12 @@ const IGNORED = [
   '**/coverage/**',
   'db/migrations/**',
   'shared/generated/**',
+  // Agent scratch checkouts (git worktrees under .claude/worktrees/) are full
+  // copies of this repo. Without this exclusion, `eslint .` discovers and
+  // type-checks every tsconfig in every leftover worktree in the same process,
+  // multiplying peak memory by the number of worktrees present and reliably
+  // causing an OOM crash.
+  '.claude/**',
 ];
 
 // ── Base TypeScript config (all packages) ──────────────────────────────────────
