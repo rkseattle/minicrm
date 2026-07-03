@@ -17,6 +17,7 @@ pnpm-debug.log*
 .npm
 .yarn/cache
 .pnpm-store/
+.eslintcache
 
 # ─── React / Vite (client) ────────────────────────────────────────────────────
 client/dist/

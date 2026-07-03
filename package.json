@@ -12,7 +12,7 @@
     "prepare": "husky || true",
     "unit_test": "npm test --workspace=minicrm-server && npm test --workspace=minicrm-client",
     "typecheck": "npm run typecheck --workspace=minicrm-server && npm run typecheck --workspace=minicrm-client && npm run typecheck --workspace=minicrm-qa",
-    "lint": "eslint .",
+    "lint": "eslint . --cache --cache-location .eslintcache --cache-strategy content",
     "format": "prettier --write .",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "remove:demo": "tsx scripts/remove-demo.ts",
