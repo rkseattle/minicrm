@@ -39,12 +39,31 @@ prompts:
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
     proposed change to the user and wait for approval. Notes are lightweight
-    annotations and may be created directly without confirmation.
+    annotations and may be created directly without confirmation. saveReport
+    persists data, so it also requires requestMutationConfirmation first —
+    never call saveReport directly.
+
+    Rule: generateReport builds one of exactly four report types on demand —
+    win_loss (won vs lost deals by date range), activity_volume, stage_trend,
+    or leads_summary. getWinLossPatterns instead returns the cached results of
+    a nightly AI analysis of what correlates with winning or losing deals
+    (plain-language pattern observations, not a won/lost report) — use it only
+    for pattern/correlation questions like "what patterns predict a win?", not
+    for "build me a win/loss report".
+
+    Rule: getAccountChurnExpansionSignal returns the churn/expansion signal
+    for one specific named account. getAtRiskAndExpansionAccounts returns
+    every at-risk or expansion account across the whole org. Use searchAccounts
+    only for lookups unrelated to churn/expansion risk.
+
+    Rule: getObjectionPrecedents takes a category input (one of Price, Timing,
+    Competitor, ProductFit, Authority, Risk, Other) inferred from the request,
+    e.g. "price objections" implies category "Price".
 
     Given the user request below, identify the single most appropriate tool
     to call FIRST. Respond ONLY with a JSON object in this exact format, with no
     prose, explanation, or markdown formatting:
-    {"tool": "<tool_name>"}
+    {"tool": "<tool_name>", "input": {<tool input, if any>}}
 
     User request: {{query}}
 
