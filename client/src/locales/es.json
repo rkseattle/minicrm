@@ -1106,6 +1106,7 @@
       "entityLead": "Clientes potenciales",
       "entityActivity": "Actividades",
       "fieldsLabel": "Campos a mostrar",
+      "fieldDisabledByGroupBy": "Borre Agrupar por para seleccionar campos adicionales",
       "filtersLabel": "Filtros",
       "addFilter": "+ Añadir filtro",
       "removeFilter": "Eliminar",

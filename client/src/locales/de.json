@@ -1106,6 +1106,7 @@
       "entityLead": "Interessenten",
       "entityActivity": "Aktivitäten",
       "fieldsLabel": "Anzuzeigende Felder",
+      "fieldDisabledByGroupBy": "Gruppierung aufheben, um weitere Felder auszuwählen",
       "filtersLabel": "Filter",
       "addFilter": "+ Filter hinzufügen",
       "removeFilter": "Entfernen",

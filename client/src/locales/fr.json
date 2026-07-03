@@ -1106,6 +1106,7 @@
       "entityLead": "Prospects",
       "entityActivity": "Activités",
       "fieldsLabel": "Champs à afficher",
+      "fieldDisabledByGroupBy": "Effacez le regroupement pour sélectionner d'autres champs",
       "filtersLabel": "Filtres",
       "addFilter": "+ Ajouter un filtre",
       "removeFilter": "Supprimer",

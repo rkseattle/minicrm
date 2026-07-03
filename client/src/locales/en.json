@@ -1071,6 +1071,7 @@
       "entityLead": "Leads",
       "entityActivity": "Activities",
       "fieldsLabel": "Fields to show",
+      "fieldDisabledByGroupBy": "Clear Group by to select additional fields",
       "filtersLabel": "Filters",
       "addFilter": "+ Add filter",
       "removeFilter": "Remove",
