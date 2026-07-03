@@ -106,6 +106,7 @@ import {
   getWinLossReport,
   getActivityVolumeReport,
   getStageTrendReport,
+  getLeadsSummaryReport,
 } from '../services/reportService.js';
 import { saveNliReport } from '../services/customReportService.js';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
@@ -848,7 +849,11 @@ export async function executeToolCall(
           savedReport = await saveNliReport(
             {
               name: toolInput.name as string,
-              report_type: toolInput.report_type as 'win_loss' | 'activity_volume' | 'stage_trend',
+              report_type: toolInput.report_type as
+                | 'win_loss'
+                | 'activity_volume'
+                | 'stage_trend'
+                | 'leads_summary',
               date_from: (toolInput.date_from as string | undefined) ?? null,
               date_to: (toolInput.date_to as string | undefined) ?? null,
               owner_id: (toolInput.owner_id as string | undefined) ?? null,
@@ -1007,6 +1012,12 @@ async function dispatchReport(
         ...(await getStageTrendReport(days)),
       };
     }
+
+    case 'leads_summary':
+      return {
+        report_type: 'leads_summary',
+        ...(await getLeadsSummaryReport({ ownerId })),
+      };
 
     default:
       return { error: `Report type '${reportType}' is not yet implemented in the NLI.` };

@@ -22,6 +22,7 @@ import {
   getWinLossReport,
   getActivityVolumeReport,
   getStageTrendReport,
+  getLeadsSummaryReport,
 } from '../services/reportService.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
@@ -77,6 +78,10 @@ beforeAll(async () => {
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
@@ -114,6 +119,10 @@ beforeEach(async () => {
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   // Reset currency rate history so historical-rate tests start from a clean state
   await pool.query('DELETE FROM currency_rate_history');
   // Reset to USD-only configuration
@@ -131,6 +140,10 @@ afterAll(async () => {
   );
   await pool.query(
     'DELETE FROM deals WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
+    'DELETE FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
   );
   await pool.query(
@@ -907,5 +920,99 @@ describe('getWinLossReport — historical exchange rate conversion', () => {
     expect(report.convertedWonValue).not.toBeNull();
     const converted = parseFloat(report.convertedWonValue!);
     expect(converted).toBeCloseTo(42500, 0);
+  });
+});
+
+// ── Leads Summary Report (MINCRM-424) ────────────────────────────────────────
+
+describe('getLeadsSummaryReport — empty state', () => {
+  it('returns all statuses at zero count when there are no leads', async () => {
+    const report = await getLeadsSummaryReport({ ownerId: repId });
+    expect(report.total).toBe(0);
+    expect(report.rows).toEqual([
+      { status: 'New', count: 0 },
+      { status: 'Contacted', count: 0 },
+      { status: 'Qualified', count: 0 },
+      { status: 'Disqualified', count: 0 },
+    ]);
+  });
+});
+
+describe('getLeadsSummaryReport — counts by status', () => {
+  it('counts each lead status correctly for a single owner', async () => {
+    await pool.query(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES
+         ('New1', $1, 'New', $2),
+         ('New2', $3, 'New', $2),
+         ('Contacted1', $4, 'Contacted', $2),
+         ('Qualified1', $5, 'Qualified', $2)`,
+      [
+        `${FILE_PREFIX}-lead-new1@example.com`,
+        repId,
+        `${FILE_PREFIX}-lead-new2@example.com`,
+        `${FILE_PREFIX}-lead-contacted1@example.com`,
+        `${FILE_PREFIX}-lead-qualified1@example.com`,
+      ],
+    );
+
+    const report = await getLeadsSummaryReport({ ownerId: repId });
+    expect(report.total).toBe(4);
+    const byStatus = Object.fromEntries(report.rows.map((r) => [r.status, r.count]));
+    expect(byStatus['New']).toBe(2);
+    expect(byStatus['Contacted']).toBe(1);
+    expect(byStatus['Qualified']).toBe(1);
+    expect(byStatus['Disqualified']).toBe(0);
+  });
+
+  it('returns rows in LEAD_STATUSES order regardless of insertion order', async () => {
+    await pool.query(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES ('Disq', $1, 'Disqualified', $2)`,
+      [`${FILE_PREFIX}-lead-disq@example.com`, repId],
+    );
+    const report = await getLeadsSummaryReport({ ownerId: repId });
+    expect(report.rows.map((r) => r.status)).toEqual([
+      'New',
+      'Contacted',
+      'Qualified',
+      'Disqualified',
+    ]);
+  });
+});
+
+describe('getLeadsSummaryReport — owner scoping', () => {
+  it('scopes to a single owner when ownerId is provided', async () => {
+    await pool.query(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES
+         ('Mine', $1, 'New', $2),
+         ('Theirs', $3, 'New', $4)`,
+      [
+        `${FILE_PREFIX}-lead-mine@example.com`,
+        repId,
+        `${FILE_PREFIX}-lead-theirs@example.com`,
+        otherRepId,
+      ],
+    );
+    const report = await getLeadsSummaryReport({ ownerId: repId });
+    expect(report.total).toBe(1);
+  });
+
+  it('returns team-wide data when ownerId is null', async () => {
+    await pool.query(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES
+         ('Mine', $1, 'New', $2),
+         ('Theirs', $3, 'New', $4)`,
+      [
+        `${FILE_PREFIX}-lead-mine2@example.com`,
+        repId,
+        `${FILE_PREFIX}-lead-theirs2@example.com`,
+        otherRepId,
+      ],
+    );
+    const report = await getLeadsSummaryReport({ ownerId: null });
+    expect(report.total).toBe(2);
   });
 });

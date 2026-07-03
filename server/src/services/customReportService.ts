@@ -615,7 +615,7 @@ function buildColumnNames(config: ReportConfig): string[] {
 /** Parameters captured from an NLI generateReport call for persistence. (MINCRM-424) */
 export interface NliReportSaveParams {
   name: string;
-  report_type: 'win_loss' | 'activity_volume' | 'stage_trend';
+  report_type: 'win_loss' | 'activity_volume' | 'stage_trend' | 'leads_summary';
   date_from?: string | null;
   date_to?: string | null;
   owner_id?: string | null;
@@ -627,22 +627,68 @@ const NLI_REPORT_ENTITY_TYPE: Record<NliReportSaveParams['report_type'], string>
   win_loss: 'deal',
   activity_volume: 'activity',
   stage_trend: 'deal',
+  leads_summary: 'lead',
 };
 
 /**
+ * Builds the generic report config that most faithfully reproduces each NLI
+ * report type in the Custom Report Builder. The generic engine (group_by +
+ * count/sum aggregate over an allowlisted entity table) can't fully replicate
+ * every NLI report's bespoke SQL (win_loss's currency-converted rate lookups,
+ * stage_trend's audit-log-derived bucketing) — this returns the closest
+ * faithful equivalent rather than a degenerate placeholder, so the saved
+ * report is always a real, working breakdown even where it's not a 1:1 match
+ * with the richer inline NLI card. owner_id/date range are intentionally left
+ * out of the saved filters: executeReport applies rep-scoping separately at
+ * view time based on the viewer, and baking one person's owner_id into a
+ * shared saved report would silently mis-scope it for every future viewer.
+ */
+function buildNliReportConfig(reportType: NliReportSaveParams['report_type']): {
+  selected_fields: string[];
+  filters: [];
+  group_by: string;
+  aggregate: { type: 'count' };
+} {
+  switch (reportType) {
+    case 'activity_volume':
+      return {
+        selected_fields: ['type'],
+        filters: [],
+        group_by: 'type',
+        aggregate: { type: 'count' },
+      };
+    case 'leads_summary':
+      return {
+        selected_fields: ['status'],
+        filters: [],
+        group_by: 'status',
+        aggregate: { type: 'count' },
+      };
+    case 'win_loss':
+    case 'stage_trend':
+      return {
+        selected_fields: ['stage'],
+        filters: [],
+        group_by: 'stage',
+        aggregate: { type: 'count' },
+      };
+  }
+}
+
+/**
  * Saves an NLI-generated analytic report to the custom_reports table so it appears
- * in the Reports module. The config jsonb carries an `nli_report_type` marker and
- * the original generation parameters — the custom report executor ignores unknown
- * keys so this is safe, and the Reports UI routes on `nli_report_type` to render
- * the correct analytic view. (MINCRM-424)
+ * in the Reports module. The config is a real, working generic-engine report
+ * (group_by + count aggregate) that the Report Builder can run as-is — not just
+ * an informational marker. The jsonb also carries an `nli_report_type` marker and
+ * the original generation parameters for display context; the custom report
+ * executor ignores these extra keys. (MINCRM-424)
  */
 export async function saveNliReport(
   params: NliReportSaveParams,
   actor: AuditActor,
 ): Promise<CustomReportRow> {
   const configJson = JSON.stringify({
-    selected_fields: ['id'],
-    filters: [],
+    ...buildNliReportConfig(params.report_type),
     nli_report_type: params.report_type,
     nli_date_from: params.date_from ?? null,
     nli_date_to: params.date_to ?? null,

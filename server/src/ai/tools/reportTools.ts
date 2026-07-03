@@ -8,13 +8,13 @@ export const reportTools: Anthropic.Messages.Tool[] = [
   {
     name: 'generateReport',
     description:
-      'Generate a CRM report inline in the conversation. Available types: win_loss (won vs lost deals by date range), activity_volume (activities logged per rep by date range), stage_trend (deal counts moving through pipeline stages over 30/60/90 days). To persist the report for later access, follow up with saveReport.',
+      'Generate a CRM report inline in the conversation. Available types: win_loss (won vs lost deals by date range), activity_volume (activities logged per rep by date range), stage_trend (deal counts moving through pipeline stages over 30/60/90 days), leads_summary (lead counts broken down by status, e.g. New/Contacted/Qualified/Disqualified). Only call this tool when the request maps to one of these four types — if the user asks for a report on something else (e.g. a specific list of records already shown, or an entity/breakdown not covered above), do not call generateReport with a mismatched report_type; instead tell them what report types are available and ask which one they want, or offer to answer the question directly instead of generating a report.',
     input_schema: {
       type: 'object',
       properties: {
         report_type: {
           type: 'string',
-          enum: ['win_loss', 'activity_volume', 'stage_trend'],
+          enum: ['win_loss', 'activity_volume', 'stage_trend', 'leads_summary'],
           description: 'The type of report to generate.',
         },
         pipeline_id: {
@@ -61,7 +61,7 @@ export const reportTools: Anthropic.Messages.Tool[] = [
         },
         report_type: {
           type: 'string',
-          enum: ['win_loss', 'activity_volume', 'stage_trend'],
+          enum: ['win_loss', 'activity_volume', 'stage_trend', 'leads_summary'],
           description: 'The report type that was generated.',
         },
         date_from: {

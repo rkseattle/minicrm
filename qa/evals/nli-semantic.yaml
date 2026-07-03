@@ -285,6 +285,41 @@ tests:
           invents file paths or access URLs absent from the tool results, or
           does not acknowledge the save was successful.
 
+  - description: Leads summary report result is summarized accurately without inventing numbers (MINCRM-424)
+    vars:
+      query: Create a report on open leads
+      tool_results: '{"report_type":"leads_summary","data":{"rows":[{"status":"New","count":2},{"status":"Contacted","count":0},{"status":"Qualified","count":0},{"status":"Disqualified","count":0}],"total":2}}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response summarizes the leads summary report using only
+          numbers from the tool results: 2 total leads, all in "New" status,
+          0 in Contacted/Qualified/Disqualified. Fail if the response invents
+          different counts, different statuses, or describes unrelated data
+          (e.g. activity counts, deal counts, or per-rep activity breakdowns)
+          not present in these tool results.
+
+  # ── MINCRM-424: report type mismatch — refuse rather than substitute ────────
+
+  - description: Report request with no matching type asks for clarification instead of substituting an unrelated report (MINCRM-424)
+    vars:
+      query: >
+        Here are the 2 open leads I found: Tyler Brooks (Pinnacle Systems) and
+        Amélie Fontaine (Lumina Numérique), both status New. Create a report to
+        capture that info.
+      tool_results: '{"error":"Report type ''leads_list'' is not yet implemented in the NLI."}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response tells the user this specific request (a report
+          listing/capturing the named leads) isn't directly supported, and
+          either offers the closest available alternative (a leads summary
+          report broken down by status) or asks what kind of report they want.
+          Fail if the response claims it successfully created a report matching
+          the user's request, invents report content (e.g. activity counts, a
+          report named after the leads), or fabricates data not present in the
+          tool results.
+
   # ── MINCRM-464: win/loss pattern insights semantics ──────────────────────────
 
   - description: Win/loss pattern summary uses only the cached observations provided (MINCRM-464)
