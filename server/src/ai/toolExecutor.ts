@@ -335,6 +335,12 @@ export async function executeToolCall(
         const id = toolInput.id as string;
         const contact = await findContactById(id);
         if (!contact) return notFound('Contact', id);
+        if (contact.owner_id !== ctx.userId && ctx.userRole !== 'admin') {
+          return {
+            error:
+              'You can only view champion/blocker intelligence for contacts you own. Ask an admin to view intelligence for contacts owned by others.',
+          };
+        }
         return await getContactChampionBlockerStatus(id);
       }
 
@@ -418,11 +424,18 @@ export async function executeToolCall(
         const id = toolInput.id as string;
         const account = await findAccountById(id);
         if (!account) return notFound('Account', id);
+        if (account.owner_id !== ctx.userId && ctx.userRole !== 'admin') {
+          return {
+            error:
+              'You can only view churn/expansion signals for accounts you own. Ask an admin to view signals for accounts owned by others.',
+          };
+        }
         return await getAccountChurnExpansionSignal(id);
       }
 
       case 'getAtRiskAndExpansionAccounts': {
-        return await listChurnExpansionSignals();
+        const ownerId = ctx.userRole !== 'admin' ? ctx.userId : null;
+        return await listChurnExpansionSignals(ownerId);
       }
 
       // ── Leads ────────────────────────────────────────────────────────────────

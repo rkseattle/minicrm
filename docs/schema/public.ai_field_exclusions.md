@@ -9,7 +9,7 @@ Admin-configurable AI payload exclusion toggles for standard entity fields. Immu
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | uuid | gen_random_uuid() | false |  |  |  |
-| entity_type | text |  | false |  |  |  |
+| entity_type | varchar(16) |  | false |  |  |  |
 | field_name | text |  | false |  |  |  |
 | excluded | boolean | false | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
@@ -19,6 +19,7 @@ Admin-configurable AI payload exclusion toggles for standard entity fields. Immu
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| ai_field_exclusions_entity_type_check | CHECK | CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text]))) |
 | ai_field_exclusions_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -36,7 +37,7 @@ erDiagram
 
 "public.ai_field_exclusions" {
   uuid id ""
-  text entity_type ""
+  varchar_16_ entity_type ""
   text field_name ""
   boolean excluded ""
   timestamp_with_time_zone created_at ""

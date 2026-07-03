@@ -24,7 +24,7 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
     code: 'FORBIDDEN',
     message:
-      'You can only dismiss or override champion/blocker classifications for contacts you own. Contact an admin to act on contacts owned by others.',
+      'You can only view or act on champion/blocker intelligence for contacts and deals you own. Contact an admin to act on records owned by others.',
   },
 };
 
@@ -37,6 +37,11 @@ export async function getContactChampionBlockerHandler(req: Request, res: Respon
   const contact = await findContactById(id);
   if (!contact) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 
@@ -114,6 +119,11 @@ export async function getDealStakeholderMapHandler(req: Request, res: Response):
   const deal = await findDealById(id);
   if (!deal) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
+
+  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
     return;
   }
 

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.contact_addresses](public.contact_addresses.md) [public.activities](public.activities.md) [public.contact_tags](public.contact_tags.md) [public.deal_contacts](public.deal_contacts.md) [public.sequence_enrollments](public.sequence_enrollments.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.contact_addresses](public.contact_addresses.md) [public.activities](public.activities.md) [public.contact_tags](public.contact_tags.md) [public.deal_contacts](public.deal_contacts.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) |  |  |
 | first_name | varchar(255) |  | false |  |  |  |
 | last_name | varchar(255) |  | false |  |  |  |
 | email | varchar(255) |  | false |  |  |  |
@@ -67,6 +67,7 @@ erDiagram
 "public.contact_tags" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.sequence_enrollments" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.contact_champion_blocker_signals" |o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.contacts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.contacts" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.contacts" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
@@ -170,6 +171,22 @@ erDiagram
   uuid current_step_id FK ""
   timestamp_with_time_zone next_action_at ""
   timestamp_with_time_zone unenrolled_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.contact_champion_blocker_signals" {
+  uuid id ""
+  uuid contact_id FK ""
+  text status ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_signals ""
+  uuid last_activity_id FK ""
+  text override_status ""
+  text override_reason ""
+  uuid overridden_by FK ""
+  timestamp_with_time_zone overridden_at ""
+  uuid dismissed_by FK ""
+  timestamp_with_time_zone dismissed_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }

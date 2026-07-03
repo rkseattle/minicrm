@@ -12,6 +12,14 @@ import {
 } from '../services/objectionMatchingService.js';
 import { OBJECTION_CATEGORIES } from '@minicrm/shared/schemas/objectionSchema.js';
 
+const FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only classify or look up objection precedents for activities you own. Contact an admin to act on activities owned by others.',
+  },
+};
+
 /**
  * POST /api/activities/:id/classify-objection
  * Classifies the activity's note text into an objection category on demand.
@@ -22,6 +30,11 @@ export async function classifyActivityObjectionHandler(req: Request, res: Respon
   const activity = await findActivityById(id);
   if (!activity) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Activity not found' } });
+    return;
+  }
+
+  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR);
     return;
   }
 
@@ -59,6 +72,11 @@ export async function getObjectionPrecedentsHandler(req: Request, res: Response)
   const activity = await findActivityById(id);
   if (!activity) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Activity not found' } });
+    return;
+  }
+
+  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR);
     return;
   }
 

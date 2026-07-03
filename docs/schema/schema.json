@@ -5010,6 +5010,34 @@
           "nullable": false,
           "default": "1500",
           "comment": "Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
+        },
+        {
+          "name": "win_loss_min_closed_deals",
+          "type": "integer",
+          "nullable": false,
+          "default": "20",
+          "comment": "Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464)"
+        },
+        {
+          "name": "win_loss_min_sample_size",
+          "type": "integer",
+          "nullable": false,
+          "default": "5",
+          "comment": "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
+        },
+        {
+          "name": "champion_blocker_deal_value_threshold",
+          "type": "numeric(15,2)",
+          "nullable": false,
+          "default": "10000",
+          "comment": "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
+        },
+        {
+          "name": "churn_expansion_confidence_threshold",
+          "type": "numeric(3,2)",
+          "nullable": false,
+          "default": "0.70",
+          "comment": "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
         }
       ],
       "indexes": [
@@ -5023,6 +5051,26 @@
         }
       ],
       "constraints": [
+        {
+          "name": "ai_configuration_champion_blocker_threshold_nonnegative",
+          "type": "CHECK",
+          "def": "CHECK ((champion_blocker_deal_value_threshold \u003e= (0)::numeric))",
+          "table": "public.ai_configuration",
+          "referenced_table": "",
+          "columns": [
+            "champion_blocker_deal_value_threshold"
+          ]
+        },
+        {
+          "name": "ai_configuration_churn_expansion_confidence_threshold_range",
+          "type": "CHECK",
+          "def": "CHECK (((churn_expansion_confidence_threshold \u003e= (0)::numeric) AND (churn_expansion_confidence_threshold \u003c= (1)::numeric)))",
+          "table": "public.ai_configuration",
+          "referenced_table": "",
+          "columns": [
+            "churn_expansion_confidence_threshold"
+          ]
+        },
         {
           "name": "ai_configuration_input_cost_nonnegative",
           "type": "CHECK",
@@ -5061,6 +5109,26 @@
           "referenced_table": "",
           "columns": [
             "singleton"
+          ]
+        },
+        {
+          "name": "ai_configuration_win_loss_min_closed_deals_positive",
+          "type": "CHECK",
+          "def": "CHECK ((win_loss_min_closed_deals \u003e 0))",
+          "table": "public.ai_configuration",
+          "referenced_table": "",
+          "columns": [
+            "win_loss_min_closed_deals"
+          ]
+        },
+        {
+          "name": "ai_configuration_win_loss_min_sample_size_positive",
+          "type": "CHECK",
+          "def": "CHECK ((win_loss_min_sample_size \u003e 0))",
+          "table": "public.ai_configuration",
+          "referenced_table": "",
+          "columns": [
+            "win_loss_min_sample_size"
           ]
         },
         {
@@ -7355,7 +7423,7 @@
         },
         {
           "name": "entity_type",
-          "type": "text",
+          "type": "varchar(16)",
           "nullable": false
         },
         {
@@ -7403,6 +7471,16 @@
       ],
       "constraints": [
         {
+          "name": "ai_field_exclusions_entity_type_check",
+          "type": "CHECK",
+          "def": "CHECK (((entity_type)::text = ANY (ARRAY[('contact'::character varying)::text, ('account'::character varying)::text, ('deal'::character varying)::text])))",
+          "table": "public.ai_field_exclusions",
+          "referenced_table": "",
+          "columns": [
+            "entity_type"
+          ]
+        },
+        {
           "name": "ai_field_exclusions_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -7410,6 +7488,640 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.deal_win_loss_insights",
+      "type": "BASE TABLE",
+      "comment": "Cached nightly AI win/loss pattern analysis results (MINCRM-464). Fully replaced on each run of analyzeWinLossPatterns — not appended.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "signal_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "observation",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "win_rate_with",
+          "type": "numeric(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "win_rate_without",
+          "type": "numeric(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "sample_size",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "is_win_pattern",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "supporting_deal_ids",
+          "type": "uuid[]",
+          "nullable": false,
+          "default": "'{}'::uuid[]"
+        },
+        {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "deal_win_loss_insights_pkey",
+          "def": "CREATE UNIQUE INDEX deal_win_loss_insights_pkey ON public.deal_win_loss_insights USING btree (id)",
+          "table": "public.deal_win_loss_insights",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_win_loss_insights_generated_at_idx",
+          "def": "CREATE INDEX deal_win_loss_insights_generated_at_idx ON public.deal_win_loss_insights USING btree (generated_at)",
+          "table": "public.deal_win_loss_insights",
+          "columns": [
+            "generated_at"
+          ]
+        },
+        {
+          "name": "deal_win_loss_insights_is_win_pattern_idx",
+          "def": "CREATE INDEX deal_win_loss_insights_is_win_pattern_idx ON public.deal_win_loss_insights USING btree (is_win_pattern)",
+          "table": "public.deal_win_loss_insights",
+          "columns": [
+            "is_win_pattern"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "deal_win_loss_insights_sample_size_positive",
+          "type": "CHECK",
+          "def": "CHECK ((sample_size \u003e= 0))",
+          "table": "public.deal_win_loss_insights",
+          "referenced_table": "",
+          "columns": [
+            "sample_size"
+          ]
+        },
+        {
+          "name": "deal_win_loss_insights_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.deal_win_loss_insights",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.contact_champion_blocker_signals",
+      "type": "BASE TABLE",
+      "comment": "Per-contact AI champion/blocker classification (MINCRM-466). One row per contact — replaced/updated after each new activity, not appended.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "contact_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'neutral'::text"
+        },
+        {
+          "name": "confidence",
+          "type": "numeric(3,2)",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "contributing_signals",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "last_activity_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "override_status",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "override_reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "overridden_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "overridden_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "dismissed_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "dismissed_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "contact_champion_blocker_signals_pkey",
+          "def": "CREATE UNIQUE INDEX contact_champion_blocker_signals_pkey ON public.contact_champion_blocker_signals USING btree (id)",
+          "table": "public.contact_champion_blocker_signals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_contact_id_unique",
+          "def": "CREATE UNIQUE INDEX contact_champion_blocker_signals_contact_id_unique ON public.contact_champion_blocker_signals USING btree (contact_id)",
+          "table": "public.contact_champion_blocker_signals",
+          "columns": [
+            "contact_id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_status_idx",
+          "def": "CREATE INDEX contact_champion_blocker_signals_status_idx ON public.contact_champion_blocker_signals USING btree (status)",
+          "table": "public.contact_champion_blocker_signals",
+          "columns": [
+            "status"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "contact_champion_blocker_signals_override_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((override_status IS NULL) OR (override_status = ANY (ARRAY['champion'::text, 'likely_champion'::text, 'neutral'::text, 'likely_blocker'::text, 'blocker'::text]))))",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "",
+          "columns": [
+            "override_status"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['champion'::text, 'likely_champion'::text, 'neutral'::text, 'likely_blocker'::text, 'blocker'::text])))",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_dismissed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "public.users",
+          "columns": [
+            "dismissed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_overridden_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "public.users",
+          "columns": [
+            "overridden_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_contact_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "public.contacts",
+          "columns": [
+            "contact_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_last_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (last_activity_id) REFERENCES activities(id) ON DELETE SET NULL",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "public.activities",
+          "columns": [
+            "last_activity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "contact_champion_blocker_signals_contact_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (contact_id)",
+          "table": "public.contact_champion_blocker_signals",
+          "referenced_table": "",
+          "columns": [
+            "contact_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.account_churn_expansion_signals",
+      "type": "BASE TABLE",
+      "comment": "Nightly AI churn/expansion signals per closed-won account (MINCRM-469). A new row is inserted per detection run; cleared_at is set (not deleted) when contradicted by new positive activity.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "account_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "signal_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "confidence",
+          "type": "numeric(3,2)",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "contributing_factors",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "detected_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "cleared_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "account_churn_expansion_signals_pkey",
+          "def": "CREATE UNIQUE INDEX account_churn_expansion_signals_pkey ON public.account_churn_expansion_signals USING btree (id)",
+          "table": "public.account_churn_expansion_signals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_account_id_idx",
+          "def": "CREATE INDEX account_churn_expansion_signals_account_id_idx ON public.account_churn_expansion_signals USING btree (account_id)",
+          "table": "public.account_churn_expansion_signals",
+          "columns": [
+            "account_id"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_active_idx",
+          "def": "CREATE INDEX account_churn_expansion_signals_active_idx ON public.account_churn_expansion_signals USING btree (signal_type) WHERE (cleared_at IS NULL)",
+          "table": "public.account_churn_expansion_signals",
+          "columns": [
+            "signal_type"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_one_active_per_type",
+          "def": "CREATE UNIQUE INDEX account_churn_expansion_signals_one_active_per_type ON public.account_churn_expansion_signals USING btree (account_id, signal_type) WHERE (cleared_at IS NULL)",
+          "table": "public.account_churn_expansion_signals",
+          "columns": [
+            "account_id",
+            "signal_type"
+          ],
+          "comment": "At most one active (cleared_at IS NULL) signal per account per signal_type — guards against overlapping nightly-job runs racing to insert duplicates. (MINCRM-469)"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "account_churn_expansion_signals_confidence_range",
+          "type": "CHECK",
+          "def": "CHECK (((confidence \u003e= (0)::numeric) AND (confidence \u003c= (1)::numeric)))",
+          "table": "public.account_churn_expansion_signals",
+          "referenced_table": "",
+          "columns": [
+            "confidence"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_signal_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((signal_type = ANY (ARRAY['churn_risk'::text, 'expansion'::text])))",
+          "table": "public.account_churn_expansion_signals",
+          "referenced_table": "",
+          "columns": [
+            "signal_type"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_account_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE",
+          "table": "public.account_churn_expansion_signals",
+          "referenced_table": "public.accounts",
+          "columns": [
+            "account_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "account_churn_expansion_signals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.account_churn_expansion_signals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.notifications",
+      "type": "BASE TABLE",
+      "comment": "Minimal in-app notification feed (MINCRM-469). type is free text (not a DB enum) so new notification-producing features can start writing rows without a migration, same convention as ai_token_usage_daily.feature.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "link_path",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "notifications_pkey",
+          "def": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+          "table": "public.notifications",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notifications_user_id_created_at_idx",
+          "def": "CREATE INDEX notifications_user_id_created_at_idx ON public.notifications USING btree (user_id, created_at DESC)",
+          "table": "public.notifications",
+          "columns": [
+            "user_id",
+            "created_at"
+          ]
+        },
+        {
+          "name": "notifications_user_id_unread_idx",
+          "def": "CREATE INDEX notifications_user_id_unread_idx ON public.notifications USING btree (user_id) WHERE (read_at IS NULL)",
+          "table": "public.notifications",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "notifications_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.notifications",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "notifications_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.notifications",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.activity_objection_signals",
+      "type": "BASE TABLE",
+      "comment": "AI objection classification per activity (MINCRM-471). One row per classified activity — classification runs on-demand, not pre-computed, so this table is populated lazily as reps view objection-logged activities.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "activity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "classified_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "activity_objection_signals_pkey",
+          "def": "CREATE UNIQUE INDEX activity_objection_signals_pkey ON public.activity_objection_signals USING btree (id)",
+          "table": "public.activity_objection_signals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_objection_signals_activity_id_unique",
+          "def": "CREATE UNIQUE INDEX activity_objection_signals_activity_id_unique ON public.activity_objection_signals USING btree (activity_id)",
+          "table": "public.activity_objection_signals",
+          "columns": [
+            "activity_id"
+          ]
+        },
+        {
+          "name": "activity_objection_signals_category_idx",
+          "def": "CREATE INDEX activity_objection_signals_category_idx ON public.activity_objection_signals USING btree (category)",
+          "table": "public.activity_objection_signals",
+          "columns": [
+            "category"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "activity_objection_signals_category_check",
+          "type": "CHECK",
+          "def": "CHECK ((category = ANY (ARRAY['Price'::text, 'Timing'::text, 'Competitor'::text, 'Product Fit'::text, 'Authority'::text, 'Risk'::text, 'Other'::text])))",
+          "table": "public.activity_objection_signals",
+          "referenced_table": "",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "activity_objection_signals_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
+          "table": "public.activity_objection_signals",
+          "referenced_table": "public.activities",
+          "columns": [
+            "activity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_objection_signals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.activity_objection_signals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_objection_signals_activity_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (activity_id)",
+          "table": "public.activity_objection_signals",
+          "referenced_table": "",
+          "columns": [
+            "activity_id"
           ]
         }
       ]
@@ -8572,6 +9284,97 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.contact_champion_blocker_signals",
+      "columns": [
+        "dismissed_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.contact_champion_blocker_signals",
+      "columns": [
+        "overridden_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.contact_champion_blocker_signals",
+      "columns": [
+        "contact_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.contacts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.contact_champion_blocker_signals",
+      "columns": [
+        "last_activity_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.activities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (last_activity_id) REFERENCES activities(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.account_churn_expansion_signals",
+      "columns": [
+        "account_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.accounts",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.notifications",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.activity_objection_signals",
+      "columns": [
+        "activity_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.activities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

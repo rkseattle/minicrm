@@ -41,7 +41,7 @@
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
 | [public.feature_flags](public.feature_flags.md) | 13 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
-| [public.ai_configuration](public.ai_configuration.md) | 19 |  | BASE TABLE |
+| [public.ai_configuration](public.ai_configuration.md) | 23 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
 | [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
 | [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
@@ -66,6 +66,11 @@
 | [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 10 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
 | [public.ai_token_usage_daily](public.ai_token_usage_daily.md) | 7 | Per-day, per-feature token usage for the AI usage/cost dashboard. Additive to ai_token_usage, which remains the source of truth for monthly budget enforcement. (MINCRM-459) | BASE TABLE |
 | [public.ai_field_exclusions](public.ai_field_exclusions.md) | 6 | Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461) | BASE TABLE |
+| [public.deal_win_loss_insights](public.deal_win_loss_insights.md) | 9 | Cached nightly AI win/loss pattern analysis results (MINCRM-464). Fully replaced on each run of analyzeWinLossPatterns — not appended. | BASE TABLE |
+| [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) | 14 | Per-contact AI champion/blocker classification (MINCRM-466). One row per contact — replaced/updated after each new activity, not appended. | BASE TABLE |
+| [public.account_churn_expansion_signals](public.account_churn_expansion_signals.md) | 7 | Nightly AI churn/expansion signals per closed-won account (MINCRM-469). A new row is inserted per detection run; cleared_at is set (not deleted) when contradicted by new positive activity. | BASE TABLE |
+| [public.notifications](public.notifications.md) | 8 | Minimal in-app notification feed (MINCRM-469). type is free text (not a DB enum) so new notification-producing features can start writing rows without a migration, same convention as ai_token_usage_daily.feature. | BASE TABLE |
+| [public.activity_objection_signals](public.activity_objection_signals.md) | 4 | AI objection classification per activity (MINCRM-471). One row per classified activity — classification runs on-demand, not pre-computed, so this table is populated lazily as reps view objection-logged activities. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -223,6 +228,13 @@ erDiagram
 "public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
 "public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_usage_daily" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.contact_champion_blocker_signals" |o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.contact_champion_blocker_signals" }o--o| "public.activities" : "FOREIGN KEY (last_activity_id) REFERENCES activities(id) ON DELETE SET NULL"
+"public.account_churn_expansion_signals" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.notifications" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.activity_objection_signals" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -663,6 +675,10 @@ erDiagram
   integer ai_session_retention_days "Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)"
   integer ai_input_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
   integer ai_output_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
+  integer win_loss_min_closed_deals "Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464)"
+  integer win_loss_min_sample_size "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
+  numeric_15_2_ champion_blocker_deal_value_threshold "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
+  numeric_3_2_ churn_expansion_confidence_threshold "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
 }
 "public.smtp_configuration" {
   boolean singleton ""
@@ -840,11 +856,63 @@ erDiagram
 }
 "public.ai_field_exclusions" {
   uuid id ""
-  text entity_type ""
+  varchar_16_ entity_type ""
   text field_name ""
   boolean excluded ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.deal_win_loss_insights" {
+  uuid id ""
+  text signal_type ""
+  text observation ""
+  numeric_5_2_ win_rate_with ""
+  numeric_5_2_ win_rate_without ""
+  integer sample_size ""
+  boolean is_win_pattern ""
+  uuid__ supporting_deal_ids ""
+  timestamp_with_time_zone generated_at ""
+}
+"public.contact_champion_blocker_signals" {
+  uuid id ""
+  uuid contact_id FK ""
+  text status ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_signals ""
+  uuid last_activity_id FK ""
+  text override_status ""
+  text override_reason ""
+  uuid overridden_by FK ""
+  timestamp_with_time_zone overridden_at ""
+  uuid dismissed_by FK ""
+  timestamp_with_time_zone dismissed_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.account_churn_expansion_signals" {
+  uuid id ""
+  uuid account_id FK ""
+  text signal_type ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_factors ""
+  timestamp_with_time_zone detected_at ""
+  timestamp_with_time_zone cleared_at ""
+}
+"public.notifications" {
+  uuid id ""
+  uuid user_id FK ""
+  text type ""
+  text title ""
+  text body ""
+  text link_path ""
+  timestamp_with_time_zone read_at ""
+  timestamp_with_time_zone created_at ""
+}
+"public.activity_objection_signals" {
+  uuid id ""
+  uuid activity_id FK ""
+  text category ""
+  timestamp_with_time_zone classified_at ""
 }
 ```
 

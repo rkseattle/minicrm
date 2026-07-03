@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.account_tags](public.account_tags.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.account_tags](public.account_tags.md) [public.account_churn_expansion_signals](public.account_churn_expansion_signals.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | industry | varchar(255) |  | true |  |  |  |
 | website | varchar(255) |  | true |  |  |  |
@@ -53,6 +53,7 @@ erDiagram
 "public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.account_churn_expansion_signals" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.accounts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 
 "public.accounts" {
@@ -158,6 +159,15 @@ erDiagram
   uuid account_id FK ""
   uuid tag_id FK ""
   timestamp_with_time_zone created_at ""
+}
+"public.account_churn_expansion_signals" {
+  uuid id ""
+  uuid account_id FK ""
+  text signal_type ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_factors ""
+  timestamp_with_time_zone detected_at ""
+  timestamp_with_time_zone cleared_at ""
 }
 "public.users" {
   uuid id ""

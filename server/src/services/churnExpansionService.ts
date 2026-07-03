@@ -305,37 +305,52 @@ async function processAccount(
   // Same signal type already active — do not insert a duplicate row.
   if (existing && existing.signal_type === result.signalType) return;
 
-  await withTransaction(async (client) => {
-    if (existing) {
+  try {
+    await withTransaction(async (client) => {
+      if (existing) {
+        await client.query(
+          `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
+          [existing.id],
+        );
+      }
+
       await client.query(
-        `UPDATE account_churn_expansion_signals SET cleared_at = now() WHERE id = $1`,
-        [existing.id],
+        `INSERT INTO account_churn_expansion_signals (account_id, signal_type, confidence, contributing_factors)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          account.id,
+          result.signalType,
+          result.confidence,
+          JSON.stringify(result.factors.map((description) => ({ description }))),
+        ],
       );
-    }
 
-    await client.query(
-      `INSERT INTO account_churn_expansion_signals (account_id, signal_type, confidence, contributing_factors)
-       VALUES ($1, $2, $3, $4)`,
-      [
-        account.id,
-        result.signalType,
-        result.confidence,
-        JSON.stringify(result.factors.map((description) => ({ description }))),
-      ],
-    );
-
-    await writeAuditEntry(client, {
-      recordType: 'account',
-      recordId: account.id,
-      recordName: account.name,
-      eventType: 'updated',
-      fieldName: 'churn_expansion_signal',
-      oldValue: existing?.signal_type ?? null,
-      newValue: result.signalType,
-      changedById: SYSTEM_ACTOR.id,
-      changedByName: SYSTEM_ACTOR.name,
+      await writeAuditEntry(client, {
+        recordType: 'account',
+        recordId: account.id,
+        recordName: account.name,
+        eventType: 'updated',
+        fieldName: 'churn_expansion_signal',
+        oldValue: existing?.signal_type ?? null,
+        newValue: result.signalType,
+        changedById: SYSTEM_ACTOR.id,
+        changedByName: SYSTEM_ACTOR.name,
+      });
     });
-  });
+  } catch (err) {
+    // 23505: account_churn_expansion_signals_one_active_per_type — an overlapping
+    // detection run already inserted the active row for this account/signal_type
+    // between our read of `existing` and this insert. That run's row wins; this
+    // one is a no-op rather than a crash. (MINCRM-469, migration 145)
+    if ((err as { code?: string }).code === '23505') {
+      logger.warn(
+        { accountId: account.id, signalType: result.signalType },
+        'churnExpansionService: skipped duplicate active signal from a concurrent detection run',
+      );
+      return;
+    }
+    throw err;
+  }
 
   if (
     result.signalType === 'churn_risk' &&
@@ -388,8 +403,22 @@ export async function getAccountChurnExpansionSignal(
   return { signal: row ? toSignalResponse(row) : null };
 }
 
-/** Returns all active churn-risk and expansion signals across accounts, for the Reporting view / NLI. */
-export async function listChurnExpansionSignals(): Promise<ChurnExpansionListResponse> {
+/**
+ * Returns all active churn-risk and expansion signals across accounts, for the Reporting view / NLI.
+ *
+ * @param ownerId - When non-null, scopes results to accounts owned by this user (rep scoping).
+ *   Pass null for the org-wide view (admin only). (MINCRM-469)
+ */
+export async function listChurnExpansionSignals(
+  ownerId: string | null,
+): Promise<ChurnExpansionListResponse> {
+  const params: unknown[] = [];
+  let ownerFilter = '';
+  if (ownerId !== null) {
+    params.push(ownerId);
+    ownerFilter = ` AND a.owner_id = $${params.length}`;
+  }
+
   const result = await pool.query<{
     id: string;
     signal_type: string;
@@ -404,8 +433,9 @@ export async function listChurnExpansionSignals(): Promise<ChurnExpansionListRes
             a.id AS account_id, a.name AS account_name, a.owner_id
      FROM account_churn_expansion_signals s
      INNER JOIN accounts a ON a.id = s.account_id
-     WHERE s.cleared_at IS NULL
+     WHERE s.cleared_at IS NULL${ownerFilter}
      ORDER BY s.confidence DESC, s.detected_at DESC`,
+    params,
   );
 
   const atRisk: ChurnExpansionListResponse['at_risk'] = [];

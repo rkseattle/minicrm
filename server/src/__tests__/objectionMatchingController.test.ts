@@ -52,9 +52,11 @@ async function ensureAiFeaturesEnabled(): Promise<void> {
 
 const FILE_PREFIX = 'objection-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
+const OTHER_REP_EMAIL = `${FILE_PREFIX}-other-rep@example.com`;
 
 let repCookie: string;
 let repId: string;
+let otherRepCookie: string;
 let defaultPipelineId: string;
 let dealId: string;
 let activityId: string;
@@ -78,6 +80,19 @@ beforeAll(async () => {
   });
   repId = rep.id;
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, role: rep.role, name: rep.name });
+  const otherRep = await createUser({
+    email: OTHER_REP_EMAIL,
+    name: 'Other Objection Rep',
+    role: 'rep',
+    passwordHash: '$2b$12$placeholder',
+    status: 'active',
+  });
+  otherRepCookie = makeAuthCookie({
+    id: otherRep.id,
+    email: otherRep.email,
+    role: otherRep.role,
+    name: otherRep.name,
+  });
   defaultPipelineId = await getDefaultPipelineId();
 
   const { ciphertext, keyVersion } = encryptVersioned('sk-ant-mock-key-for-tests');
@@ -147,6 +162,13 @@ describe('POST /api/v1/activities/:id/classify-objection', () => {
 
     expect(res.body.category).toBe('Price');
   });
+
+  it('returns 403 when a rep classifies an activity owned by another rep', async () => {
+    await request(app)
+      .post(`/api/v1/activities/${activityId}/classify-objection`)
+      .set('Cookie', otherRepCookie)
+      .expect(403);
+  });
 });
 
 describe('GET /api/v1/activities/:id/objection-precedents', () => {
@@ -170,5 +192,12 @@ describe('GET /api/v1/activities/:id/objection-precedents', () => {
       .expect(200);
 
     expect(res.body.has_sufficient_data).toBe(false);
+  });
+
+  it('returns 403 when a rep requests precedents anchored on an activity owned by another rep', async () => {
+    await request(app)
+      .get(`/api/v1/activities/${activityId}/objection-precedents?category=Price`)
+      .set('Cookie', otherRepCookie)
+      .expect(403);
   });
 });

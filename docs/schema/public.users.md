@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_sessions](public.ai_sessions.md) [public.email_templates](public.email_templates.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_sessions](public.ai_sessions.md) [public.email_templates](public.email_templates.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.notifications](public.notifications.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
@@ -107,6 +107,9 @@ erDiagram
 "public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_usage_daily" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.notifications" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -397,6 +400,10 @@ erDiagram
   integer ai_session_retention_days "Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)"
   integer ai_input_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
   integer ai_output_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
+  integer win_loss_min_closed_deals "Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464)"
+  integer win_loss_min_sample_size "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
+  numeric_15_2_ champion_blocker_deal_value_threshold "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
+  numeric_3_2_ churn_expansion_confidence_threshold "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
 }
 "public.ai_token_budgets" {
   uuid id ""
@@ -521,6 +528,32 @@ erDiagram
   bigint input_tokens ""
   bigint output_tokens ""
   timestamp_with_time_zone updated_at ""
+}
+"public.contact_champion_blocker_signals" {
+  uuid id ""
+  uuid contact_id FK ""
+  text status ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_signals ""
+  uuid last_activity_id FK ""
+  text override_status ""
+  text override_reason ""
+  uuid overridden_by FK ""
+  timestamp_with_time_zone overridden_at ""
+  uuid dismissed_by FK ""
+  timestamp_with_time_zone dismissed_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.notifications" {
+  uuid id ""
+  uuid user_id FK ""
+  text type ""
+  text title ""
+  text body ""
+  text link_path ""
+  timestamp_with_time_zone read_at ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

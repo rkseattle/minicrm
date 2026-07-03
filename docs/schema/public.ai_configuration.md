@@ -23,15 +23,23 @@
 | ai_session_retention_days | integer | 90 | false |  |  | Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447) |
 | ai_input_cost_per_million_cents | integer | 300 | false |  |  | Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459) |
 | ai_output_cost_per_million_cents | integer | 1500 | false |  |  | Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459) |
+| win_loss_min_closed_deals | integer | 20 | false |  |  | Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464) |
+| win_loss_min_sample_size | integer | 5 | false |  |  | Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464) |
+| champion_blocker_deal_value_threshold | numeric(15,2) | 10000 | false |  |  | Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466) |
+| churn_expansion_confidence_threshold | numeric(3,2) | 0.70 | false |  |  | Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469) |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| ai_configuration_champion_blocker_threshold_nonnegative | CHECK | CHECK ((champion_blocker_deal_value_threshold >= (0)::numeric)) |
+| ai_configuration_churn_expansion_confidence_threshold_range | CHECK | CHECK (((churn_expansion_confidence_threshold >= (0)::numeric) AND (churn_expansion_confidence_threshold <= (1)::numeric))) |
 | ai_configuration_input_cost_nonnegative | CHECK | CHECK ((ai_input_cost_per_million_cents >= 0)) |
 | ai_configuration_output_cost_nonnegative | CHECK | CHECK ((ai_output_cost_per_million_cents >= 0)) |
 | ai_configuration_session_retention_min | CHECK | CHECK ((ai_session_retention_days >= 30)) |
 | ai_configuration_singleton | CHECK | CHECK (singleton) |
+| ai_configuration_win_loss_min_closed_deals_positive | CHECK | CHECK ((win_loss_min_closed_deals > 0)) |
+| ai_configuration_win_loss_min_sample_size_positive | CHECK | CHECK ((win_loss_min_sample_size > 0)) |
 | ai_configuration_dpa_acknowledged_by_fkey | FOREIGN KEY | FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL |
 | ai_configuration_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL |
 | ai_configuration_singleton_unique | UNIQUE | UNIQUE (singleton) |
@@ -70,6 +78,10 @@ erDiagram
   integer ai_session_retention_days "Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)"
   integer ai_input_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
   integer ai_output_cost_per_million_cents "Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)"
+  integer win_loss_min_closed_deals "Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464)"
+  integer win_loss_min_sample_size "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
+  numeric_15_2_ champion_blocker_deal_value_threshold "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
+  numeric_3_2_ churn_expansion_confidence_threshold "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
 }
 "public.users" {
   uuid id ""
