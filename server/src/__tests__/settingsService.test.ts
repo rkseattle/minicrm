@@ -213,6 +213,14 @@ describe('setDefaultCurrency', () => {
     await pool.query(`DELETE FROM system_settings WHERE key = 'default_currency'`);
   });
 
+  afterAll(async () => {
+    // The "all supported currencies" test below leaves default_currency set to
+    // whichever code is last in its list (CHF) — deleting the row restores the
+    // USD fallback so this doesn't leak into other test files/suites that read
+    // getDefaultCurrency() (e.g. proposalDraftService.test.ts). (MINCRM-473)
+    await pool.query(`DELETE FROM system_settings WHERE key = 'default_currency'`);
+  });
+
   it('persists and returns the new currency', async () => {
     const result = await setDefaultCurrency('GBP');
     expect(result).toBe('GBP');
