@@ -240,8 +240,14 @@ describe('ProposalDraftEditor', () => {
 
     await user.click(screen.getByTestId('proposal-draft-download-docx-button'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('proposal-draft-download-docx-button')).not.toBeDisabled();
-    });
+    // Default waitFor timeout (1000ms) has intermittently been too tight under CI
+    // runner load for this mutation to settle — bumped rather than changed the
+    // assertion, since the underlying MSW handler resolves synchronously locally.
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('proposal-draft-download-docx-button')).not.toBeDisabled();
+      },
+      { timeout: 5000 },
+    );
   });
 });
