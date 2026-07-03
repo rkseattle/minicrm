@@ -78,7 +78,7 @@ tests:
           const parsed = JSON.parse(text);
           return parsed.tool === 'searchContacts';
 
-  - description: Create a note on the Acme account maps to createNote
+  - description: Create a note on the Acme account maps to createNote or a preceding account lookup
     vars:
       query: Create a note on the Acme account
     assert:
@@ -86,7 +86,11 @@ tests:
         value: |
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
-          return parsed.tool === 'createNote';
+          // createNote requires entity_id (a UUID) per its real tool schema, not a
+          // name — "Acme" must be resolved to an account ID first. Both directly
+          // calling createNote (if the model already knows/assumes an ID) and
+          // calling searchAccounts first to resolve the name are correct.
+          return parsed.tool === 'createNote' || parsed.tool === 'searchAccounts';
 
   - description: List open deals in Enterprise pipeline maps to searchDeals
     vars:

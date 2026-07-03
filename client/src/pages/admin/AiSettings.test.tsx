@@ -567,32 +567,37 @@ describe('AiSettings — retention stats and manual purge', () => {
 
   it('does not refetch retention stats immediately after purge, only after the delay', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    let statsRequestCount = 0;
-    server.use(
-      http.get('/api/v1/admin/ai/retention-stats', () => {
-        statsRequestCount++;
-        return HttpResponse.json({ session_count: 5, message_count: 20 });
-      }),
-    );
+    try {
+      let statsRequestCount = 0;
+      server.use(
+        http.get('/api/v1/admin/ai/retention-stats', () => {
+          statsRequestCount++;
+          return HttpResponse.json({ session_count: 5, message_count: 20 });
+        }),
+      );
 
-    renderWithProviders(<AiSettings />);
-    await waitFor(() => screen.getByTestId('ai-purge-now-button'));
-    expect(statsRequestCount).toBe(1); // initial mount fetch
+      renderWithProviders(<AiSettings />);
+      await waitFor(() => screen.getByTestId('ai-purge-now-button'));
+      expect(statsRequestCount).toBe(1); // initial mount fetch
 
-    fireEvent.click(screen.getByTestId('ai-purge-now-button'));
-    fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
-    await waitFor(() => {
-      expect(screen.getByTestId('ai-purge-accepted')).toBeInTheDocument();
-    });
+      fireEvent.click(screen.getByTestId('ai-purge-now-button'));
+      fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('ai-purge-accepted')).toBeInTheDocument();
+      });
 
-    // Immediately after the 202 response, no refetch should have fired yet —
-    // the purge is still running asynchronously on the server.
-    expect(statsRequestCount).toBe(1);
+      // Immediately after the 202 response, no refetch should have fired yet —
+      // the purge is still running asynchronously on the server.
+      expect(statsRequestCount).toBe(1);
 
-    await vi.advanceTimersByTimeAsync(3000);
-    await waitFor(() => expect(statsRequestCount).toBe(2));
-
-    vi.useRealTimers();
+      await vi.advanceTimersByTimeAsync(3000);
+      await waitFor(() => expect(statsRequestCount).toBe(2));
+    } finally {
+      // try/finally so a failed assertion above still restores real timers —
+      // otherwise fake timers stay installed for every test that runs afterward
+      // in this worker, including in unrelated files. (MINCRM-473)
+      vi.useRealTimers();
+    }
   });
 });
 
