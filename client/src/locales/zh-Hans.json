@@ -1106,6 +1106,7 @@
       "entityLead": "线索",
       "entityActivity": "活动",
       "fieldsLabel": "显示字段",
+      "fieldDisabledByGroupBy": "清除分组依据以选择其他字段",
       "filtersLabel": "筛选条件",
       "addFilter": "+ 添加筛选",
       "removeFilter": "删除",

@@ -521,6 +521,8 @@ export function CustomReportBuilderContent() {
 
   function toggleField(field: string) {
     setConfig((prev) => {
+      // When grouped, only the group_by column itself may be selected.
+      if (prev.group_by && field !== prev.group_by) return prev;
       const already = prev.selected_fields.includes(field);
       const next = already
         ? prev.selected_fields.filter((f) => f !== field)
@@ -733,18 +735,28 @@ export function CustomReportBuilderContent() {
                 {t('reports.customReports.fieldsLabel')}
               </legend>
               <div className="flex flex-wrap gap-2" data-testid="fields-selector">
-                {fields.map((field) => (
-                  <label key={field} className="flex items-center gap-1 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={config.selected_fields.includes(field)}
-                      onChange={() => toggleField(field)}
-                      data-testid={`field-checkbox-${field}`}
-                      className="rounded border-gray-300"
-                    />
-                    {field}
-                  </label>
-                ))}
+                {fields.map((field) => {
+                  const disabled = !!config.group_by && field !== config.group_by;
+                  return (
+                    <label
+                      key={field}
+                      className={`flex items-center gap-1 text-sm ${disabled ? 'text-gray-400 cursor-not-allowed' : 'cursor-pointer'}`}
+                      title={
+                        disabled ? t('reports.customReports.fieldDisabledByGroupBy') : undefined
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={config.selected_fields.includes(field)}
+                        onChange={() => toggleField(field)}
+                        disabled={disabled}
+                        data-testid={`field-checkbox-${field}`}
+                        className="rounded border-gray-300"
+                      />
+                      {field}
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
           </div>
@@ -787,12 +799,17 @@ export function CustomReportBuilderContent() {
               <select
                 className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
                 value={config.group_by ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const groupBy = e.target.value || undefined;
                   setConfig((prev) => ({
                     ...prev,
-                    group_by: e.target.value || undefined,
-                  }))
-                }
+                    group_by: groupBy,
+                    // A grouped/aggregated query can only select the group_by
+                    // column itself — any other selected field would violate
+                    // PostgreSQL GROUP BY rules (see server validateConfig).
+                    selected_fields: groupBy ? [groupBy] : prev.selected_fields,
+                  }));
+                }}
                 data-testid="group-by-select"
               >
                 <option value="">{t('reports.customReports.groupByNone')}</option>

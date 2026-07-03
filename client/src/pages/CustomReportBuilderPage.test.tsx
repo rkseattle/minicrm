@@ -102,6 +102,33 @@ describe('CustomReportBuilderContent — builder', () => {
     expect(screen.getByTestId('field-checkbox-email')).toBeInTheDocument();
   });
 
+  it('disables and unchecks non-group-by fields once a group by is selected', async () => {
+    renderWithProviders(<CustomReportBuilderContent />);
+    await waitFor(() => {
+      expect(screen.getByTestId('group-by-select')).toBeInTheDocument();
+    });
+
+    // contact is the default entity; id/first_name/last_name are pre-selected by defaultConfig
+    expect(screen.getByTestId('field-checkbox-id')).toBeChecked();
+    expect(screen.getByTestId('field-checkbox-first_name')).toBeChecked();
+
+    await userEvent.selectOptions(screen.getByTestId('group-by-select'), 'id');
+
+    // grouping collapses selected_fields down to just the group-by column
+    expect(screen.getByTestId('field-checkbox-id')).toBeChecked();
+    expect(screen.getByTestId('field-checkbox-first_name')).not.toBeChecked();
+    expect(screen.getByTestId('field-checkbox-first_name')).toBeDisabled();
+    expect(screen.getByTestId('field-checkbox-id')).not.toBeDisabled();
+
+    // clicking a disabled checkbox is a no-op
+    await userEvent.click(screen.getByTestId('field-checkbox-first_name'));
+    expect(screen.getByTestId('field-checkbox-first_name')).not.toBeChecked();
+
+    // clearing group by re-enables every field checkbox
+    await userEvent.selectOptions(screen.getByTestId('group-by-select'), '');
+    expect(screen.getByTestId('field-checkbox-first_name')).not.toBeDisabled();
+  });
+
   it('adds a filter row when "Add filter" is clicked', async () => {
     renderWithProviders(<CustomReportBuilderContent />);
     await waitFor(() => {
