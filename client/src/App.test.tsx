@@ -31,7 +31,10 @@ function renderApp(initialPath: string) {
   return render(
     <QueryClientProvider client={queryClient}>
       <BreakpointProvider>
-        <MemoryRouter initialEntries={[initialPath]}>
+        <MemoryRouter
+          initialEntries={[initialPath]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <Suspense fallback={null}>
             <App />
           </Suspense>
