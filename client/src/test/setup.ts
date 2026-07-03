@@ -74,3 +74,13 @@ export const server = setupServer(...handlers);
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
+
+// Safety net: a test that calls vi.useFakeTimers() and fails/throws before its own
+// vi.useRealTimers() cleanup would otherwise leave fake timers installed for every
+// subsequent test in the same worker process — including in other files, since
+// vitest can schedule multiple test files onto one worker. waitFor() and other
+// real-timer-based async utilities then hang indefinitely with no error, which is
+// very hard to trace back to an unrelated file. Unconditionally restoring real
+// timers after every test (a no-op when a test never used fake timers) closes
+// that gap regardless of how the previous test exited. (MINCRM-473)
+afterEach(() => vi.useRealTimers());
