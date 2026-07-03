@@ -60,12 +60,25 @@ interface StageTrendData {
   windowEnd?: string;
 }
 
+// ── Leads Summary ─────────────────────────────────────────────────────────────
+
+interface LeadsSummaryStatusRow {
+  status: string;
+  count: number;
+}
+
+interface LeadsSummaryData {
+  rows?: LeadsSummaryStatusRow[];
+  total?: number;
+}
+
 // ── Union ──────────────────────────────────────────────────────────────────────
 
 type ReportData =
   | { report_type: 'win_loss'; data: WinLossData }
   | { report_type: 'activity_volume'; data: ActivityVolumeData }
-  | { report_type: 'stage_trend'; data: StageTrendData };
+  | { report_type: 'stage_trend'; data: StageTrendData }
+  | { report_type: 'leads_summary'; data: LeadsSummaryData };
 
 interface ReportResultCardProps {
   report: ReportData;
@@ -193,10 +206,44 @@ function StageTrendTable({ data }: { data: StageTrendData }) {
   );
 }
 
+function LeadsSummaryTable({ data }: { data: LeadsSummaryData }) {
+  const { t } = useTranslation();
+  const rows = data.rows ?? [];
+
+  return (
+    <div data-testid="nli-report-leads-summary">
+      {data.total != null && (
+        <p className="text-sm font-semibold text-gray-800 mb-2">
+          {t('ai.results.report.totalLeads', { count: data.total })}
+        </p>
+      )}
+      {rows.length > 0 && (
+        <table className="w-full text-xs text-left border-t border-gray-100">
+          <thead>
+            <tr className="text-gray-400">
+              <th className="py-1 pe-3 font-medium">{t('ai.results.report.status')}</th>
+              <th className="py-1 pe-3 font-medium text-end">{t('ai.results.report.total')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.status} className="border-t border-gray-50">
+                <td className="py-1 pe-3 text-gray-700">{row.status}</td>
+                <td className="py-1 pe-3 text-end text-gray-800">{row.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 const REPORT_TITLE_KEYS: Record<string, string> = {
   win_loss: 'ai.results.report.title_win_loss',
   activity_volume: 'ai.results.report.title_activity_volume',
   stage_trend: 'ai.results.report.title_stage_trend',
+  leads_summary: 'ai.results.report.title_leads_summary',
 };
 
 export default function ReportResultCard({ report }: ReportResultCardProps) {
@@ -218,6 +265,9 @@ export default function ReportResultCard({ report }: ReportResultCardProps) {
       )}
       {report.report_type === 'stage_trend' && (
         <StageTrendTable data={report.data as StageTrendData} />
+      )}
+      {report.report_type === 'leads_summary' && (
+        <LeadsSummaryTable data={report.data as LeadsSummaryData} />
       )}
       <p className="text-xs text-blue-400 mt-2 italic">{t('ai.results.report.viewFullReport')}</p>
     </div>

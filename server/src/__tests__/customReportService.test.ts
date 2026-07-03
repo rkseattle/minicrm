@@ -13,6 +13,7 @@ import {
   updateReport,
   deleteReport,
   executeReport,
+  saveNliReport,
 } from '../services/customReportService.js';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
@@ -65,6 +66,7 @@ beforeEach(async () => {
 afterAll(async () => {
   await truncate();
   await pool.query(`DELETE FROM contacts WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await pool.query(`DELETE FROM leads WHERE email LIKE $1`, [`${FILE_PREFIX}-%`]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   await pool.end();
 });
@@ -665,5 +667,104 @@ describe('executeReport', () => {
     expect(resp.id).toBe(report.id);
     expect(resp.entity_type).toBe('contact');
     expect(typeof resp.created_at).toBe('string');
+  });
+});
+
+// ── saveNliReport ─────────────────────────────────────────────────────────────
+// Regression coverage: saveNliReport previously persisted a degenerate config
+// (selected_fields: ['id'], no group_by/aggregate) for every report type,
+// producing a saved report that matched neither the user's request nor the
+// AI's own narration of what it built. These tests assert the saved config is
+// a real, runnable report for each of the four NLI report types.
+
+describe('saveNliReport', () => {
+  it('persists a runnable leads_summary config grouped by status', async () => {
+    await pool.query(
+      `INSERT INTO leads (first_name, email, status, owner_id)
+       VALUES ('Nli', 'cr-svc-nli-lead@example.com', 'New', $1)`,
+      [ACTOR.id],
+    );
+
+    const saved = await saveNliReport(
+      { name: `${FILE_PREFIX}-LeadsSummary`, report_type: 'leads_summary' },
+      ACTOR,
+    );
+
+    expect(saved.entity_type).toBe('lead');
+    expect(saved.config.group_by).toBe('status');
+    expect(saved.config.aggregate).toEqual({ type: 'count' });
+
+    const result = await executeReport('lead', saved.config, null);
+    expect(result.columns).toContain('status');
+    const newRow = result.rows.find((r) => r['status'] === 'New');
+    expect(newRow).toBeDefined();
+    expect(Number(newRow!['_count'])).toBeGreaterThan(0);
+  });
+
+  it('persists a runnable activity_volume config grouped by type', async () => {
+    const saved = await saveNliReport(
+      { name: `${FILE_PREFIX}-ActivityVolume`, report_type: 'activity_volume' },
+      ACTOR,
+    );
+
+    expect(saved.entity_type).toBe('activity');
+    expect(saved.config.group_by).toBe('type');
+    expect(saved.config.aggregate).toEqual({ type: 'count' });
+
+    // Must not throw — proves the config satisfies validateConfig's
+    // group_by/selected_fields/aggregate consistency rules.
+    await expect(executeReport('activity', saved.config, null)).resolves.toBeDefined();
+  });
+
+  it('persists a runnable win_loss config grouped by stage', async () => {
+    const saved = await saveNliReport(
+      { name: `${FILE_PREFIX}-WinLoss`, report_type: 'win_loss' },
+      ACTOR,
+    );
+
+    expect(saved.entity_type).toBe('deal');
+    expect(saved.config.group_by).toBe('stage');
+    await expect(executeReport('deal', saved.config, null)).resolves.toBeDefined();
+  });
+
+  it('persists a runnable stage_trend config grouped by stage', async () => {
+    const saved = await saveNliReport(
+      { name: `${FILE_PREFIX}-StageTrend`, report_type: 'stage_trend' },
+      ACTOR,
+    );
+
+    expect(saved.entity_type).toBe('deal');
+    expect(saved.config.group_by).toBe('stage');
+    await expect(executeReport('deal', saved.config, null)).resolves.toBeDefined();
+  });
+
+  it('stores nli_* generation parameters as informational metadata, not as filters', async () => {
+    const saved = await saveNliReport(
+      {
+        name: `${FILE_PREFIX}-WithParams`,
+        report_type: 'win_loss',
+        date_from: '2026-01-01',
+        date_to: '2026-01-31',
+        owner_id: ACTOR.id,
+      },
+      ACTOR,
+    );
+
+    const configWithMeta = saved.config as unknown as Record<string, unknown>;
+    expect(configWithMeta['nli_report_type']).toBe('win_loss');
+    expect(configWithMeta['nli_date_from']).toBe('2026-01-01');
+    expect(configWithMeta['nli_owner_id']).toBe(ACTOR.id);
+    // owner_id must never be baked into filters — executeReport applies rep
+    // scoping separately per-viewer; a filter here would mis-scope the report
+    // for every future viewer.
+    expect(saved.config.filters).toEqual([]);
+  });
+
+  it('rejects a duplicate report name with CUSTOM_REPORT_NAME_CONFLICT', async () => {
+    await saveNliReport({ name: `${FILE_PREFIX}-Dup`, report_type: 'win_loss' }, ACTOR);
+
+    await expect(
+      saveNliReport({ name: `${FILE_PREFIX}-Dup`, report_type: 'win_loss' }, ACTOR),
+    ).rejects.toMatchObject({ code: 'CUSTOM_REPORT_NAME_CONFLICT' });
   });
 });

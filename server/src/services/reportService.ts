@@ -470,6 +470,79 @@ export async function getActivityVolumeReport(
   return { rows, totals };
 }
 
+// ── Leads Summary Report (MINCRM-424) ────────────────────────────────────────
+
+export interface LeadsSummaryReportParams {
+  /**
+   * When provided, scopes the report to leads owned by this user.
+   * Pass null for team-wide data (admin only).
+   */
+  ownerId: string | null;
+}
+
+/** A single row in the leads-by-status result set */
+interface LeadsByStatusRow {
+  status: string;
+  count: string;
+}
+
+/** One row per lead status in the summary report */
+export interface LeadsSummaryStatusRow {
+  status: string;
+  count: number;
+}
+
+/** Shape of the leads summary report returned to the controller */
+export interface LeadsSummaryReport {
+  /** Per-status counts, in LEAD_STATUSES order */
+  rows: LeadsSummaryStatusRow[];
+  /** Total leads across all statuses */
+  total: number;
+}
+
+/** The ordered set of lead statuses used as report rows, matching LEAD_STATUSES */
+const LEAD_STATUS_ORDER = ['New', 'Contacted', 'Qualified', 'Disqualified'] as const;
+
+/**
+ * Returns a count-by-status summary of leads, optionally scoped to a single
+ * owner. Excludes converted leads implicitly — converted leads still carry
+ * their pre-conversion status, so this reflects the open-pipeline breakdown
+ * a rep or admin would see on the Leads list.
+ *
+ * @param params - Query parameters (optional owner scope)
+ * @returns LeadsSummaryReport summary
+ */
+export async function getLeadsSummaryReport(
+  params: LeadsSummaryReportParams,
+): Promise<LeadsSummaryReport> {
+  const { ownerId } = params;
+  const ownerFilter = ownerId !== null;
+
+  const query = ownerFilter
+    ? `SELECT status, COUNT(*)::text AS count
+       FROM leads
+       WHERE owner_id = $1
+       GROUP BY status`
+    : `SELECT status, COUNT(*)::text AS count
+       FROM leads
+       GROUP BY status`;
+  const queryParams = ownerFilter ? [ownerId] : [];
+  const result = await pool.query<LeadsByStatusRow>(query, queryParams);
+
+  const countByStatus = new Map<string, number>();
+  for (const row of result.rows) {
+    countByStatus.set(row.status, parseInt(row.count, 10));
+  }
+
+  const rows = LEAD_STATUS_ORDER.map((status) => ({
+    status,
+    count: countByStatus.get(status) ?? 0,
+  }));
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+
+  return { rows, total };
+}
+
 // ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────
 
 /** Allowed values for the stageTrend `days` parameter */
