@@ -615,7 +615,10 @@ export async function sendMessage(
         logger.warn({ sessionId, rounds }, 'NLI hit MAX_TOOL_ROUNDS cap');
       }
 
-      if (!assistantContent) {
+      // A requestMutationConfirmation batch commonly has no accompanying text block —
+      // Claude just calls the tool. That's a valid response (the pending action is
+      // rendered as the confirmation card), not a provider failure. (MINCRM-425)
+      if (!assistantContent && !rawPendingAction) {
         throw Object.assign(new Error('AI provider returned no text content'), { statusCode: 502 });
       }
     } catch (err) {
