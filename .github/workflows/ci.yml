@@ -1793,8 +1793,11 @@ jobs:
   # Keeps Anthropic API spend minimal: path filter is the primary cost lever.
   ai-evals:
     name: Phase 3 - AI Evals (Promptfoo)
-    needs: [changes]
+    needs: [server-tests, client-tests, changes]
     if: |
+      always() &&
+      (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
+      (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
       needs.changes.outputs.ai == 'true' &&
       github.event.pull_request.draft == false &&
       github.actor != 'dependabot[bot]' &&
