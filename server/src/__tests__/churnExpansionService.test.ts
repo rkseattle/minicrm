@@ -319,7 +319,7 @@ describe('listChurnExpansionSignals', () => {
 
     await detectChurnExpansionSignals();
 
-    const result = await listChurnExpansionSignals();
+    const result = await listChurnExpansionSignals(null);
     expect(result.at_risk.some((a) => a.account_id === churnAccountId)).toBe(true);
     expect(result.expansion.some((a) => a.account_id === expansionAccountId)).toBe(true);
   });

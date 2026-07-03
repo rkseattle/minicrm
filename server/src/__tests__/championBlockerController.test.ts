@@ -21,9 +21,11 @@ import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'champ-block-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
+const OTHER_REP_EMAIL = `${FILE_PREFIX}-other-rep@example.com`;
 
 let repCookie: string;
 let repId: string;
+let otherRepCookie: string;
 let defaultPipelineId: string;
 
 beforeAll(async () => {
@@ -41,6 +43,19 @@ beforeAll(async () => {
   });
   repId = rep.id;
   repCookie = makeAuthCookie({ id: rep.id, email: rep.email, role: rep.role, name: rep.name });
+  const otherRep = await createUser({
+    email: OTHER_REP_EMAIL,
+    name: 'Other Champion Blocker Rep',
+    role: 'rep',
+    passwordHash: '$2b$12$placeholder',
+    status: 'active',
+  });
+  otherRepCookie = makeAuthCookie({
+    id: otherRep.id,
+    email: otherRep.email,
+    role: otherRep.role,
+    name: otherRep.name,
+  });
   defaultPipelineId = await getDefaultPipelineId();
 });
 
@@ -87,6 +102,14 @@ describe('GET /api/v1/contacts/:id/champion-blocker', () => {
       .get('/api/v1/contacts/00000000-0000-0000-0000-000000000000/champion-blocker')
       .set('Cookie', repCookie)
       .expect(404);
+  });
+
+  it('returns 403 when a rep requests a contact owned by another rep', async () => {
+    const contactId = await createTestContact();
+    await request(app)
+      .get(`/api/v1/contacts/${contactId}/champion-blocker`)
+      .set('Cookie', otherRepCookie)
+      .expect(403);
   });
 });
 
@@ -152,5 +175,24 @@ describe('GET /api/v1/deals/:id/stakeholder-map', () => {
       .get('/api/v1/deals/00000000-0000-0000-0000-000000000000/stakeholder-map')
       .set('Cookie', repCookie)
       .expect(404);
+  });
+
+  it('returns 403 when a rep requests a stakeholder map for a deal owned by another rep', async () => {
+    const deal = await createDeal(
+      {
+        name: 'Cross-Owner Stakeholder Map Deal',
+        stage: 'Prospecting',
+        pipeline_id: defaultPipelineId,
+        owner_id: repId,
+      },
+      { id: repId, name: 'Champion Blocker Rep' },
+    );
+
+    await request(app)
+      .get(`/api/v1/deals/${deal.id}/stakeholder-map`)
+      .set('Cookie', otherRepCookie)
+      .expect(403);
+
+    await pool.query('DELETE FROM deals WHERE id = $1', [deal.id]);
   });
 });

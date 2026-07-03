@@ -25,18 +25,28 @@ export async function getAccountChurnExpansionSignalHandler(
     return;
   }
 
+  if (account.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message:
+          'You can only view churn/expansion signals for accounts you own. Contact an admin to view signals for accounts owned by others.',
+      },
+    });
+    return;
+  }
+
   const result = await getAccountChurnExpansionSignal(id);
   res.status(200).json(result);
 }
 
 /**
  * GET /api/insights/churn-expansion
- * Returns all active at-risk and expansion account signals from the most recent nightly run.
+ * Returns all active at-risk and expansion account signals from the most recent nightly run,
+ * scoped to accounts the caller owns. Admins see signals across all accounts.
  */
-export async function listChurnExpansionSignalsHandler(
-  _req: Request,
-  res: Response,
-): Promise<void> {
-  const result = await listChurnExpansionSignals();
+export async function listChurnExpansionSignalsHandler(req: Request, res: Response): Promise<void> {
+  const ownerId = req.user!.role === 'admin' ? null : req.user!.id;
+  const result = await listChurnExpansionSignals(ownerId);
   res.status(200).json(result);
 }

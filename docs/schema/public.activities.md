@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.activity_objection_signals](public.activity_objection_signals.md) |  |  |
 | type | activity_type |  | false |  |  |  |
 | subject | varchar(255) |  | false |  |  |  |
 | notes | text |  | true |  |  |  |
@@ -56,6 +56,8 @@
 erDiagram
 
 "public.overdue_task_notifications" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.contact_champion_blocker_signals" }o--o| "public.activities" : "FOREIGN KEY (last_activity_id) REFERENCES activities(id) ON DELETE SET NULL"
+"public.activity_objection_signals" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
@@ -83,6 +85,28 @@ erDiagram
 "public.overdue_task_notifications" {
   uuid activity_id FK ""
   timestamp_with_time_zone notified_at ""
+}
+"public.contact_champion_blocker_signals" {
+  uuid id ""
+  uuid contact_id FK ""
+  text status ""
+  numeric_3_2_ confidence ""
+  jsonb contributing_signals ""
+  uuid last_activity_id FK ""
+  text override_status ""
+  text override_reason ""
+  uuid overridden_by FK ""
+  timestamp_with_time_zone overridden_at ""
+  uuid dismissed_by FK ""
+  timestamp_with_time_zone dismissed_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.activity_objection_signals" {
+  uuid id ""
+  uuid activity_id FK ""
+  text category ""
+  timestamp_with_time_zone classified_at ""
 }
 "public.contacts" {
   uuid id ""
