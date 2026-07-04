@@ -500,4 +500,21 @@ export class ContactDetailPage {
       )
       .resolve();
   }
+
+  /**
+   * Returns true when the champion/blocker badge is currently visible, scoped
+   * to a contact ID. Guards presence first — locate().resolve() throws
+   * StrategyExhaustedError immediately on an absent element rather than
+   * waiting for it, which is unsuitable for "may legitimately be absent"
+   * checks.
+   */
+  async isChampionBlockerBadgeVisible(contactId: string): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(`[data-testid="champion-blocker-badge-${contactId}"]`, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.championBlockerBadgeLocator(contactId);
+    return locator.isVisible().catch(() => false);
+  }
 }

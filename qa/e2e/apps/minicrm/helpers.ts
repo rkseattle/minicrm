@@ -360,6 +360,8 @@ export interface CreateActivityOverrides {
   contact_id?: string;
   account_id?: string;
   deal_id?: string;
+  /** Required by the server when type is 'Call' or 'Email'. */
+  direction?: 'Inbound' | 'Outbound';
 }
 
 /**
@@ -390,6 +392,7 @@ export async function createTestActivity(
   if (overrides.deal_id !== undefined) payload['deal_id'] = overrides.deal_id;
   if (overrides.notes !== undefined) payload['notes'] = overrides.notes;
   if (overrides.due_date !== undefined) payload['due_date'] = overrides.due_date;
+  if (overrides.direction !== undefined) payload['direction'] = overrides.direction;
 
   // Server returns { activity: ActivityRow } — validate the envelope (MINCRM-370).
   const response = await restClient.post<{ activity: TestActivity }>(

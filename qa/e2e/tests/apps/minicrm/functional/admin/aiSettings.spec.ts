@@ -17,7 +17,10 @@
  *   F-AI9  — Rep cannot access the AI settings API endpoints
  *
  * Framework conventions (MINCRM-42):
- *   - All tests tagged @functional
+ *   - All tests tagged @functional @serial — resetAiSettings() mutates the
+ *     shared ai_features master toggle via the real admin API, which would
+ *     otherwise leak a disabled state into any other spec sharing this
+ *     worker (see MINCRM-473 CI investigation).
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Behaviors imported from @behaviors/* only — never @pages/*
  *   - AI settings state reset via resetAiSettings() in afterEach
@@ -72,7 +75,7 @@ test.afterEach(async ({ restClient }) => {
 // F-AI1 — Admin navigates to the AI settings tab and sees the panel
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI1: admin can navigate to the AI tab and see the AI settings panel', async ({
+test('@functional @serial F-AI1: admin can navigate to the AI tab and see the AI settings panel', async ({
   page,
   restClient,
   testData,
@@ -90,7 +93,7 @@ test('@functional F-AI1: admin can navigate to the AI tab and see the AI setting
 // F-AI2 — Master toggle shows a confirmation dialog and can be cancelled
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI2: clicking the master toggle shows a confirmation dialog that can be cancelled', async ({
+test('@functional @serial F-AI2: clicking the master toggle shows a confirmation dialog that can be cancelled', async ({
   page,
   restClient,
   testData,
@@ -118,7 +121,7 @@ test('@functional F-AI2: clicking the master toggle shows a confirmation dialog 
 // F-AI3 — Master toggle can be enabled via the confirmation dialog
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI3: confirming the toggle dialog enables AI and updates toggle state', async ({
+test('@functional @serial F-AI3: confirming the toggle dialog enables AI and updates toggle state', async ({
   page,
   restClient,
   testData,
@@ -149,7 +152,7 @@ test('@functional F-AI3: confirming the toggle dialog enables AI and updates tog
 // F-AI4 — DPA warning banner is visible when not acknowledged
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI4: DPA warning banner is visible when DPA has not been acknowledged', async ({
+test('@functional @serial F-AI4: DPA warning banner is visible when DPA has not been acknowledged', async ({
   page,
   restClient,
   testData,
@@ -167,7 +170,7 @@ test('@functional F-AI4: DPA warning banner is visible when DPA has not been ack
 // F-AI5 — DPA warning banner disappears after acknowledgment via UI
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged', async ({
+test('@functional @serial F-AI5: DPA warning banner disappears after DPA is acknowledged', async ({
   page,
   restClient,
   testData,
@@ -201,7 +204,7 @@ test('@functional F-AI5: DPA warning banner disappears after DPA is acknowledged
 // F-AI6 — Data posture badge is visible
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI6: data posture badge is visible on the AI settings page', async ({
+test('@functional @serial F-AI6: data posture badge is visible on the AI settings page', async ({
   page,
   restClient,
   testData,
@@ -219,7 +222,7 @@ test('@functional F-AI6: data posture badge is visible on the AI settings page',
 // F-AI7 — Model selector is present and populated
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI7: model selector is present and lists available models', async ({
+test('@functional @serial F-AI7: model selector is present and lists available models', async ({
   page,
   restClient,
   testData,
@@ -241,7 +244,7 @@ test('@functional F-AI7: model selector is present and lists available models', 
 // F-AI8 — Test Connection button is visible and returns a result
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI8: Test Connection button is visible and shows a result on click', async ({
+test('@functional @serial F-AI8: Test Connection button is visible and shows a result on click', async ({
   page,
   restClient,
   testData,
@@ -269,7 +272,7 @@ test('@functional F-AI8: Test Connection button is visible and shows a result on
 // F-AI9 — Rep cannot access the AI settings API endpoints
 // ---------------------------------------------------------------------------
 
-test('@functional F-AI9: rep receives 403 when accessing the AI config endpoint', async ({
+test('@functional @serial F-AI9: rep receives 403 when accessing the AI config endpoint', async ({
   restClient,
   testData,
 }) => {

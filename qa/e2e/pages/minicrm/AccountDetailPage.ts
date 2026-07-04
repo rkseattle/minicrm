@@ -262,6 +262,22 @@ export class AccountDetailPage {
       .resolve();
   }
 
+  /**
+   * Returns true when the churn-risk banner is currently visible. Guards
+   * presence first — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it, which is
+   * unsuitable for "may legitimately be absent" checks.
+   */
+  async isChurnRiskBannerVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="churn-risk-banner"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.churnRiskBannerLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
   /** Returns a resolved locator for the expansion signal banner. */
   async expansionSignalBannerLocator() {
     return this.page
@@ -273,5 +289,21 @@ export class AccountDetailPage {
         { intent: 'AI expansion signal banner on the account detail page' },
       )
       .resolve();
+  }
+
+  /**
+   * Returns true when the expansion signal banner is currently visible.
+   * Guards presence first — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it, which is
+   * unsuitable for "may legitimately be absent" checks.
+   */
+  async isExpansionSignalBannerVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="expansion-signal-banner"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.expansionSignalBannerLocator();
+    return locator.isVisible().catch(() => false);
   }
 }

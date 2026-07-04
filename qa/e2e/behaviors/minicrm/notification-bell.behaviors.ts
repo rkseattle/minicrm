@@ -44,8 +44,7 @@ export async function isNotificationBadgeVisible(
   context: NotificationBellBehaviorContext,
 ): Promise<boolean> {
   const bell = new NotificationBellPage(context);
-  const locator = await bell.unreadBadgeLocator();
-  return locator.isVisible().catch(() => false);
+  return bell.isUnreadBadgeVisible();
 }
 
 /** Waits for the notification dropdown empty state to be visible. */

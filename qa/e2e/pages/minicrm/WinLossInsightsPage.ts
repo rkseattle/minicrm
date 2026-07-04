@@ -72,6 +72,22 @@ export class WinLossInsightsPage {
       .resolve();
   }
 
+  /**
+   * Returns true when the win patterns section heading is currently visible.
+   * Guards presence first — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it, which is
+   * unsuitable for "may legitimately be absent" checks.
+   */
+  async isWinPatternsHeadingVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="win-patterns-heading"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.winPatternsHeadingLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
   /** Returns a resolved locator for the loss reason trends section heading. */
   async lossReasonTrendsHeadingLocator() {
     return this.page

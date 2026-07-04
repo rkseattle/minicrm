@@ -1541,6 +1541,5 @@ export async function isChampionBlockerBadgeVisible(
   context: ContactsBehaviorContext,
 ): Promise<boolean> {
   const detail = new ContactDetailPage(context);
-  const locator = await detail.championBlockerBadgeLocator(contactId);
-  return locator.isVisible().catch(() => false);
+  return detail.isChampionBlockerBadgeVisible(contactId);
 }

@@ -37,6 +37,26 @@ export class DealDetailPage {
   }
 
   /**
+   * Returns whether an element is currently visible without throwing when it
+   * is legitimately absent. locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it — unsuitable
+   * for "may or may not be rendered" checks. waitForPresent guards presence
+   * first so callers can safely treat "not present" as `false`.
+   */
+  private async isElementCurrentlyVisible(
+    testIdSelector: string,
+    resolveLocator: () => Promise<{ isVisible(): Promise<boolean> }>,
+  ): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(testIdSelector, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await resolveLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
+  /**
    * Clicks the Edit button to enter edit mode.
    */
   async clickEdit(): Promise<void> {
@@ -411,6 +431,13 @@ export class DealDetailPage {
       .resolve();
   }
 
+  /** Returns true when the deal health section heading is currently visible. */
+  async isHealthCheckHeadingVisible(): Promise<boolean> {
+    return this.isElementCurrentlyVisible('[data-testid="deal-health-heading"]', () =>
+      this.healthCheckHeadingLocator(),
+    );
+  }
+
   /**
    * Returns a resolved locator for the empty state shown before any check has run.
    * CSS fallback scopes to the deal health section to avoid matching unrelated
@@ -472,6 +499,13 @@ export class DealDetailPage {
       .resolve();
   }
 
+  /** Returns true when the deal health check result container is currently visible. */
+  async isHealthCheckResultVisible(): Promise<boolean> {
+    return this.isElementCurrentlyVisible('[data-testid="deal-health-result"]', () =>
+      this.healthCheckResultLocator(),
+    );
+  }
+
   /**
    * Returns a resolved locator for the health check error message.
    * CSS fallback scopes to the deal health section specifically — role="alert"
@@ -510,6 +544,13 @@ export class DealDetailPage {
       .resolve();
   }
 
+  /** Returns true when the stage advancement indicator is currently visible. */
+  async isStageAdvancementIndicatorVisible(): Promise<boolean> {
+    return this.isElementCurrentlyVisible('[data-testid="stage-advancement-indicator"]', () =>
+      this.stageAdvancementIndicatorLocator(),
+    );
+  }
+
   // ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
 
   /** Returns a resolved locator for a specific activity's objection category badge. */
@@ -523,6 +564,14 @@ export class DealDetailPage {
         { intent: 'AI objection category badge on an activity in the timeline' },
       )
       .resolve();
+  }
+
+  /** Returns true when a specific activity's objection category badge is currently visible. */
+  async isObjectionCategoryBadgeVisible(activityId: string): Promise<boolean> {
+    return this.isElementCurrentlyVisible(
+      `[data-testid="objection-category-badge-${activityId}"]`,
+      () => this.objectionCategoryBadgeLocator(activityId),
+    );
   }
 
   /** Returns a resolved locator for a specific activity's card in the timeline. */
@@ -555,8 +604,9 @@ export class DealDetailPage {
 
   /** Returns true when the "Generate Proposal Draft" button is currently visible. */
   async isGenerateProposalDraftButtonVisible(): Promise<boolean> {
-    const locator = await this.generateProposalDraftButtonLocator();
-    return locator.isVisible().catch(() => false);
+    return this.isElementCurrentlyVisible('[data-testid="generate-proposal-draft-button"]', () =>
+      this.generateProposalDraftButtonLocator(),
+    );
   }
 
   /** Returns a resolved locator for the full-screen proposal draft editor. */
