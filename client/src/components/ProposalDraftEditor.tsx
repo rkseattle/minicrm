@@ -140,11 +140,11 @@ export default function ProposalDraftEditor({
       data-testid="proposal-draft-editor"
       className="fixed inset-0 z-50 flex flex-col bg-white"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-gray-200 px-6 py-4 shrink-0">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-6 py-4 shrink-0">
         <h1 className="text-lg font-semibold text-gray-900 min-w-0 truncate">
           {t('proposalDraft.editorTitle')} — {dealName}
         </h1>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
             variant="secondary"
