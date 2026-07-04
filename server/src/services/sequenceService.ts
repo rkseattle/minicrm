@@ -22,6 +22,9 @@ import {
 import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
 import type { AuditActor } from './auditService.js';
 
+/** Concurrent enrollment-processing limit for the due-enrollments cron (MINCRM-403). */
+const ENROLLMENT_PROCESSING_CONCURRENCY = 5;
+
 // ── Row types ──────────────────────────────────────────────────────────────────
 
 export interface SequenceRow {
@@ -781,15 +784,25 @@ export async function advanceDueEnrollments(): Promise<void> {
 
   logger.info(`sequence cron: processing ${dueResult.rows.length} due enrollment(s)`);
 
-  for (const row of dueResult.rows) {
-    try {
-      await processEnrollmentStep(row);
-    } catch (err) {
-      logger.error(
-        { err, enrollmentId: row.enrollment_id },
-        'sequence cron: failed to advance enrollment',
-      );
-    }
+  // Process in fixed-size concurrent chunks rather than one row at a time —
+  // a large backlog (e.g. after downtime) would otherwise take hours to drain
+  // serially, since each row costs several sequential DB round trips.
+  // Chunk size is kept well under the pool max (server/src/db.ts) so normal
+  // request traffic still has connections available during a backlog drain.
+  for (let i = 0; i < dueResult.rows.length; i += ENROLLMENT_PROCESSING_CONCURRENCY) {
+    const chunk = dueResult.rows.slice(i, i + ENROLLMENT_PROCESSING_CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (row) => {
+        try {
+          await processEnrollmentStep(row);
+        } catch (err) {
+          logger.error(
+            { err, enrollmentId: row.enrollment_id },
+            'sequence cron: failed to advance enrollment',
+          );
+        }
+      }),
+    );
   }
 }
 

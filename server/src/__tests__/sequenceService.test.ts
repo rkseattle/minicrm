@@ -843,6 +843,51 @@ describe('advanceDueEnrollments', () => {
     expect(activityResult.rows[0].type).toBe('Call');
   });
 
+  it('processes a backlog larger than the concurrency chunk size', async () => {
+    // ENROLLMENT_PROCESSING_CONCURRENCY is 5 — enroll more than that in one
+    // batch of due enrollments to exercise the chunking loop across multiple
+    // Promise.all batches, not just a single chunk.
+    const enrollmentCount = 12;
+    const enrollmentIds: string[] = [];
+
+    for (let i = 0; i < enrollmentCount; i++) {
+      const seq = await createSequence(
+        { name: `Backlog seq ${i}`, enabled: true, created_by: adminId },
+        { id: adminId, name: 'Sequence Admin' },
+      );
+      await createStep(seq.id, {
+        sort_order: 1,
+        action_type: 'create_task',
+        action_config: { subject: `Backlog task ${i}` },
+        delay_days: 0,
+      });
+      const enrollment = await enrollContact(seq.id, contactId, {
+        id: adminId,
+        name: 'Sequence Admin',
+      });
+      enrollmentIds.push(enrollment.id);
+    }
+
+    await pool.query(
+      `UPDATE sequence_enrollments SET next_action_at = now() - interval '1 second'
+       WHERE id = ANY($1::uuid[])`,
+      [enrollmentIds],
+    );
+
+    await advanceDueEnrollments();
+
+    for (const id of enrollmentIds) {
+      const after = await findEnrollmentById(id);
+      expect(after!.status).toBe('completed');
+    }
+
+    const activityCount = await pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM activities WHERE contact_id = $1 AND subject LIKE 'Backlog task%'`,
+      [contactId],
+    );
+    expect(Number(activityCount.rows[0].count)).toBe(enrollmentCount);
+  });
+
   it('does nothing when there are no due enrollments', async () => {
     const seq = await createSequence(
       { name: 'Future seq', enabled: true, created_by: adminId },
