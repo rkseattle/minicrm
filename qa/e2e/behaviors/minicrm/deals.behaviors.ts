@@ -1063,8 +1063,7 @@ export async function waitForDealHealthEmptyState(
  */
 export async function isDealHealthResultVisible(context: DealsBehaviorContext): Promise<boolean> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.healthCheckResultLocator();
-  return locator.isVisible().catch(() => false);
+  return detail.isHealthCheckResultVisible();
 }
 
 /**
@@ -1073,8 +1072,7 @@ export async function isDealHealthResultVisible(context: DealsBehaviorContext): 
  */
 export async function isDealHealthHeadingVisible(context: DealsBehaviorContext): Promise<boolean> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.healthCheckHeadingLocator();
-  return locator.isVisible().catch(() => false);
+  return detail.isHealthCheckHeadingVisible();
 }
 
 // ---------------------------------------------------------------------------
@@ -1101,8 +1099,7 @@ export async function isStageAdvancementIndicatorVisible(
   context: DealsBehaviorContext,
 ): Promise<boolean> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.stageAdvancementIndicatorLocator();
-  return locator.isVisible().catch(() => false);
+  return detail.isStageAdvancementIndicatorVisible();
 }
 
 /**
@@ -1135,8 +1132,7 @@ export async function isObjectionCategoryBadgeVisible(
   activityId: string,
 ): Promise<boolean> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.objectionCategoryBadgeLocator(activityId);
-  return locator.isVisible().catch(() => false);
+  return detail.isObjectionCategoryBadgeVisible(activityId);
 }
 
 /** Waits for the given activity's card to be visible in the timeline. */
@@ -1188,13 +1184,17 @@ export async function dismissProposalDraftEditor(context: DealsBehaviorContext):
   await locator.click();
 }
 
-/** Waits for the proposal draft editor to no longer be visible. */
+/**
+ * Waits for the proposal draft editor to no longer be visible.
+ *
+ * Uses waitForAbsent rather than resolving the editor locator and asserting
+ * not-visible — by the time dismiss finishes, the dialog is typically already
+ * unmounted, and locate().resolve() throws StrategyExhaustedError immediately
+ * on an absent element rather than treating "already gone" as success.
+ */
 export async function waitForProposalDraftEditorClosed(
   context: DealsBehaviorContext,
   timeout = 10_000,
 ): Promise<void> {
-  const { expect } = await import('@playwright/test');
-  const detail = new DealDetailPage(context);
-  const locator = await detail.proposalDraftEditorLocator();
-  await expect(locator).not.toBeVisible({ timeout });
+  await context.page.waitForAbsent('[data-testid="proposal-draft-editor"]', timeout);
 }

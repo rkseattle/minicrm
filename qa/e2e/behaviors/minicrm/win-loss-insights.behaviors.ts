@@ -48,8 +48,7 @@ export async function isWinPatternsHeadingVisible(
   context: WinLossInsightsBehaviorContext,
 ): Promise<boolean> {
   const insightsPage = new WinLossInsightsPage(context);
-  const locator = await insightsPage.winPatternsHeadingLocator();
-  return locator.isVisible().catch(() => false);
+  return insightsPage.isWinPatternsHeadingVisible();
 }
 
 /** Returns true when the Export CSV button is currently enabled. */

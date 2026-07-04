@@ -54,6 +54,23 @@ export class NotificationBellPage {
       .resolve();
   }
 
+  /**
+   * Returns true when the unread-count badge is currently visible. Guards
+   * presence first — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it, which is
+   * unsuitable for "may legitimately be absent" checks (the badge is hidden
+   * whenever unread count is zero).
+   */
+  async isUnreadBadgeVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="notification-unread-badge"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.unreadBadgeLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
   /** Returns a resolved locator for the dropdown empty state. */
   async emptyStateLocator() {
     return this.page

@@ -48,6 +48,5 @@ export async function isChurnExpansionInsightsHeadingVisible(
   context: ChurnExpansionInsightsBehaviorContext,
 ): Promise<boolean> {
   const insightsPage = new ChurnExpansionInsightsPage(context);
-  const locator = await insightsPage.headingLocator();
-  return locator.isVisible().catch(() => false);
+  return insightsPage.isHeadingVisible();
 }

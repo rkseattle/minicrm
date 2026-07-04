@@ -693,8 +693,7 @@ export async function isAccountDetailLoaded(context: AccountsBehaviorContext): P
 /** Returns true when the churn-risk banner is currently visible. */
 export async function isChurnRiskBannerVisible(context: AccountsBehaviorContext): Promise<boolean> {
   const detailPage = new AccountDetailPage(context);
-  const locator = await detailPage.churnRiskBannerLocator();
-  return locator.isVisible().catch(() => false);
+  return detailPage.isChurnRiskBannerVisible();
 }
 
 /** Returns true when the expansion signal banner is currently visible. */
@@ -702,6 +701,5 @@ export async function isExpansionSignalBannerVisible(
   context: AccountsBehaviorContext,
 ): Promise<boolean> {
   const detailPage = new AccountDetailPage(context);
-  const locator = await detailPage.expansionSignalBannerLocator();
-  return locator.isVisible().catch(() => false);
+  return detailPage.isExpansionSignalBannerVisible();
 }

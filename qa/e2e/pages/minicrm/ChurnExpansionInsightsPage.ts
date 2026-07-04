@@ -47,6 +47,23 @@ export class ChurnExpansionInsightsPage {
       .resolve();
   }
 
+  /**
+   * Returns true when the page heading is currently visible. Guards presence
+   * first — locate().resolve() throws StrategyExhaustedError immediately on
+   * an absent element rather than waiting for it, which is unsuitable for
+   * "may legitimately be absent" checks (the whole page is hidden when the
+   * ai_churn_expansion_detection flag is off).
+   */
+  async isHeadingVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="churn-expansion-insights-heading"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.headingLocator();
+    return locator.isVisible().catch(() => false);
+  }
+
   /** Returns a resolved locator for the at-risk accounts empty state. */
   async atRiskEmptyStateLocator() {
     return this.page

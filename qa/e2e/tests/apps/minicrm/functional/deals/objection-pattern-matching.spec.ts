@@ -66,6 +66,7 @@ test(
     });
     const activity = await createTestActivity(testData, restClient, {
       type: 'Call',
+      direction: 'Outbound',
       subject: 'Pricing discussion',
       notes: 'Too expensive for our budget.',
       deal_id: deal.id,
@@ -95,6 +96,7 @@ test(
     });
     const activity = await createTestActivity(testData, restClient, {
       type: 'Call',
+      direction: 'Outbound',
       subject: 'Pricing discussion',
       notes: 'Too expensive for our budget.',
       deal_id: deal.id,
