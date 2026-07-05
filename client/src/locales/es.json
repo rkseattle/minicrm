@@ -2579,6 +2579,9 @@
     "explaining": "Explicando…"
   },
   "leadScore": {
-    "badgeLabel": "Puntuación: {{score}}"
+    "badgeLabel": "Puntuación: {{score}}",
+    "whyThisScore": "¿Por qué esta puntuación?",
+    "explaining": "Explicando…",
+    "insufficientData": "Aún no hay suficientes datos de actividad para explicar esta puntuación."
   }
 }

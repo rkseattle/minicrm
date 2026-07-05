@@ -701,3 +701,48 @@ export async function isLeadDetailLoaded(context: LeadsBehaviorContext): Promise
   const detailPage = new LeadDetailPage(context);
   return detailPage.isLoaded();
 }
+
+// ---------------------------------------------------------------------------
+// AI lead scoring (MINCRM-441 prerequisite + MINCRM-441)
+// ---------------------------------------------------------------------------
+
+/** Returns the text of the lead score badge. */
+export async function getLeadScoreBadgeText(context: LeadsBehaviorContext): Promise<string> {
+  const detailPage = new LeadDetailPage(context);
+  const locator = await detailPage.scoreBadgeLocator();
+  return locator.innerText();
+}
+
+/** Result returned by requestLeadScoreNarrative. */
+export interface RequestLeadScoreNarrativeResult {
+  /** HTTP status code returned by POST /leads/:id/score-narrative. */
+  status: number;
+}
+
+/**
+ * Clicks the "Why this score?" button and waits for the score-narrative POST
+ * to resolve. Registers the response wait before clicking so a fast server
+ * response is never missed. Does not assert — callers branch on `status`
+ * per the network-response-first pattern (MINCRM-418).
+ */
+export async function requestLeadScoreNarrative(
+  context: LeadsBehaviorContext,
+): Promise<RequestLeadScoreNarrativeResult> {
+  const detailPage = new LeadDetailPage(context);
+
+  const responseReceived = context.page.waitForResponse(
+    (res) => res.request().method() === 'POST' && res.url().includes('/score-narrative'),
+    { timeout: 30_000 },
+  );
+  await detailPage.clickScoreWhy();
+  const response = await responseReceived;
+
+  return { status: response.status() };
+}
+
+/** Returns the text of the inline AI score narrative. */
+export async function getLeadScoreNarrativeText(context: LeadsBehaviorContext): Promise<string> {
+  const detailPage = new LeadDetailPage(context);
+  const locator = await detailPage.scoreNarrativeLocator();
+  return locator.innerText();
+}

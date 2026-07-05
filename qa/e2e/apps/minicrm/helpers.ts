@@ -675,6 +675,10 @@ export async function navigateToDeal(page: SafePage, id: string): Promise<void> 
   await page.goto(`/deals/${id}`, { waitUntil: 'networkidle' });
 }
 
+export async function navigateToLead(page: SafePage, id: string): Promise<void> {
+  await page.goto(`/leads/${id}`, { waitUntil: 'networkidle' });
+}
+
 export async function navigateToContacts(page: SafePage): Promise<void> {
   await page.goto('/contacts', { waitUntil: 'networkidle' });
 }

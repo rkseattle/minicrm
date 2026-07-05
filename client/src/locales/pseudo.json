@@ -2464,6 +2464,9 @@
     "explaining": "[Ëxpläïñïñg…~~~]"
   },
   "leadScore": {
-    "badgeLabel": "[Ŝĉörë: {{score}}~~~~~]"
+    "badgeLabel": "[Ŝĉörë: {{score}}~~~~~]",
+    "whyThisScore": "[Why thïŝ ŝĉörë?~~~~~]",
+    "explaining": "[Ëxpläïñïñg…~~~]",
+    "insufficientData": "[Ñöt ëñöügh äĉtïvïty dätä tö ëxpläïñ thïŝ ŝĉörë yët.~~~~~~~~~~~~~~~~~]"
   }
 }

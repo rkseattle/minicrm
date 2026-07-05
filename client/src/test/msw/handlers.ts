@@ -1797,6 +1797,15 @@ export const handlers = [
     return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
   }),
 
+  /** Leads: POST /api/leads/:id/score-narrative (MINCRM-441) */
+  http.post('/api/v1/leads/:id/score-narrative', () => {
+    return HttpResponse.json({
+      narrative: 'This lead scores well due to a strong referral source and recent activity.',
+      insufficient_data: false,
+      generated_at: '2026-07-05T00:00:00.000Z',
+    });
+  }),
+
   /** Leads: GET /api/leads/:id/score (MINCRM-441 prerequisite) */
   http.get('/api/v1/leads/:id/score', () => {
     return HttpResponse.json({
