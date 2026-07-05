@@ -95,6 +95,16 @@ describe('EmailDraftPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('email-draft-error')).toBeInTheDocument();
     });
+
+    // Tone selector must not desync from the still-displayed subject/body on failure
+    // (MINCRM-437 code review finding) — it should reflect the last successful draft.
+    expect(screen.getByTestId('email-draft-tone-select')).toHaveValue('Professional');
+    expect(screen.getByTestId('email-draft-subject')).toHaveValue(
+      'Following up on our conversation',
+    );
+    expect(screen.getByTestId('email-draft-body')).toHaveValue(
+      'Hi Jane, following up on our last call.',
+    );
   });
 
   it('copies the subject and body to the clipboard', async () => {

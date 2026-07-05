@@ -131,7 +131,10 @@ export async function generateLeadScoreNarrative(
   };
 
   // PII-filter the gathered facts before they leave the server. (MINCRM-445)
-  const { sanitised, strippedFields } = await applyPiiFilter(context, 'lead');
+  // 'lead' is not a valid ai_field_exclusions entity_type (contact/account/deal
+  // only) — map to 'contact' since a lead is pre-conversion contact data, so
+  // admin-configured contact-field exclusions still apply to this payload.
+  const { sanitised, strippedFields } = await applyPiiFilter(context, 'contact');
   if (strippedFields.length > 0) {
     logger.info(
       { leadId, strippedFields },
@@ -182,6 +185,8 @@ export async function generateLeadScoreNarrative(
     });
   }
 
+  // Safe: forced tool_choice guarantees Claude returns exactly this shape (schema enforced
+  // server-side via the tool's input_schema); ToolUseBlock.input is typed unknown by the SDK.
   const input = toolUseBlock.input as { narrative: string; insufficient_data: boolean };
 
   return {

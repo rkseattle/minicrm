@@ -83,6 +83,10 @@ describe('ContactEnrichmentModal', () => {
       expect(screen.getByTestId('contact-enrichment-insufficient')).toBeInTheDocument();
     });
     expect(screen.queryByTestId('contact-enrichment-apply')).not.toBeInTheDocument();
+
+    // The user can edit the pasted text and retry instead of being stuck (code review fix).
+    expect(screen.getByTestId('contact-enrichment-submit')).toBeInTheDocument();
+    expect(screen.getByTestId('contact-enrichment-submit')).not.toBeDisabled();
   });
 
   it('shows an error when extraction fails', async () => {

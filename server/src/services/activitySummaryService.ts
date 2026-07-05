@@ -135,7 +135,9 @@ export async function summarizeActivityText(
   const anthropicClient = new Anthropic(clientOptions);
 
   // PII-filter the pasted text before it leaves the server. (MINCRM-445)
-  const { sanitised, strippedFields } = await applyPiiFilter({ raw_text: rawText }, 'activity');
+  // 'activity' is not a valid ai_field_exclusions entity_type (contact/account/deal
+  // only) — map to 'deal' like objectionMatchingService does for the same reason.
+  const { sanitised, strippedFields } = await applyPiiFilter({ raw_text: rawText }, 'deal');
   if (strippedFields.length > 0) {
     logger.info(
       { strippedFields },
@@ -186,6 +188,8 @@ export async function summarizeActivityText(
     });
   }
 
+  // Safe: forced tool_choice guarantees Claude returns exactly this shape (schema enforced
+  // server-side via the tool's input_schema); ToolUseBlock.input is typed unknown by the SDK.
   const input = toolUseBlock.input as {
     summary: string;
     action_items: string[];

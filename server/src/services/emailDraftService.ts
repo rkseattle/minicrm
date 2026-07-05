@@ -255,6 +255,8 @@ export async function generateEmailDraft(
     });
   }
 
+  // Safe: forced tool_choice guarantees Claude returns exactly this shape (schema enforced
+  // server-side via the tool's input_schema); ToolUseBlock.input is typed unknown by the SDK.
   const input = toolUseBlock.input as { subject: string; body: string };
 
   return {

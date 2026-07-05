@@ -74,7 +74,8 @@ export default function EmailDraftPanel({
   }
 
   function handleToneChange(nextTone: EmailDraftTone): void {
-    setTone(nextTone);
+    // Tone only updates on a successful regenerate (see onSuccess above) — otherwise
+    // the selector would show a tone whose subject/body was never actually generated.
     regenerateMutation.mutate(nextTone);
   }
 

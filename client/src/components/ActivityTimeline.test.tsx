@@ -513,7 +513,7 @@ describe('ActivityTimeline', () => {
   });
 
   // MINCRM-436: AI call/note summarizer — accepted follow-up tasks create linked Task activities
-  it('creates a linked Task activity for each accepted AI-suggested follow-up task', async () => {
+  it('creates a linked Task activity for each accepted AI-suggested follow-up task only after the parent activity saves', async () => {
     const createdActivityBodies: Array<Record<string, unknown>> = [];
     server.use(
       http.post('/api/v1/activities/summarize', () =>
@@ -559,6 +559,12 @@ describe('ActivityTimeline', () => {
       expect(screen.getByTestId('activity-summary-apply')).toBeInTheDocument();
     });
     await user.click(screen.getByTestId('activity-summary-apply'));
+
+    // The Task must not be created until the parent activity is actually saved (MINCRM-436).
+    expect(createdActivityBodies).toHaveLength(0);
+
+    await user.type(screen.getByTestId('activity-subject'), 'Renewal call');
+    await user.click(screen.getByTestId('activity-form-submit'));
 
     await waitFor(() => {
       expect(createdActivityBodies).toContainEqual(

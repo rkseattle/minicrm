@@ -38,6 +38,7 @@ import { extractContextProposal } from '../ai/contextProposal.js';
 import { userCapabilities } from './roleService.js';
 import type { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { applyPiiFilter } from '../ai/piiFilter.js';
+import type { EntityType } from '@minicrm/shared/schemas/customFieldSchema.js';
 import { listContextEntries } from './aiContextService.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';
@@ -119,7 +120,7 @@ const MAX_TOOL_ROUNDS = 10;
  * (e.g. reports, tags), in which case applyPiiFilter falls back to unqualified
  * matching.
  */
-function inferEntityTypeHint(toolName: string): string | undefined {
+function inferEntityTypeHint(toolName: string): EntityType | undefined {
   if (toolName.includes('Contact')) return 'contact';
   if (toolName.includes('Account')) return 'account';
   if (toolName.includes('Deal')) return 'deal';
