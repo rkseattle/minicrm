@@ -127,6 +127,37 @@ describe('POST /api/accounts', () => {
 
     expect(res.status).toBe(401);
   });
+
+  // MINCRM-440: duplicate-name detection on create
+  it('returns 409 with the existing account when the name already exists (case-insensitive)', async () => {
+    await createAccount(
+      { name: `${FILE_PREFIX}-Acme Corp`, owner_id: repId },
+      { id: repId, name: 'Rep User' },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/accounts')
+      .set('Cookie', repCookie)
+      .send({ name: `${FILE_PREFIX}-acme corp` });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('DUPLICATE_NAME');
+    expect(res.body.duplicate.name).toBe(`${FILE_PREFIX}-Acme Corp`);
+  });
+
+  it('bypasses the duplicate-name check when force=true', async () => {
+    await createAccount(
+      { name: `${FILE_PREFIX}-Acme Corp Force`, owner_id: repId },
+      { id: repId, name: 'Rep User' },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/accounts?force=true')
+      .set('Cookie', repCookie)
+      .send({ name: `${FILE_PREFIX}-Acme Corp Force` });
+
+    expect(res.status).toBe(201);
+  });
 });
 
 // ── GET /api/accounts ────────────────────────────────────────────────────────

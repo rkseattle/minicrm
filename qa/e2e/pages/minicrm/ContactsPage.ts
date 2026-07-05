@@ -779,6 +779,38 @@ export class ContactsPage {
     await locator.click();
   }
 
+  /** Returns a resolved locator for the "Explain" button in the duplicate warning. (MINCRM-440) */
+  async duplicateExplainButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'duplicate-explain-button' },
+          { type: 'css', value: '[data-testid="duplicate-explain-button"]' },
+        ],
+        { intent: 'button that explains why the flagged records look like duplicates' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Explain" button in the duplicate warning. */
+  async clickDuplicateExplain(): Promise<void> {
+    const locator = await this.duplicateExplainButtonLocator();
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the inline AI duplicate explanation text. */
+  async duplicateExplanationTextLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'duplicate-explanation-text' },
+          { type: 'css', value: '[data-testid="duplicate-explanation-text"]' },
+        ],
+        { intent: 'inline AI-generated explanation of why records look like duplicates' },
+      )
+      .resolve();
+  }
+
   /**
    * Returns a resolved locator for the bulk operation error message.
    */

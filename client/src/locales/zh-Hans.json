@@ -403,7 +403,11 @@
     "parentAccountSelected": "已选择上级客户",
     "parentAccountClear": "移除",
     "parentAccountLink": "查看上级客户",
-    "subsidiaryAccountsHeading": "子公司"
+    "subsidiaryAccountsHeading": "子公司",
+    "duplicateWarningTitle": "可能重复",
+    "duplicateWarningMessage": "已存在同名账户：{{name}}。",
+    "duplicateGoToExisting": "前往现有账户",
+    "duplicateCreateAnyway": "仍然创建"
   },
   "deals": {
     "pageTitle": "商机",
@@ -2569,5 +2573,9 @@
     "extracting": "提取中……",
     "apply": "应用到表单",
     "insufficientData": "无法提取足够的信息，请手动填写。"
+  },
+  "duplicateExplanation": {
+    "explainButton": "解释",
+    "explaining": "解释中……"
   }
 }

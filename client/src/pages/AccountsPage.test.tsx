@@ -84,6 +84,77 @@ describe('AccountsPage', () => {
     expect(screen.queryByTestId('account-form')).not.toBeInTheDocument();
   });
 
+  // MINCRM-440: account duplicate-name detection and AI explanation
+  describe('duplicate detection', () => {
+    it('shows the duplicate warning banner when the API returns 409', async () => {
+      server.use(
+        http.post('/api/v1/accounts', () =>
+          HttpResponse.json(
+            {
+              error: { code: 'DUPLICATE_NAME', message: 'Duplicate name' },
+              duplicate: { id: ACCOUNT_1.id, name: ACCOUNT_1.name },
+            },
+            { status: 409 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('new-account-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('new-account-button'));
+      await user.type(screen.getByTestId('account-name-input'), ACCOUNT_1.name);
+      await user.click(screen.getByTestId('account-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('duplicate-account-warning')).toBeInTheDocument();
+      });
+    });
+
+    it('shows an AI explanation when the Explain button is clicked', async () => {
+      server.use(
+        http.post('/api/v1/accounts', () =>
+          HttpResponse.json(
+            {
+              error: { code: 'DUPLICATE_NAME', message: 'Duplicate name' },
+              duplicate: { id: ACCOUNT_1.id, name: ACCOUNT_1.name },
+            },
+            { status: 409 },
+          ),
+        ),
+        http.post('/api/v1/duplicates/explain', () =>
+          HttpResponse.json({
+            explanation: 'Same account name — likely the same company.',
+            inconclusive: false,
+            generated_at: '2026-07-05T00:00:00.000Z',
+          }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('new-account-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('new-account-button'));
+      await user.type(screen.getByTestId('account-name-input'), ACCOUNT_1.name);
+      await user.click(screen.getByTestId('account-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('duplicate-account-explain-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('duplicate-account-explain-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('duplicate-account-explanation-text')).toHaveTextContent(
+          'Same account name',
+        );
+      });
+    });
+  });
+
   it('renders the owner column with the resolved user name', async () => {
     renderWithProviders(<AccountsPage />);
     await waitFor(() => {

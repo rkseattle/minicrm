@@ -40,6 +40,8 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { explainDuplicate } from '@/api/duplicateExplanation.js';
 
 /** React Query cache key for the contacts list */
 export const CONTACTS_QUERY_KEY = ['contacts'] as const;
@@ -67,6 +69,12 @@ export default function ContactsPage() {
    * Set by "Create anyway" so the form re-submits with its current (live) values.
    */
   const forceNextSubmit = useRef(false);
+  // AI duplicate detection explanation (MINCRM-440) — the submitted (unsaved) side of the pair.
+  const [duplicateSubmittedValues, setDuplicateSubmittedValues] =
+    useState<ContactFormValues | null>(null);
+  const [duplicateExplanation, setDuplicateExplanation] = useState<string | null>(null);
+  const [duplicateExplanationError, setDuplicateExplanationError] = useState<string | null>(null);
+  const { enabled: duplicateExplanationEnabled } = useFeatureFlag('ai_duplicate_explanation');
   /** Ref to the ContactForm's underlying <form> element for programmatic submit. */
   const formRef = useRef<HTMLFormElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -203,21 +211,50 @@ export default function ContactsPage() {
       setDuplicateContact(null);
       forceNextSubmit.current = false;
     },
-    onError: (error: {
-      response?: {
-        status?: number;
-        data?: {
-          error?: { message?: string };
-          duplicate?: DuplicateContactInfo;
+    onError: (
+      error: {
+        response?: {
+          status?: number;
+          data?: {
+            error?: { message?: string };
+            duplicate?: DuplicateContactInfo;
+          };
         };
-      };
-    }) => {
+      },
+      variables,
+    ) => {
       if (error.response?.status === 409 && error.response.data?.duplicate) {
         setDuplicateContact(error.response.data.duplicate);
+        setDuplicateSubmittedValues(variables.values);
         setCreateError(null);
+        setDuplicateExplanation(null);
+        setDuplicateExplanationError(null);
       } else {
         setCreateError(resolveApiError(error, t));
       }
+    },
+  });
+
+  const duplicateExplanationMutation = useMutation({
+    mutationFn: () => {
+      if (!duplicateContact || !duplicateSubmittedValues) {
+        return Promise.reject(new Error('Missing duplicate context'));
+      }
+      return explainDuplicate('contact', duplicateContact.id, {
+        fields: {
+          first_name: duplicateSubmittedValues.first_name,
+          last_name: duplicateSubmittedValues.last_name,
+          email: duplicateSubmittedValues.email,
+          phone: duplicateSubmittedValues.phone,
+        },
+      });
+    },
+    onSuccess: (result) => {
+      setDuplicateExplanation(result.explanation);
+      setDuplicateExplanationError(null);
+    },
+    onError: (error: Parameters<typeof resolveApiError>[0]) => {
+      setDuplicateExplanationError(resolveApiError(error, t));
     },
   });
 
@@ -420,7 +457,37 @@ export default function ContactsPage() {
                   >
                     {t('contacts.duplicateCreateAnyway')}
                   </button>
+                  {duplicateExplanationEnabled && !duplicateExplanation && (
+                    <button
+                      type="button"
+                      data-testid="duplicate-explain-button"
+                      className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
+                      onClick={() => duplicateExplanationMutation.mutate()}
+                      disabled={duplicateExplanationMutation.isPending}
+                    >
+                      {duplicateExplanationMutation.isPending
+                        ? t('duplicateExplanation.explaining')
+                        : t('duplicateExplanation.explainButton')}
+                    </button>
+                  )}
                 </div>
+                {duplicateExplanationError && (
+                  <p
+                    role="alert"
+                    className="mt-3 text-xs text-red-700"
+                    data-testid="duplicate-explanation-error"
+                  >
+                    {duplicateExplanationError}
+                  </p>
+                )}
+                {duplicateExplanation && (
+                  <p
+                    className="mt-3 text-sm text-yellow-900"
+                    data-testid="duplicate-explanation-text"
+                  >
+                    {duplicateExplanation}
+                  </p>
+                )}
               </div>
             )}
 

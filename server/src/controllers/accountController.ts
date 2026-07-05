@@ -13,6 +13,7 @@ import {
 import {
   createAccount,
   findAccountById,
+  findAccountByExactName,
   listAccounts,
   updateAccount,
   deleteAccount,
@@ -39,6 +40,10 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
 /**
  * POST /api/accounts
  * Creates a new account owned by the authenticated user.
+ *
+ * If an account with the same name already exists (case-insensitive), returns
+ * 409 with the duplicate account's id and name unless the request includes
+ * ?force=true, which bypasses the duplicate check. (MINCRM-440)
  */
 export async function createAccountHandler(req: Request, res: Response): Promise<void> {
   const parsed = createAccountSchema.safeParse(req.body);
@@ -48,6 +53,21 @@ export async function createAccountHandler(req: Request, res: Response): Promise
       error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
     });
     return;
+  }
+
+  const force = req.query.force === 'true';
+
+  if (!force) {
+    // Note: same narrow TOCTOU window as the contact duplicate check — acceptable
+    // for alpha scope, matching the existing contact create pattern.
+    const duplicate = await findAccountByExactName(parsed.data.name);
+    if (duplicate) {
+      res.status(409).json({
+        error: { code: 'DUPLICATE_NAME', message: 'An account with this name already exists' },
+        duplicate: { id: duplicate.id, name: duplicate.name },
+      });
+      return;
+    }
   }
 
   const account = await createAccount(

@@ -230,6 +230,9 @@ const SERIAL_FILES = [
   // contactEnrichmentService toggles the same ai_configuration singleton row as the other
   // on-demand AI test suites above. (MINCRM-439)
   'src/__tests__/contactEnrichmentService.test.ts',
+  // duplicateExplanationService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-440)
+  'src/__tests__/duplicateExplanationService.test.ts',
 ];
 
 const sharedResolve = {

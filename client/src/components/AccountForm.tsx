@@ -65,6 +65,8 @@ interface AccountFormProps {
   error?: string;
   /** Optional ref to the element that triggered the form open; focus returns here on cancel/success */
   triggerRef?: React.RefObject<HTMLElement | null>;
+  /** Optional ref forwarded to the underlying <form> element for programmatic submit */
+  formRef?: React.RefObject<HTMLFormElement | null>;
 }
 
 /**
@@ -105,6 +107,7 @@ export default function AccountForm({
   submitLabel,
   error,
   triggerRef,
+  formRef,
 }: AccountFormProps) {
   const { t } = useTranslation();
   const firstInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +175,7 @@ export default function AccountForm({
   const resolvedSubmitLabel = submitLabel ?? t('accounts.save');
 
   return (
-    <form onSubmit={handleSubmit} data-testid="account-form">
+    <form ref={formRef} onSubmit={handleSubmit} data-testid="account-form">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <Input
           ref={firstInputRef}

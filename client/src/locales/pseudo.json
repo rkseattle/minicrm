@@ -403,7 +403,11 @@
     "parentAccountSelected": "[Pärëñt äĉĉöüñt ŝëlëĉtëd~~~~~~~]",
     "parentAccountClear": "[Rëmövë~~]",
     "parentAccountLink": "[Vïëw pärëñt äĉĉöüñt~~~~~~]",
-    "subsidiaryAccountsHeading": "[Ŝübŝïdïäry Äĉĉöüñtŝ~~~~~~]"
+    "subsidiaryAccountsHeading": "[Ŝübŝïdïäry Äĉĉöüñtŝ~~~~~~]",
+    "duplicateWarningTitle": "[Pöŝŝïblë düplïĉätë~~~~~~]",
+    "duplicateWarningMessage": "[Äñ äĉĉöüñt wïth thïŝ ñämë älrëädy ëxïŝtŝ: {{name}}.~~~~~~~~~~~~~~~~~]",
+    "duplicateGoToExisting": "[Gö tö ëxïŝtïñg äĉĉöüñt~~~~~~~]",
+    "duplicateCreateAnyway": "[Ĉrëätë äñywäy~~~~]"
   },
   "deals": {
     "pageTitle": "[Dëälŝ~~]",
@@ -2454,5 +2458,9 @@
     "extracting": "[Ëxträĉtïñg…~~~]",
     "apply": "[Äpply tö förm~~~~]",
     "insufficientData": "[Ĉöüldñ't ëxträĉt ëñöügh ïñförmätïöñ — plëäŝë fïll ïñ mäñüälly.~~~~~~~~~~~~~~~~~~~~]"
+  },
+  "duplicateExplanation": {
+    "explainButton": "[Ëxpläïñ~~]",
+    "explaining": "[Ëxpläïñïñg…~~~]"
   }
 }

@@ -403,7 +403,11 @@
     "parentAccountSelected": "Übergeordnetes Konto ausgewählt",
     "parentAccountClear": "Entfernen",
     "parentAccountLink": "Übergeordnetes Konto anzeigen",
-    "subsidiaryAccountsHeading": "Tochtergesellschaften"
+    "subsidiaryAccountsHeading": "Tochtergesellschaften",
+    "duplicateWarningTitle": "Mögliches Duplikat",
+    "duplicateWarningMessage": "Ein Konto mit diesem Namen existiert bereits: {{name}}.",
+    "duplicateGoToExisting": "Zu bestehendem Konto",
+    "duplicateCreateAnyway": "Trotzdem erstellen"
   },
   "deals": {
     "pageTitle": "Geschäfte",
@@ -2569,5 +2573,9 @@
     "extracting": "Wird extrahiert…",
     "apply": "Auf Formular anwenden",
     "insufficientData": "Es konnten nicht genügend Informationen extrahiert werden — bitte manuell ausfüllen."
+  },
+  "duplicateExplanation": {
+    "explainButton": "Erklären",
+    "explaining": "Wird erklärt…"
   }
 }

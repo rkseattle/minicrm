@@ -403,7 +403,11 @@
     "parentAccountSelected": "Cuenta principal seleccionada",
     "parentAccountClear": "Eliminar",
     "parentAccountLink": "Ver cuenta principal",
-    "subsidiaryAccountsHeading": "Cuentas subsidiarias"
+    "subsidiaryAccountsHeading": "Cuentas subsidiarias",
+    "duplicateWarningTitle": "Posible duplicado",
+    "duplicateWarningMessage": "Ya existe una cuenta con este nombre: {{name}}.",
+    "duplicateGoToExisting": "Ir a la cuenta existente",
+    "duplicateCreateAnyway": "Crear de todas formas"
   },
   "deals": {
     "pageTitle": "Oportunidades",
@@ -2569,5 +2573,9 @@
     "extracting": "Extrayendo…",
     "apply": "Aplicar al formulario",
     "insufficientData": "No se pudo extraer suficiente información. Complete manualmente."
+  },
+  "duplicateExplanation": {
+    "explainButton": "Explicar",
+    "explaining": "Explicando…"
   }
 }
