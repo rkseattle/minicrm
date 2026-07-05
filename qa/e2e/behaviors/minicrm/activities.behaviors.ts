@@ -262,6 +262,20 @@ export async function saveActivityForm(context: ActivitiesBehaviorContext): Prom
 }
 
 /**
+ * Fills the activity form's subject field. The summarizer only populates
+ * notes/action items — subject is a separate required field the user fills
+ * themselves, so this must be called before saveActivityForm.
+ */
+export async function fillActivitySubject(
+  subject: string,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  const timeline = new ActivityTimelinePage(context);
+  const locator = await timeline.subjectInputLocator();
+  await locator.fill(subject);
+}
+
+/**
  * Waits for the activity notes field to contain the given text.
  */
 export async function expectActivityNotesToContain(

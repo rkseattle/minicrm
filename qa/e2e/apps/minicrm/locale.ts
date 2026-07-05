@@ -76,6 +76,9 @@ const MINICRM_EN: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Draft Email',
+  'emailDraft.panelTitle': 'Email Draft',
+  'emailDraft.copyToClipboard': 'Copy to clipboard',
+  'emailDraft.dismiss': 'Dismiss',
 
   // AI contact auto-enrich from text (MINCRM-439)
   'contactEnrichment.action': 'Enrich from text',
@@ -180,6 +183,9 @@ const MINICRM_ES: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Redactar correo',
+  'emailDraft.panelTitle': 'Borrador de correo',
+  'emailDraft.copyToClipboard': 'Copiar al portapapeles',
+  'emailDraft.dismiss': 'Descartar',
 
   // AI contact auto-enrich from text (MINCRM-439)
   'contactEnrichment.action': 'Enriquecer desde texto',
@@ -284,6 +290,9 @@ const MINICRM_FR: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Rédiger un e-mail',
+  'emailDraft.panelTitle': "Brouillon d'e-mail",
+  'emailDraft.copyToClipboard': 'Copier dans le presse-papiers',
+  'emailDraft.dismiss': 'Ignorer',
 
   // AI contact auto-enrich from text (MINCRM-439)
   'contactEnrichment.action': 'Enrichir à partir du texte',
@@ -388,6 +397,9 @@ const MINICRM_DE: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'E-Mail entwerfen',
+  'emailDraft.panelTitle': 'E-Mail-Entwurf',
+  'emailDraft.copyToClipboard': 'In die Zwischenablage kopieren',
+  'emailDraft.dismiss': 'Verwerfen',
 
   // AI contact auto-enrich from text (MINCRM-439)
   'contactEnrichment.action': 'Aus Text anreichern',
@@ -492,6 +504,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': '起草邮件',
+  'emailDraft.panelTitle': '邮件草稿',
+  'emailDraft.copyToClipboard': '复制到剪贴板',
+  'emailDraft.dismiss': '关闭',
 
   // AI contact auto-enrich from text (MINCRM-439)
   'contactEnrichment.action': '从文本提取信息',
