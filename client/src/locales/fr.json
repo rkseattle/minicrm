@@ -541,7 +541,20 @@
     "typeEmail": "E-mail",
     "typeMeeting": "Réunion",
     "typeTask": "Tâche",
-    "meta": "{{author}} · {{timestamp}}"
+    "meta": "{{author}} · {{timestamp}}",
+    "summarize": {
+      "action": "Résumer",
+      "title": "Résumer l'activité",
+      "inputLabel": "Coller la transcription ou les notes",
+      "inputPlaceholder": "Collez une transcription d'appel, des notes de réunion ou du texte brut…",
+      "submit": "Résumer",
+      "summarizing": "Résumé en cours…",
+      "summaryLabel": "Résumé",
+      "actionItemsLabel": "Actions à mener",
+      "suggestedTasksLabel": "Tâches de suivi suggérées",
+      "dismissTask": "Ignorer",
+      "apply": "Appliquer à l'activité"
+    }
   },
   "myTasks": {
     "pageTitle": "Mes tâches",

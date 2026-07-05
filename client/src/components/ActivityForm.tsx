@@ -10,8 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import ActivitySummaryModal from '@/components/ActivitySummaryModal.js';
 import { ACTIVITY_TYPES, ACTIVITY_DIRECTIONS } from '@shared/schemas/activitySchema.js';
 import type { ActivityType, ActivityDirection } from '@shared/schemas/activitySchema.js';
+import type { ActivitySummaryApplyResult } from '@/components/ActivitySummaryModal.js';
+import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
 
 /** Values managed by the activity form */
 export interface ActivityFormValues {
@@ -22,6 +26,9 @@ export interface ActivityFormValues {
   direction: ActivityDirection | '';
   outcome: string;
 }
+
+/** Activity types the AI summarizer supports (MINCRM-436) */
+const SUMMARIZABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Note']);
 
 export interface ActivityFormProps {
   /** Pre-populated values for edit mode; omit for create mode */
@@ -36,6 +43,11 @@ export interface ActivityFormProps {
   submitLabel: string;
   /** Server-side error message to display below the form */
   error?: string;
+  /**
+   * Called when the user accepts follow-up tasks suggested by the AI summarizer.
+   * Only relevant when ai_activity_summarizer is enabled. (MINCRM-436)
+   */
+  onAcceptSuggestedTasks?: (tasks: SuggestedFollowUpTask[]) => void;
 }
 
 /** Map of activity type values to their i18n key suffixes. Exported for use in ActivityTimeline. */
@@ -67,8 +79,10 @@ export default function ActivityForm({
   isSubmitting,
   submitLabel,
   error,
+  onAcceptSuggestedTasks,
 }: ActivityFormProps) {
   const { t } = useTranslation();
+  const { enabled: summarizerEnabled } = useFeatureFlag('ai_activity_summarizer');
 
   // When the user has not explicitly chosen a type, the effective type is derived from due_date.
   // manualType holds the user's explicit choice; null means "use the auto-derived default".
@@ -80,6 +94,7 @@ export default function ActivityForm({
     initialValues?.direction ?? '',
   );
   const [outcome, setOutcome] = useState(initialValues?.outcome ?? '');
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   // Derive the current type without synchronizing state in an effect
   const type: ActivityType = manualType ?? defaultTypeForDueDate(dueDate);
@@ -100,6 +115,21 @@ export default function ActivityForm({
     e.preventDefault();
     onSubmit({ type, subject, notes, due_date: dueDate, direction, outcome });
   };
+
+  /** Applies an AI-generated summary: notes are populated with the summary, action items appended. */
+  const handleApplySummary = (result: ActivitySummaryApplyResult): void => {
+    const actionItemsText =
+      result.actionItems.length > 0
+        ? `\n\n${result.actionItems.map((item) => `- ${item}`).join('\n')}`
+        : '';
+    setNotes(`${result.summary}${actionItemsText}`);
+    if (result.acceptedTasks.length > 0) {
+      onAcceptSuggestedTasks?.(result.acceptedTasks);
+    }
+    setIsSummarizing(false);
+  };
+
+  const showSummarizeButton = summarizerEnabled && SUMMARIZABLE_TYPES.has(type);
 
   return (
     <form onSubmit={handleSubmit} noValidate data-testid="activity-form">
@@ -204,9 +234,22 @@ export default function ActivityForm({
 
       {/* Notes */}
       <div className="mt-4">
-        <label htmlFor="activity-notes" className="block text-xs font-medium text-gray-700 mb-1">
-          {t('activities.notesLabel')}
-        </label>
+        <div className="flex items-center justify-between mb-1">
+          <label htmlFor="activity-notes" className="block text-xs font-medium text-gray-700">
+            {t('activities.notesLabel')}
+          </label>
+          {showSummarizeButton && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="activity-summarize-button"
+              onClick={() => setIsSummarizing(true)}
+            >
+              {t('activities.summarize.action')}
+            </Button>
+          )}
+        </div>
         <textarea
           id="activity-notes"
           data-testid="activity-notes"
@@ -249,6 +292,14 @@ export default function ActivityForm({
           {t('activities.cancel')}
         </Button>
       </div>
+
+      {showSummarizeButton && (
+        <ActivitySummaryModal
+          isOpen={isSummarizing}
+          onApply={handleApplySummary}
+          onCancel={() => setIsSummarizing(false)}
+        />
+      )}
     </form>
   );
 }

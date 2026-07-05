@@ -2,9 +2,12 @@
  * Tests for ActivityForm component.
  */
 
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
+import { server } from '@/test/setup.js';
 import ActivityForm from './ActivityForm.js';
 
 const noop = () => {};
@@ -226,5 +229,173 @@ describe('ActivityForm', () => {
     );
 
     expect(screen.getByTestId('activity-form-error')).toHaveTextContent('Something went wrong');
+  });
+
+  // MINCRM-436: AI call/note summarizer
+  describe('AI summarizer', () => {
+    it('shows the Summarize button for Note, Call, and Meeting types but not Email or Task', () => {
+      renderWithProviders(
+        <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+      );
+
+      // Default type is Note
+      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Email' } });
+      expect(screen.queryByTestId('activity-summarize-button')).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Task' } });
+      expect(screen.queryByTestId('activity-summarize-button')).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
+      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('activity-type-select'), {
+        target: { value: 'Meeting' },
+      });
+      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+    });
+
+    it('summarizes pasted text, populates notes, and reports accepted tasks on apply', async () => {
+      server.use(
+        http.post('/api/v1/activities/summarize', () =>
+          HttpResponse.json({
+            summary: 'Customer requested a revised proposal with updated pricing.',
+            action_items: ['Send revised proposal.'],
+            suggested_follow_up_tasks: [
+              { description: 'Follow up on proposal', suggested_due_date: '2026-07-11' },
+            ],
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+
+      const handleAcceptSuggestedTasks = vi.fn();
+      const user = userEvent.setup();
+
+      renderWithProviders(
+        <ActivityForm
+          onSubmit={noop}
+          onCancel={noop}
+          isSubmitting={false}
+          submitLabel="Save"
+          onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
+        />,
+      );
+
+      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
+      await user.click(screen.getByTestId('activity-summary-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-summary-preview')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('activity-summary-preview')).toHaveValue(
+        'Customer requested a revised proposal with updated pricing.',
+      );
+      expect(screen.getByTestId('activity-summary-action-items')).toHaveTextContent(
+        'Send revised proposal.',
+      );
+      expect(screen.getByTestId('activity-summary-task-0')).toHaveTextContent(
+        'Follow up on proposal',
+      );
+
+      await user.click(screen.getByTestId('activity-summary-apply'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('activity-summary-modal')).not.toBeInTheDocument();
+      });
+      expect((screen.getByTestId('activity-notes') as HTMLTextAreaElement).value).toContain(
+        'Customer requested a revised proposal',
+      );
+      expect((screen.getByTestId('activity-notes') as HTMLTextAreaElement).value).toContain(
+        'Send revised proposal.',
+      );
+      expect(handleAcceptSuggestedTasks).toHaveBeenCalledWith([
+        { description: 'Follow up on proposal', suggested_due_date: '2026-07-11' },
+      ]);
+    });
+
+    it('does not report a dismissed task when applying the summary', async () => {
+      server.use(
+        http.post('/api/v1/activities/summarize', () =>
+          HttpResponse.json({
+            summary: 'Summary text.',
+            action_items: [],
+            suggested_follow_up_tasks: [
+              { description: 'Task A', suggested_due_date: '2026-07-11' },
+              { description: 'Task B', suggested_due_date: '2026-07-12' },
+            ],
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+
+      const handleAcceptSuggestedTasks = vi.fn();
+      const user = userEvent.setup();
+
+      renderWithProviders(
+        <ActivityForm
+          onSubmit={noop}
+          onCancel={noop}
+          isSubmitting={false}
+          submitLabel="Save"
+          onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
+        />,
+      );
+
+      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
+      await user.click(screen.getByTestId('activity-summary-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-summary-task-0')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('activity-summary-task-dismiss-0'));
+      await user.click(screen.getByTestId('activity-summary-apply'));
+
+      expect(handleAcceptSuggestedTasks).toHaveBeenCalledWith([
+        { description: 'Task B', suggested_due_date: '2026-07-12' },
+      ]);
+    });
+
+    it('shows an error when summarization fails', async () => {
+      server.use(
+        http.post('/api/v1/activities/summarize', () =>
+          HttpResponse.json(
+            { error: { code: 'AI_PROVIDER_ERROR', message: 'AI provider error' } },
+            { status: 502 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+      );
+
+      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
+      await user.click(screen.getByTestId('activity-summary-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('activity-summary-error')).toBeInTheDocument();
+      });
+    });
+
+    it('closes the modal without applying when cancel is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
+      );
+
+      await user.click(screen.getByTestId('activity-summarize-button'));
+      expect(screen.getByTestId('activity-summary-modal')).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('activity-summary-cancel'));
+      expect(screen.queryByTestId('activity-summary-modal')).not.toBeInTheDocument();
+      expect((screen.getByTestId('activity-notes') as HTMLTextAreaElement).value).toBe('');
+    });
   });
 });

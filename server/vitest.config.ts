@@ -218,6 +218,9 @@ const SERIAL_FILES = [
   'src/__tests__/proposalDraftService.test.ts',
   // proposalDraftController toggles the same ai_configuration/ai_features rows. (MINCRM-473)
   'src/__tests__/proposalDraftController.test.ts',
+  // activitySummaryService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-436)
+  'src/__tests__/activitySummaryService.test.ts',
 ];
 
 const sharedResolve = {
@@ -245,6 +248,18 @@ export default defineConfig({
      * var set in the npm scripts (required for local runs; CI injects real vars).
      */
     globalSetup: './src/__tests__/globalSetup.ts',
+
+    /**
+     * Caps concurrent test-file workers regardless of CPU count. Each worker opens
+     * its own pg.Pool (DEFAULT_POOL_MAX = 10 connections, see db.ts) against the
+     * single local test Postgres instance. On a 12-core machine, uncapped
+     * fileParallelism let up to 12 workers run at once (~120 possible connections),
+     * causing connection-pool contention that surfaced as random hook/test timeouts
+     * across unrelated files on every run. Capping at 6 keeps peak connections
+     * (~60) comfortably under Postgres's default max_connections (100) while still
+     * parallelizing most of the suite.
+     */
+    maxWorkers: 6,
 
     // JUnit XML for dorny/test-reporter in CI; 'default' keeps console output.
     reporters: ['default', 'junit'],

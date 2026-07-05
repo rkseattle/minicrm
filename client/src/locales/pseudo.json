@@ -531,7 +531,20 @@
     "typeEmail": "[Ëmäïl~~]",
     "typeMeeting": "[Mëëtïñg~~~]",
     "typeTask": "[Täŝk~~]",
-    "meta": "[{{author}} · {{timestamp}}~~~~~~~~]"
+    "meta": "[{{author}} · {{timestamp}}~~~~~~~~]",
+    "summarize": {
+      "action": "[Ŝümmärïzë~~~]",
+      "title": "[Ŝümmärïzë äĉtïvïty~~~~~~]",
+      "inputLabel": "[Päŝtë träñŝĉrïpt ör ñötëŝ~~~~~~~~]",
+      "inputPlaceholder": "[Päŝtë ä ĉäll träñŝĉrïpt, mëëtïñg ñötëŝ, ör räw tëxt…~~~~~~~~~~~~~~~~~]",
+      "submit": "[Ŝümmärïzë~~~]",
+      "summarizing": "[Ŝümmärïzïñg…~~~~]",
+      "summaryLabel": "[Ŝümmäry~~]",
+      "actionItemsLabel": "[Äĉtïöñ ïtëmŝ~~~~]",
+      "suggestedTasksLabel": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
+      "dismissTask": "[Dïŝmïŝŝ~~]",
+      "apply": "[Äpply tö äĉtïvïty~~~~~]"
+    }
   },
   "myTasks": {
     "pageTitle": "[My Täŝkŝ~~~]",

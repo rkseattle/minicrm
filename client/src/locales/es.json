@@ -541,7 +541,20 @@
     "typeEmail": "Correo",
     "typeMeeting": "Reunión",
     "typeTask": "Tarea",
-    "meta": "{{author}} · {{timestamp}}"
+    "meta": "{{author}} · {{timestamp}}",
+    "summarize": {
+      "action": "Resumir",
+      "title": "Resumir actividad",
+      "inputLabel": "Pegar transcripción o notas",
+      "inputPlaceholder": "Pegue una transcripción de llamada, notas de reunión o texto sin formato…",
+      "submit": "Resumir",
+      "summarizing": "Resumiendo…",
+      "summaryLabel": "Resumen",
+      "actionItemsLabel": "Elementos de acción",
+      "suggestedTasksLabel": "Tareas de seguimiento sugeridas",
+      "dismissTask": "Descartar",
+      "apply": "Aplicar a la actividad"
+    }
   },
   "myTasks": {
     "pageTitle": "Mis tareas",
