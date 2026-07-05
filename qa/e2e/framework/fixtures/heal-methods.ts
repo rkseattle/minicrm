@@ -398,6 +398,34 @@ export interface HealMethods {
    * @param timeout  - Poll timeout in milliseconds (default 8 000).
    */
   waitForAbsent(selector: string, timeout?: number): Promise<void>;
+
+  /**
+   * Polls until the number of elements matching `selector` exceeds `countBefore`.
+   *
+   * Use this to detect a new element appended to a growing list (e.g. a new
+   * message bubble, a new row) when the element itself has no distinguishing
+   * attribute to locate directly — only re-querying the full set and comparing
+   * cardinality can detect the appearance.
+   *
+   * @param selector - CSS selector matching the repeated element.
+   * @param countBefore - The count observed before the triggering action.
+   * @param timeout - Poll timeout in milliseconds (default 8 000).
+   */
+  waitForCountAbove(selector: string, countBefore: number, timeout?: number): Promise<void>;
+
+  /**
+   * Polls until the element matching `selector` has text content containing
+   * `text`.
+   *
+   * Use this to wait for a container's rendered text to include a substring
+   * without holding a resolved locator handle — this re-queries the DOM on
+   * every poll, so it also works across a re-render that replaces the element.
+   *
+   * @param selector - CSS selector for the container element.
+   * @param text - Substring to wait for within the element's text content.
+   * @param timeout - Poll timeout in milliseconds (default 8 000).
+   */
+  waitForTextContent(selector: string, text: string, timeout?: number): Promise<void>;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -732,6 +760,22 @@ export function buildHealPage(
     async waitForAbsent(selector: string, timeout = 8_000): Promise<void> {
       await page.waitForFunction(
         `document.querySelector(${JSON.stringify(selector)}) === null`,
+        undefined,
+        { timeout },
+      );
+    },
+
+    async waitForCountAbove(selector: string, countBefore: number, timeout = 8_000): Promise<void> {
+      await page.waitForFunction(
+        `document.querySelectorAll(${JSON.stringify(selector)}).length > ${countBefore}`,
+        undefined,
+        { timeout },
+      );
+    },
+
+    async waitForTextContent(selector: string, text: string, timeout = 8_000): Promise<void> {
+      await page.waitForFunction(
+        `document.querySelector(${JSON.stringify(selector)})?.textContent?.includes(${JSON.stringify(text)}) ?? false`,
         undefined,
         { timeout },
       );

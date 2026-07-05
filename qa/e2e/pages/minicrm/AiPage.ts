@@ -146,6 +146,11 @@ export class AiPage {
       .resolve();
   }
 
+  /** Waits until the session sidebar contains the given text. */
+  async waitForSessionSidebarText(text: string, timeout = 8_000): Promise<void> {
+    await this.page.waitForTextContent('[data-testid="ai-session-sidebar"]', text, timeout);
+  }
+
   /** Returns the message thread container. */
   async messageThreadLocator() {
     return this.page
@@ -157,6 +162,11 @@ export class AiPage {
         { intent: 'AI message thread scrollable container' },
       )
       .resolve();
+  }
+
+  /** Waits until the message thread contains the given text. */
+  async waitForMessageThreadText(text: string, timeout = 8_000): Promise<void> {
+    await this.page.waitForTextContent('[data-testid="ai-message-thread"]', text, timeout);
   }
 
   /** Returns the first visible user message bubble. */
@@ -183,6 +193,32 @@ export class AiPage {
         { intent: 'AI assistant reply message bubble' },
       )
       .resolve();
+  }
+
+  /** Returns the number of assistant message bubbles currently in the thread. */
+  async assistantMessageCount(): Promise<number> {
+    return this.page.count(
+      [
+        { type: 'testId', value: 'ai-message-assistant' },
+        { type: 'css', value: '[data-testid="ai-message-assistant"]' },
+      ],
+      { intent: 'AI assistant reply message bubbles' },
+    );
+  }
+
+  /**
+   * Waits until the number of assistant message bubbles exceeds `countBefore`.
+   * Use after sending a message to detect the new reply bubble committing to the DOM.
+   */
+  async waitForAssistantMessageCountAbove(countBefore: number, timeout = 30_000): Promise<void> {
+    await this.page.waitForCountAbove('[data-testid="ai-message-assistant"]', countBefore, timeout);
+  }
+
+  /** Returns the text content of the first assistant message bubble, or null if none exists. */
+  async assistantMessageText(): Promise<string | null> {
+    const locator = await this.assistantMessageLocator().catch(() => null);
+    if (!locator) return null;
+    return locator.textContent();
   }
 
   /** Returns the session list item for a specific session ID. */
