@@ -2551,5 +2551,23 @@
     "copied": "Kopiert!",
     "clipboardError": "Konnte nicht in die Zwischenablage kopiert werden.",
     "dismiss": "Verwerfen"
+  },
+  "taskSuggestions": {
+    "heading": "Vorgeschlagene Folgeaufgaben",
+    "dismissAll": "Verwerfen",
+    "addTask": "Aufgabe hinzufügen",
+    "dismiss": "Verwerfen",
+    "allResolved": "Alle Vorschläge bearbeitet.",
+    "acceptedCount": "{{count}} Aufgabe hinzugefügt"
+  },
+  "contactEnrichment": {
+    "action": "Aus Text anreichern",
+    "title": "Kontakt aus Text anreichern",
+    "inputLabel": "LinkedIn-Bio, E-Mail-Signatur oder Visitenkartentext einfügen",
+    "inputPlaceholder": "Freitext einfügen…",
+    "submit": "Extrahieren",
+    "extracting": "Wird extrahiert…",
+    "apply": "Auf Formular anwenden",
+    "insufficientData": "Es konnten nicht genügend Informationen extrahiert werden — bitte manuell ausfüllen."
   }
 }

@@ -77,6 +77,9 @@ const MINICRM_EN: LocaleMap = {
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Draft Email',
 
+  // AI contact auto-enrich from text (MINCRM-439)
+  'contactEnrichment.action': 'Enrich from text',
+
   // Accounts
   'accounts.save': 'Save',
   'accounts.saveChanges': 'Save changes',
@@ -177,6 +180,9 @@ const MINICRM_ES: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Redactar correo',
+
+  // AI contact auto-enrich from text (MINCRM-439)
+  'contactEnrichment.action': 'Enriquecer desde texto',
 
   // Accounts
   'accounts.save': 'Guardar',
@@ -279,6 +285,9 @@ const MINICRM_FR: LocaleMap = {
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'Rédiger un e-mail',
 
+  // AI contact auto-enrich from text (MINCRM-439)
+  'contactEnrichment.action': 'Enrichir à partir du texte',
+
   // Accounts
   'accounts.save': 'Enregistrer',
   'accounts.saveChanges': 'Enregistrer les modifications',
@@ -380,6 +389,9 @@ const MINICRM_DE: LocaleMap = {
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': 'E-Mail entwerfen',
 
+  // AI contact auto-enrich from text (MINCRM-439)
+  'contactEnrichment.action': 'Aus Text anreichern',
+
   // Accounts
   'accounts.save': 'Speichern',
   'accounts.saveChanges': 'Änderungen speichern',
@@ -480,6 +492,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
 
   // AI email draft generation (MINCRM-437)
   'emailDraft.draftEmailButton': '起草邮件',
+
+  // AI contact auto-enrich from text (MINCRM-439)
+  'contactEnrichment.action': '从文本提取信息',
 
   // Accounts
   'accounts.save': '保存',

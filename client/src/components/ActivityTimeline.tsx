@@ -15,6 +15,7 @@ import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import ObjectionInsights from '@/components/ObjectionInsights.js';
 import EmailDraftPanel from '@/components/EmailDraftPanel.js';
+import TaskSuggestionPanel from '@/components/TaskSuggestionPanel.js';
 import {
   listActivities,
   createActivity,
@@ -23,6 +24,7 @@ import {
   ACTIVITIES_QUERY_KEY,
 } from '@/api/activities.js';
 import { generateEmailDraft } from '@/api/emailDraft.js';
+import { generateTaskSuggestions } from '@/api/taskSuggestions.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type {
@@ -33,6 +35,10 @@ import type {
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
+import type { SuggestedTask } from '@shared/schemas/taskSuggestionSchema.js';
+
+/** Activity types the task-suggestion feature supports (MINCRM-438) */
+const TASK_SUGGESTABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Email']);
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
 
 export interface ActivityTimelineProps {
@@ -74,6 +80,8 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
   const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
   const [draftingContactId, setDraftingContactId] = useState<string | null>(null);
+  const { enabled: taskSuggestionsEnabled } = useFeatureFlag('ai_task_suggestions');
+  const [taskSuggestions, setTaskSuggestions] = useState<SuggestedTask[] | null>(null);
   // Three-way merge conflict state — tracks which activity has a pending conflict (MINCRM-351)
   const [editConflict, setEditConflict] = useState<{
     activityId: string;
@@ -109,10 +117,23 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         account_id: accountId,
         deal_id: dealId,
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey });
       setIsCreating(false);
       setCreateError(null);
+
+      // Fetch AI follow-up task suggestions once, immediately after save (MINCRM-438).
+      // Not regenerated on subsequent page loads — this call only happens right here.
+      if (
+        taskSuggestionsEnabled &&
+        TASK_SUGGESTABLE_TYPES.has(result.activity.type as ActivityType)
+      ) {
+        generateTaskSuggestions(result.activity.id)
+          .then((response) => setTaskSuggestions(response.suggestions))
+          .catch(() => {
+            // Best-effort — the activity itself already saved successfully.
+          });
+      }
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setCreateError(resolveApiError(error, t));
@@ -214,6 +235,27 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
    * the primary activity save already succeeded; the timeline refetch will simply
    * not show a task that failed to create.
    */
+  /**
+   * Creates a linked Task activity for one accepted AI-suggested follow-up task (MINCRM-438).
+   * Links to the opportunity (deal) when the suggestion says 'opportunity' and this timeline
+   * has a dealId; otherwise links to whichever single parent record this timeline represents.
+   */
+  const handleAcceptTaskSuggestion = (task: SuggestedTask): void => {
+    const linkToOpportunity = task.linked_entity === 'opportunity' && Boolean(dealId);
+    createActivity({
+      type: 'Task',
+      subject: task.description,
+      due_date: task.suggested_due_date,
+      contact_id: linkToOpportunity ? undefined : contactId,
+      account_id: linkToOpportunity ? undefined : accountId,
+      deal_id: dealId,
+    })
+      .then(() => queryClient.invalidateQueries({ queryKey }))
+      .catch(() => {
+        // Best-effort — the activity itself already saved successfully.
+      });
+  };
+
   const handleAcceptSuggestedTasks = (tasks: SuggestedFollowUpTask[]): void => {
     tasks.forEach((task) => {
       createActivity({
@@ -288,6 +330,14 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
             onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
           />
         </div>
+      )}
+
+      {taskSuggestions && taskSuggestions.length > 0 && (
+        <TaskSuggestionPanel
+          suggestions={taskSuggestions}
+          onAccept={(task) => handleAcceptTaskSuggestion(task)}
+          onDismissAll={() => setTaskSuggestions(null)}
+        />
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">

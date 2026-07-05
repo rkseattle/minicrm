@@ -2551,5 +2551,23 @@
     "copied": "Copied!",
     "clipboardError": "Could not copy to clipboard.",
     "dismiss": "Dismiss"
+  },
+  "taskSuggestions": {
+    "heading": "Suggested follow-up tasks",
+    "dismissAll": "Dismiss",
+    "addTask": "Add Task",
+    "dismiss": "Dismiss",
+    "allResolved": "All suggestions resolved.",
+    "acceptedCount": "{{count}} task added"
+  },
+  "contactEnrichment": {
+    "action": "Enrich from text",
+    "title": "Enrich contact from text",
+    "inputLabel": "Paste LinkedIn bio, email signature, or business card text",
+    "inputPlaceholder": "Paste freeform text…",
+    "submit": "Extract",
+    "extracting": "Extracting…",
+    "apply": "Apply to form",
+    "insufficientData": "Couldn't extract enough information — please fill in manually."
   }
 }

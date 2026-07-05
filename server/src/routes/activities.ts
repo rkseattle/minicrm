@@ -27,6 +27,7 @@ import {
   getObjectionPrecedentsHandler,
 } from '../controllers/objectionMatchingController.js';
 import { summarizeActivityHandler } from '../controllers/activitySummaryController.js';
+import { generateTaskSuggestionsHandler } from '../controllers/taskSuggestionController.js';
 
 const router = Router();
 
@@ -660,6 +661,17 @@ router.post(
   requireFeatureEnabled('ai_activity_summarizer'),
   requireAiTokenBudget,
   asyncHandler(summarizeActivityHandler),
+);
+
+// ── AI follow-up task suggestions (MINCRM-438) ──────────────────────────────────
+
+/** Suggests 1-3 follow-up tasks for a just-saved activity, on demand. */
+router.post(
+  '/:id/task-suggestions',
+  authenticate,
+  requireFeatureEnabled('ai_task_suggestions'),
+  requireAiTokenBudget,
+  asyncHandler(generateTaskSuggestionsHandler),
 );
 
 // ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────

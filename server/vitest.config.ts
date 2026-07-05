@@ -224,6 +224,12 @@ const SERIAL_FILES = [
   // emailDraftService toggles the same ai_configuration singleton row as the other
   // on-demand AI test suites above. (MINCRM-437)
   'src/__tests__/emailDraftService.test.ts',
+  // taskSuggestionService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-438)
+  'src/__tests__/taskSuggestionService.test.ts',
+  // contactEnrichmentService toggles the same ai_configuration singleton row as the other
+  // on-demand AI test suites above. (MINCRM-439)
+  'src/__tests__/contactEnrichmentService.test.ts',
 ];
 
 const sharedResolve = {

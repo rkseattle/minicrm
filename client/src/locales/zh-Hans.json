@@ -2551,5 +2551,23 @@
     "copied": "已复制！",
     "clipboardError": "无法复制到剪贴板。",
     "dismiss": "关闭"
+  },
+  "taskSuggestions": {
+    "heading": "建议的后续任务",
+    "dismissAll": "关闭",
+    "addTask": "添加任务",
+    "dismiss": "忽略",
+    "allResolved": "所有建议均已处理。",
+    "acceptedCount": "已添加 {{count}} 个任务"
+  },
+  "contactEnrichment": {
+    "action": "从文本提取信息",
+    "title": "从文本丰富联系人",
+    "inputLabel": "粘贴领英简介、邮件签名或名片文本",
+    "inputPlaceholder": "粘贴自由文本……",
+    "submit": "提取",
+    "extracting": "提取中……",
+    "apply": "应用到表单",
+    "insufficientData": "无法提取足够的信息，请手动填写。"
   }
 }

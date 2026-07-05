@@ -2551,5 +2551,23 @@
     "copied": "¡Copiado!",
     "clipboardError": "No se pudo copiar al portapapeles.",
     "dismiss": "Descartar"
+  },
+  "taskSuggestions": {
+    "heading": "Tareas de seguimiento sugeridas",
+    "dismissAll": "Descartar",
+    "addTask": "Agregar tarea",
+    "dismiss": "Descartar",
+    "allResolved": "Todas las sugerencias resueltas.",
+    "acceptedCount": "{{count}} tarea agregada"
+  },
+  "contactEnrichment": {
+    "action": "Enriquecer desde texto",
+    "title": "Enriquecer contacto desde texto",
+    "inputLabel": "Pegue una biografía de LinkedIn, firma de correo o texto de tarjeta de presentación",
+    "inputPlaceholder": "Pegue texto libre…",
+    "submit": "Extraer",
+    "extracting": "Extrayendo…",
+    "apply": "Aplicar al formulario",
+    "insufficientData": "No se pudo extraer suficiente información. Complete manualmente."
   }
 }
