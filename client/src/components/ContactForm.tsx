@@ -10,8 +10,11 @@ import { Input } from '@/components/ui/Input.js';
 import { Select } from '@/components/ui/Select.js';
 import { Button } from '@/components/ui/Button.js';
 import OwnerSelect from '@/components/OwnerSelect.js';
+import ContactEnrichmentModal from '@/components/ContactEnrichmentModal.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import type { ContactResponse } from '@shared/schemas/contactSchema.js';
 import type { ActiveUser } from '@/api/users.js';
+import type { ContactEnrichmentFields } from '@shared/schemas/contactEnrichmentSchema.js';
 
 /** Minimal account option used to populate the account selector */
 export interface AccountOption {
@@ -112,6 +115,8 @@ export default function ContactForm({
     () =>
       !!(initialValues?.linkedin_url || initialValues?.twitter_x_url || initialValues?.other_url),
   );
+  const { enabled: enrichmentEnabled } = useFeatureFlag('ai_contact_enrichment');
+  const [isEnriching, setIsEnriching] = useState(false);
 
   const [formData, setFormData] = useState<ContactFormValues>(() =>
     buildInitialState(initialValues),
@@ -151,10 +156,42 @@ export default function ContactForm({
     onSubmit(formData);
   };
 
+  /** Applies AI-extracted fields as a diff overlay: only non-null fields are pre-filled. */
+  const handleApplyEnrichment = (
+    fields: ContactEnrichmentFields,
+    matchedAccountId: string | null,
+  ): void => {
+    setFormData((previous) => ({
+      ...previous,
+      first_name: fields.first_name ?? previous.first_name,
+      last_name: fields.last_name ?? previous.last_name,
+      title: fields.title ?? previous.title,
+      email: fields.email ?? previous.email,
+      phone: fields.phone ?? previous.phone,
+      linkedin_url: fields.linkedin_url ?? previous.linkedin_url,
+      account_id: matchedAccountId ?? previous.account_id,
+    }));
+    if (fields.linkedin_url) setSocialOpen(true);
+    setIsEnriching(false);
+  };
+
   const resolvedSubmitLabel = submitLabel ?? t('contacts.save');
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} data-testid="contact-form">
+      {enrichmentEnabled && (
+        <div className="mb-4 flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-testid="contact-enrich-from-text-button"
+            onClick={() => setIsEnriching(true)}
+          >
+            {t('contactEnrichment.action')}
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <Input
           ref={firstInputRef}
@@ -358,6 +395,14 @@ export default function ContactForm({
             </Button>
           )}
         </div>
+      )}
+
+      {enrichmentEnabled && (
+        <ContactEnrichmentModal
+          isOpen={isEnriching}
+          onApply={handleApplyEnrichment}
+          onCancel={() => setIsEnriching(false)}
+        />
       )}
     </form>
   );
