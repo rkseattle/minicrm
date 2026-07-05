@@ -171,6 +171,7 @@ Run both suites sequentially with `npm run unit_test` — never run the two work
 ## ⛔ Definition of Done — required before every `git commit`, no exceptions
 
 ```bash
+
 # 1. Typecheck
 npm run typecheck
 
@@ -197,11 +198,24 @@ before pushing to the remote (see below), not after each commit.
 ### E2E — required once before every push, no exceptions
 
 ```bash
+# tag the start time
 date
-env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
+
+# Rebuild the E2E server's Docker image (picks up new server code — my new routes weren't in the running container because it was a 2-day-old build):
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e build server-e2e
+
+# Recreate the container from that new image:
+docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d server-e2e
+
+# Re-run E2E setup (re-seeds admin user, MinIO storage config, Mailhog SMTP config — migrations also run automatically on server startup, which is where I confirmed migration 146 was already applied):
+env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setupenv $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
+
+# clear out old test results
 rm -rf qa/e2e/test-results/
+
 # Non-serial: --workers=1 matches CI's LPT file-per-shard isolation (no cross-file races)
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
+
 # Serial: always single-worker (matches e2e-serial CI job)
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test -- --grep "@functional.*@serial|@serial.*@functional" --workers=1
 ```
@@ -286,7 +300,6 @@ See [docs/dev/e2e-authoring.md](docs/dev/e2e-authoring.md) for the full referenc
 4. Post a top-level summary comment covering all changes made.
 
 Never reply to comments before fixing the code. Never run a fresh `/code-review` when asked to address existing feedback.
-
 When replying to a comment left by Greptile, prefix the reply body with `@greptile:` followed by a space.
 
 ## Jira Workflow
