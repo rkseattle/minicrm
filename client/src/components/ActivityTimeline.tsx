@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button.js';
 import ActivityForm, { TYPE_KEY_MAP } from '@/components/ActivityForm.js';
 import FieldMergeModal from '@/components/FieldMergeModal.js';
 import ObjectionInsights from '@/components/ObjectionInsights.js';
+import EmailDraftPanel from '@/components/EmailDraftPanel.js';
 import {
   listActivities,
   createActivity,
@@ -21,6 +22,8 @@ import {
   deleteActivity,
   ACTIVITIES_QUERY_KEY,
 } from '@/api/activities.js';
+import { generateEmailDraft } from '@/api/emailDraft.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type {
   ActivityResponse,
@@ -30,6 +33,7 @@ import type {
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
+import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
 
 export interface ActivityTimelineProps {
   /** Filter activities to those linked to this contact */
@@ -59,6 +63,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,6 +71,9 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [editError, setEditError] = useState<string | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
+  const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
+  const [draftingContactId, setDraftingContactId] = useState<string | null>(null);
   // Three-way merge conflict state — tracks which activity has a pending conflict (MINCRM-351)
   const [editConflict, setEditConflict] = useState<{
     activityId: string;
@@ -182,6 +190,17 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     },
     onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
       setDeleteError(resolveApiError(error, t));
+    },
+  });
+
+  const emailDraftMutation = useMutation({
+    mutationFn: (targetContactId: string) => generateEmailDraft(targetContactId, 'Professional'),
+    onSuccess: (result) => {
+      setEmailDraftResult(result);
+      setEmailDraftError(null);
+    },
+    onError: (error: Parameters<typeof resolveApiError>[0]) => {
+      setEmailDraftError(resolveApiError(error, t));
     },
   });
 
@@ -425,6 +444,29 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 shrink-0">
+                        {/* Draft email — only for activities linked to a contact (MINCRM-437) */}
+                        {emailDraftEnabled && activity.contact_id && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            data-testid={`draft-email-${activity.id}`}
+                            onClick={() => {
+                              setEmailDraftError(null);
+                              setDraftingContactId(activity.contact_id);
+                              emailDraftMutation.mutate(activity.contact_id!);
+                            }}
+                            disabled={
+                              emailDraftMutation.isPending &&
+                              draftingContactId === activity.contact_id
+                            }
+                          >
+                            {emailDraftMutation.isPending &&
+                            draftingContactId === activity.contact_id
+                              ? t('emailDraft.generating')
+                              : t('emailDraft.draftEmailButton')}
+                          </Button>
+                        )}
                         {/* Mark complete — only for open tasks */}
                         {activity.type === 'Task' && activity.status === 'open' && (
                           <Button
@@ -502,6 +544,25 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         <p role="alert" className="mt-2 text-xs text-red-600" data-testid="delete-error">
           {deleteError}
         </p>
+      )}
+      {emailDraftError && (
+        <p
+          role="alert"
+          className="mt-2 text-xs text-red-600"
+          data-testid="email-draft-generate-error"
+        >
+          {emailDraftError}
+        </p>
+      )}
+      {emailDraftResult && draftingContactId && (
+        <EmailDraftPanel
+          contactId={draftingContactId}
+          initialDraft={emailDraftResult}
+          onDismiss={() => {
+            setEmailDraftResult(null);
+            setDraftingContactId(null);
+          }}
+        />
       )}
     </section>
   );

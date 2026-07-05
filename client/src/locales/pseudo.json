@@ -2421,5 +2421,20 @@
       "limitReached": "[Yöü hävë rëäĉhëd thë mäxïmüm öf 50 ĉöñtëxt ëñtrïëŝ.~~~~~~~~~~~~~~~~]",
       "keyDuplicate": "[Ä ĉöñtëxt ëñtry wïth thïŝ läbël älrëädy ëxïŝtŝ.~~~~~~~~~~~~~~~]"
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "[Dräft Ëmäïl~~~]",
+    "generating": "[Gëñërätïñg…~~~]",
+    "panelTitle": "[Ëmäïl Dräft~~~]",
+    "toneLabel": "[Töñë~~]",
+    "toneProfessional": "[Pröfëŝŝïöñäl~~~~]",
+    "toneFriendly": "[Frïëñdly~~]",
+    "toneConcise": "[Ĉöñĉïŝë~~]",
+    "subjectLabel": "[Ŝübjëĉt~~]",
+    "bodyLabel": "[Bödy~~]",
+    "copyToClipboard": "[Ĉöpy tö ĉlïpböärd~~~~~]",
+    "copied": "[Ĉöpïëd!~~]",
+    "clipboardError": "[Ĉöüld ñöt ĉöpy tö ĉlïpböärd.~~~~~~~~~]",
+    "dismiss": "[Dïŝmïŝŝ~~]"
   }
 }

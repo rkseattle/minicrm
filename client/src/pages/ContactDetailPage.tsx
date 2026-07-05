@@ -55,6 +55,9 @@ import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
+import EmailDraftPanel from '@/components/EmailDraftPanel.js';
+import { generateEmailDraft } from '@/api/emailDraft.js';
+import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
 import {
   getContactChampionBlocker,
   dismissContactChampionBlocker,
@@ -113,6 +116,9 @@ export default function ContactDetailPage() {
 
   const { enabled: sequencingEnabled, isLoading: sequencingLoading } = useFeatureFlag('sequencing');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
+  const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
+  const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
+  const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
 
   // Sequence enrollment state (MINCRM-403)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -146,6 +152,17 @@ export default function ContactDetailPage() {
     mutationFn: () => dismissContactChampionBlocker(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactChampionBlockerQueryKey(id ?? '') });
+    },
+  });
+
+  const emailDraftMutation = useMutation({
+    mutationFn: () => generateEmailDraft(id!, 'Professional'),
+    onSuccess: (result) => {
+      setEmailDraftResult(result);
+      setEmailDraftError(null);
+    },
+    onError: (error: Parameters<typeof resolveApiError>[0]) => {
+      setEmailDraftError(resolveApiError(error, t));
     },
   });
 
@@ -454,6 +471,23 @@ export default function ContactDetailPage() {
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
               <div className="flex items-center gap-2">
+                {emailDraftEnabled && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="draft-email-button"
+                    onClick={() => {
+                      setEmailDraftError(null);
+                      emailDraftMutation.mutate();
+                    }}
+                    disabled={emailDraftMutation.isPending}
+                  >
+                    {emailDraftMutation.isPending
+                      ? t('emailDraft.generating')
+                      : t('emailDraft.draftEmailButton')}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"
@@ -484,9 +518,26 @@ export default function ContactDetailPage() {
                   {deleteError}
                 </p>
               )}
+              {emailDraftError && (
+                <p
+                  role="alert"
+                  className="text-xs text-red-600"
+                  data-testid="email-draft-generate-error"
+                >
+                  {emailDraftError}
+                </p>
+              )}
             </div>
           )}
         </div>
+
+        {emailDraftResult && (
+          <EmailDraftPanel
+            contactId={contact.id}
+            initialDraft={emailDraftResult}
+            onDismiss={() => setEmailDraftResult(null)}
+          />
+        )}
 
         {/* Converted from lead banner (MINCRM-175) */}
         {!isEditing && contact.source_lead_id && (

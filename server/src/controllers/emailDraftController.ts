@@ -1,0 +1,71 @@
+/**
+ * Email draft controller — request/response shaping only. (MINCRM-437)
+ * No business logic here; all AI orchestration goes through emailDraftService.
+ */
+
+import type { Request, Response } from 'express';
+import { generateEmailDraftSchema } from '@minicrm/shared/schemas/emailDraftSchema.js';
+import { findContactById } from '../services/contactService.js';
+import { generateEmailDraft } from '../services/emailDraftService.js';
+
+const FORBIDDEN_OWNERSHIP_ERROR = {
+  error: {
+    code: 'FORBIDDEN',
+    message:
+      'You can only draft an email for contacts you own. Contact an admin to draft for others.',
+  },
+};
+
+/**
+ * POST /api/v1/contacts/:id/email-draft
+ * Runs an on-demand AI email draft generation for the contact and returns the result.
+ * Not persisted — the client re-requests each time the action or tone is changed.
+ */
+export async function generateEmailDraftHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const parsed = generateEmailDraftSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid input',
+      },
+    });
+    return;
+  }
+
+  const contact = await findContactById(id);
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+    return;
+  }
+
+  try {
+    const result = await generateEmailDraft(id, parsed.data.tone, req.user!.id);
+    if (!result) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+      return;
+    }
+    res.status(200).json(result);
+  } catch (err: unknown) {
+    const tagged = err as { statusCode?: number; message?: string };
+    if (tagged.statusCode === 502) {
+      res.status(502).json({
+        error: { code: 'AI_PROVIDER_ERROR', message: tagged.message ?? 'AI provider error' },
+      });
+      return;
+    }
+    if (tagged.statusCode === 503) {
+      res.status(503).json({
+        error: { code: 'AI_NOT_CONFIGURED', message: tagged.message ?? 'AI is not configured' },
+      });
+      return;
+    }
+    throw err;
+  }
+}

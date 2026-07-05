@@ -2536,5 +2536,20 @@
       "limitReached": "Vous avez atteint le maximum de 50 entrées de contexte.",
       "keyDuplicate": "Une entrée de contexte avec ce libellé existe déjà."
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "Rédiger un e-mail",
+    "generating": "Génération…",
+    "panelTitle": "Brouillon d'e-mail",
+    "toneLabel": "Ton",
+    "toneProfessional": "Professionnel",
+    "toneFriendly": "Amical",
+    "toneConcise": "Concis",
+    "subjectLabel": "Objet",
+    "bodyLabel": "Corps",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "copied": "Copié !",
+    "clipboardError": "Impossible de copier dans le presse-papiers.",
+    "dismiss": "Ignorer"
   }
 }

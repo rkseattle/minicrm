@@ -2536,5 +2536,20 @@
       "limitReached": "Has alcanzado el máximo de 50 entradas de contexto.",
       "keyDuplicate": "Ya existe una entrada de contexto con esta etiqueta."
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "Redactar correo",
+    "generating": "Generando…",
+    "panelTitle": "Borrador de correo",
+    "toneLabel": "Tono",
+    "toneProfessional": "Profesional",
+    "toneFriendly": "Amistoso",
+    "toneConcise": "Conciso",
+    "subjectLabel": "Asunto",
+    "bodyLabel": "Cuerpo",
+    "copyToClipboard": "Copiar al portapapeles",
+    "copied": "¡Copiado!",
+    "clipboardError": "No se pudo copiar al portapapeles.",
+    "dismiss": "Descartar"
   }
 }

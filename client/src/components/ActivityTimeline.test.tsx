@@ -571,4 +571,52 @@ describe('ActivityTimeline', () => {
       );
     });
   });
+
+  // MINCRM-437: AI email draft generation — Draft Email action on contact-linked activities
+  describe('email draft generation', () => {
+    it('shows the Draft Email action only for activities linked to a contact', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [ACTIVITY_1, ACTIVITY_2], total: 2, page: 1, limit: 10 }),
+        ),
+      );
+      renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`activity-item-${ACTIVITY_2.id}`)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId(`draft-email-${ACTIVITY_1.id}`)).not.toBeInTheDocument();
+      expect(screen.getByTestId(`draft-email-${ACTIVITY_2.id}`)).toBeInTheDocument();
+    });
+
+    it('generates a draft and opens the panel on click', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+        ),
+        http.post('/api/v1/contacts/:id/email-draft', () =>
+          HttpResponse.json({
+            subject: 'Following up',
+            body: 'Hi there, following up.',
+            tone: 'Professional',
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`draft-email-${ACTIVITY_2.id}`)).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId(`draft-email-${ACTIVITY_2.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('email-draft-panel')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('email-draft-subject')).toHaveValue('Following up');
+    });
+  });
 });

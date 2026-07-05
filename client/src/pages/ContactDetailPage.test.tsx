@@ -998,4 +998,121 @@ describe('ContactDetailPage', () => {
       );
     });
   });
+
+  // ── AI email draft generation (MINCRM-437) ──────────────────────────────────────
+
+  describe('email draft generation', () => {
+    it('shows the Draft Email button when the flag is enabled', async () => {
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('draft-email-button')).toBeInTheDocument();
+      });
+    });
+
+    it('hides the Draft Email button when the ai_email_draft flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { ai_email_draft: false } }),
+        ),
+      );
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('contact-name')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('draft-email-button')).not.toBeInTheDocument();
+    });
+
+    it('generates a draft and opens the panel on click', async () => {
+      server.use(
+        http.post('/api/v1/contacts/:id/email-draft', () =>
+          HttpResponse.json({
+            subject: 'Following up on our conversation',
+            body: 'Hi there, following up on our last call.',
+            tone: 'Professional',
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('draft-email-button')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('draft-email-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('email-draft-panel')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('email-draft-subject')).toHaveValue(
+        'Following up on our conversation',
+      );
+    });
+
+    it('shows an error when draft generation fails', async () => {
+      server.use(
+        http.post('/api/v1/contacts/:id/email-draft', () =>
+          HttpResponse.json(
+            { error: { code: 'AI_PROVIDER_ERROR', message: 'AI provider error' } },
+            { status: 502 },
+          ),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('draft-email-button')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('draft-email-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('email-draft-generate-error')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('email-draft-panel')).not.toBeInTheDocument();
+    });
+
+    it('dismisses the panel and returns to the contact detail view', async () => {
+      server.use(
+        http.post('/api/v1/contacts/:id/email-draft', () =>
+          HttpResponse.json({
+            subject: 'Subject',
+            body: 'Body',
+            tone: 'Professional',
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('draft-email-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('draft-email-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('email-draft-panel')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('email-draft-dismiss'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('email-draft-panel')).not.toBeInTheDocument();
+      });
+    });
+  });
 });
