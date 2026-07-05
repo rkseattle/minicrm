@@ -541,7 +541,20 @@
     "typeEmail": "E-Mail",
     "typeMeeting": "Besprechung",
     "typeTask": "Aufgabe",
-    "meta": "{{author}} · {{timestamp}}"
+    "meta": "{{author}} · {{timestamp}}",
+    "summarize": {
+      "action": "Zusammenfassen",
+      "title": "Aktivität zusammenfassen",
+      "inputLabel": "Transkript oder Notizen einfügen",
+      "inputPlaceholder": "Fügen Sie ein Anruftranskript, Besprechungsnotizen oder Rohtext ein…",
+      "submit": "Zusammenfassen",
+      "summarizing": "Wird zusammengefasst…",
+      "summaryLabel": "Zusammenfassung",
+      "actionItemsLabel": "Aufgabenpunkte",
+      "suggestedTasksLabel": "Vorgeschlagene Folgeaufgaben",
+      "dismissTask": "Verwerfen",
+      "apply": "Auf Aktivität anwenden"
+    }
   },
   "myTasks": {
     "pageTitle": "Meine Aufgaben",

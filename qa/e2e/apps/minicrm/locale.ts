@@ -71,6 +71,9 @@ const MINICRM_EN: LocaleMap = {
   'contacts.delete': 'Delete',
   'contacts.empty': 'No contacts yet. Add one to get started.',
 
+  // Activities — AI call/note summarizer (MINCRM-436)
+  'activities.summarize.action': 'Summarize',
+
   // Accounts
   'accounts.save': 'Save',
   'accounts.saveChanges': 'Save changes',
@@ -165,6 +168,9 @@ const MINICRM_ES: LocaleMap = {
   'contacts.cancel': 'Cancelar',
   'contacts.delete': 'Eliminar',
   'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
+
+  // Activities — AI call/note summarizer (MINCRM-436)
+  'activities.summarize.action': 'Resumir',
 
   // Accounts
   'accounts.save': 'Guardar',
@@ -261,6 +267,9 @@ const MINICRM_FR: LocaleMap = {
   'contacts.delete': 'Supprimer',
   'contacts.empty': "Aucun contact pour l'instant. Ajoutez-en un pour commencer.",
 
+  // Activities — AI call/note summarizer (MINCRM-436)
+  'activities.summarize.action': 'Résumer',
+
   // Accounts
   'accounts.save': 'Enregistrer',
   'accounts.saveChanges': 'Enregistrer les modifications',
@@ -356,6 +365,9 @@ const MINICRM_DE: LocaleMap = {
   'contacts.delete': 'Löschen',
   'contacts.empty': 'Noch keine Kontakte. Fügen Sie einen hinzu.',
 
+  // Activities — AI call/note summarizer (MINCRM-436)
+  'activities.summarize.action': 'Zusammenfassen',
+
   // Accounts
   'accounts.save': 'Speichern',
   'accounts.saveChanges': 'Änderungen speichern',
@@ -450,6 +462,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'contacts.cancel': '取消',
   'contacts.delete': '删除',
   'contacts.empty': '暂无联系人，请添加。',
+
+  // Activities — AI call/note summarizer (MINCRM-436)
+  'activities.summarize.action': '生成摘要',
 
   // Accounts
   'accounts.save': '保存',

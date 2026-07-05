@@ -29,6 +29,7 @@ import type {
 } from '@shared/schemas/activitySchema.js';
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
+import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
 
 export interface ActivityTimelineProps {
   /** Filter activities to those linked to this contact */
@@ -188,6 +189,30 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const hasMore = data !== undefined && activities.length < data.total;
 
   /**
+   * Creates a Task activity for each AI-suggested follow-up task the user accepted,
+   * linked to the same parent record as this timeline. (MINCRM-436)
+   * Fire-and-forget from the UI's perspective — failures are silently skipped since
+   * the primary activity save already succeeded; the timeline refetch will simply
+   * not show a task that failed to create.
+   */
+  const handleAcceptSuggestedTasks = (tasks: SuggestedFollowUpTask[]): void => {
+    tasks.forEach((task) => {
+      createActivity({
+        type: 'Task',
+        subject: task.description,
+        due_date: task.suggested_due_date,
+        contact_id: contactId,
+        account_id: accountId,
+        deal_id: dealId,
+      })
+        .then(() => queryClient.invalidateQueries({ queryKey }))
+        .catch(() => {
+          // Best-effort — the summarized activity itself already saved successfully.
+        });
+    });
+  };
+
+  /**
    * Returns true if the current user may edit or delete the given activity.
    *
    * @param activity - The activity to check
@@ -241,6 +266,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
             isSubmitting={createMutation.isPending}
             submitLabel={t('activities.save')}
             error={createError ?? undefined}
+            onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
           />
         </div>
       )}
@@ -289,6 +315,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         isSubmitting={updateMutation.isPending}
                         submitLabel={t('activities.saveChanges')}
                         error={editError ?? undefined}
+                        onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
                       />
                       <FieldMergeModal
                         isOpen={editConflict?.activityId === activity.id}

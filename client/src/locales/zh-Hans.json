@@ -541,7 +541,20 @@
     "typeEmail": "邮件",
     "typeMeeting": "会议",
     "typeTask": "任务",
-    "meta": "{{author}} · {{timestamp}}"
+    "meta": "{{author}} · {{timestamp}}",
+    "summarize": {
+      "action": "生成摘要",
+      "title": "总结活动",
+      "inputLabel": "粘贴文字记录或笔记",
+      "inputPlaceholder": "粘贴通话记录、会议记录或原始文本……",
+      "submit": "生成摘要",
+      "summarizing": "正在生成摘要……",
+      "summaryLabel": "摘要",
+      "actionItemsLabel": "行动项",
+      "suggestedTasksLabel": "建议的后续任务",
+      "dismissTask": "忽略",
+      "apply": "应用到活动"
+    }
   },
   "myTasks": {
     "pageTitle": "我的任务",

@@ -511,4 +511,64 @@ describe('ActivityTimeline', () => {
       expect(screen.queryByTestId('activity-form')).not.toBeInTheDocument();
     });
   });
+
+  // MINCRM-436: AI call/note summarizer — accepted follow-up tasks create linked Task activities
+  it('creates a linked Task activity for each accepted AI-suggested follow-up task', async () => {
+    const createdActivityBodies: Array<Record<string, unknown>> = [];
+    server.use(
+      http.post('/api/v1/activities/summarize', () =>
+        HttpResponse.json({
+          summary: 'Summary text.',
+          action_items: [],
+          suggested_follow_up_tasks: [
+            { description: 'Send follow-up email', suggested_due_date: '2026-07-11' },
+          ],
+          generated_at: '2026-07-04T00:00:00.000Z',
+        }),
+      ),
+      http.post('/api/v1/activities', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        createdActivityBodies.push(body);
+        return HttpResponse.json(
+          {
+            activity: {
+              ...ACTIVITY_1,
+              id: '00000000-0000-0000-0000-000000000404',
+              type: body['type'],
+              subject: body['subject'],
+              due_date: body['due_date'],
+            },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ActivityTimeline dealId={ACTIVITY_1.deal_id!} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('add-activity-button'));
+    await user.click(screen.getByTestId('activity-summarize-button'));
+    await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
+    await user.click(screen.getByTestId('activity-summary-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('activity-summary-apply')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('activity-summary-apply'));
+
+    await waitFor(() => {
+      expect(createdActivityBodies).toContainEqual(
+        expect.objectContaining({
+          type: 'Task',
+          subject: 'Send follow-up email',
+          due_date: '2026-07-11',
+          deal_id: ACTIVITY_1.deal_id,
+        }),
+      );
+    });
+  });
 });

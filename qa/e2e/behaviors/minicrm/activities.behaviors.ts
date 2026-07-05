@@ -14,6 +14,7 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
+import { ActivityTimelinePage } from '@pages/minicrm/ActivityTimelinePage.js';
 
 // ---------------------------------------------------------------------------
 // API data types (MINCRM-357)
@@ -194,4 +195,104 @@ export async function isOverdueTaskBadgeHidden(
   context: ActivitiesBehaviorContext,
 ): Promise<boolean> {
   return context.page.isNotVisible([{ type: 'testId', value: `task-overdue-badge-${taskId}` }]);
+}
+
+// ---------------------------------------------------------------------------
+// AI call/note summarizer (MINCRM-436)
+// ---------------------------------------------------------------------------
+
+/** Result returned by summarizeActivityNotes. */
+export interface SummarizeActivityNotesResult {
+  /** HTTP status code returned by POST /activities/summarize. */
+  status: number;
+}
+
+/**
+ * Opens the activity create form, opens the AI summarizer, pastes the given
+ * text, and submits it for summarization. Waits for the summarize POST to
+ * resolve before returning. Does not assert — callers branch on `status`
+ * per the network-response-first pattern (MINCRM-418).
+ */
+export async function summarizeActivityNotes(
+  rawText: string,
+  context: ActivitiesBehaviorContext,
+): Promise<SummarizeActivityNotesResult> {
+  const timeline = new ActivityTimelinePage(context);
+  await timeline.clickAddActivity();
+  await timeline.clickSummarize();
+  await timeline.fillSummaryInput(rawText);
+
+  const responseReceived = context.page.waitForResponse(
+    (res) => res.request().method() === 'POST' && res.url().includes('/activities/summarize'),
+    { timeout: 30_000 },
+  );
+  await timeline.clickSummarySubmit();
+  const response = await responseReceived;
+
+  return { status: response.status() };
+}
+
+/**
+ * Dismisses the AI-suggested follow-up task at the given index in the
+ * summarizer preview.
+ */
+export async function dismissSuggestedTask(
+  index: number,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  const timeline = new ActivityTimelinePage(context);
+  await timeline.dismissSuggestedTask(index);
+}
+
+/**
+ * Applies the AI-generated summary to the activity form (populates notes,
+ * accepts any non-dismissed suggested tasks) and closes the summarizer modal.
+ */
+export async function applyActivitySummary(context: ActivitiesBehaviorContext): Promise<void> {
+  const timeline = new ActivityTimelinePage(context);
+  await timeline.clickApplySummary();
+}
+
+/**
+ * Saves the activity form (after applying or editing the summary).
+ */
+export async function saveActivityForm(context: ActivitiesBehaviorContext): Promise<void> {
+  const timeline = new ActivityTimelinePage(context);
+  await timeline.clickFormSubmit();
+}
+
+/**
+ * Waits for the activity notes field to contain the given text.
+ */
+export async function expectActivityNotesToContain(
+  text: string,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const timeline = new ActivityTimelinePage(context);
+  const locator = await timeline.notesFieldLocator();
+  await expect(locator).toHaveValue(new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+}
+
+/**
+ * Returns true when the "Summarize" action is visible in the activity form.
+ * Used to assert the action is hidden when the ai_activity_summarizer flag is off.
+ */
+export async function isSummarizeButtonVisible(
+  context: ActivitiesBehaviorContext,
+): Promise<boolean> {
+  return new ActivityTimelinePage(context).isSummarizeButtonVisible();
+}
+
+/**
+ * Opens the activity create form and sets its type via the type select.
+ * Used to exercise Summarize-visibility rules for non-summarizable types (e.g. Email).
+ */
+export async function openActivityFormWithType(
+  activityType: string,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  const timeline = new ActivityTimelinePage(context);
+  await timeline.clickAddActivity();
+  await timeline.selectType(activityType);
 }

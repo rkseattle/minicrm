@@ -541,7 +541,20 @@
     "typeEmail": "Email",
     "typeMeeting": "Meeting",
     "typeTask": "Task",
-    "meta": "{{author}} · {{timestamp}}"
+    "meta": "{{author}} · {{timestamp}}",
+    "summarize": {
+      "action": "Summarize",
+      "title": "Summarize activity",
+      "inputLabel": "Paste transcript or notes",
+      "inputPlaceholder": "Paste a call transcript, meeting notes, or raw text…",
+      "submit": "Summarize",
+      "summarizing": "Summarizing…",
+      "summaryLabel": "Summary",
+      "actionItemsLabel": "Action items",
+      "suggestedTasksLabel": "Suggested follow-up tasks",
+      "dismissTask": "Dismiss",
+      "apply": "Apply to activity"
+    }
   },
   "myTasks": {
     "pageTitle": "My Tasks",

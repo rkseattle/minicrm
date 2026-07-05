@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireAiTokenBudget } from '../middleware/requireAiTokenBudget.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createActivityHandler,
@@ -25,6 +26,7 @@ import {
   classifyActivityObjectionHandler,
   getObjectionPrecedentsHandler,
 } from '../controllers/objectionMatchingController.js';
+import { summarizeActivityHandler } from '../controllers/activitySummaryController.js';
 
 const router = Router();
 
@@ -643,6 +645,21 @@ router.delete(
   requireCapability(Capability.ActivitiesDelete),
   requireFeatureEnabled('activities'),
   asyncHandler(deleteActivityHandler),
+);
+
+// ── AI call/note summarizer (MINCRM-436) ────────────────────────────────────────
+
+/**
+ * Summarizes pasted call transcript / meeting notes / raw text on demand.
+ * Not tied to an existing activity ID — used from both the create and edit forms.
+ * Registered before /:id routes so Express does not attempt to match 'summarize' as a UUID.
+ */
+router.post(
+  '/summarize',
+  authenticate,
+  requireFeatureEnabled('ai_activity_summarizer'),
+  requireAiTokenBudget,
+  asyncHandler(summarizeActivityHandler),
 );
 
 // ── AI objection pattern matching (MINCRM-471) ──────────────────────────────────
