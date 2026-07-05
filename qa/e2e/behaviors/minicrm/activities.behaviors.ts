@@ -296,3 +296,33 @@ export async function openActivityFormWithType(
   await timeline.clickAddActivity();
   await timeline.selectType(activityType);
 }
+
+// ---------------------------------------------------------------------------
+// AI follow-up task suggestions (MINCRM-438)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the task-suggestion panel is currently visible. */
+export async function isTaskSuggestionPanelVisible(
+  context: ActivitiesBehaviorContext,
+): Promise<boolean> {
+  return new ActivityTimelinePage(context).isTaskSuggestionPanelVisible();
+}
+
+/** Accepts the task suggestion at the given index. */
+export async function acceptTaskSuggestion(
+  index: number,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  await new ActivityTimelinePage(context).acceptTaskSuggestion(index);
+}
+
+/**
+ * Logs an activity via the create form (opens it, sets type/direction/subject,
+ * and submits). Used to trigger the post-save AI task-suggestion flow.
+ */
+export async function logActivity(
+  params: { type: string; direction?: string; subject: string },
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  await new ActivityTimelinePage(context).logActivity(params);
+}

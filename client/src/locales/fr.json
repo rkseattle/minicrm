@@ -2551,5 +2551,23 @@
     "copied": "Copié !",
     "clipboardError": "Impossible de copier dans le presse-papiers.",
     "dismiss": "Ignorer"
+  },
+  "taskSuggestions": {
+    "heading": "Tâches de suivi suggérées",
+    "dismissAll": "Ignorer",
+    "addTask": "Ajouter la tâche",
+    "dismiss": "Ignorer",
+    "allResolved": "Toutes les suggestions traitées.",
+    "acceptedCount": "{{count}} tâche ajoutée"
+  },
+  "contactEnrichment": {
+    "action": "Enrichir à partir du texte",
+    "title": "Enrichir le contact à partir du texte",
+    "inputLabel": "Collez une bio LinkedIn, une signature e-mail ou un texte de carte de visite",
+    "inputPlaceholder": "Collez du texte libre…",
+    "submit": "Extraire",
+    "extracting": "Extraction en cours…",
+    "apply": "Appliquer au formulaire",
+    "insufficientData": "Impossible d'extraire suffisamment d'informations — veuillez remplir manuellement."
   }
 }

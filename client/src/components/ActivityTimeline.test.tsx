@@ -619,4 +619,104 @@ describe('ActivityTimeline', () => {
       expect(screen.getByTestId('email-draft-subject')).toHaveValue('Following up');
     });
   });
+
+  // MINCRM-438: AI follow-up task suggestions after activity logging
+  describe('task suggestions after save', () => {
+    it('fetches and shows suggestions once after saving a Call activity', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 10 }),
+        ),
+        http.post('/api/v1/activities/:id/task-suggestions', () =>
+          HttpResponse.json({
+            suggestions: [
+              {
+                description: 'Send recap email',
+                suggested_due_date: '2026-07-11',
+                linked_entity: 'contact',
+              },
+            ],
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ActivityTimeline contactId="00000000-0000-0000-0000-000000000101" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('add-activity-button'));
+      await user.click(screen.getByTestId('activity-type-select'));
+      fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
+      await user.click(screen.getByTestId('activity-direction-select'));
+      fireEvent.change(screen.getByTestId('activity-direction-select'), {
+        target: { value: 'Outbound' },
+      });
+      await user.type(screen.getByTestId('activity-subject'), 'Discovery call');
+      await user.click(screen.getByTestId('activity-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('task-suggestion-panel')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('task-suggestion-0')).toHaveTextContent('Send recap email');
+    });
+
+    it('creates a linked Task activity when a suggestion is accepted', async () => {
+      const createdActivityBodies: Array<Record<string, unknown>> = [];
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 10 }),
+        ),
+        http.post('/api/v1/activities/:id/task-suggestions', () =>
+          HttpResponse.json({
+            suggestions: [
+              {
+                description: 'Send recap email',
+                suggested_due_date: '2026-07-11',
+                linked_entity: 'contact',
+              },
+            ],
+            generated_at: '2026-07-04T00:00:00.000Z',
+          }),
+        ),
+        http.post('/api/v1/activities', async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          createdActivityBodies.push(body);
+          return HttpResponse.json(
+            { activity: { ...ACTIVITY_1, id: '00000000-0000-0000-0000-000000000405', ...body } },
+            { status: 201 },
+          );
+        }),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ActivityTimeline contactId="00000000-0000-0000-0000-000000000101" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('add-activity-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('add-activity-button'));
+      fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
+      fireEvent.change(screen.getByTestId('activity-direction-select'), {
+        target: { value: 'Outbound' },
+      });
+      await user.type(screen.getByTestId('activity-subject'), 'Discovery call');
+      await user.click(screen.getByTestId('activity-form-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('task-suggestion-accept-0')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('task-suggestion-accept-0'));
+
+      await waitFor(() => {
+        expect(createdActivityBodies).toContainEqual(
+          expect.objectContaining({
+            type: 'Task',
+            subject: 'Send recap email',
+            due_date: '2026-07-11',
+          }),
+        );
+      });
+    });
+  });
 });

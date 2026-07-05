@@ -2436,5 +2436,23 @@
     "copied": "[Ĉöpïëd!~~]",
     "clipboardError": "[Ĉöüld ñöt ĉöpy tö ĉlïpböärd.~~~~~~~~~]",
     "dismiss": "[Dïŝmïŝŝ~~]"
+  },
+  "taskSuggestions": {
+    "heading": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
+    "dismissAll": "[Dïŝmïŝŝ~~]",
+    "addTask": "[Ädd Täŝk~~]",
+    "dismiss": "[Dïŝmïŝŝ~~]",
+    "allResolved": "[Äll ŝüggëŝtïöñŝ rëŝölvëd.~~~~~~~~]",
+    "acceptedCount": "[{{count}} täŝk äddëd~~~~~~]"
+  },
+  "contactEnrichment": {
+    "action": "[Ëñrïĉh fröm tëxt~~~~~]",
+    "title": "[Ëñrïĉh ĉöñtäĉt fröm tëxt~~~~~~~~]",
+    "inputLabel": "[Päŝtë LïñkëdÏñ bïö, ëmäïl ŝïgñätürë, ör büŝïñëŝŝ ĉärd tëxt~~~~~~~~~~~~~~~~~~~]",
+    "inputPlaceholder": "[Päŝtë frëëförm tëxt…~~~~~~]",
+    "submit": "[Ëxträĉt~~]",
+    "extracting": "[Ëxträĉtïñg…~~~]",
+    "apply": "[Äpply tö förm~~~~]",
+    "insufficientData": "[Ĉöüldñ't ëxträĉt ëñöügh ïñförmätïöñ — plëäŝë fïll ïñ mäñüälly.~~~~~~~~~~~~~~~~~~~~]"
   }
 }

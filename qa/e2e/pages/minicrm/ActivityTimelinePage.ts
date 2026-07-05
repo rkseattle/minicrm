@@ -244,4 +244,85 @@ export class ActivityTimelinePage {
     const locator = await this.formSubmitButtonLocator();
     await locator.click();
   }
+
+  /** Returns a resolved locator for the task-suggestion panel. (MINCRM-438) */
+  async taskSuggestionPanelLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'task-suggestion-panel' },
+          { type: 'css', value: '[data-testid="task-suggestion-panel"]' },
+        ],
+        { intent: 'AI follow-up task suggestion panel shown after saving an activity' },
+      )
+      .resolve();
+  }
+
+  /** Returns true when the task-suggestion panel is currently visible. (MINCRM-438) */
+  async isTaskSuggestionPanelVisible(): Promise<boolean> {
+    return this.isElementCurrentlyVisible('[data-testid="task-suggestion-panel"]', () =>
+      this.taskSuggestionPanelLocator(),
+    );
+  }
+
+  /** Returns a resolved locator for the "Add Task" button on the suggestion at the given index. */
+  async acceptTaskSuggestionButtonLocator(index: number) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `task-suggestion-accept-${index}` },
+          { type: 'css', value: `[data-testid="task-suggestion-accept-${index}"]` },
+        ],
+        { intent: 'button that accepts one AI-suggested follow-up task' },
+      )
+      .resolve();
+  }
+
+  /** Accepts the task suggestion at the given index. (MINCRM-438) */
+  async acceptTaskSuggestion(index: number): Promise<void> {
+    const locator = await this.acceptTaskSuggestionButtonLocator(index);
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the activity direction select (Call/Email only). */
+  async directionSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'activity-direction-select' },
+          { type: 'css', value: '[data-testid="activity-direction-select"]' },
+        ],
+        { intent: 'activity direction select, shown for Call and Email types' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the activity subject input. */
+  async subjectInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'activity-subject' },
+          { type: 'css', value: '[data-testid="activity-subject"]' },
+        ],
+        { intent: 'activity form subject input' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Logs an activity via the create form: opens it, sets type/direction/subject,
+   * and submits. Direction is only set for Call/Email types. (MINCRM-438)
+   */
+  async logActivity(params: { type: string; direction?: string; subject: string }): Promise<void> {
+    await this.clickAddActivity();
+    await this.selectType(params.type);
+    if (params.direction) {
+      const directionLocator = await this.directionSelectLocator();
+      await directionLocator.selectOption(params.direction);
+    }
+    const subjectLocator = await this.subjectInputLocator();
+    await subjectLocator.fill(params.subject);
+    await this.clickFormSubmit();
+  }
 }
