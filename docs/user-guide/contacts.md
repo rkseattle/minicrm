@@ -71,6 +71,19 @@ forgotten"):
 | Address     | Street, city, state/region, postal code, country              |
 | Source lead | Read-only; set automatically when a lead is converted         |
 
+### AI contact enrichment from pasted text
+
+> **Feature flag:** `ai_contact_enrichment`.
+
+On the contact create or edit form, click **Enrich from text** and paste a LinkedIn
+bio, email signature, vCard text, or business card text. MiniCRM extracts first name,
+last name, job title, company, email, phone, LinkedIn URL, and location where present,
+and pre-fills the form fields as an editable overlay — review and adjust before saving.
+Fields it couldn't find are left blank rather than guessed. If the extracted company
+name matches an existing account, that account is pre-selected. The pasted text itself
+is never stored. If too little can be extracted, MiniCRM tells you to fill the form in
+manually instead of guessing.
+
 ### Tags
 
 - Tags are free-text labels shared across all contacts.
@@ -88,6 +101,22 @@ forgotten"):
 If you have two contact records for the same person, an admin can merge them.
 The surviving contact keeps the data you choose for each field, and all linked
 deals, activities, and notes are moved to the winner automatically.
+
+#### AI duplicate detection explanation
+
+> **Feature flag:** `ai_duplicate_explanation`.
+
+When creating a contact with an email address that matches an existing record, you'll
+see a warning with **Go to existing contact** and **Create anyway** actions. Click
+**Explain** to get a 2-4 sentence, plain-language explanation of why the two records
+look like duplicates (for example, matching email, similar names, or the same
+company). The explanation is generated on demand and appears inline — no popup. If
+there isn't enough of a meaningful match to explain, MiniCRM says so rather than
+guessing. The same action is available for accounts — see
+[Accounts — AI duplicate detection explanation](accounts.md#ai-duplicate-detection-explanation).
+
+> The explanation is **AI-generated** from the two records' field data — use it to help
+> decide whether to merge or dismiss, not as a final answer on its own.
 
 ### GDPR erasure
 
@@ -108,3 +137,16 @@ classification, or **Not accurate** to dismiss it. See
 [Deals — AI Champion/Blocker Detection](deals.md#ai-championblocker-detection) for the
 full explanation of how this is determined. The badge is internal only — it is never
 shown to the contact.
+
+### AI Draft Email
+
+> **Feature flag:** `ai_email_draft`.
+
+Click **Draft Email** on the contact detail page (or from a contact-linked activity) to
+generate a first-draft follow-up email. MiniCRM uses the contact's name, company, role,
+recent activity, last interaction date, and any open opportunities to write a subject
+line and body, shown in a sidebar panel. Choose a tone — **Professional**, **Friendly**,
+or **Concise** — to regenerate, edit the draft inline, and use **Copy to clipboard** to
+paste it into your email client. If the contact has no recent activity, the draft falls
+back to a generic introduction based on their fields alone. Nothing is sent
+automatically and the draft is not saved — dismiss the panel or copy it yourself.
