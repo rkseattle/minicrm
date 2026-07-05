@@ -2577,5 +2577,8 @@
   "duplicateExplanation": {
     "explainButton": "解释",
     "explaining": "解释中……"
+  },
+  "leadScore": {
+    "badgeLabel": "评分：{{score}}"
   }
 }

@@ -2577,5 +2577,8 @@
   "duplicateExplanation": {
     "explainButton": "Expliquer",
     "explaining": "Explication en cours…"
+  },
+  "leadScore": {
+    "badgeLabel": "Score : {{score}}"
   }
 }

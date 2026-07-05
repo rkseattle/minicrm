@@ -15,6 +15,7 @@ import LeadForm from '@/components/LeadForm.js';
 import ConvertLeadModal from '@/components/ConvertLeadModal.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
+import LeadScoreBadge from '@/components/LeadScoreBadge.js';
 import { Button } from '@/components/ui/Button.js';
 import { getLead, updateLead, deleteLead, getLeadStatusHistory } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -199,6 +200,7 @@ export default function LeadDetailPage() {
                   {t(`leads.status${lead.status}`)}
                 </span>
               )}
+              {!isConverted && <LeadScoreBadge leadId={lead.id} />}
             </div>
           </div>
 

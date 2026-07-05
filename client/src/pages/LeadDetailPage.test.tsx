@@ -25,6 +25,33 @@ describe('LeadDetailPage', () => {
     });
   });
 
+  // MINCRM-441 prerequisite: rule-based lead scoring
+  it('renders the computed lead score badge', async () => {
+    renderWithProviders(<LeadDetailPage />, {
+      initialEntries: [`/leads/${LEAD_1.id}`],
+      path: '/leads/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('lead-score-badge')).toHaveTextContent('55');
+    });
+  });
+
+  it('hides the score badge when the ai_lead_scoring flag is disabled', async () => {
+    server.use(
+      http.get('/api/v1/feature-flags/me', () =>
+        HttpResponse.json({ flags: { ai_lead_scoring: false } }),
+      ),
+    );
+    renderWithProviders(<LeadDetailPage />, {
+      initialEntries: [`/leads/${LEAD_1.id}`],
+      path: '/leads/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('lead-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('lead-score-badge')).not.toBeInTheDocument();
+  });
+
   it('renders the lead email', async () => {
     renderWithProviders(<LeadDetailPage />, {
       initialEntries: [`/leads/${LEAD_1.id}`],
