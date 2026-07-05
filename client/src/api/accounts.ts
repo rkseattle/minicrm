@@ -78,8 +78,15 @@ export async function getAccount(id: string): Promise<AccountSingleResponse> {
  *
  * @param data - Account fields (name is required)
  */
-export async function createAccount(data: CreateAccountInput): Promise<AccountSingleResponse> {
-  const response = await apiClient.post<AccountSingleResponse>('/accounts', data);
+export async function createAccount(
+  data: CreateAccountInput,
+  force = false,
+): Promise<AccountSingleResponse> {
+  const response = await apiClient.post<AccountSingleResponse>(
+    '/accounts',
+    data,
+    force ? { params: { force: 'true' } } : undefined,
+  );
   return response.data;
 }
 

@@ -37,6 +37,8 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { explainDuplicate } from '@/api/duplicateExplanation.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -56,6 +58,15 @@ export default function AccountsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const forceNextSubmit = useRef(false);
+  const [duplicateAccount, setDuplicateAccount] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  const [duplicateSubmittedName, setDuplicateSubmittedName] = useState<string | null>(null);
+  const [duplicateExplanation, setDuplicateExplanation] = useState<string | null>(null);
+  const [duplicateExplanationError, setDuplicateExplanationError] = useState<string | null>(null);
+  const { enabled: duplicateExplanationEnabled } = useFeatureFlag('ai_duplicate_explanation');
   const [searchParams, setSearchParams] = useSearchParams();
   const ownerParam = searchParams.get('owner');
   const ownerFilter: OwnerFilter =
@@ -153,23 +164,62 @@ export default function AccountsPage() {
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (values: AccountFormValues) =>
-      createAccount({
-        name: values.name,
-        industry: values.industry || undefined,
-        website: values.website || undefined,
-        employee_range: values.employee_range || undefined,
-        revenue_range: values.revenue_range || undefined,
-        contact_ids: values.contact_ids.length > 0 ? values.contact_ids : undefined,
-      }),
+    mutationFn: ({ values, force }: { values: AccountFormValues; force: boolean }) =>
+      createAccount(
+        {
+          name: values.name,
+          industry: values.industry || undefined,
+          website: values.website || undefined,
+          employee_range: values.employee_range || undefined,
+          revenue_range: values.revenue_range || undefined,
+          contact_ids: values.contact_ids.length > 0 ? values.contact_ids : undefined,
+        },
+        force,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
       shouldRestoreFocusRef.current = true;
       setShowForm(false);
       setCreateError(null);
+      setDuplicateAccount(null);
+      forceNextSubmit.current = false;
     },
-    onError: (error: { response?: { data?: { error?: { message?: string } } } }) => {
-      setCreateError(resolveApiError(error, t));
+    onError: (
+      error: {
+        response?: {
+          status?: number;
+          data?: { error?: { message?: string }; duplicate?: { id: string; name: string } };
+        };
+      },
+      variables,
+    ) => {
+      if (error.response?.status === 409 && error.response.data?.duplicate) {
+        setDuplicateAccount(error.response.data.duplicate);
+        setDuplicateSubmittedName(variables.values.name);
+        setCreateError(null);
+        setDuplicateExplanation(null);
+        setDuplicateExplanationError(null);
+      } else {
+        setCreateError(resolveApiError(error, t));
+      }
+    },
+  });
+
+  const duplicateExplanationMutation = useMutation({
+    mutationFn: () => {
+      if (!duplicateAccount || !duplicateSubmittedName) {
+        return Promise.reject(new Error('Missing duplicate context'));
+      }
+      return explainDuplicate('account', duplicateAccount.id, {
+        fields: { name: duplicateSubmittedName },
+      });
+    },
+    onSuccess: (result) => {
+      setDuplicateExplanation(result.explanation);
+      setDuplicateExplanationError(null);
+    },
+    onError: (error: Parameters<typeof resolveApiError>[0]) => {
+      setDuplicateExplanationError(resolveApiError(error, t));
     },
   });
 
@@ -313,11 +363,79 @@ export default function AccountsPage() {
         {showForm && (
           <section className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('accounts.newAccount')}</h2>
+            {duplicateAccount && (
+              <div
+                role="alert"
+                data-testid="duplicate-account-warning"
+                className="mb-4 rounded-md bg-yellow-50 border border-yellow-300 px-4 py-3 text-sm text-yellow-800"
+              >
+                <p className="font-semibold mb-1">{t('accounts.duplicateWarningTitle')}</p>
+                <p data-testid="duplicate-account-warning-message" className="mb-3">
+                  {t('accounts.duplicateWarningMessage', { name: duplicateAccount.name })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={`/accounts/${duplicateAccount.id}`}
+                    data-testid="duplicate-account-go-to-existing"
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
+                  >
+                    {t('accounts.duplicateGoToExisting')}
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="duplicate-account-create-anyway"
+                    className="inline-flex items-center px-3 py-1.5 rounded-md bg-yellow-600 text-white text-xs font-medium hover:bg-yellow-700 transition-colors"
+                    onClick={() => {
+                      forceNextSubmit.current = true;
+                      formRef.current?.requestSubmit();
+                    }}
+                    disabled={createMutation.isPending}
+                  >
+                    {t('accounts.duplicateCreateAnyway')}
+                  </button>
+                  {duplicateExplanationEnabled && !duplicateExplanation && (
+                    <button
+                      type="button"
+                      data-testid="duplicate-account-explain-button"
+                      className="inline-flex items-center px-3 py-1.5 rounded-md border border-yellow-400 bg-white text-yellow-800 text-xs font-medium hover:bg-yellow-50 transition-colors"
+                      onClick={() => duplicateExplanationMutation.mutate()}
+                      disabled={duplicateExplanationMutation.isPending}
+                    >
+                      {duplicateExplanationMutation.isPending
+                        ? t('duplicateExplanation.explaining')
+                        : t('duplicateExplanation.explainButton')}
+                    </button>
+                  )}
+                </div>
+                {duplicateExplanationError && (
+                  <p
+                    role="alert"
+                    className="mt-3 text-xs text-red-700"
+                    data-testid="duplicate-account-explanation-error"
+                  >
+                    {duplicateExplanationError}
+                  </p>
+                )}
+                {duplicateExplanation && (
+                  <p
+                    className="mt-3 text-sm text-yellow-900"
+                    data-testid="duplicate-account-explanation-text"
+                  >
+                    {duplicateExplanation}
+                  </p>
+                )}
+              </div>
+            )}
+
             <AccountForm
+              formRef={formRef}
               triggerRef={newAccountButtonRef}
               onSubmit={(values) => {
                 setCreateError(null);
-                createMutation.mutate(values);
+                setDuplicateAccount(null);
+                const force = forceNextSubmit.current;
+                forceNextSubmit.current = false;
+                createMutation.mutate({ values, force });
               }}
               onCancel={() => {
                 shouldRestoreFocusRef.current = true;

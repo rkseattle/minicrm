@@ -1684,3 +1684,43 @@ export async function getContactFormFirstName(context: ContactsBehaviorContext):
   const locator = await contactsPage.firstNameInputLocator();
   return locator.inputValue();
 }
+
+// ---------------------------------------------------------------------------
+// AI duplicate detection explanation (MINCRM-440)
+// ---------------------------------------------------------------------------
+
+/** Result returned by explainContactDuplicate. */
+export interface ExplainDuplicateResult {
+  /** HTTP status code returned by POST /duplicates/explain. */
+  status: number;
+}
+
+/**
+ * Clicks the "Explain" button in the duplicate warning banner and waits for
+ * the explain POST to resolve. Registers the response wait before clicking
+ * so a fast server response is never missed. Does not assert — callers
+ * branch on `status` per the network-response-first pattern (MINCRM-418).
+ */
+export async function explainContactDuplicate(
+  context: ContactsBehaviorContext,
+): Promise<ExplainDuplicateResult> {
+  const contactsPage = new ContactsPage(context);
+
+  const responseReceived = context.page.waitForResponse(
+    (res) => res.request().method() === 'POST' && res.url().includes('/duplicates/explain'),
+    { timeout: 30_000 },
+  );
+  await contactsPage.clickDuplicateExplain();
+  const response = await responseReceived;
+
+  return { status: response.status() };
+}
+
+/** Returns the text of the inline AI duplicate explanation. */
+export async function getContactDuplicateExplanationText(
+  context: ContactsBehaviorContext,
+): Promise<string> {
+  const contactsPage = new ContactsPage(context);
+  const locator = await contactsPage.duplicateExplanationTextLocator();
+  return locator.innerText();
+}

@@ -403,7 +403,11 @@
     "parentAccountSelected": "Parent account selected",
     "parentAccountClear": "Remove",
     "parentAccountLink": "View parent account",
-    "subsidiaryAccountsHeading": "Subsidiary Accounts"
+    "subsidiaryAccountsHeading": "Subsidiary Accounts",
+    "duplicateWarningTitle": "Possible duplicate",
+    "duplicateWarningMessage": "An account with this name already exists: {{name}}.",
+    "duplicateGoToExisting": "Go to existing account",
+    "duplicateCreateAnyway": "Create anyway"
   },
   "deals": {
     "pageTitle": "Deals",
@@ -2569,5 +2573,9 @@
     "extracting": "Extracting…",
     "apply": "Apply to form",
     "insufficientData": "Couldn't extract enough information — please fill in manually."
+  },
+  "duplicateExplanation": {
+    "explainButton": "Explain",
+    "explaining": "Explaining…"
   }
 }

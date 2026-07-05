@@ -264,6 +264,24 @@ export async function findAccountById(id: string): Promise<AccountRow | null> {
 }
 
 /**
+ * Finds an account by exact, case-insensitive name match. Used for duplicate
+ * detection on account create — mirrors findContactByEmail's role for
+ * contacts. (MINCRM-440)
+ *
+ * @param name - Account name to match exactly (case-insensitive)
+ * @returns The matching account row, or null if none exists
+ */
+export async function findAccountByExactName(name: string): Promise<AccountRow | null> {
+  const result = await withRlsQuery((client) =>
+    client.query<AccountRow>('SELECT * FROM accounts WHERE lower(name) = lower($1) LIMIT 1', [
+      name,
+    ]),
+  );
+
+  return result.rows[0] ?? null;
+}
+
+/**
  * Returns a paginated list of accounts, optionally filtered and sorted.
  *
  * @param options - Filters, sort, and pagination options

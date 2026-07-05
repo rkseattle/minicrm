@@ -356,6 +356,56 @@ describe('ContactsPage', () => {
     expect(lastForceParam).toBe('true');
   });
 
+  // MINCRM-440: AI duplicate detection explanation
+  it('shows an AI explanation when the Explain button is clicked in the duplicate warning', async () => {
+    const duplicateContact = CONTACT_1;
+    server.use(
+      http.post('/api/v1/contacts', () =>
+        HttpResponse.json(
+          {
+            error: { code: 'DUPLICATE_EMAIL', message: 'Duplicate email' },
+            duplicate: {
+              id: duplicateContact.id,
+              first_name: duplicateContact.first_name,
+              last_name: duplicateContact.last_name,
+              email: duplicateContact.email,
+            },
+          },
+          { status: 409 },
+        ),
+      ),
+      http.post('/api/v1/duplicates/explain', () =>
+        HttpResponse.json({
+          explanation: 'Same email address — likely the same person.',
+          inconclusive: false,
+          generated_at: '2026-07-05T00:00:00.000Z',
+        }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ContactsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('new-contact-button'));
+    await user.type(screen.getByTestId('contact-first-name'), 'Alice');
+    await user.type(screen.getByTestId('contact-last-name'), 'Smith');
+    await user.type(screen.getByTestId('contact-email'), duplicateContact.email);
+    await user.click(screen.getByTestId('contact-form-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('duplicate-explain-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('duplicate-explain-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('duplicate-explanation-text')).toHaveTextContent(
+        'Same email address',
+      );
+    });
+  });
+
   it('submits the create form and hides it on success', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ContactsPage />);
