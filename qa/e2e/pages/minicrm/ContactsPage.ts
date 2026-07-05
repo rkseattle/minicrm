@@ -703,6 +703,82 @@ export class ContactsPage {
       .resolve();
   }
 
+  /** Returns a resolved locator for the "Enrich from text" button. (MINCRM-439) */
+  async enrichFromTextButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-enrich-from-text-button' },
+          { type: 'role', value: 'button', options: { name: t('contactEnrichment.action') } },
+        ],
+        { intent: 'button that opens the AI contact-enrichment modal on the create form' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Enrich from text" button. (MINCRM-439) */
+  async clickEnrichFromText(): Promise<void> {
+    const locator = await this.enrichFromTextButtonLocator();
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the pasted-text input in the enrichment modal. */
+  async enrichmentInputLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-enrichment-input' },
+          { type: 'css', value: '[data-testid="contact-enrichment-input"]' },
+        ],
+        { intent: 'textarea for pasting freeform text to extract contact fields from' },
+      )
+      .resolve();
+  }
+
+  /** Fills the pasted-text input in the enrichment modal. */
+  async fillEnrichmentInput(text: string): Promise<void> {
+    const locator = await this.enrichmentInputLocator();
+    await locator.fill(text);
+  }
+
+  /** Returns a resolved locator for the submit button in the enrichment modal. */
+  async enrichmentSubmitButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-enrichment-submit' },
+          { type: 'css', value: '[data-testid="contact-enrichment-submit"]' },
+        ],
+        { intent: 'button that submits pasted text for AI field extraction' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the submit button in the enrichment modal. */
+  async clickEnrichmentSubmit(): Promise<void> {
+    const locator = await this.enrichmentSubmitButtonLocator();
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the "Apply to form" button in the enrichment modal. */
+  async enrichmentApplyButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-enrichment-apply' },
+          { type: 'css', value: '[data-testid="contact-enrichment-apply"]' },
+        ],
+        { intent: 'button that applies extracted fields to the contact form' },
+      )
+      .resolve();
+  }
+
+  /** Clicks "Apply to form" in the enrichment modal. */
+  async clickEnrichmentApply(): Promise<void> {
+    const locator = await this.enrichmentApplyButtonLocator();
+    await locator.click();
+  }
+
   /**
    * Returns a resolved locator for the bulk operation error message.
    */

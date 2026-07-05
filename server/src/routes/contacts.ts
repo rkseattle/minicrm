@@ -27,6 +27,7 @@ import {
   sendContactEmailHandler,
 } from '../controllers/contactController.js';
 import { generateEmailDraftHandler } from '../controllers/emailDraftController.js';
+import { enrichContactFromTextHandler } from '../controllers/contactEnrichmentController.js';
 import {
   listContactTagsHandler,
   attachContactTagHandler,
@@ -237,6 +238,21 @@ router.post(
   authenticate,
   requireCapability(Capability.ContactsCreate),
   asyncHandler(bulkContactsHandler),
+);
+
+// ── AI contact auto-enrich from pasted text (MINCRM-439) ────────────────────────
+
+/**
+ * Extracts contact fields from pasted freeform text on demand. Not tied to an
+ * existing contact — used from the create form. Registered before /:id routes
+ * so Express does not attempt to match 'enrich-from-text' as a UUID.
+ */
+router.post(
+  '/enrich-from-text',
+  authenticate,
+  requireFeatureEnabled('ai_contact_enrichment'),
+  requireAiTokenBudget,
+  asyncHandler(enrichContactFromTextHandler),
 );
 
 /**

@@ -2,11 +2,13 @@
  * Tests for the ContactForm component. (MINCRM-198)
  */
 
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import ContactForm from './ContactForm.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { server } from '../test/setup.js';
 
 // Plain function — not a spy, so call counts don't accumulate across tests
 const noop = () => {};
@@ -271,6 +273,50 @@ describe('ContactForm', () => {
     it('shows Save button by default', () => {
       renderWithProviders(<ContactForm onSubmit={noop} />);
       expect(screen.getByTestId('contact-form-submit')).toBeInTheDocument();
+    });
+  });
+
+  // MINCRM-439: AI contact auto-enrich from pasted text
+  describe('AI contact enrichment', () => {
+    it('extracts and applies fields as a diff overlay, prefilling only extracted fields', async () => {
+      server.use(
+        http.post('/api/v1/contacts/enrich-from-text', () =>
+          HttpResponse.json({
+            fields: {
+              first_name: 'Jane',
+              last_name: 'Doe',
+              title: 'VP Sales',
+              company_name: null,
+              email: null,
+              phone: null,
+              linkedin_url: null,
+              location: null,
+            },
+            matched_account_id: null,
+            insufficient_data: false,
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ContactForm onSubmit={noop} />);
+
+      await user.click(screen.getByTestId('contact-enrich-from-text-button'));
+      await user.type(screen.getByTestId('contact-enrichment-input'), 'Jane Doe, VP Sales');
+      await user.click(screen.getByTestId('contact-enrichment-submit'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contact-enrichment-apply')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('contact-enrichment-apply'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('contact-enrichment-modal')).not.toBeInTheDocument();
+      });
+      expect((screen.getByTestId('contact-first-name') as HTMLInputElement).value).toBe('Jane');
+      expect((screen.getByTestId('contact-last-name') as HTMLInputElement).value).toBe('Doe');
+      expect((screen.getByTestId('contact-title') as HTMLInputElement).value).toBe('VP Sales');
+      // Email was not extracted — must remain blank, not overwritten with a guess
+      expect((screen.getByTestId('contact-email') as HTMLInputElement).value).toBe('');
     });
   });
 });

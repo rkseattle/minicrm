@@ -1650,3 +1650,37 @@ export async function isEmailDraftPanelVisible(context: ContactsBehaviorContext)
   const locator = await panel.panelLocator();
   return locator.isVisible().catch(() => false);
 }
+
+// ---------------------------------------------------------------------------
+// AI contact auto-enrich from pasted text (MINCRM-439)
+// ---------------------------------------------------------------------------
+
+/**
+ * Opens the contact create form, opens the enrichment modal, pastes the given
+ * text, submits it for extraction, and applies the result to the form.
+ * Leaves the create form open (populated) for the caller to submit or inspect.
+ */
+export async function enrichContactFromTextViaUI(
+  rawText: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.navigate();
+  await contactsPage.clickNewContact();
+  await contactsPage.clickEnrichFromText();
+  await contactsPage.fillEnrichmentInput(rawText);
+  await contactsPage.clickEnrichmentSubmit();
+}
+
+/** Applies the extracted fields shown in the enrichment modal to the contact form. */
+export async function applyContactEnrichment(context: ContactsBehaviorContext): Promise<void> {
+  const contactsPage = new ContactsPage(context);
+  await contactsPage.clickEnrichmentApply();
+}
+
+/** Returns the current value of the create form's first name field. */
+export async function getContactFormFirstName(context: ContactsBehaviorContext): Promise<string> {
+  const contactsPage = new ContactsPage(context);
+  const locator = await contactsPage.firstNameInputLocator();
+  return locator.inputValue();
+}
