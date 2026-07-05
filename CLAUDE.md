@@ -208,7 +208,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e bui
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d server-e2e
 
 # Re-run E2E setup (re-seeds admin user, MinIO storage config, Mailhog SMTP config — migrations also run automatically on server startup, which is where I confirmed migration 146 was already applied):
-env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setupenv $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
+env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 
 # clear out old test results
 rm -rf qa/e2e/test-results/
