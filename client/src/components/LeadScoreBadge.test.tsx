@@ -3,6 +3,7 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import LeadScoreBadge from './LeadScoreBadge.js';
@@ -48,5 +49,111 @@ describe('LeadScoreBadge', () => {
       expect(scoreRequested).toBe(false);
     });
     expect(screen.queryByTestId('lead-score-badge')).not.toBeInTheDocument();
+  });
+
+  // MINCRM-441: AI lead score narrative explanation
+  describe('score narrative', () => {
+    it('fetches and shows the narrative when "Why this score?" is clicked', async () => {
+      server.use(
+        http.get('/api/v1/leads/:id/score', () =>
+          HttpResponse.json({ score: 62, factors: [], insufficient_data: false }),
+        ),
+        http.post('/api/v1/leads/:id/score-narrative', () =>
+          HttpResponse.json({
+            narrative: 'This lead scores well because of a strong referral source.',
+            insufficient_data: false,
+            generated_at: '2026-07-05T00:00:00.000Z',
+          }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<LeadScoreBadge leadId="lead-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-why-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('lead-score-why-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-narrative')).toHaveTextContent(
+          'strong referral source',
+        );
+      });
+      expect(screen.queryByTestId('lead-score-why-button')).not.toBeInTheDocument();
+    });
+
+    it('shows the insufficient-data message when the AI reports it', async () => {
+      server.use(
+        http.get('/api/v1/leads/:id/score', () =>
+          HttpResponse.json({ score: 5, factors: [], insufficient_data: true }),
+        ),
+        http.post('/api/v1/leads/:id/score-narrative', () =>
+          HttpResponse.json({
+            narrative: '',
+            insufficient_data: true,
+            generated_at: '2026-07-05T00:00:00.000Z',
+          }),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<LeadScoreBadge leadId="lead-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-why-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('lead-score-why-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-narrative')).toHaveTextContent(
+          'Not enough activity data',
+        );
+      });
+    });
+
+    it('shows an error when narrative generation fails', async () => {
+      server.use(
+        http.get('/api/v1/leads/:id/score', () =>
+          HttpResponse.json({ score: 62, factors: [], insufficient_data: false }),
+        ),
+        http.post('/api/v1/leads/:id/score-narrative', () =>
+          HttpResponse.json(
+            { error: { code: 'AI_PROVIDER_ERROR', message: 'AI provider error' } },
+            { status: 502 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<LeadScoreBadge leadId="lead-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-why-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('lead-score-why-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-narrative-error')).toBeInTheDocument();
+      });
+    });
+
+    it('hides the "Why this score?" button when the narrative flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { ai_lead_score_narrative: false } }),
+        ),
+        http.get('/api/v1/leads/:id/score', () =>
+          HttpResponse.json({ score: 62, factors: [], insufficient_data: false }),
+        ),
+      );
+
+      renderWithProviders(<LeadScoreBadge leadId="lead-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-score-badge')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('lead-score-why-button')).not.toBeInTheDocument();
+    });
   });
 });

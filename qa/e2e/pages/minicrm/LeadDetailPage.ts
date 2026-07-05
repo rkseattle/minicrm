@@ -242,6 +242,55 @@ export class LeadDetailPage {
   }
 
   // ---------------------------------------------------------------------------
+  // AI lead scoring (MINCRM-441 prerequisite + MINCRM-441)
+  // ---------------------------------------------------------------------------
+
+  /** Returns a resolved locator for the lead score badge. */
+  async scoreBadgeLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-score-badge' },
+          { type: 'css', value: '[data-testid="lead-score-badge"]' },
+        ],
+        { intent: 'rule-based lead quality score badge' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the "Why this score?" button. */
+  async scoreWhyButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-score-why-button' },
+          { type: 'css', value: '[data-testid="lead-score-why-button"]' },
+        ],
+        { intent: 'button that generates an AI narrative explanation of the lead score' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Why this score?" button. */
+  async clickScoreWhy(): Promise<void> {
+    const locator = await this.scoreWhyButtonLocator();
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the inline AI score narrative text. */
+  async scoreNarrativeLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-score-narrative' },
+          { type: 'css', value: '[data-testid="lead-score-narrative"]' },
+        ],
+        { intent: 'inline AI-generated narrative explaining the lead score' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
   // State queries
   // ---------------------------------------------------------------------------
 

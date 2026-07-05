@@ -2579,6 +2579,9 @@
     "explaining": "解释中……"
   },
   "leadScore": {
-    "badgeLabel": "评分：{{score}}"
+    "badgeLabel": "评分：{{score}}",
+    "whyThisScore": "为什么是这个评分？",
+    "explaining": "解释中……",
+    "insufficientData": "活动数据不足，暂无法解释此评分。"
   }
 }

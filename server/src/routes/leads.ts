@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireRole, requireCapability } from '../middleware/requireRole.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireAiTokenBudget } from '../middleware/requireAiTokenBudget.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import {
   createLeadHandler,
@@ -22,6 +23,7 @@ import {
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
 import { getLeadScoreHandler } from '../controllers/leadScoreController.js';
+import { generateLeadScoreNarrativeHandler } from '../controllers/leadScoreNarrativeController.js';
 
 const router = Router();
 
@@ -249,6 +251,45 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_lead_scoring'),
   asyncHandler(getLeadScoreHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/leads/{id}/score-narrative:
+ *   post:
+ *     tags: [Leads]
+ *     operationId: generateLeadScoreNarrative
+ *     summary: Explain a lead's quality score in plain English (MINCRM-441)
+ *     description: >
+ *       Runs an on-demand AI narrative explanation of the lead's rule-based
+ *       quality score. Not persisted — regenerated on every request.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Narrative generated
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Lead not found
+ *       502:
+ *         description: AI provider error
+ *       503:
+ *         description: AI is not configured
+ */
+router.post(
+  '/:id/score-narrative',
+  authenticate,
+  requireFeatureEnabled('ai_lead_score_narrative'),
+  requireAiTokenBudget,
+  asyncHandler(generateLeadScoreNarrativeHandler),
 );
 
 /**

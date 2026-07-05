@@ -2579,6 +2579,9 @@
     "explaining": "Explication en cours…"
   },
   "leadScore": {
-    "badgeLabel": "Score : {{score}}"
+    "badgeLabel": "Score : {{score}}",
+    "whyThisScore": "Pourquoi ce score ?",
+    "explaining": "Explication en cours…",
+    "insufficientData": "Pas encore assez de données d'activité pour expliquer ce score."
   }
 }
