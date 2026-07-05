@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { requireRole, requireCapability } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import {
   createLeadHandler,
@@ -20,6 +21,7 @@ import {
 } from '../controllers/leadsController.js';
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
+import { getLeadScoreHandler } from '../controllers/leadScoreController.js';
 
 const router = Router();
 
@@ -213,6 +215,41 @@ router.delete(
  *         description: Lead not found
  */
 router.get('/:id', authenticate, asyncHandler(getLeadHandler));
+
+/**
+ * @openapi
+ * /api/v1/leads/{id}/score:
+ *   get:
+ *     tags: [Leads]
+ *     operationId: getLeadScore
+ *     summary: Compute a rule-based quality score for the lead (MINCRM-441 prerequisite)
+ *     description: >
+ *       Computes an on-demand deterministic 0-100 quality score from lead
+ *       source, status, recency, and post-conversion engagement. Not
+ *       persisted — recomputed on every request.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Score computed
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Lead not found
+ */
+router.get(
+  '/:id/score',
+  authenticate,
+  requireFeatureEnabled('ai_lead_scoring'),
+  asyncHandler(getLeadScoreHandler),
+);
 
 /**
  * @openapi

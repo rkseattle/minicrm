@@ -2577,5 +2577,8 @@
   "duplicateExplanation": {
     "explainButton": "Erklären",
     "explaining": "Wird erklärt…"
+  },
+  "leadScore": {
+    "badgeLabel": "Bewertung: {{score}}"
   }
 }

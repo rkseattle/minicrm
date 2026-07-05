@@ -37,6 +37,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_task_suggestions',
   'ai_contact_enrichment',
   'ai_duplicate_explanation',
+  'ai_lead_scoring',
   'ai_lead_score_narrative',
   'ai_deal_health_check',
   'ai_stage_advancement',

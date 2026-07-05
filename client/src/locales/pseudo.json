@@ -2462,5 +2462,8 @@
   "duplicateExplanation": {
     "explainButton": "[Ëxpläïñ~~]",
     "explaining": "[Ëxpläïñïñg…~~~]"
+  },
+  "leadScore": {
+    "badgeLabel": "[Ŝĉörë: {{score}}~~~~~]"
   }
 }

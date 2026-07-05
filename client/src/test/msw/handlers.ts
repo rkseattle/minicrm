@@ -717,6 +717,25 @@ export const FEATURE_FLAGS_FIXTURE: FeatureFlagRow[] = [
     group_key: null,
   },
   {
+    flag_key: 'ai_lead_scoring',
+    label: 'Lead Scoring',
+    description: 'Rule-based lead quality scoring.',
+    category: 'AI',
+    enabled: true,
+    role_overrides: { admin: true, rep: true },
+    updated_by: null,
+    updated_by_name: null,
+    updated_at: '2026-01-01T00:00:00.000Z',
+    system_flag: true,
+    enable_at: null,
+    active_user_count: 0,
+    beta_user_count: 0,
+    rollout_percentage: null,
+    rollout_stages: null,
+    override_count: { force_enabled: 0, force_disabled: 0 },
+    group_key: null,
+  },
+  {
     flag_key: 'ai_lead_score_narrative',
     label: 'Lead Score Narrative',
     description: 'AI lead score narrative.',
@@ -1776,6 +1795,25 @@ export const handlers = [
   http.patch('/api/v1/leads/:id', async ({ params, request }) => {
     const body = (await request.json()) as Partial<LeadResponse>;
     return HttpResponse.json({ lead: { ...LEAD_1, ...body, id: params.id as string } });
+  }),
+
+  /** Leads: GET /api/leads/:id/score (MINCRM-441 prerequisite) */
+  http.get('/api/v1/leads/:id/score', () => {
+    return HttpResponse.json({
+      score: 55,
+      factors: [
+        { factor: 'source_quality', points: 15, max_points: 30, reason: 'Source: Web' },
+        { factor: 'status_progression', points: 15, max_points: 30, reason: 'Status: Contacted' },
+        { factor: 'recency', points: 20, max_points: 20, reason: 'Last updated 1 day ago' },
+        {
+          factor: 'post_conversion_engagement',
+          points: 0,
+          max_points: 20,
+          reason: 'Not yet converted — no activity history available',
+        },
+      ],
+      insufficient_data: false,
+    });
   }),
 
   /** Leads: DELETE /api/leads/:id */
