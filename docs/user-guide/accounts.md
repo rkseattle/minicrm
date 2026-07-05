@@ -74,6 +74,21 @@ If this account is a subsidiary of a larger company:
 
 Account type is optional — you can leave it blank if it does not apply.
 
+### AI duplicate detection explanation
+
+> **Feature flag:** `ai_duplicate_explanation`.
+
+When creating an account with a name that matches an existing record (case-insensitive),
+you'll see a warning with **Go to existing account** and **Create anyway** actions.
+Click **Explain** to get a 2-4 sentence, plain-language explanation of why the two
+records look like duplicates. The explanation is generated on demand and appears
+inline — no popup. See
+[Contacts — AI duplicate detection explanation](contacts.md#ai-duplicate-detection-explanation)
+for the equivalent feature on contact records.
+
+> The explanation is **AI-generated** — use it to help decide whether to merge or
+> dismiss, not as a final answer on its own.
+
 ### Parent/child hierarchy
 
 - An account can have one parent and any number of children.

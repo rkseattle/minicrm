@@ -912,8 +912,8 @@ when the tokens were originally consumed.
 
 > **Feature flags:** `ai_nli_page`, `ai_activity_summarizer`, `ai_email_draft`,
 > `ai_task_suggestions`, `ai_contact_enrichment`, `ai_duplicate_explanation`,
-> `ai_lead_score_narrative`, `ai_deal_health_check`, `ai_stage_advancement`,
-> `ai_win_loss_insights`, `ai_champion_blocker_detection`,
+> `ai_lead_scoring`, `ai_lead_score_narrative`, `ai_deal_health_check`,
+> `ai_stage_advancement`, `ai_win_loss_insights`, `ai_champion_blocker_detection`,
 > `ai_churn_expansion_detection`, `ai_objection_pattern_matching`,
 > `ai_proposal_draft_generation`
 
@@ -931,6 +931,7 @@ without disabling AI entirely.
 | `ai_task_suggestions`           | Suggest follow-up tasks after an activity                                                         |
 | `ai_contact_enrichment`         | Enrich contact profiles with public data                                                          |
 | `ai_duplicate_explanation`      | Explain why two records were flagged as duplicates                                                |
+| `ai_lead_scoring`               | Rule-based quality score badge on the lead detail page                                            |
 | `ai_lead_score_narrative`       | Narrative explanation of a lead's score                                                           |
 | `ai_deal_health_check`          | Health assessment and risk flags for a deal                                                       |
 | `ai_stage_advancement`          | Suggested next pipeline stage and supporting rationale                                            |

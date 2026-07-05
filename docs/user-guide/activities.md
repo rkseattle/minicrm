@@ -101,3 +101,41 @@ many more closed-won deals are needed before precedents can be shown.
 > The category and matched precedents are **AI-inferred** — use them as a quick
 > reference for how similar pushback has been handled before, not as a guarantee that
 > the same approach will work again.
+
+### AI call/note summarizer
+
+> **Feature flag:** `ai_activity_summarizer`.
+
+On the activity create/edit form and detail view, click **Summarize** for Call,
+Meeting, or Note activities to paste a call transcript, raw meeting notes, or a
+recording transcript. MiniCRM generates:
+
+- A 2-4 sentence summary.
+- A bulleted list of action items.
+- Up to three suggested follow-up tasks, each with a suggested due date.
+
+The result is shown as an editable preview — nothing is saved until you apply it.
+Applying populates the activity's notes field with the summary and appends the action
+items. Suggested tasks can be accepted individually (creating a Task activity linked to
+the same contact or account) or dismissed without creating anything.
+
+### AI follow-up task suggestions
+
+> **Feature flag:** `ai_task_suggestions`.
+
+After you save a Call, Meeting, or Email activity, MiniCRM may show a **Suggested
+follow-up tasks** panel with one to three AI-suggested next steps, each with a
+description, suggested due date, and the entity (contact or opportunity) it would link
+to. Click **Add Task** to create the task as shown, or **Dismiss** to discard a
+suggestion without creating anything. The panel only appears once, right after saving —
+it is not regenerated if you reload the page.
+
+### AI Draft Email
+
+> **Feature flag:** `ai_email_draft`.
+
+See [Contacts — AI Draft Email](contacts.md#ai-draft-email) — the same action is
+available from an activity's detail view for any activity linked to a contact.
+
+> These suggestions are **AI-generated** from the activity's own text — review before
+> saving or acting on them.

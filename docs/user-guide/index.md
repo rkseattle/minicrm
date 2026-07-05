@@ -15,18 +15,18 @@ is required. If you are an admin setting up the system, see the
 
 ## Pages in this guide
 
-| Page                            | What it covers                                                                                                                                     |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Contacts](contacts.md)         | Creating and managing contact records, tagging, file attachments, GDPR erasure, AI Champion/Blocker badge                                          |
-| [Accounts](accounts.md)         | Company records, account types, parent/child hierarchy, AI churn/expansion detection, notifications                                                |
-| [Deals](deals.md)               | Pipeline board, moving deals through stages, currency, probability, AI deal health, stage advancement, champion/blocker detection, proposal drafts |
-| [Activities](activities.md)     | Logging calls, emails, meetings, and tasks, AI objection pattern matching                                                                          |
-| [Leads](leads.md)               | Capturing prospects, qualifying them, and converting to contacts/deals                                                                             |
-| [Notes](notes.md)               | Adding contextual notes with visibility controls                                                                                                   |
-| [Dashboard](dashboard.md)       | Reading pipeline metrics, overdue tasks, and reports                                                                                               |
-| [Reports](reports.md)           | Win/Loss, Activity Volume, Pipeline Stage Trend, Custom Reports, AI Win/Loss Pattern Insights                                                      |
-| [Sequences](sequences.md)       | Multi-step follow-up cadences for contacts                                                                                                         |
-| [AI Assistant](ai-assistant.md) | Conversational AI for querying CRM data and drafting content (flag-gated)                                                                          |
+| Page                            | What it covers                                                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Contacts](contacts.md)         | Creating and managing contact records, tagging, file attachments, GDPR erasure, AI Champion/Blocker badge, AI contact enrichment, AI Draft Email, AI duplicate explanation |
+| [Accounts](accounts.md)         | Company records, account types, parent/child hierarchy, AI churn/expansion detection, AI duplicate explanation, notifications                                              |
+| [Deals](deals.md)               | Pipeline board, moving deals through stages, currency, probability, AI deal health, stage advancement, champion/blocker detection, proposal drafts                         |
+| [Activities](activities.md)     | Logging calls, emails, meetings, and tasks, AI objection pattern matching, AI call/note summarizer, AI follow-up task suggestions                                          |
+| [Leads](leads.md)               | Capturing prospects, qualifying them, and converting to contacts/deals, AI lead score and narrative explanation                                                            |
+| [Notes](notes.md)               | Adding contextual notes with visibility controls                                                                                                                           |
+| [Dashboard](dashboard.md)       | Reading pipeline metrics, overdue tasks, and reports                                                                                                                       |
+| [Reports](reports.md)           | Win/Loss, Activity Volume, Pipeline Stage Trend, Custom Reports, AI Win/Loss Pattern Insights                                                                              |
+| [Sequences](sequences.md)       | Multi-step follow-up cadences for contacts                                                                                                                                 |
+| [AI Assistant](ai-assistant.md) | Conversational AI for querying CRM data and drafting content (flag-gated)                                                                                                  |
 
 ---
 

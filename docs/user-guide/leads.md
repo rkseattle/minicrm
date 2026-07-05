@@ -90,3 +90,21 @@ Once the lead is qualified:
   from the contact or account detail page.
 - After conversion the lead's status is locked as _Converted_ and cannot be edited.
 - The source lead ID is stored on the new contact and deal for traceability.
+
+### AI lead score and narrative explanation
+
+> **Feature flags:** `ai_lead_scoring` (the score badge) and
+> `ai_lead_score_narrative` (the explanation).
+
+A quality score (0-100) appears next to the status badge on the lead detail page,
+computed from lead source, status progression, how recently the lead was updated, and —
+once converted — the linked contact's activity history. The score is recalculated every
+time you view the lead; nothing is stored.
+
+Click **Why this score?** below the badge for a 3-5 sentence, plain-English narrative
+explaining the factors behind the score, generated on demand. If there isn't enough
+activity yet to explain the score meaningfully, MiniCRM says "Not enough activity data
+to explain this score yet" rather than guessing.
+
+> The score and its explanation are **rule-based and AI-generated** respectively — use
+> them to help prioritize outreach, not as a substitute for your own judgment.
