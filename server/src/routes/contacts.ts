@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/requireRole.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { requireAiTokenBudget } from '../middleware/requireAiTokenBudget.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   createContactHandler,
@@ -25,6 +26,7 @@ import {
   setDefaultContactAddressHandler,
   sendContactEmailHandler,
 } from '../controllers/contactController.js';
+import { generateEmailDraftHandler } from '../controllers/emailDraftController.js';
 import {
   listContactTagsHandler,
   attachContactTagHandler,
@@ -971,6 +973,17 @@ router.patch(
   authenticate,
   requireFeatureEnabled('ai_champion_blocker_detection'),
   asyncHandler(overrideContactChampionBlockerHandler),
+);
+
+// ── AI email draft generation (MINCRM-437) ──────────────────────────────────────
+
+/** Generates an on-demand AI first-draft follow-up email for the contact. */
+router.post(
+  '/:id/email-draft',
+  authenticate,
+  requireFeatureEnabled('ai_email_draft'),
+  requireAiTokenBudget,
+  asyncHandler(generateEmailDraftHandler),
 );
 
 export default router;

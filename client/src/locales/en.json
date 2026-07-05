@@ -2536,5 +2536,20 @@
       "limitReached": "You have reached the maximum of 50 context entries.",
       "keyDuplicate": "A context entry with this label already exists."
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "Draft Email",
+    "generating": "Generating…",
+    "panelTitle": "Email Draft",
+    "toneLabel": "Tone",
+    "toneProfessional": "Professional",
+    "toneFriendly": "Friendly",
+    "toneConcise": "Concise",
+    "subjectLabel": "Subject",
+    "bodyLabel": "Body",
+    "copyToClipboard": "Copy to clipboard",
+    "copied": "Copied!",
+    "clipboardError": "Could not copy to clipboard.",
+    "dismiss": "Dismiss"
   }
 }

@@ -2536,5 +2536,20 @@
       "limitReached": "Sie haben das Maximum von 50 Kontexteinträgen erreicht.",
       "keyDuplicate": "Ein Kontexteintrag mit dieser Bezeichnung existiert bereits."
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "E-Mail entwerfen",
+    "generating": "Wird generiert…",
+    "panelTitle": "E-Mail-Entwurf",
+    "toneLabel": "Tonfall",
+    "toneProfessional": "Professionell",
+    "toneFriendly": "Freundlich",
+    "toneConcise": "Prägnant",
+    "subjectLabel": "Betreff",
+    "bodyLabel": "Text",
+    "copyToClipboard": "In die Zwischenablage kopieren",
+    "copied": "Kopiert!",
+    "clipboardError": "Konnte nicht in die Zwischenablage kopiert werden.",
+    "dismiss": "Verwerfen"
   }
 }

@@ -74,6 +74,9 @@ const MINICRM_EN: LocaleMap = {
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Summarize',
 
+  // AI email draft generation (MINCRM-437)
+  'emailDraft.draftEmailButton': 'Draft Email',
+
   // Accounts
   'accounts.save': 'Save',
   'accounts.saveChanges': 'Save changes',
@@ -171,6 +174,9 @@ const MINICRM_ES: LocaleMap = {
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Resumir',
+
+  // AI email draft generation (MINCRM-437)
+  'emailDraft.draftEmailButton': 'Redactar correo',
 
   // Accounts
   'accounts.save': 'Guardar',
@@ -270,6 +276,9 @@ const MINICRM_FR: LocaleMap = {
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Résumer',
 
+  // AI email draft generation (MINCRM-437)
+  'emailDraft.draftEmailButton': 'Rédiger un e-mail',
+
   // Accounts
   'accounts.save': 'Enregistrer',
   'accounts.saveChanges': 'Enregistrer les modifications',
@@ -368,6 +377,9 @@ const MINICRM_DE: LocaleMap = {
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Zusammenfassen',
 
+  // AI email draft generation (MINCRM-437)
+  'emailDraft.draftEmailButton': 'E-Mail entwerfen',
+
   // Accounts
   'accounts.save': 'Speichern',
   'accounts.saveChanges': 'Änderungen speichern',
@@ -465,6 +477,9 @@ const MINICRM_ZH_HANS: LocaleMap = {
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': '生成摘要',
+
+  // AI email draft generation (MINCRM-437)
+  'emailDraft.draftEmailButton': '起草邮件',
 
   // Accounts
   'accounts.save': '保存',

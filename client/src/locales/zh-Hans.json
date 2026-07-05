@@ -2536,5 +2536,20 @@
       "limitReached": "您已达到 50 条上下文条目的上限。",
       "keyDuplicate": "已存在具有此标签的上下文条目。"
     }
+  },
+  "emailDraft": {
+    "draftEmailButton": "起草邮件",
+    "generating": "生成中……",
+    "panelTitle": "邮件草稿",
+    "toneLabel": "语气",
+    "toneProfessional": "专业",
+    "toneFriendly": "友好",
+    "toneConcise": "简洁",
+    "subjectLabel": "主题",
+    "bodyLabel": "正文",
+    "copyToClipboard": "复制到剪贴板",
+    "copied": "已复制！",
+    "clipboardError": "无法复制到剪贴板。",
+    "dismiss": "关闭"
   }
 }

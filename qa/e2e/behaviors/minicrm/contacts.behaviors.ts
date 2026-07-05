@@ -15,6 +15,19 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
+import { EmailDraftPanelPage } from '@pages/minicrm/EmailDraftPanelPage.js';
+
+// ---------------------------------------------------------------------------
+// Browser-side evaluate functions
+// These run inside page.evaluate() — must not reference Node.js globals.
+// Written as plain function expressions to avoid TypeScript DOM type errors
+// in the Node-targeted qa tsconfig (lib: ["ES2022"]).
+// ---------------------------------------------------------------------------
+
+/** Reads the current clipboard text via the browser's Clipboard API. (MINCRM-437) */
+const READ_CLIPBOARD_TEXT = new Function(`
+  return navigator.clipboard.readText();
+`) as () => Promise<string>;
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -1542,4 +1555,98 @@ export async function isChampionBlockerBadgeVisible(
 ): Promise<boolean> {
   const detail = new ContactDetailPage(context);
   return detail.isChampionBlockerBadgeVisible(contactId);
+}
+
+// ---------------------------------------------------------------------------
+// AI email draft generation (MINCRM-437)
+// ---------------------------------------------------------------------------
+
+/** Result returned by draftEmailFromContactDetail. */
+export interface DraftEmailResult {
+  /** HTTP status code returned by POST /contacts/:id/email-draft. */
+  status: number;
+}
+
+/**
+ * Clicks the "Draft Email" button on the contact detail page and waits for
+ * the email-draft POST to resolve. Registers the response wait before
+ * clicking so a fast server response is never missed. Does not assert —
+ * callers branch on `status` per the network-response-first pattern
+ * (MINCRM-418).
+ */
+export async function draftEmailFromContactDetail(
+  context: ContactsBehaviorContext,
+): Promise<DraftEmailResult> {
+  const detail = new ContactDetailPage(context);
+
+  const responseReceived = context.page.waitForResponse(
+    (res) => res.request().method() === 'POST' && res.url().includes('/email-draft'),
+    { timeout: 30_000 },
+  );
+  await detail.clickDraftEmail();
+  const response = await responseReceived;
+
+  return { status: response.status() };
+}
+
+/** Returns true when the "Draft Email" button is currently visible on the contact detail page. */
+export async function isDraftEmailButtonVisible(
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const detail = new ContactDetailPage(context);
+  return detail.isDraftEmailButtonVisible();
+}
+
+/** Returns the current values of the email draft panel's subject and body fields. */
+export async function getEmailDraftPanelValues(
+  context: ContactsBehaviorContext,
+): Promise<{ subject: string; body: string }> {
+  const panel = new EmailDraftPanelPage(context);
+  const [subjectLocator, bodyLocator] = await Promise.all([
+    panel.subjectInputLocator(),
+    panel.bodyInputLocator(),
+  ]);
+  const [subject, body] = await Promise.all([
+    subjectLocator.inputValue(),
+    bodyLocator.inputValue(),
+  ]);
+  return { subject, body };
+}
+
+/** Selects a tone in the email draft panel, triggering a regeneration. */
+export async function selectEmailDraftTone(
+  tone: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const panel = new EmailDraftPanelPage(context);
+  await panel.selectTone(tone);
+}
+
+/** Clicks the copy-to-clipboard button in the email draft panel. */
+export async function copyEmailDraftToClipboard(context: ContactsBehaviorContext): Promise<void> {
+  const panel = new EmailDraftPanelPage(context);
+  await panel.clickCopyToClipboard();
+}
+
+/** Reads the current clipboard text via the browser's Clipboard API. */
+export async function readClipboardText(context: ContactsBehaviorContext): Promise<string> {
+  return context.page.evaluate(READ_CLIPBOARD_TEXT);
+}
+
+/** Clicks the dismiss button in the email draft panel. */
+export async function dismissEmailDraftPanel(context: ContactsBehaviorContext): Promise<void> {
+  const panel = new EmailDraftPanelPage(context);
+  await panel.clickDismiss();
+}
+
+/** Returns true when the email draft panel is currently visible. */
+export async function isEmailDraftPanelVisible(context: ContactsBehaviorContext): Promise<boolean> {
+  const present = await context.page
+    .waitForPresent('[data-testid="email-draft-panel"]', 500)
+    .then(() => true)
+    .catch(() => false);
+  if (!present) return false;
+  const panel = new EmailDraftPanelPage(context);
+  const locator = await panel.panelLocator();
+  return locator.isVisible().catch(() => false);
 }

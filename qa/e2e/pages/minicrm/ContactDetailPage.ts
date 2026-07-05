@@ -517,4 +517,39 @@ export class ContactDetailPage {
     const locator = await this.championBlockerBadgeLocator(contactId);
     return locator.isVisible().catch(() => false);
   }
+
+  /** Returns a resolved locator for the "Draft Email" button. (MINCRM-437) */
+  async draftEmailButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'draft-email-button' },
+          { type: 'role', value: 'button', options: { name: t('emailDraft.draftEmailButton') } },
+        ],
+        { intent: 'button that generates an AI email draft for this contact' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Draft Email" button. (MINCRM-437) */
+  async clickDraftEmail(): Promise<void> {
+    const locator = await this.draftEmailButtonLocator();
+    await locator.click();
+  }
+
+  /**
+   * Returns true when the "Draft Email" button is currently visible. Guards
+   * presence first — locate().resolve() throws StrategyExhaustedError
+   * immediately on an absent element rather than waiting for it, which is
+   * unsuitable for "may legitimately be absent" checks. (MINCRM-437)
+   */
+  async isDraftEmailButtonVisible(): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent('[data-testid="draft-email-button"]', 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.draftEmailButtonLocator();
+    return locator.isVisible().catch(() => false);
+  }
 }
