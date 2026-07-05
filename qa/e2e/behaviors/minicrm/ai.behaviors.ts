@@ -166,11 +166,8 @@ export async function waitForAiSidebarText(
   text: string,
   timeout = 8_000,
 ): Promise<void> {
-  await context.page.waitForFunction(
-    `document.querySelector('[data-testid="ai-session-sidebar"]')?.textContent?.includes(${JSON.stringify(text)}) ?? false`,
-    undefined,
-    { timeout },
-  );
+  const aiPage = new AiPage(context);
+  await aiPage.waitForSessionSidebarText(text, timeout);
 }
 
 // ---------------------------------------------------------------------------
@@ -190,11 +187,8 @@ export async function waitForAiThreadText(
   text: string,
   timeout = 8_000,
 ): Promise<void> {
-  await context.page.waitForFunction(
-    `document.querySelector('[data-testid="ai-message-thread"]')?.textContent?.includes(${JSON.stringify(text)}) ?? false`,
-    undefined,
-    { timeout },
-  );
+  const aiPage = new AiPage(context);
+  await aiPage.waitForMessageThreadText(text, timeout);
 }
 
 // ---------------------------------------------------------------------------
@@ -243,9 +237,7 @@ export async function sendAiMessageViaUI(
   const aiPage = new AiPage(context);
 
   // Count existing assistant bubbles before sending so we can detect a new one.
-  const assistantCountBefore = (await context.page.evaluate(
-    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length`,
-  )) as number;
+  const assistantCountBefore = await aiPage.assistantMessageCount();
 
   // Register before clicking Send so a fast server response isn't missed.
   // Filter to POST only — GET /messages (React Query refetch) has the same URL
@@ -274,11 +266,7 @@ export async function sendAiMessageViaUI(
   // re-render can lag — especially on loaded CI runners. Waiting here prevents
   // callers from needing their own separate waitForAiThreadText(stubText) after
   // each send, which has an 8s default that is too tight under CI load.
-  await context.page.waitForFunction(
-    `document.querySelectorAll('[data-testid="ai-message-assistant"]').length > ${assistantCountBefore}`,
-    undefined,
-    { timeout: 30_000 },
-  );
+  await aiPage.waitForAssistantMessageCountAbove(assistantCountBefore, 30_000);
 
   return { userMessageVisible: true, assistantMessageVisible: true };
 }
@@ -293,12 +281,8 @@ export async function sendAiMessageViaUI(
  * @param context - Playwright fixture context.
  */
 export async function getAssistantMessageText(context: AiBehaviorContext): Promise<string | null> {
-  // Use string expression to avoid strict-mode violations when multiple assistant
-  // bubbles exist — returns text content of the first matching element.
-  const text = (await context.page.evaluate(
-    `document.querySelector('[data-testid="ai-message-assistant"]')?.textContent ?? null`,
-  )) as string | null;
-  return text;
+  const aiPage = new AiPage(context);
+  return aiPage.assistantMessageText();
 }
 
 // ---------------------------------------------------------------------------
