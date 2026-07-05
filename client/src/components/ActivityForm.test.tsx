@@ -87,6 +87,7 @@ describe('ActivityForm', () => {
       due_date: '',
       direction: '',
       outcome: '',
+      acceptedSuggestedTasks: [],
     });
   });
 
@@ -270,16 +271,15 @@ describe('ActivityForm', () => {
         ),
       );
 
-      const handleAcceptSuggestedTasks = vi.fn();
+      const handleSubmit = vi.fn();
       const user = userEvent.setup();
 
       renderWithProviders(
         <ActivityForm
-          onSubmit={noop}
+          onSubmit={handleSubmit}
           onCancel={noop}
           isSubmitting={false}
           submitLabel="Save"
-          onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
         />,
       );
 
@@ -311,9 +311,19 @@ describe('ActivityForm', () => {
       expect((screen.getByTestId('activity-notes') as HTMLTextAreaElement).value).toContain(
         'Send revised proposal.',
       );
-      expect(handleAcceptSuggestedTasks).toHaveBeenCalledWith([
-        { description: 'Follow up on proposal', suggested_due_date: '2026-07-11' },
-      ]);
+
+      // Accepted tasks are not created until the form is actually submitted (MINCRM-436).
+      expect(handleSubmit).not.toHaveBeenCalled();
+      await user.type(screen.getByTestId('activity-subject'), 'Renewal call');
+      await user.click(screen.getByTestId('activity-form-submit'));
+
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          acceptedSuggestedTasks: [
+            { description: 'Follow up on proposal', suggested_due_date: '2026-07-11' },
+          ],
+        }),
+      );
     });
 
     it('does not report a dismissed task when applying the summary', async () => {
@@ -331,16 +341,15 @@ describe('ActivityForm', () => {
         ),
       );
 
-      const handleAcceptSuggestedTasks = vi.fn();
+      const handleSubmit = vi.fn();
       const user = userEvent.setup();
 
       renderWithProviders(
         <ActivityForm
-          onSubmit={noop}
+          onSubmit={handleSubmit}
           onCancel={noop}
           isSubmitting={false}
           submitLabel="Save"
-          onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
         />,
       );
 
@@ -354,10 +363,14 @@ describe('ActivityForm', () => {
 
       await user.click(screen.getByTestId('activity-summary-task-dismiss-0'));
       await user.click(screen.getByTestId('activity-summary-apply'));
+      await user.type(screen.getByTestId('activity-subject'), 'Renewal call');
+      await user.click(screen.getByTestId('activity-form-submit'));
 
-      expect(handleAcceptSuggestedTasks).toHaveBeenCalledWith([
-        { description: 'Task B', suggested_due_date: '2026-07-12' },
-      ]);
+      expect(handleSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          acceptedSuggestedTasks: [{ description: 'Task B', suggested_due_date: '2026-07-12' }],
+        }),
+      );
     });
 
     it('shows an error when summarization fails', async () => {

@@ -187,7 +187,11 @@ export async function generateTaskSuggestions(
   const anthropicClient = new Anthropic(clientOptions);
 
   // PII-filter the gathered facts before they leave the server. (MINCRM-445)
-  const { sanitised, strippedFields } = await applyPiiFilter(context, 'activity');
+  // 'activity' is not a valid ai_field_exclusions entity_type (contact/account/deal
+  // only) — map to 'deal' like objectionMatchingService does for the same reason:
+  // this payload is activity-adjacent context, not a deal record itself, but 'deal'
+  // is the closest valid hint so admin-configured exclusions still apply.
+  const { sanitised, strippedFields } = await applyPiiFilter(context, 'deal');
   if (strippedFields.length > 0) {
     logger.info(
       { activityId, strippedFields },
@@ -238,6 +242,8 @@ export async function generateTaskSuggestions(
     });
   }
 
+  // Safe: forced tool_choice guarantees Claude returns exactly this shape (schema enforced
+  // server-side via the tool's input_schema); ToolUseBlock.input is typed unknown by the SDK.
   const input = toolUseBlock.input as {
     suggestions: Array<{
       description: string;

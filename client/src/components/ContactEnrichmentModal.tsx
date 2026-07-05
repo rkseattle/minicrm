@@ -133,7 +133,7 @@ export default function ContactEnrichmentModal({
           )}
 
           <div className="flex items-center gap-3">
-            {!enrichMutation.data && (
+            {(!enrichMutation.data || enrichMutation.data.insufficient_data) && (
               <Button
                 type="button"
                 variant="primary"

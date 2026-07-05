@@ -25,6 +25,12 @@ export interface ActivityFormValues {
   due_date: string;
   direction: ActivityDirection | '';
   outcome: string;
+  /**
+   * AI-suggested follow-up tasks the user accepted while summarizing (MINCRM-436).
+   * Deferred to the parent so tasks are only created after this activity itself
+   * saves successfully — never fired eagerly from inside the form.
+   */
+  acceptedSuggestedTasks: SuggestedFollowUpTask[];
 }
 
 /** Activity types the AI summarizer supports (MINCRM-436) */
@@ -43,11 +49,6 @@ export interface ActivityFormProps {
   submitLabel: string;
   /** Server-side error message to display below the form */
   error?: string;
-  /**
-   * Called when the user accepts follow-up tasks suggested by the AI summarizer.
-   * Only relevant when ai_activity_summarizer is enabled. (MINCRM-436)
-   */
-  onAcceptSuggestedTasks?: (tasks: SuggestedFollowUpTask[]) => void;
 }
 
 /** Map of activity type values to their i18n key suffixes. Exported for use in ActivityTimeline. */
@@ -79,7 +80,6 @@ export default function ActivityForm({
   isSubmitting,
   submitLabel,
   error,
-  onAcceptSuggestedTasks,
 }: ActivityFormProps) {
   const { t } = useTranslation();
   const { enabled: summarizerEnabled } = useFeatureFlag('ai_activity_summarizer');
@@ -95,6 +95,7 @@ export default function ActivityForm({
   );
   const [outcome, setOutcome] = useState(initialValues?.outcome ?? '');
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [acceptedSuggestedTasks, setAcceptedSuggestedTasks] = useState<SuggestedFollowUpTask[]>([]);
 
   // Derive the current type without synchronizing state in an effect
   const type: ActivityType = manualType ?? defaultTypeForDueDate(dueDate);
@@ -113,18 +114,27 @@ export default function ActivityForm({
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
-    onSubmit({ type, subject, notes, due_date: dueDate, direction, outcome });
+    onSubmit({
+      type,
+      subject,
+      notes,
+      due_date: dueDate,
+      direction,
+      outcome,
+      acceptedSuggestedTasks,
+    });
   };
 
-  /** Applies an AI-generated summary: notes are populated with the summary, action items appended. */
+  /** Applies an AI-generated summary: notes are prepended with the summary, action items appended. */
   const handleApplySummary = (result: ActivitySummaryApplyResult): void => {
     const actionItemsText =
       result.actionItems.length > 0
         ? `\n\n${result.actionItems.map((item) => `- ${item}`).join('\n')}`
         : '';
-    setNotes(`${result.summary}${actionItemsText}`);
+    const summaryText = `${result.summary}${actionItemsText}`;
+    setNotes((prevNotes) => (prevNotes.trim() ? `${summaryText}\n\n${prevNotes}` : summaryText));
     if (result.acceptedTasks.length > 0) {
-      onAcceptSuggestedTasks?.(result.acceptedTasks);
+      setAcceptedSuggestedTasks((prev) => [...prev, ...result.acceptedTasks]);
     }
     setIsSummarizing(false);
   };

@@ -34,7 +34,6 @@ import type {
 } from '@shared/schemas/activitySchema.js';
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
-import type { SuggestedFollowUpTask } from '@shared/schemas/activitySummarySchema.js';
 import type { SuggestedTask } from '@shared/schemas/taskSuggestionSchema.js';
 
 /** Activity types the task-suggestion feature supports (MINCRM-438) */
@@ -117,10 +116,27 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         account_id: accountId,
         deal_id: dealId,
       }),
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey });
       setIsCreating(false);
       setCreateError(null);
+
+      // Create AI-suggested follow-up tasks the user accepted while summarizing, now
+      // that the parent activity itself has actually saved (MINCRM-436).
+      variables.acceptedSuggestedTasks.forEach((task) => {
+        createActivity({
+          type: 'Task',
+          subject: task.description,
+          due_date: task.suggested_due_date,
+          contact_id: contactId,
+          account_id: accountId,
+          deal_id: dealId,
+        })
+          .then(() => queryClient.invalidateQueries({ queryKey }))
+          .catch(() => {
+            // Best-effort — the parent activity itself already saved successfully.
+          });
+      });
 
       // Fetch AI follow-up task suggestions once, immediately after save (MINCRM-438).
       // Not regenerated on subsequent page loads — this call only happens right here.
@@ -159,11 +175,28 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
         outcome: values.outcome || null,
         version,
       }),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey });
       setEditingId(null);
       setEditError(null);
       setEditConflict(null);
+
+      // Create AI-suggested follow-up tasks the user accepted while summarizing, now
+      // that the parent activity's edits have actually saved (MINCRM-436).
+      variables.values.acceptedSuggestedTasks.forEach((task) => {
+        createActivity({
+          type: 'Task',
+          subject: task.description,
+          due_date: task.suggested_due_date,
+          contact_id: contactId,
+          account_id: accountId,
+          deal_id: dealId,
+        })
+          .then(() => queryClient.invalidateQueries({ queryKey }))
+          .catch(() => {
+            // Best-effort — the parent activity itself already saved successfully.
+          });
+      });
     },
     onError: (
       error: {
@@ -229,16 +262,11 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const hasMore = data !== undefined && activities.length < data.total;
 
   /**
-   * Creates a Task activity for each AI-suggested follow-up task the user accepted,
-   * linked to the same parent record as this timeline. (MINCRM-436)
-   * Fire-and-forget from the UI's perspective — failures are silently skipped since
-   * the primary activity save already succeeded; the timeline refetch will simply
-   * not show a task that failed to create.
-   */
-  /**
    * Creates a linked Task activity for one accepted AI-suggested follow-up task (MINCRM-438).
    * Links to the opportunity (deal) when the suggestion says 'opportunity' and this timeline
    * has a dealId; otherwise links to whichever single parent record this timeline represents.
+   * Fired only from the post-save TaskSuggestionPanel, so the parent activity is always
+   * already persisted by the time this runs.
    */
   const handleAcceptTaskSuggestion = (task: SuggestedTask): void => {
     const linkToOpportunity = task.linked_entity === 'opportunity' && Boolean(dealId);
@@ -254,23 +282,6 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
       .catch(() => {
         // Best-effort — the activity itself already saved successfully.
       });
-  };
-
-  const handleAcceptSuggestedTasks = (tasks: SuggestedFollowUpTask[]): void => {
-    tasks.forEach((task) => {
-      createActivity({
-        type: 'Task',
-        subject: task.description,
-        due_date: task.suggested_due_date,
-        contact_id: contactId,
-        account_id: accountId,
-        deal_id: dealId,
-      })
-        .then(() => queryClient.invalidateQueries({ queryKey }))
-        .catch(() => {
-          // Best-effort — the summarized activity itself already saved successfully.
-        });
-    });
   };
 
   /**
@@ -327,7 +338,6 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
             isSubmitting={createMutation.isPending}
             submitLabel={t('activities.save')}
             error={createError ?? undefined}
-            onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
           />
         </div>
       )}
@@ -384,7 +394,6 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                         isSubmitting={updateMutation.isPending}
                         submitLabel={t('activities.saveChanges')}
                         error={editError ?? undefined}
-                        onAcceptSuggestedTasks={handleAcceptSuggestedTasks}
                       />
                       <FieldMergeModal
                         isOpen={editConflict?.activityId === activity.id}

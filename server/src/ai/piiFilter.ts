@@ -39,6 +39,7 @@
  */
 
 import pool from '../db.js';
+import type { EntityType } from '@minicrm/shared/schemas/customFieldSchema.js';
 
 // ── Always-excluded field names ────────────────────────────────────────────────
 
@@ -139,17 +140,21 @@ export interface PiiFilterResult {
  * values with pii_excluded=true set to null.
  *
  * @param result - The raw tool call result to sanitise.
- * @param entityTypeHint - Optional entity type ('contact' | 'account' | 'deal')
- *   derived from the calling tool name. When provided, admin-configured
- *   exclusions are matched entity-qualified, avoiding false-positive strips of
- *   standard fields that share a name across entities (e.g. `name` on accounts
- *   and deals). Falls back to unqualified matching when omitted.
+ * @param entityTypeHint - Optional entity type, restricted to the entity types
+ *   ai_field_exclusions actually supports (contact/account/deal — see
+ *   shared/schemas/customFieldSchema.ts ENTITY_TYPES). When provided, admin-
+ *   configured exclusions are matched entity-qualified, avoiding false-positive
+ *   strips of standard fields that share a name across entities (e.g. `name` on
+ *   accounts and deals). Falls back to unqualified matching when omitted. For
+ *   entities with no matching type (activities, leads), pick the closest valid
+ *   entity type rather than passing an invalid hint — an invalid hint silently
+ *   matches zero admin exclusion rows instead of failing loudly.
  *
  * Non-object primitives are returned as-is (no stripping possible).
  */
 export async function applyPiiFilter(
   result: unknown,
-  entityTypeHint?: string,
+  entityTypeHint?: EntityType,
 ): Promise<PiiFilterResult> {
   const adminExcludedRows = await loadAdminExcludedFields();
 

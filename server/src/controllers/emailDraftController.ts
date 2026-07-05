@@ -4,6 +4,7 @@
  */
 
 import type { Request, Response } from 'express';
+import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { generateEmailDraftSchema } from '@minicrm/shared/schemas/emailDraftSchema.js';
 import { findContactById } from '../services/contactService.js';
 import { generateEmailDraft } from '../services/emailDraftService.js';
@@ -53,19 +54,7 @@ export async function generateEmailDraftHandler(req: Request, res: Response): Pr
     }
     res.status(200).json(result);
   } catch (err: unknown) {
-    const tagged = err as { statusCode?: number; message?: string };
-    if (tagged.statusCode === 502) {
-      res.status(502).json({
-        error: { code: 'AI_PROVIDER_ERROR', message: tagged.message ?? 'AI provider error' },
-      });
-      return;
-    }
-    if (tagged.statusCode === 503) {
-      res.status(503).json({
-        error: { code: 'AI_NOT_CONFIGURED', message: tagged.message ?? 'AI is not configured' },
-      });
-      return;
-    }
+    if (handleAiServiceError(err, res)) return;
     throw err;
   }
 }
