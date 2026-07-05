@@ -37,6 +37,7 @@ import {
   dismissSuggestedTask,
   applyActivitySummary,
   saveActivityForm,
+  fillActivitySubject,
   expectActivityNotesToContain,
   isSummarizeButtonVisible,
   openActivityFormWithType,
@@ -95,6 +96,7 @@ test(
     await summarizeActivityNotes('Call transcript: discussed renewal pricing.', { page });
     await dismissSuggestedTask(0, { page });
     await applyActivitySummary({ page });
+    await fillActivitySubject('Renewal call', { page });
     await saveActivityForm({ page });
 
     const activities = await getActivities(restClient, { contact: contact.id });
@@ -120,6 +122,7 @@ test(
 
     await summarizeActivityNotes('Call transcript: discussed renewal pricing.', { page });
     await applyActivitySummary({ page });
+    await fillActivitySubject('Renewal call', { page });
     await saveActivityForm({ page });
 
     await expect(async () => {

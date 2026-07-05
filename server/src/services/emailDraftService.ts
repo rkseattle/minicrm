@@ -24,11 +24,20 @@ import type {
 const IS_E2E = process.env.E2E === 'true';
 const AI_USAGE_FEATURE_LABEL = 'email_draft';
 
+/** Tone-specific body text, so tests can assert regeneration actually happened. */
+const E2E_STUB_BODY_BY_TONE: Record<EmailDraftTone, string> = {
+  Professional:
+    '[E2E stub] Hello, I wanted to follow up on our last conversation. Please let me know if you have any questions.',
+  Friendly:
+    "[E2E stub] Hi there! Just checking in after our last chat — let me know if you've got questions!",
+  Concise: '[E2E stub] Following up. Questions? Let me know.',
+};
+
 /** Deterministic response returned in E2E environments instead of calling Anthropic. */
 function e2eStubResponse(tone: EmailDraftTone): EmailDraftResponse {
   return {
-    subject: '[E2E stub] Following up',
-    body: '[E2E stub] Hi there, following up on our last conversation. Let me know if you have any questions.',
+    subject: `[E2E stub] Following up (${tone})`,
+    body: E2E_STUB_BODY_BY_TONE[tone],
     tone,
     generated_at: new Date(0).toISOString(),
   };
