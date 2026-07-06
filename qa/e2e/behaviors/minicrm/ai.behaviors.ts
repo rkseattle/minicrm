@@ -240,8 +240,9 @@ export async function sendAiMessageViaUI(
   const assistantCountBefore = await aiPage.assistantMessageCount();
 
   // Register before clicking Send so a fast server response isn't missed.
-  // Filter to POST only — GET /messages (React Query refetch) has the same URL
-  // and would otherwise resolve this promise early before the reply is committed.
+  // The client commits the assistant reply straight from this POST response
+  // into the query cache (MINCRM-602) — there is no follow-up GET refetch to
+  // disambiguate against, so a plain POST-to-this-URL filter is sufficient.
   const replyReceived = context.page.waitForResponse(
     (res) =>
       res.request().method() === 'POST' &&
@@ -254,18 +255,17 @@ export async function sendAiMessageViaUI(
   await replyReceived;
 
   // Wait for the user message text to appear in the thread. Text-based detection
-  // is robust to the optimistic→real message transition: both the optimistic
-  // entry and the persisted entry contain the same content string, so this never
-  // transiently returns false between the two render cycles. Count-based checks
-  // can miss the brief window where optimistic messages are cleared before the
-  // refetch commits persisted messages to the DOM.
+  // is robust to the optimistic→settled message transition: both the optimistic
+  // entry and the cache-committed entry contain the same content string, so this
+  // never transiently returns false between the two render cycles.
   await waitForAiThreadText(context, content, 30_000);
 
-  // Wait for a new assistant reply bubble to appear. The API returning 200
-  // means the server committed the reply, but React Query's cache update and
-  // re-render can lag — especially on loaded CI runners. Waiting here prevents
-  // callers from needing their own separate waitForAiThreadText(stubText) after
-  // each send, which has an 8s default that is too tight under CI load.
+  // Wait for a new assistant reply bubble to appear. The API returning 200 means
+  // the server committed the reply and the client has synchronously written it
+  // into the query cache (MINCRM-602), but the React re-render itself still takes
+  // a tick — especially on loaded CI runners. Waiting here prevents callers from
+  // needing their own separate waitForAiThreadText(stubText) after each send,
+  // which has an 8s default that is too tight under CI load.
   await aiPage.waitForAssistantMessageCountAbove(assistantCountBefore, 30_000);
 
   return { userMessageVisible: true, assistantMessageVisible: true };
