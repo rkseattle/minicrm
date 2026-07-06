@@ -113,25 +113,49 @@ export class LeadsPage {
   }
 
   /**
-   * Returns true when a lead row with the given ID is visible in the list.
+   * Waits for a lead row with the given ID to become visible in the list and
+   * returns true once it does; returns false if it never becomes visible
+   * within the timeout. Polls rather than taking an instantaneous snapshot,
+   * since this is used right after toggling a filter that must re-render the
+   * list.
    *
    * @param leadId - Lead UUID.
+   * @param timeout - Maximum wait in milliseconds (default 10 s).
    */
-  async leadRowIsVisible(leadId: string): Promise<boolean> {
+  async leadRowIsVisible(leadId: string, timeout = 10_000): Promise<boolean> {
     try {
-      const resolved = await this.page
-        .locate(
-          [
-            { type: 'testId', value: `lead-row-${leadId}` },
-            { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
-          ],
-          { intent: 'lead row in leads list for specific lead id' },
-        )
-        .resolve();
-      return resolved.isVisible();
+      await this.page.waitFor(
+        [
+          { type: 'testId', value: `lead-row-${leadId}` },
+          { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
+        ],
+        'visible',
+        { intent: 'lead row in leads list for specific lead id' },
+        timeout,
+      );
+      return true;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Returns true when a lead row with the given ID is absent or not visible
+   * in the list. Never throws. Polls until hidden/absent rather than taking
+   * an instantaneous snapshot — see HealMethods.isNotVisible for the
+   * two-strategy false-positive guard this relies on.
+   *
+   * @param leadId - Lead UUID.
+   * @param timeout - Maximum wait in milliseconds (default 10 s).
+   */
+  async leadRowIsNotVisible(leadId: string, timeout = 10_000): Promise<boolean> {
+    return this.page.isNotVisible(
+      [
+        { type: 'testId', value: `lead-row-${leadId}` },
+        { type: 'css', value: `[data-testid="lead-row-${leadId}"]` },
+      ],
+      timeout,
+    );
   }
 
   /**
@@ -274,18 +298,18 @@ export class LeadsPage {
    *
    * @param leadId - Lead UUID.
    */
-  async convertedBadgeIsVisible(leadId: string): Promise<boolean> {
+  async convertedBadgeIsVisible(leadId: string, timeout = 10_000): Promise<boolean> {
     try {
-      const resolved = await this.page
-        .locate(
-          [
-            { type: 'testId', value: `badge-converted-${leadId}` },
-            { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
-          ],
-          { intent: 'converted badge on lead row' },
-        )
-        .resolve();
-      return resolved.isVisible();
+      await this.page.waitFor(
+        [
+          { type: 'testId', value: `badge-converted-${leadId}` },
+          { type: 'css', value: `[data-testid="badge-converted-${leadId}"]` },
+        ],
+        'visible',
+        { intent: 'converted badge on lead row' },
+        timeout,
+      );
+      return true;
     } catch {
       return false;
     }

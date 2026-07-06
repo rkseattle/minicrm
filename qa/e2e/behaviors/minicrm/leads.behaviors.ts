@@ -452,10 +452,10 @@ export async function leadRowIsHidden(
   const leadsPage = new LeadsPage(context);
   await leadsPage.navigate();
 
-  const visible = await leadsPage.leadRowIsVisible(leadId);
+  const hidden = await leadsPage.leadRowIsNotVisible(leadId);
   const finalUrl = leadsPage.url();
 
-  return { hidden: !visible, finalUrl };
+  return { hidden, finalUrl };
 }
 
 // ---------------------------------------------------------------------------
