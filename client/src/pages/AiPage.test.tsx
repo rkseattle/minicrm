@@ -446,4 +446,198 @@ describe('AiPage — send handshake cache correctness (MINCRM-602)', () => {
     expect(screen.getByText('First message in new session')).toBeInTheDocument();
     expect(screen.queryByTestId('ai-send-error')).not.toBeInTheDocument();
   });
+
+  it('does not show a duplicate user bubble when a partial refetch lands with only the user message reconciled', async () => {
+    // Targets a real bug caught in PR review (Greptile): the server persists
+    // the user message and assistant reply within the same request, but a
+    // session refetch racing the POST could in principle observe an
+    // intermediate cache state containing only the real user message (not
+    // yet the assistant one). Checking only assistantMessage.id in the
+    // dedup guard would miss this and append a second, fabricated user
+    // bubble alongside the real one. Simulated here by seeding the cache
+    // (via a completed initial GET) with only the real user message before
+    // the send's onSuccess runs.
+    mockSingleSession();
+    // Call-counted GET: the first call (initial mount fetch) returns the
+    // "partial" state — the real user message already present, as if an
+    // earlier refetch landed after the server persisted it, but before the
+    // assistant reply. Any later call (the reconciliation invalidation this
+    // send triggers) returns the complete state, exactly as a real server
+    // would once the exchange has fully settled — a real GET issued after
+    // the POST resolves always reflects the request's synchronous, complete
+    // persistence (see docs/dev/ai-chat.md), never a partial one.
+    let getSessionCallCount = 0;
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      http.get(`/api/v1/ai/sessions/${SESSION_ID}`, () => {
+        getSessionCallCount += 1;
+        const messages =
+          getSessionCallCount === 1
+            ? [
+                {
+                  id: 'real-user-msg-partial',
+                  session_id: SESSION_ID,
+                  role: 'user' as const,
+                  content: 'Partial refetch message',
+                  tool_results: null,
+                  pending_action: null,
+                  context_proposal: null,
+                  created_at: '2026-07-01T00:00:30.000Z',
+                },
+              ]
+            : [
+                {
+                  id: 'real-user-msg-partial',
+                  session_id: SESSION_ID,
+                  role: 'user' as const,
+                  content: 'Partial refetch message',
+                  tool_results: null,
+                  pending_action: null,
+                  context_proposal: null,
+                  created_at: '2026-07-01T00:00:30.000Z',
+                },
+                {
+                  id: 'assistant-msg-partial',
+                  session_id: SESSION_ID,
+                  role: 'assistant' as const,
+                  content: 'Partial refetch reply',
+                  tool_results: null,
+                  pending_action: null,
+                  context_proposal: null,
+                  created_at: '2026-07-01T00:01:00.000Z',
+                },
+              ];
+        return HttpResponse.json({
+          id: SESSION_ID,
+          user_id: 'user-1',
+          name: 'Test session',
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+          messages,
+        });
+      }),
+      http.post(`/api/v1/ai/sessions/${SESSION_ID}/messages`, () =>
+        HttpResponse.json({
+          id: 'assistant-msg-partial',
+          session_id: SESSION_ID,
+          role: 'assistant',
+          content: 'Partial refetch reply',
+          tool_results: null,
+          pending_action: null,
+          context_proposal: null,
+          created_at: '2026-07-01T00:01:00.000Z',
+        }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const input = await screen.findByTestId('ai-message-input');
+    // Wait for the initial mount GET to resolve, seeding the cache with the
+    // partial state, before sending — otherwise onSuccess's setQueryData
+    // could instead see old === undefined (a different code path).
+    await waitFor(() => expect(screen.getByText('Partial refetch message')).toBeInTheDocument());
+    await waitFor(() => expect(getSessionCallCount).toBe(1));
+
+    await user.type(input, 'Partial refetch message');
+    await user.click(screen.getByTestId('ai-send-button'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Partial refetch reply')).toBeInTheDocument();
+    });
+    // Exactly one bubble with this content — not two.
+    expect(screen.getAllByText('Partial refetch message')).toHaveLength(1);
+  });
+});
+
+describe('AiPage — optimistic state is scoped per session (MINCRM-602 PR review)', () => {
+  it('does not clear a different session’s in-flight optimistic bubble when switching sessions', async () => {
+    const SESSION_B_ID = '33333333-3333-3333-3333-333333333333';
+    server.use(
+      http.get('/api/v1/ai/sessions', () =>
+        HttpResponse.json({
+          sessions: [
+            {
+              id: SESSION_ID,
+              user_id: 'user-1',
+              name: 'Session A',
+              created_at: '2026-07-01T00:00:00.000Z',
+              updated_at: '2026-07-01T00:00:00.000Z',
+            },
+            {
+              id: SESSION_B_ID,
+              user_id: 'user-1',
+              name: 'Session B',
+              created_at: '2026-07-01T00:00:00.000Z',
+              updated_at: '2026-07-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+      http.get('/api/v1/ai/context', () => HttpResponse.json({ entries: [] })),
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      http.get(`/api/v1/ai/sessions/${SESSION_ID}`, () =>
+        HttpResponse.json({
+          id: SESSION_ID,
+          user_id: 'user-1',
+          name: 'Session A',
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+          messages: [],
+        }),
+      ),
+      http.get(`/api/v1/ai/sessions/${SESSION_B_ID}`, () =>
+        HttpResponse.json({
+          id: SESSION_B_ID,
+          user_id: 'user-1',
+          name: 'Session B',
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+          messages: [],
+        }),
+      ),
+      // Session A's send hangs indefinitely — simulates the user switching
+      // away to session B before A's POST has settled.
+      http.post(
+        `/api/v1/ai/sessions/${SESSION_ID}/messages`,
+        () =>
+          new Promise(() => {
+            /* never resolves within this test */
+          }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    // Send from session A (the first/active session) — this bubble should
+    // remain associated with A only, even though the request never settles.
+    const input = await screen.findByTestId('ai-message-input');
+    await user.type(input, 'Message from session A');
+    await user.click(screen.getByTestId('ai-send-button'));
+    await waitFor(() => {
+      expect(screen.getByText('Message from session A')).toBeInTheDocument();
+    });
+
+    // Switch to session B while A's send is still in flight.
+    await user.click(screen.getByTestId(`ai-session-item-${SESSION_B_ID}`));
+
+    // Session B's empty state should show — session A's optimistic bubble
+    // must not bleed into session B's view.
+    await waitFor(() => {
+      expect(screen.queryByText('Message from session A')).not.toBeInTheDocument();
+    });
+
+    // Switch back to session A — its in-flight optimistic bubble must still
+    // be there (not wiped out by having switched away and back).
+    await user.click(screen.getByTestId(`ai-session-item-${SESSION_ID}`));
+    await waitFor(() => {
+      expect(screen.getByText('Message from session A')).toBeInTheDocument();
+    });
+  });
 });

@@ -259,8 +259,17 @@ export default function AiPage() {
 
   const persistedMessages = activeSession?.messages ?? [];
 
+  // optimisticMessages is not cleared per-session — it's a single shared
+  // array — so filter to the currently-displayed session here. Without this,
+  // switching away from session A while A's send is still in flight (send
+  // does not block session switching) would render A's stale optimistic
+  // bubble on top of whatever session the user has since switched to.
+  const displayedOptimisticMessages = resolvedSessionId
+    ? optimisticMessages.filter((m) => m.session_id === resolvedSessionId)
+    : [];
+
   // Merge persisted + optimistic (optimistic cleared when query refreshes)
-  const allMessages = [...persistedMessages, ...optimisticMessages];
+  const allMessages = [...persistedMessages, ...displayedOptimisticMessages];
 
   // Auto-scroll to thread bottom when new messages arrive
   useEffect(() => {
@@ -274,7 +283,9 @@ export default function AiPage() {
     onSuccess: (newSession) => {
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
       setActiveSessionId(newSession.id);
-      setOptimisticMessages([]);
+      // No optimisticMessages clear needed: a brand-new session has no
+      // entries of its own, and displayedOptimisticMessages filters by
+      // session id, so a prior session's in-flight bubble is already hidden.
       setSendError(null);
       textareaRef.current?.focus();
     },
@@ -287,10 +298,10 @@ export default function AiPage() {
     onSuccess: (_, deletedId) => {
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
       if (resolvedSessionId === deletedId) {
-        // Select a different session or clear
+        // Select a different session or clear. No optimisticMessages clear
+        // needed here — see createMutation.onSuccess above.
         const remaining = sessions.filter((s) => s.id !== deletedId);
         setActiveSessionId(remaining[0]?.id ?? null);
-        setOptimisticMessages([]);
       }
       setDeleteConfirmId(null);
     },
@@ -351,28 +362,42 @@ export default function AiPage() {
             // with both messages once that GET completes; the messages are
             // never lost, only briefly not reflected in this cache entry.
             if (!old) return old;
-            // Guard against the message already being present: if the initial
-            // session GET happens to resolve concurrently with this POST and
-            // already reflects the just-sent exchange (both requests can
-            // settle in the same tick), appending unconditionally would
-            // duplicate assistantMessage's id and violate React's key
-            // uniqueness (MessageBubble is keyed by message id).
-            if (old.messages.some((m) => m.id === assistantMessage.id)) return old;
+            // Guard against the exchange already being present: if a session
+            // refetch (the reconciliation invalidateQueries below, or the
+            // initial session GET on the new-session-on-demand path) resolves
+            // concurrently with this POST, `old` may already reflect the
+            // real, server-persisted messages for this exact turn — either
+            // fully (both messages present) or partially (only the user
+            // message, since the server persists it slightly before the
+            // assistant reply within the same request). Checking only
+            // assistantMessage.id would miss the partial case and still
+            // append a second, fabricated user bubble alongside the real one.
+            // The assistant message's id is real and stable, so check that;
+            // the user message has no stable id to check (it's fabricated
+            // client-side), so match it by role + content instead.
+            const assistantAlreadyPresent = old.messages.some((m) => m.id === assistantMessage.id);
+            const userTurnAlreadyPresent = old.messages.some(
+              (m) => m.role === 'user' && m.content === content,
+            );
+            if (assistantAlreadyPresent && userTurnAlreadyPresent) return old;
+            const messagesToAppend = [
+              ...(userTurnAlreadyPresent ? [] : [optimisticUserMessage]),
+              ...(assistantAlreadyPresent ? [] : [assistantMessage]),
+            ];
             return {
               ...old,
-              messages: [...old.messages, optimisticUserMessage, assistantMessage],
+              messages: [...old.messages, ...messagesToAppend],
             };
           },
         );
       } catch {
         // setQueryData's updater is not expected to throw in practice, but if
         // it does, fail safe: surface an error rather than leaving the
-        // mutation looking silently "stuck". Guarded the same way as every
-        // other optimistic-state mutation in this handler so a background
-        // session's failure never paints an error over the session the user
-        // is currently viewing.
+        // mutation looking silently "stuck". Clearing is scoped to this
+        // session's own optimistic entries (see below) so it can never
+        // affect a different session's in-flight or already-cleared state.
+        setOptimisticMessages((prev) => prev.filter((m) => m.session_id !== sessionId));
         if (isDisplayedSession) {
-          setOptimisticMessages([]);
           setSendError(t('ai.errorSend'));
         }
         setDisabledPendingActionId(null);
@@ -380,20 +405,23 @@ export default function AiPage() {
       }
       void queryClient.invalidateQueries({ queryKey: aiMessagesQueryKey(sessionId) });
 
-      // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
-      // even on the new-session path where resolvedSessionId hasn't updated yet when
-      // onSuccess fires (React state updates are async — the closure sees the old value).
-      //
-      // Only touch optimistic state if the user was viewing this session when they sent.
-      // Guard against clearing session B's in-flight bubble if the user switched sessions
-      // while this mutation was in flight.
-      if (isDisplayedSession) {
-        setOptimisticMessages([]);
-      }
+      // Clear only this session's optimistic entries — never the whole shared
+      // array. optimisticMessages is not partitioned by session by default
+      // (every write handler in this component appends to one shared array),
+      // so filtering by sessionId here is what actually protects a different
+      // session's in-flight bubble from being wiped out by this settle. Using
+      // isDisplayedSession alone would not do that: it only reflects whether
+      // the user was viewing *this* session at send time, not which session's
+      // entries are actually being cleared.
+      setOptimisticMessages((prev) => prev.filter((m) => m.session_id !== sessionId));
     },
-    onError: () => {
-      setOptimisticMessages([]);
-      setSendError(t('ai.errorSend'));
+    onError: (_error, { sessionId, isDisplayedSession }) => {
+      // Scoped to this session's own entries — see the onSuccess settle path
+      // above for why a blanket clear would be unsafe.
+      setOptimisticMessages((prev) => prev.filter((m) => m.session_id !== sessionId));
+      if (isDisplayedSession) {
+        setSendError(t('ai.errorSend'));
+      }
       // Re-enable any disabled confirmation block so the user can retry.
       setDisabledPendingActionId(null);
     },
@@ -408,11 +436,18 @@ export default function AiPage() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       // Compare against resolvedSessionId (not activeSessionId) to avoid
-      // clearing optimistic state when clicking the already-active first session
-      // before activeSessionId has been set from the sessions list.
+      // clearing state when clicking the already-active first session before
+      // activeSessionId has been set from the sessions list.
       if (sessionId !== resolvedSessionId) {
         setActiveSessionId(sessionId);
-        setOptimisticMessages([]);
+        // Deliberately not clearing optimisticMessages here: it's filtered by
+        // session id when rendered (displayedOptimisticMessages), so a prior
+        // session's entries are already hidden once the user switches away.
+        // Clearing them here would also wrongly discard that prior session's
+        // still-in-flight optimistic bubble if the user switches back to it
+        // before its send settles. Each session's entries are cleaned up by
+        // sendMutation's own onSuccess/onError once that session's send
+        // actually settles.
         setSendError(null);
         setDisabledPendingActionId(null);
         setBulkDeleteConfirmTexts({});
@@ -800,8 +835,8 @@ export default function AiPage() {
             ))}
             {/* Pending assistant indicator */}
             {sendMutation.isPending &&
-              optimisticMessages.length === 1 &&
-              optimisticMessages[0].role === 'user' && (
+              displayedOptimisticMessages.length === 1 &&
+              displayedOptimisticMessages[0].role === 'user' && (
                 <div
                   className="flex justify-start"
                   aria-label={t('ai.sending')}
