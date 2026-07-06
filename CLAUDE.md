@@ -37,7 +37,7 @@ qa/e2e/
   tests/apps/minicrm/functional/<domain>/ → spec files tagged @functional
 ```
 
-Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) · [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) · [ADRs](docs/adr/)
+Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) · [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) · [ai-chat](docs/dev/ai-chat.md) · [ADRs](docs/adr/)
 
 ---
 
