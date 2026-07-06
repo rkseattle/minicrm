@@ -22,6 +22,12 @@ class ResizeObserverStub {
 }
 global.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
 
+// jsdom does not implement Element.scrollIntoView. Stub it so components that
+// auto-scroll (e.g. AiPage's message thread) do not throw during effects.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoViewStub() {};
+}
+
 // jsdom does not implement ProgressEvent. The MSW XHR interceptor fires one
 // when a mocked response completes, causing an unhandled rejection that fails
 // the vitest run even when all test assertions pass. Stub it with the
