@@ -311,54 +311,84 @@ export default function AiPage() {
       return sendAiMessage(sessionId, content);
     },
     onSuccess: (assistantMessage, { sessionId, content, isDisplayedSession }) => {
-      try {
-        setDisabledPendingActionId(null);
-        setSendError(null);
-        void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
+      setDisabledPendingActionId(null);
+      setSendError(null);
+      void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
 
-        // Single round-trip: the POST response already contains the persisted
-        // assistant message, so commit both messages straight into the query
-        // cache instead of awaiting a second GET refetch (MINCRM-602). This
-        // removes the unguarded optimistic/refetch handshake that caused two
-        // prior assistant-bubble timing bugs (4735d536, ca941cbc).
-        const optimisticUserMessage: AiMessageResponse = {
-          id: `optimistic-user-settled`,
-          session_id: sessionId,
-          role: 'user',
-          content,
-          tool_results: null,
-          pending_action: null,
-          context_proposal: null,
-          created_at: new Date().toISOString(),
-        };
+      // Single round-trip: the POST response already contains the persisted
+      // assistant message, so commit it straight into the query cache instead
+      // of awaiting a second GET refetch (MINCRM-602). This removes the
+      // unguarded optimistic/refetch handshake that caused two prior
+      // assistant-bubble timing bugs (4735d536, ca941cbc).
+      //
+      // The server does not return the user message it just persisted (only
+      // the assistant reply), so a placeholder is fabricated here with an id
+      // derived from the assistant message's real id — unique per send, so
+      // a second send in the same session can never collide with the first
+      // (the previous fixed literal id did). The placeholder is never treated
+      // as ground truth: the un-awaited invalidateQueries below triggers a
+      // background refetch that reconciles it with the server's real id/
+      // created_at next time this query re-fetches, without blocking onSuccess
+      // or reintroducing the awaited two-round-trip handshake this replaced.
+      const optimisticUserMessage: AiMessageResponse = {
+        id: `optimistic-user-${assistantMessage.id}`,
+        session_id: sessionId,
+        role: 'user',
+        content,
+        tool_results: null,
+        pending_action: null,
+        context_proposal: null,
+        created_at: new Date().toISOString(),
+      };
+      try {
         queryClient.setQueryData<AiSessionWithMessagesResponse>(
           aiMessagesQueryKey(sessionId),
           (old) => {
+            // No cache entry yet (e.g. the initial session GET hasn't resolved
+            // on the new-session-on-demand path) — nothing to append onto, so
+            // there is no cache write to make here. The un-awaited
+            // invalidateQueries below still fires and will populate the cache
+            // with both messages once that GET completes; the messages are
+            // never lost, only briefly not reflected in this cache entry.
             if (!old) return old;
+            // Guard against the message already being present: if the initial
+            // session GET happens to resolve concurrently with this POST and
+            // already reflects the just-sent exchange (both requests can
+            // settle in the same tick), appending unconditionally would
+            // duplicate assistantMessage's id and violate React's key
+            // uniqueness (MessageBubble is keyed by message id).
+            if (old.messages.some((m) => m.id === assistantMessage.id)) return old;
             return {
               ...old,
               messages: [...old.messages, optimisticUserMessage, assistantMessage],
             };
           },
         );
-
-        // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
-        // even on the new-session path where resolvedSessionId hasn't updated yet when
-        // onSuccess fires (React state updates are async — the closure sees the old value).
-        //
-        // Only touch optimistic state if the user was viewing this session when they sent.
-        // Guard against clearing session B's in-flight bubble if the user switched sessions
-        // while this mutation was in flight.
+      } catch {
+        // setQueryData's updater is not expected to throw in practice, but if
+        // it does, fail safe: surface an error rather than leaving the
+        // mutation looking silently "stuck". Guarded the same way as every
+        // other optimistic-state mutation in this handler so a background
+        // session's failure never paints an error over the session the user
+        // is currently viewing.
         if (isDisplayedSession) {
           setOptimisticMessages([]);
+          setSendError(t('ai.errorSend'));
         }
-      } catch {
-        // setQueryData/invalidateQueries are synchronous and should not throw in practice,
-        // but if something unexpected does, fail safe: surface an error and clear optimistic
-        // state rather than leaving the mutation looking "stuck" to the user.
-        setOptimisticMessages([]);
-        setSendError(t('ai.errorSend'));
         setDisabledPendingActionId(null);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: aiMessagesQueryKey(sessionId) });
+
+      // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
+      // even on the new-session path where resolvedSessionId hasn't updated yet when
+      // onSuccess fires (React state updates are async — the closure sees the old value).
+      //
+      // Only touch optimistic state if the user was viewing this session when they sent.
+      // Guard against clearing session B's in-flight bubble if the user switched sessions
+      // while this mutation was in flight.
+      if (isDisplayedSession) {
+        setOptimisticMessages([]);
       }
     },
     onError: () => {
