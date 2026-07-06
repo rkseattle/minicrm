@@ -552,8 +552,17 @@ export function buildHealPage(
       return (await resolveLocator(strategies, options)).getAttribute(name);
     },
 
-    async count(strategies: LocatorStrategy[], options: LocateOptions = {}): Promise<number> {
-      return (await resolveLocator(strategies, options)).count();
+    async count(strategies: LocatorStrategy[], _options: LocateOptions = {}): Promise<number> {
+      // Deliberately bypasses resolveLocator()/HealingLocator.resolve(): resolve()
+      // is a "find this element or exhaust every strategy and throw" primitive,
+      // but a count is legitimately allowed to be zero (e.g. no assistant replies
+      // yet). Query the primary (highest-priority) strategy directly and use
+      // Playwright's native count(), which never throws — a locator matching
+      // zero elements is not a healing scenario.
+      const [primary] = [...strategies].sort(
+        (a, b) => STRATEGY_ORDER[a.type] - STRATEGY_ORDER[b.type],
+      );
+      return buildLocator(page, primary).count();
     },
 
     async selectOption(
