@@ -25,7 +25,11 @@ import {
   sendAiMessage,
 } from '@/api/aiSessions.js';
 import { getMyRetentionWindow, MY_RETENTION_WINDOW_QUERY_KEY } from '@/api/ai.js';
-import type { AiSessionResponse, AiMessageResponse } from '@shared/schemas/aiSessionSchema.js';
+import type {
+  AiSessionResponse,
+  AiMessageResponse,
+  AiSessionWithMessagesResponse,
+} from '@shared/schemas/aiSessionSchema.js';
 
 // ── Message bubble ────────────────────────────────────────────────────────────
 
@@ -306,20 +310,17 @@ export default function AiPage() {
     }) => {
       return sendAiMessage(sessionId, content);
     },
-    onSuccess: async (assistantMessage, { sessionId, content, isDisplayedSession }) => {
-      setDisabledPendingActionId(null);
-      setSendError(null);
-      void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
-      // Use sessionId from mutation variables (not resolvedSessionId from the closure)
-      // so the correct session is refetched even if the user switched sessions during
-      // the 3-10 s Anthropic round-trip.
-      //
-      // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
-      // even on the new-session path where resolvedSessionId hasn't updated yet when
-      // onSuccess fires (React state updates are async — the closure sees the old value).
-      //
-      // Only show optimistic messages if the user was viewing this session when they sent.
-      if (isDisplayedSession) {
+    onSuccess: (assistantMessage, { sessionId, content, isDisplayedSession }) => {
+      try {
+        setDisabledPendingActionId(null);
+        setSendError(null);
+        void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
+
+        // Single round-trip: the POST response already contains the persisted
+        // assistant message, so commit both messages straight into the query
+        // cache instead of awaiting a second GET refetch (MINCRM-602). This
+        // removes the unguarded optimistic/refetch handshake that caused two
+        // prior assistant-bubble timing bugs (4735d536, ca941cbc).
         const optimisticUserMessage: AiMessageResponse = {
           id: `optimistic-user-settled`,
           session_id: sessionId,
@@ -330,14 +331,34 @@ export default function AiPage() {
           context_proposal: null,
           created_at: new Date().toISOString(),
         };
-        setOptimisticMessages([optimisticUserMessage, assistantMessage]);
-      }
-      await queryClient.refetchQueries({ queryKey: aiMessagesQueryKey(sessionId) });
-      // Guard: only clear optimistic state for the session that settled.
-      // Without this, session A's onSuccess would clear session B's in-flight bubble
-      // if the user switched sessions during the Anthropic round-trip.
-      if (isDisplayedSession) {
+        queryClient.setQueryData<AiSessionWithMessagesResponse>(
+          aiMessagesQueryKey(sessionId),
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              messages: [...old.messages, optimisticUserMessage, assistantMessage],
+            };
+          },
+        );
+
+        // isDisplayedSession is set at call time (in handleSend) so it's always accurate,
+        // even on the new-session path where resolvedSessionId hasn't updated yet when
+        // onSuccess fires (React state updates are async — the closure sees the old value).
+        //
+        // Only touch optimistic state if the user was viewing this session when they sent.
+        // Guard against clearing session B's in-flight bubble if the user switched sessions
+        // while this mutation was in flight.
+        if (isDisplayedSession) {
+          setOptimisticMessages([]);
+        }
+      } catch {
+        // setQueryData/invalidateQueries are synchronous and should not throw in practice,
+        // but if something unexpected does, fail safe: surface an error and clear optimistic
+        // state rather than leaving the mutation looking "stuck" to the user.
         setOptimisticMessages([]);
+        setSendError(t('ai.errorSend'));
+        setDisabledPendingActionId(null);
       }
     },
     onError: () => {
