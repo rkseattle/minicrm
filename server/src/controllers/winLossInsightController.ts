@@ -4,9 +4,13 @@
  */
 
 import type { Request, Response } from 'express';
-import PDFDocument from 'pdfkit';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  type PdfSection,
+} from '../services/pdfExportService.js';
 
 /**
  * GET /api/insights/win-loss
@@ -66,57 +70,30 @@ export async function exportWinLossInsightsCsvHandler(_req: Request, res: Respon
 export async function exportWinLossInsightsPdfHandler(_req: Request, res: Response): Promise<void> {
   const result = await getWinLossInsights();
 
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename="win-loss-insights.pdf"');
-
-  const doc = new PDFDocument({ margin: 50 });
-  doc.pipe(res);
-
-  doc.fontSize(18).text('Win/Loss Pattern Insights', { align: 'left' });
-  doc.moveDown();
-
   const winPatterns = result.insights.filter((i) => i.is_win_pattern);
   const lossPatterns = result.insights.filter((i) => !i.is_win_pattern);
 
-  doc.fontSize(14).text('Win Patterns');
-  doc.moveDown(0.5);
-  if (winPatterns.length === 0) {
-    doc.fontSize(10).fillColor('gray').text('No win patterns available.').fillColor('black');
-  }
-  for (const insight of winPatterns) {
-    doc
-      .fontSize(10)
-      .text(
-        `${insight.observation} (win rate: ${Math.round(insight.win_rate_with * 100)}% vs ${Math.round(insight.win_rate_without * 100)}%, n=${insight.sample_size})`,
-      );
-    doc.moveDown(0.3);
-  }
+  const describeInsight = (insight: (typeof result.insights)[number]): string =>
+    `${insight.observation} (win rate: ${Math.round(insight.win_rate_with * 100)}% vs ${Math.round(insight.win_rate_without * 100)}%, n=${insight.sample_size})`;
 
-  doc.moveDown();
-  doc.fontSize(14).text('Loss Patterns');
-  doc.moveDown(0.5);
-  if (lossPatterns.length === 0) {
-    doc.fontSize(10).fillColor('gray').text('No loss patterns available.').fillColor('black');
-  }
-  for (const insight of lossPatterns) {
-    doc
-      .fontSize(10)
-      .text(
-        `${insight.observation} (win rate: ${Math.round(insight.win_rate_with * 100)}% vs ${Math.round(insight.win_rate_without * 100)}%, n=${insight.sample_size})`,
-      );
-    doc.moveDown(0.3);
-  }
+  const sections: PdfSection[] = [
+    {
+      heading: 'Win Patterns',
+      lines: winPatterns.map(describeInsight),
+      emptyMessage: 'No win patterns available.',
+    },
+    {
+      heading: 'Loss Patterns',
+      lines: lossPatterns.map(describeInsight),
+      emptyMessage: 'No loss patterns available.',
+    },
+    {
+      heading: 'Loss Reason Trends',
+      lines: result.loss_reason_trends.map((trend) => trend.observation),
+      emptyMessage: 'No loss reason trends available.',
+    },
+  ];
 
-  doc.moveDown();
-  doc.fontSize(14).text('Loss Reason Trends');
-  doc.moveDown(0.5);
-  if (result.loss_reason_trends.length === 0) {
-    doc.fontSize(10).fillColor('gray').text('No loss reason trends available.').fillColor('black');
-  }
-  for (const trend of result.loss_reason_trends) {
-    doc.fontSize(10).text(trend.observation);
-    doc.moveDown(0.3);
-  }
-
-  doc.end();
+  setPdfResponseHeaders(res, 'win-loss-insights.pdf');
+  renderPdfDocument(res, { title: 'Win/Loss Pattern Insights', sections });
 }
