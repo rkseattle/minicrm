@@ -227,11 +227,17 @@ test.describe('healPage.count()', () => {
     expect(HealingRegistry.instance.count).toBe(0);
   });
 
-  test('primary fails, fallback resolves — heal event recorded', async () => {
+  // count() queries the primary (highest-priority) strategy directly via
+  // Playwright's native count() and never falls back or throws — zero matches
+  // is a legitimate answer (e.g. no assistant replies yet), not a healing
+  // scenario. See MINCRM-436/437 regression: routing count() through
+  // HealingLocator.resolve() made it throw StrategyExhaustedError whenever the
+  // count was legitimately zero.
+  test('primary matches nothing — returns 0, no fallback probed, no heal event', async () => {
     const page = mockPage([false, true]);
-    const hp = buildHealPage(page, 'count fallback');
+    const hp = buildHealPage(page, 'count no fallback');
 
-    await hp.count(
+    const n = await hp.count(
       [
         { type: 'testId', value: 'el' },
         { type: 'css', value: '.el' },
@@ -239,7 +245,8 @@ test.describe('healPage.count()', () => {
       { fallbackTimeout: 100 },
     );
 
-    expect(HealingRegistry.instance.count).toBe(1);
+    expect(n).toBe(0);
+    expect(HealingRegistry.instance.count).toBe(0);
   });
 });
 
