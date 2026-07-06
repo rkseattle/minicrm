@@ -404,24 +404,44 @@ export class AiPage {
   }
 
   /**
+   * Polls count() (bypasses the healing locator's AI-healer fallback — a
+   * count is legitimately allowed to be zero, resolve() is not) for up to
+   * `timeoutMs`, short-circuiting the moment it sees a nonzero count. Used
+   * as a cheap presence probe before paying for full resolve()+isVisible():
+   * a genuinely-absent element still returns fast (no healer round-trip),
+   * while an element that renders a beat after the probe starts still has a
+   * chance to be caught, unlike a single instant count() snapshot.
+   */
+  private async pollForNonZeroCount(
+    strategies: Parameters<PageFacade['count']>[0],
+    options: Parameters<PageFacade['count']>[1],
+    timeoutMs = 3_000,
+  ): Promise<boolean> {
+    const pollIntervalMs = 100;
+    const deadline = Date.now() + timeoutMs;
+    do {
+      if ((await this.page.count(strategies, options)) > 0) return true;
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    } while (Date.now() < deadline);
+    return false;
+  }
+
+  /**
    * Returns true when a standard confirmation block is visible in the thread.
    *
    * In E2E-stub mode this block never renders (the stub reply never sets
    * pending_action), so this is checked on every "normal" AI turn as a
-   * negative assertion. Probe with count() first — it bypasses the healing
-   * locator's AI-healer fallback (count() is allowed to legitimately be zero;
-   * resolve() is not) — and only pay for full resolve()+isVisible() when an
-   * element is actually present.
+   * negative assertion — pollForNonZeroCount() keeps that common case fast
+   * (no AI-healer round-trip) while still giving a real positive case a
+   * short window to render before falling through to full resolve()+isVisible().
    */
   async isConfirmationBlockVisible(): Promise<boolean> {
     const strategies = [
       { type: 'testId' as const, value: 'nli-confirmation-block' },
       { type: 'css' as const, value: '[data-testid="nli-confirmation-block"]' },
     ];
-    const count = await this.page.count(strategies, {
-      intent: 'AI mutation confirmation block for pending write action',
-    });
-    if (count === 0) return false;
+    const options = { intent: 'AI mutation confirmation block for pending write action' };
+    if (!(await this.pollForNonZeroCount(strategies, options))) return false;
     const locator = await this.page
       .locate(strategies, { intent: 'AI mutation confirmation block for pending write action' })
       .resolve()
@@ -432,17 +452,15 @@ export class AiPage {
 
   /**
    * Returns true when a bulk-delete confirmation block is visible in the thread.
-   * See isConfirmationBlockVisible() for why count() is probed before resolve().
+   * See isConfirmationBlockVisible() for why count() is polled before resolve().
    */
   async isBulkConfirmationBlockVisible(): Promise<boolean> {
     const strategies = [
       { type: 'testId' as const, value: 'nli-bulk-confirmation-block' },
       { type: 'css' as const, value: '[data-testid="nli-bulk-confirmation-block"]' },
     ];
-    const count = await this.page.count(strategies, {
-      intent: 'AI bulk delete confirmation block with double-confirm gate',
-    });
-    if (count === 0) return false;
+    const options = { intent: 'AI bulk delete confirmation block with double-confirm gate' };
+    if (!(await this.pollForNonZeroCount(strategies, options))) return false;
     const locator = await this.page
       .locate(strategies, {
         intent: 'AI bulk delete confirmation block with double-confirm gate',
