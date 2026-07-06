@@ -403,32 +403,50 @@ export class AiPage {
       .resolve();
   }
 
-  /** Returns true when a standard confirmation block is visible in the thread. */
+  /**
+   * Returns true when a standard confirmation block is visible in the thread.
+   *
+   * In E2E-stub mode this block never renders (the stub reply never sets
+   * pending_action), so this is checked on every "normal" AI turn as a
+   * negative assertion. Probe with count() first — it bypasses the healing
+   * locator's AI-healer fallback (count() is allowed to legitimately be zero;
+   * resolve() is not) — and only pay for full resolve()+isVisible() when an
+   * element is actually present.
+   */
   async isConfirmationBlockVisible(): Promise<boolean> {
+    const strategies = [
+      { type: 'testId' as const, value: 'nli-confirmation-block' },
+      { type: 'css' as const, value: '[data-testid="nli-confirmation-block"]' },
+    ];
+    const count = await this.page.count(strategies, {
+      intent: 'AI mutation confirmation block for pending write action',
+    });
+    if (count === 0) return false;
     const locator = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'nli-confirmation-block' },
-          { type: 'css', value: '[data-testid="nli-confirmation-block"]' },
-        ],
-        { intent: 'AI mutation confirmation block for pending write action' },
-      )
+      .locate(strategies, { intent: 'AI mutation confirmation block for pending write action' })
       .resolve()
       .catch(() => null);
     if (!locator) return false;
     return locator.isVisible().catch(() => false);
   }
 
-  /** Returns true when a bulk-delete confirmation block is visible in the thread. */
+  /**
+   * Returns true when a bulk-delete confirmation block is visible in the thread.
+   * See isConfirmationBlockVisible() for why count() is probed before resolve().
+   */
   async isBulkConfirmationBlockVisible(): Promise<boolean> {
+    const strategies = [
+      { type: 'testId' as const, value: 'nli-bulk-confirmation-block' },
+      { type: 'css' as const, value: '[data-testid="nli-bulk-confirmation-block"]' },
+    ];
+    const count = await this.page.count(strategies, {
+      intent: 'AI bulk delete confirmation block with double-confirm gate',
+    });
+    if (count === 0) return false;
     const locator = await this.page
-      .locate(
-        [
-          { type: 'testId', value: 'nli-bulk-confirmation-block' },
-          { type: 'css', value: '[data-testid="nli-bulk-confirmation-block"]' },
-        ],
-        { intent: 'AI bulk delete confirmation block with double-confirm gate' },
-      )
+      .locate(strategies, {
+        intent: 'AI bulk delete confirmation block with double-confirm gate',
+      })
       .resolve()
       .catch(() => null);
     if (!locator) return false;
