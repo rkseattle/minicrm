@@ -87,6 +87,19 @@ describe('DealDetailPage', () => {
         expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
       });
     });
+
+    it('hides the Export PDF button when the csv_export flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { csv_export: false } }),
+        ),
+      );
+      renderDealDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('deal-name')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('deal-detail-export-pdf-button')).not.toBeInTheDocument();
+    });
   });
 
   it('shows not found message for an unknown deal', async () => {

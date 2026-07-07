@@ -30,6 +30,7 @@ import type { LeadFormValues } from '@/components/LeadForm.js';
 import { LEADS_QUERY_KEY } from '@/pages/LeadsPage.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 
 /** Tailwind badge classes by status */
 const STATUS_BADGE: Record<string, string> = {
@@ -57,6 +58,7 @@ export default function LeadDetailPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
+  const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
 
   const leadQueryKey = ['leads', id] as const;
 
@@ -225,26 +227,28 @@ export default function LeadDetailPage() {
                   {t('leads.convertLead')}
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="lead-detail-export-pdf-button"
-                disabled={isExportingPdf}
-                onClick={async () => {
-                  setIsExportingPdf(true);
-                  setExportPdfError(null);
-                  try {
-                    await exportLeadPdf(lead.id);
-                  } catch {
-                    setExportPdfError(t('leads.exportPdfError'));
-                  } finally {
-                    setIsExportingPdf(false);
-                  }
-                }}
-              >
-                {isExportingPdf ? t('leads.exporting') : t('leads.exportPdf')}
-              </Button>
+              {csvExportEnabled && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  data-testid="lead-detail-export-pdf-button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    setExportPdfError(null);
+                    try {
+                      await exportLeadPdf(lead.id);
+                    } catch {
+                      setExportPdfError(t('leads.exportPdfError'));
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                >
+                  {isExportingPdf ? t('leads.exporting') : t('leads.exportPdf')}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="secondary"
