@@ -17,6 +17,7 @@ import {
   deleteAccountHandler,
   exportAccountsHandler,
   exportAccountsPdfHandler,
+  exportAccountPdfHandler,
   listChildAccountsHandler,
   searchAccountsHandler,
 } from '../controllers/accountController.js';
@@ -411,6 +412,46 @@ router.get('/search', authenticate, asyncHandler(searchAccountsHandler));
  *                 message: Account not found
  */
 router.get('/:id', authenticate, asyncHandler(getAccountHandler));
+
+/**
+ * @openapi
+ * /api/v1/accounts/{id}/export.pdf:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: exportAccountPdf
+ *     summary: Export a single account to PDF
+ *     description: >
+ *       Returns a one-record summary PDF for the given account — overview fields,
+ *       custom fields, linked contacts, child accounts, and notes. Visibility
+ *       matches GET /api/v1/accounts/{id}. (MINCRM-650)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Account not found
+ */
+router.get(
+  '/:id/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportAccountPdfHandler),
+);
 
 /**
  * @openapi

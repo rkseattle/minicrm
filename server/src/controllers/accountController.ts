@@ -22,16 +22,22 @@ import {
   searchAccounts,
   ACCOUNT_SORT_COLUMNS,
 } from '../services/accountService.js';
+import { listContacts } from '../services/contactService.js';
 import { getCoMemberIds } from '../services/teamService.js';
-import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import {
+  paginationParamsSchema,
+  PAGINATION_MAX_LIMIT,
+} from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
-import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import { listNotes } from '../services/noteService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
@@ -374,6 +380,110 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
       {
         heading: 'Accounts',
         table: { columns, rows, emptyMessage: 'No accounts match the current filters.' },
+      },
+    ],
+  });
+}
+
+/**
+ * GET /api/accounts/:id/export.pdf
+ * Renders a single account as a one-record summary PDF, mirroring the data
+ * shown on the account detail page. Visibility matches getAccountHandler — no
+ * ownership restriction on read, consistent with GET /api/accounts/:id. (MINCRM-650)
+ */
+export async function exportAccountPdfHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const account = await findAccountById(id);
+
+  if (!account) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  const [parentAccount, owner, children, contactsPage, customValues, notesPage] = await Promise.all(
+    [
+      account.parent_account_id
+        ? findAccountById(account.parent_account_id)
+        : Promise.resolve(null),
+      findUserById(account.owner_id),
+      listChildAccounts(id),
+      listContacts({ accountId: id, limit: PAGINATION_MAX_LIMIT }),
+      getValuesForRecord(id),
+      listNotes('account', id, req.user!.id, 1, DETAIL_PDF_NOTES_LIMIT),
+    ],
+  );
+
+  const overviewLines: string[] = [
+    `Name: ${account.name}`,
+    `Type: ${account.account_type ?? ''}`,
+    `Industry: ${account.industry ?? ''}`,
+    `Website: ${account.website ?? ''}`,
+    `Employees: ${account.employee_range ?? ''}`,
+    `Revenue: ${account.revenue_range ?? ''}`,
+    `Parent Account: ${parentAccount?.name ?? ''}`,
+    `Owner: ${owner?.name ?? ''}`,
+    `Created: ${formatExportDate(account.created_at)}`,
+    `Updated: ${formatExportDate(account.updated_at)}`,
+  ];
+
+  const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
+
+  const contactColumns: PdfTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'title', label: 'Title' },
+  ];
+  const contactRows: PdfTableRow[] = contactsPage.data.map((c) => ({
+    name: `${c.first_name} ${c.last_name}`,
+    email: c.email,
+    title: c.title,
+  }));
+
+  const childAccountColumns: PdfTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'account_type', label: 'Type' },
+  ];
+  const childAccountRows: PdfTableRow[] = children.map((c) => ({
+    name: c.name,
+    account_type: c.account_type,
+  }));
+
+  const noteColumns: PdfTableColumn[] = [
+    { key: 'created_at', label: 'Date' },
+    { key: 'author', label: 'Author' },
+    { key: 'body', label: 'Note' },
+  ];
+  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
+    created_at: n.created_at,
+    author: n.created_by_name,
+    body: n.body_text,
+  }));
+
+  setPdfResponseHeaders(res, pdfFilename(`account-${id}`));
+  renderPdfDocument(res, {
+    title: `Account: ${account.name}`,
+    sections: [
+      { heading: 'Overview', lines: overviewLines },
+      {
+        heading: 'Custom Fields',
+        lines: customFieldLines,
+        emptyMessage: 'No custom fields defined.',
+      },
+      {
+        heading: 'Linked Contacts',
+        table: { columns: contactColumns, rows: contactRows, emptyMessage: 'No linked contacts.' },
+      },
+      {
+        heading: 'Child Accounts',
+        table: {
+          columns: childAccountColumns,
+          rows: childAccountRows,
+          emptyMessage: 'No child accounts.',
+        },
+      },
+      {
+        heading: 'Notes',
+        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
       },
     ],
   });
