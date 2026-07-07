@@ -28,6 +28,13 @@ import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -242,16 +249,33 @@ export async function updateAccountHandler(req: Request, res: Response): Promise
   }
 }
 
+/** Column labels shared by the CSV and PDF account export formats, in display order. */
+const ACCOUNT_EXPORT_BASE_HEADERS = [
+  'Name',
+  'Type',
+  'Industry',
+  'Website',
+  'Employees',
+  'Revenue Range',
+  'Parent Account',
+  'Owner',
+  'Contacts',
+  'Deals',
+  'Created',
+  'Updated',
+] as const;
+
+interface AccountExportData {
+  headers: string[];
+  rows: Record<string, string | number | Date | null | undefined>[];
+}
+
 /**
- * GET /api/accounts/export
- * Streams all matching accounts as a UTF-8 CSV file.
- *
- * Query params mirror the list endpoint (owner, search, industry) except
- * pagination/sort — all matching rows are exported.
- * Reps automatically get their own accounts; admins may pass ?all=true to export all.
- * (MINCRM-165)
+ * Resolves the owner/search/industry filters for the current request, fetches matching
+ * accounts, and merges in custom field columns. Shared by the CSV and PDF export handlers
+ * so both formats reflect identical rows and ownership rules (MINCRM-601).
  */
-export async function exportAccountsHandler(req: Request, res: Response): Promise<void> {
+async function resolveAccountExportData(req: Request): Promise<AccountExportData> {
   const isAdmin = req.user!.role === 'admin';
   const exportAll = req.query.all === 'true';
 
@@ -267,11 +291,11 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
       ? req.query.industry.trim()
       : undefined;
 
-  const rows = await exportAccountsForCsv({ ownerId, search, industry });
+  const accountRows = await exportAccountsForCsv({ ownerId, search, industry });
 
   // Custom field columns — fetch definitions and values in application code (MINCRM-276)
   const customDefs = await listDefinitions('account');
-  const recordIds = rows.map((r) => r.id);
+  const recordIds = accountRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
   await Promise.all(
     recordIds.map(async (recordId) => {
@@ -284,23 +308,9 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
     }),
   );
 
-  const headers = [
-    'Name',
-    'Type',
-    'Industry',
-    'Website',
-    'Employees',
-    'Revenue Range',
-    'Parent Account',
-    'Owner',
-    'Contacts',
-    'Deals',
-    'Created',
-    'Updated',
-    ...customDefs.map((d) => d.name),
-  ];
+  const headers = [...ACCOUNT_EXPORT_BASE_HEADERS, ...customDefs.map((d) => d.name)];
 
-  const csvRows = rows.map((r) => {
+  const rows = accountRows.map((r) => {
     const base: Record<string, string | number | Date | null | undefined> = {
       Name: r.name,
       Type: r.account_type,
@@ -322,12 +332,51 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
     return base;
   });
 
-  const csv = serializeToCsv(headers, csvRows);
+  return { headers, rows };
+}
+
+/**
+ * GET /api/accounts/export
+ * Streams all matching accounts as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, search, industry) except
+ * pagination/sort — all matching rows are exported.
+ * Reps automatically get their own accounts; admins may pass ?all=true to export all.
+ * (MINCRM-165)
+ */
+export async function exportAccountsHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveAccountExportData(req);
+
+  const csv = serializeToCsv(data.headers, data.rows);
   const filename = csvFilename('accounts');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.status(200).send(csv);
+}
+
+/**
+ * GET /api/accounts/export.pdf
+ * Renders all matching accounts as a paginated PDF table.
+ *
+ * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ */
+export async function exportAccountsPdfHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveAccountExportData(req);
+
+  const columns: PdfTableColumn[] = data.headers.map((label) => ({ key: label, label }));
+  const rows: PdfTableRow[] = data.rows;
+
+  setPdfResponseHeaders(res, pdfFilename('accounts'));
+  renderPdfDocument(res, {
+    title: 'Accounts',
+    sections: [
+      {
+        heading: 'Accounts',
+        table: { columns, rows, emptyMessage: 'No accounts match the current filters.' },
+      },
+    ],
+  });
 }
 
 /**

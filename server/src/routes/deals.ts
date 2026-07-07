@@ -19,6 +19,7 @@ import {
   linkContactHandler,
   unlinkContactHandler,
   exportDealsHandler,
+  exportDealsPdfHandler,
 } from '../controllers/dealController.js';
 import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
 import { getStageAdvancementHandler } from '../controllers/stageAdvancementController.js';
@@ -145,6 +146,49 @@ router.get(
   authenticate,
   requireFeatureEnabled('csv_export'),
   asyncHandler(exportDealsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/deals/export.pdf:
+ *   get:
+ *     tags: [Deals]
+ *     operationId: exportDealsPdf
+ *     summary: Export deals to PDF
+ *     description: >
+ *       Returns all matching deals as a paginated PDF table, using the same filters
+ *       and ownership rules as the CSV export. (MINCRM-601)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all deals
+ *       - in: query
+ *         name: account
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by account ID
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportDealsPdfHandler),
 );
 
 /**

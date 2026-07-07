@@ -166,6 +166,27 @@ export async function exportDealsCsv(params: ExportDealsParams = {}): Promise<vo
 }
 
 /**
+ * Downloads all matching deals as a paginated PDF table.
+ * Triggers a browser file-save dialog. Same filters as exportDealsCsv() (MINCRM-601).
+ *
+ * @param params - Optional filter parameters
+ */
+export async function exportDealsPdf(params: ExportDealsParams = {}): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (params.all) queryParams.all = 'true';
+  if (params.accountId) queryParams.account = params.accountId;
+
+  const response = await apiClient.get<Blob>('/deals/export.pdf', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-deals-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}
+
+/**
  * Unlinks a contact from a deal without deleting either record.
  * Returns the updated list of contacts linked to the deal.
  *

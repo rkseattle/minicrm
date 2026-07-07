@@ -20,7 +20,12 @@ import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listAccounts, createAccount, exportAccountsCsv } from '@/api/accounts.js';
+import {
+  listAccounts,
+  createAccount,
+  exportAccountsCsv,
+  exportAccountsPdf,
+} from '@/api/accounts.js';
 import { bulkAccounts } from '@/api/bulk.js';
 import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
@@ -56,6 +61,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -326,6 +332,27 @@ export default function AccountsPage() {
               }}
             >
               {isExporting ? t('accounts.exporting') : t('accounts.exportCsv')}
+            </Button>
+            {/* Export PDF — filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="accounts-export-pdf-button"
+              disabled={isExportingPdf}
+              onClick={async () => {
+                setIsExportingPdf(true);
+                try {
+                  await exportAccountsPdf({
+                    search: debouncedSearch || undefined,
+                    industry: debouncedIndustry || undefined,
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                  });
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+            >
+              {isExportingPdf ? t('accounts.exporting') : t('accounts.exportPdf')}
             </Button>
             {/* Export all — admins only */}
             {isAdmin && (

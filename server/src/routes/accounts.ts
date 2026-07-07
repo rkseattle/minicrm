@@ -16,6 +16,7 @@ import {
   updateAccountHandler,
   deleteAccountHandler,
   exportAccountsHandler,
+  exportAccountsPdfHandler,
   listChildAccountsHandler,
   searchAccountsHandler,
 } from '../controllers/accountController.js';
@@ -140,6 +141,53 @@ router.get(
   authenticate,
   requireFeatureEnabled('csv_export'),
   asyncHandler(exportAccountsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/accounts/export.pdf:
+ *   get:
+ *     tags: [Accounts]
+ *     operationId: exportAccountsPdf
+ *     summary: Export accounts to PDF
+ *     description: >
+ *       Returns all matching accounts as a paginated PDF table, using the same filters
+ *       and ownership rules as the CSV export. (MINCRM-601)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all accounts
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on account name
+ *       - in: query
+ *         name: industry
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on industry
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportAccountsPdfHandler),
 );
 
 /**

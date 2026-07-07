@@ -31,6 +31,13 @@ import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 import logger from '../logger.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -291,17 +298,46 @@ export async function listContactDealsHandler(req: Request, res: Response): Prom
 }
 
 /**
- * GET /api/contacts/export
- * Streams all matching contacts as a UTF-8 CSV file.
- *
- * Query params mirror the list endpoint (owner, search, accountSearch, account)
- * except pagination/sort — all matching rows are exported.
- * Reps automatically get their own contacts; admins may omit ?owner to get all.
- * Pass ?all=true to bypass the rep-scoped default and export all visible records
- * (admins only; reps always export their own).
- * (MINCRM-164)
+ * Column labels shared by the CSV and PDF contact export formats, in display order.
  */
-export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
+const CONTACT_EXPORT_BASE_HEADERS = [
+  'First Name',
+  'Last Name',
+  'Email',
+  'Phone',
+  'Title',
+  'Department',
+  'Address Line 1',
+  'Address Line 2',
+  'City',
+  'State/Region',
+  'Postal Code',
+  'Country',
+  'LinkedIn URL',
+  'Twitter/X URL',
+  'Account',
+  'Owner',
+  'Created',
+  'Updated',
+] as const;
+
+interface ContactExportData {
+  headers: string[];
+  rows: Record<string, string | number | Date | null | undefined>[];
+}
+
+/**
+ * Resolves the owner/search/account filters for the current request, fetches matching
+ * contacts, and merges in custom field columns. Shared by the CSV and PDF export handlers
+ * so both formats reflect identical rows and ownership rules (MINCRM-601).
+ *
+ * @returns null if the request had an invalid `account` param; the response has already
+ * been written to in that case and the caller must return without further writes.
+ */
+async function resolveContactExportData(
+  req: Request,
+  res: Response,
+): Promise<ContactExportData | null> {
   const orgWideRead = req.user!.role === 'admin' || req.user!.role === 'viewer';
   const exportAll = req.query.all === 'true';
 
@@ -318,7 +354,7 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
       });
-      return;
+      return null;
     }
     accountId = parsed.data;
   }
@@ -333,7 +369,7 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
       ? req.query.accountSearch.trim()
       : undefined;
 
-  const rows = await exportContactsForCsv({
+  const contactRows = await exportContactsForCsv({
     ownerId,
     accountId,
     search,
@@ -343,7 +379,7 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
 
   // Custom field columns — fetch definitions and values in application code (MINCRM-276)
   const customDefs = await listDefinitions('contact');
-  const recordIds = rows.map((r) => r.id);
+  const recordIds = contactRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
   await Promise.all(
     recordIds.map(async (recordId) => {
@@ -356,29 +392,9 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
     }),
   );
 
-  const headers = [
-    'First Name',
-    'Last Name',
-    'Email',
-    'Phone',
-    'Title',
-    'Department',
-    'Address Line 1',
-    'Address Line 2',
-    'City',
-    'State/Region',
-    'Postal Code',
-    'Country',
-    'LinkedIn URL',
-    'Twitter/X URL',
-    'Account',
-    'Owner',
-    'Created',
-    'Updated',
-    ...customDefs.map((d) => d.name),
-  ];
+  const headers = [...CONTACT_EXPORT_BASE_HEADERS, ...customDefs.map((d) => d.name)];
 
-  const csvRows = rows.map((r) => {
+  const rows = contactRows.map((r) => {
     const base: Record<string, string | number | Date | null | undefined> = {
       'First Name': r.first_name,
       'Last Name': r.last_name,
@@ -406,12 +422,55 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
     return base;
   });
 
-  const csv = serializeToCsv(headers, csvRows);
+  return { headers, rows };
+}
+
+/**
+ * GET /api/contacts/export
+ * Streams all matching contacts as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, search, accountSearch, account)
+ * except pagination/sort — all matching rows are exported.
+ * Reps automatically get their own contacts; admins may omit ?owner to get all.
+ * Pass ?all=true to bypass the rep-scoped default and export all visible records
+ * (admins only; reps always export their own).
+ * (MINCRM-164)
+ */
+export async function exportContactsHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveContactExportData(req, res);
+  if (!data) return;
+
+  const csv = serializeToCsv(data.headers, data.rows);
   const filename = csvFilename('contacts');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.status(200).send(csv);
+}
+
+/**
+ * GET /api/contacts/export.pdf
+ * Renders all matching contacts as a paginated PDF table.
+ *
+ * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ */
+export async function exportContactsPdfHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveContactExportData(req, res);
+  if (!data) return;
+
+  const columns: PdfTableColumn[] = data.headers.map((label) => ({ key: label, label }));
+  const rows: PdfTableRow[] = data.rows;
+
+  setPdfResponseHeaders(res, pdfFilename('contacts'));
+  renderPdfDocument(res, {
+    title: 'Contacts',
+    sections: [
+      {
+        heading: 'Contacts',
+        table: { columns, rows, emptyMessage: 'No contacts match the current filters.' },
+      },
+    ],
+  });
 }
 
 /**

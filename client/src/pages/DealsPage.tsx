@@ -21,7 +21,14 @@ import CloseDealModal from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
-import { listDeals, createDeal, updateDeal, exportDealsCsv, DEALS_QUERY_KEY } from '@/api/deals.js';
+import {
+  listDeals,
+  createDeal,
+  updateDeal,
+  exportDealsCsv,
+  exportDealsPdf,
+  DEALS_QUERY_KEY,
+} from '@/api/deals.js';
 import { usePipelines } from '@/hooks/usePipelines.js';
 import { bulkPatchDeals, bulkDeleteDeals } from '@/api/bulk.js';
 import type { BulkFailure } from '@/api/bulk.js';
@@ -126,6 +133,7 @@ export default function DealsPage() {
   } = usePipelineStages(activePipelineId);
   const openStages = pipelineStages.filter((s) => !s.is_terminal);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // ── View mode ───────────────��──────────────────────────────────────────────
   // Restore from sessionStorage so the chosen view survives navigation (MINCRM-146)
@@ -607,6 +615,26 @@ export default function DealsPage() {
               }}
             >
               {isExporting ? t('deals.exporting') : t('deals.exportCsv')}
+            </Button>
+            {/* Export PDF — filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              data-testid="deals-export-pdf-button"
+              disabled={isExportingPdf}
+              onClick={async () => {
+                setIsExportingPdf(true);
+                try {
+                  await exportDealsPdf({
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                  });
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+            >
+              {isExportingPdf ? t('deals.exporting') : t('deals.exportPdf')}
             </Button>
             {/* Export all — admins only */}
             {isAdmin && (

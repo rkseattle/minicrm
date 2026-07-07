@@ -18,7 +18,7 @@ const TABLE_HEADER_ROW_GAP = 8;
 const EMPTY_STATE_COLOR = 'gray';
 const DEFAULT_TEXT_COLOR = 'black';
 
-export type PdfTableCell = string | number | null | undefined;
+export type PdfTableCell = string | number | Date | null | undefined;
 export type PdfTableRow = Record<string, PdfTableCell>;
 
 export interface PdfTableColumn {
@@ -86,8 +86,16 @@ function columnWidths(columns: PdfTableColumn[], tableWidth: number): number[] {
   return columns.map((col) => (tableWidth * (col.width ?? 1)) / totalWeight);
 }
 
+/** Formats a cell value for display, matching csvUtils.ts's Date formatting for consistency. */
 function cellText(value: PdfTableCell): string {
-  return value === null || value === undefined ? '' : String(value);
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) {
+    return value
+      .toISOString()
+      .replace('T', ' ')
+      .replace(/\.\d{3}Z$/, ' UTC');
+  }
+  return String(value);
 }
 
 function renderTableHeaderRow(
