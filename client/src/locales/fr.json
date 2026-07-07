@@ -1049,7 +1049,8 @@
       "empty": "Aucune activité enregistrée pour cette période.",
       "exportCsv": "Exporter CSV",
       "exportPdf": "Exporter PDF",
-      "exporting": "Exportation en cours…"
+      "exporting": "Exportation en cours…",
+      "exportPdfError": "Échec de l'exportation du PDF. Veuillez réessayer."
     },
     "winLoss": {
       "pageTitle": "Rapport victoires/défaites",

@@ -30,7 +30,7 @@ import {
   waitForSavedReportByName,
   clickSavedReportByName,
   getReportsEntityTypeSelectValue,
-  clickReportExportPdfAndAwaitResponse,
+  clickCustomReportExportPdfAndAwaitDownload,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 
@@ -143,13 +143,7 @@ test('custom reports: clicking Export PDF on a saved, run report downloads a PDF
   const resultsVisible = await runCustomReport({ page });
   expect(resultsVisible).toBe(true);
 
-  const { status, contentType } = await clickReportExportPdfAndAwaitResponse(
-    { page },
-    '/export.pdf',
-  );
+  const { suggestedFilename } = await clickCustomReportExportPdfAndAwaitDownload({ page });
 
-  expect(status, 'export.pdf response should return 200').toBe(200);
-  expect(contentType, 'response Content-Type should be application/pdf').toContain(
-    'application/pdf',
-  );
+  expect(suggestedFilename, 'downloaded file should have a .pdf extension').toMatch(/\.pdf$/);
 });

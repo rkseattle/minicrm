@@ -6,6 +6,7 @@
 
 import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
+import { formatExportDate } from '../utils/csvUtils.js';
 
 const DOCUMENT_MARGIN = 50;
 const TITLE_FONT_SIZE = 18;
@@ -86,14 +87,11 @@ function columnWidths(columns: PdfTableColumn[], tableWidth: number): number[] {
   return columns.map((col) => (tableWidth * (col.width ?? 1)) / totalWeight);
 }
 
-/** Formats a cell value for display, matching csvUtils.ts's Date formatting for consistency. */
+/** Formats a cell value for display, sharing csvUtils.ts's Date formatting for consistency. */
 function cellText(value: PdfTableCell): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) {
-    return value
-      .toISOString()
-      .replace('T', ' ')
-      .replace(/\.\d{3}Z$/, ' UTC');
+    return formatExportDate(value);
   }
   return String(value);
 }
@@ -122,20 +120,14 @@ function renderTableDataRow(
   left: number,
   row: PdfTableRow,
   y: number,
+  rowHeight: number,
 ): number {
-  doc.fontSize(TABLE_ROW_FONT_SIZE);
-  let maxRowHeight = 0;
-  const cellHeights = columns.map((col, i) =>
-    doc.heightOfString(cellText(row[col.key]), { width: widths[i] }),
-  );
-  maxRowHeight = Math.max(...cellHeights, doc.currentLineHeight());
-
   let x = left;
   for (let i = 0; i < columns.length; i++) {
     doc.text(cellText(row[columns[i].key]), x, y, { width: widths[i] });
     x += widths[i];
   }
-  return y + maxRowHeight + TABLE_ROW_LINE_GAP;
+  return y + rowHeight + TABLE_ROW_LINE_GAP;
 }
 
 /**
@@ -165,15 +157,20 @@ function renderTable(
   let y = renderTableHeaderRow(doc, columns, widths, left);
 
   for (const row of rows) {
-    const estimatedHeight = Math.max(
+    // Row text renders at TABLE_ROW_FONT_SIZE — set it before measuring so the
+    // overflow estimate matches what renderTableDataRow actually lays out
+    // (renderTableHeaderRow leaves fontSize at TABLE_HEADER_FONT_SIZE).
+    doc.fontSize(TABLE_ROW_FONT_SIZE);
+    const rowHeight = Math.max(
       ...columns.map((col, i) => doc.heightOfString(cellText(row[col.key]), { width: widths[i] })),
       doc.currentLineHeight(),
     );
-    if (y + estimatedHeight > maxY) {
+    if (y + rowHeight > maxY) {
       doc.addPage();
       y = renderTableHeaderRow(doc, columns, widths, left);
+      doc.fontSize(TABLE_ROW_FONT_SIZE);
     }
-    y = renderTableDataRow(doc, columns, widths, left, row, y);
+    y = renderTableDataRow(doc, columns, widths, left, row, y, rowHeight);
   }
 
   doc.y = y;

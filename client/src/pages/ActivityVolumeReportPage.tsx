@@ -132,6 +132,7 @@ export default function ActivityVolumeReportPage() {
 export function ActivityVolumeReportContent() {
   const { t } = useTranslation();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState('');
 
   const filters = useReportFilters('currentMonth');
   const { resolvedStart, resolvedEnd, effectiveOwnerId, isAdmin, viewMode } = filters;
@@ -165,8 +166,11 @@ export function ActivityVolumeReportContent() {
 
   async function handleExportPdf(): Promise<void> {
     setIsExportingPdf(true);
+    setExportPdfError('');
     try {
       await exportActivityVolumeReportPdf(reportParams);
+    } catch {
+      setExportPdfError(t('reports.activityVolume.exportPdfError'));
     } finally {
       setIsExportingPdf(false);
     }
@@ -209,6 +213,12 @@ export function ActivityVolumeReportContent() {
           </div>
         )}
       </div>
+
+      {exportPdfError && (
+        <p className="mb-4 text-sm text-red-600" data-testid="export-pdf-error">
+          {exportPdfError}
+        </p>
+      )}
 
       <ReportFilterBar
         filters={filters}

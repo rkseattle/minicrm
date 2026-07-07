@@ -383,7 +383,7 @@ export interface ActivityVolumeReport {
 }
 
 /** The ordered set of activity types used as report columns (MINCRM-181) */
-const ACTIVITY_TYPES = ['Note', 'Call', 'Email', 'Meeting', 'Task'] as const;
+export const ACTIVITY_TYPES = ['Note', 'Call', 'Email', 'Meeting', 'Task'] as const;
 
 /**
  * Returns an activity volume report for the given date range and optional owner scope.

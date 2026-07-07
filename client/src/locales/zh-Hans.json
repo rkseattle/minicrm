@@ -1049,7 +1049,8 @@
       "empty": "该时段内无活动记录。",
       "exportCsv": "导出 CSV",
       "exportPdf": "导出 PDF",
-      "exporting": "导出中…"
+      "exporting": "导出中…",
+      "exportPdfError": "导出 PDF 失败，请重试。"
     },
     "winLoss": {
       "pageTitle": "赢/输报告",

@@ -1014,7 +1014,8 @@
       "empty": "No activities logged for this period.",
       "exportCsv": "Export CSV",
       "exportPdf": "Export PDF",
-      "exporting": "Exporting…"
+      "exporting": "Exporting…",
+      "exportPdfError": "Failed to export PDF. Please try again."
     },
     "winLoss": {
       "pageTitle": "Win/Loss Report",
