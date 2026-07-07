@@ -31,6 +31,7 @@ import {
   getAiUsageSummaryHandler,
   getAiUsageDailyHandler,
   exportAiUsageCsvHandler,
+  exportAiUsagePdfHandler,
 } from '../controllers/aiUsageController.js';
 import {
   getAiSessionRetentionStatsHandler,
@@ -608,6 +609,46 @@ router.get(
   authenticate,
   requireRole('admin'),
   asyncHandler(exportAiUsageCsvHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/usage/export.pdf:
+ *   get:
+ *     tags: [AI]
+ *     summary: Export AI usage data as PDF (per-user, per-day, per-feature)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: preset
+ *         schema: { type: string, enum: [current_month, last_month, last_3_months] }
+ *       - in: query
+ *         name: start
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: end
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid date range
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/usage/export.pdf',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(exportAiUsagePdfHandler),
 );
 
 /**

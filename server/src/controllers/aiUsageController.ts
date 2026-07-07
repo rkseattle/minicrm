@@ -13,6 +13,13 @@ import {
 } from '../services/aiUsageDashboardService.js';
 import type { DateRange } from '../services/aiUsageDashboardService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 
 /** One day in milliseconds, used to convert an inclusive calendar-day `end` param into the exclusive boundary every query in aiUsageDashboardService.ts filters against. */
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -107,25 +114,36 @@ export async function getAiUsageDailyHandler(req: Request, res: Response): Promi
   res.status(200).json(series);
 }
 
-export async function exportAiUsageCsvHandler(req: Request, res: Response): Promise<void> {
+/** Column labels shared by the CSV and PDF AI usage export formats, in display order. */
+const AI_USAGE_EXPORT_HEADERS = [
+  'Date',
+  'User Name',
+  'User Email',
+  'Feature',
+  'Input Tokens',
+  'Output Tokens',
+  'Estimated Cost (USD)',
+] as const;
+
+/**
+ * Resolves the requested date range and fetches export rows, shaped identically for
+ * both the CSV and PDF export handlers so both formats reflect the same data. Returns
+ * null if the range is invalid; the response has already been written to in that
+ * case and the caller must return without further writes. (MINCRM-601)
+ */
+async function resolveAiUsageExportData(
+  req: Request,
+  res: Response,
+): Promise<Record<string, string | number>[] | null> {
   const range = resolveDateRange(req.query);
   if (!range) {
     sendInvalidDateRangeError(res);
-    return;
+    return null;
   }
 
   const rows = await getUsageExportRows(range);
 
-  const headers = [
-    'Date',
-    'User Name',
-    'User Email',
-    'Feature',
-    'Input Tokens',
-    'Output Tokens',
-    'Estimated Cost (USD)',
-  ];
-  const csvRows = rows.map((row) => ({
+  return rows.map((row) => ({
     Date: row.usage_date,
     'User Name': row.user_name,
     'User Email': row.user_email,
@@ -134,11 +152,43 @@ export async function exportAiUsageCsvHandler(req: Request, res: Response): Prom
     'Output Tokens': row.output_tokens,
     'Estimated Cost (USD)': (row.estimated_cost_cents / 100).toFixed(2),
   }));
+}
 
-  const csv = serializeToCsv(headers, csvRows);
+export async function exportAiUsageCsvHandler(req: Request, res: Response): Promise<void> {
+  const csvRows = await resolveAiUsageExportData(req, res);
+  if (!csvRows) return;
+
+  const csv = serializeToCsv([...AI_USAGE_EXPORT_HEADERS], csvRows);
   const filename = csvFilename('ai-usage');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.status(200).send(csv);
+}
+
+/**
+ * GET /api/v1/admin/ai/usage/export.pdf
+ * Renders AI usage data (per-user, per-day, per-feature) as a paginated PDF table.
+ * Query params and admin-only access are identical to the CSV export above. (MINCRM-601)
+ */
+export async function exportAiUsagePdfHandler(req: Request, res: Response): Promise<void> {
+  const rows = await resolveAiUsageExportData(req, res);
+  if (!rows) return;
+
+  const columns: PdfTableColumn[] = AI_USAGE_EXPORT_HEADERS.map((label) => ({
+    key: label,
+    label,
+  }));
+  const tableRows: PdfTableRow[] = rows;
+
+  setPdfResponseHeaders(res, pdfFilename('ai-usage'));
+  renderPdfDocument(res, {
+    title: 'AI Usage',
+    sections: [
+      {
+        heading: 'AI Usage',
+        table: { columns, rows: tableRows, emptyMessage: 'No AI usage recorded for this period.' },
+      },
+    ],
+  });
 }
