@@ -703,3 +703,27 @@ export async function isExpansionSignalBannerVisible(
   const detailPage = new AccountDetailPage(context);
   return detailPage.isExpansionSignalBannerVisible();
 }
+
+/**
+ * Clicks the account detail page's "Export PDF" button and waits for the
+ * underlying single-record export.pdf HTTP response, returning its status
+ * and content-type. (MINCRM-650)
+ */
+export async function clickAccountExportPdfAndAwaitResponse(
+  id: string,
+  context: AccountsBehaviorContext,
+): Promise<{ status: number; contentType: string }> {
+  const detail = new AccountDetailPage(context);
+  const responsePromise = context.page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/accounts/${id}/export.pdf`) &&
+      response.request().method() === 'GET',
+  );
+  const button = await detail.exportPdfButtonLocator();
+  await button.click();
+  const response = await responsePromise;
+  return {
+    status: response.status(),
+    contentType: response.headers()['content-type'] ?? '',
+  };
+}

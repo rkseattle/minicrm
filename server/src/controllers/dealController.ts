@@ -32,6 +32,8 @@ import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  buildContactsTableSection,
+  buildNotesTableSection,
   DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
@@ -552,28 +554,6 @@ export async function exportDealPdfHandler(req: Request, res: Response): Promise
 
   const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
 
-  const contactColumns: PdfTableColumn[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'title', label: 'Title' },
-  ];
-  const contactRows: PdfTableRow[] = contacts.map((c) => ({
-    name: `${c.first_name} ${c.last_name}`,
-    email: c.email,
-    title: c.title,
-  }));
-
-  const noteColumns: PdfTableColumn[] = [
-    { key: 'created_at', label: 'Date' },
-    { key: 'author', label: 'Author' },
-    { key: 'body', label: 'Note' },
-  ];
-  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
-    created_at: n.created_at,
-    author: n.created_by_name,
-    body: n.body_text,
-  }));
-
   setPdfResponseHeaders(res, pdfFilename(`deal-${id}`));
   renderPdfDocument(res, {
     title: `Deal: ${deal.name}`,
@@ -584,14 +564,8 @@ export async function exportDealPdfHandler(req: Request, res: Response): Promise
         lines: customFieldLines,
         emptyMessage: 'No custom fields defined.',
       },
-      {
-        heading: 'Linked Contacts',
-        table: { columns: contactColumns, rows: contactRows, emptyMessage: 'No linked contacts.' },
-      },
-      {
-        heading: 'Notes',
-        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
-      },
+      buildContactsTableSection(contacts),
+      buildNotesTableSection(notesPage.data),
     ],
   });
 }

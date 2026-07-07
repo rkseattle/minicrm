@@ -43,6 +43,7 @@ test.describe.configure({ mode: 'parallel' });
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
   navigateToAccounts,
+  navigateToAccountDetail,
   editAccount,
   createAccountViaUI,
   deleteAccountViaUI,
@@ -56,6 +57,7 @@ import {
   expectAccountLinkedContactsEmptyVisible,
   noAlertExists,
   isLinkedContactAbsent,
+  clickAccountExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getContactById, patchContactAccount } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
@@ -465,4 +467,29 @@ test('@functional F3-P1: sort order is stable across pages (AC2)', async ({
   const allNames = [...page1Names, ...page2Names];
   const allSorted = [...allNames].sort((x, y) => x.localeCompare(y));
   expect(allNames, 'sort order should be stable across pages (AC2)').toEqual(allSorted);
+});
+
+// ---------------------------------------------------------------------------
+// Export tests (MINCRM-650)
+// ---------------------------------------------------------------------------
+
+test('@functional F3-E1: clicking Export PDF on the account detail page downloads a single-record PDF file', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const account = await createTestAccount(testData, restClient, {
+    name: `F3E1-Acct-${Date.now()}`,
+  });
+
+  await navigateToAccountDetail(account.id, { page });
+
+  const { status, contentType } = await clickAccountExportPdfAndAwaitResponse(account.id, {
+    page,
+  });
+
+  expect(status, 'export.pdf response should return 200').toBe(200);
+  expect(contentType, 'response Content-Type should be application/pdf').toContain(
+    'application/pdf',
+  );
 });

@@ -289,6 +289,7 @@ export {
   fillLeadDetailField,
   saveLead,
   isLeadDetailLoaded,
+  clickLeadExportPdfAndAwaitResponse,
 } from './leads.behaviors.js';
 export type {
   LeadsBehaviorContext,

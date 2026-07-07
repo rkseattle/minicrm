@@ -49,6 +49,8 @@ import {
   loginAsAdmin,
   setUserLanguage,
   setSystemDefaultLanguage,
+  navigateToLeadDetail,
+  clickLeadExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/index.js';
 import { loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import { createTestRep } from '@apps/minicrm/helpers.js';
@@ -338,4 +340,29 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   const result = await deleteLead(leadId, { page });
 
   expect(result.deleted, 'browser should navigate back to /leads after deletion').toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// Export tests (F9-E) (MINCRM-650)
+// ---------------------------------------------------------------------------
+
+test('@functional F9-E1: clicking Export PDF on the lead detail page downloads a single-record PDF file', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const email = `f9e1-${uniqueSuffix}@example.com`;
+  const created = await createLeadViaApi(restClient, { first_name: 'F9E1', email });
+  testData.register('lead', created.id, `/api/v1/leads/${created.id}`);
+
+  await navigateToLeadDetail(created.id, { page });
+
+  const { status, contentType } = await clickLeadExportPdfAndAwaitResponse(created.id, { page });
+
+  expect(status, 'export.pdf response should return 200').toBe(200);
+  expect(contentType, 'response Content-Type should be application/pdf').toContain(
+    'application/pdf',
+  );
 });

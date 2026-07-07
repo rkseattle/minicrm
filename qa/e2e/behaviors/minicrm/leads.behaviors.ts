@@ -746,3 +746,27 @@ export async function getLeadScoreNarrativeText(context: LeadsBehaviorContext): 
   const locator = await detailPage.scoreNarrativeLocator();
   return locator.innerText();
 }
+
+/**
+ * Clicks the lead detail page's "Export PDF" button and waits for the
+ * underlying single-record export.pdf HTTP response, returning its status
+ * and content-type. (MINCRM-650)
+ */
+export async function clickLeadExportPdfAndAwaitResponse(
+  id: string,
+  context: LeadsBehaviorContext,
+): Promise<{ status: number; contentType: string }> {
+  const detail = new LeadDetailPage(context);
+  const responsePromise = context.page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/leads/${id}/export.pdf`) &&
+      response.request().method() === 'GET',
+  );
+  const button = await detail.exportPdfButtonLocator();
+  await button.click();
+  const response = await responsePromise;
+  return {
+    status: response.status(),
+    contentType: response.headers()['content-type'] ?? '',
+  };
+}

@@ -54,6 +54,21 @@ export class ContactDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the Export PDF button on the contact detail page.
+   */
+  async exportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'contact-detail-export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'button to export this contact as a single-record PDF' },
+      )
+      .resolve();
+  }
+
+  /**
    * Clicks the Edit button to enter edit mode.
    */
   async clickEdit(): Promise<void> {

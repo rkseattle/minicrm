@@ -32,9 +32,8 @@ import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  buildNotesTableSection,
   DETAIL_PDF_NOTES_LIMIT,
-  type PdfTableColumn,
-  type PdfTableRow,
 } from '../services/pdfExportService.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -201,26 +200,12 @@ export async function exportLeadPdfHandler(req: Request, res: Response): Promise
     `Updated: ${formatExportDate(lead.updated_at)}`,
   ];
 
-  const noteColumns: PdfTableColumn[] = [
-    { key: 'created_at', label: 'Date' },
-    { key: 'author', label: 'Author' },
-    { key: 'body', label: 'Note' },
-  ];
-  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
-    created_at: n.created_at,
-    author: n.created_by_name,
-    body: n.body_text,
-  }));
-
   setPdfResponseHeaders(res, pdfFilename(`lead-${id}`));
   renderPdfDocument(res, {
     title: `Lead: ${lead.first_name} ${lead.last_name ?? ''}`.trim(),
     sections: [
       { heading: 'Overview', lines: overviewLines },
-      {
-        heading: 'Notes',
-        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
-      },
+      buildNotesTableSection(notesPage.data),
     ],
   });
 }
