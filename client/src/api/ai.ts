@@ -267,6 +267,18 @@ export async function exportAiUsageCsv(range: UsageDateRangeQuery): Promise<void
 }
 
 /**
+ * Downloads AI usage data as a PDF file for the given date range. Admin only. (MINCRM-601)
+ */
+export async function exportAiUsagePdf(range: UsageDateRangeQuery): Promise<void> {
+  const response = await apiClient.get<Blob>('/admin/ai/usage/export.pdf', {
+    params: toQueryParams(range),
+    responseType: 'blob',
+  });
+  const date = new Date().toISOString().split('T')[0];
+  triggerCsvDownload(response.data, `minicrm-ai-usage-${date}.pdf`);
+}
+
+/**
  * Sets the AI cost estimation rates (cents per 1,000,000 tokens). Admin only.
  */
 export async function setAiCostRates(input: SetAiCostRatesInput): Promise<AiConfigResponse> {

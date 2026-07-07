@@ -4,7 +4,8 @@
  * Covers:
  *  - GET /admin/ai/usage/summary: admin-only, returns summary shape, validates date range
  *  - GET /admin/ai/usage/daily: admin-only, returns daily series shape
- *  - Role enforcement: reps receive 403 on both routes
+ *  - GET /admin/ai/usage/export and /export.pdf: admin-only, correct content type (MINCRM-601)
+ *  - Role enforcement: reps receive 403 on all routes
  */
 
 import 'dotenv/config';
@@ -62,6 +63,18 @@ describe('role enforcement', () => {
 
   it('GET /admin/ai/usage/daily returns 403 for reps', async () => {
     const res = await request(app).get('/api/v1/admin/ai/usage/daily').set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /admin/ai/usage/export returns 403 for reps', async () => {
+    const res = await request(app).get('/api/v1/admin/ai/usage/export').set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /admin/ai/usage/export.pdf returns 403 for reps', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export.pdf')
+      .set('Cookie', repCookie);
     expect(res.status).toBe(403);
   });
 });
@@ -185,6 +198,63 @@ describe('GET /admin/ai/usage/daily', () => {
 
   it('returns 401 when not authenticated', async () => {
     const res = await request(app).get('/api/v1/admin/ai/usage/daily');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /admin/ai/usage/export', () => {
+  it('returns CSV with correct headers', async () => {
+    const res = await request(app).get('/api/v1/admin/ai/usage/export').set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+  });
+
+  it('returns 400 when start is after end', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export')
+      .query({ start: '2026-02-01', end: '2026-01-01' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const res = await request(app).get('/api/v1/admin/ai/usage/export');
+    expect(res.status).toBe(401);
+  });
+});
+
+// ── GET /admin/ai/usage/export.pdf ────────────────────────────────────────── (MINCRM-601)
+
+describe('GET /admin/ai/usage/export.pdf', () => {
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export.pdf')
+      .set('Cookie', adminCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 400 when start is after end', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export.pdf')
+      .query({ start: '2026-02-01', end: '2026-01-01' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    const res = await request(app).get('/api/v1/admin/ai/usage/export.pdf');
     expect(res.status).toBe(401);
   });
 });

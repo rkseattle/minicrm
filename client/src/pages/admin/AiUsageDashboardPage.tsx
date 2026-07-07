@@ -21,6 +21,7 @@ import {
   getAiUsageSummary,
   getAiUsageDaily,
   exportAiUsageCsv,
+  exportAiUsagePdf,
   AI_USAGE_SUMMARY_QUERY_KEY,
   AI_USAGE_DAILY_QUERY_KEY,
 } from '@/api/ai.js';
@@ -84,6 +85,8 @@ export default function AiUsageDashboardPage() {
   const [customEnd, setCustomEnd] = useState(todayIso());
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState('');
 
   const range: UsageDateRangeQuery =
     preset === 'custom'
@@ -120,6 +123,18 @@ export default function AiUsageDashboardPage() {
     }
   };
 
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    setExportPdfError('');
+    try {
+      await exportAiUsagePdf(range);
+    } catch {
+      setExportPdfError(t('aiUsageDashboard.exportPdfError'));
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const trendPercentage =
     summary && summary.prior_period_estimated_cost_cents > 0
       ? Math.round(
@@ -146,19 +161,35 @@ export default function AiUsageDashboardPage() {
             </h1>
             <p className="mt-1 text-sm text-gray-600">{t('aiUsageDashboard.description')}</p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={handleExport}
-            disabled={isExporting}
-            data-testid="ai-usage-export-csv-button"
-          >
-            {isExporting ? t('aiUsageDashboard.exporting') : t('aiUsageDashboard.exportCsv')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleExport}
+              disabled={isExporting}
+              data-testid="ai-usage-export-csv-button"
+            >
+              {isExporting ? t('aiUsageDashboard.exporting') : t('aiUsageDashboard.exportCsv')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              data-testid="ai-usage-export-pdf-button"
+            >
+              {isExportingPdf ? t('aiUsageDashboard.exporting') : t('aiUsageDashboard.exportPdf')}
+            </Button>
+          </div>
         </div>
 
         {exportError && (
           <p className="mb-4 text-sm text-red-600" data-testid="ai-usage-export-error">
             {exportError}
+          </p>
+        )}
+
+        {exportPdfError && (
+          <p className="mb-4 text-sm text-red-600" data-testid="ai-usage-export-pdf-error">
+            {exportPdfError}
           </p>
         )}
 
