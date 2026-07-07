@@ -325,11 +325,43 @@ export async function createContactViaUI(
     await contactsPage.fillDepartment(fields.department);
   }
 
-  // Submit the form.
-  await contactsPage.submitCreateForm();
+  // A missing required field (e.g. empty email) is blocked by the browser's
+  // native HTML5 constraint validation before the form's submit handler ever
+  // runs — no request reaches the network in that case. Only register a
+  // response wait when every required field is actually filled; otherwise
+  // wait for the DOM to settle into the blocked-submission state (form still
+  // open). networkidle previously stood in for both cases, but it resolves
+  // on a network-quiet heuristic rather than the actual mutation outcome,
+  // which raced React's post-submit re-render under CI load (MINCRM-650
+  // follow-up).
+  const expectsNetworkRequest =
+    fields.first_name.length > 0 && fields.last_name.length > 0 && fields.email.length > 0;
 
-  // Short wait for network/React state to settle.
-  await context.page.waitForLoadState('networkidle');
+  if (expectsNetworkRequest) {
+    // Register the listener before clicking so the POST is always captured
+    // even if the server responds before the next await resolves.
+    const createDone = context.page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contacts') && response.request().method() === 'POST',
+    );
+    await contactsPage.submitCreateForm();
+    const createResponse = await createDone;
+
+    // The fetch promise resolving does not guarantee React has re-rendered
+    // yet — wait for the DOM to reach the terminal state implied by the
+    // response status: 201 closes the form, 409 shows the duplicate warning.
+    if (createResponse.status() === 201) {
+      await context.page.waitForAbsent('[data-testid="contact-form"]');
+    } else {
+      await context.page.waitForPresent('[data-testid="duplicate-contact-warning"]');
+    }
+  } else {
+    await contactsPage.submitCreateForm();
+    // Native constraint validation blocks submission synchronously; the form
+    // stays mounted and no navigation occurs, so re-querying its presence
+    // immediately is sufficient (no network round trip to wait on).
+    await context.page.waitForPresent('[data-testid="contact-form"]', 2_000);
+  }
 
   const finalUrl = context.page.url();
 
