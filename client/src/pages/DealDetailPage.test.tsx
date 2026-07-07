@@ -4,7 +4,7 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import DealDetailPage from './DealDetailPage.js';
@@ -12,6 +12,7 @@ import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { DEAL_1, CONTACT_1, CONTACT_2 } from '../test/msw/handlers.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
+import * as dealsApi from '@/api/deals.js';
 
 /** Renders DealDetailPage with DEAL_1 id in route params. */
 function renderDealDetail() {
@@ -49,6 +50,42 @@ describe('DealDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('edit-deal-button')).toBeInTheDocument();
       expect(screen.getByTestId('delete-deal-button')).toBeInTheDocument();
+    });
+  });
+
+  describe('Export PDF button', () => {
+    beforeEach(() => {
+      vi.spyOn(dealsApi, 'exportDealPdf').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export PDF button', async () => {
+      renderDealDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('deal-detail-export-pdf-button')).toBeInTheDocument();
+      });
+    });
+
+    it('calls exportDealPdf with the deal id when clicked', async () => {
+      const user = userEvent.setup();
+      renderDealDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('deal-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('deal-detail-export-pdf-button'));
+      expect(dealsApi.exportDealPdf).toHaveBeenCalledWith(DEAL_1.id);
+    });
+
+    it('shows an error message when the export fails', async () => {
+      vi.spyOn(dealsApi, 'exportDealPdf').mockRejectedValue(new Error('network error'));
+      const user = userEvent.setup();
+      renderDealDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('deal-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('deal-detail-export-pdf-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
+      });
     });
   });
 

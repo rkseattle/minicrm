@@ -4,12 +4,13 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import ContactDetailPage from './ContactDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { CONTACT_1, ACCOUNT_1, ADMIN_USER, REP_USER, DEAL_1 } from '../test/msw/handlers.js';
+import * as contactsApi from '@/api/contacts.js';
 
 describe('ContactDetailPage', () => {
   it('renders the contact name', async () => {
@@ -21,6 +22,51 @@ describe('ContactDetailPage', () => {
       expect(screen.getByTestId('contact-name')).toHaveTextContent(
         `${CONTACT_1.first_name} ${CONTACT_1.last_name}`,
       );
+    });
+  });
+
+  describe('Export PDF button', () => {
+    beforeEach(() => {
+      vi.spyOn(contactsApi, 'exportContactPdf').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export PDF button', async () => {
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('contact-detail-export-pdf-button')).toBeInTheDocument();
+      });
+    });
+
+    it('calls exportContactPdf with the contact id when clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('contact-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('contact-detail-export-pdf-button'));
+      expect(contactsApi.exportContactPdf).toHaveBeenCalledWith(CONTACT_1.id);
+    });
+
+    it('shows an error message when the export fails', async () => {
+      vi.spyOn(contactsApi, 'exportContactPdf').mockRejectedValue(new Error('network error'));
+      const user = userEvent.setup();
+      renderWithProviders(<ContactDetailPage />, {
+        initialEntries: [`/contacts/${CONTACT_1.id}`],
+        path: '/contacts/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('contact-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('contact-detail-export-pdf-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
+      });
     });
   });
 

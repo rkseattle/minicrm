@@ -27,6 +27,7 @@ import {
   addContactAddress,
   deleteContactAddress,
   setDefaultContactAddress,
+  exportContactPdf,
 } from '@/api/contacts.js';
 import {
   contactEnrollmentsQueryKey,
@@ -97,6 +98,8 @@ export default function ContactDetailPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isSendEmailOpen, setIsSendEmailOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState<string | null>(null);
 
   // Merge state (MINCRM-187)
   const [isMerging, setIsMerging] = useState(false);
@@ -492,6 +495,26 @@ export default function ContactDetailPage() {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  data-testid="contact-detail-export-pdf-button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    setExportPdfError(null);
+                    try {
+                      await exportContactPdf(contact.id);
+                    } catch {
+                      setExportPdfError(t('contacts.exportPdfError'));
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                >
+                  {isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   data-testid="edit-contact-button"
                   onClick={() => {
                     setIsEditing(true);
@@ -513,6 +536,11 @@ export default function ContactDetailPage() {
                   {deleteMutation.isPending ? t('contacts.deleting') : t('contacts.delete')}
                 </Button>
               </div>
+              {exportPdfError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="export-pdf-error">
+                  {exportPdfError}
+                </p>
+              )}
               {deleteError && (
                 <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
                   {deleteError}

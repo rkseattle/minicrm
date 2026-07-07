@@ -188,6 +188,22 @@ export async function exportContactsPdf(params: ExportContactsParams = {}): Prom
   triggerCsvDownload(response.data, filename);
 }
 
+/**
+ * Downloads a single contact as a one-record summary PDF.
+ * Triggers a browser file-save dialog. (MINCRM-650)
+ *
+ * @param id - Contact UUID
+ */
+export async function exportContactPdf(id: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/contacts/${id}/export.pdf`, {
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-contact-${id}-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}
+
 /** Per-field source choice for contact merge */
 export type MergeFieldChoice = 'winner' | 'loser';
 

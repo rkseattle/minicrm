@@ -16,7 +16,13 @@ import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import CustomFieldsSection from '@/components/CustomFieldsSection.js';
 import { Button } from '@/components/ui/Button.js';
-import { getAccount, updateAccount, deleteAccount, listChildAccounts } from '@/api/accounts.js';
+import {
+  getAccount,
+  updateAccount,
+  deleteAccount,
+  listChildAccounts,
+  exportAccountPdf,
+} from '@/api/accounts.js';
 import { listContacts } from '@/api/contacts.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import { putCustomFieldValues, customFieldValuesQueryKey } from '@/api/customFields.js';
@@ -41,6 +47,8 @@ export default function AccountDetailPage() {
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState<string | null>(null);
 
   const accountQueryKey = ['accounts', id] as const;
 
@@ -214,6 +222,26 @@ export default function AccountDetailPage() {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  data-testid="account-detail-export-pdf-button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    setExportPdfError(null);
+                    try {
+                      await exportAccountPdf(account.id);
+                    } catch {
+                      setExportPdfError(t('accounts.exportPdfError'));
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                >
+                  {isExportingPdf ? t('accounts.exporting') : t('accounts.exportPdf')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   data-testid="edit-account-button"
                   onClick={() => setIsEditing(true)}
                   disabled={linkedContactsLoading}
@@ -231,6 +259,11 @@ export default function AccountDetailPage() {
                   {deleteMutation.isPending ? t('accounts.deleting') : t('accounts.delete')}
                 </Button>
               </div>
+              {exportPdfError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="export-pdf-error">
+                  {exportPdfError}
+                </p>
+              )}
               {deleteError && (
                 <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
                   {deleteError}

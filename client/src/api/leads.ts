@@ -5,6 +5,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import { triggerCsvDownload } from '@/utils/csvDownload.js';
 import type {
   LeadResponse,
   LeadStatusHistory,
@@ -162,4 +163,20 @@ export async function searchAccountsForConversion(
     { params: { q } },
   );
   return response.data;
+}
+
+/**
+ * Downloads a single lead as a one-record summary PDF.
+ * Triggers a browser file-save dialog. (MINCRM-650)
+ *
+ * @param id - Lead UUID
+ */
+export async function exportLeadPdf(id: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/leads/${id}/export.pdf`, {
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-lead-${id}-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
 }
