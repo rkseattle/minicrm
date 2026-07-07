@@ -128,6 +128,7 @@ export default function DealDetailPage() {
   const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
   const { enabled: proposalDraftEnabled } = useFeatureFlag('ai_proposal_draft_generation');
+  const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   /** Suggested next stage pre-set into DealForm when the advancement indicator is clicked */
   const [suggestedStage, setSuggestedStage] = useState<string | null>(null);
 
@@ -431,26 +432,28 @@ export default function DealDetailPage() {
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  data-testid="deal-detail-export-pdf-button"
-                  disabled={isExportingPdf}
-                  onClick={async () => {
-                    setIsExportingPdf(true);
-                    setExportPdfError(null);
-                    try {
-                      await exportDealPdf(deal.id);
-                    } catch {
-                      setExportPdfError(t('deals.exportPdfError'));
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  }}
-                >
-                  {isExportingPdf ? t('deals.exporting') : t('deals.exportPdf')}
-                </Button>
+                {csvExportEnabled && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="deal-detail-export-pdf-button"
+                    disabled={isExportingPdf}
+                    onClick={async () => {
+                      setIsExportingPdf(true);
+                      setExportPdfError(null);
+                      try {
+                        await exportDealPdf(deal.id);
+                      } catch {
+                        setExportPdfError(t('deals.exportPdfError'));
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    }}
+                  >
+                    {isExportingPdf ? t('deals.exporting') : t('deals.exportPdf')}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"

@@ -69,6 +69,22 @@ describe('LeadDetailPage', () => {
         expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
       });
     });
+
+    it('hides the Export PDF button when the csv_export flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { csv_export: false } }),
+        ),
+      );
+      renderWithProviders(<LeadDetailPage />, {
+        initialEntries: [`/leads/${LEAD_1.id}`],
+        path: '/leads/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-name')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('lead-detail-export-pdf-button')).not.toBeInTheDocument();
+    });
   });
 
   // MINCRM-441 prerequisite: rule-based lead scoring

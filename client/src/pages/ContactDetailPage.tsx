@@ -120,6 +120,7 @@ export default function ContactDetailPage() {
   const { enabled: sequencingEnabled, isLoading: sequencingLoading } = useFeatureFlag('sequencing');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
+  const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
   const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
 
@@ -491,26 +492,28 @@ export default function ContactDetailPage() {
                       : t('emailDraft.draftEmailButton')}
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  data-testid="contact-detail-export-pdf-button"
-                  disabled={isExportingPdf}
-                  onClick={async () => {
-                    setIsExportingPdf(true);
-                    setExportPdfError(null);
-                    try {
-                      await exportContactPdf(contact.id);
-                    } catch {
-                      setExportPdfError(t('contacts.exportPdfError'));
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  }}
-                >
-                  {isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf')}
-                </Button>
+                {csvExportEnabled && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="contact-detail-export-pdf-button"
+                    disabled={isExportingPdf}
+                    onClick={async () => {
+                      setIsExportingPdf(true);
+                      setExportPdfError(null);
+                      try {
+                        await exportContactPdf(contact.id);
+                      } catch {
+                        setExportPdfError(t('contacts.exportPdfError'));
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    }}
+                  >
+                    {isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf')}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"

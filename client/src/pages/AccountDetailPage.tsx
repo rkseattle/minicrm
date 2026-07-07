@@ -33,6 +33,7 @@ import ChurnExpansionBanner from '@/components/ChurnExpansionBanner.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 
 /**
  * Single account detail page with view/edit/delete.
@@ -49,6 +50,7 @@ export default function AccountDetailPage() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
+  const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
 
   const accountQueryKey = ['accounts', id] as const;
 
@@ -218,26 +220,28 @@ export default function AccountDetailPage() {
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  data-testid="account-detail-export-pdf-button"
-                  disabled={isExportingPdf}
-                  onClick={async () => {
-                    setIsExportingPdf(true);
-                    setExportPdfError(null);
-                    try {
-                      await exportAccountPdf(account.id);
-                    } catch {
-                      setExportPdfError(t('accounts.exportPdfError'));
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  }}
-                >
-                  {isExportingPdf ? t('accounts.exporting') : t('accounts.exportPdf')}
-                </Button>
+                {csvExportEnabled && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="account-detail-export-pdf-button"
+                    disabled={isExportingPdf}
+                    onClick={async () => {
+                      setIsExportingPdf(true);
+                      setExportPdfError(null);
+                      try {
+                        await exportAccountPdf(account.id);
+                      } catch {
+                        setExportPdfError(t('accounts.exportPdfError'));
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    }}
+                  >
+                    {isExportingPdf ? t('accounts.exporting') : t('accounts.exportPdf')}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"

@@ -132,6 +132,19 @@ describe('AccountDetailPage', () => {
         expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
       });
     });
+
+    it('hides the Export PDF button when the csv_export flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { csv_export: false } }),
+        ),
+      );
+      renderAccountDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('account-name')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('account-detail-export-pdf-button')).not.toBeInTheDocument();
+    });
   });
 
   it('hides the edit form when Cancel is clicked', async () => {
