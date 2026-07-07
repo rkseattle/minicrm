@@ -20,6 +20,7 @@ import {
   unlinkContactHandler,
   exportDealsHandler,
   exportDealsPdfHandler,
+  exportDealPdfHandler,
 } from '../controllers/dealController.js';
 import { runDealHealthCheckHandler } from '../controllers/dealHealthController.js';
 import { getStageAdvancementHandler } from '../controllers/stageAdvancementController.js';
@@ -494,6 +495,46 @@ router.post(
  *                 message: Deal not found
  */
 router.get('/:id', authenticate, asyncHandler(getDealHandler));
+
+/**
+ * @openapi
+ * /api/v1/deals/{id}/export.pdf:
+ *   get:
+ *     tags: [Deals]
+ *     operationId: exportDealPdf
+ *     summary: Export a single deal to PDF
+ *     description: >
+ *       Returns a one-record summary PDF for the given deal — overview fields,
+ *       custom fields, linked contacts, and notes. Visibility matches
+ *       GET /api/v1/deals/{id}. (MINCRM-650)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Deal not found
+ */
+router.get(
+  '/:id/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportDealPdfHandler),
+);
 
 /**
  * @openapi
