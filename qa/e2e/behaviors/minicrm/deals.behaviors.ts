@@ -16,6 +16,7 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
 import { DealDetailPage } from '@pages/minicrm/DealDetailPage.js';
+import { DealsPage } from '@pages/minicrm/DealsPage.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -1197,4 +1198,37 @@ export async function waitForProposalDraftEditorClosed(
   timeout = 10_000,
 ): Promise<void> {
   await context.page.waitForAbsent('[data-testid="proposal-draft-editor"]', timeout);
+}
+
+// ---------------------------------------------------------------------------
+// Deals list page — navigation and PDF/CSV export (MINCRM-601)
+// ---------------------------------------------------------------------------
+
+/** Navigates directly to the deals list page. */
+export async function navigateToDealsList(context: DealsBehaviorContext): Promise<void> {
+  const dealsPage = new DealsPage(context);
+  await dealsPage.navigate();
+}
+
+/**
+ * Clicks the deals list "Export PDF" button and waits for the underlying
+ * export.pdf HTTP response, returning its status and content-type so the
+ * spec can assert a real download was triggered without needing a
+ * framework-level download-event primitive.
+ */
+export async function clickDealsExportPdfAndAwaitResponse(
+  context: DealsBehaviorContext,
+): Promise<{ status: number; contentType: string }> {
+  const dealsPage = new DealsPage(context);
+  const responsePromise = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/deals/export.pdf') && response.request().method() === 'GET',
+  );
+  const button = await dealsPage.exportPdfButtonLocator();
+  await button.click();
+  const response = await responsePromise;
+  return {
+    status: response.status(),
+    contentType: response.headers()['content-type'] ?? '',
+  };
 }

@@ -217,6 +217,8 @@ export {
   uploadDealAttachment,
   waitForDealAttachmentsList,
   waitForDealsListUrl,
+  navigateToDealsList,
+  clickDealsExportPdfAndAwaitResponse,
 } from './deals.behaviors.js';
 export type {
   DealsBehaviorContext,
@@ -701,6 +703,7 @@ export {
   clickSavedReportByName,
   getReportsEntityTypeSelectValue,
   navigateToReportsPage,
+  clickReportExportPdfAndAwaitResponse,
 } from './reports.behaviors.js';
 export type { WinLossReport, ReportsBehaviorContext } from './reports.behaviors.js';
 

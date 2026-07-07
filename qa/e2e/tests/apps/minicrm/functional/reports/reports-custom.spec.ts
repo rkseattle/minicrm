@@ -30,6 +30,7 @@ import {
   waitForSavedReportByName,
   clickSavedReportByName,
   getReportsEntityTypeSelectValue,
+  clickReportExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/reports.behaviors.js';
 import { createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
 
@@ -116,4 +117,39 @@ test('custom reports: clicking a saved report loads its config into the builder 
   // Entity type selector should switch to 'deal'
   const selectedValue = await getReportsEntityTypeSelectValue({ page });
   expect(selectedValue).toBe('deal');
+});
+
+// ── Export PDF (MINCRM-601) ───────────────────────────────────────────────────
+
+test('custom reports: clicking Export PDF on a saved, run report downloads a PDF file @functional', async ({
+  page,
+  restClient,
+}) => {
+  const reportName = `E2E PDF Export Report ${Date.now()}`;
+
+  await restClient.post('/api/v1/reports/custom', {
+    name: reportName,
+    entity_type: 'deal',
+    config: {
+      selected_fields: ['id', 'name', 'stage'],
+      filters: [],
+    },
+  });
+
+  await navigateToCustomReports({ page });
+  await clickSavedReportByName(reportName, { page });
+
+  // Export PDF only renders once the loaded report has been run (activeReportId && result)
+  const resultsVisible = await runCustomReport({ page });
+  expect(resultsVisible).toBe(true);
+
+  const { status, contentType } = await clickReportExportPdfAndAwaitResponse(
+    { page },
+    '/export.pdf',
+  );
+
+  expect(status, 'export.pdf response should return 200').toBe(200);
+  expect(contentType, 'response Content-Type should be application/pdf').toContain(
+    'application/pdf',
+  );
 });

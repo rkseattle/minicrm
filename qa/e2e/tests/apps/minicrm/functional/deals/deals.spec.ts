@@ -54,6 +54,8 @@ import {
   clickDealUnlinkContact,
   expectDealLinkedContactsEmptyVisible,
   waitForDealsListUrl,
+  navigateToDealsList,
+  clickDealsExportPdfAndAwaitResponse,
   type DealRow,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
@@ -273,5 +275,33 @@ test(
 
     // After unlinking, the empty state should appear
     await expectDealLinkedContactsEmptyVisible({ page }, 10_000);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// F7-D5 — Export deals list as PDF via the list page button (MINCRM-601)
+// ---------------------------------------------------------------------------
+
+test(
+  'F7-D5: clicking Export PDF on the deals list downloads a PDF file',
+  { tag: ['@functional'] },
+  async ({ testData, restClient, page }) => {
+    const account = await createTestAccount(testData, restClient, {
+      name: `D5-Acct ${test.info().title}`,
+    });
+    await createTestDeal(testData, restClient, {
+      name: `D5-Deal ${test.info().title}`,
+      stage: 'Prospecting',
+      account_id: account.id,
+    });
+
+    await navigateToDealsList({ page });
+
+    const { status, contentType } = await clickDealsExportPdfAndAwaitResponse({ page });
+
+    expect(status, 'export.pdf response should return 200').toBe(200);
+    expect(contentType, 'response Content-Type should be application/pdf').toContain(
+      'application/pdf',
+    );
   },
 );
