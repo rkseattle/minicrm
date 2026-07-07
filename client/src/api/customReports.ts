@@ -107,3 +107,11 @@ export async function runAdHocReport(
 export function getCustomReportExportUrl(id: string): string {
   return `/api/v1/reports/custom/${id}/export`;
 }
+
+/**
+ * Returns the URL for exporting a saved report as PDF. (MINCRM-601)
+ * Triggers a download when assigned to an anchor `href`.
+ */
+export function getCustomReportExportPdfUrl(id: string): string {
+  return `/api/v1/reports/custom/${id}/export.pdf`;
+}

@@ -1002,7 +1002,9 @@
       "columnTotal": "[Tötäl~~]",
       "totalsRow": "[Tötäl~~]",
       "empty": "[Ñö äĉtïvïtïëŝ löggëd för thïŝ përïöd.~~~~~~~~~~~~]",
-      "exportCsv": "[Ëxpört ĈŜV~~~]"
+      "exportCsv": "[Ëxpört ĈŜV~~~]",
+      "exportPdf": "[Ëxpört ṖDF~~~]",
+      "exporting": "[Ëxpörtïñg…~~~~]"
     },
     "winLoss": {
       "pageTitle": "[Wïñ/Löŝŝ Rëpört~~~~~]",
@@ -1122,6 +1124,7 @@
       "resultsCount_other": "[{{count}} röwŝ~~~~~]",
       "resultsEmpty": "[Ñö röwŝ rëtürñëd för thïŝ qüëry.~~~~~~~~~~]",
       "exportCsv": "[Ëxpört ĈŜV~~~]",
+      "exportPdf": "[Ëxpört ṖDF~~~]",
       "errorRun": "[Fäïlëd tö rüñ rëpört. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
       "errorSave": "[Fäïlëd tö ŝävë rëpört. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
       "operatorEq": "[ëqüälŝ~~]",

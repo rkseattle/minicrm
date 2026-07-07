@@ -208,6 +208,44 @@ describe('GET /api/reports/activity-volume', () => {
   });
 });
 
+// ── GET /api/reports/activity-volume/export.pdf ──────────────────────────────── (MINCRM-601)
+
+describe('GET /api/reports/activity-volume/export.pdf', () => {
+  const VALID_PARAMS = '?start=2025-01-01&end=2025-12-31';
+
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    const res = await request(app)
+      .get(`/api/v1/reports/activity-volume/export.pdf${VALID_PARAMS}`)
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 400 VALIDATION_ERROR when start is after end', async () => {
+    const res = await request(app)
+      .get('/api/v1/reports/activity-volume/export.pdf?start=2025-12-31&end=2025-01-01')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).get(`/api/v1/reports/activity-volume/export.pdf${VALID_PARAMS}`);
+    expect(res.status).toBe(401);
+  });
+});
+
 // ── GET /api/reports/stage-trend ─────────────────────────────────────────────
 
 describe('GET /api/reports/stage-trend', () => {

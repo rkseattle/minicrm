@@ -1047,7 +1047,9 @@
       "columnTotal": "Gesamt",
       "totalsRow": "Gesamt",
       "empty": "Keine Aktivitäten für diesen Zeitraum.",
-      "exportCsv": "CSV exportieren"
+      "exportCsv": "CSV exportieren",
+      "exportPdf": "PDF exportieren",
+      "exporting": "Wird exportiert…"
     },
     "winLoss": {
       "pageTitle": "Gewinn-/Verlustbericht",
@@ -1167,6 +1169,7 @@
       "resultsCount_other": "{{count}} Zeilen",
       "resultsEmpty": "Keine Zeilen für diese Abfrage zurückgegeben.",
       "exportCsv": "CSV exportieren",
+      "exportPdf": "PDF exportieren",
       "errorRun": "Bericht konnte nicht ausgeführt werden. Bitte erneut versuchen.",
       "errorSave": "Bericht konnte nicht gespeichert werden. Bitte erneut versuchen.",
       "operatorEq": "gleich",

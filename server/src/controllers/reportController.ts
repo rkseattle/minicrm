@@ -12,6 +12,24 @@ import {
   STAGE_TREND_DAYS_OPTIONS,
   type StageTrendDays,
 } from '../services/reportService.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
+
+/** Column labels for the activity volume PDF export table, in display order. */
+const ACTIVITY_VOLUME_PDF_COLUMNS: PdfTableColumn[] = [
+  { key: 'ownerName', label: 'Rep' },
+  { key: 'Note', label: 'Note' },
+  { key: 'Call', label: 'Call' },
+  { key: 'Email', label: 'Email' },
+  { key: 'Meeting', label: 'Meeting' },
+  { key: 'Task', label: 'Task' },
+  { key: 'total', label: 'Total' },
+];
 
 /** Zod schema for win/loss report query parameters */
 const winLossQuerySchema = z.object({
@@ -72,19 +90,20 @@ const activityVolumeQuerySchema = z.object({
 });
 
 /**
- * GET /api/reports/activity-volume
- * Returns an activity count matrix broken down by rep and activity type for a date range.
- * - Admins may filter by owner_id; if omitted, returns team-wide data.
- * - Reps always receive data scoped to their own activities.
- * Implements MINCRM-181.
+ * Parses and scopes the activity volume query params shared by the JSON and PDF export
+ * handlers. Returns null if validation failed; the response has already been written to
+ * in that case and the caller must return without further writes. (MINCRM-601)
  */
-export async function getActivityVolumeReportHandler(req: Request, res: Response): Promise<void> {
+function resolveActivityVolumeParams(
+  req: Request,
+  res: Response,
+): { startDate: string; endDate: string; ownerId: string | null } | null {
   const parsed = activityVolumeQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0].message },
     });
-    return;
+    return null;
   }
 
   const { start, end, owner_id } = parsed.data;
@@ -93,7 +112,7 @@ export async function getActivityVolumeReportHandler(req: Request, res: Response
     res.status(400).json({
       error: { code: 'VALIDATION_ERROR', message: 'start date must not be after end date' },
     });
-    return;
+    return null;
   }
 
   const isAdmin = req.user!.role === 'admin';
@@ -107,8 +126,59 @@ export async function getActivityVolumeReportHandler(req: Request, res: Response
     ownerId = null;
   }
 
-  const report = await getActivityVolumeReport({ startDate: start, endDate: end, ownerId });
+  return { startDate: start, endDate: end, ownerId };
+}
+
+/**
+ * GET /api/reports/activity-volume
+ * Returns an activity count matrix broken down by rep and activity type for a date range.
+ * - Admins may filter by owner_id; if omitted, returns team-wide data.
+ * - Reps always receive data scoped to their own activities.
+ * Implements MINCRM-181.
+ */
+export async function getActivityVolumeReportHandler(req: Request, res: Response): Promise<void> {
+  const params = resolveActivityVolumeParams(req, res);
+  if (!params) return;
+
+  const report = await getActivityVolumeReport(params);
   res.status(200).json(report);
+}
+
+/**
+ * GET /api/v1/reports/activity-volume/export.pdf
+ * Renders the activity volume report as a paginated PDF table. Query params and
+ * ownership rules are identical to the JSON endpoint above. (MINCRM-601)
+ */
+export async function exportActivityVolumeReportPdfHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const params = resolveActivityVolumeParams(req, res);
+  if (!params) return;
+
+  const report = await getActivityVolumeReport(params);
+
+  const rows: PdfTableRow[] = report.rows.map((r) => ({
+    ownerName: r.ownerName,
+    ...r.counts,
+    total: r.total,
+  }));
+  rows.push({ ownerName: 'Total', ...report.totals });
+
+  setPdfResponseHeaders(res, pdfFilename('activity-volume'));
+  renderPdfDocument(res, {
+    title: 'Activity Volume Report',
+    sections: [
+      {
+        heading: 'Activity Volume',
+        table: {
+          columns: ACTIVITY_VOLUME_PDF_COLUMNS,
+          rows,
+          emptyMessage: 'No activities logged for this period.',
+        },
+      },
+    ],
+  });
 }
 
 // ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────

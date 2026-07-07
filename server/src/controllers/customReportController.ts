@@ -19,6 +19,13 @@ import {
   reportConfigSchema,
   REPORT_ENTITY_TYPES,
 } from '@minicrm/shared/schemas/customReportSchema.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 
 function isValidEntityType(value: string): value is (typeof REPORT_ENTITY_TYPES)[number] {
   return (REPORT_ENTITY_TYPES as readonly string[]).includes(value);
@@ -285,6 +292,51 @@ export async function exportCustomReportHandler(req: Request, res: Response): Pr
       res.write(result.columns.map((col) => escape(row[col] ?? null)).join(',') + '\n');
     }
     res.end();
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
+      res.status(400).json({
+        error: { code: 'INVALID_REPORT_FIELD', message: (err as Error).message },
+      });
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
+ * GET /api/v1/reports/custom/:id/export.pdf
+ * Executes a saved report and renders results as a paginated PDF table. (MINCRM-601)
+ */
+export async function exportCustomReportPdfHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const caller = { id: req.user!.id, role: req.user!.role };
+
+  const report = await getReport(id, caller);
+  if (!report) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Custom report not found' } });
+    return;
+  }
+
+  const isAdmin = req.user!.role === 'admin';
+  const scopeOwnerId = isAdmin ? null : req.user!.id;
+
+  try {
+    const result = await executeReport(report.entity_type, report.config, scopeOwnerId);
+
+    const columns: PdfTableColumn[] = result.columns.map((label) => ({ key: label, label }));
+    const rows: PdfTableRow[] = result.rows;
+    const filename = report.name.replace(/[^a-z0-9_\- ]/gi, '_');
+
+    setPdfResponseHeaders(res, pdfFilename(filename));
+    renderPdfDocument(res, {
+      title: report.name,
+      sections: [
+        {
+          heading: report.name,
+          table: { columns, rows, emptyMessage: 'No rows match the current report config.' },
+        },
+      ],
+    });
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
       res.status(400).json({

@@ -1047,7 +1047,9 @@
       "columnTotal": "合计",
       "totalsRow": "合计",
       "empty": "该时段内无活动记录。",
-      "exportCsv": "导出 CSV"
+      "exportCsv": "导出 CSV",
+      "exportPdf": "导出 PDF",
+      "exporting": "导出中…"
     },
     "winLoss": {
       "pageTitle": "赢/输报告",
@@ -1167,6 +1169,7 @@
       "resultsCount_other": "{{count}} 行",
       "resultsEmpty": "此查询未返回任何行。",
       "exportCsv": "导出CSV",
+      "exportPdf": "导出PDF",
       "errorRun": "运行报告失败，请重试。",
       "errorSave": "保存报告失败，请重试。",
       "operatorEq": "等于",

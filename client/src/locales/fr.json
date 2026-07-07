@@ -1047,7 +1047,9 @@
       "columnTotal": "Total",
       "totalsRow": "Total",
       "empty": "Aucune activité enregistrée pour cette période.",
-      "exportCsv": "Exporter CSV"
+      "exportCsv": "Exporter CSV",
+      "exportPdf": "Exporter PDF",
+      "exporting": "Exportation en cours…"
     },
     "winLoss": {
       "pageTitle": "Rapport victoires/défaites",
@@ -1167,6 +1169,7 @@
       "resultsCount_other": "{{count}} lignes",
       "resultsEmpty": "Aucune ligne retournée pour cette requête.",
       "exportCsv": "Exporter CSV",
+      "exportPdf": "Exporter PDF",
       "errorRun": "Échec de l'exécution du rapport. Veuillez réessayer.",
       "errorSave": "Échec de l'enregistrement du rapport. Veuillez réessayer.",
       "operatorEq": "égal à",
