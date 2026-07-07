@@ -10,8 +10,16 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createLead } from '../services/leadsService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
+import { createNote } from '../services/noteService.js';
 import pool from '../db.js';
 import { makeAuthCookie, uid } from './testUtils.js';
+
+function makeNoteDoc(text: string): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+}
 
 const FILE_PREFIX = 'leads-ctrl';
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
@@ -33,6 +41,10 @@ const makeLead = () => ({
 });
 
 beforeAll(async () => {
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query(
     'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
     [`${FILE_PREFIX}-%`],
@@ -84,6 +96,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
+  await pool.query(
     'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
     [`${FILE_PREFIX}-%`],
   );
@@ -95,6 +111,10 @@ beforeEach(async () => {
 
 afterAll(async () => {
   // Clean up in FK-safe order: child tables first, then parents
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query(
     'DELETE FROM lead_status_history WHERE lead_id IN (SELECT id FROM leads WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1))',
     [`${FILE_PREFIX}-%`],
@@ -253,6 +273,75 @@ describe('GET /api/leads/:id', () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
+// ── GET /api/leads/:id/export.pdf (MINCRM-650) ──────────────────────────────
+
+describe('GET /api/leads/:id/export.pdf', () => {
+  it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+    await createNote(
+      'lead',
+      lead.id,
+      { body: makeNoteDoc('Lead PDF note'), visibility: 'team', tags: [] },
+      { id: repId, name: 'Leads Rep' },
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/leads/${lead.id}/export.pdf`)
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 404 for a non-existent lead', async () => {
+    const res = await request(app)
+      .get('/api/v1/leads/00000000-0000-0000-0000-000000000000/export.pdf')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('allows any authenticated user to export a lead they do not own, matching GET /:id visibility', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/leads/${lead.id}/export.pdf`)
+      .set('Cookie', otherRepCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 401 without authentication', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+    await request(app).get(`/api/v1/leads/${lead.id}/export.pdf`).expect(401);
   });
 });
 

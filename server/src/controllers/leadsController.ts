@@ -25,6 +25,17 @@ import {
 } from '../services/leadsService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
+import { findUserById } from '../services/userService.js';
+import { formatExportDate } from '../utils/csvUtils.js';
+import { listNotes } from '../services/noteService.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  DETAIL_PDF_NOTES_LIMIT,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
   error: {
@@ -149,6 +160,69 @@ export async function getLeadHandler(req: Request, res: Response): Promise<void>
     return;
   }
   res.status(200).json({ lead });
+}
+
+/**
+ * GET /api/leads/:id/export.pdf
+ * Renders a single lead as a one-record summary PDF, mirroring the data shown
+ * on the lead detail page. Visibility matches getLeadHandler — no ownership
+ * restriction on read, consistent with GET /api/leads/:id.
+ *
+ * Leads do not support custom fields (ENTITY_TYPES excludes 'lead'), so unlike
+ * the Deal/Account/Contact single-record PDFs, this omits a Custom Fields
+ * section. (MINCRM-650)
+ */
+export async function exportLeadPdfHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const lead = await findLeadById(id);
+
+  if (!lead) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Lead not found' } });
+    return;
+  }
+
+  const [owner, notesPage] = await Promise.all([
+    findUserById(lead.owner_id),
+    listNotes('lead', id, req.user!.id, 1, DETAIL_PDF_NOTES_LIMIT),
+  ]);
+
+  const overviewLines: string[] = [
+    `Name: ${lead.first_name} ${lead.last_name ?? ''}`.trim(),
+    `Email: ${lead.email}`,
+    `Phone: ${lead.phone ?? ''}`,
+    `Company: ${lead.company_name ?? ''}`,
+    `Source: ${lead.lead_source ?? ''}`,
+    `Status: ${lead.status}`,
+    `Disqualification Reason: ${lead.disqualification_reason ?? ''}`,
+    `Notes: ${lead.notes ?? ''}`,
+    `Owner: ${owner?.name ?? ''}`,
+    `Converted: ${lead.converted_at ? formatExportDate(lead.converted_at) : ''}`,
+    `Created: ${formatExportDate(lead.created_at)}`,
+    `Updated: ${formatExportDate(lead.updated_at)}`,
+  ];
+
+  const noteColumns: PdfTableColumn[] = [
+    { key: 'created_at', label: 'Date' },
+    { key: 'author', label: 'Author' },
+    { key: 'body', label: 'Note' },
+  ];
+  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
+    created_at: n.created_at,
+    author: n.created_by_name,
+    body: n.body_text,
+  }));
+
+  setPdfResponseHeaders(res, pdfFilename(`lead-${id}`));
+  renderPdfDocument(res, {
+    title: `Lead: ${lead.first_name} ${lead.last_name ?? ''}`.trim(),
+    sections: [
+      { heading: 'Overview', lines: overviewLines },
+      {
+        heading: 'Notes',
+        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
+      },
+    ],
+  });
 }
 
 /**
