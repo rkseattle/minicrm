@@ -217,6 +217,21 @@ export class DealDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the Export PDF button on the deal detail page.
+   */
+  async exportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deal-detail-export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'button to export this deal as a single-record PDF' },
+      )
+      .resolve();
+  }
+
+  /**
    * Returns a resolved locator for the linked contacts section heading.
    */
   async linkedContactsHeadingLocator() {
