@@ -583,33 +583,39 @@ export class ReportsPage {
   // the previous view's content rather than hiding it in the DOM).
 
   /**
-   * Returns a resolved locator for the Export CSV button (custom report
+   * Returns a resolved locator for the Export CSV control (custom report
    * builder or activity volume view, whichever is currently mounted).
+   * Falls back to a css testid selector rather than a role strategy since
+   * the control is a <button> on Activity Volume but an <a href download>
+   * (role "link") on Custom Report Builder.
    */
   async exportCsvButtonLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'export-csv-button' },
-          { type: 'role', value: 'button', options: { name: /export csv/i } },
+          { type: 'css', value: '[data-testid="export-csv-button"]' },
         ],
-        { intent: 'button to export the current report view as CSV' },
+        { intent: 'control to export the current report view as CSV' },
       )
       .resolve();
   }
 
   /**
-   * Returns a resolved locator for the Export PDF button (custom report
+   * Returns a resolved locator for the Export PDF control (custom report
    * builder or activity volume view, whichever is currently mounted).
+   * Falls back to a css testid selector rather than a role strategy since
+   * the control is a <button> on Activity Volume but an <a href download>
+   * (role "link") on Custom Report Builder.
    */
   async exportPdfButtonLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'export-pdf-button' },
-          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+          { type: 'css', value: '[data-testid="export-pdf-button"]' },
         ],
-        { intent: 'button to export the current report view as PDF' },
+        { intent: 'control to export the current report view as PDF' },
       )
       .resolve();
   }

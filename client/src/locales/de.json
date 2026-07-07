@@ -1049,7 +1049,8 @@
       "empty": "Keine Aktivitäten für diesen Zeitraum.",
       "exportCsv": "CSV exportieren",
       "exportPdf": "PDF exportieren",
-      "exporting": "Wird exportiert…"
+      "exporting": "Wird exportiert…",
+      "exportPdfError": "PDF-Export fehlgeschlagen. Bitte erneut versuchen."
     },
     "winLoss": {
       "pageTitle": "Gewinn-/Verlustbericht",

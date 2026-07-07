@@ -10,6 +10,7 @@ import {
   getActivityVolumeReport,
   getStageTrendReport,
   STAGE_TREND_DAYS_OPTIONS,
+  ACTIVITY_TYPES,
   type StageTrendDays,
 } from '../services/reportService.js';
 import {
@@ -20,14 +21,14 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 
-/** Column labels for the activity volume PDF export table, in display order. */
+/**
+ * Column labels for the activity volume PDF export table, in display order.
+ * Derived from ACTIVITY_TYPES so a new activity type automatically gains a
+ * PDF column without a second place to update.
+ */
 const ACTIVITY_VOLUME_PDF_COLUMNS: PdfTableColumn[] = [
   { key: 'ownerName', label: 'Rep' },
-  { key: 'Note', label: 'Note' },
-  { key: 'Call', label: 'Call' },
-  { key: 'Email', label: 'Email' },
-  { key: 'Meeting', label: 'Meeting' },
-  { key: 'Task', label: 'Task' },
+  ...ACTIVITY_TYPES.map((type) => ({ key: type, label: type })),
   { key: 'total', label: 'Total' },
 ];
 

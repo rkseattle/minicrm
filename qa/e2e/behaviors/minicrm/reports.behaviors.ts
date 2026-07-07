@@ -544,12 +544,10 @@ export async function navigateToReportsPage(context: ReportsBehaviorContext): Pr
 // ---------------------------------------------------------------------------
 
 /**
- * Clicks the currently-mounted report view's "Export PDF" button (custom
- * report builder or activity volume — whichever view the caller has
- * navigated to) and waits for the underlying export.pdf HTTP response,
- * returning its status and content-type so the spec can assert a real
- * download was triggered without needing a framework-level download-event
- * primitive.
+ * Clicks the Activity Volume report's "Export PDF" button (a real button
+ * that fetches via blob+axios) and waits for the underlying export.pdf HTTP
+ * response, returning its status and content-type so the spec can assert a
+ * real download was triggered.
  */
 export async function clickReportExportPdfAndAwaitResponse(
   context: ReportsBehaviorContext,
@@ -566,4 +564,23 @@ export async function clickReportExportPdfAndAwaitResponse(
     status: response.status(),
     contentType: response.headers()['content-type'] ?? '',
   };
+}
+
+/**
+ * Clicks the Custom Report Builder's "Export PDF" control — a plain
+ * `<a href download>` anchor, not a button that fetches via JS — and waits
+ * for the browser's native download event rather than an HTTP response,
+ * since Chromium routes `download`-attribute anchor clicks through its
+ * download manager instead of the page's normal navigation/fetch lifecycle
+ * (page.waitForResponse does not reliably observe it).
+ */
+export async function clickCustomReportExportPdfAndAwaitDownload(
+  context: ReportsBehaviorContext,
+): Promise<{ suggestedFilename: string }> {
+  const reportsPage = new ReportsPage(context);
+  const downloadPromise = context.page.waitForEvent('download');
+  const button = await reportsPage.exportPdfButtonLocator();
+  await button.click();
+  const download = await downloadPromise;
+  return { suggestedFilename: download.suggestedFilename() };
 }

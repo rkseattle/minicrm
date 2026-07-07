@@ -1004,7 +1004,8 @@
       "empty": "[Ñö äĉtïvïtïëŝ löggëd för thïŝ përïöd.~~~~~~~~~~~~]",
       "exportCsv": "[Ëxpört ĈŜV~~~]",
       "exportPdf": "[Ëxpört ṖDF~~~]",
-      "exporting": "[Ëxpörtïñg…~~~~]"
+      "exporting": "[Ëxpörtïñg…~~~~]",
+      "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]"
     },
     "winLoss": {
       "pageTitle": "[Wïñ/Löŝŝ Rëpört~~~~~]",

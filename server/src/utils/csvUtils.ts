@@ -7,6 +7,17 @@
 const FORMULA_START_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
 
 /**
+ * Formats a Date for display in export output (CSV and PDF), e.g. `2026-07-07 14:30:00 UTC`.
+ * Shared so both export formats render the same date the same way.
+ */
+export function formatExportDate(value: Date): string {
+  return value
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\.\d{3}Z$/, ' UTC');
+}
+
+/**
  * Escapes a single CSV field value according to RFC 4180.
  * Fields containing commas, double-quotes, or newlines are wrapped in double-quotes.
  * Embedded double-quotes are escaped by doubling them.
@@ -18,13 +29,7 @@ const FORMULA_START_CHARS = new Set(['=', '+', '-', '@', '\t', '\r']);
  */
 function escapeCsvField(value: string | number | Date | null | undefined): string {
   if (value === null || value === undefined) return '';
-  const str =
-    value instanceof Date
-      ? value
-          .toISOString()
-          .replace('T', ' ')
-          .replace(/\.\d{3}Z$/, ' UTC')
-      : String(value);
+  const str = value instanceof Date ? formatExportDate(value) : String(value);
   // Prefix formula-trigger characters to prevent DDE injection in Excel / Google Sheets
   const sanitized = str.length > 0 && FORMULA_START_CHARS.has(str[0]) ? `'${str}` : str;
   if (

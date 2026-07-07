@@ -10,6 +10,7 @@
  *   F-AI-UD-4 — GET /admin/ai/usage/daily returns the expected shape
  *   F-AI-UD-5 — GET /admin/ai/usage/export returns a CSV with correct headers
  *   F-AI-UD-6 — PATCH /admin/ai/cost-rates persists both rates (mutates shared state)
+ *   F-AI-UD-7 — Clicking Export PDF on the dashboard downloads a PDF file (MINCRM-601)
  *
  * E2E limitations:
  *   - No real AI usage is generated in this environment (Anthropic calls are
@@ -32,6 +33,7 @@ import {
   getAiUsageTotalTokensCard,
   getAiUsagePerUserTable,
   selectAiUsageRangePreset,
+  clickAiUsageExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/ai-usage-dashboard.behaviors.js';
 import { resetAiCostRates } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
@@ -76,6 +78,26 @@ test.describe('AI usage dashboard UI', () => {
 
       // Still renders after switching presets — no crash, summary card remains visible.
       await expect(await getAiUsageTotalTokensCard({ page })).toBeVisible({ timeout: 8_000 });
+    },
+  );
+
+  test(
+    'F-AI-UD-7: clicking Export PDF on the dashboard downloads a PDF file @functional',
+    { tag: ['@functional'] },
+    async ({ page, testData, restClient }) => {
+      await loginAsAdmin(restClient);
+      const admin = await createTestAdmin(testData, restClient);
+      await loginViaBrowser(admin.email, admin.password, { page });
+
+      await navigateToAiUsageDashboard({ page });
+      await expect(await getAiUsageTotalTokensCard({ page })).toBeVisible({ timeout: 8_000 });
+
+      const { status, contentType } = await clickAiUsageExportPdfAndAwaitResponse({ page });
+
+      expect(status, 'export.pdf response should return 200').toBe(200);
+      expect(contentType, 'response Content-Type should be application/pdf').toContain(
+        'application/pdf',
+      );
     },
   );
 });
