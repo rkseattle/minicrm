@@ -19,6 +19,7 @@ import {
   getLeadStatusHistoryHandler,
   convertLeadHandler,
   searchAccountsHandler,
+  exportLeadPdfHandler,
 } from '../controllers/leadsController.js';
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
@@ -217,6 +218,45 @@ router.delete(
  *         description: Lead not found
  */
 router.get('/:id', authenticate, asyncHandler(getLeadHandler));
+
+/**
+ * @openapi
+ * /api/v1/leads/{id}/export.pdf:
+ *   get:
+ *     tags: [Leads]
+ *     operationId: exportLeadPdf
+ *     summary: Export a single lead to PDF
+ *     description: >
+ *       Returns a one-record summary PDF for the given lead — overview fields
+ *       and notes. Visibility matches GET /api/v1/leads/{id}. (MINCRM-650)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Lead not found
+ */
+router.get(
+  '/:id/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportLeadPdfHandler),
+);
 
 /**
  * @openapi
