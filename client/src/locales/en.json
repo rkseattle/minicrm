@@ -1012,7 +1012,9 @@
       "columnTotal": "Total",
       "totalsRow": "Total",
       "empty": "No activities logged for this period.",
-      "exportCsv": "Export CSV"
+      "exportCsv": "Export CSV",
+      "exportPdf": "Export PDF",
+      "exporting": "Exporting…"
     },
     "winLoss": {
       "pageTitle": "Win/Loss Report",
@@ -1132,6 +1134,7 @@
       "resultsCount_other": "{{count}} rows",
       "resultsEmpty": "No rows returned for this query.",
       "exportCsv": "Export CSV",
+      "exportPdf": "Export PDF",
       "errorRun": "Failed to run report. Please try again.",
       "errorSave": "Failed to save report. Please try again.",
       "operatorEq": "equals",

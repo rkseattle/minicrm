@@ -1047,7 +1047,9 @@
       "columnTotal": "Total",
       "totalsRow": "Total",
       "empty": "No se registraron actividades para este período.",
-      "exportCsv": "Exportar CSV"
+      "exportCsv": "Exportar CSV",
+      "exportPdf": "Exportar PDF",
+      "exporting": "Exportando…"
     },
     "winLoss": {
       "pageTitle": "Informe de victorias/pérdidas",
@@ -1167,6 +1169,7 @@
       "resultsCount_other": "{{count}} filas",
       "resultsEmpty": "No se devolvieron filas para esta consulta.",
       "exportCsv": "Exportar CSV",
+      "exportPdf": "Exportar PDF",
       "errorRun": "Error al ejecutar el informe. Inténtelo de nuevo.",
       "errorSave": "Error al guardar el informe. Inténtelo de nuevo.",
       "operatorEq": "igual a",

@@ -9,6 +9,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getWinLossReportHandler,
   getActivityVolumeReportHandler,
+  exportActivityVolumeReportPdfHandler,
   getStageTrendReportHandler,
 } from '../controllers/reportController.js';
 
@@ -148,6 +149,60 @@ router.get(
   authenticate,
   requireFeatureEnabled('reporting'),
   asyncHandler(getActivityVolumeReportHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/reports/activity-volume/export.pdf:
+ *   get:
+ *     tags: [Reports]
+ *     operationId: exportActivityVolumeReportPdf
+ *     summary: Export the activity volume report to PDF
+ *     description: >
+ *       Returns the activity volume report as a paginated PDF table, using the same
+ *       filters and ownership rules as the JSON endpoint above. (MINCRM-601)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: start
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^\d{4}-\d{2}-\d{2}$'
+ *         description: Start date (YYYY-MM-DD), inclusive
+ *       - in: query
+ *         name: end
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^\d{4}-\d{2}-\d{2}$'
+ *         description: End date (YYYY-MM-DD), inclusive
+ *       - in: query
+ *         name: owner_id
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by owner UUID (admin only)
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid query parameters
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/activity-volume/export.pdf',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(exportActivityVolumeReportPdfHandler),
 );
 
 /**

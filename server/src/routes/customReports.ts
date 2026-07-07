@@ -16,6 +16,7 @@ import {
   runCustomReportHandler,
   runAdHocReportHandler,
   exportCustomReportHandler,
+  exportCustomReportPdfHandler,
 } from '../controllers/customReportController.js';
 
 const router = Router();
@@ -248,6 +249,40 @@ router.get(
   authenticate,
   requireFeatureEnabled('reporting'),
   asyncHandler(exportCustomReportHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/reports/custom/{id}/export.pdf:
+ *   get:
+ *     tags: [Reports]
+ *     operationId: exportCustomReportPdf
+ *     summary: Execute a saved custom report and render as PDF
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Report not found
+ */
+router.get(
+  '/:id/export.pdf',
+  authenticate,
+  requireFeatureEnabled('reporting'),
+  asyncHandler(exportCustomReportPdfHandler),
 );
 
 export default router;

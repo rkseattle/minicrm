@@ -24,6 +24,7 @@ import {
   deleteCustomReport,
   CUSTOM_REPORTS_QUERY_KEY,
   getCustomReportExportUrl,
+  getCustomReportExportPdfUrl,
 } from '@/api/customReports.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type {
@@ -1021,6 +1022,17 @@ export function CustomReportBuilderContent() {
                 data-testid="export-csv-button"
               >
                 {t('reports.customReports.exportCsv')}
+              </a>
+            )}
+
+            {activeReportId && result && (
+              <a
+                href={getCustomReportExportPdfUrl(activeReportId)}
+                download
+                className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 inline-flex items-center"
+                data-testid="export-pdf-button"
+              >
+                {t('reports.customReports.exportPdf')}
               </a>
             )}
           </div>

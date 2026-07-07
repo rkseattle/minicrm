@@ -457,3 +457,53 @@ describe('GET /api/v1/reports/custom/:id/export', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
+
+// ── GET /:id/export.pdf ───────────────────────────────────────────────────── (MINCRM-601)
+
+describe('GET /api/v1/reports/custom/:id/export.pdf', () => {
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/reports/custom')
+      .set('Cookie', adminCookie)
+      .send({ name: `${FILE_PREFIX}-export-pdf`, entity_type: 'contact', config: BASIC_CONFIG });
+    const id = createRes.body.id as string;
+
+    const res = await request(app)
+      .get(`/api/v1/reports/custom/${id}/export.pdf`)
+      .set('Cookie', adminCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 404 for unknown report id', async () => {
+    const res = await request(app)
+      .get('/api/v1/reports/custom/00000000-0000-0000-0000-000000000000/export.pdf')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('returns 401 without authentication', async () => {
+    const createRes = await request(app)
+      .post('/api/v1/reports/custom')
+      .set('Cookie', adminCookie)
+      .send({
+        name: `${FILE_PREFIX}-export-pdf-401`,
+        entity_type: 'contact',
+        config: BASIC_CONFIG,
+      });
+    const id = createRes.body.id as string;
+
+    await request(app).get(`/api/v1/reports/custom/${id}/export.pdf`).expect(401);
+  });
+});

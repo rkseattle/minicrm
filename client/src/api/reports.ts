@@ -5,6 +5,7 @@
  */
 
 import apiClient from './axiosInstance.js';
+import { triggerCsvDownload } from '../utils/csvDownload.js';
 
 /** React Query cache key for win/loss report queries */
 export const WIN_LOSS_REPORT_QUERY_KEY = ['reports', 'win-loss'] as const;
@@ -149,6 +150,31 @@ export async function getActivityVolumeReport(
     params: query,
   });
   return response.data;
+}
+
+/**
+ * Fetches an activity volume report as a PDF and triggers a browser download. (MINCRM-601)
+ * Admins can optionally filter by owner; reps always see only their own data.
+ *
+ * @param params - Date range and optional owner filter
+ */
+export async function exportActivityVolumeReportPdf(
+  params: ActivityVolumeReportParams,
+): Promise<void> {
+  const query: Record<string, string> = {
+    start: params.start,
+    end: params.end,
+  };
+  if (params.ownerId) {
+    query.owner_id = params.ownerId;
+  }
+  const response = await apiClient.get<Blob>('/reports/activity-volume/export.pdf', {
+    params: query,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  triggerCsvDownload(response.data, `minicrm-activity-volume-${date}.pdf`);
 }
 
 // ── Stage Trend Report (MINCRM-284) ───────────────────────────────────────────

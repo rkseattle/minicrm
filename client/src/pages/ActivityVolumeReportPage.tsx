@@ -13,6 +13,7 @@
  * Implements MINCRM-181, MINCRM-264, MINCRM-407.
  */
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -21,6 +22,7 @@ import ReportFilterBar from '@/components/ReportFilterBar.js';
 import { useReportFilters } from '@/hooks/useReportFilters.js';
 import {
   getActivityVolumeReport,
+  exportActivityVolumeReportPdf,
   ACTIVITY_VOLUME_REPORT_QUERY_KEY,
   type ActivityVolumeReportParams,
   type ActivityTypeCounts,
@@ -129,6 +131,7 @@ export default function ActivityVolumeReportPage() {
  */
 export function ActivityVolumeReportContent() {
   const { t } = useTranslation();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const filters = useReportFilters('currentMonth');
   const { resolvedStart, resolvedEnd, effectiveOwnerId, isAdmin, viewMode } = filters;
@@ -160,6 +163,15 @@ export function ActivityVolumeReportContent() {
     downloadCsv(csv, `activity-report-${resolvedStart}-${resolvedEnd}.csv`);
   }
 
+  async function handleExportPdf(): Promise<void> {
+    setIsExportingPdf(true);
+    try {
+      await exportActivityVolumeReportPdf(reportParams);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }
+
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* Page header */}
@@ -174,14 +186,27 @@ export function ActivityVolumeReportContent() {
           <p className="text-sm text-gray-500 mt-1">{t('reports.activityVolume.subtitle')}</p>
         </div>
         {report && report.rows.length > 0 && (
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
-            data-testid="export-csv-button"
-          >
-            {t('reports.activityVolume.exportCsv')}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
+              data-testid="export-csv-button"
+            >
+              {t('reports.activityVolume.exportCsv')}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0 disabled:opacity-50"
+              data-testid="export-pdf-button"
+            >
+              {isExportingPdf
+                ? t('reports.activityVolume.exporting')
+                : t('reports.activityVolume.exportPdf')}
+            </button>
+          </div>
         )}
       </div>
 
