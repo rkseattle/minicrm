@@ -1,8 +1,8 @@
 # Deals
 
-> **Feature flags:** Custom Fields on deals and CSV export from the deals list require
-> the **Custom Fields** and **CSV Export** feature flags respectively. If either is
-> missing, contact your admin.
+> **Feature flags:** Custom Fields on deals and CSV/PDF export from the deals list
+> require the **Custom Fields** and **CSV Export** feature flags respectively. If
+> either is missing, contact your admin.
 
 Deals track sales opportunities as they move through your pipeline from first contact
 to close. The pipeline board gives you a Kanban view of every open deal by stage.

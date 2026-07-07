@@ -2,8 +2,8 @@
 
 > **Feature flags:** Tags and Custom Fields on contacts can be disabled by your admin.
 > If the Tags section or custom field inputs are missing, contact your admin to check the
-> **Tags** and **Custom Fields** feature flags. CSV export from the contacts list also
-> requires the **CSV Export** feature flag to be enabled.
+> **Tags** and **Custom Fields** feature flags. CSV/PDF export from the contacts list
+> also requires the **CSV Export** feature flag to be enabled.
 
 Contacts are individual people — prospects, customers, or anyone else you interact with.
 Every contact can be linked to an account, a deal, activities, and notes.

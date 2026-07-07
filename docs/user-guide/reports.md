@@ -52,7 +52,8 @@ to track outreach volume and coaching needs.
 - **My View / Team View** toggle.
 - **Owner** (Team View only).
 
-You can export the table as a CSV file using the **Export CSV** button.
+You can export the table as a CSV or PDF file using the **Export CSV** or **Export PDF**
+button.
 
 ---
 
@@ -201,8 +202,9 @@ to the configuration, or **Save as new** to create a new copy.
 
 ### Exporting results
 
-The results table can be exported as a CSV file using the **Export CSV** button (visible
-after running a report). Requires the **CSV Export** feature flag to be enabled.
+The results table can be exported as a CSV or PDF file using the **Export CSV** or
+**Export PDF** button (visible after running a saved report). Requires the
+**CSV Export** feature flag to be enabled.
 
 ### Sharing reports
 
