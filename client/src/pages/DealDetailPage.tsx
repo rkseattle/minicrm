@@ -27,6 +27,7 @@ import {
   deleteDeal,
   linkContactToDeal,
   unlinkContactFromDeal,
+  exportDealPdf,
   DEALS_QUERY_KEY,
 } from '@/api/deals.js';
 import { WIN_LOSS_REPORT_QUERY_KEY } from '@/api/reports.js';
@@ -96,6 +97,8 @@ export default function DealDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState<string | null>(null);
   const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValueInput[]>([]);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -432,6 +435,26 @@ export default function DealDetailPage() {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  data-testid="deal-detail-export-pdf-button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    setExportPdfError(null);
+                    try {
+                      await exportDealPdf(deal.id);
+                    } catch {
+                      setExportPdfError(t('deals.exportPdfError'));
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                >
+                  {isExportingPdf ? t('deals.exporting') : t('deals.exportPdf')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   data-testid="edit-deal-button"
                   onClick={() => setIsEditing(true)}
                 >
@@ -448,6 +471,11 @@ export default function DealDetailPage() {
                   {deleteMutation.isPending ? t('deals.deleting') : t('deals.delete')}
                 </Button>
               </div>
+              {exportPdfError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="export-pdf-error">
+                  {exportPdfError}
+                </p>
+              )}
               {deleteError && (
                 <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
                   {deleteError}

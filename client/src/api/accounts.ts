@@ -199,3 +199,19 @@ export async function exportAccountsPdf(params: ExportAccountsParams = {}): Prom
   const filename = `minicrm-accounts-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
+
+/**
+ * Downloads a single account as a one-record summary PDF.
+ * Triggers a browser file-save dialog. (MINCRM-650)
+ *
+ * @param id - Account UUID
+ */
+export async function exportAccountPdf(id: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/accounts/${id}/export.pdf`, {
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-account-${id}-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}

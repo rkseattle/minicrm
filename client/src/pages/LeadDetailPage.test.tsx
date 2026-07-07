@@ -5,12 +5,13 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import LeadDetailPage from './LeadDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { LEAD_1 } from '../test/msw/handlers.js';
+import * as leadsApi from '@/api/leads.js';
 
 describe('LeadDetailPage', () => {
   it('renders the lead name', async () => {
@@ -22,6 +23,51 @@ describe('LeadDetailPage', () => {
       expect(screen.getByTestId('lead-name')).toHaveTextContent(
         `${LEAD_1.first_name} ${LEAD_1.last_name}`,
       );
+    });
+  });
+
+  describe('Export PDF button', () => {
+    beforeEach(() => {
+      vi.spyOn(leadsApi, 'exportLeadPdf').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export PDF button', async () => {
+      renderWithProviders(<LeadDetailPage />, {
+        initialEntries: [`/leads/${LEAD_1.id}`],
+        path: '/leads/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-detail-export-pdf-button')).toBeInTheDocument();
+      });
+    });
+
+    it('calls exportLeadPdf with the lead id when clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<LeadDetailPage />, {
+        initialEntries: [`/leads/${LEAD_1.id}`],
+        path: '/leads/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('lead-detail-export-pdf-button'));
+      expect(leadsApi.exportLeadPdf).toHaveBeenCalledWith(LEAD_1.id);
+    });
+
+    it('shows an error message when the export fails', async () => {
+      vi.spyOn(leadsApi, 'exportLeadPdf').mockRejectedValue(new Error('network error'));
+      const user = userEvent.setup();
+      renderWithProviders(<LeadDetailPage />, {
+        initialEntries: [`/leads/${LEAD_1.id}`],
+        path: '/leads/:id',
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('lead-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('lead-detail-export-pdf-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
+      });
     });
   });
 

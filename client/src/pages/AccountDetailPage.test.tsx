@@ -4,12 +4,13 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import AccountDetailPage from './AccountDetailPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
 import { ACCOUNT_1, CONTACT_1, ADMIN_USER, REP_USER } from '../test/msw/handlers.js';
+import * as accountsApi from '@/api/accounts.js';
 
 /** Renders AccountDetailPage with the ACCOUNT_1 id in route params. */
 function renderAccountDetail() {
@@ -95,6 +96,42 @@ describe('AccountDetailPage', () => {
     });
     await user.click(screen.getByTestId('edit-account-button'));
     expect(screen.getByTestId('account-form')).toBeInTheDocument();
+  });
+
+  describe('Export PDF button', () => {
+    beforeEach(() => {
+      vi.spyOn(accountsApi, 'exportAccountPdf').mockResolvedValue(undefined);
+    });
+
+    it('renders the Export PDF button', async () => {
+      renderAccountDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('account-detail-export-pdf-button')).toBeInTheDocument();
+      });
+    });
+
+    it('calls exportAccountPdf with the account id when clicked', async () => {
+      const user = userEvent.setup();
+      renderAccountDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('account-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('account-detail-export-pdf-button'));
+      expect(accountsApi.exportAccountPdf).toHaveBeenCalledWith(ACCOUNT_1.id);
+    });
+
+    it('shows an error message when the export fails', async () => {
+      vi.spyOn(accountsApi, 'exportAccountPdf').mockRejectedValue(new Error('network error'));
+      const user = userEvent.setup();
+      renderAccountDetail();
+      await waitFor(() => {
+        expect(screen.getByTestId('account-detail-export-pdf-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('account-detail-export-pdf-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('export-pdf-error')).toBeInTheDocument();
+      });
+    });
   });
 
   it('hides the edit form when Cancel is clicked', async () => {

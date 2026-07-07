@@ -187,6 +187,22 @@ export async function exportDealsPdf(params: ExportDealsParams = {}): Promise<vo
 }
 
 /**
+ * Downloads a single deal as a one-record summary PDF.
+ * Triggers a browser file-save dialog. (MINCRM-650)
+ *
+ * @param id - Deal UUID
+ */
+export async function exportDealPdf(id: string): Promise<void> {
+  const response = await apiClient.get<Blob>(`/deals/${id}/export.pdf`, {
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-deal-${id}-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}
+
+/**
  * Unlinks a contact from a deal without deleting either record.
  * Returns the updated list of contacts linked to the deal.
  *

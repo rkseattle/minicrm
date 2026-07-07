@@ -17,7 +17,13 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import LeadScoreBadge from '@/components/LeadScoreBadge.js';
 import { Button } from '@/components/ui/Button.js';
-import { getLead, updateLead, deleteLead, getLeadStatusHistory } from '@/api/leads.js';
+import {
+  getLead,
+  updateLead,
+  deleteLead,
+  getLeadStatusHistory,
+  exportLeadPdf,
+} from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
 import type { LeadFormValues } from '@/components/LeadForm.js';
@@ -49,6 +55,8 @@ export default function LeadDetailPage() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportPdfError, setExportPdfError] = useState<string | null>(null);
 
   const leadQueryKey = ['leads', id] as const;
 
@@ -221,6 +229,26 @@ export default function LeadDetailPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
+                data-testid="lead-detail-export-pdf-button"
+                disabled={isExportingPdf}
+                onClick={async () => {
+                  setIsExportingPdf(true);
+                  setExportPdfError(null);
+                  try {
+                    await exportLeadPdf(lead.id);
+                  } catch {
+                    setExportPdfError(t('leads.exportPdfError'));
+                  } finally {
+                    setIsExportingPdf(false);
+                  }
+                }}
+              >
+                {isExportingPdf ? t('leads.exporting') : t('leads.exportPdf')}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
                 data-testid="edit-lead-button"
                 onClick={() => setIsEditing(true)}
               >
@@ -236,6 +264,11 @@ export default function LeadDetailPage() {
               >
                 {deleteMutation.isPending ? t('leads.deleting') : t('leads.delete')}
               </Button>
+              {exportPdfError && (
+                <p role="alert" className="text-xs text-red-600" data-testid="export-pdf-error">
+                  {exportPdfError}
+                </p>
+              )}
               {deleteError && (
                 <p role="alert" className="text-xs text-red-600" data-testid="delete-error">
                   {deleteError}
