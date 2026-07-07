@@ -12,10 +12,19 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createAccount } from '../services/accountService.js';
+import { createContact } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
+import { createNote } from '../services/noteService.js';
 import pool from '../db.js';
 import { makeAuthCookie, uid } from './testUtils.js';
+
+function makeNoteDoc(text: string): string {
+  return JSON.stringify({
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  });
+}
 
 const FILE_PREFIX = 'account-ctrl';
 
@@ -30,6 +39,10 @@ let otherRepCookie: string;
 let adminCookie: string;
 
 beforeAll(async () => {
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
@@ -87,6 +100,10 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await pool.query(
+    'DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)',
+    [`${FILE_PREFIX}-%`],
+  );
   await pool.query(
     'DELETE FROM contacts WHERE owner_id IN (SELECT id FROM users WHERE email LIKE $1)',
     [`${FILE_PREFIX}-%`],
@@ -484,5 +501,75 @@ describe('GET /api/accounts/export.pdf', () => {
 
   it('returns 401 without authentication', async () => {
     await request(app).get('/api/v1/accounts/export.pdf').expect(401);
+  });
+});
+
+describe('GET /api/accounts/:id/export.pdf', () => {
+  it('returns a single-record PDF with the correct Content-Type and Content-Disposition headers', async () => {
+    const account = await createAccount({
+      ...BASE_ACCOUNT,
+      name: `PdfAcct-${uid()}`,
+      owner_id: repId,
+    });
+    const contact = await createContact({
+      first_name: 'Pdf',
+      last_name: 'Contact',
+      email: `${FILE_PREFIX}-${uid()}-pdfcontact@example.com`,
+      owner_id: repId,
+      account_id: account.id,
+    });
+    await createNote(
+      'account',
+      account.id,
+      { body: makeNoteDoc('Account PDF note'), visibility: 'team', tags: [] },
+      { id: repId, name: 'Rep User' },
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/accounts/${account.id}/export.pdf`)
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+    expect(contact.account_id).toBe(account.id);
+  });
+
+  it('returns 404 for a non-existent account', async () => {
+    const res = await request(app)
+      .get('/api/v1/accounts/00000000-0000-0000-0000-000000000000/export.pdf')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('allows any authenticated user to export an account they do not own, matching GET /:id visibility', async () => {
+    const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+
+    const res = await request(app)
+      .get(`/api/v1/accounts/${account.id}/export.pdf`)
+      .set('Cookie', otherRepCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 401 without authentication', async () => {
+    const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+    await request(app).get(`/api/v1/accounts/${account.id}/export.pdf`).expect(401);
   });
 });
