@@ -177,3 +177,25 @@ export async function exportAccountsCsv(params: ExportAccountsParams = {}): Prom
   const filename = `minicrm-accounts-${date}.csv`;
   triggerCsvDownload(response.data, filename);
 }
+
+/**
+ * Downloads all matching accounts as a paginated PDF table.
+ * Triggers a browser file-save dialog. Same filters as exportAccountsCsv() (MINCRM-601).
+ *
+ * @param params - Optional filter parameters
+ */
+export async function exportAccountsPdf(params: ExportAccountsParams = {}): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (params.all) queryParams.all = 'true';
+  if (params.search) queryParams.search = params.search;
+  if (params.industry) queryParams.industry = params.industry;
+
+  const response = await apiClient.get<Blob>('/accounts/export.pdf', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-accounts-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}

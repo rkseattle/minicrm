@@ -18,6 +18,7 @@ import {
   deleteContactHandler,
   listContactDealsHandler,
   exportContactsHandler,
+  exportContactsPdfHandler,
   mergeContactHandler,
   listContactAddressesHandler,
   addContactAddressHandler,
@@ -179,6 +180,59 @@ router.get(
   authenticate,
   requireFeatureEnabled('csv_export'),
   asyncHandler(exportContactsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/contacts/export.pdf:
+ *   get:
+ *     tags: [Contacts]
+ *     operationId: exportContactsPdf
+ *     summary: Export contacts to PDF
+ *     description: >
+ *       Returns all matching contacts as a paginated PDF table, using the same filters
+ *       and ownership rules as the CSV export. (MINCRM-601)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: string
+ *           enum: ['true']
+ *         description: Admin only — pass 'true' to export all contacts regardless of owner
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on name or email
+ *       - in: query
+ *         name: accountSearch
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive substring match on linked account name
+ *       - in: query
+ *         name: account
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by account ID
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportContactsPdfHandler),
 );
 
 /**

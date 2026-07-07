@@ -442,3 +442,47 @@ describe('GET /api/accounts — ?owner=my_team filter', () => {
     await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
   });
 });
+
+// ── GET /api/accounts/export and /api/accounts/export.pdf ─────────────────── (MINCRM-601)
+
+describe('GET /api/accounts/export', () => {
+  it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: `ExportAcct-${uid()}`, owner_id: repId });
+
+    const res = await request(app).get('/api/v1/accounts/export').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/accounts/export').expect(401);
+  });
+});
+
+describe('GET /api/accounts/export.pdf', () => {
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createAccount({ ...BASE_ACCOUNT, name: `ExportAcctPdf-${uid()}`, owner_id: repId });
+
+    const res = await request(app)
+      .get('/api/v1/accounts/export.pdf')
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/accounts/export.pdf').expect(401);
+  });
+});

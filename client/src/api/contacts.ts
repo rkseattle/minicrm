@@ -165,6 +165,29 @@ export async function exportContactsCsv(params: ExportContactsParams = {}): Prom
   triggerCsvDownload(response.data, filename);
 }
 
+/**
+ * Downloads all matching contacts as a paginated PDF table.
+ * Triggers a browser file-save dialog. Same filters as exportContactsCsv() (MINCRM-601).
+ *
+ * @param params - Optional filter parameters
+ */
+export async function exportContactsPdf(params: ExportContactsParams = {}): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (params.all) queryParams.all = 'true';
+  if (params.accountId) queryParams.account = params.accountId;
+  if (params.search) queryParams.search = params.search;
+  if (params.accountSearch) queryParams.accountSearch = params.accountSearch;
+
+  const response = await apiClient.get<Blob>('/contacts/export.pdf', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-contacts-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}
+
 /** Per-field source choice for contact merge */
 export type MergeFieldChoice = 'winner' | 'loser';
 

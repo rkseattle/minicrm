@@ -20,7 +20,12 @@ import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listContacts, createContact, exportContactsCsv } from '@/api/contacts.js';
+import {
+  listContacts,
+  createContact,
+  exportContactsCsv,
+  exportContactsPdf,
+} from '@/api/contacts.js';
 import { bulkPatchContacts, bulkDeleteContacts } from '@/api/bulk.js';
 import type { BulkFailure } from '@/api/bulk.js';
 import { listAllTags, ALL_TAGS_QUERY_KEY } from '@/api/tags.js';
@@ -60,6 +65,7 @@ export default function ContactsPage() {
   const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const newContactButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
@@ -384,6 +390,27 @@ export default function ContactsPage() {
               }}
             >
               {isExporting ? t('contacts.exporting') : t('contacts.exportCsv')}
+            </Button>
+            {/* Export PDF — filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="contacts-export-pdf-button"
+              disabled={isExportingPdf}
+              onClick={async () => {
+                setIsExportingPdf(true);
+                try {
+                  await exportContactsPdf({
+                    search: debouncedSearch || undefined,
+                    accountSearch: debouncedAccountSearch || undefined,
+                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                  });
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+            >
+              {isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf')}
             </Button>
             {/* Export all — admins only */}
             {isAdmin && (

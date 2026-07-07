@@ -26,6 +26,13 @@ import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import {
+  renderPdfDocument,
+  setPdfResponseHeaders,
+  pdfFilename,
+  type PdfTableColumn,
+  type PdfTableRow,
+} from '../services/pdfExportService.js';
 import { z } from 'zod';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -367,15 +374,35 @@ export async function deleteDealHandler(req: Request, res: Response): Promise<vo
   res.status(204).send();
 }
 
+/** Column labels shared by the CSV and PDF deal export formats, in display order. */
+const DEAL_EXPORT_BASE_HEADERS = [
+  'Name',
+  'Stage',
+  'Value',
+  'Currency',
+  'Close Date',
+  'Loss Reason',
+  'Account',
+  'Contacts',
+  'Owner',
+  'Created',
+  'Updated',
+] as const;
+
+interface DealExportData {
+  headers: string[];
+  rows: Record<string, string | number | Date | null | undefined>[];
+}
+
 /**
- * GET /api/deals/export
- * Streams all matching deals as a UTF-8 CSV file.
+ * Resolves the owner/account filters for the current request, fetches matching deals,
+ * and merges in custom field columns. Shared by the CSV and PDF export handlers so both
+ * formats reflect identical rows and ownership rules (MINCRM-601).
  *
- * Query params mirror the list endpoint (owner, account) except pagination/sort.
- * Reps automatically get their own deals; admins may pass ?all=true to export all.
- * (MINCRM-166)
+ * @returns null if the request had an invalid `account` param; the response has already
+ * been written to in that case and the caller must return without further writes.
  */
-export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
+async function resolveDealExportData(req: Request, res: Response): Promise<DealExportData | null> {
   const orgWideRead = req.user!.role === 'admin' || req.user!.role === 'viewer';
   const exportAll = req.query.all === 'true';
 
@@ -392,16 +419,16 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
       res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'account must be a valid UUID' },
       });
-      return;
+      return null;
     }
     accountId = parsed.data;
   }
 
-  const rows = await exportDealsForCsv({ ownerId, accountId, requestingUser });
+  const dealRows = await exportDealsForCsv({ ownerId, accountId, requestingUser });
 
   // Custom field columns — fetch definitions and values in application code (MINCRM-276)
   const customDefs = await listDefinitions('deal');
-  const recordIds = rows.map((r) => r.id);
+  const recordIds = dealRows.map((r) => r.id);
   const valuesByRecord = new Map<string, Map<string, string | null>>();
   await Promise.all(
     recordIds.map(async (recordId) => {
@@ -414,22 +441,9 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
     }),
   );
 
-  const headers = [
-    'Name',
-    'Stage',
-    'Value',
-    'Currency',
-    'Close Date',
-    'Loss Reason',
-    'Account',
-    'Contacts',
-    'Owner',
-    'Created',
-    'Updated',
-    ...customDefs.map((d) => d.name),
-  ];
+  const headers = [...DEAL_EXPORT_BASE_HEADERS, ...customDefs.map((d) => d.name)];
 
-  const csvRows = rows.map((r) => {
+  const rows = dealRows.map((r) => {
     const base: Record<string, string | number | Date | null | undefined> = {
       Name: r.name,
       Stage: r.stage,
@@ -450,10 +464,50 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
     return base;
   });
 
-  const csv = serializeToCsv(headers, csvRows);
+  return { headers, rows };
+}
+
+/**
+ * GET /api/deals/export
+ * Streams all matching deals as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, account) except pagination/sort.
+ * Reps automatically get their own deals; admins may pass ?all=true to export all.
+ * (MINCRM-166)
+ */
+export async function exportDealsHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveDealExportData(req, res);
+  if (!data) return;
+
+  const csv = serializeToCsv(data.headers, data.rows);
   const filename = csvFilename('deals');
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.status(200).send(csv);
+}
+
+/**
+ * GET /api/deals/export.pdf
+ * Renders all matching deals as a paginated PDF table.
+ *
+ * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
+ */
+export async function exportDealsPdfHandler(req: Request, res: Response): Promise<void> {
+  const data = await resolveDealExportData(req, res);
+  if (!data) return;
+
+  const columns: PdfTableColumn[] = data.headers.map((label) => ({ key: label, label }));
+  const rows: PdfTableRow[] = data.rows;
+
+  setPdfResponseHeaders(res, pdfFilename('deals'));
+  renderPdfDocument(res, {
+    title: 'Deals',
+    sections: [
+      {
+        heading: 'Deals',
+        table: { columns, rows, emptyMessage: 'No deals match the current filters.' },
+      },
+    ],
+  });
 }

@@ -515,3 +515,65 @@ describe('GET /api/contacts — ?owner=my_team filter', () => {
     await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
   });
 });
+
+// ── GET /api/contacts/export and /api/contacts/export.pdf ─────────────────── (MINCRM-601)
+
+describe('GET /api/contacts/export', () => {
+  it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createContact({ ...makeContact(), owner_id: repId });
+
+    const res = await request(app).get('/api/v1/contacts/export').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+  });
+
+  it('returns 400 when account param is not a valid UUID', async () => {
+    const res = await request(app)
+      .get('/api/v1/contacts/export?account=not-a-uuid')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/contacts/export').expect(401);
+  });
+});
+
+describe('GET /api/contacts/export.pdf', () => {
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createContact({ ...makeContact(), owner_id: repId });
+
+    const res = await request(app)
+      .get('/api/v1/contacts/export.pdf')
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 400 when account param is not a valid UUID', async () => {
+    const res = await request(app)
+      .get('/api/v1/contacts/export.pdf?account=not-a-uuid')
+      .set('Cookie', repCookie);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/contacts/export.pdf').expect(401);
+  });
+});
