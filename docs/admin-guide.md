@@ -878,7 +878,8 @@ estimated spend across the organization, broken down by user and by feature.
    equivalent-length period.
 4. Scroll down for the **Usage by User** and **Usage by Feature** tables, and the daily
    token consumption chart.
-5. Click **Export CSV** to download the full per-user, per-day, per-feature breakdown.
+5. Click **Export CSV** or **Export PDF** to download the full per-user, per-day,
+   per-feature breakdown.
 
 ### Configuring the cost estimate rate
 
