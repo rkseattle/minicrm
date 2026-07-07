@@ -59,3 +59,26 @@ export async function isWinLossExportCsvEnabled(
   const locator = await insightsPage.exportCsvButtonLocator();
   return locator.isEnabled().catch(() => false);
 }
+
+/**
+ * Clicks the win/loss insights "Export PDF" button and waits for the
+ * underlying export.pdf HTTP response, returning its status and content-type
+ * so the spec can assert a real download was triggered. (MINCRM-601)
+ */
+export async function clickWinLossExportPdfAndAwaitResponse(
+  context: WinLossInsightsBehaviorContext,
+): Promise<{ status: number; contentType: string }> {
+  const insightsPage = new WinLossInsightsPage(context);
+  const responsePromise = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/insights/win-loss/export.pdf') &&
+      response.request().method() === 'GET',
+  );
+  const button = await insightsPage.exportPdfButtonLocator();
+  await button.click();
+  const response = await responsePromise;
+  return {
+    status: response.status(),
+    contentType: response.headers()['content-type'] ?? '',
+  };
+}

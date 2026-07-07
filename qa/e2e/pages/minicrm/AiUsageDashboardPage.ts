@@ -77,9 +77,23 @@ export class AiUsageDashboardPage {
 
   /** Clicks the Export CSV button. */
   async clickExportCsv(): Promise<void> {
-    await this.page.click([
-      { type: 'testId', value: 'ai-usage-export-csv-button' },
-      { type: 'role', value: 'button', options: { name: /export csv/i } },
-    ]);
+    await this.page.click(
+      [
+        { type: 'testId', value: 'ai-usage-export-csv-button' },
+        { type: 'role', value: 'button', options: { name: /export csv/i } },
+      ],
+      { intent: 'button to export AI usage data as CSV' },
+    );
+  }
+
+  /** Clicks the Export PDF button. (MINCRM-601) */
+  async clickExportPdf(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'ai-usage-export-pdf-button' },
+        { type: 'role', value: 'button', options: { name: /export pdf/i } },
+      ],
+      { intent: 'button to export AI usage data as PDF' },
+    );
   }
 }

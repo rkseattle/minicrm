@@ -576,4 +576,41 @@ export class ReportsPage {
   url(): string {
     return this.page.url();
   }
+
+  // ── Export buttons (MINCRM-601) ───────────────────────────────────────────
+  // Shared testids across custom-report-builder and activity-volume views —
+  // safe because only one view is mounted at a time (Reports tabs unmount
+  // the previous view's content rather than hiding it in the DOM).
+
+  /**
+   * Returns a resolved locator for the Export CSV button (custom report
+   * builder or activity volume view, whichever is currently mounted).
+   */
+  async exportCsvButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'export-csv-button' },
+          { type: 'role', value: 'button', options: { name: /export csv/i } },
+        ],
+        { intent: 'button to export the current report view as CSV' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the Export PDF button (custom report
+   * builder or activity volume view, whichever is currently mounted).
+   */
+  async exportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'button to export the current report view as PDF' },
+      )
+      .resolve();
+  }
 }

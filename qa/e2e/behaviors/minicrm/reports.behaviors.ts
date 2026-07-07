@@ -538,3 +538,32 @@ export async function getReportsEntityTypeSelectValue(
 export async function navigateToReportsPage(context: ReportsBehaviorContext): Promise<void> {
   await context.page.goto('/reports', { waitUntil: 'networkidle' });
 }
+
+// ---------------------------------------------------------------------------
+// Export — Custom Report Builder / Activity Volume (MINCRM-601)
+// ---------------------------------------------------------------------------
+
+/**
+ * Clicks the currently-mounted report view's "Export PDF" button (custom
+ * report builder or activity volume — whichever view the caller has
+ * navigated to) and waits for the underlying export.pdf HTTP response,
+ * returning its status and content-type so the spec can assert a real
+ * download was triggered without needing a framework-level download-event
+ * primitive.
+ */
+export async function clickReportExportPdfAndAwaitResponse(
+  context: ReportsBehaviorContext,
+  urlPattern: string,
+): Promise<{ status: number; contentType: string }> {
+  const reportsPage = new ReportsPage(context);
+  const responsePromise = context.page.waitForResponse(
+    (response) => response.url().includes(urlPattern) && response.request().method() === 'GET',
+  );
+  const button = await reportsPage.exportPdfButtonLocator();
+  await button.click();
+  const response = await responsePromise;
+  return {
+    status: response.status(),
+    contentType: response.headers()['content-type'] ?? '',
+  };
+}
