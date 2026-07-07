@@ -135,6 +135,25 @@ export class LeadDetailPage {
   }
 
   // ---------------------------------------------------------------------------
+  // Export
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a resolved locator for the Export PDF button on the lead detail page.
+   */
+  async exportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-detail-export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'button to export this lead as a single-record PDF' },
+      )
+      .resolve();
+  }
+
+  // ---------------------------------------------------------------------------
   // Edit
   // ---------------------------------------------------------------------------
 

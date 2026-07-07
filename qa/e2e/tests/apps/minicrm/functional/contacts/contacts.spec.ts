@@ -47,6 +47,7 @@ test.describe.configure({ mode: 'parallel' });
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import {
   navigateToContacts,
+  navigateToContactDetail,
   editContact,
   createContactViaUI,
   deleteContactViaUI,
@@ -63,6 +64,7 @@ import {
   patchContactAccount,
   getContactAccountLink,
   expectContactsPaginationVisible,
+  clickContactExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
@@ -677,4 +679,30 @@ test('@functional F2-P1: pagination — navigating pages returns correct records
   if (total > 50) {
     await expectContactsPaginationVisible({ page });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Export tests (MINCRM-650)
+// ---------------------------------------------------------------------------
+
+test('@functional F2-E1: clicking Export PDF on the contact detail page downloads a single-record PDF file', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const contact = await createTestContact(testData, restClient, {
+    first_name: 'F2E1',
+    last_name: `Contact-${Date.now()}`,
+  });
+
+  await navigateToContactDetail(contact.id, { page });
+
+  const { status, contentType } = await clickContactExportPdfAndAwaitResponse(contact.id, {
+    page,
+  });
+
+  expect(status, 'export.pdf response should return 200').toBe(200);
+  expect(contentType, 'response Content-Type should be application/pdf').toContain(
+    'application/pdf',
+  );
 });

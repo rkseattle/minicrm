@@ -37,6 +37,7 @@ import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  buildNotesTableSection,
   DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
@@ -539,17 +540,6 @@ export async function exportContactPdfHandler(req: Request, res: Response): Prom
     value: d.value,
   }));
 
-  const noteColumns: PdfTableColumn[] = [
-    { key: 'created_at', label: 'Date' },
-    { key: 'author', label: 'Author' },
-    { key: 'body', label: 'Note' },
-  ];
-  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
-    created_at: n.created_at,
-    author: n.created_by_name,
-    body: n.body_text,
-  }));
-
   setPdfResponseHeaders(res, pdfFilename(`contact-${id}`));
   renderPdfDocument(res, {
     title: `Contact: ${contact.first_name} ${contact.last_name}`,
@@ -564,10 +554,7 @@ export async function exportContactPdfHandler(req: Request, res: Response): Prom
         heading: 'Linked Deals',
         table: { columns: dealColumns, rows: dealRows, emptyMessage: 'No linked deals.' },
       },
-      {
-        heading: 'Notes',
-        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
-      },
+      buildNotesTableSection(notesPage.data),
     ],
   });
 }

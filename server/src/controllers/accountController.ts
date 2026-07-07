@@ -37,6 +37,8 @@ import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  buildContactsTableSection,
+  buildNotesTableSection,
   DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
@@ -428,17 +430,6 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
 
   const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
 
-  const contactColumns: PdfTableColumn[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'title', label: 'Title' },
-  ];
-  const contactRows: PdfTableRow[] = contactsPage.data.map((c) => ({
-    name: `${c.first_name} ${c.last_name}`,
-    email: c.email,
-    title: c.title,
-  }));
-
   const childAccountColumns: PdfTableColumn[] = [
     { key: 'name', label: 'Name' },
     { key: 'account_type', label: 'Type' },
@@ -446,17 +437,6 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
   const childAccountRows: PdfTableRow[] = children.map((c) => ({
     name: c.name,
     account_type: c.account_type,
-  }));
-
-  const noteColumns: PdfTableColumn[] = [
-    { key: 'created_at', label: 'Date' },
-    { key: 'author', label: 'Author' },
-    { key: 'body', label: 'Note' },
-  ];
-  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
-    created_at: n.created_at,
-    author: n.created_by_name,
-    body: n.body_text,
   }));
 
   setPdfResponseHeaders(res, pdfFilename(`account-${id}`));
@@ -469,10 +449,7 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
         lines: customFieldLines,
         emptyMessage: 'No custom fields defined.',
       },
-      {
-        heading: 'Linked Contacts',
-        table: { columns: contactColumns, rows: contactRows, emptyMessage: 'No linked contacts.' },
-      },
+      buildContactsTableSection(contactsPage.data),
       {
         heading: 'Child Accounts',
         table: {
@@ -481,10 +458,7 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
           emptyMessage: 'No child accounts.',
         },
       },
-      {
-        heading: 'Notes',
-        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
-      },
+      buildNotesTableSection(notesPage.data),
     ],
   });
 }

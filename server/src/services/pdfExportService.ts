@@ -7,6 +7,7 @@
 import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
 import { formatExportDate } from '../utils/csvUtils.js';
+import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 
 /** Max notes rendered in a single-record detail PDF (MINCRM-650) */
 export const DETAIL_PDF_NOTES_LIMIT = 50;
@@ -51,6 +52,59 @@ export interface PdfSection {
 export interface PdfDocumentSpec {
   title: string;
   sections: PdfSection[];
+}
+
+/** Minimal contact shape needed to render a "Linked Contacts" table (MINCRM-650) */
+export interface PdfContactRow {
+  first_name: string;
+  last_name: string;
+  email: string;
+  title: string | null;
+}
+
+/**
+ * Builds the "Linked Contacts" PdfSection shared by the Deal and Account
+ * single-record detail PDFs. (MINCRM-650)
+ */
+export function buildContactsTableSection(contacts: PdfContactRow[]): PdfSection {
+  const columns: PdfTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'title', label: 'Title' },
+  ];
+  const rows: PdfTableRow[] = contacts.map((c) => ({
+    name: `${c.first_name} ${c.last_name}`,
+    email: c.email,
+    title: c.title,
+  }));
+  return {
+    heading: 'Linked Contacts',
+    table: { columns, rows, emptyMessage: 'No linked contacts.' },
+  };
+}
+
+/**
+ * Builds the "Notes" PdfSection shared by every single-record detail PDF.
+ * NoteResponse.created_at is a pre-stringified ISO date (not a Date instance),
+ * so it must be explicitly parsed before formatExportDate() can format it — the
+ * generic PdfTableCell/cellText formatting only auto-applies to real Date
+ * objects. (MINCRM-650)
+ */
+export function buildNotesTableSection(notes: NoteResponse[]): PdfSection {
+  const columns: PdfTableColumn[] = [
+    { key: 'created_at', label: 'Date' },
+    { key: 'author', label: 'Author' },
+    { key: 'body', label: 'Note' },
+  ];
+  const rows: PdfTableRow[] = notes.map((n) => ({
+    created_at: formatExportDate(new Date(n.created_at)),
+    author: n.created_by_name,
+    body: n.body_text,
+  }));
+  return {
+    heading: 'Notes',
+    table: { columns, rows, emptyMessage: 'No notes.' },
+  };
 }
 
 /**

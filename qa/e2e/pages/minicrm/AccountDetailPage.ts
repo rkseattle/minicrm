@@ -51,6 +51,21 @@ export class AccountDetailPage {
   }
 
   /**
+   * Returns a resolved locator for the Export PDF button on the account detail page.
+   */
+  async exportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'account-detail-export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'button to export this account as a single-record PDF' },
+      )
+      .resolve();
+  }
+
+  /**
    * Fills a text field on the edit form.
    *
    * @param testId - data-testid of the input (e.g. 'account-name-input').

@@ -9,8 +9,11 @@ import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  buildContactsTableSection,
+  buildNotesTableSection,
   type PdfDocumentSpec,
 } from '../services/pdfExportService.js';
+import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 
 /** Renders a PDF spec into a Buffer by piping through a PassThrough stream standing in for the response. */
 async function renderToBuffer(spec: PdfDocumentSpec): Promise<Buffer> {
@@ -137,5 +140,69 @@ describe('renderPdfDocument', () => {
     });
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+  });
+});
+
+describe('buildNotesTableSection', () => {
+  const makeNote = (overrides: Partial<NoteResponse> = {}): NoteResponse => ({
+    id: 'n1',
+    entity_type: 'deal',
+    entity_id: 'd1',
+    title: null,
+    body: null,
+    body_text: 'A note body',
+    visibility: 'team',
+    tags: [],
+    created_by: 'u1',
+    created_by_name: 'Jane Rep',
+    updated_by: null,
+    updated_by_name: null,
+    is_masked: false,
+    created_at: '2026-07-01T14:32:00.000Z',
+    updated_at: '2026-07-01T14:32:00.000Z',
+    ...overrides,
+  });
+
+  it('formats the pre-stringified ISO created_at as a human-readable date, not a raw ISO string (MINCRM-650)', () => {
+    const section = buildNotesTableSection([makeNote()]);
+
+    expect(section.table?.rows[0]?.created_at).toBe('2026-07-01 14:32:00 UTC');
+  });
+
+  it('maps created_by_name and body_text onto the author and body columns', () => {
+    const section = buildNotesTableSection([
+      makeNote({ created_by_name: 'Jane Rep', body_text: 'Hello' }),
+    ]);
+
+    expect(section.table?.rows[0]?.author).toBe('Jane Rep');
+    expect(section.table?.rows[0]?.body).toBe('Hello');
+  });
+
+  it('returns the empty-state message when there are no notes', () => {
+    const section = buildNotesTableSection([]);
+
+    expect(section.table?.rows).toHaveLength(0);
+    expect(section.table?.emptyMessage).toBe('No notes.');
+  });
+});
+
+describe('buildContactsTableSection', () => {
+  it('joins first and last name and maps email/title columns', () => {
+    const section = buildContactsTableSection([
+      { first_name: 'Jane', last_name: 'Doe', email: 'jane@example.com', title: 'VP Sales' },
+    ]);
+
+    expect(section.table?.rows[0]).toEqual({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      title: 'VP Sales',
+    });
+  });
+
+  it('returns the empty-state message when there are no contacts', () => {
+    const section = buildContactsTableSection([]);
+
+    expect(section.table?.rows).toHaveLength(0);
+    expect(section.table?.emptyMessage).toBe('No linked contacts.');
   });
 });
