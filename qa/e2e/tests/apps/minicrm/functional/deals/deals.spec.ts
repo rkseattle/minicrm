@@ -56,6 +56,8 @@ import {
   waitForDealsListUrl,
   navigateToDealsList,
   clickDealsExportPdfAndAwaitResponse,
+  navigateToDealDetail,
+  clickDealExportPdfAndAwaitResponse,
   type DealRow,
 } from '@behaviors/minicrm/deals.behaviors.js';
 
@@ -298,6 +300,34 @@ test(
     await navigateToDealsList({ page });
 
     const { status, contentType } = await clickDealsExportPdfAndAwaitResponse({ page });
+
+    expect(status, 'export.pdf response should return 200').toBe(200);
+    expect(contentType, 'response Content-Type should be application/pdf').toContain(
+      'application/pdf',
+    );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// F7-D6 — Export a single deal as PDF via the detail page button (MINCRM-650)
+// ---------------------------------------------------------------------------
+
+test(
+  'F7-D6: clicking Export PDF on the deal detail page downloads a single-record PDF file',
+  { tag: ['@functional'] },
+  async ({ testData, restClient, page }) => {
+    const account = await createTestAccount(testData, restClient, {
+      name: `D6-Acct ${test.info().title}`,
+    });
+    const deal = await createTestDeal(testData, restClient, {
+      name: `D6-Deal ${test.info().title}`,
+      stage: 'Prospecting',
+      account_id: account.id,
+    });
+
+    await navigateToDealDetail(deal.id, { page });
+
+    const { status, contentType } = await clickDealExportPdfAndAwaitResponse(deal.id, { page });
 
     expect(status, 'export.pdf response should return 200').toBe(200);
     expect(contentType, 'response Content-Type should be application/pdf').toContain(
