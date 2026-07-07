@@ -19,6 +19,7 @@ import {
   listContactDealsHandler,
   exportContactsHandler,
   exportContactsPdfHandler,
+  exportContactPdfHandler,
   mergeContactHandler,
   listContactAddressesHandler,
   addContactAddressHandler,
@@ -554,6 +555,46 @@ router.post(
  *                 message: Contact not found
  */
 router.get('/:id', authenticate, asyncHandler(getContactHandler));
+
+/**
+ * @openapi
+ * /api/v1/contacts/{id}/export.pdf:
+ *   get:
+ *     tags: [Contacts]
+ *     operationId: exportContactPdf
+ *     summary: Export a single contact to PDF
+ *     description: >
+ *       Returns a one-record summary PDF for the given contact — overview fields,
+ *       custom fields, linked deals, and notes. Visibility matches
+ *       GET /api/v1/contacts/{id}. (MINCRM-650)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Contact not found
+ */
+router.get(
+  '/:id/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportContactPdfHandler),
+);
 
 /**
  * @openapi

@@ -23,18 +23,21 @@ import {
   setDefaultContactAddress,
 } from '../services/contactService.js';
 import { listContactDeals } from '../services/dealService.js';
+import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
-import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import { listNotes } from '../services/noteService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
@@ -468,6 +471,102 @@ export async function exportContactsPdfHandler(req: Request, res: Response): Pro
       {
         heading: 'Contacts',
         table: { columns, rows, emptyMessage: 'No contacts match the current filters.' },
+      },
+    ],
+  });
+}
+
+/**
+ * GET /api/contacts/:id/export.pdf
+ * Renders a single contact as a one-record summary PDF, mirroring the data
+ * shown on the contact detail page. Visibility matches getContactHandler — no
+ * ownership restriction on read, consistent with GET /api/contacts/:id. (MINCRM-650)
+ */
+export async function exportContactPdfHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const contact = await findContactById(id);
+
+  if (!contact) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Contact not found' } });
+    return;
+  }
+
+  const [account, owner, deals, customValues, notesPage] = await Promise.all([
+    contact.account_id ? findAccountById(contact.account_id) : Promise.resolve(null),
+    findUserById(contact.owner_id),
+    listContactDeals(id),
+    getValuesForRecord(id),
+    listNotes('contact', id, req.user!.id, 1, DETAIL_PDF_NOTES_LIMIT),
+  ]);
+
+  const address = contact.default_address;
+  const addressLine = address
+    ? [
+        address.address_line1,
+        address.address_line2,
+        address.city,
+        address.state_region,
+        address.postal_code,
+        address.country,
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : '';
+
+  const overviewLines: string[] = [
+    `Name: ${contact.first_name} ${contact.last_name}`,
+    `Email: ${contact.email}`,
+    `Phone: ${contact.phone ?? ''}`,
+    `Title: ${contact.title ?? ''}`,
+    `Department: ${contact.department ?? ''}`,
+    `Account: ${account?.name ?? ''}`,
+    `Address: ${addressLine}`,
+    `Owner: ${owner?.name ?? ''}`,
+    `Created: ${formatExportDate(contact.created_at)}`,
+    `Updated: ${formatExportDate(contact.updated_at)}`,
+  ];
+
+  const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
+
+  const dealColumns: PdfTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'stage', label: 'Stage' },
+    { key: 'value', label: 'Value' },
+  ];
+  const dealRows: PdfTableRow[] = deals.map((d) => ({
+    name: d.name,
+    stage: d.stage,
+    value: d.value,
+  }));
+
+  const noteColumns: PdfTableColumn[] = [
+    { key: 'created_at', label: 'Date' },
+    { key: 'author', label: 'Author' },
+    { key: 'body', label: 'Note' },
+  ];
+  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
+    created_at: n.created_at,
+    author: n.created_by_name,
+    body: n.body_text,
+  }));
+
+  setPdfResponseHeaders(res, pdfFilename(`contact-${id}`));
+  renderPdfDocument(res, {
+    title: `Contact: ${contact.first_name} ${contact.last_name}`,
+    sections: [
+      { heading: 'Overview', lines: overviewLines },
+      {
+        heading: 'Custom Fields',
+        lines: customFieldLines,
+        emptyMessage: 'No custom fields defined.',
+      },
+      {
+        heading: 'Linked Deals',
+        table: { columns: dealColumns, rows: dealRows, emptyMessage: 'No linked deals.' },
+      },
+      {
+        heading: 'Notes',
+        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
       },
     ],
   });
