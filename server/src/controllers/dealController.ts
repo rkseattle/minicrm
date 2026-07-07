@@ -20,16 +20,19 @@ import {
 import { getStageNames, getTerminalStageNames } from '../services/pipelineStageService.js';
 import { findPipelineById } from '../services/pipelineService.js';
 import { findContactById } from '../services/contactService.js';
+import { findAccountById } from '../services/accountService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
 import { queueAssignmentNotification } from '../services/notificationService.js';
-import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
+import { listNotes } from '../services/noteService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
   pdfFilename,
+  DETAIL_PDF_NOTES_LIMIT,
   type PdfTableColumn,
   type PdfTableRow,
 } from '../services/pdfExportService.js';
@@ -507,6 +510,87 @@ export async function exportDealsPdfHandler(req: Request, res: Response): Promis
       {
         heading: 'Deals',
         table: { columns, rows, emptyMessage: 'No deals match the current filters.' },
+      },
+    ],
+  });
+}
+
+/**
+ * GET /api/deals/:id/export.pdf
+ * Renders a single deal as a one-record summary PDF, mirroring the data shown
+ * on the deal detail page. Visibility matches getDealHandler — no ownership
+ * restriction on read, consistent with GET /api/deals/:id. (MINCRM-650)
+ */
+export async function exportDealPdfHandler(req: Request, res: Response): Promise<void> {
+  const id = String(req.params['id']);
+  const deal = await findDealById(id);
+
+  if (!deal) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Deal not found' } });
+    return;
+  }
+
+  const [account, owner, contacts, customValues, notesPage] = await Promise.all([
+    deal.account_id ? findAccountById(deal.account_id) : Promise.resolve(null),
+    findUserById(deal.owner_id),
+    listDealContacts(id),
+    getValuesForRecord(id),
+    listNotes('deal', id, req.user!.id, 1, DETAIL_PDF_NOTES_LIMIT),
+  ]);
+
+  const overviewLines: string[] = [
+    `Name: ${deal.name}`,
+    `Stage: ${deal.stage}`,
+    `Value: ${deal.value ?? ''} ${deal.currency}`,
+    `Close Date: ${deal.close_date ?? ''}`,
+    `Loss Reason: ${deal.loss_reason ?? ''}`,
+    `Account: ${account?.name ?? ''}`,
+    `Owner: ${owner?.name ?? ''}`,
+    `Created: ${formatExportDate(deal.created_at)}`,
+    `Updated: ${formatExportDate(deal.updated_at)}`,
+  ];
+
+  const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
+
+  const contactColumns: PdfTableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'title', label: 'Title' },
+  ];
+  const contactRows: PdfTableRow[] = contacts.map((c) => ({
+    name: `${c.first_name} ${c.last_name}`,
+    email: c.email,
+    title: c.title,
+  }));
+
+  const noteColumns: PdfTableColumn[] = [
+    { key: 'created_at', label: 'Date' },
+    { key: 'author', label: 'Author' },
+    { key: 'body', label: 'Note' },
+  ];
+  const noteRows: PdfTableRow[] = notesPage.data.map((n) => ({
+    created_at: n.created_at,
+    author: n.created_by_name,
+    body: n.body_text,
+  }));
+
+  setPdfResponseHeaders(res, pdfFilename(`deal-${id}`));
+  renderPdfDocument(res, {
+    title: `Deal: ${deal.name}`,
+    sections: [
+      { heading: 'Overview', lines: overviewLines },
+      {
+        heading: 'Custom Fields',
+        lines: customFieldLines,
+        emptyMessage: 'No custom fields defined.',
+      },
+      {
+        heading: 'Linked Contacts',
+        table: { columns: contactColumns, rows: contactRows, emptyMessage: 'No linked contacts.' },
+      },
+      {
+        heading: 'Notes',
+        table: { columns: noteColumns, rows: noteRows, emptyMessage: 'No notes.' },
       },
     ],
   });

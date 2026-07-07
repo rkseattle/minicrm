@@ -8,6 +8,9 @@ import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
 import { formatExportDate } from '../utils/csvUtils.js';
 
+/** Max notes rendered in a single-record detail PDF (MINCRM-650) */
+export const DETAIL_PDF_NOTES_LIMIT = 50;
+
 const DOCUMENT_MARGIN = 50;
 const TITLE_FONT_SIZE = 18;
 const SECTION_HEADING_FONT_SIZE = 14;
