@@ -88,7 +88,7 @@ test.describe('AI session retention UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiSessionRetentionDaysInput({ page })).toBeVisible();
     },
@@ -101,7 +101,7 @@ test.describe('AI session retention UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiSessionRetentionDaysInput({ page })).toBeVisible();
       await fillAiSessionRetentionDays('180', { page });
@@ -124,7 +124,7 @@ test.describe('AI session retention UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiSessionRetentionDaysInput({ page })).toBeVisible();
       await fillAiSessionRetentionDays('10', { page });
@@ -148,7 +148,7 @@ test.describe('AI session retention UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiSessionRetentionDaysInput({ page })).toBeVisible();
       await fillAiSessionRetentionDays('9999', { page });
@@ -334,7 +334,7 @@ test.describe('AI session retention stats and manual purge UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiRetentionStats({ page })).toBeVisible({ timeout: 8_000 });
     },
@@ -347,7 +347,7 @@ test.describe('AI session retention stats and manual purge UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-retention');
 
       await expect(await getAiRetentionStats({ page })).toBeVisible({ timeout: 8_000 });
       await clickAiPurgeNow({ page });
