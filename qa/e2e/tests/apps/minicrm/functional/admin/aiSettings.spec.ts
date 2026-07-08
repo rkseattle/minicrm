@@ -323,6 +323,12 @@ test('@functional @serial F-AI10: sub-navigation switches between General, Usage
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
+  // The sub-nav tabs live inside the panel region that AiSettings disables
+  // whenever ai_features is off (everything except the master toggle itself
+  // — see AiSettings.tsx's `disabled` prop doc comment) — enable AI first so
+  // the tabs are actually clickable.
+  await setAiEnabled(restClient, true);
+
   await navigateToAdminSettings({ page }, 'ai');
   await expectAiSettingsSubPanelVisible('general', { page }, 10_000);
 
@@ -367,6 +373,11 @@ test('@functional @serial F-AI12: master toggle remains visible and interactive 
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
 
+  // The sub-nav tabs live inside the panel region that AiSettings disables
+  // whenever ai_features is off — enable AI first so the tabs are clickable
+  // (the master toggle itself is the one thing that stays interactive either way).
+  await setAiEnabled(restClient, true);
+
   await navigateToAdminSettings({ page }, 'ai');
   await expectAiSettingsSubPanelVisible('general', { page }, 10_000);
   await expectAiMasterToggleVisible({ page });
@@ -387,6 +398,10 @@ test('@functional @serial F-AI13: session retention days can be updated from the
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
+
+  // The session retention input lives inside the panel region that AiSettings
+  // disables whenever ai_features is off — enable AI first so it's interactive.
+  await setAiEnabled(restClient, true);
 
   await navigateToAdminSettings({ page }, 'ai', 'data-retention');
   await expectAiSettingsSubPanelVisible('data-retention', { page }, 10_000);
@@ -409,6 +424,10 @@ test('@functional @serial F-AI14: a standard field exclusion can be toggled from
 }) => {
   const admin = await createTestAdmin(testData, restClient);
   await loginViaBrowser(admin.email, admin.password, { page });
+
+  // The field exclusion toggle lives inside the panel region that AiSettings
+  // disables whenever ai_features is off — enable AI first so it's interactive.
+  await setAiEnabled(restClient, true);
 
   await navigateToAdminSettings({ page }, 'ai', 'data-minimization');
   await expectAiSettingsSubPanelVisible('data-minimization', { page }, 10_000);
