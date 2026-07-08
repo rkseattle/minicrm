@@ -180,3 +180,64 @@ export async function exportLeadPdf(id: string): Promise<void> {
   const filename = `minicrm-lead-${id}-${date}.pdf`;
   triggerCsvDownload(response.data, filename);
 }
+
+/** Parameters for the leads list CSV/PDF export */
+export interface ExportLeadsParams {
+  /** 'me' = current user only; 'my_team' = all team co-members (MINCRM-545) */
+  owner?: 'me' | 'my_team';
+  status?: string;
+  lead_source?: string;
+  includeDisqualified?: boolean;
+  includeConverted?: boolean;
+  /** When true, admins export every lead (reps always get their own visibility) */
+  all?: boolean;
+}
+
+function buildLeadExportQueryParams(params: ExportLeadsParams): Record<string, string> {
+  const queryParams: Record<string, string> = {};
+  if (params.owner) queryParams.owner = params.owner;
+  if (params.status) queryParams.status = params.status;
+  if (params.lead_source) queryParams.lead_source = params.lead_source;
+  if (params.includeDisqualified) queryParams.includeDisqualified = 'true';
+  if (params.includeConverted) queryParams.includeConverted = 'true';
+  if (params.all) queryParams.all = 'true';
+  return queryParams;
+}
+
+/**
+ * Downloads all matching leads as a CSV file.
+ * Triggers a browser file-save dialog. (MINCRM-651)
+ *
+ * @param params - Optional filter parameters, mirroring the on-screen filters
+ */
+export async function exportLeadsCsv(params: ExportLeadsParams = {}): Promise<void> {
+  const queryParams = buildLeadExportQueryParams(params);
+
+  const response = await apiClient.get<Blob>('/leads/export', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-leads-${date}.csv`;
+  triggerCsvDownload(response.data, filename);
+}
+
+/**
+ * Downloads all matching leads as a paginated PDF table.
+ * Triggers a browser file-save dialog. Same filters as exportLeadsCsv(). (MINCRM-651)
+ *
+ * @param params - Optional filter parameters, mirroring the on-screen filters
+ */
+export async function exportLeadsPdf(params: ExportLeadsParams = {}): Promise<void> {
+  const queryParams = buildLeadExportQueryParams(params);
+
+  const response = await apiClient.get<Blob>('/leads/export.pdf', {
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+    responseType: 'blob',
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `minicrm-leads-${date}.pdf`;
+  triggerCsvDownload(response.data, filename);
+}

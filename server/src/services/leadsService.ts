@@ -648,3 +648,81 @@ export async function searchAccountsForConversion(
   );
   return result.rows;
 }
+
+/** Row shape returned by exportLeadsForCsv, enriched with the owner's display name */
+export interface LeadExportRow extends LeadRow {
+  owner_name: string;
+}
+
+/** Options for filtering leads to export (mirrors listLeads options minus pagination/sort) */
+interface ExportLeadsOptions {
+  ownerId?: string;
+  /** When provided, only leads whose owner_id is in this set are returned (MINCRM-545 "My Team" filter) */
+  ownerIds?: string[];
+  status?: string;
+  lead_source?: string;
+  /** When true, include Disqualified leads (hidden by default) */
+  includeDisqualified?: boolean;
+  /** When true, include converted leads (hidden by default) */
+  includeConverted?: boolean;
+}
+
+/**
+ * Returns all leads matching the given filters, enriched with the owner's
+ * display name, for CSV/PDF export. No pagination — same filter semantics as
+ * listLeads. (MINCRM-651)
+ *
+ * @param options - Filters (same semantics as listLeads, minus pagination/sort)
+ * @returns Array of enriched lead rows ordered by created_at DESC
+ */
+export async function exportLeadsForCsv(
+  options: ExportLeadsOptions = {},
+): Promise<LeadExportRow[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (options.ownerId) {
+    values.push(options.ownerId);
+    conditions.push(`l.owner_id = $${values.length}`);
+  }
+
+  if (options.ownerIds && options.ownerIds.length > 0) {
+    values.push(options.ownerIds);
+    conditions.push(`l.owner_id = ANY($${values.length}::uuid[])`);
+  }
+
+  if (options.status) {
+    values.push(options.status);
+    conditions.push(`l.status = $${values.length}`);
+  }
+
+  if (options.lead_source) {
+    values.push(options.lead_source);
+    conditions.push(`l.lead_source = $${values.length}`);
+  }
+
+  // Hide Disqualified leads by default (MINCRM-174)
+  if (!options.includeDisqualified && !options.status) {
+    conditions.push(`l.status != 'Disqualified'`);
+  }
+
+  // Hide converted leads by default (MINCRM-175)
+  if (!options.includeConverted) {
+    conditions.push(`l.converted_at IS NULL`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await withRlsQuery((client) =>
+    client.query<LeadExportRow>(
+      `SELECT l.*, u.name AS owner_name
+       FROM leads l
+       JOIN users u ON l.owner_id = u.id
+       ${whereClause}
+       ORDER BY l.created_at DESC`,
+      values,
+    ),
+  );
+
+  return result.rows;
+}
