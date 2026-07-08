@@ -60,7 +60,7 @@ test.describe('AI data minimization UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-minimization');
 
       await expect(await getAiAlwaysExcludedFields({ page })).toBeVisible({ timeout: 8_000 });
     },
@@ -79,7 +79,7 @@ test.describe('AI data minimization UI', () => {
       const admin = await createTestAdmin(testData, restClient);
       await loginViaBrowser(admin.email, admin.password, { page });
 
-      await navigateToAdminSettings({ page }, 'ai');
+      await navigateToAdminSettings({ page }, 'ai', 'data-minimization');
 
       const toggle = await getAiFieldExclusionToggle('contact', 'department', { page });
       await expect(toggle).toBeVisible({ timeout: 8_000 });
