@@ -20,6 +20,8 @@ import {
   convertLeadHandler,
   searchAccountsHandler,
   exportLeadPdfHandler,
+  exportLeadsHandler,
+  exportLeadsPdfHandler,
 } from '../controllers/leadsController.js';
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
@@ -191,6 +193,122 @@ router.delete(
   requireCapability(Capability.BulkOperations),
   requireCapability(Capability.ContactsDelete),
   asyncHandler(bulkDeleteLeadsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/leads/export:
+ *   get:
+ *     tags: [Leads]
+ *     operationId: exportLeads
+ *     summary: Export leads as CSV
+ *     description: >
+ *       Streams all leads matching the given filters as a UTF-8 CSV file. Query
+ *       params mirror GET /api/v1/leads (owner, status, lead_source,
+ *       includeDisqualified, includeConverted) except pagination/sort — all
+ *       matching rows are exported. Reps get leads visible to them per the
+ *       owner param; admins may pass ?all=true to export every lead. (MINCRM-651)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: owner
+ *         schema:
+ *           type: string
+ *           enum: [me, my_team]
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lead_source
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeDisqualified
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: includeConverted
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: boolean
+ *         description: Admin only — pass 'true' to export all leads
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/export',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportLeadsHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/leads/export.pdf:
+ *   get:
+ *     tags: [Leads]
+ *     operationId: exportLeadsPdf
+ *     summary: Export leads as a paginated PDF table
+ *     description: >
+ *       Renders all leads matching the given filters as a paginated PDF table.
+ *       Query params and ownership rules are identical to the CSV export. (MINCRM-651)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: owner
+ *         schema:
+ *           type: string
+ *           enum: [me, my_team]
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lead_source
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeDisqualified
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: includeConverted
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: all
+ *         schema:
+ *           type: boolean
+ *         description: Admin only — pass 'true' to export all leads
+ *     responses:
+ *       200:
+ *         description: PDF file download
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Not authenticated
+ */
+router.get(
+  '/export.pdf',
+  authenticate,
+  requireFeatureEnabled('csv_export'),
+  asyncHandler(exportLeadsPdfHandler),
 );
 
 /**

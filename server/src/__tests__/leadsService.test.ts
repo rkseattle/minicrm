@@ -22,6 +22,7 @@ import {
   findLeadByContactId,
   findLeadByDealId,
   searchAccountsForConversion,
+  exportLeadsForCsv,
 } from '../services/leadsService.js';
 import { findContactById } from '../services/contactService.js';
 import { createUser } from '../services/userService.js';
@@ -216,6 +217,62 @@ describe('listLeads', () => {
     const result = await listLeads({ ownerId, status: 'Contacted' });
     expect(result.data.every((l) => l.status === 'Contacted')).toBe(true);
     expect(result.data.some((l) => l.id === contactedLead.id)).toBe(true);
+  });
+});
+
+// ── exportLeadsForCsv (MINCRM-651) ───────────────────────────────────────────
+
+describe('exportLeadsForCsv', () => {
+  it('returns matching leads enriched with owner_name, excluding Disqualified and converted by default', async () => {
+    const mainLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    await updateLead(
+      disqLead.id,
+      { status: 'Disqualified', version: disqLead.version },
+      { id: ownerId, name: 'Tester' },
+    );
+
+    const rows = await exportLeadsForCsv({ ownerId });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(mainLead.id);
+    expect(rows[0].owner_name).toBe(OWNER_USER.name);
+  });
+
+  it('scopes results to the given ownerId', async () => {
+    const otherOwner = await createUser({
+      email: `${FILE_PREFIX}-${uid()}-other@example.com`,
+      name: 'Other Owner',
+      role: 'rep',
+      passwordHash: '$2b$12$placeholder_hash',
+      status: 'active',
+    });
+    await createLead({ ...makeLead(), owner_id: ownerId });
+    const otherLead = await createLead({ ...makeLead(), owner_id: otherOwner.id });
+
+    const rows = await exportLeadsForCsv({ ownerId });
+
+    expect(rows.every((r) => r.id !== otherLead.id)).toBe(true);
+
+    await pool.query('DELETE FROM leads WHERE owner_id = $1', [otherOwner.id]);
+    await pool.query('DELETE FROM users WHERE id = $1', [otherOwner.id]);
+  });
+
+  it('includes Disqualified and converted leads when their include flags are set', async () => {
+    const disqLead = await createLead({ ...makeLead(), owner_id: ownerId });
+    await updateLead(
+      disqLead.id,
+      { status: 'Disqualified', version: disqLead.version },
+      { id: ownerId, name: 'Tester' },
+    );
+
+    const rows = await exportLeadsForCsv({ ownerId, includeDisqualified: true });
+    expect(rows.some((r) => r.id === disqLead.id)).toBe(true);
+  });
+
+  it('returns an empty array with no matching filters instead of throwing', async () => {
+    const rows = await exportLeadsForCsv({ ownerId, status: 'Contacted' });
+    expect(rows).toEqual([]);
   });
 });
 

@@ -18,7 +18,14 @@ import { Button } from '@/components/ui/Button.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Pagination } from '@/components/ui/Pagination.js';
-import { listLeads, createLead, updateLead, deleteLead } from '@/api/leads.js';
+import {
+  listLeads,
+  createLead,
+  updateLead,
+  deleteLead,
+  exportLeadsCsv,
+  exportLeadsPdf,
+} from '@/api/leads.js';
 import type { DuplicateLeadInfo } from '@/api/leads.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY, resolveOwnerName } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
@@ -62,6 +69,8 @@ export default function LeadsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const newLeadButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [duplicateLead, setDuplicateLead] = useState<DuplicateLeadInfo | null>(null);
   const forceNextSubmit = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -138,7 +147,7 @@ export default function LeadsPage() {
 
   // Clear selection whenever filters or page change (MINCRM-562)
   useEffect(() => {
-    setSelectedIds(new Set()); // eslint-disable-line react-hooks/set-state-in-effect -- mirrors ContactsPage/DealsPage/ActivitiesPage pattern
+    setSelectedIds(new Set());
   }, [page, ownerFilter, statusFilter, sourceFilter, includeDisqualified, includeConverted]);
 
   const allVisibleIds = leads.map((l) => l.id);
@@ -313,11 +322,78 @@ export default function LeadsPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('leads.pageTitle')}</h1>
-          {canWrite && !showForm && (
-            <Button ref={newLeadButtonRef} onClick={handleFormOpen} data-testid="new-lead-button">
-              {t('leads.newLead')}
+          <div className="flex items-center gap-2">
+            {/* Export filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="leads-export-csv-button"
+              disabled={isExporting}
+              onClick={async () => {
+                setIsExporting(true);
+                try {
+                  await exportLeadsCsv({
+                    owner: ownerApiParam,
+                    status: statusFilter || undefined,
+                    lead_source: sourceFilter || undefined,
+                    includeDisqualified,
+                    includeConverted,
+                  });
+                } finally {
+                  setIsExporting(false);
+                }
+              }}
+            >
+              {isExporting ? t('leads.exporting') : t('leads.exportCsv')}
             </Button>
-          )}
+            {/* Export PDF — filtered view */}
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="leads-export-pdf-button"
+              disabled={isExportingPdf}
+              onClick={async () => {
+                setIsExportingPdf(true);
+                try {
+                  await exportLeadsPdf({
+                    owner: ownerApiParam,
+                    status: statusFilter || undefined,
+                    lead_source: sourceFilter || undefined,
+                    includeDisqualified,
+                    includeConverted,
+                  });
+                } finally {
+                  setIsExportingPdf(false);
+                }
+              }}
+            >
+              {isExportingPdf ? t('leads.exporting') : t('leads.exportPdf')}
+            </Button>
+            {/* Export all — admins only */}
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="secondary"
+                data-testid="leads-export-all-button"
+                disabled={isExporting}
+                onClick={async () => {
+                  setIsExporting(true);
+                  try {
+                    await exportLeadsCsv({ all: true });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? t('leads.exporting') : t('leads.exportAll')}
+              </Button>
+            )}
+            {canWrite && !showForm && (
+              <Button ref={newLeadButtonRef} onClick={handleFormOpen} data-testid="new-lead-button">
+                {t('leads.newLead')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Inline create form */}

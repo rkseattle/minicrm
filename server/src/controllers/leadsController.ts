@@ -21,12 +21,14 @@ import {
   getLeadStatusHistory,
   convertLead,
   searchAccountsForConversion,
+  exportLeadsForCsv,
   LEAD_SORT_COLUMNS,
 } from '../services/leadsService.js';
+import type { LeadExportRow } from '../services/leadsService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
-import { formatExportDate } from '../utils/csvUtils.js';
+import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listNotes } from '../services/noteService.js';
 import {
   renderPdfDocument,
@@ -34,6 +36,8 @@ import {
   pdfFilename,
   buildNotesTableSection,
   DETAIL_PDF_NOTES_LIMIT,
+  type PdfTableColumn,
+  type PdfTableRow,
 } from '../services/pdfExportService.js';
 
 const FORBIDDEN_OWNERSHIP_ERROR = {
@@ -206,6 +210,118 @@ export async function exportLeadPdfHandler(req: Request, res: Response): Promise
     sections: [
       { heading: 'Overview', lines: overviewLines },
       buildNotesTableSection(notesPage.data),
+    ],
+  });
+}
+
+/** Base CSV/PDF column headers for the leads list export, in display order */
+const LEAD_EXPORT_HEADERS = [
+  'First Name',
+  'Last Name',
+  'Email',
+  'Phone',
+  'Company',
+  'Source',
+  'Status',
+  'Owner',
+  'Created',
+  'Updated',
+] as const;
+
+function toLeadExportRow(lead: LeadExportRow): Record<string, string | Date | null> {
+  return {
+    'First Name': lead.first_name,
+    'Last Name': lead.last_name,
+    Email: lead.email,
+    Phone: lead.phone,
+    Company: lead.company_name,
+    Source: lead.lead_source,
+    Status: lead.status,
+    Owner: lead.owner_name,
+    Created: lead.created_at,
+    Updated: lead.updated_at,
+  };
+}
+
+/**
+ * Resolves the owner/status/source/visibility filters for the current request
+ * and fetches matching leads. Shared by the CSV and PDF export handlers so
+ * both formats reflect identical rows and ownership rules, mirroring
+ * listLeadsHandler's filter resolution. (MINCRM-651)
+ */
+async function resolveLeadExportRows(req: Request): Promise<LeadExportRow[]> {
+  const isAdmin = req.user!.role === 'admin';
+  const exportAll = isAdmin && req.query.all === 'true';
+
+  const ownerParam = typeof req.query.owner === 'string' ? req.query.owner : undefined;
+  const ownerId = !exportAll && ownerParam === 'me' ? req.user!.id : undefined;
+  const ownerIds =
+    !exportAll && ownerParam === 'my_team' ? await getCoMemberIds(req.user!.id) : undefined;
+
+  const status =
+    typeof req.query.status === 'string' && req.query.status.trim().length > 0
+      ? req.query.status.trim()
+      : undefined;
+
+  const lead_source =
+    typeof req.query.lead_source === 'string' && req.query.lead_source.trim().length > 0
+      ? req.query.lead_source.trim()
+      : undefined;
+
+  const includeDisqualified = req.query.includeDisqualified === 'true';
+  const includeConverted = req.query.includeConverted === 'true';
+
+  return exportLeadsForCsv({
+    ownerId,
+    ownerIds,
+    status,
+    lead_source,
+    includeDisqualified,
+    includeConverted,
+  });
+}
+
+/**
+ * GET /api/leads/export
+ * Streams all matching leads as a UTF-8 CSV file.
+ *
+ * Query params mirror the list endpoint (owner, status, lead_source,
+ * includeDisqualified, includeConverted) except pagination/sort — all
+ * matching rows are exported. Reps get leads visible to them per the owner
+ * param; admins may pass ?all=true to export every lead. (MINCRM-651)
+ */
+export async function exportLeadsHandler(req: Request, res: Response): Promise<void> {
+  const leads = await resolveLeadExportRows(req);
+  const rows = leads.map(toLeadExportRow);
+
+  const csv = serializeToCsv([...LEAD_EXPORT_HEADERS], rows);
+  const filename = csvFilename('leads');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(csv);
+}
+
+/**
+ * GET /api/leads/export.pdf
+ * Renders all matching leads as a paginated PDF table.
+ *
+ * Query params and ownership rules are identical to the CSV export above. (MINCRM-651)
+ */
+export async function exportLeadsPdfHandler(req: Request, res: Response): Promise<void> {
+  const leads = await resolveLeadExportRows(req);
+
+  const columns: PdfTableColumn[] = LEAD_EXPORT_HEADERS.map((label) => ({ key: label, label }));
+  const rows: PdfTableRow[] = leads.map(toLeadExportRow);
+
+  setPdfResponseHeaders(res, pdfFilename('leads'));
+  renderPdfDocument(res, {
+    title: 'Leads',
+    sections: [
+      {
+        heading: 'Leads',
+        table: { columns, rows, emptyMessage: 'No leads match the current filters.' },
+      },
     ],
   });
 }

@@ -251,6 +251,88 @@ describe('GET /api/leads', () => {
   });
 });
 
+// ── GET /api/leads/export and /api/leads/export.pdf (MINCRM-651) ───────────
+
+describe('GET /api/leads/export', () => {
+  it('returns a CSV file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
+
+    const res = await request(app).get('/api/v1/leads/export').set('Cookie', repCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+  });
+
+  it('only includes leads owned by the requesting rep when ?owner=me is passed', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+
+    const res = await request(app)
+      .get('/api/v1/leads/export?owner=me')
+      .set('Cookie', otherRepCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.text).not.toContain(lead.email);
+  });
+
+  it('mirrors GET /api/leads visibility by default (org-wide, no owner filter)', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+
+    const res = await request(app).get('/api/v1/leads/export').set('Cookie', otherRepCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain(lead.email);
+  });
+
+  it('allows admins to export all leads via ?all=true', async () => {
+    const lead = await createLead(
+      { ...makeLead(), owner_id: repId },
+      { id: repId, name: 'Leads Rep' },
+    );
+
+    const res = await request(app).get('/api/v1/leads/export?all=true').set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain(lead.email);
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/leads/export').expect(401);
+  });
+});
+
+describe('GET /api/leads/export.pdf', () => {
+  it('returns a PDF file with the correct Content-Type and Content-Disposition headers', async () => {
+    await createLead({ ...makeLead(), owner_id: repId }, { id: repId, name: 'Leads Rep' });
+
+    const res = await request(app)
+      .get('/api/v1/leads/export.pdf')
+      .set('Cookie', repCookie)
+      .buffer(true)
+      .parse((res, callback) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => callback(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(Buffer.isBuffer(res.body)).toBe(true);
+    expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 401 without authentication', async () => {
+    await request(app).get('/api/v1/leads/export.pdf').expect(401);
+  });
+});
+
 // ── GET /api/leads/:id ────────────────────────────────────────────────────────
 
 describe('GET /api/leads/:id', () => {
