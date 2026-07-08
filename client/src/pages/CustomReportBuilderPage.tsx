@@ -16,6 +16,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import {
   listCustomReports,
   runAdHocReport,
@@ -1015,25 +1016,24 @@ export function CustomReportBuilderContent() {
             )}
 
             {activeReportId && result && (
-              <a
-                href={getCustomReportExportUrl(activeReportId)}
-                download
-                className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 inline-flex items-center"
-                data-testid="export-csv-button"
-              >
-                {t('reports.customReports.exportCsv')}
-              </a>
-            )}
-
-            {activeReportId && result && (
-              <a
-                href={getCustomReportExportPdfUrl(activeReportId)}
-                download
-                className="px-4 py-2 bg-white border border-gray-300 text-sm rounded hover:bg-gray-50 inline-flex items-center"
-                data-testid="export-pdf-button"
-              >
-                {t('reports.customReports.exportPdf')}
-              </a>
+              <ExportMenu
+                label={t('common.export')}
+                testId="custom-reports-export-menu-button"
+                items={[
+                  {
+                    key: 'csv',
+                    testId: 'custom-reports-export-csv-button',
+                    label: t('reports.customReports.exportCsv'),
+                    href: getCustomReportExportUrl(activeReportId),
+                  },
+                  {
+                    key: 'pdf',
+                    testId: 'custom-reports-export-pdf-button',
+                    label: t('reports.customReports.exportPdf'),
+                    href: getCustomReportExportPdfUrl(activeReportId),
+                  },
+                ]}
+              />
             )}
           </div>
 

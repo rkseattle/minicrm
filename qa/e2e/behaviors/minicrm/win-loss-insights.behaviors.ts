@@ -51,11 +51,15 @@ export async function isWinPatternsHeadingVisible(
   return insightsPage.isWinPatternsHeadingVisible();
 }
 
-/** Returns true when the Export CSV button is currently enabled. */
+/**
+ * Returns true when the Export CSV button is currently enabled. Opens the
+ * Export menu first, since the item isn't in the DOM until then. (MINCRM-652)
+ */
 export async function isWinLossExportCsvEnabled(
   context: WinLossInsightsBehaviorContext,
 ): Promise<boolean> {
   const insightsPage = new WinLossInsightsPage(context);
+  await insightsPage.openExportMenu();
   const locator = await insightsPage.exportCsvButtonLocator();
   return locator.isEnabled().catch(() => false);
 }
@@ -69,6 +73,7 @@ export async function clickWinLossExportPdfAndAwaitResponse(
   context: WinLossInsightsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const insightsPage = new WinLossInsightsPage(context);
+  await insightsPage.openExportMenu();
   const responsePromise = context.page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/insights/win-loss/export.pdf') &&

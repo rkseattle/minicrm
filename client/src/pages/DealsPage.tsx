@@ -19,6 +19,7 @@ import DealForm from '@/components/DealForm.js';
 import StageColumn from '@/components/StageColumn.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import {
@@ -596,66 +597,59 @@ export default function DealsPage() {
         <div className="flex items-center justify-between mb-6 sticky top-0 z-20 bg-gray-50 py-4 -mt-4">
           <h1 className="text-2xl font-bold text-gray-900">{t('deals.pageTitle')}</h1>
           <div className="flex items-center gap-2">
-            {/* Export filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="deals-export-csv-button"
-              disabled={isExporting}
-              onClick={async () => {
-                setIsExporting(true);
-                try {
-                  await exportDealsCsv({
-                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                  });
-                } finally {
-                  setIsExporting(false);
-                }
-              }}
-            >
-              {isExporting ? t('deals.exporting') : t('deals.exportCsv')}
-            </Button>
-            {/* Export PDF — filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="deals-export-pdf-button"
-              disabled={isExportingPdf}
-              onClick={async () => {
-                setIsExportingPdf(true);
-                try {
-                  await exportDealsPdf({
-                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                  });
-                } finally {
-                  setIsExportingPdf(false);
-                }
-              }}
-            >
-              {isExportingPdf ? t('deals.exporting') : t('deals.exportPdf')}
-            </Button>
-            {/* Export all — admins only */}
-            {isAdmin && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                data-testid="deals-export-all-button"
-                disabled={isExporting}
-                onClick={async () => {
-                  setIsExporting(true);
-                  try {
-                    await exportDealsCsv({ all: true });
-                  } finally {
-                    setIsExporting(false);
-                  }
-                }}
-              >
-                {isExporting ? t('deals.exporting') : t('deals.exportAll')}
-              </Button>
-            )}
+            <ExportMenu
+              label={t('common.export')}
+              testId="deals-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'deals-export-csv-button',
+                  label: isExporting ? t('deals.exporting') : t('deals.exportCsv'),
+                  disabled: isExporting,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportDealsCsv({
+                        all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                      });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+                {
+                  key: 'pdf',
+                  testId: 'deals-export-pdf-button',
+                  label: isExportingPdf ? t('deals.exporting') : t('deals.exportPdf'),
+                  disabled: isExportingPdf,
+                  onClick: async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      await exportDealsPdf({
+                        all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                      });
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  },
+                },
+                {
+                  key: 'all',
+                  testId: 'deals-export-all-button',
+                  label: isExporting ? t('deals.exporting') : t('deals.exportAll'),
+                  disabled: isExporting,
+                  hidden: !isAdmin,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportDealsCsv({ all: true });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+              ]}
+            />
             {/* View toggle */}
             <Button
               type="button"

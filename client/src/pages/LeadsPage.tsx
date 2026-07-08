@@ -15,6 +15,7 @@ import EmptyState from '@/components/EmptyState.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -323,71 +324,67 @@ export default function LeadsPage() {
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">{t('leads.pageTitle')}</h1>
           <div className="flex items-center gap-2">
-            {/* Export filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              data-testid="leads-export-csv-button"
-              disabled={isExporting}
-              onClick={async () => {
-                setIsExporting(true);
-                try {
-                  await exportLeadsCsv({
-                    owner: ownerApiParam,
-                    status: statusFilter || undefined,
-                    lead_source: sourceFilter || undefined,
-                    includeDisqualified,
-                    includeConverted,
-                  });
-                } finally {
-                  setIsExporting(false);
-                }
-              }}
-            >
-              {isExporting ? t('leads.exporting') : t('leads.exportCsv')}
-            </Button>
-            {/* Export PDF — filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              data-testid="leads-export-pdf-button"
-              disabled={isExportingPdf}
-              onClick={async () => {
-                setIsExportingPdf(true);
-                try {
-                  await exportLeadsPdf({
-                    owner: ownerApiParam,
-                    status: statusFilter || undefined,
-                    lead_source: sourceFilter || undefined,
-                    includeDisqualified,
-                    includeConverted,
-                  });
-                } finally {
-                  setIsExportingPdf(false);
-                }
-              }}
-            >
-              {isExportingPdf ? t('leads.exporting') : t('leads.exportPdf')}
-            </Button>
-            {/* Export all — admins only */}
-            {isAdmin && (
-              <Button
-                type="button"
-                variant="secondary"
-                data-testid="leads-export-all-button"
-                disabled={isExporting}
-                onClick={async () => {
-                  setIsExporting(true);
-                  try {
-                    await exportLeadsCsv({ all: true });
-                  } finally {
-                    setIsExporting(false);
-                  }
-                }}
-              >
-                {isExporting ? t('leads.exporting') : t('leads.exportAll')}
-              </Button>
-            )}
+            <ExportMenu
+              label={t('common.export')}
+              testId="leads-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'leads-export-csv-button',
+                  label: isExporting ? t('leads.exporting') : t('leads.exportCsv'),
+                  disabled: isExporting,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportLeadsCsv({
+                        owner: ownerApiParam,
+                        status: statusFilter || undefined,
+                        lead_source: sourceFilter || undefined,
+                        includeDisqualified,
+                        includeConverted,
+                      });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+                {
+                  key: 'pdf',
+                  testId: 'leads-export-pdf-button',
+                  label: isExportingPdf ? t('leads.exporting') : t('leads.exportPdf'),
+                  disabled: isExportingPdf,
+                  onClick: async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      await exportLeadsPdf({
+                        owner: ownerApiParam,
+                        status: statusFilter || undefined,
+                        lead_source: sourceFilter || undefined,
+                        includeDisqualified,
+                        includeConverted,
+                      });
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  },
+                },
+                {
+                  key: 'all',
+                  testId: 'leads-export-all-button',
+                  label: isExporting ? t('leads.exporting') : t('leads.exportAll'),
+                  disabled: isExporting,
+                  hidden: !isAdmin,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportLeadsCsv({ all: true });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+              ]}
+            />
             {canWrite && !showForm && (
               <Button ref={newLeadButtonRef} onClick={handleFormOpen} data-testid="new-lead-button">
                 {t('leads.newLead')}

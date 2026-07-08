@@ -1346,7 +1346,8 @@
     "save": "Guardar",
     "saving": "Guardando…",
     "expand": "Expandir",
-    "collapse": "Contraer"
+    "collapse": "Contraer",
+    "export": "Exportar"
   },
   "errors": {
     "boundaryTitle": "Algo salió mal",

@@ -1346,7 +1346,8 @@
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "expand": "Développer",
-    "collapse": "Réduire"
+    "collapse": "Réduire",
+    "export": "Exporter"
   },
   "errors": {
     "boundaryTitle": "Une erreur s'est produite",

@@ -577,45 +577,87 @@ export class ReportsPage {
     return this.page.url();
   }
 
-  // ── Export buttons (MINCRM-601) ───────────────────────────────────────────
-  // Shared testids across custom-report-builder and activity-volume views —
-  // safe because only one view is mounted at a time (Reports tabs unmount
-  // the previous view's content rather than hiding it in the DOM).
+  // ── Export buttons (MINCRM-601, MINCRM-652) ───────────────────────────────
+  // Custom Report Builder and Activity Volume each have distinct testids
+  // (custom-reports-export-* / activity-volume-export-*) since MINCRM-652
+  // consolidated each view's export controls behind its own ExportMenu.
 
-  /**
-   * Returns a resolved locator for the Export CSV control (custom report
-   * builder or activity volume view, whichever is currently mounted).
-   * Falls back to a css testid selector rather than a role strategy since
-   * the control is a <button> on Activity Volume but an <a href download>
-   * (role "link") on Custom Report Builder.
-   */
-  async exportCsvButtonLocator() {
+  /** Opens the Activity Volume report's Export menu. (MINCRM-652) */
+  async openActivityVolumeExportMenu(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'activity-volume-export-menu-button' },
+        { type: 'role', value: 'button', options: { name: /export/i } },
+      ],
+      { intent: 'trigger button that opens the activity volume export menu' },
+    );
+  }
+
+  /** Returns a resolved locator for the Activity Volume Export CSV button. */
+  async activityVolumeExportCsvButtonLocator() {
     return this.page
       .locate(
         [
-          { type: 'testId', value: 'export-csv-button' },
-          { type: 'css', value: '[data-testid="export-csv-button"]' },
+          { type: 'testId', value: 'activity-volume-export-csv-button' },
+          { type: 'role', value: 'button', options: { name: /export csv/i } },
         ],
-        { intent: 'control to export the current report view as CSV' },
+        { intent: 'control to export the activity volume report as CSV' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the Activity Volume Export PDF button. */
+  async activityVolumeExportPdfButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'activity-volume-export-pdf-button' },
+          { type: 'role', value: 'button', options: { name: /export pdf/i } },
+        ],
+        { intent: 'control to export the activity volume report as PDF' },
+      )
+      .resolve();
+  }
+
+  /** Opens the Custom Report Builder's Export menu. (MINCRM-652) */
+  async openCustomReportExportMenu(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'custom-reports-export-menu-button' },
+        { type: 'role', value: 'button', options: { name: /export/i } },
+      ],
+      { intent: 'trigger button that opens the custom report builder export menu' },
+    );
+  }
+
+  /**
+   * Returns a resolved locator for the Custom Report Builder's Export CSV
+   * control — a plain `<a href download>` anchor (role "link"), not a button.
+   */
+  async customReportExportCsvButtonLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'custom-reports-export-csv-button' },
+          { type: 'css', value: '[data-testid="custom-reports-export-csv-button"]' },
+        ],
+        { intent: 'control to export the current custom report as CSV' },
       )
       .resolve();
   }
 
   /**
-   * Returns a resolved locator for the Export PDF control (custom report
-   * builder or activity volume view, whichever is currently mounted).
-   * Falls back to a css testid selector rather than a role strategy since
-   * the control is a <button> on Activity Volume but an <a href download>
-   * (role "link") on Custom Report Builder.
+   * Returns a resolved locator for the Custom Report Builder's Export PDF
+   * control — a plain `<a href download>` anchor (role "link"), not a button.
    */
-  async exportPdfButtonLocator() {
+  async customReportExportPdfButtonLocator() {
     return this.page
       .locate(
         [
-          { type: 'testId', value: 'export-pdf-button' },
-          { type: 'css', value: '[data-testid="export-pdf-button"]' },
+          { type: 'testId', value: 'custom-reports-export-pdf-button' },
+          { type: 'css', value: '[data-testid="custom-reports-export-pdf-button"]' },
         ],
-        { intent: 'control to export the current report view as PDF' },
+        { intent: 'control to export the current custom report as PDF' },
       )
       .resolve();
   }

@@ -5,13 +5,14 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import LeadsPage from './LeadsPage.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { server } from '../test/setup.js';
-import { LEAD_1 } from '../test/msw/handlers.js';
+import { LEAD_1, REP_USER } from '../test/msw/handlers.js';
 import * as bulkApi from '../api/bulk.js';
+import * as leadsApi from '../api/leads.js';
 
 describe('LeadsPage', () => {
   it('renders the page heading', async () => {
@@ -188,6 +189,71 @@ describe('LeadsPage', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('duplicate-lead-warning')).not.toBeInTheDocument();
     });
+  });
+});
+
+// ── CSV/PDF export (MINCRM-651, MINCRM-652) ───────────────────────────────────
+
+describe('CSV export buttons', () => {
+  beforeEach(() => {
+    vi.spyOn(leadsApi, 'exportLeadsCsv').mockResolvedValue(undefined);
+    vi.spyOn(leadsApi, 'exportLeadsPdf').mockResolvedValue(undefined);
+  });
+
+  /** Opens the Export menu so its items become queryable. */
+  async function openExportMenu(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+    await waitFor(() => {
+      expect(screen.getByTestId('leads-export-menu-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('leads-export-menu-button'));
+  }
+
+  it('renders the Export CSV and Export PDF buttons', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    expect(screen.getByTestId('leads-export-csv-button')).toBeInTheDocument();
+    expect(screen.getByTestId('leads-export-pdf-button')).toBeInTheDocument();
+  });
+
+  it('renders the Export All button for admin users', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    expect(screen.getByTestId('leads-export-all-button')).toBeInTheDocument();
+  });
+
+  it('does not render the Export All button for rep users', async () => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    expect(screen.getByTestId('leads-export-csv-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('leads-export-all-button')).not.toBeInTheDocument();
+  });
+
+  it('calls exportLeadsCsv when Export CSV is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    await user.click(screen.getByTestId('leads-export-csv-button'));
+    expect(leadsApi.exportLeadsCsv).toHaveBeenCalled();
+  });
+
+  it('calls exportLeadsPdf when Export PDF is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    await user.click(screen.getByTestId('leads-export-pdf-button'));
+    expect(leadsApi.exportLeadsPdf).toHaveBeenCalled();
+  });
+
+  it('calls exportLeadsCsv with all:true when Export All is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LeadsPage />);
+    await openExportMenu(user);
+    await user.click(screen.getByTestId('leads-export-all-button'));
+    expect(leadsApi.exportLeadsCsv).toHaveBeenCalledWith({ all: true });
   });
 });
 

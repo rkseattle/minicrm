@@ -1311,7 +1311,8 @@
     "save": "Save",
     "saving": "Saving…",
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "export": "Export"
   },
   "errors": {
     "boundaryTitle": "Something went wrong",

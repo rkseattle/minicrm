@@ -16,6 +16,7 @@ import EmptyState from '@/components/EmptyState.js';
 import { PagedListLayout } from '@/components/PagedListLayout.js';
 import ContactForm from '@/components/ContactForm.js';
 import { Button } from '@/components/ui/Button.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Input } from '@/components/ui/Input.js';
@@ -370,67 +371,63 @@ export default function ContactsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">{t('contacts.pageTitle')}</h1>
           <div className="flex items-center gap-2">
-            {/* Export filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              data-testid="contacts-export-csv-button"
-              disabled={isExporting}
-              onClick={async () => {
-                setIsExporting(true);
-                try {
-                  await exportContactsCsv({
-                    search: debouncedSearch || undefined,
-                    accountSearch: debouncedAccountSearch || undefined,
-                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                  });
-                } finally {
-                  setIsExporting(false);
-                }
-              }}
-            >
-              {isExporting ? t('contacts.exporting') : t('contacts.exportCsv')}
-            </Button>
-            {/* Export PDF — filtered view */}
-            <Button
-              type="button"
-              variant="secondary"
-              data-testid="contacts-export-pdf-button"
-              disabled={isExportingPdf}
-              onClick={async () => {
-                setIsExportingPdf(true);
-                try {
-                  await exportContactsPdf({
-                    search: debouncedSearch || undefined,
-                    accountSearch: debouncedAccountSearch || undefined,
-                    all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                  });
-                } finally {
-                  setIsExportingPdf(false);
-                }
-              }}
-            >
-              {isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf')}
-            </Button>
-            {/* Export all — admins only */}
-            {isAdmin && (
-              <Button
-                type="button"
-                variant="secondary"
-                data-testid="contacts-export-all-button"
-                disabled={isExporting}
-                onClick={async () => {
-                  setIsExporting(true);
-                  try {
-                    await exportContactsCsv({ all: true });
-                  } finally {
-                    setIsExporting(false);
-                  }
-                }}
-              >
-                {isExporting ? t('contacts.exporting') : t('contacts.exportAll')}
-              </Button>
-            )}
+            <ExportMenu
+              label={t('common.export')}
+              testId="contacts-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'contacts-export-csv-button',
+                  label: isExporting ? t('contacts.exporting') : t('contacts.exportCsv'),
+                  disabled: isExporting,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportContactsCsv({
+                        search: debouncedSearch || undefined,
+                        accountSearch: debouncedAccountSearch || undefined,
+                        all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                      });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+                {
+                  key: 'pdf',
+                  testId: 'contacts-export-pdf-button',
+                  label: isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf'),
+                  disabled: isExportingPdf,
+                  onClick: async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      await exportContactsPdf({
+                        search: debouncedSearch || undefined,
+                        accountSearch: debouncedAccountSearch || undefined,
+                        all: isAdmin && ownerFilter === 'all' ? true : undefined,
+                      });
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  },
+                },
+                {
+                  key: 'all',
+                  testId: 'contacts-export-all-button',
+                  label: isExporting ? t('contacts.exporting') : t('contacts.exportAll'),
+                  disabled: isExporting,
+                  hidden: !isAdmin,
+                  onClick: async () => {
+                    setIsExporting(true);
+                    try {
+                      await exportContactsCsv({ all: true });
+                    } finally {
+                      setIsExporting(false);
+                    }
+                  },
+                },
+              ]}
+            />
             {canWrite && !showForm && (
               <Button
                 ref={newContactButtonRef}
