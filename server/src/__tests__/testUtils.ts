@@ -24,3 +24,33 @@ export function makeAuthCookie(payload: {
   const token = jwt.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '1h' });
   return `${AUTH_COOKIE_NAME}=${token}`;
 }
+
+/**
+ * Polls `check` until it resolves truthy, or throws once `timeoutMs` elapses.
+ *
+ * Prefer this over a fixed `setTimeout` + single assertion when testing
+ * time-based behavior (cache TTLs, scheduled state changes): a fixed sleep
+ * races the real clock and produces a coin-flip failure whenever the process
+ * is under any scheduling pressure, since a single sample right at the
+ * boundary can land on either side. Polling instead asserts "this becomes
+ * true within a generous bound," which is deterministic — it passes as soon
+ * as the condition is genuinely met and only fails if it never is.
+ *
+ * @param check - Predicate to poll; called repeatedly until it returns true.
+ * @param timeoutMs - Maximum time to wait before throwing.
+ * @param intervalMs - Delay between poll attempts.
+ */
+export async function waitUntil(
+  check: () => Promise<boolean> | boolean,
+  timeoutMs: number,
+  intervalMs = 100,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (await check()) return;
+    if (Date.now() >= deadline) {
+      throw new Error(`waitUntil: condition not met within ${timeoutMs}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}

@@ -461,7 +461,10 @@ describe('exportAccountsForCsv', () => {
     await createAccount({ name: 'Alpha Inc', owner_id: ownerId });
     await createAccount({ name: 'Beta Corp', owner_id: ownerId });
 
-    const rows = await exportAccountsForCsv({ search: 'Alpha' });
+    // Scoped to ownerId in addition to search — exportAccountsForCsv queries
+    // globally when ownerId is omitted, which collides with same-named
+    // accounts created by other test files running concurrently.
+    const rows = await exportAccountsForCsv({ ownerId, search: 'Alpha' });
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe('Alpha Inc');
   });
@@ -470,7 +473,8 @@ describe('exportAccountsForCsv', () => {
     await createAccount({ name: 'TechCo', industry: 'Technology', owner_id: ownerId });
     await createAccount({ name: 'FarmCo', industry: 'Agriculture', owner_id: ownerId });
 
-    const rows = await exportAccountsForCsv({ industry: 'Technology' });
+    // Scoped to ownerId — see note in 'filters by search' above.
+    const rows = await exportAccountsForCsv({ ownerId, industry: 'Technology' });
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe('TechCo');
   });
@@ -497,7 +501,8 @@ describe('exportAccountsForCsv', () => {
       parent_account_id: parent.id,
     });
 
-    const rows = await exportAccountsForCsv({ search: 'Child Corp' });
+    // Scoped to ownerId — see note in 'filters by search' above.
+    const rows = await exportAccountsForCsv({ ownerId, search: 'Child Corp' });
     expect(rows).toHaveLength(1);
     expect(rows[0].account_type).toBe('Vendor');
     expect(rows[0].parent_account_name).toBe('Parent Corp');

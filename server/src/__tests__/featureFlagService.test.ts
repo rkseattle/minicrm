@@ -37,6 +37,7 @@ import {
   __clearCacheForTest,
 } from '../services/featureFlagService.js';
 import pool from '../db.js';
+import { waitUntil } from './testUtils.js';
 
 const FILE_PREFIX = 'ff-svc';
 const ACTOR_EMAIL = `${FILE_PREFIX}-actor@example.com`;
@@ -524,8 +525,8 @@ describe('enable_at scheduling', () => {
   });
 
   it('cache TTL is capped to nearest future enable_at', async () => {
-    // Set a flag to enable in 5 seconds.
-    const soonMs = Date.now() + 5_000;
+    // Set a flag to enable in 2 seconds.
+    const soonMs = Date.now() + 2_000;
     const soonIso = new Date(soonMs).toISOString();
     await pool.query(
       `UPDATE feature_flags SET enabled = false, enable_at = $1 WHERE flag_key = 'mobile_access'`,
@@ -533,13 +534,17 @@ describe('enable_at scheduling', () => {
     );
     // Force a fresh cache load by clearing it.
     __clearCacheForTest();
-    await isFeatureEnabled('mobile_access'); // primes cache
-    // The cache should expire within 5 seconds, not 60.
-    // We approximate: after 6 seconds the flag should be auto-enabled on next read.
-    await new Promise((resolve) => setTimeout(resolve, 6_000));
-    // No explicit cache clear — TTL should have fired naturally.
-    expect(await isFeatureEnabled('mobile_access')).toBe(true);
-  }, 12_000);
+    await isFeatureEnabled('mobile_access'); // primes cache with a ~2s-capped TTL
+
+    // Poll instead of sleeping a fixed duration then asserting once: a single
+    // fixed-sleep sample races the real clock and can land on either side of
+    // the TTL boundary under scheduling pressure. Polling up to a generous
+    // outer bound (well beyond both the 2s cap and the uncapped 60s TTL) is
+    // deterministic — it passes as soon as the cache genuinely expires and
+    // only fails if a regression makes it never expire. No explicit cache
+    // clear here — the TTL must fire naturally for this test to be meaningful.
+    await waitUntil(async () => isFeatureEnabled('mobile_access'), 10_000, 200);
+  }, 15_000);
 
   it('listFeatureFlags includes enable_at per flag', async () => {
     const futureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();

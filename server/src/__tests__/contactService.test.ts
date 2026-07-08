@@ -796,7 +796,10 @@ describe('exportContactsForCsv', () => {
       owner_id: ownerId,
     });
 
-    const rows = await exportContactsForCsv({ search: aliceEmail.split('@')[0] });
+    // Scoped to ownerId in addition to search — exportContactsForCsv queries
+    // globally when ownerId is omitted, which could collide with another
+    // test file's contact matching the same search term.
+    const rows = await exportContactsForCsv({ ownerId, search: aliceEmail.split('@')[0] });
     expect(rows).toHaveLength(1);
     expect(rows[0].email).toBe(aliceEmail);
   });
