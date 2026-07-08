@@ -2034,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "Failed to load AI settings. Please try again.",
+    "section": {
+      "navLabel": "AI settings sections",
+      "general": "General",
+      "usageBudgets": "Usage & Budgets",
+      "dataRetention": "Data Retention",
+      "dataMinimization": "Data Minimization"
+    },
     "header": {
       "deploymentMode": "Deployment Mode"
     },

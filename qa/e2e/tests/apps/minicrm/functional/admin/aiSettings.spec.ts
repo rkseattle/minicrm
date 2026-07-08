@@ -1,20 +1,26 @@
 /**
- * F-AI — AI Provider and Model Configuration (MINCRM-457)
+ * F-AI — AI Provider and Model Configuration (MINCRM-457, MINCRM-653)
  *
  * Functional regression tests for the admin AI settings page, covering the
- * master toggle confirmation dialog, DPA acknowledgment lifecycle, and access
- * control enforcement.
+ * master toggle confirmation dialog, DPA acknowledgment lifecycle, access
+ * control enforcement, and sub-navigation between the panel's sections.
  *
  * Test groups:
- *   F-AI1  — Admin navigates to the AI settings tab and sees the panel
- *   F-AI2  — Master toggle shows a confirmation dialog and can be cancelled
- *   F-AI3  — Master toggle can be enabled via the confirmation dialog
- *   F-AI4  — DPA warning banner is visible when not acknowledged
- *   F-AI5  — DPA warning banner disappears after acknowledgment via REST
- *   F-AI6  — Data posture badge is visible
- *   F-AI7  — Model selector is present and populated
- *   F-AI8  — Test Connection button is visible and returns a result
- *   F-AI9  — Rep cannot access the AI settings API endpoints
+ *   F-AI1   — Admin navigates to the AI settings tab and sees the panel
+ *   F-AI2   — Master toggle shows a confirmation dialog and can be cancelled
+ *   F-AI3   — Master toggle can be enabled via the confirmation dialog
+ *   F-AI4   — DPA warning banner is visible when not acknowledged
+ *   F-AI5   — DPA warning banner disappears after acknowledgment via REST
+ *   F-AI6   — Data posture badge is visible
+ *   F-AI7   — Model selector is present and populated
+ *   F-AI8   — Test Connection button is visible and returns a result
+ *   F-AI9   — Rep cannot access the AI settings API endpoints
+ *   F-AI10  — Sub-navigation switches between General, Usage & Budgets, Data
+ *             Retention, and Data Minimization sections
+ *   F-AI11  — Deep-linking via ?tab=ai&section= lands directly on the section
+ *   F-AI12  — Master toggle remains visible and interactive on every section
+ *   F-AI13  — Session retention (Data Retention section) can be saved
+ *   F-AI14  — Field exclusion (Data Minimization section) can be toggled
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional @serial — resetAiSettings() mutates the
@@ -32,6 +38,8 @@ import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors
 import {
   navigateToAdminSettings,
   expectAiSettingsPanelVisible,
+  expectAiSettingsSubPanelVisible,
+  clickAiSettingsSubNavTab,
   expectAiMasterToggleVisible,
   clickAiMasterToggle,
   expectAiMasterToggleUnchecked,
@@ -51,6 +59,12 @@ import {
   expectAiTestConnectionButtonVisible,
   clickAiTestConnectionButton,
   expectAiTestConnectionResultVisible,
+  fillAiSessionRetentionDays,
+  clickAiSessionRetentionSave,
+  getAiSessionRetentionSaveSuccess,
+  getAiFieldExclusionToggle,
+  clickAiFieldExclusionToggle,
+  resetAiFieldExclusion,
   resetAiSettings,
   setAiEnabled,
 } from '@behaviors/minicrm/settings.behaviors.js';
@@ -295,4 +309,114 @@ test('@functional @serial F-AI9: rep receives 403 when accessing the AI config e
       (err as { response?: { status?: number } }).response?.status;
     expect(status).toBe(403);
   }
+});
+
+// ---------------------------------------------------------------------------
+// F-AI10 — Sub-navigation switches between sections (MINCRM-653)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-AI10: sub-navigation switches between General, Usage & Budgets, Data Retention, and Data Minimization', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'ai');
+  await expectAiSettingsSubPanelVisible('general', { page }, 10_000);
+
+  await clickAiSettingsSubNavTab('usage-budgets', { page });
+  await expectAiSettingsSubPanelVisible('usage-budgets', { page }, 5_000);
+
+  await clickAiSettingsSubNavTab('data-retention', { page });
+  await expectAiSettingsSubPanelVisible('data-retention', { page }, 5_000);
+
+  await clickAiSettingsSubNavTab('data-minimization', { page });
+  await expectAiSettingsSubPanelVisible('data-minimization', { page }, 5_000);
+
+  await clickAiSettingsSubNavTab('general', { page });
+  await expectAiSettingsSubPanelVisible('general', { page }, 5_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-AI11 — Deep-linking via ?section= lands directly on the section (MINCRM-653)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-AI11: deep-linking via ?tab=ai&section= lands directly on the target section', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'ai', 'data-minimization');
+  await expectAiSettingsSubPanelVisible('data-minimization', { page }, 10_000);
+});
+
+// ---------------------------------------------------------------------------
+// F-AI12 — Master toggle remains visible on every section (MINCRM-653)
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-AI12: master toggle remains visible and interactive on every sub-section', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'ai');
+  await expectAiSettingsSubPanelVisible('general', { page }, 10_000);
+  await expectAiMasterToggleVisible({ page });
+
+  await clickAiSettingsSubNavTab('data-retention', { page });
+  await expectAiSettingsSubPanelVisible('data-retention', { page }, 5_000);
+  await expectAiMasterToggleVisible({ page });
+});
+
+// ---------------------------------------------------------------------------
+// F-AI13 — Session retention can be saved from the Data Retention section
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-AI13: session retention days can be updated from the Data Retention section', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'ai', 'data-retention');
+  await expectAiSettingsSubPanelVisible('data-retention', { page }, 10_000);
+
+  await fillAiSessionRetentionDays('90', { page });
+  await clickAiSessionRetentionSave({ page });
+
+  const successLocator = await getAiSessionRetentionSaveSuccess({ page });
+  await expect(successLocator).toBeVisible({ timeout: 5_000 });
+});
+
+// ---------------------------------------------------------------------------
+// F-AI14 — Field exclusion can be toggled from the Data Minimization section
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-AI14: a standard field exclusion can be toggled from the Data Minimization section', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  await navigateToAdminSettings({ page }, 'ai', 'data-minimization');
+  await expectAiSettingsSubPanelVisible('data-minimization', { page }, 10_000);
+
+  await clickAiFieldExclusionToggle('contact', 'department', { page });
+
+  const toggleLocator = await getAiFieldExclusionToggle('contact', 'department', { page });
+  await expect(toggleLocator).toBeChecked({ timeout: 5_000 });
+
+  await resetAiFieldExclusion(restClient, 'contact', 'department');
 });

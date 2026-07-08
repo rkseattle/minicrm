@@ -2034,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "Échec du chargement des paramètres IA. Veuillez réessayer.",
+    "section": {
+      "navLabel": "Sections des paramètres IA",
+      "general": "Général",
+      "usageBudgets": "Utilisation et budgets",
+      "dataRetention": "Conservation des données",
+      "dataMinimization": "Minimisation des données"
+    },
     "header": {
       "deploymentMode": "Mode de déploiement"
     },
