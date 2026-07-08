@@ -249,36 +249,62 @@ export async function verifyTotpCode(userId: string, code: string): Promise<bool
  * Verifies a single-use recovery code for a user.
  * On match, removes the used code from the stored array (burn-on-use).
  * Returns false if no code matches.
+ *
+ * The CPU-bound bcrypt comparisons run against an unlocked read, before any
+ * transaction or row lock is taken — bcrypt is deliberately slow, and holding
+ * a `FOR UPDATE` lock across that work would serialize every other request
+ * touching this user row (and tie up a pool connection) for the full duration
+ * of the comparison loop. The row is only re-locked for the brief, genuinely
+ * atomic read-check-write that removes the consumed code.
  */
 export async function verifyAndConsumeRecoveryCode(
   userId: string,
   suppliedCode: string,
 ): Promise<boolean> {
+  const normalizedCode = suppliedCode.trim().toLowerCase();
+
+  const initialRow = await pool.query<{ mfa_recovery_codes: string[] }>(
+    'SELECT mfa_recovery_codes FROM users WHERE id = $1',
+    [userId],
+  );
+  const initialStored = initialRow.rows[0]?.mfa_recovery_codes ?? [];
+
+  let matchedHash: string | null = null;
+  for (const hash of initialStored) {
+    if (await bcrypt.compare(normalizedCode, hash)) {
+      matchedHash = hash;
+      break;
+    }
+  }
+  if (matchedHash === null) {
+    return false;
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // Re-read under lock: another request may have consumed this same code
+    // (or the user's codes may have been regenerated) between the unlocked
+    // bcrypt check above and this transaction.
     const row = await client.query<{ mfa_recovery_codes: string[] }>(
       'SELECT mfa_recovery_codes FROM users WHERE id = $1 FOR UPDATE',
       [userId],
     );
     const stored = row.rows[0]?.mfa_recovery_codes ?? [];
 
-    for (let i = 0; i < stored.length; i++) {
-      const match = await bcrypt.compare(suppliedCode.trim().toLowerCase(), stored[i]!);
-      if (match) {
-        const remaining = stored.filter((_, idx) => idx !== i);
-        await client.query(
-          'UPDATE users SET mfa_recovery_codes = $1, updated_at = NOW() WHERE id = $2',
-          [remaining, userId],
-        );
-        await client.query('COMMIT');
-        return true;
-      }
+    if (!stored.includes(matchedHash)) {
+      await client.query('ROLLBACK');
+      return false;
     }
 
-    await client.query('ROLLBACK');
-    return false;
+    const remaining = stored.filter((hash) => hash !== matchedHash);
+    await client.query(
+      'UPDATE users SET mfa_recovery_codes = $1, updated_at = NOW() WHERE id = $2',
+      [remaining, userId],
+    );
+    await client.query('COMMIT');
+    return true;
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

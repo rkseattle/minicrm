@@ -386,6 +386,13 @@ describe('getWinLossReport — owner scoping', () => {
   });
 
   it('admin Team View (null): returns team-wide data across all owners', async () => {
+    // ownerId: null deliberately queries every Closed Won/Lost deal in the
+    // date range across the whole database, so wonCount/wonValue can't be
+    // asserted as exact values here — another test file inserting a Closed
+    // Won deal dated in 2025 for a different owner would collide. Verify by
+    // identity against the deals table instead (scoped to this file's two
+    // owners, which is collision-proof), and only lower-bound the aggregate
+    // report to confirm it actually includes team-wide data, not just repId's.
     const stageIdClosedWon = (
       await pool.query<{ id: string }>(
         'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
@@ -398,9 +405,22 @@ describe('getWinLossReport — owner scoping', () => {
               ('Other Won', 'Closed Won',  20000, '2025-06-01', $2, $3, $4)`,
       [repId, otherRepId, defaultPipelineId, stageIdClosedWon],
     );
+
+    const insertedRows = await pool.query<{ name: string; owner_id: string; value: string }>(
+      `SELECT name, owner_id, value FROM deals WHERE owner_id IN ($1, $2) AND stage = 'Closed Won'`,
+      [repId, otherRepId],
+    );
+    expect(insertedRows.rows).toHaveLength(2);
+    expect(insertedRows.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Rep Won', owner_id: repId }),
+        expect.objectContaining({ name: 'Other Won', owner_id: otherRepId }),
+      ]),
+    );
+
     const report = await getWinLossReport({ ...RANGE, ownerId: null });
-    expect(report.wonCount).toBe(2);
-    expect(parseFloat(report.wonValue)).toBe(30000);
+    expect(report.wonCount).toBeGreaterThanOrEqual(2);
+    expect(parseFloat(report.wonValue)).toBeGreaterThanOrEqual(30000);
   });
 
   it("admin My View: scopes results to only the admin's own deals", async () => {
@@ -557,7 +577,12 @@ describe('getActivityVolumeReport — counts by type', () => {
   });
 
   it('computes column totals correctly', async () => {
-    // repId: 2 notes; otherRepId: 1 call
+    // repId: 2 notes; otherRepId: 1 call.
+    // ownerId: null queries team-wide across the whole database, so exact
+    // totals collide with any other file inserting activities in 2025.
+    // Verify by identity instead: find this file's two owner rows in the
+    // per-rep breakdown and check their individual counts — collision-proof
+    // since it only reads rows keyed to this file's own owner ids.
     await pool.query(
       `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
        VALUES
@@ -567,9 +592,13 @@ describe('getActivityVolumeReport — counts by type', () => {
       [contactId, repId, otherRepId],
     );
     const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: null });
-    expect(report.totals.Note).toBe(2);
-    expect(report.totals.Call).toBe(1);
-    expect(report.totals.total).toBe(3);
+    const repRow = report.rows.find((r) => r.ownerId === repId);
+    const otherRow = report.rows.find((r) => r.ownerId === otherRepId);
+    expect(repRow?.counts.Note).toBe(2);
+    expect(otherRow?.counts.Call).toBe(1);
+    expect(report.totals.Note).toBeGreaterThanOrEqual(2);
+    expect(report.totals.Call).toBeGreaterThanOrEqual(1);
+    expect(report.totals.total).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -613,6 +642,10 @@ describe('getActivityVolumeReport — owner scoping', () => {
   });
 
   it("admin Team View (null): returns all reps' activities", async () => {
+    // ownerId: null is team-wide, so an exact rows-length collides with any
+    // other owner's activities inserted by a concurrently-running file.
+    // Verify by identity: both of this file's owners appear with the right
+    // per-type counts, rather than asserting the total row count.
     await pool.query(
       `INSERT INTO activities (type, subject, contact_id, owner_id, created_at, updated_at)
        VALUES
@@ -621,7 +654,10 @@ describe('getActivityVolumeReport — owner scoping', () => {
       [contactId, repId, otherRepId],
     );
     const report = await getActivityVolumeReport({ ...ACT_RANGE, ownerId: null });
-    expect(report.rows).toHaveLength(2);
+    const repRow = report.rows.find((r) => r.ownerId === repId);
+    const otherRow = report.rows.find((r) => r.ownerId === otherRepId);
+    expect(repRow?.counts.Note).toBe(1);
+    expect(otherRow?.counts.Task).toBe(1);
   });
 
   it("admin My View: scopes results to only the admin's own activities", async () => {
@@ -1000,19 +1036,40 @@ describe('getLeadsSummaryReport — owner scoping', () => {
   });
 
   it('returns team-wide data when ownerId is null', async () => {
+    // getLeadsSummaryReport only returns aggregate counts-by-status, not
+    // individual lead rows, so we can't assert "the report includes lead X"
+    // directly against its output. ownerId: null also deliberately queries
+    // every lead in the database, so an exact or delta total is vulnerable to
+    // other test files inserting/deleting leads concurrently in the shared
+    // test DB. Instead: verify by identity against the leads table itself
+    // (unique emails make this collision-proof regardless of concurrent
+    // activity), and only assert the report's total is at least the two rows
+    // this test just created — a weak bound that holds no matter what else
+    // is happening, but still confirms ownerId: null isn't owner-filtering.
+    const mineEmail = `${FILE_PREFIX}-lead-mine2@example.com`;
+    const theirsEmail = `${FILE_PREFIX}-lead-theirs2@example.com`;
+
     await pool.query(
       `INSERT INTO leads (first_name, email, status, owner_id)
        VALUES
          ('Mine', $1, 'New', $2),
          ('Theirs', $3, 'New', $4)`,
-      [
-        `${FILE_PREFIX}-lead-mine2@example.com`,
-        repId,
-        `${FILE_PREFIX}-lead-theirs2@example.com`,
-        otherRepId,
-      ],
+      [mineEmail, repId, theirsEmail, otherRepId],
     );
+
+    const insertedRows = await pool.query<{ email: string; owner_id: string; status: string }>(
+      `SELECT email, owner_id, status FROM leads WHERE email IN ($1, $2)`,
+      [mineEmail, theirsEmail],
+    );
+    expect(insertedRows.rows).toHaveLength(2);
+    expect(insertedRows.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: mineEmail, owner_id: repId, status: 'New' }),
+        expect.objectContaining({ email: theirsEmail, owner_id: otherRepId, status: 'New' }),
+      ]),
+    );
+
     const report = await getLeadsSummaryReport({ ownerId: null });
-    expect(report.total).toBe(2);
+    expect(report.total).toBeGreaterThanOrEqual(2);
   });
 });
