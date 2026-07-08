@@ -1220,6 +1220,7 @@ export async function clickDealsExportPdfAndAwaitResponse(
   context: DealsBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const dealsPage = new DealsPage(context);
+  await dealsPage.openExportMenu();
   const responsePromise = context.page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/deals/export.pdf') && response.request().method() === 'GET',

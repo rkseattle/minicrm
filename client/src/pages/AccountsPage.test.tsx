@@ -406,35 +406,41 @@ describe('AccountsPage', () => {
       vi.spyOn(accountsApi, 'exportAccountsCsv').mockResolvedValue(undefined);
     });
 
-    it('renders the Export CSV button', async () => {
-      renderWithProviders(<AccountsPage />);
+    /** Opens the Export menu so its items become queryable. */
+    async function openExportMenu(user: ReturnType<typeof userEvent.setup>): Promise<void> {
       await waitFor(() => {
-        expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();
+        expect(screen.getByTestId('accounts-export-menu-button')).toBeInTheDocument();
       });
+      await user.click(screen.getByTestId('accounts-export-menu-button'));
+    }
+
+    it('renders the Export CSV button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AccountsPage />);
+      await openExportMenu(user);
+      expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();
     });
 
     it('renders the Export All button for admin users', async () => {
+      const user = userEvent.setup();
       renderWithProviders(<AccountsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('accounts-export-all-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
+      expect(screen.getByTestId('accounts-export-all-button')).toBeInTheDocument();
     });
 
     it('does not render the Export All button for rep users', async () => {
       server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      const user = userEvent.setup();
       renderWithProviders(<AccountsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
+      expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();
       expect(screen.queryByTestId('accounts-export-all-button')).not.toBeInTheDocument();
     });
 
     it('calls exportAccountsCsv when Export CSV is clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AccountsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('accounts-export-csv-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
       await user.click(screen.getByTestId('accounts-export-csv-button'));
       expect(accountsApi.exportAccountsCsv).toHaveBeenCalled();
     });
@@ -442,9 +448,7 @@ describe('AccountsPage', () => {
     it('calls exportAccountsCsv with all:true when Export All is clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<AccountsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('accounts-export-all-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
       await user.click(screen.getByTestId('accounts-export-all-button'));
       expect(accountsApi.exportAccountsCsv).toHaveBeenCalledWith({ all: true });
     });

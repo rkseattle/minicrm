@@ -33,6 +33,25 @@ export class DealsPage {
     await this.page.goto(DealsPage.PATH);
   }
 
+  /** Returns a resolved locator for the Export menu trigger button. (MINCRM-652) */
+  async exportMenuTriggerLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'deals-export-menu-button' },
+          { type: 'role', value: 'button', options: { name: /export/i } },
+        ],
+        { intent: 'trigger button that opens the deals export menu' },
+      )
+      .resolve();
+  }
+
+  /** Opens the Export menu, revealing the CSV/PDF/Export All items. (MINCRM-652) */
+  async openExportMenu(): Promise<void> {
+    const trigger = await this.exportMenuTriggerLocator();
+    await trigger.click();
+  }
+
   /** Returns a resolved locator for the Export CSV button. */
   async exportCsvButtonLocator() {
     return this.page

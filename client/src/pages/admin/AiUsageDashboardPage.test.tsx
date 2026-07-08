@@ -206,8 +206,9 @@ describe('AiUsageDashboardPage — CSV export', () => {
     const exportSpy = vi.spyOn(aiApi, 'exportAiUsageCsv').mockResolvedValue(undefined);
 
     renderWithProviders(<AiUsageDashboardPage />);
-    await waitFor(() => screen.getByTestId('ai-usage-export-csv-button'));
+    await waitFor(() => screen.getByTestId('ai-usage-export-menu-button'));
 
+    fireEvent.click(screen.getByTestId('ai-usage-export-menu-button'));
     fireEvent.click(screen.getByTestId('ai-usage-export-csv-button'));
 
     await waitFor(() => {
@@ -223,8 +224,9 @@ describe('AiUsageDashboardPage — CSV export', () => {
       .mockRejectedValue(new Error('export failed'));
 
     renderWithProviders(<AiUsageDashboardPage />);
-    await waitFor(() => screen.getByTestId('ai-usage-export-csv-button'));
+    await waitFor(() => screen.getByTestId('ai-usage-export-menu-button'));
 
+    fireEvent.click(screen.getByTestId('ai-usage-export-menu-button'));
     fireEvent.click(screen.getByTestId('ai-usage-export-csv-button'));
 
     await waitFor(() => {

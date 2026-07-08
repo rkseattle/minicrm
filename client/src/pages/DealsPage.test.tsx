@@ -569,35 +569,41 @@ describe('DealsPage', () => {
       vi.spyOn(dealsApi, 'exportDealsCsv').mockResolvedValue(undefined);
     });
 
-    it('renders the Export CSV button', async () => {
-      renderWithProviders(<DealsPage />);
+    /** Opens the Export menu so its items become queryable. */
+    async function openExportMenu(user: ReturnType<typeof userEvent.setup>): Promise<void> {
       await waitFor(() => {
-        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
+        expect(screen.getByTestId('deals-export-menu-button')).toBeInTheDocument();
       });
+      await user.click(screen.getByTestId('deals-export-menu-button'));
+    }
+
+    it('renders the Export CSV button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<DealsPage />);
+      await openExportMenu(user);
+      expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
     });
 
     it('renders the Export All button for admin users', async () => {
+      const user = userEvent.setup();
       renderWithProviders(<DealsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('deals-export-all-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
+      expect(screen.getByTestId('deals-export-all-button')).toBeInTheDocument();
     });
 
     it('does not render the Export All button for rep users', async () => {
       server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ user: REP_USER })));
+      const user = userEvent.setup();
       renderWithProviders(<DealsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
+      expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
       expect(screen.queryByTestId('deals-export-all-button')).not.toBeInTheDocument();
     });
 
     it('calls exportDealsCsv when Export CSV is clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<DealsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('deals-export-csv-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
       await user.click(screen.getByTestId('deals-export-csv-button'));
       expect(dealsApi.exportDealsCsv).toHaveBeenCalled();
     });
@@ -605,9 +611,7 @@ describe('DealsPage', () => {
     it('calls exportDealsCsv with all:true when Export All is clicked', async () => {
       const user = userEvent.setup();
       renderWithProviders(<DealsPage />);
-      await waitFor(() => {
-        expect(screen.getByTestId('deals-export-all-button')).toBeInTheDocument();
-      });
+      await openExportMenu(user);
       await user.click(screen.getByTestId('deals-export-all-button'));
       expect(dealsApi.exportDealsCsv).toHaveBeenCalledWith({ all: true });
     });

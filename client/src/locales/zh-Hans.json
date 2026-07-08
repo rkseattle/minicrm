@@ -1346,7 +1346,8 @@
     "save": "保存",
     "saving": "保存中…",
     "expand": "展开",
-    "collapse": "收起"
+    "collapse": "收起",
+    "export": "导出"
   },
   "errors": {
     "boundaryTitle": "出现了问题",

@@ -56,6 +56,7 @@ export async function clickAiUsageExportPdfAndAwaitResponse(
   context: AiUsageDashboardBehaviorContext,
 ): Promise<{ status: number; contentType: string }> {
   const dashboard = new AiUsageDashboardPage(context);
+  await dashboard.openExportMenu();
   const responsePromise = context.page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/admin/ai/usage/export.pdf') &&

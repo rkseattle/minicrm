@@ -75,6 +75,17 @@ export class AiUsageDashboardPage {
     ]);
   }
 
+  /** Opens the Export menu, revealing the CSV/PDF items. (MINCRM-652) */
+  async openExportMenu(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'ai-usage-export-menu-button' },
+        { type: 'role', value: 'button', options: { name: /export/i } },
+      ],
+      { intent: 'trigger button that opens the AI usage export menu' },
+    );
+  }
+
   /** Clicks the Export CSV button. */
   async clickExportCsv(): Promise<void> {
     await this.page.click(

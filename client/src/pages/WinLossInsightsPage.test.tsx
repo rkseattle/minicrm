@@ -77,10 +77,13 @@ describe('WinLossInsightsPage', () => {
         }),
       ),
     );
+    const user = userEvent.setup();
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId('win-loss-export-csv-button')).toBeDisabled();
+      expect(screen.getByTestId('win-loss-export-menu-button')).toBeInTheDocument();
     });
+    await user.click(screen.getByTestId('win-loss-export-menu-button'));
+    expect(screen.getByTestId('win-loss-export-csv-button')).toBeDisabled();
     expect(screen.getByTestId('win-loss-export-pdf-button')).toBeDisabled();
   });
 
@@ -134,10 +137,19 @@ describe('WinLossInsightsPage', () => {
   });
 
   describe('export buttons', () => {
+    /** Opens the Export menu so its items become queryable. */
+    async function openExportMenu(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+      await waitFor(() => {
+        expect(screen.getByTestId('win-loss-export-menu-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('win-loss-export-menu-button'));
+    }
+
     it('calls exportWinLossInsightsCsv when Export CSV is clicked', async () => {
       vi.spyOn(winLossApi, 'exportWinLossInsightsCsv').mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderPage();
+      await openExportMenu(user);
       await waitFor(() => {
         expect(screen.getByTestId('win-loss-export-csv-button')).not.toBeDisabled();
       });
@@ -149,6 +161,7 @@ describe('WinLossInsightsPage', () => {
       vi.spyOn(winLossApi, 'exportWinLossInsightsPdf').mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderPage();
+      await openExportMenu(user);
       await waitFor(() => {
         expect(screen.getByTestId('win-loss-export-pdf-button')).not.toBeDisabled();
       });
@@ -160,6 +173,7 @@ describe('WinLossInsightsPage', () => {
       vi.spyOn(winLossApi, 'exportWinLossInsightsCsv').mockRejectedValue(new Error('failed'));
       const user = userEvent.setup();
       renderPage();
+      await openExportMenu(user);
       await waitFor(() => {
         expect(screen.getByTestId('win-loss-export-csv-button')).not.toBeDisabled();
       });

@@ -1346,7 +1346,8 @@
     "save": "Speichern",
     "saving": "Wird gespeichert…",
     "expand": "Erweitern",
-    "collapse": "Reduzieren"
+    "collapse": "Reduzieren",
+    "export": "Exportieren"
   },
   "errors": {
     "boundaryTitle": "Etwas ist schiefgelaufen",

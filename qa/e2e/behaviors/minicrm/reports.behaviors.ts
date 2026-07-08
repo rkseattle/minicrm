@@ -547,17 +547,18 @@ export async function navigateToReportsPage(context: ReportsBehaviorContext): Pr
  * Clicks the Activity Volume report's "Export PDF" button (a real button
  * that fetches via blob+axios) and waits for the underlying export.pdf HTTP
  * response, returning its status and content-type so the spec can assert a
- * real download was triggered.
+ * real download was triggered. Opens the Export menu first (MINCRM-652).
  */
 export async function clickReportExportPdfAndAwaitResponse(
   context: ReportsBehaviorContext,
   urlPattern: string,
 ): Promise<{ status: number; contentType: string }> {
   const reportsPage = new ReportsPage(context);
+  await reportsPage.openActivityVolumeExportMenu();
   const responsePromise = context.page.waitForResponse(
     (response) => response.url().includes(urlPattern) && response.request().method() === 'GET',
   );
-  const button = await reportsPage.exportPdfButtonLocator();
+  const button = await reportsPage.activityVolumeExportPdfButtonLocator();
   await button.click();
   const response = await responsePromise;
   return {
@@ -572,14 +573,16 @@ export async function clickReportExportPdfAndAwaitResponse(
  * for the browser's native download event rather than an HTTP response,
  * since Chromium routes `download`-attribute anchor clicks through its
  * download manager instead of the page's normal navigation/fetch lifecycle
- * (page.waitForResponse does not reliably observe it).
+ * (page.waitForResponse does not reliably observe it). Opens the Export
+ * menu first (MINCRM-652).
  */
 export async function clickCustomReportExportPdfAndAwaitDownload(
   context: ReportsBehaviorContext,
 ): Promise<{ suggestedFilename: string }> {
   const reportsPage = new ReportsPage(context);
+  await reportsPage.openCustomReportExportMenu();
   const downloadPromise = context.page.waitForEvent('download');
-  const button = await reportsPage.exportPdfButtonLocator();
+  const button = await reportsPage.customReportExportPdfButtonLocator();
   await button.click();
   const download = await downloadPromise;
   return { suggestedFilename: download.suggestedFilename() };

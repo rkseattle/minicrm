@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
 import ReportFilterBar from '@/components/ReportFilterBar.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { useReportFilters } from '@/hooks/useReportFilters.js';
 import {
   getActivityVolumeReport,
@@ -191,25 +192,27 @@ export function ActivityVolumeReportContent() {
         </div>
         {report && report.rows.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0"
-              data-testid="export-csv-button"
-            >
-              {t('reports.activityVolume.exportCsv')}
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={isExportingPdf}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] sm:min-h-0 disabled:opacity-50"
-              data-testid="export-pdf-button"
-            >
-              {isExportingPdf
-                ? t('reports.activityVolume.exporting')
-                : t('reports.activityVolume.exportPdf')}
-            </button>
+            <ExportMenu
+              label={t('common.export')}
+              testId="activity-volume-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'activity-volume-export-csv-button',
+                  label: t('reports.activityVolume.exportCsv'),
+                  onClick: handleExportCsv,
+                },
+                {
+                  key: 'pdf',
+                  testId: 'activity-volume-export-pdf-button',
+                  label: isExportingPdf
+                    ? t('reports.activityVolume.exporting')
+                    : t('reports.activityVolume.exportPdf'),
+                  disabled: isExportingPdf,
+                  onClick: handleExportPdf,
+                },
+              ]}
+            />
           </div>
         )}
       </div>

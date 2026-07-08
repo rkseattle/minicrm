@@ -387,25 +387,60 @@ describe('getWinLossReport — owner scoping', () => {
 
   it('admin Team View (null): returns team-wide data across all owners', async () => {
     // ownerId: null deliberately queries every Closed Won/Lost deal in the
-    // date range across the whole database, so wonCount/wonValue can't be
-    // asserted as exact values here — another test file inserting a Closed
-    // Won deal dated in 2025 for a different owner would collide. Verify by
-    // identity against the deals table instead (scoped to this file's two
-    // owners, which is collision-proof), and only lower-bound the aggregate
-    // report to confirm it actually includes team-wide data, not just repId's.
+    // date range across the whole database (getWinLossReport's core filter is
+    // `d.stage IN ('Closed Won', 'Closed Lost') AND d.close_date BETWEEN ...`,
+    // no owner scoping), so an exact literal wonCount/wonValue is vulnerable
+    // to another test file inserting a Closed Won deal dated in 2025 for a
+    // different owner.
+    //
+    // Fix: read a true wonCount/wonValue baseline — using the same
+    // stage/date-range predicate the production query applies — and insert
+    // the two fixture deals inside one transaction, so no concurrent writer
+    // can land a matching deal in the gap between the read and the insert.
+    // Both must then equal baseline + this test's own contribution exactly.
+    // Caveat: the baseline's raw SUM(value) doesn't apply getWinLossReport's
+    // currency-conversion CTE, so this is only an exact match for wonValue if
+    // every contributing deal (this file's and any concurrent file's) is in
+    // the home currency — true for every fixture in this suite today, but
+    // worth knowing if a future test intentionally exercises foreign-currency
+    // Closed Won deals without owner-scoping its own assertions.
     const stageIdClosedWon = (
       await pool.query<{ id: string }>(
         'SELECT id FROM pipeline_stages WHERE name = $1 AND pipeline_id = $2 LIMIT 1',
         ['Closed Won', defaultPipelineId],
       )
     ).rows[0].id;
-    await pool.query(
-      `INSERT INTO deals (name, stage, value, close_date, owner_id, pipeline_id, pipeline_stage_id)
-       VALUES ('Rep Won',   'Closed Won',  10000, '2025-06-01', $1, $3, $4),
-              ('Other Won', 'Closed Won',  20000, '2025-06-01', $2, $3, $4)`,
-      [repId, otherRepId, defaultPipelineId, stageIdClosedWon],
-    );
 
+    const client = await pool.connect();
+    let baselineWonCount: number;
+    let baselineWonValue: number;
+    try {
+      await client.query('BEGIN');
+      const baseline = await client.query<{ count: string; value: string }>(
+        `SELECT COUNT(*) AS count, COALESCE(SUM(value), 0)::text AS value FROM deals
+         WHERE stage = 'Closed Won' AND close_date BETWEEN $1 AND $2`,
+        [RANGE.startDate, RANGE.endDate],
+      );
+      baselineWonCount = parseInt(baseline.rows[0].count, 10);
+      baselineWonValue = parseFloat(baseline.rows[0].value);
+
+      await client.query(
+        `INSERT INTO deals (name, stage, value, close_date, owner_id, pipeline_id, pipeline_stage_id)
+         VALUES ('Rep Won',   'Closed Won',  10000, '2025-06-01', $1, $3, $4),
+                ('Other Won', 'Closed Won',  20000, '2025-06-01', $2, $3, $4)`,
+        [repId, otherRepId, defaultPipelineId, stageIdClosedWon],
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // Confirm the two rows landed with the expected owners — a sanity check
+    // on this test's own fixture, not a substitute for exercising the
+    // service under test below.
     const insertedRows = await pool.query<{ name: string; owner_id: string; value: string }>(
       `SELECT name, owner_id, value FROM deals WHERE owner_id IN ($1, $2) AND stage = 'Closed Won'`,
       [repId, otherRepId],
@@ -419,8 +454,8 @@ describe('getWinLossReport — owner scoping', () => {
     );
 
     const report = await getWinLossReport({ ...RANGE, ownerId: null });
-    expect(report.wonCount).toBeGreaterThanOrEqual(2);
-    expect(parseFloat(report.wonValue)).toBeGreaterThanOrEqual(30000);
+    expect(report.wonCount).toBe(baselineWonCount + 2);
+    expect(parseFloat(report.wonValue)).toBe(baselineWonValue + 30000);
   });
 
   it("admin My View: scopes results to only the admin's own deals", async () => {
@@ -1039,24 +1074,45 @@ describe('getLeadsSummaryReport — owner scoping', () => {
     // getLeadsSummaryReport only returns aggregate counts-by-status, not
     // individual lead rows, so we can't assert "the report includes lead X"
     // directly against its output. ownerId: null also deliberately queries
-    // every lead in the database, so an exact or delta total is vulnerable to
-    // other test files inserting/deleting leads concurrently in the shared
-    // test DB. Instead: verify by identity against the leads table itself
-    // (unique emails make this collision-proof regardless of concurrent
-    // activity), and only assert the report's total is at least the two rows
-    // this test just created — a weak bound that holds no matter what else
-    // is happening, but still confirms ownerId: null isn't owner-filtering.
+    // every lead in the database (`SELECT status, COUNT(*) FROM leads GROUP BY
+    // status`, no WHERE), so an exact literal total is vulnerable to other
+    // test files inserting/deleting leads concurrently in the shared test DB.
+    //
+    // Fix: read a true baseline count with the exact same unscoped query
+    // getLeadsSummaryReport itself runs, and the two-row insert, inside one
+    // transaction — so no concurrent writer can land a row in the gap between
+    // the baseline read and the insert. The report's post-insert total must
+    // then equal that baseline plus exactly 2, which is an exact-equality
+    // assertion (catches over- and under-counting) rather than a one-directional
+    // bound, while still being immune to concurrent activity elsewhere in the suite.
     const mineEmail = `${FILE_PREFIX}-lead-mine2@example.com`;
     const theirsEmail = `${FILE_PREFIX}-lead-theirs2@example.com`;
 
-    await pool.query(
-      `INSERT INTO leads (first_name, email, status, owner_id)
-       VALUES
-         ('Mine', $1, 'New', $2),
-         ('Theirs', $3, 'New', $4)`,
-      [mineEmail, repId, theirsEmail, otherRepId],
-    );
+    const client = await pool.connect();
+    let baselineTotal: number;
+    try {
+      await client.query('BEGIN');
+      const baseline = await client.query<{ count: string }>('SELECT COUNT(*) AS count FROM leads');
+      baselineTotal = parseInt(baseline.rows[0].count, 10);
 
+      await client.query(
+        `INSERT INTO leads (first_name, email, status, owner_id)
+         VALUES
+           ('Mine', $1, 'New', $2),
+           ('Theirs', $3, 'New', $4)`,
+        [mineEmail, repId, theirsEmail, otherRepId],
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // Confirm the two rows landed with the expected owners/status — a sanity
+    // check on this test's own fixture, not a substitute for exercising the
+    // service under test below.
     const insertedRows = await pool.query<{ email: string; owner_id: string; status: string }>(
       `SELECT email, owner_id, status FROM leads WHERE email IN ($1, $2)`,
       [mineEmail, theirsEmail],
@@ -1070,6 +1126,6 @@ describe('getLeadsSummaryReport — owner scoping', () => {
     );
 
     const report = await getLeadsSummaryReport({ ownerId: null });
-    expect(report.total).toBeGreaterThanOrEqual(2);
+    expect(report.total).toBe(baselineTotal + 2);
   });
 });

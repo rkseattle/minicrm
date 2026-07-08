@@ -245,10 +245,13 @@ describe('ActivityVolumeReportPage', () => {
 
   describe('CSV export', () => {
     it('renders the export CSV button when data is present', async () => {
+      const user = userEvent.setup();
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => {
-        expect(screen.getByTestId('export-csv-button')).toBeInTheDocument();
+        expect(screen.getByTestId('activity-volume-export-menu-button')).toBeInTheDocument();
       });
+      await user.click(screen.getByTestId('activity-volume-export-menu-button'));
+      expect(screen.getByTestId('activity-volume-export-csv-button')).toBeInTheDocument();
     });
 
     it('does not render the export button when rows are empty', async () => {
@@ -262,7 +265,7 @@ describe('ActivityVolumeReportPage', () => {
       );
       renderWithProviders(<ActivityVolumeReportPage />);
       await waitFor(() => screen.getByTestId('activity-volume-empty'));
-      expect(screen.queryByTestId('export-csv-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('activity-volume-export-menu-button')).not.toBeInTheDocument();
     });
   });
 
@@ -280,10 +283,14 @@ describe('ActivityVolumeReportPage', () => {
         writable: true,
       });
 
+      const user = userEvent.setup();
       renderWithProviders(<ActivityVolumeReportPage />);
-      await waitFor(() => expect(screen.getByTestId('export-csv-button')).toBeInTheDocument());
+      await waitFor(() =>
+        expect(screen.getByTestId('activity-volume-export-menu-button')).toBeInTheDocument(),
+      );
+      await user.click(screen.getByTestId('activity-volume-export-menu-button'));
 
-      fireEvent.click(screen.getByTestId('export-csv-button'));
+      fireEvent.click(screen.getByTestId('activity-volume-export-csv-button'));
 
       expect(createObjectURL).toHaveBeenCalled();
       expect(revokeObjectURL).toHaveBeenCalled();

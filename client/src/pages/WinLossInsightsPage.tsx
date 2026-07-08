@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import NavBar from '@/components/NavBar.js';
-import { Button } from '@/components/ui/Button.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import { Badge } from '@/components/ui/Badge.js';
 import {
   getWinLossInsights,
@@ -88,46 +88,46 @@ export default function WinLossInsightsPage() {
             {t('insights.winLossHeading')}
           </h1>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="win-loss-export-csv-button"
-              disabled={isExportingCsv || !data?.has_sufficient_data}
-              onClick={async () => {
-                setExportError(null);
-                setIsExportingCsv(true);
-                try {
-                  await exportWinLossInsightsCsv();
-                } catch {
-                  setExportError(t('insights.exportFailed'));
-                } finally {
-                  setIsExportingCsv(false);
-                }
-              }}
-            >
-              {isExportingCsv ? t('insights.exporting') : t('insights.exportCsv')}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-testid="win-loss-export-pdf-button"
-              disabled={isExportingPdf || !data?.has_sufficient_data}
-              onClick={async () => {
-                setExportError(null);
-                setIsExportingPdf(true);
-                try {
-                  await exportWinLossInsightsPdf();
-                } catch {
-                  setExportError(t('insights.exportFailed'));
-                } finally {
-                  setIsExportingPdf(false);
-                }
-              }}
-            >
-              {isExportingPdf ? t('insights.exporting') : t('insights.exportPdf')}
-            </Button>
+            <ExportMenu
+              label={t('common.export')}
+              testId="win-loss-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'win-loss-export-csv-button',
+                  label: isExportingCsv ? t('insights.exporting') : t('insights.exportCsv'),
+                  disabled: isExportingCsv || !data?.has_sufficient_data,
+                  onClick: async () => {
+                    setExportError(null);
+                    setIsExportingCsv(true);
+                    try {
+                      await exportWinLossInsightsCsv();
+                    } catch {
+                      setExportError(t('insights.exportFailed'));
+                    } finally {
+                      setIsExportingCsv(false);
+                    }
+                  },
+                },
+                {
+                  key: 'pdf',
+                  testId: 'win-loss-export-pdf-button',
+                  label: isExportingPdf ? t('insights.exporting') : t('insights.exportPdf'),
+                  disabled: isExportingPdf || !data?.has_sufficient_data,
+                  onClick: async () => {
+                    setExportError(null);
+                    setIsExportingPdf(true);
+                    try {
+                      await exportWinLossInsightsPdf();
+                    } catch {
+                      setExportError(t('insights.exportFailed'));
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  },
+                },
+              ]}
+            />
           </div>
         </div>
 

@@ -101,6 +101,17 @@ export class WinLossInsightsPage {
       .resolve();
   }
 
+  /** Opens the Export menu, revealing the CSV/PDF items. (MINCRM-652) */
+  async openExportMenu(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'win-loss-export-menu-button' },
+        { type: 'role', value: 'button', options: { name: /export/i } },
+      ],
+      { intent: 'trigger button that opens the win/loss insights export menu' },
+    );
+  }
+
   /** Returns a resolved locator for the Export CSV button. */
   async exportCsvButtonLocator() {
     return this.page

@@ -16,7 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
-import { Button } from '@/components/ui/Button.js';
+import { ExportMenu } from '@/components/ui/ExportMenu.js';
 import {
   getAiUsageSummary,
   getAiUsageDaily,
@@ -162,22 +162,30 @@ export default function AiUsageDashboardPage() {
             <p className="mt-1 text-sm text-gray-600">{t('aiUsageDashboard.description')}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={handleExport}
-              disabled={isExporting}
-              data-testid="ai-usage-export-csv-button"
-            >
-              {isExporting ? t('aiUsageDashboard.exporting') : t('aiUsageDashboard.exportCsv')}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleExportPdf}
-              disabled={isExportingPdf}
-              data-testid="ai-usage-export-pdf-button"
-            >
-              {isExportingPdf ? t('aiUsageDashboard.exporting') : t('aiUsageDashboard.exportPdf')}
-            </Button>
+            <ExportMenu
+              label={t('common.export')}
+              testId="ai-usage-export-menu-button"
+              items={[
+                {
+                  key: 'csv',
+                  testId: 'ai-usage-export-csv-button',
+                  label: isExporting
+                    ? t('aiUsageDashboard.exporting')
+                    : t('aiUsageDashboard.exportCsv'),
+                  disabled: isExporting,
+                  onClick: handleExport,
+                },
+                {
+                  key: 'pdf',
+                  testId: 'ai-usage-export-pdf-button',
+                  label: isExportingPdf
+                    ? t('aiUsageDashboard.exporting')
+                    : t('aiUsageDashboard.exportPdf'),
+                  disabled: isExportingPdf,
+                  onClick: handleExportPdf,
+                },
+              ]}
+            />
           </div>
         </div>
 
