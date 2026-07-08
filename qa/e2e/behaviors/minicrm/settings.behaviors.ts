@@ -35,14 +35,16 @@ export { AdminSettingsTab };
 // ---------------------------------------------------------------------------
 
 /**
- * Navigates to the Admin Settings page, optionally deep-linking to a tab.
+ * Navigates to the Admin Settings page, optionally deep-linking to a tab and,
+ * for the 'ai' tab, a sub-section (MINCRM-653).
  */
 export async function navigateToAdminSettings(
   context: AdminSettingsBehaviorContext,
   tab?: AdminSettingsTab,
+  section?: string,
 ): Promise<void> {
   const adminSettings = new AdminSettingsPage(context);
-  await adminSettings.navigate(tab);
+  await adminSettings.navigate(tab, section);
 }
 
 // ---------------------------------------------------------------------------
@@ -1692,6 +1694,31 @@ export async function expectAiSettingsPanelVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const locator = await new AdminSettingsPage(context).aiSettingsPanelLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/**
+ * Clicks the given AI settings sub-navigation tab. (MINCRM-653)
+ *
+ * @param section - Sub-section key, e.g. 'general', 'usage-budgets',
+ *   'data-retention', 'data-minimization'.
+ */
+export async function clickAiSettingsSubNavTab(
+  section: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  const locator = await new AdminSettingsPage(context).aiSettingsSubNavTabLocator(section);
+  await locator.click();
+}
+
+/** Asserts that the given AI settings sub-section panel is visible. (MINCRM-653) */
+export async function expectAiSettingsSubPanelVisible(
+  section: string,
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).aiSettingsSubPanelLocator(section);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 

@@ -2034,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "Error al cargar la configuración de IA. Inténtalo de nuevo.",
+    "section": {
+      "navLabel": "Secciones de configuración de IA",
+      "general": "General",
+      "usageBudgets": "Uso y presupuestos",
+      "dataRetention": "Retención de datos",
+      "dataMinimization": "Minimización de datos"
+    },
     "header": {
       "deploymentMode": "Modo de implementación"
     },

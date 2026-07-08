@@ -2034,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "KI-Einstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
+    "section": {
+      "navLabel": "KI-Einstellungsbereiche",
+      "general": "Allgemein",
+      "usageBudgets": "Nutzung & Budgets",
+      "dataRetention": "Datenaufbewahrung",
+      "dataMinimization": "Datenminimierung"
+    },
     "header": {
       "deploymentMode": "Bereitstellungsmodus"
     },

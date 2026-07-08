@@ -74,9 +74,16 @@ export class AdminSettingsPage {
    * interaction (desktop buttons vs mobile <select>) and works in all layouts.
    *
    * @param tab - Optional tab to land on. Defaults to 'general'.
+   * @param section - Optional sub-section within the tab (currently only the
+   *   'ai' tab has sub-sections, e.g. 'usage-budgets'). Ignored if `tab` is
+   *   omitted. (MINCRM-653)
    */
-  async navigate(tab?: AdminSettingsTab): Promise<void> {
-    const path = tab ? `${AdminSettingsPage.PATH}?tab=${tab}` : AdminSettingsPage.PATH;
+  async navigate(tab?: AdminSettingsTab, section?: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (tab) params.set('tab', tab);
+    if (tab && section) params.set('section', section);
+    const query = params.toString();
+    const path = query ? `${AdminSettingsPage.PATH}?${query}` : AdminSettingsPage.PATH;
     await this.page.goto(path, { waitUntil: 'networkidle' });
   }
 
@@ -1168,6 +1175,43 @@ export class AdminSettingsPage {
           { type: 'role', value: 'region' },
         ],
         { intent: 'main panel containing the AI provider and model configuration form' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for an AI settings sub-navigation tab.
+   * (MINCRM-653)
+   *
+   * @param section - Sub-section key, e.g. 'general', 'usage-budgets',
+   *   'data-retention', 'data-minimization'.
+   */
+  async aiSettingsSubNavTabLocator(section: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-settings-tab-${section}` },
+          { type: 'role', value: 'tab' },
+        ],
+        { intent: `sub-navigation tab for the AI settings "${section}" section` },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns a resolved locator for the currently active AI settings
+   * sub-section panel. (MINCRM-653)
+   *
+   * @param section - Sub-section key matching the active tab.
+   */
+  async aiSettingsSubPanelLocator(section: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-settings-panel-${section}` },
+          { type: 'role', value: 'tabpanel' },
+        ],
+        { intent: `content panel for the AI settings "${section}" section` },
       )
       .resolve();
   }

@@ -208,7 +208,7 @@ export default function AiUsageDashboardPage() {
         >
           {t('aiUsageDashboard.disclaimer')}{' '}
           <Link
-            to="/admin/settings?tab=ai"
+            to="/admin/settings?tab=ai&section=usage-budgets"
             className="text-indigo-600 hover:text-indigo-800 underline"
           >
             {t('aiUsageDashboard.disclaimerLink')}

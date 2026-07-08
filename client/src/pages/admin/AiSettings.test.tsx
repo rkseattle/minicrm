@@ -1,17 +1,19 @@
 /**
- * Tests for AiSettings admin panel. (MINCRM-457)
+ * Tests for AiSettings admin panel. (MINCRM-457, MINCRM-653)
  *
  * Covers:
  *  - Loading state
  *  - Error state
- *  - Default (no config) state renders all sections
- *  - Master toggle confirmation dialog flow
- *  - Deployment mode base URL field shown/hidden
- *  - API key masked display and change flow
- *  - DPA acknowledgment checkbox interaction
- *  - Test connection result display
- *  - DPA warning banner visibility
- *  - Self-hosted mode suppresses DPA acknowledgment
+ *  - Sub-navigation: renders tabs, switches sections, deep-links via ?section=
+ *  - Master toggle confirmation dialog flow — visible on every sub-section
+ *  - General section: deployment mode base URL, API key, DPA acknowledgment, test connection
+ *  - Usage & Budgets section: token budgets, cost rates
+ *  - Data Retention section: session retention, manual purge
+ *  - Data Minimization section: field exclusions
+ *
+ * Each non-General section requires navigating to it first (via initialEntries
+ * deep-link or a sub-nav click) since AiSettings only renders the active
+ * section's content — mirroring how the real component behaves post-MINCRM-653.
  */
 
 import { screen, fireEvent, waitFor } from '@testing-library/react';
@@ -49,6 +51,14 @@ const DEFAULT_CONFIG = {
   provider_dpa_url: 'https://www.anthropic.com/legal/data-processing-agreement',
 };
 
+/** Renders AiSettings with the given AI sub-section pre-selected via deep-link. */
+function renderSection(section: string, queryClient?: QueryClient) {
+  return renderWithProviders(<AiSettings />, {
+    initialEntries: [`/admin/settings?tab=ai&section=${section}`],
+    queryClient,
+  });
+}
+
 // ── Loading state ─────────────────────────────────────────────────────────────
 
 describe('AiSettings — loading state', () => {
@@ -79,33 +89,95 @@ describe('AiSettings — error state', () => {
   });
 });
 
-// ── Default / no-config state ─────────────────────────────────────────────────
+// ── Sub-navigation (MINCRM-653) ─────────────────────────────────────────────────
 
-describe('AiSettings — default state', () => {
-  it('renders the panel with toggle, provider, DPA sections', async () => {
+describe('AiSettings — sub-navigation', () => {
+  it('defaults to the General section when no ?section= param is present', async () => {
     renderWithProviders(<AiSettings />);
     await waitFor(() => {
-      expect(screen.getByTestId('ai-settings-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('ai-settings-panel-general')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('ai-master-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('ai-provider-select')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-model-select')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-test-connection-button')).toBeInTheDocument();
-    expect(screen.getByTestId('ai-dpa-checkbox')).toBeInTheDocument();
   });
 
-  it('shows the DPA warning banner when DPA is not acknowledged', async () => {
+  it('renders a tab for each section', async () => {
     renderWithProviders(<AiSettings />);
     await waitFor(() => {
-      expect(screen.getByTestId('ai-dpa-warning-banner')).toBeInTheDocument();
+      expect(screen.getByTestId('ai-settings-subnav')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-settings-tab-general')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-settings-tab-data-retention')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-settings-tab-data-minimization')).toBeInTheDocument();
+  });
+
+  it("switches to the clicked section and only renders that section's content", async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-settings-tab-data-retention'));
+
+    fireEvent.click(screen.getByTestId('ai-settings-tab-data-retention'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-settings-panel-data-retention')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-session-retention-days-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-provider-select')).not.toBeInTheDocument();
+  });
+
+  it('marks the active tab with aria-selected and others as not selected', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-settings-tab-general'));
+
+    expect(screen.getByTestId('ai-settings-tab-general')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toHaveAttribute(
+      'aria-selected',
+      'false',
+    );
+  });
+
+  it('navigates via ArrowRight/ArrowLeft/Home/End between tabs', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => screen.getByTestId('ai-settings-tab-general'));
+
+    const generalTab = screen.getByTestId('ai-settings-tab-general');
+    generalTab.focus();
+
+    fireEvent.keyDown(generalTab, { key: 'ArrowRight' });
+    expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-usage-budgets'), { key: 'End' });
+    expect(screen.getByTestId('ai-settings-tab-data-minimization')).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-data-minimization'), { key: 'Home' });
+    expect(screen.getByTestId('ai-settings-tab-general')).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-general'), { key: 'ArrowLeft' });
+    expect(screen.getByTestId('ai-settings-tab-data-minimization')).toHaveFocus();
+  });
+
+  it('deep-links to the section named in the ?section= query param', async () => {
+    renderSection('usage-budgets');
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-settings-panel-usage-budgets')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-token-budgets-section')).toBeInTheDocument();
     });
   });
 
-  it('shows amber data posture badge', async () => {
-    renderWithProviders(<AiSettings />);
+  it('falls back to General for an invalid ?section= value', async () => {
+    renderSection('not-a-real-section');
     await waitFor(() => {
-      expect(screen.getByTestId('ai-data-posture-badge')).toBeInTheDocument();
+      expect(screen.getByTestId('ai-settings-panel-general')).toBeInTheDocument();
     });
+  });
+
+  it('keeps the master toggle visible and interactive regardless of active section', async () => {
+    renderSection('data-minimization');
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-master-toggle')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-master-toggle')).not.toBeDisabled();
   });
 });
 
@@ -171,18 +243,18 @@ describe('AiSettings — master toggle', () => {
   });
 });
 
-// ── Deployment mode base URL field ────────────────────────────────────────────
+// ── General section — deployment mode base URL field ──────────────────────────
 
 describe('AiSettings — deployment mode', () => {
   it('hides base URL field for cloud_api mode', async () => {
     renderWithProviders(<AiSettings />);
-    await waitFor(() => screen.getByTestId('ai-settings-panel'));
+    await waitFor(() => screen.getByTestId('ai-settings-panel-general'));
     expect(screen.queryByTestId('ai-base-url-input')).not.toBeInTheDocument();
   });
 
   it('shows base URL field when private_endpoint is selected', async () => {
     renderWithProviders(<AiSettings />);
-    await waitFor(() => screen.getByTestId('ai-settings-panel'));
+    await waitFor(() => screen.getByTestId('ai-settings-panel-general'));
 
     fireEvent.click(screen.getByTestId('ai-deployment-mode-radio-private_endpoint'));
     expect(screen.getByTestId('ai-base-url-input')).toBeInTheDocument();
@@ -190,14 +262,14 @@ describe('AiSettings — deployment mode', () => {
 
   it('shows base URL field when self_hosted is selected', async () => {
     renderWithProviders(<AiSettings />);
-    await waitFor(() => screen.getByTestId('ai-settings-panel'));
+    await waitFor(() => screen.getByTestId('ai-settings-panel-general'));
 
     fireEvent.click(screen.getByTestId('ai-deployment-mode-radio-self_hosted'));
     expect(screen.getByTestId('ai-base-url-input')).toBeInTheDocument();
   });
 });
 
-// ── API key display ────────────────────────────────────────────────────────────
+// ── General section — API key display ──────────────────────────────────────────
 
 describe('AiSettings — API key', () => {
   it('shows the key input when no key is stored', async () => {
@@ -258,13 +330,20 @@ describe('AiSettings — API key', () => {
   });
 });
 
-// ── DPA acknowledgment ────────────────────────────────────────────────────────
+// ── General section — DPA acknowledgment ────────────────────────────────────────
 
 describe('AiSettings — DPA acknowledgment', () => {
   it('shows not-acknowledged state by default', async () => {
     renderWithProviders(<AiSettings />);
     await waitFor(() => {
       expect(screen.getByTestId('ai-dpa-not-acknowledged-state')).toBeInTheDocument();
+    });
+  });
+
+  it('shows the DPA warning banner when DPA is not acknowledged', async () => {
+    renderWithProviders(<AiSettings />);
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-dpa-warning-banner')).toBeInTheDocument();
     });
   });
 
@@ -309,7 +388,7 @@ describe('AiSettings — DPA acknowledgment', () => {
   });
 });
 
-// ── Test connection ───────────────────────────────────────────────────────────
+// ── General section — test connection ───────────────────────────────────────────
 
 describe('AiSettings — test connection', () => {
   it('shows failure message when test-connection returns ok:false', async () => {
@@ -364,7 +443,7 @@ describe('AiSettings — test connection', () => {
   });
 });
 
-// ── DPA status badge colors ───────────────────────────────────────────────────
+// ── General section — DPA status badge colors ───────────────────────────────────
 
 describe('AiSettings — DPA status badge', () => {
   beforeEach(() => {
@@ -379,11 +458,11 @@ describe('AiSettings — DPA status badge', () => {
   });
 });
 
-// ── Token budget section (MINCRM-458) ─────────────────────────────────────────
+// ── Usage & Budgets section — token budgets (MINCRM-458) ───────────────────────
 
 describe('AiSettings — token budget section', () => {
   it('renders the token budget section after data loads', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-token-budgets-section')).toBeInTheDocument();
     });
@@ -399,7 +478,7 @@ describe('AiSettings — token budget section', () => {
           }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     // The page-level AI config fetch must complete before TokenBudgetSection renders.
     // Wait for the page to exit its top-level loading gate, then check the section skeleton.
     await waitFor(() => {
@@ -412,14 +491,14 @@ describe('AiSettings — token budget section', () => {
     server.use(
       http.get('/api/v1/admin/ai/token-budgets', () => new HttpResponse(null, { status: 500 })),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-token-budgets-error')).toBeInTheDocument();
     });
   });
 
   it('shows the org limit input and save button', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-org-monthly-limit-input')).toBeInTheDocument();
     });
@@ -457,7 +536,7 @@ describe('AiSettings — token budget section', () => {
         }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-budget-users-table')).toBeInTheDocument();
     });
@@ -466,7 +545,7 @@ describe('AiSettings — token budget section', () => {
   });
 
   it('shows success message after saving org limit', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-org-monthly-limit-input')).toBeInTheDocument();
     });
@@ -482,7 +561,7 @@ describe('AiSettings — token budget section', () => {
   });
 });
 
-// ── Retention stats + manual purge (MINCRM-462) ───────────────────────────────
+// ── Data Retention section — stats + manual purge (MINCRM-462) ─────────────────
 
 describe('AiSettings — retention stats and manual purge', () => {
   it('shows loading skeleton while stats are fetching', async () => {
@@ -495,7 +574,7 @@ describe('AiSettings — retention stats and manual purge', () => {
           }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => {
       expect(screen.queryByTestId('ai-settings-loading')).not.toBeInTheDocument();
     });
@@ -506,7 +585,7 @@ describe('AiSettings — retention stats and manual purge', () => {
     server.use(
       http.get('/api/v1/admin/ai/retention-stats', () => new HttpResponse(null, { status: 500 })),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => {
       expect(screen.getByTestId('ai-retention-stats-error')).toBeInTheDocument();
     });
@@ -518,7 +597,7 @@ describe('AiSettings — retention stats and manual purge', () => {
         HttpResponse.json({ session_count: 12, message_count: 84 }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => {
       expect(screen.getByTestId('ai-retention-stats')).toBeInTheDocument();
     });
@@ -527,14 +606,14 @@ describe('AiSettings — retention stats and manual purge', () => {
   });
 
   it('shows the purge confirmation dialog when "Purge now" is clicked', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-now-button'));
     expect(screen.getByTestId('ai-purge-confirm-dialog')).toBeInTheDocument();
   });
 
   it('cancels the purge dialog without calling the purge endpoint', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-cancel-button'));
@@ -542,7 +621,7 @@ describe('AiSettings — retention stats and manual purge', () => {
   });
 
   it('shows an accepted message after confirming the purge', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
@@ -556,7 +635,7 @@ describe('AiSettings — retention stats and manual purge', () => {
     server.use(
       http.post('/api/v1/admin/ai/retention/purge', () => new HttpResponse(null, { status: 500 })),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-retention');
     await waitFor(() => screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-now-button'));
     fireEvent.click(screen.getByTestId('ai-purge-confirm-button'));
@@ -576,7 +655,7 @@ describe('AiSettings — retention stats and manual purge', () => {
         }),
       );
 
-      renderWithProviders(<AiSettings />);
+      renderSection('data-retention');
       await waitFor(() => screen.getByTestId('ai-purge-now-button'));
       expect(statsRequestCount).toBe(1); // initial mount fetch
 
@@ -601,7 +680,7 @@ describe('AiSettings — retention stats and manual purge', () => {
   });
 });
 
-// ── Data minimization section (MINCRM-461) ────────────────────────────────────
+// ── Data Minimization section — field exclusions (MINCRM-461) ──────────────────
 
 describe('AiSettings — data minimization section', () => {
   it('shows loading skeleton while field exclusions are fetching', async () => {
@@ -614,7 +693,7 @@ describe('AiSettings — data minimization section', () => {
           }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.queryByTestId('ai-settings-loading')).not.toBeInTheDocument();
     });
@@ -625,14 +704,14 @@ describe('AiSettings — data minimization section', () => {
     server.use(
       http.get('/api/v1/admin/ai/field-exclusions', () => new HttpResponse(null, { status: 500 })),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-field-exclusions-error')).toBeInTheDocument();
     });
   });
 
   it('renders always-excluded fields as locked entries', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-always-excluded-fields')).toBeInTheDocument();
     });
@@ -641,7 +720,7 @@ describe('AiSettings — data minimization section', () => {
   });
 
   it('renders standard fields with toggles', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-standard-fields-table')).toBeInTheDocument();
     });
@@ -656,7 +735,7 @@ describe('AiSettings — data minimization section', () => {
         return HttpResponse.json(capturedBody);
       }),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('field-exclusion-toggle-contact-department')).toBeInTheDocument();
     });
@@ -679,7 +758,7 @@ describe('AiSettings — data minimization section', () => {
         () => new HttpResponse(null, { status: 500 }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('field-exclusion-toggle-contact-department')).toBeInTheDocument();
     });
@@ -692,7 +771,7 @@ describe('AiSettings — data minimization section', () => {
   });
 
   it('shows the empty state when no custom fields are excluded', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-custom-fields-excluded-empty')).toBeInTheDocument();
     });
@@ -711,7 +790,7 @@ describe('AiSettings — data minimization section', () => {
         }),
       ),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-custom-fields-excluded-list')).toBeInTheDocument();
     });
@@ -722,7 +801,7 @@ describe('AiSettings — data minimization section', () => {
   });
 
   it('links to the custom fields admin page', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('data-minimization');
     await waitFor(() => {
       expect(screen.getByTestId('ai-manage-custom-fields-link')).toBeInTheDocument();
     });
@@ -733,11 +812,11 @@ describe('AiSettings — data minimization section', () => {
   });
 });
 
-// ── Cost rates section (MINCRM-459) ───────────────────────────────────────────
+// ── Usage & Budgets section — cost rates (MINCRM-459) ───────────────────────────
 
 describe('AiSettings — cost rates section', () => {
   it('renders the cost rate inputs with current values', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-input-cost-rate-input')).toBeInTheDocument();
     });
@@ -746,7 +825,7 @@ describe('AiSettings — cost rates section', () => {
   });
 
   it('shows success message after saving cost rates', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
 
     fireEvent.change(screen.getByTestId('ai-input-cost-rate-input'), {
@@ -760,7 +839,7 @@ describe('AiSettings — cost rates section', () => {
   });
 
   it('shows validation error for a negative rate', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
 
     fireEvent.change(screen.getByTestId('ai-input-cost-rate-input'), {
@@ -775,7 +854,7 @@ describe('AiSettings — cost rates section', () => {
     server.use(
       http.patch('/api/v1/admin/ai/cost-rates', () => new HttpResponse(null, { status: 500 })),
     );
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => screen.getByTestId('ai-input-cost-rate-input'));
 
     fireEvent.click(screen.getByTestId('ai-cost-rates-save-button'));
@@ -786,7 +865,7 @@ describe('AiSettings — cost rates section', () => {
   });
 
   it('links to the usage dashboard', async () => {
-    renderWithProviders(<AiSettings />);
+    renderSection('usage-budgets');
     await waitFor(() => {
       expect(screen.getByTestId('ai-usage-dashboard-link')).toBeInTheDocument();
     });

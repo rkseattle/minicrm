@@ -2034,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "加载 AI 设置失败，请重试。",
+    "section": {
+      "navLabel": "AI 设置分区",
+      "general": "常规",
+      "usageBudgets": "使用量与预算",
+      "dataRetention": "数据保留",
+      "dataMinimization": "数据最小化"
+    },
     "header": {
       "deploymentMode": "部署模式"
     },
