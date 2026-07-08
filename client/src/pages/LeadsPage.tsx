@@ -16,6 +16,7 @@ import { PagedListLayout } from '@/components/PagedListLayout.js';
 import LeadForm from '@/components/LeadForm.js';
 import { Button } from '@/components/ui/Button.js';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
+import { useExportAction } from '@/hooks/useExportAction.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import { Pagination } from '@/components/ui/Pagination.js';
@@ -70,8 +71,8 @@ export default function LeadsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const newLeadButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { isExporting, run: runExport } = useExportAction();
+  const { isExporting: isExportingPdf, run: runExportPdf } = useExportAction();
   const [duplicateLead, setDuplicateLead] = useState<DuplicateLeadInfo | null>(null);
   const forceNextSubmit = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -146,9 +147,13 @@ export default function LeadsPage() {
   const leads: LeadResponse[] = data?.data ?? [];
   const total = data?.total ?? 0;
 
-  // Clear selection whenever filters or page change (MINCRM-562)
+  // Clear selection whenever filters or page change (MINCRM-562); call through
+  // a named fn to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
-    setSelectedIds(new Set());
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
   }, [page, ownerFilter, statusFilter, sourceFilter, includeDisqualified, includeConverted]);
 
   const allVisibleIds = leads.map((l) => l.id);
@@ -333,40 +338,32 @@ export default function LeadsPage() {
                   testId: 'leads-export-csv-button',
                   label: isExporting ? t('leads.exporting') : t('leads.exportCsv'),
                   disabled: isExporting,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportLeadsCsv({
+                  onClick: () =>
+                    runExport(() =>
+                      exportLeadsCsv({
                         owner: ownerApiParam,
                         status: statusFilter || undefined,
                         lead_source: sourceFilter || undefined,
                         includeDisqualified,
                         includeConverted,
-                      });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'pdf',
                   testId: 'leads-export-pdf-button',
                   label: isExportingPdf ? t('leads.exporting') : t('leads.exportPdf'),
                   disabled: isExportingPdf,
-                  onClick: async () => {
-                    setIsExportingPdf(true);
-                    try {
-                      await exportLeadsPdf({
+                  onClick: () =>
+                    runExportPdf(() =>
+                      exportLeadsPdf({
                         owner: ownerApiParam,
                         status: statusFilter || undefined,
                         lead_source: sourceFilter || undefined,
                         includeDisqualified,
                         includeConverted,
-                      });
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'all',
@@ -374,14 +371,7 @@ export default function LeadsPage() {
                   label: isExporting ? t('leads.exporting') : t('leads.exportAll'),
                   disabled: isExporting,
                   hidden: !isAdmin,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportLeadsCsv({ all: true });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                  onClick: () => runExport(() => exportLeadsCsv({ all: true })),
                 },
               ]}
             />

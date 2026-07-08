@@ -293,12 +293,17 @@ export async function verifyAndConsumeRecoveryCode(
     );
     const stored = row.rows[0]?.mfa_recovery_codes ?? [];
 
-    if (!stored.includes(matchedHash)) {
+    const matchedIndex = stored.indexOf(matchedHash);
+    if (matchedIndex === -1) {
       await client.query('ROLLBACK');
       return false;
     }
 
-    const remaining = stored.filter((hash) => hash !== matchedHash);
+    // Remove only the matched index, not every occurrence of matchedHash —
+    // bcrypt hashes are salted so a genuine collision is not expected, but
+    // this keeps the same one-code-consumed-per-call guarantee the original
+    // index-based removal had, rather than relying on hash uniqueness to hold.
+    const remaining = stored.filter((_, idx) => idx !== matchedIndex);
     await client.query(
       'UPDATE users SET mfa_recovery_codes = $1, updated_at = NOW() WHERE id = $2',
       [remaining, userId],
