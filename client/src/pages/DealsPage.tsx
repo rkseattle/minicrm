@@ -20,6 +20,7 @@ import StageColumn from '@/components/StageColumn.js';
 import CloseDealModal from '@/components/CloseDealModal.js';
 import { Button } from '@/components/ui/Button.js';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
+import { useExportAction } from '@/hooks/useExportAction.js';
 import { OwnerToggle } from '@/components/ui/OwnerToggle.js';
 import type { OwnerFilter } from '@/components/ui/OwnerToggle.js';
 import {
@@ -133,8 +134,8 @@ export default function DealsPage() {
     terminalStageNames,
   } = usePipelineStages(activePipelineId);
   const openStages = pipelineStages.filter((s) => !s.is_terminal);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { isExporting, run: runExport } = useExportAction();
+  const { isExporting: isExportingPdf, run: runExportPdf } = useExportAction();
 
   // ── View mode ───────────────��──────────────────────────────────────────────
   // Restore from sessionStorage so the chosen view survives navigation (MINCRM-146)
@@ -515,8 +516,12 @@ export default function DealsPage() {
   const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
 
   const selectedTagKey = selectedTagIds.join(',');
+  // Clear selection when filters or page change; call through a named fn to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
-    setSelectedIds(new Set());
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
   }, [ownerFilter, showClosed, sortCol, sortDir, listPage, listLimit, selectedTagKey, viewMode]);
 
   const allVisibleDealIds = sortedDeals.map((d) => d.id);
@@ -606,32 +611,24 @@ export default function DealsPage() {
                   testId: 'deals-export-csv-button',
                   label: isExporting ? t('deals.exporting') : t('deals.exportCsv'),
                   disabled: isExporting,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportDealsCsv({
+                  onClick: () =>
+                    runExport(() =>
+                      exportDealsCsv({
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'pdf',
                   testId: 'deals-export-pdf-button',
                   label: isExportingPdf ? t('deals.exporting') : t('deals.exportPdf'),
                   disabled: isExportingPdf,
-                  onClick: async () => {
-                    setIsExportingPdf(true);
-                    try {
-                      await exportDealsPdf({
+                  onClick: () =>
+                    runExportPdf(() =>
+                      exportDealsPdf({
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'all',
@@ -639,14 +636,7 @@ export default function DealsPage() {
                   label: isExporting ? t('deals.exporting') : t('deals.exportAll'),
                   disabled: isExporting,
                   hidden: !isAdmin,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportDealsCsv({ all: true });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                  onClick: () => runExport(() => exportDealsCsv({ all: true })),
                 },
               ]}
             />

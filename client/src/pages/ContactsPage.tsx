@@ -47,6 +47,7 @@ import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
 
 /** React Query cache key for the contacts list */
@@ -65,8 +66,8 @@ export default function ContactsPage() {
   const canBulkOp = user?.role === 'admin' || user?.role === 'manager';
   const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { isExporting, run: runExport } = useExportAction();
+  const { isExporting: isExportingPdf, run: runExportPdf } = useExportAction();
   const [createError, setCreateError] = useState<string | null>(null);
   const newContactButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
@@ -283,9 +284,12 @@ export default function ContactsPage() {
   const [bulkSuccessMessage, setBulkSuccessMessage] = useState<string | null>(null);
 
   const selectedTagKey = selectedTagIds.join(',');
-  // Clear selection whenever filters or page change
+  // Clear selection whenever filters or page change; call through a named fn to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
-    setSelectedIds(new Set());
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
   }, [debouncedSearch, debouncedAccountSearch, ownerFilter, page, selectedTagKey]);
 
   function clearFilters(): void {
@@ -380,36 +384,28 @@ export default function ContactsPage() {
                   testId: 'contacts-export-csv-button',
                   label: isExporting ? t('contacts.exporting') : t('contacts.exportCsv'),
                   disabled: isExporting,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportContactsCsv({
+                  onClick: () =>
+                    runExport(() =>
+                      exportContactsCsv({
                         search: debouncedSearch || undefined,
                         accountSearch: debouncedAccountSearch || undefined,
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'pdf',
                   testId: 'contacts-export-pdf-button',
                   label: isExportingPdf ? t('contacts.exporting') : t('contacts.exportPdf'),
                   disabled: isExportingPdf,
-                  onClick: async () => {
-                    setIsExportingPdf(true);
-                    try {
-                      await exportContactsPdf({
+                  onClick: () =>
+                    runExportPdf(() =>
+                      exportContactsPdf({
                         search: debouncedSearch || undefined,
                         accountSearch: debouncedAccountSearch || undefined,
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'all',
@@ -417,14 +413,7 @@ export default function ContactsPage() {
                   label: isExporting ? t('contacts.exporting') : t('contacts.exportAll'),
                   disabled: isExporting,
                   hidden: !isAdmin,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportContactsCsv({ all: true });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                  onClick: () => runExport(() => exportContactsCsv({ all: true })),
                 },
               ]}
             />

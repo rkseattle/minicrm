@@ -44,6 +44,7 @@ import { usePermissions } from '@/hooks/usePermissions.js';
 import { useDebounce } from '@/hooks/useDebounce.js';
 import { usePagination } from '@/hooks/usePagination.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
 
 /** React Query cache key for the accounts list */
@@ -61,8 +62,8 @@ export default function AccountsPage() {
   const { canWrite } = usePermissions();
   const [showForm, setShowForm] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const { isExporting, run: runExport } = useExportAction();
+  const { isExporting: isExportingPdf, run: runExportPdf } = useExportAction();
   const newAccountButtonRef = useRef<HTMLButtonElement>(null);
   const shouldRestoreFocusRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -246,8 +247,12 @@ export default function AccountsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const selectedTagKey = selectedTagIds.join(',');
+  // Clear selection when filters or page change; call through a named fn to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
-    setSelectedIds(new Set());
+    function reset() {
+      setSelectedIds(new Set());
+    }
+    reset();
   }, [debouncedSearch, debouncedIndustry, ownerFilter, accountTypeFilter, page, selectedTagKey]);
 
   function clearFilters(): void {
@@ -322,36 +327,28 @@ export default function AccountsPage() {
                   testId: 'accounts-export-csv-button',
                   label: isExporting ? t('accounts.exporting') : t('accounts.exportCsv'),
                   disabled: isExporting,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportAccountsCsv({
+                  onClick: () =>
+                    runExport(() =>
+                      exportAccountsCsv({
                         search: debouncedSearch || undefined,
                         industry: debouncedIndustry || undefined,
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'pdf',
                   testId: 'accounts-export-pdf-button',
                   label: isExportingPdf ? t('accounts.exporting') : t('accounts.exportPdf'),
                   disabled: isExportingPdf,
-                  onClick: async () => {
-                    setIsExportingPdf(true);
-                    try {
-                      await exportAccountsPdf({
+                  onClick: () =>
+                    runExportPdf(() =>
+                      exportAccountsPdf({
                         search: debouncedSearch || undefined,
                         industry: debouncedIndustry || undefined,
                         all: isAdmin && ownerFilter === 'all' ? true : undefined,
-                      });
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  },
+                      }),
+                    ),
                 },
                 {
                   key: 'all',
@@ -359,14 +356,7 @@ export default function AccountsPage() {
                   label: isExporting ? t('accounts.exporting') : t('accounts.exportAll'),
                   disabled: isExporting,
                   hidden: !isAdmin,
-                  onClick: async () => {
-                    setIsExporting(true);
-                    try {
-                      await exportAccountsCsv({ all: true });
-                    } finally {
-                      setIsExporting(false);
-                    }
-                  },
+                  onClick: () => runExport(() => exportAccountsCsv({ all: true })),
                 },
               ]}
             />
