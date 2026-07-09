@@ -51,6 +51,17 @@ const WIDE_TABLE_COLUMN_THRESHOLD = 10;
 const EMPTY_STATE_COLOR = 'gray';
 const DEFAULT_TEXT_COLOR = 'black';
 
+/** Horizontal inset applied inside every table cell so text never sits flush against a column boundary. (MINCRM-655) */
+const CELL_PADDING_X = 4;
+/** Header row background fill, visually distinguishing it from data rows beyond bold text alone. (MINCRM-655) */
+const TABLE_HEADER_FILL_COLOR = '#e5e7eb';
+/** Bottom border under the header row. (MINCRM-655) */
+const TABLE_HEADER_BORDER_COLOR = '#9ca3af';
+/** Alternating (zebra-striped) data row background fill. (MINCRM-655) */
+const TABLE_ROW_STRIPE_COLOR = '#f3f4f6';
+/** Rule drawn under the document title. (MINCRM-655) */
+const TITLE_RULE_COLOR = '#9ca3af';
+
 /**
  * Registers the bundled CJK fallback font under two aliases so callers can select
  * either the "plain" or "bold" weight — the font file only has one weight, but
@@ -87,6 +98,14 @@ export interface PdfTableColumn {
    * (MINCRM-654)
    */
   lowPriority?: boolean;
+  /**
+   * Text alignment within the column, both for the header label and data cells.
+   * Defaults to 'left'. Use 'right' for numeric columns (counts, totals, token
+   * usage, etc.) so they read naturally against other numbers. 'left' rather than
+   * a physical/logical distinction is intentional here — PDF export is a fixed,
+   * non-mirrored layout, unlike the RTL-aware web UI. (MINCRM-655)
+   */
+  align?: 'left' | 'right';
 }
 
 export interface PdfSection {
@@ -208,6 +227,15 @@ function cellText(value: PdfTableCell): string {
   return String(value);
 }
 
+/**
+ * A column's writable text area is its full width minus padding on both sides —
+ * used consistently for wrapping/height measurement and for the actual draw call
+ * so cells never sit flush against a column boundary. (MINCRM-655)
+ */
+function paddedCellWidth(width: number): number {
+  return Math.max(width - CELL_PADDING_X * 2, 0);
+}
+
 function renderTableHeaderRow(
   doc: PDFKit.PDFDocument,
   columns: PdfTableColumn[],
@@ -223,19 +251,35 @@ function renderTableHeaderRow(
   const headerHeight = Math.max(
     ...columns.map((col, i) => {
       doc.font(fontForText(col.label, true));
-      return doc.heightOfString(col.label, { width: widths[i] });
+      return doc.heightOfString(col.label, { width: paddedCellWidth(widths[i]) });
     }),
     doc.currentLineHeight(),
   );
+  const rowBottom = startY + headerHeight + TABLE_HEADER_ROW_GAP;
+
+  // Header shading + bottom border, drawn before text so glyphs render on top.
+  // Visually distinguishes the header row from data rows beyond bold text alone. (MINCRM-655)
+  const tableWidth = widths.reduce((sum, w) => sum + w, 0);
+  doc.rect(left, startY, tableWidth, rowBottom - startY).fill(TABLE_HEADER_FILL_COLOR);
+  doc
+    .moveTo(left, rowBottom)
+    .lineTo(left + tableWidth, rowBottom)
+    .strokeColor(TABLE_HEADER_BORDER_COLOR)
+    .lineWidth(1)
+    .stroke();
+  doc.fillColor(DEFAULT_TEXT_COLOR);
 
   let x = left;
   for (let i = 0; i < columns.length; i++) {
     doc.font(fontForText(columns[i].label, true));
-    doc.text(columns[i].label, x, startY, { width: widths[i] });
+    doc.text(columns[i].label, x + CELL_PADDING_X, startY, {
+      width: paddedCellWidth(widths[i]),
+      align: columns[i].align ?? 'left',
+    });
     x += widths[i];
   }
   doc.font('Helvetica');
-  return startY + headerHeight + TABLE_HEADER_ROW_GAP;
+  return rowBottom;
 }
 
 function renderTableDataRow(
@@ -246,16 +290,28 @@ function renderTableDataRow(
   row: PdfTableRow,
   y: number,
   rowHeight: number,
+  isStriped: boolean,
 ): number {
+  const rowBottom = y + rowHeight + TABLE_ROW_LINE_GAP;
+
+  if (isStriped) {
+    const tableWidth = widths.reduce((sum, w) => sum + w, 0);
+    doc.rect(left, y, tableWidth, rowBottom - y).fill(TABLE_ROW_STRIPE_COLOR);
+    doc.fillColor(DEFAULT_TEXT_COLOR);
+  }
+
   let x = left;
   for (let i = 0; i < columns.length; i++) {
     const text = cellText(row[columns[i].key]);
     doc.font(fontForText(text, false));
-    doc.text(text, x, y, { width: widths[i] });
+    doc.text(text, x + CELL_PADDING_X, y, {
+      width: paddedCellWidth(widths[i]),
+      align: columns[i].align ?? 'left',
+    });
     x += widths[i];
   }
   doc.font('Helvetica');
-  return y + rowHeight + TABLE_ROW_LINE_GAP;
+  return rowBottom;
 }
 
 /**
@@ -293,6 +349,10 @@ function renderTable(
 
   let y = renderTableHeaderRow(doc, columns, widths, left);
 
+  // Zebra-stripe by absolute row index (not reset per page) so the alternating
+  // pattern stays consistent across a page break instead of every new page
+  // starting back on the same stripe phase. (MINCRM-655)
+  let rowIndex = 0;
   for (const row of rows) {
     // Row text renders at TABLE_ROW_FONT_SIZE — set it before measuring so the
     // overflow estimate matches what renderTableDataRow actually lays out
@@ -306,7 +366,7 @@ function renderTable(
       ...columns.map((col, i) => {
         const text = cellText(row[col.key]);
         doc.font(fontForText(text, false));
-        return doc.heightOfString(text, { width: widths[i] });
+        return doc.heightOfString(text, { width: paddedCellWidth(widths[i]) });
       }),
       doc.currentLineHeight(),
     );
@@ -316,7 +376,8 @@ function renderTable(
       y = renderTableHeaderRow(doc, columns, widths, left);
       doc.fontSize(TABLE_ROW_FONT_SIZE);
     }
-    y = renderTableDataRow(doc, columns, widths, left, row, y, rowHeight);
+    y = renderTableDataRow(doc, columns, widths, left, row, y, rowHeight, rowIndex % 2 === 1);
+    rowIndex++;
   }
 
   doc.y = y;
@@ -336,6 +397,16 @@ export function renderPdfDocument(res: Response, spec: PdfDocumentSpec): void {
     .font(fontForText(spec.title, false))
     .text(spec.title, { align: 'left' });
   doc.font('Helvetica');
+  doc.moveDown(0.3);
+  // Rule under the title, visually separating it from body content. (MINCRM-655)
+  const titleRuleLeft = doc.page.margins.left;
+  const titleRuleWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  doc
+    .moveTo(titleRuleLeft, doc.y)
+    .lineTo(titleRuleLeft + titleRuleWidth, doc.y)
+    .strokeColor(TITLE_RULE_COLOR)
+    .lineWidth(1)
+    .stroke();
   doc.moveDown();
 
   for (const section of spec.sections) {
