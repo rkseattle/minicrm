@@ -5,7 +5,8 @@
   "type": "module",
   "main": "src/server.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/server/src/assets/fonts && cp src/assets/fonts/*.otf src/assets/fonts/*.txt dist/server/src/assets/fonts/",
     "start": "tsx src/server.ts",
     "dev": "nodemon --exec tsx src/server.ts",
     "migrate": "node-pg-migrate -m ../db/migrations up --no-check-order",
