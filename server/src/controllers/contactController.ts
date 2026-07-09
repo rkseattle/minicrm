@@ -33,6 +33,7 @@ import { sendContactEmail } from '../services/emailService.js';
 import { createActivity } from '../services/activityService.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -472,16 +473,21 @@ export async function exportContactsPdfHandler(req: Request, res: Response): Pro
   }));
   const rows: PdfTableRow[] = data.rows;
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('contacts'));
-  renderPdfDocument(res, {
-    title: 'Contacts',
-    sections: [
-      {
-        heading: 'Contacts',
-        table: { columns, rows, emptyMessage: 'No contacts match the current filters.' },
-      },
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: 'Contacts',
+      sections: [
+        {
+          heading: 'Contacts',
+          table: { columns, rows, emptyMessage: 'No contacts match the current filters.' },
+        },
+      ],
+    },
+    branding,
+  );
 }
 
 /**
@@ -547,23 +553,28 @@ export async function exportContactPdfHandler(req: Request, res: Response): Prom
     value: d.value,
   }));
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename(`contact-${id}`));
-  renderPdfDocument(res, {
-    title: `Contact: ${contact.first_name} ${contact.last_name}`,
-    sections: [
-      { heading: 'Overview', lines: overviewLines },
-      {
-        heading: 'Custom Fields',
-        lines: customFieldLines,
-        emptyMessage: 'No custom fields defined.',
-      },
-      {
-        heading: 'Linked Deals',
-        table: { columns: dealColumns, rows: dealRows, emptyMessage: 'No linked deals.' },
-      },
-      buildNotesTableSection(notesPage.data),
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: `Contact: ${contact.first_name} ${contact.last_name}`,
+      sections: [
+        { heading: 'Overview', lines: overviewLines },
+        {
+          heading: 'Custom Fields',
+          lines: customFieldLines,
+          emptyMessage: 'No custom fields defined.',
+        },
+        {
+          heading: 'Linked Deals',
+          table: { columns: dealColumns, rows: dealRows, emptyMessage: 'No linked deals.' },
+        },
+        buildNotesTableSection(notesPage.data),
+      ],
+    },
+    branding,
+  );
 }
 
 /**

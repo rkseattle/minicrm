@@ -13,6 +13,7 @@ import {
   ACTIVITY_TYPES,
   type StageTrendDays,
 } from '../services/reportService.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -166,20 +167,25 @@ export async function exportActivityVolumeReportPdfHandler(
   }));
   rows.push({ ownerName: 'Total', ...report.totals });
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('activity-volume'));
-  renderPdfDocument(res, {
-    title: 'Activity Volume Report',
-    sections: [
-      {
-        heading: 'Activity Volume',
-        table: {
-          columns: ACTIVITY_VOLUME_PDF_COLUMNS,
-          rows,
-          emptyMessage: 'No activities logged for this period.',
+  await renderPdfDocument(
+    res,
+    {
+      title: 'Activity Volume Report',
+      sections: [
+        {
+          heading: 'Activity Volume',
+          table: {
+            columns: ACTIVITY_VOLUME_PDF_COLUMNS,
+            rows,
+            emptyMessage: 'No activities logged for this period.',
+          },
         },
-      },
-    ],
-  });
+      ],
+    },
+    branding,
+  );
 }
 
 // ── Stage Trend Report (MINCRM-284) ──────────────────────────────────────────

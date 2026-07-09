@@ -2,9 +2,10 @@
  * Unit tests for the shared PDF export document builder. (MINCRM-601)
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PassThrough } from 'node:stream';
 import zlib from 'node:zlib';
+import dns from 'node:dns';
 import type { Response } from 'express';
 import {
   renderPdfDocument,
@@ -15,15 +16,41 @@ import {
   type PdfDocumentSpec,
 } from '../services/pdfExportService.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
+import type { BrandingConfig } from '@minicrm/shared/schemas/brandingSchema.js';
+
+/** A minimal valid 4x2 PNG (71 bytes), used to test logo embedding without a real network fetch. */
+const TEST_LOGO_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAADklEQVR4nGP4jwQYkDkANvEX6SAXxcIAAAAASUVORK5CYII=';
+
+/** Public IP DNS mock result, satisfying assertUrlIsFetchSafe()'s SSRF check for logo fetch tests. */
+const MOCK_PUBLIC_IPV4: dns.LookupAddress[] = [{ address: '93.184.216.34', family: 4 }];
+
+/** Builds a full BrandingConfig fixture, overridable per test. */
+function makeBranding(overrides: Partial<BrandingConfig> = {}): BrandingConfig {
+  return {
+    logoUrl: null,
+    logoAltText: null,
+    faviconUrl: null,
+    primaryColor: null,
+    primaryColorText: null,
+    fontFamily: null,
+    companyName: null,
+    poweredByEnabled: true,
+    ...overrides,
+  };
+}
 
 /** Renders a PDF spec into a Buffer by piping through a PassThrough stream standing in for the response. */
-async function renderToBuffer(spec: PdfDocumentSpec): Promise<Buffer> {
+async function renderToBuffer(
+  spec: PdfDocumentSpec,
+  branding: BrandingConfig | null = null,
+): Promise<Buffer> {
   const stream = new PassThrough();
   const chunks: Buffer[] = [];
   stream.on('data', (chunk: Buffer) => chunks.push(chunk));
   const done = new Promise<void>((resolve) => stream.on('end', resolve));
 
-  renderPdfDocument(stream as unknown as Response, spec);
+  await renderPdfDocument(stream as unknown as Response, spec, branding);
 
   await done;
   return Buffer.concat(chunks);
@@ -539,6 +566,240 @@ describe('renderPdfDocument', () => {
     });
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+  });
+});
+
+describe('renderPdfDocument branding (MINCRM-656)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders equivalent output whether branding is explicitly null or simply omitted', async () => {
+    // Byte-for-byte equality isn't achievable — pdfkit embeds a /CreationDate and
+    // /ID that differ between any two render calls regardless of content — so this
+    // compares text content and page count instead. (MINCRM-656)
+    const spec: PdfDocumentSpec = {
+      title: 'Accounts',
+      sections: [{ heading: 'Accounts', lines: ['Row 1'] }],
+    };
+    const withoutArg = await renderToBuffer(spec);
+    const withNull = await renderToBuffer(spec, null);
+    expect(extractRenderedText(withoutArg)).toBe(extractRenderedText(withNull));
+    // Byte length should differ only by the few bytes /CreationDate's timestamp
+    // occupies, not by any structural difference (e.g. an extra image object).
+    expect(Math.abs(withoutArg.length - withNull.length)).toBeLessThan(20);
+  });
+
+  it('prefixes the company name onto the title when companyName is set', async () => {
+    const branding = makeBranding({ companyName: 'Acme Corp' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+    const rendered = extractRenderedText(buffer);
+    expect(rendered).toContain('Acme Corp');
+    expect(rendered).toContain('Accounts');
+  });
+
+  it('does not alter the title when companyName is not set', async () => {
+    const branding = makeBranding({ primaryColor: '#1a56db', primaryColorText: '#ffffff' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+    // No em dash separator (used only when companyName is present) should appear
+    // preceding the title text.
+    const rendered = extractRenderedText(buffer);
+    expect(rendered).not.toContain('—Accounts');
+  });
+
+  it('uses the branding accent color for the header row fill instead of the default gray', async () => {
+    const branding = makeBranding({ primaryColor: '#1a56db', primaryColorText: '#ffffff' });
+    const buffer = await renderToBuffer(
+      {
+        title: 'Accounts',
+        sections: [
+          {
+            heading: 'Table',
+            table: {
+              columns: [{ key: 'name', label: 'Name' }],
+              rows: [{ name: 'Widget' }],
+              emptyMessage: 'No rows.',
+            },
+          },
+        ],
+      },
+      branding,
+    );
+    // #1a56db -> rgb(0.1019..., 0.3372..., 0.8588...) in pdfkit's 0-1 DeviceRGB scale.
+    const rectPattern =
+      /([\d.-]+) ([\d.-]+) ([\d.-]+) ([\d.-]+) re\s*\/DeviceRGB cs\s*([\d.]+) ([\d.]+) ([\d.]+) scn\s*f/g;
+    const streams = decompressContentStreams(buffer);
+    const brandColorRectFound = streams.some((content) =>
+      [...content.matchAll(rectPattern)].some(
+        (m) =>
+          Math.abs(Number(m[5]) - 0x1a / 255) < 0.01 && Math.abs(Number(m[6]) - 0x56 / 255) < 0.01,
+      ),
+    );
+    expect(brandColorRectFound).toBe(true);
+  });
+
+  it('applies no accent color (default gray) when branding is absent', async () => {
+    const buffer = await renderToBuffer({
+      title: 'Accounts',
+      sections: [
+        {
+          heading: 'Table',
+          table: {
+            columns: [{ key: 'name', label: 'Name' }],
+            rows: [{ name: 'Widget' }],
+            emptyMessage: 'No rows.',
+          },
+        },
+      ],
+    });
+    const rectPattern =
+      /([\d.-]+) ([\d.-]+) ([\d.-]+) ([\d.-]+) re\s*\/DeviceRGB cs\s*([\d.]+) ([\d.]+) ([\d.]+) scn\s*f/g;
+    const streams = decompressContentStreams(buffer);
+    // #1a56db must NOT appear when no branding is configured.
+    const brandColorRectFound = streams.some((content) =>
+      [...content.matchAll(rectPattern)].some(
+        (m) =>
+          Math.abs(Number(m[5]) - 0x1a / 255) < 0.01 && Math.abs(Number(m[6]) - 0x56 / 255) < 0.01,
+      ),
+    );
+    expect(brandColorRectFound).toBe(false);
+  });
+
+  it('embeds the logo image when logoUrl is set and the fetch succeeds', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+    const pngBuffer = Buffer.from(TEST_LOGO_PNG_BASE64, 'base64');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (key: string) =>
+            key.toLowerCase() === 'content-type'
+              ? 'image/png'
+              : key.toLowerCase() === 'content-length'
+                ? String(pngBuffer.length)
+                : null,
+        },
+        arrayBuffer: async () =>
+          pngBuffer.buffer.slice(pngBuffer.byteOffset, pngBuffer.byteOffset + pngBuffer.byteLength),
+      }),
+    );
+
+    const branding = makeBranding({ logoUrl: 'https://example.com/logo.png' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    // An embedded image produces an XObject of Subtype /Image in the PDF's object graph.
+    expect(buffer.toString('latin1')).toContain('/Subtype /Image');
+  });
+
+  it('falls back to a text-only title when the logo fetch fails, without failing the export', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
+
+    const branding = makeBranding({ logoUrl: 'https://example.com/logo.png' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
+    const rendered = extractRenderedText(buffer);
+    expect(rendered).toContain('Accounts');
+  });
+
+  it('falls back to a text-only title when the logo URL is unsafe (SSRF-blocked)', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([
+      { address: '127.0.0.1', family: 4 },
+    ] as never);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const branding = makeBranding({ logoUrl: 'https://evil.internal/logo.png' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
+  });
+
+  it('falls back to a text-only title when the logo content-type is unsupported', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (key: string) => (key.toLowerCase() === 'content-type' ? 'image/svg+xml' : null),
+        },
+        arrayBuffer: async () => new ArrayBuffer(10),
+      }),
+    );
+
+    const branding = makeBranding({ logoUrl: 'https://example.com/logo.svg' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
+  });
+
+  it('uses the Times-Roman standard font when fontFamily maps to a serif brand font (e.g. pt-serif)', async () => {
+    const branding = makeBranding({ fontFamily: 'pt-serif' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+    expect(buffer.toString('latin1')).toContain('/Times-Roman');
+    expect(buffer.toString('latin1')).not.toContain('/Helvetica\n');
+  });
+
+  it('uses Helvetica (default) when fontFamily maps to a sans-serif brand font (e.g. roboto)', async () => {
+    const branding = makeBranding({ fontFamily: 'roboto' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+    expect(buffer.toString('latin1')).toContain('BaseFont /Helvetica');
+    expect(buffer.toString('latin1')).not.toContain('/Times-Roman');
+  });
+
+  it('uses Helvetica (default) when branding has no fontFamily set', async () => {
+    const branding = makeBranding({ fontFamily: null });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+    expect(buffer.toString('latin1')).toContain('BaseFont /Helvetica');
+    expect(buffer.toString('latin1')).not.toContain('/Times-Roman');
+  });
+
+  it('applies no logo, company name, or accent color when branding is null (unchanged default output)', async () => {
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      null,
+    );
+    expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
+    const rendered = extractRenderedText(buffer);
+    expect(rendered).toContain('Accounts');
   });
 });
 

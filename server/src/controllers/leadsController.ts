@@ -30,6 +30,7 @@ import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema
 import { findUserById } from '../services/userService.js';
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listNotes } from '../services/noteService.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -204,14 +205,19 @@ export async function exportLeadPdfHandler(req: Request, res: Response): Promise
     `Updated: ${formatExportDate(lead.updated_at)}`,
   ];
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename(`lead-${id}`));
-  renderPdfDocument(res, {
-    title: `Lead: ${lead.first_name} ${lead.last_name ?? ''}`.trim(),
-    sections: [
-      { heading: 'Overview', lines: overviewLines },
-      buildNotesTableSection(notesPage.data),
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: `Lead: ${lead.first_name} ${lead.last_name ?? ''}`.trim(),
+      sections: [
+        { heading: 'Overview', lines: overviewLines },
+        buildNotesTableSection(notesPage.data),
+      ],
+    },
+    branding,
+  );
 }
 
 /** Base CSV/PDF column headers for the leads list export, in display order */
@@ -314,16 +320,21 @@ export async function exportLeadsPdfHandler(req: Request, res: Response): Promis
   const columns: PdfTableColumn[] = LEAD_EXPORT_HEADERS.map((label) => ({ key: label, label }));
   const rows: PdfTableRow[] = leads.map(toLeadExportRow);
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('leads'));
-  renderPdfDocument(res, {
-    title: 'Leads',
-    sections: [
-      {
-        heading: 'Leads',
-        table: { columns, rows, emptyMessage: 'No leads match the current filters.' },
-      },
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: 'Leads',
+      sections: [
+        {
+          heading: 'Leads',
+          table: { columns, rows, emptyMessage: 'No leads match the current filters.' },
+        },
+      ],
+    },
+    branding,
+  );
 }
 
 /**
