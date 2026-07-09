@@ -6,11 +6,32 @@
 
 import PDFDocument from 'pdfkit';
 import type { Response } from 'express';
+import { fileURLToPath } from 'url';
+import { resolve, dirname } from 'path';
 import { formatExportDate } from '../utils/csvUtils.js';
 import type { NoteResponse } from '@minicrm/shared/schemas/noteSchema.js';
 
 /** Max notes rendered in a single-record detail PDF (MINCRM-650) */
 export const DETAIL_PDF_NOTES_LIMIT = 50;
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Fallback font for non-Latin (CJK) glyphs — pdfkit's built-in Standard 14 fonts
+ * (Helvetica etc.) have no glyph coverage for Chinese/Japanese/Korean scripts and
+ * silently drop those glyphs, producing mojibake. See assets/fonts/README.md for
+ * provenance/regeneration instructions. (MINCRM-654)
+ */
+const CJK_FALLBACK_FONT_PATH = resolve(__dirname, '../assets/fonts/NotoSansCJK-Regular.otf');
+const CJK_FALLBACK_FONT_NAME = 'NotoSansCJK';
+
+/** Matches any codepoint outside Basic Latin / Latin-1 that the base Helvetica font can't render. */
+const NON_LATIN_PATTERN = /[　-〿぀-ヿ㐀-䶿一-鿿가-힣豈-﫿＀-￯]/;
+
+/** True when `text` contains at least one character requiring the CJK fallback font. */
+function requiresCjkFallback(text: string): boolean {
+  return NON_LATIN_PATTERN.test(text);
+}
 
 const DOCUMENT_MARGIN = 50;
 const TITLE_FONT_SIZE = 18;
@@ -20,8 +41,33 @@ const TABLE_HEADER_FONT_SIZE = 10;
 const TABLE_ROW_FONT_SIZE = 9;
 const TABLE_ROW_LINE_GAP = 4;
 const TABLE_HEADER_ROW_GAP = 8;
+/**
+ * Column count above which `lowPriority` columns are dropped from PDF rendering —
+ * beyond this many columns, equal-weighted widths become too narrow to render
+ * most header labels on one line regardless of the height-calculation fix.
+ * (MINCRM-654)
+ */
+const WIDE_TABLE_COLUMN_THRESHOLD = 10;
 const EMPTY_STATE_COLOR = 'gray';
 const DEFAULT_TEXT_COLOR = 'black';
+
+/**
+ * Registers the bundled CJK fallback font under two aliases so callers can select
+ * either the "plain" or "bold" weight — the font file only has one weight, but
+ * registering it twice avoids special-casing bold/non-bold at every call site.
+ */
+function registerCjkFallbackFont(doc: PDFKit.PDFDocument): void {
+  doc.registerFont(CJK_FALLBACK_FONT_NAME, CJK_FALLBACK_FONT_PATH);
+  doc.registerFont(`${CJK_FALLBACK_FONT_NAME}-Bold`, CJK_FALLBACK_FONT_PATH);
+}
+
+/** Picks the correct registered font name for `text` given the desired Latin weight. */
+function fontForText(text: string, bold: boolean): string {
+  if (requiresCjkFallback(text)) {
+    return bold ? `${CJK_FALLBACK_FONT_NAME}-Bold` : CJK_FALLBACK_FONT_NAME;
+  }
+  return bold ? 'Helvetica-Bold' : 'Helvetica';
+}
 
 export type PdfTableCell = string | number | Date | null | undefined;
 export type PdfTableRow = Record<string, PdfTableCell>;
@@ -33,6 +79,14 @@ export interface PdfTableColumn {
   label: string;
   /** Relative width weight; columns share page width proportionally to their weight */
   width?: number;
+  /**
+   * Marks a column as safe to drop from the PDF rendering (never CSV) when the
+   * table has more columns than fit legibly on one page. Use for columns that
+   * are useful in CSV/spreadsheet form but low-value in a printed table, e.g.
+   * social profile URLs. Has no effect below WIDE_TABLE_COLUMN_THRESHOLD.
+   * (MINCRM-654)
+   */
+  lowPriority?: boolean;
 }
 
 export interface PdfSection {
@@ -134,7 +188,8 @@ function renderTextLines(doc: PDFKit.PDFDocument, lines: string[], emptyMessage:
     return;
   }
   for (const line of lines) {
-    doc.fontSize(BODY_FONT_SIZE).text(line);
+    doc.fontSize(BODY_FONT_SIZE).font(fontForText(line, false)).text(line);
+    doc.font('Helvetica');
     doc.moveDown(0.3);
   }
 }
@@ -160,14 +215,27 @@ function renderTableHeaderRow(
   left: number,
 ): number {
   const startY = doc.y;
-  doc.fontSize(TABLE_HEADER_FONT_SIZE).font('Helvetica-Bold');
+  doc.fontSize(TABLE_HEADER_FONT_SIZE);
+
+  // Measure each column's actual wrapped height before drawing anything, mirroring
+  // renderTable()'s data-row approach — a header label that wraps to 2+ lines must
+  // not be assumed to fit in a single currentLineHeight(). (MINCRM-654)
+  const headerHeight = Math.max(
+    ...columns.map((col, i) => {
+      doc.font(fontForText(col.label, true));
+      return doc.heightOfString(col.label, { width: widths[i] });
+    }),
+    doc.currentLineHeight(),
+  );
+
   let x = left;
   for (let i = 0; i < columns.length; i++) {
+    doc.font(fontForText(columns[i].label, true));
     doc.text(columns[i].label, x, startY, { width: widths[i] });
     x += widths[i];
   }
   doc.font('Helvetica');
-  return startY + doc.currentLineHeight() + TABLE_HEADER_ROW_GAP;
+  return startY + headerHeight + TABLE_HEADER_ROW_GAP;
 }
 
 function renderTableDataRow(
@@ -181,9 +249,12 @@ function renderTableDataRow(
 ): number {
   let x = left;
   for (let i = 0; i < columns.length; i++) {
-    doc.text(cellText(row[columns[i].key]), x, y, { width: widths[i] });
+    const text = cellText(row[columns[i].key]);
+    doc.font(fontForText(text, false));
+    doc.text(text, x, y, { width: widths[i] });
     x += widths[i];
   }
+  doc.font('Helvetica');
   return y + rowHeight + TABLE_ROW_LINE_GAP;
 }
 
@@ -193,7 +264,7 @@ function renderTableDataRow(
  */
 function renderTable(
   doc: PDFKit.PDFDocument,
-  columns: PdfTableColumn[],
+  allColumns: PdfTableColumn[],
   rows: PdfTableRow[],
   emptyMessage: string,
 ): void {
@@ -206,6 +277,15 @@ function renderTable(
     return;
   }
 
+  // Drop low-value columns (e.g. secondary social URLs) once the table is too wide
+  // to render legibly — CSV export is unaffected since it never calls renderTable().
+  // Only drop as many as needed to get under the threshold, preferring to keep
+  // columns when dropping all lowPriority ones still wouldn't help. (MINCRM-654)
+  const columns =
+    allColumns.length > WIDE_TABLE_COLUMN_THRESHOLD
+      ? allColumns.filter((col) => !col.lowPriority)
+      : allColumns;
+
   const left = doc.page.margins.left;
   const tableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const widths = columnWidths(columns, tableWidth);
@@ -216,12 +296,21 @@ function renderTable(
   for (const row of rows) {
     // Row text renders at TABLE_ROW_FONT_SIZE — set it before measuring so the
     // overflow estimate matches what renderTableDataRow actually lays out
-    // (renderTableHeaderRow leaves fontSize at TABLE_HEADER_FONT_SIZE).
+    // (renderTableHeaderRow leaves fontSize at TABLE_HEADER_FONT_SIZE). Font must
+    // also be set per-cell before measuring: the CJK fallback font has different
+    // glyph metrics than Helvetica, so measuring with the wrong font understates
+    // the height of rows containing non-Latin text, which is what let row-height
+    // drift accumulate down the page. (MINCRM-654)
     doc.fontSize(TABLE_ROW_FONT_SIZE);
     const rowHeight = Math.max(
-      ...columns.map((col, i) => doc.heightOfString(cellText(row[col.key]), { width: widths[i] })),
+      ...columns.map((col, i) => {
+        const text = cellText(row[col.key]);
+        doc.font(fontForText(text, false));
+        return doc.heightOfString(text, { width: widths[i] });
+      }),
       doc.currentLineHeight(),
     );
+    doc.font('Helvetica');
     if (y + rowHeight > maxY) {
       doc.addPage();
       y = renderTableHeaderRow(doc, columns, widths, left);
@@ -240,12 +329,21 @@ function renderTable(
 export function renderPdfDocument(res: Response, spec: PdfDocumentSpec): void {
   const doc = new PDFDocument({ margin: DOCUMENT_MARGIN, bufferPages: true });
   doc.pipe(res);
+  registerCjkFallbackFont(doc);
 
-  doc.fontSize(TITLE_FONT_SIZE).text(spec.title, { align: 'left' });
+  doc
+    .fontSize(TITLE_FONT_SIZE)
+    .font(fontForText(spec.title, false))
+    .text(spec.title, { align: 'left' });
+  doc.font('Helvetica');
   doc.moveDown();
 
   for (const section of spec.sections) {
-    doc.fontSize(SECTION_HEADING_FONT_SIZE).text(section.heading);
+    doc
+      .fontSize(SECTION_HEADING_FONT_SIZE)
+      .font(fontForText(section.heading, false))
+      .text(section.heading);
+    doc.font('Helvetica');
     doc.moveDown(0.5);
 
     if (section.table) {

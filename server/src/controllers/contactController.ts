@@ -458,11 +458,18 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
  *
  * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
  */
+/** PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed table (MINCRM-654) */
+const CONTACT_PDF_LOW_PRIORITY_COLUMNS = new Set(['LinkedIn URL', 'Twitter/X URL']);
+
 export async function exportContactsPdfHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveContactExportData(req, res);
   if (!data) return;
 
-  const columns: PdfTableColumn[] = data.headers.map((label) => ({ key: label, label }));
+  const columns: PdfTableColumn[] = data.headers.map((label) => ({
+    key: label,
+    label,
+    lowPriority: CONTACT_PDF_LOW_PRIORITY_COLUMNS.has(label),
+  }));
   const rows: PdfTableRow[] = data.rows;
 
   setPdfResponseHeaders(res, pdfFilename('contacts'));
