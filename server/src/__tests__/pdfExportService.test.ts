@@ -223,6 +223,21 @@ function decompressContentStreams(pdfBuffer: Buffer): string[] {
   return streams;
 }
 
+/**
+ * Extracts the page dimensions from a PDF's /MediaBox entries — pdfkit emits
+ * `MediaBox [0 0 <width> <height>]` per page, with width > height for landscape
+ * and width < height for portrait. Used to assert orientation without depending
+ * on any pdfkit internals. (follow-up)
+ */
+function extractMediaBoxDimensions(pdfBuffer: Buffer): Array<{ width: number; height: number }> {
+  const latin1 = pdfBuffer.toString('latin1');
+  const pattern = /MediaBox\s*\[\s*[\d.-]+\s+[\d.-]+\s+([\d.-]+)\s+([\d.-]+)\s*\]/g;
+  return [...latin1.matchAll(pattern)].map((m) => ({
+    width: Number(m[1]),
+    height: Number(m[2]),
+  }));
+}
+
 describe('pdfFilename', () => {
   it('produces minicrm-<entity>-YYYY-MM-DD.pdf', () => {
     const filename = pdfFilename('deals');
@@ -447,6 +462,96 @@ describe('renderPdfDocument', () => {
     });
     const narrowRendered = extractRenderedText(narrowBuffer);
     expect(narrowRendered).toContain('NarrowLabel9');
+  });
+
+  it('switches the whole document to landscape when any table exceeds the wide-table threshold (follow-up)', async () => {
+    const wideColumns = Array.from({ length: 12 }, (_, i) => ({
+      key: `col${i}`,
+      label: `Col${i}`,
+    }));
+    const row = Object.fromEntries(wideColumns.map((c) => [c.key, `v${c.key}`]));
+
+    const buffer = await renderToBuffer({
+      title: 'Wide Table Report',
+      sections: [
+        { heading: 'Wide', table: { columns: wideColumns, rows: [row], emptyMessage: 'x' } },
+      ],
+    });
+
+    const pages = extractMediaBoxDimensions(buffer);
+    expect(pages.length).toBeGreaterThan(0);
+    for (const page of pages) {
+      expect(page.width).toBeGreaterThan(page.height);
+    }
+  });
+
+  it('keeps portrait orientation when no table exceeds the wide-table threshold (follow-up)', async () => {
+    const narrowColumns = Array.from({ length: 5 }, (_, i) => ({
+      key: `c${i}`,
+      label: `C${i}`,
+    }));
+    const row = Object.fromEntries(narrowColumns.map((c) => [c.key, `v${c.key}`]));
+
+    const buffer = await renderToBuffer({
+      title: 'Narrow Table Report',
+      sections: [
+        { heading: 'Narrow', table: { columns: narrowColumns, rows: [row], emptyMessage: 'x' } },
+      ],
+    });
+
+    const pages = extractMediaBoxDimensions(buffer);
+    expect(pages.length).toBeGreaterThan(0);
+    for (const page of pages) {
+      expect(page.height).toBeGreaterThan(page.width);
+    }
+  });
+
+  it('shrinks header/row font size for a table exceeding the wide-table threshold, even after landscape (follow-up)', async () => {
+    const wideColumns = Array.from({ length: 12 }, (_, i) => ({
+      key: `col${i}`,
+      label: `Col${i}`,
+    }));
+    const row = Object.fromEntries(wideColumns.map((c) => [c.key, `v${c.key}`]));
+
+    const buffer = await renderToBuffer({
+      title: 'Wide Table Report',
+      sections: [
+        { heading: 'Wide', table: { columns: wideColumns, rows: [row], emptyMessage: 'x' } },
+      ],
+    });
+
+    const placements = extractTextPlacements(buffer);
+    const headerSizes = new Set(
+      placements.filter((p) => p.text.startsWith('Col')).map((p) => p.size),
+    );
+    const dataSizes = new Set(
+      placements.filter((p) => p.text.startsWith('vcol')).map((p) => p.size),
+    );
+    expect(headerSizes).toEqual(new Set([8.5]));
+    expect(dataSizes).toEqual(new Set([8]));
+  });
+
+  it('uses the standard (non-wide) font sizes for a table at/under the threshold (follow-up)', async () => {
+    const narrowColumns = Array.from({ length: 5 }, (_, i) => ({
+      key: `c${i}`,
+      label: `Col${i}`,
+    }));
+    const row = Object.fromEntries(narrowColumns.map((c) => [c.key, `v${c.key}`]));
+
+    const buffer = await renderToBuffer({
+      title: 'Narrow Table Report',
+      sections: [
+        { heading: 'Narrow', table: { columns: narrowColumns, rows: [row], emptyMessage: 'x' } },
+      ],
+    });
+
+    const placements = extractTextPlacements(buffer);
+    const headerSizes = new Set(
+      placements.filter((p) => p.text.startsWith('Col')).map((p) => p.size),
+    );
+    const dataSizes = new Set(placements.filter((p) => p.text.startsWith('vc')).map((p) => p.size));
+    expect(headerSizes).toEqual(new Set([10]));
+    expect(dataSizes).toEqual(new Set([9]));
   });
 
   it('right-aligns a column marked align: "right", leaving unmarked columns left-aligned (MINCRM-655)', async () => {

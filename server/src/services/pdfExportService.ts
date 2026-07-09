@@ -42,13 +42,21 @@ const SECTION_HEADING_FONT_SIZE = 14;
 const BODY_FONT_SIZE = 10;
 const TABLE_HEADER_FONT_SIZE = 10;
 const TABLE_ROW_FONT_SIZE = 9;
+/**
+ * Reduced header/row font sizes used once a table exceeds WIDE_TABLE_COLUMN_THRESHOLD
+ * — even after dropping lowPriority columns and switching to landscape, very wide
+ * tables (e.g. Contacts) still benefit from a smaller font to reduce wrapping. (follow-up)
+ */
+const TABLE_HEADER_FONT_SIZE_WIDE = 8.5;
+const TABLE_ROW_FONT_SIZE_WIDE = 8;
 const TABLE_ROW_LINE_GAP = 4;
 const TABLE_HEADER_ROW_GAP = 8;
 /**
- * Column count above which `lowPriority` columns are dropped from PDF rendering —
- * beyond this many columns, equal-weighted widths become too narrow to render
- * most header labels on one line regardless of the height-calculation fix.
- * (MINCRM-654)
+ * Column count above which `lowPriority` columns are dropped from PDF rendering,
+ * the document switches to landscape orientation, and header/row font sizes shrink
+ * to TABLE_*_FONT_SIZE_WIDE — beyond this many columns, equal-weighted widths
+ * become too narrow to render most header labels on one line regardless of the
+ * height-calculation fix. (MINCRM-654, follow-up)
  */
 const WIDE_TABLE_COLUMN_THRESHOLD = 10;
 const EMPTY_STATE_COLOR = 'gray';
@@ -220,6 +228,20 @@ export interface PdfDocumentSpec {
   sections: PdfSection[];
 }
 
+/**
+ * True if any table section's raw column count (before `lowPriority` dropping)
+ * exceeds WIDE_TABLE_COLUMN_THRESHOLD. Checked before the PDFDocument is
+ * constructed, since layout ('portrait' | 'landscape') is a constructor option —
+ * the whole document switches to landscape if any section needs it, rather than
+ * mixing orientation within one document, which pdfkit doesn't natively support.
+ * (follow-up)
+ */
+function specHasWideTable(spec: PdfDocumentSpec): boolean {
+  return spec.sections.some(
+    (section) => (section.table?.columns.length ?? 0) > WIDE_TABLE_COLUMN_THRESHOLD,
+  );
+}
+
 /** Minimal contact shape needed to render a "Linked Contacts" table (MINCRM-650) */
 export interface PdfContactRow {
   first_name: string;
@@ -343,9 +365,10 @@ function renderTableHeaderRow(
   widths: number[],
   left: number,
   style: RenderStyle,
+  headerFontSize: number,
 ): number {
   const startY = doc.y;
-  doc.fontSize(TABLE_HEADER_FONT_SIZE);
+  doc.fontSize(headerFontSize);
 
   // Measure each column's actual wrapped height before drawing anything, mirroring
   // renderTable()'s data-row approach — a header label that wraps to 2+ lines must
@@ -452,26 +475,33 @@ function renderTable(
       ? allColumns.filter((col) => !col.lowPriority)
       : allColumns;
 
+  // Even after dropping lowPriority columns, a table can still be wide enough that
+  // the standard font sizes cause wrapping — shrink to the WIDE variants based on
+  // the column count actually being rendered, not the pre-drop count. (follow-up)
+  const isWide = columns.length > WIDE_TABLE_COLUMN_THRESHOLD;
+  const headerFontSize = isWide ? TABLE_HEADER_FONT_SIZE_WIDE : TABLE_HEADER_FONT_SIZE;
+  const rowFontSize = isWide ? TABLE_ROW_FONT_SIZE_WIDE : TABLE_ROW_FONT_SIZE;
+
   const left = doc.page.margins.left;
   const tableWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
   const widths = columnWidths(columns, tableWidth);
   const maxY = doc.page.maxY();
 
-  let y = renderTableHeaderRow(doc, columns, widths, left, style);
+  let y = renderTableHeaderRow(doc, columns, widths, left, style, headerFontSize);
 
   // Zebra-stripe by absolute row index (not reset per page) so the alternating
   // pattern stays consistent across a page break instead of every new page
   // starting back on the same stripe phase. (MINCRM-655)
   let rowIndex = 0;
   for (const row of rows) {
-    // Row text renders at TABLE_ROW_FONT_SIZE — set it before measuring so the
-    // overflow estimate matches what renderTableDataRow actually lays out
-    // (renderTableHeaderRow leaves fontSize at TABLE_HEADER_FONT_SIZE). Font must
-    // also be set per-cell before measuring: the CJK fallback font has different
-    // glyph metrics than Helvetica, so measuring with the wrong font understates
-    // the height of rows containing non-Latin text, which is what let row-height
+    // Row text renders at rowFontSize — set it before measuring so the overflow
+    // estimate matches what renderTableDataRow actually lays out
+    // (renderTableHeaderRow leaves fontSize at headerFontSize). Font must also be
+    // set per-cell before measuring: the CJK fallback font has different glyph
+    // metrics than Helvetica, so measuring with the wrong font understates the
+    // height of rows containing non-Latin text, which is what let row-height
     // drift accumulate down the page. (MINCRM-654)
-    doc.fontSize(TABLE_ROW_FONT_SIZE);
+    doc.fontSize(rowFontSize);
     const rowHeight = Math.max(
       ...columns.map((col, i) => {
         const text = cellText(row[col.key]);
@@ -483,8 +513,8 @@ function renderTable(
     doc.font(standardFontName(style.baseFontFamily, false));
     if (y + rowHeight > maxY) {
       doc.addPage();
-      y = renderTableHeaderRow(doc, columns, widths, left, style);
-      doc.fontSize(TABLE_ROW_FONT_SIZE);
+      y = renderTableHeaderRow(doc, columns, widths, left, style, headerFontSize);
+      doc.fontSize(rowFontSize);
     }
     y = renderTableDataRow(
       doc,
@@ -628,7 +658,12 @@ export async function renderPdfDocument(
   // before branding support was added. (MINCRM-656)
   const logoBuffer = branding?.logoUrl ? await fetchLogoBuffer(branding.logoUrl) : null;
 
-  const doc = new PDFDocument({ margin: DOCUMENT_MARGIN, bufferPages: true });
+  // Landscape roughly doubles usable table width (~692pt vs ~512pt at this
+  // margin) — switches the WHOLE document, not just the wide table's pages,
+  // since pdfkit doesn't support mixed orientation within one document and a
+  // consistent orientation is easier to read/print. (follow-up)
+  const layout = specHasWideTable(spec) ? 'landscape' : 'portrait';
+  const doc = new PDFDocument({ margin: DOCUMENT_MARGIN, bufferPages: true, layout });
   doc.pipe(res);
   registerCjkFallbackFont(doc);
 

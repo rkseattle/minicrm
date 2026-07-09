@@ -459,8 +459,22 @@ export async function exportContactsHandler(req: Request, res: Response): Promis
  *
  * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
  */
-/** PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed table (MINCRM-654) */
-const CONTACT_PDF_LOW_PRIORITY_COLUMNS = new Set(['LinkedIn URL', 'Twitter/X URL']);
+/**
+ * PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed
+ * table, dropped once Contacts' 18-column export exceeds WIDE_TABLE_COLUMN_THRESHOLD.
+ * (MINCRM-654, follow-up: Contacts is still unreadable in portrait even after the
+ * original 2-column drop — combined with landscape orientation and the reduced
+ * wide-table font size, dropping these 7 gets the printed table down to 11 columns.)
+ */
+const CONTACT_PDF_LOW_PRIORITY_COLUMNS = new Set([
+  'LinkedIn URL',
+  'Twitter/X URL',
+  'Address Line 2',
+  'Department',
+  'Lead Source Detail',
+  'Created',
+  'Updated',
+]);
 
 export async function exportContactsPdfHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveContactExportData(req, res);
