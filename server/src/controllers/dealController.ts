@@ -502,6 +502,13 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
 /** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
 const DEAL_PDF_NUMERIC_COLUMNS = new Set(['Value']);
 
+/**
+ * PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed
+ * table, dropped once the 11-base-column export (plus any custom fields) exceeds
+ * WIDE_TABLE_COLUMN_THRESHOLD. CSV export is unaffected. (follow-up)
+ */
+const DEAL_PDF_LOW_PRIORITY_COLUMNS = new Set(['Loss Reason', 'Created', 'Updated']);
+
 export async function exportDealsPdfHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveDealExportData(req, res);
   if (!data) return;
@@ -510,6 +517,7 @@ export async function exportDealsPdfHandler(req: Request, res: Response): Promis
     key: label,
     label,
     align: DEAL_PDF_NUMERIC_COLUMNS.has(label) ? 'right' : undefined,
+    lowPriority: DEAL_PDF_LOW_PRIORITY_COLUMNS.has(label),
   }));
   const rows: PdfTableRow[] = data.rows;
 
