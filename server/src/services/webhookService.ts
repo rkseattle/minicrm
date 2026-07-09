@@ -157,6 +157,12 @@ async function attemptDelivery(url: string, rawBody: string, signature: string):
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
   try {
+    // redirect: 'manual' — fetch() follows redirects by default, which would let a
+    // subscription's endpoint 3xx to a blocked address (e.g. cloud metadata) and
+    // bypass validateWebhookUrl()'s check of the original hostname entirely. A
+    // redirect response is surfaced as its raw 3xx status rather than followed, so
+    // callers see it as a non-2xx delivery outcome (retried/failed like any other
+    // non-2xx), never as a silently-redirected request.
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -165,6 +171,7 @@ async function attemptDelivery(url: string, rawBody: string, signature: string):
       },
       body: rawBody,
       signal: controller.signal,
+      redirect: 'manual',
     });
     return response.status;
   } finally {

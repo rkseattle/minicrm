@@ -440,10 +440,13 @@ function renderTable(
     return;
   }
 
-  // Drop low-value columns (e.g. secondary social URLs) once the table is too wide
-  // to render legibly — CSV export is unaffected since it never calls renderTable().
-  // Only drop as many as needed to get under the threshold, preferring to keep
-  // columns when dropping all lowPriority ones still wouldn't help. (MINCRM-654)
+  // Drop every lowPriority column (e.g. secondary social URLs) once the table
+  // exceeds the wide-table threshold — CSV export is unaffected since it never
+  // calls renderTable(). This is an all-or-nothing drop, not a graduated one: if
+  // dropping every lowPriority column still leaves more than
+  // WIDE_TABLE_COLUMN_THRESHOLD columns, all remaining columns are still rendered
+  // (no further trimming), so very wide tables may still wrap/read as tight as
+  // before for their non-lowPriority columns. (MINCRM-654)
   const columns =
     allColumns.length > WIDE_TABLE_COLUMN_THRESHOLD
       ? allColumns.filter((col) => !col.lowPriority)
@@ -517,9 +520,19 @@ async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
     const timer = setTimeout(() => controller.abort(), LOGO_FETCH_TIMEOUT_MS);
     let response: Awaited<ReturnType<typeof fetch>>;
     try {
-      response = await fetch(logoUrl, { signal: controller.signal });
+      // redirect: 'manual' — fetch() follows redirects by default, which would let
+      // a 3xx response point at a blocked address (e.g. cloud metadata) and bypass
+      // assertUrlIsFetchSafe()'s check of the original hostname entirely. Treating
+      // any redirect as a failure (rather than re-validating and re-fetching the
+      // target) keeps this fetch single-hop and fully covered by the check above.
+      response = await fetch(logoUrl, { signal: controller.signal, redirect: 'manual' });
     } finally {
       clearTimeout(timer);
+    }
+
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      logger.warn(`PDF branding logo fetch was redirected (not followed): ${logoUrl}`);
+      return null;
     }
 
     if (!response.ok) {
@@ -605,15 +618,21 @@ export async function renderPdfDocument(
   spec: PdfDocumentSpec,
   branding: BrandingConfig | null = null,
 ): Promise<void> {
+  // Resolve the logo BEFORE constructing/piping the PDFDocument — once doc.pipe(res)
+  // runs, the response is actively streaming and headers are already committed by
+  // the caller's setPdfResponseHeaders(). Awaiting a network fetch (up to
+  // LOGO_FETCH_TIMEOUT_MS) after that point would let a client disconnect or a
+  // downstream error try to write a JSON error response after headers are sent,
+  // producing ERR_HTTP_HEADERS_SENT instead of a clean failure. Resolving it first
+  // keeps everything from doc.pipe() to doc.end() fully synchronous, as it was
+  // before branding support was added. (MINCRM-656)
+  const logoBuffer = branding?.logoUrl ? await fetchLogoBuffer(branding.logoUrl) : null;
+
   const doc = new PDFDocument({ margin: DOCUMENT_MARGIN, bufferPages: true });
   doc.pipe(res);
   registerCjkFallbackFont(doc);
 
   const style = resolveRenderStyle(branding);
-
-  // Logo fetch happens before any drawing so a slow/failed fetch doesn't leave a
-  // partially-rendered document — the whole title area is laid out atomically.
-  const logoBuffer = branding?.logoUrl ? await fetchLogoBuffer(branding.logoUrl) : null;
 
   const titleText = branding?.companyName ? `${branding.companyName} — ${spec.title}` : spec.title;
 
@@ -659,9 +678,11 @@ export async function renderPdfDocument(
     doc
       .fontSize(SECTION_HEADING_FONT_SIZE)
       .font(fontForText(section.heading, false, style.baseFontFamily))
-      .fillColor(
-        style.accentColor === DEFAULT_ACCENT_COLOR ? DEFAULT_TEXT_COLOR : style.accentColor,
-      )
+      // Branch on whether branding actually configured a color, not on whether the
+      // resolved value happens to equal the default gray — an org whose primaryColor
+      // happens to be the same hex as the default must still get accent-colored
+      // headings, matching the header row shading and title rule elsewhere. (MINCRM-656)
+      .fillColor(branding?.primaryColor ? style.accentColor : DEFAULT_TEXT_COLOR)
       .text(section.heading);
     doc.font(standardFontName(style.baseFontFamily, false));
     doc.fillColor(DEFAULT_TEXT_COLOR);

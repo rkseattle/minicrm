@@ -182,6 +182,30 @@ function extractStrokedLines(
   return lines;
 }
 
+/**
+ * Extracts the fill color (`r g b scn`) most recently set before each text-drawing
+ * `TJ` block, paired with the decoded text — pdfkit emits `.fillColor(color).text(x)`
+ * as `/DeviceRGB cs r g b scn` then the usual `Tm`/`Tf`/`TJ` triplet, with no `re`
+ * rectangle involved (unlike header/zebra-row shading). Only reliable for Standard
+ * 14 fonts, where WinAnsi glyph codes are ASCII-identity. (MINCRM-656)
+ */
+function extractTextFillColors(
+  pdfBuffer: Buffer,
+): Array<{ r: number; g: number; b: number; text: string }> {
+  const results: Array<{ r: number; g: number; b: number; text: string }> = [];
+  for (const content of decompressContentStreams(pdfBuffer)) {
+    const pattern =
+      /\/DeviceRGB cs\s*([\d.]+) ([\d.]+) ([\d.]+) scn\s*(?:q\s*)?[\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ cm\s*BT\s*[\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ Tm\s*\/\S+ [\d.-]+ Tf\s*\[((?:<[0-9a-fA-F]+>\s*-?\d*\s*)+)\] TJ/g;
+    for (const match of content.matchAll(pattern)) {
+      const text = [...match[4].matchAll(/<([0-9a-fA-F]+)>/g)]
+        .map((hex) => Buffer.from(hex[1], 'hex').toString('latin1'))
+        .join('');
+      results.push({ r: Number(match[1]), g: Number(match[2]), b: Number(match[3]), text });
+    }
+  }
+  return results;
+}
+
 /** Decompresses every FlateDecode stream...endstream block in a raw PDF buffer. */
 function decompressContentStreams(pdfBuffer: Buffer): string[] {
   const latin1 = pdfBuffer.toString('latin1');
@@ -672,6 +696,26 @@ describe('renderPdfDocument branding (MINCRM-656)', () => {
     expect(brandColorRectFound).toBe(false);
   });
 
+  it('still colors section headings with the accent color when primaryColor happens to equal the default gray', async () => {
+    // Regression: the section-heading color must branch on whether branding
+    // configured a primaryColor, not on whether the resolved accent color's value
+    // happens to equal the unbranded default gray — otherwise an org whose brand
+    // color coincidentally matches the default renders plain black headings while
+    // the header row shading and title rule (which don't have this bug) still use
+    // the accent color, producing inconsistent styling within the same PDF.
+    const branding = makeBranding({ primaryColor: '#e5e7eb', primaryColorText: '#1f2937' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'MyHeading', lines: ['Row 1'] }] },
+      branding,
+    );
+    const fillColors = extractTextFillColors(buffer);
+    const heading = fillColors.find((f) => f.text === 'MyHeading');
+    expect(heading).toBeDefined();
+    expect(heading!.r).toBeCloseTo(0xe5 / 255, 2);
+    expect(heading!.g).toBeCloseTo(0xe7 / 255, 2);
+    expect(heading!.b).toBeCloseTo(0xeb / 255, 2);
+  });
+
   it('embeds the logo image when logoUrl is set and the fetch succeeds', async () => {
     vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
     const pngBuffer = Buffer.from(TEST_LOGO_PNG_BASE64, 'base64');
@@ -759,6 +803,33 @@ describe('renderPdfDocument branding (MINCRM-656)', () => {
     );
 
     expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
+  });
+
+  it('does not follow a redirect from the logo host, even to an otherwise-safe address (SSRF via redirect)', async () => {
+    // fetch() follows redirects by default — without redirect: 'manual', a logo
+    // host could 302 to a blocked address (e.g. cloud metadata) and bypass
+    // assertUrlIsFetchSafe()'s check of the original hostname entirely.
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 302,
+      type: 'basic',
+      headers: { get: () => null },
+      arrayBuffer: async () => new ArrayBuffer(0),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const branding = makeBranding({ logoUrl: 'https://example.com/logo.png' });
+    const buffer = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'Accounts', lines: ['Row 1'] }] },
+      branding,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://example.com/logo.png',
+      expect.objectContaining({ redirect: 'manual' }),
+    );
     expect(buffer.toString('latin1')).not.toContain('/Subtype /Image');
   });
 

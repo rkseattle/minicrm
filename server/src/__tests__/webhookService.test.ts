@@ -442,6 +442,44 @@ describe('dispatchWebhookEvent', () => {
 
     server.close();
   }, 10_000);
+
+  it('records a redirect response as its raw 3xx status rather than following it (SSRF via redirect)', async () => {
+    // fetch() follows redirects by default — without redirect: 'manual' in
+    // attemptDelivery(), a subscription's endpoint could 302 to a blocked address
+    // and bypass validateWebhookUrl()'s check of the original hostname entirely.
+    let redirectTargetHit = false;
+    const redirectTarget = http.createServer((_req, res) => {
+      redirectTargetHit = true;
+      res.writeHead(200);
+      res.end();
+    });
+    await new Promise<void>((resolve) => redirectTarget.listen(0, '127.0.0.1', resolve));
+    const { port: targetPort } = redirectTarget.address() as AddressInfo;
+
+    const redirectingServer = http.createServer((_req, res) => {
+      res.writeHead(302, { Location: `http://127.0.0.1:${targetPort}/hook` });
+      res.end();
+    });
+    await new Promise<void>((resolve) => redirectingServer.listen(0, '127.0.0.1', resolve));
+    const { port } = redirectingServer.address() as AddressInfo;
+    const url = `http://127.0.0.1:${port}/hook`;
+
+    const { subscription } = await createWebhookSubscription(
+      { url, events: ['contact.created'], created_by: adminId },
+      adminActor,
+    );
+
+    dispatchWebhookEvent('contact.created', { id: 'test-contact-id', email: 'test@example.com' });
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+
+    const logs = await listWebhookDeliveryLogs(subscription.id, { page: 1, limit: 10 });
+    expect(logs.total).toBeGreaterThan(0);
+    expect(logs.data[0].status_code).toBe(302);
+    expect(redirectTargetHit).toBe(false);
+
+    redirectingServer.close();
+    redirectTarget.close();
+  }, 10_000);
 });
 
 // ── FK ON DELETE SET NULL — user deletion preserves webhook history (MINCRM-505) ──
