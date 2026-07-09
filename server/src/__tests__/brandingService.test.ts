@@ -13,11 +13,16 @@ import {
   setBranding,
   deleteBranding,
   deriveTextColor,
+  __clearCacheForTest,
 } from '../services/brandingService.js';
 import pool from '../db.js';
 
 beforeEach(async () => {
   await pool.query(`DELETE FROM system_settings WHERE key = 'branding'`);
+  // Tests truncate system_settings directly via SQL (not through deleteBranding()),
+  // which wouldn't invalidate getBranding()'s in-memory TTL cache — clear it
+  // explicitly so each test observes the DB state it just set up. (MINCRM-656)
+  __clearCacheForTest();
 });
 
 afterAll(async () => {
@@ -66,6 +71,36 @@ describe('getBranding', () => {
     await pool.query(
       `INSERT INTO system_settings (key, value, updated_at) VALUES ('branding', 'not-json', now())`,
     );
+    const result = await getBranding();
+    expect(result).toBeNull();
+  });
+
+  it('serves a cached value on a subsequent call, not re-reading the DB (MINCRM-656)', async () => {
+    await setBranding({ companyName: 'Cached Co' });
+    const first = await getBranding();
+    expect(first?.companyName).toBe('Cached Co');
+
+    // Bypass setBranding()'s cache invalidation by writing directly — a cached
+    // getBranding() must NOT observe this until the cache is cleared/expires.
+    await pool.query(`UPDATE system_settings SET value = $1 WHERE key = 'branding'`, [
+      JSON.stringify({ ...first, companyName: 'Uncached Write' }),
+    ]);
+    const second = await getBranding();
+    expect(second?.companyName).toBe('Cached Co');
+  });
+
+  it('reflects a write immediately after setBranding() invalidates the cache', async () => {
+    await setBranding({ companyName: 'First' });
+    await getBranding(); // populate the cache
+    await setBranding({ companyName: 'Second' });
+    const result = await getBranding();
+    expect(result?.companyName).toBe('Second');
+  });
+
+  it('reflects deleteBranding() immediately by invalidating the cache', async () => {
+    await setBranding({ companyName: 'ToDelete' });
+    await getBranding(); // populate the cache
+    await deleteBranding();
     const result = await getBranding();
     expect(result).toBeNull();
   });

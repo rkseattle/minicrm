@@ -15,6 +15,35 @@ import { SYSTEM_ACTOR, actorIdOrNull } from './auditService.js';
 
 const BRANDING_KEY = 'branding';
 
+// ── Cache ─────────────────────────────────────────────────────────────────────
+// Branding is admin-configured and changes rarely but is read on every PDF export
+// (MINCRM-656) and every page load's web UI fetch — an in-memory TTL cache avoids
+// a system_settings round-trip on each read. Mirrors featureFlagService.ts's cache.
+
+/** TTL for the branding cache in milliseconds. Zero in E2E so DB resets take effect immediately. */
+const CACHE_TTL_MS = process.env['E2E'] === 'true' ? 0 : 60_000;
+
+interface CacheEntry {
+  branding: BrandingConfig | null;
+  expiresAt: number;
+}
+
+let cache: CacheEntry | null = null;
+
+/** Immediately clears the in-memory cache, forcing the next read to hit the DB. */
+function invalidateCache(): void {
+  cache = null;
+}
+
+/**
+ * Exported for test use only — clears the TTL cache so a test's DB mutations
+ * are visible to the next service call without waiting for TTL expiry.
+ * Do not call this from application code.
+ */
+export function __clearCacheForTest(): void {
+  invalidateCache();
+}
+
 /**
  * Computes the relative luminance of an sRGB hex colour.
  * Formula: https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
@@ -61,12 +90,8 @@ export function deriveTextColor(bgHex: string): string {
   return whiteContrast >= darkContrast ? '#ffffff' : '#1f2937';
 }
 
-/**
- * Returns the current branding configuration, or null if none is stored.
- *
- * @returns The stored BrandingConfig, or null.
- */
-export async function getBranding(): Promise<BrandingConfig | null> {
+/** Reads branding directly from system_settings, bypassing the cache. */
+async function getBrandingUncached(): Promise<BrandingConfig | null> {
   const result = await pool.query<{ value: string }>(
     'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
     [BRANDING_KEY],
@@ -83,6 +108,22 @@ export async function getBranding(): Promise<BrandingConfig | null> {
 }
 
 /**
+ * Returns the current branding configuration, or null if none is stored.
+ * Cached for CACHE_TTL_MS — branding is admin-configured and changes rarely,
+ * but is read on every PDF export and web UI page load.
+ *
+ * @returns The stored BrandingConfig, or null.
+ */
+export async function getBranding(): Promise<BrandingConfig | null> {
+  if (cache && cache.expiresAt > Date.now()) {
+    return cache.branding;
+  }
+  const branding = await getBrandingUncached();
+  cache = { branding, expiresAt: Date.now() + CACHE_TTL_MS };
+  return branding;
+}
+
+/**
  * Persists (or merges) a branding configuration update. (MINCRM-356)
  * Merges the incoming fields onto the existing config so partial updates work.
  * Derives `primaryColorText` when `primaryColor` is present.
@@ -94,7 +135,9 @@ export async function setBranding(
   input: SetBrandingInput,
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<BrandingConfig> {
-  const existing = await getBranding();
+  // Uncached — merging a partial update against a stale cached value could silently
+  // resurrect a field an intervening write had already changed.
+  const existing = await getBrandingUncached();
 
   const merged: BrandingConfig = {
     logoUrl: input.logoUrl !== undefined ? input.logoUrl : (existing?.logoUrl ?? null),
@@ -125,6 +168,7 @@ export async function setBranding(
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
     [BRANDING_KEY, JSON.stringify(merged), actorIdOrNull(actor)],
   );
+  invalidateCache();
 
   return merged;
 }
@@ -134,4 +178,5 @@ export async function setBranding(
  */
 export async function deleteBranding(): Promise<void> {
   await pool.query('DELETE FROM system_settings WHERE key = $1', [BRANDING_KEY]);
+  invalidateCache();
 }
