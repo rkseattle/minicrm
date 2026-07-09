@@ -165,7 +165,25 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
           onKeyDown={handleMenuKeyDown}
         >
           {visibleItems.map((item, index) =>
-            item.href !== undefined ? (
+            item.href !== undefined && item.disabled ? (
+              // Disabled link items render as a disabled <button>, not an <a> with a
+              // suppressed href — an anchor remains a real, keyboard-activatable link
+              // regardless of aria-disabled/pointer-events, so a disabled export link
+              // must not be an anchor at all.
+              <button
+                key={item.key}
+                ref={(el) => {
+                  itemRefs.current[index] = el;
+                }}
+                type="button"
+                role="menuitem"
+                data-testid={item.testId}
+                disabled
+                className={[ITEM_BASE_CLASSES, item.className].filter(Boolean).join(' ')}
+              >
+                {item.label}
+              </button>
+            ) : item.href !== undefined ? (
               <a
                 key={item.key}
                 ref={(el) => {
@@ -174,22 +192,9 @@ export function ExportMenu({ label, testId, items, menuLabel }: ExportMenuProps)
                 href={item.href}
                 download
                 role="menuitem"
-                aria-disabled={item.disabled}
                 data-testid={item.testId}
-                className={[
-                  ITEM_BASE_CLASSES,
-                  item.disabled ? 'pointer-events-none' : '',
-                  item.className,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={(event) => {
-                  if (item.disabled) {
-                    event.preventDefault();
-                    return;
-                  }
-                  close(true);
-                }}
+                className={[ITEM_BASE_CLASSES, item.className].filter(Boolean).join(' ')}
+                onClick={() => close(true)}
               >
                 {item.label}
               </a>
