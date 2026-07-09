@@ -1,0 +1,114 @@
+/**
+ * Shared SSRF-prevention helpers for any server-side fetch of an admin/user-supplied
+ * URL (webhook delivery, PDF branding logo fetch, etc.). Resolves the hostname and
+ * checks every returned address against blocked ranges — callers must re-check
+ * immediately before each actual fetch, not just at input-validation time, to
+ * mitigate DNS rebinding.
+ */
+
+import dns from 'dns';
+import ipaddr from 'ipaddr.js';
+
+/**
+ * IPv4 CIDR ranges that must never be reachable via a server-initiated fetch of a
+ * user-supplied URL. Covers: loopback, link-local/cloud metadata, RFC 1918 private ranges.
+ * Using class-specific parseCIDR so match() receives the correct tuple type.
+ */
+const BLOCKED_IPV4_CIDRS: Array<[ipaddr.IPv4, number]> = [
+  ipaddr.IPv4.parseCIDR('127.0.0.0/8'), // loopback
+  ipaddr.IPv4.parseCIDR('169.254.0.0/16'), // link-local / cloud metadata
+  ipaddr.IPv4.parseCIDR('10.0.0.0/8'), // RFC 1918
+  ipaddr.IPv4.parseCIDR('172.16.0.0/12'), // RFC 1918
+  ipaddr.IPv4.parseCIDR('192.168.0.0/16'), // RFC 1918
+];
+
+/**
+ * IPv6 CIDR ranges that must never be reachable via a server-initiated fetch of a
+ * user-supplied URL. Covers: loopback (::1/128) and ULA (fc00::/7).
+ */
+const BLOCKED_IPV6_CIDRS: Array<[ipaddr.IPv6, number]> = [
+  ipaddr.IPv6.parseCIDR('::1/128'), // loopback
+  ipaddr.IPv6.parseCIDR('fc00::/7'), // ULA
+];
+
+/** Reason a URL was rejected by {@link assertUrlIsFetchSafe}. */
+export type UrlSafetyRejectionReason =
+  | 'invalid_url'
+  | 'insecure_protocol'
+  | 'unresolvable_hostname'
+  | 'blocked_address';
+
+/** Thrown when a URL fails SSRF safety checks. `reason` lets callers map to a specific error code. */
+export class UrlNotSafeError extends Error {
+  constructor(
+    public readonly reason: UrlSafetyRejectionReason,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'UrlNotSafeError';
+  }
+}
+
+/**
+ * Validates that a URL is safe to fetch from the server: well-formed, HTTPS in
+ * production, and resolves only to public (non-blocked) IP addresses. Throws
+ * {@link UrlNotSafeError} on any failure — never returns a boolean, so callers
+ * can't accidentally ignore a rejection.
+ *
+ * Call this immediately before every actual fetch (not just once at input-validation
+ * time) — re-resolving right before use mitigates DNS rebinding, where a hostname
+ * could resolve safely at validation time and to a blocked address at fetch time.
+ */
+export async function assertUrlIsFetchSafe(urlString: string): Promise<void> {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    throw new UrlNotSafeError('invalid_url', 'Invalid URL');
+  }
+
+  if (process.env['NODE_ENV'] === 'production' && parsed.protocol !== 'https:') {
+    throw new UrlNotSafeError('insecure_protocol', 'URL must use HTTPS in production');
+  }
+
+  const hostname = parsed.hostname;
+
+  let addresses: dns.LookupAddress[];
+  try {
+    addresses = await dns.promises.lookup(hostname, { all: true });
+  } catch {
+    throw new UrlNotSafeError('unresolvable_hostname', `Unable to resolve hostname: ${hostname}`);
+  }
+
+  for (const { address, family } of addresses) {
+    if (family === 4) {
+      const ip = ipaddr.IPv4.parse(address);
+      for (const cidr of BLOCKED_IPV4_CIDRS) {
+        if (ip.match(cidr)) {
+          throw new UrlNotSafeError(
+            'blocked_address',
+            `URL resolves to a blocked IP address: ${address}`,
+          );
+        }
+      }
+    } else if (family === 6) {
+      try {
+        const ip = ipaddr.IPv6.parse(address);
+        for (const cidr of BLOCKED_IPV6_CIDRS) {
+          if (ip.match(cidr)) {
+            throw new UrlNotSafeError(
+              'blocked_address',
+              `URL resolves to a blocked IP address: ${address}`,
+            );
+          }
+        }
+      } catch {
+        // ipaddr.js may not recognise some IPv6 representations; treat as blocked
+        throw new UrlNotSafeError(
+          'blocked_address',
+          `URL resolves to an unrecognised IPv6 address: ${address}`,
+        );
+      }
+    }
+  }
+}

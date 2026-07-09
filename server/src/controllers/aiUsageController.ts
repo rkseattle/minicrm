@@ -13,6 +13,7 @@ import {
 } from '../services/aiUsageDashboardService.js';
 import type { DateRange } from '../services/aiUsageDashboardService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -185,14 +186,23 @@ export async function exportAiUsagePdfHandler(req: Request, res: Response): Prom
   }));
   const tableRows: PdfTableRow[] = rows;
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('ai-usage'));
-  renderPdfDocument(res, {
-    title: 'AI Usage',
-    sections: [
-      {
-        heading: 'AI Usage',
-        table: { columns, rows: tableRows, emptyMessage: 'No AI usage recorded for this period.' },
-      },
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: 'AI Usage',
+      sections: [
+        {
+          heading: 'AI Usage',
+          table: {
+            columns,
+            rows: tableRows,
+            emptyMessage: 'No AI usage recorded for this period.',
+          },
+        },
+      ],
+    },
+    branding,
+  );
 }

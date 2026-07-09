@@ -12,14 +12,13 @@
  */
 
 import crypto from 'crypto';
-import dns from 'dns';
-import ipaddr from 'ipaddr.js';
 import type { PoolClient } from 'pg';
 import pool from '../db.js';
 import logger from '../logger.js';
 import { encrypt, decrypt } from './cryptoService.js';
 import { writeAuditEntry } from './auditService.js';
 import type { AuditActor } from './auditService.js';
+import { assertUrlIsFetchSafe, UrlNotSafeError } from '../utils/urlSafetyUtils.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
   WebhookEventType,
@@ -51,28 +50,6 @@ const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateWebhookSubscriptionInput> =
 ]);
 
 /**
- * IPv4 CIDR ranges that must never be reachable via webhook delivery.
- * Covers: loopback, link-local/AWS metadata, RFC 1918 private ranges.
- * Using class-specific parseCIDR so match() receives the correct tuple type.
- */
-const BLOCKED_IPV4_CIDRS: Array<[ipaddr.IPv4, number]> = [
-  ipaddr.IPv4.parseCIDR('127.0.0.0/8'), // loopback
-  ipaddr.IPv4.parseCIDR('169.254.0.0/16'), // link-local / AWS metadata
-  ipaddr.IPv4.parseCIDR('10.0.0.0/8'), // RFC 1918
-  ipaddr.IPv4.parseCIDR('172.16.0.0/12'), // RFC 1918
-  ipaddr.IPv4.parseCIDR('192.168.0.0/16'), // RFC 1918
-];
-
-/**
- * IPv6 CIDR ranges that must never be reachable via webhook delivery.
- * Covers: loopback (::1/128) and ULA (fc00::/7).
- */
-const BLOCKED_IPV6_CIDRS: Array<[ipaddr.IPv6, number]> = [
-  ipaddr.IPv6.parseCIDR('::1/128'), // loopback
-  ipaddr.IPv6.parseCIDR('fc00::/7'), // ULA
-];
-
-/**
  * Error thrown when a webhook URL resolves to a blocked address.
  * Controller maps this to HTTP 422 with WEBHOOK_URL_NOT_ALLOWED.
  */
@@ -85,64 +62,22 @@ export class WebhookUrlNotAllowedError extends Error {
 }
 
 /**
- * Validates that a webhook URL is safe to deliver to.
- *
- * Checks performed:
- * 1. URL must use HTTPS in production environments.
- * 2. The hostname must resolve; all returned IP addresses are checked against
- *    blocked ranges (loopback, link-local, RFC 1918, IPv6 ULA) to prevent SSRF.
+ * Validates that a webhook URL is safe to deliver to — thin wrapper over the shared
+ * SSRF check in urlSafetyUtils.ts, translated to this service's error type so
+ * existing callers/controllers are unaffected. See assertUrlIsFetchSafe() for the
+ * checks performed (HTTPS-in-production, DNS resolution, blocked-range check).
  *
  * Called both at subscription creation/update time and immediately before every
  * delivery attempt (DNS rebinding mitigation).
  */
 export async function validateWebhookUrl(urlString: string): Promise<void> {
-  let parsed: URL;
   try {
-    parsed = new URL(urlString);
-  } catch {
-    throw new WebhookUrlNotAllowedError('Invalid URL');
-  }
-
-  if (process.env['NODE_ENV'] === 'production' && parsed.protocol !== 'https:') {
-    throw new WebhookUrlNotAllowedError('Webhook URL must use HTTPS in production');
-  }
-
-  const hostname = parsed.hostname;
-
-  let addresses: dns.LookupAddress[];
-  try {
-    addresses = await dns.promises.lookup(hostname, { all: true });
-  } catch {
-    throw new WebhookUrlNotAllowedError(`Unable to resolve hostname: ${hostname}`);
-  }
-
-  for (const { address, family } of addresses) {
-    if (family === 4) {
-      const ip = ipaddr.IPv4.parse(address);
-      for (const cidr of BLOCKED_IPV4_CIDRS) {
-        if (ip.match(cidr)) {
-          throw new WebhookUrlNotAllowedError(
-            `Webhook URL resolves to a blocked IP address: ${address}`,
-          );
-        }
-      }
-    } else if (family === 6) {
-      try {
-        const ip = ipaddr.IPv6.parse(address);
-        for (const cidr of BLOCKED_IPV6_CIDRS) {
-          if (ip.match(cidr)) {
-            throw new WebhookUrlNotAllowedError(
-              `Webhook URL resolves to a blocked IP address: ${address}`,
-            );
-          }
-        }
-      } catch {
-        // ipaddr.js may not recognise some IPv6 representations; treat as blocked
-        throw new WebhookUrlNotAllowedError(
-          `Webhook URL resolves to an unrecognised IPv6 address: ${address}`,
-        );
-      }
+    await assertUrlIsFetchSafe(urlString);
+  } catch (err) {
+    if (err instanceof UrlNotSafeError) {
+      throw new WebhookUrlNotAllowedError(err.message);
     }
+    throw err;
   }
 }
 

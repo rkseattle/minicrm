@@ -28,6 +28,7 @@ import { queueAssignmentNotification } from '../services/notificationService.js'
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -512,16 +513,21 @@ export async function exportDealsPdfHandler(req: Request, res: Response): Promis
   }));
   const rows: PdfTableRow[] = data.rows;
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('deals'));
-  renderPdfDocument(res, {
-    title: 'Deals',
-    sections: [
-      {
-        heading: 'Deals',
-        table: { columns, rows, emptyMessage: 'No deals match the current filters.' },
-      },
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: 'Deals',
+      sections: [
+        {
+          heading: 'Deals',
+          table: { columns, rows, emptyMessage: 'No deals match the current filters.' },
+        },
+      ],
+    },
+    branding,
+  );
 }
 
 /**
@@ -561,18 +567,23 @@ export async function exportDealPdfHandler(req: Request, res: Response): Promise
 
   const customFieldLines = customValues.map((v) => `${v.definition.name}: ${v.value ?? ''}`);
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename(`deal-${id}`));
-  renderPdfDocument(res, {
-    title: `Deal: ${deal.name}`,
-    sections: [
-      { heading: 'Overview', lines: overviewLines },
-      {
-        heading: 'Custom Fields',
-        lines: customFieldLines,
-        emptyMessage: 'No custom fields defined.',
-      },
-      buildContactsTableSection(contacts),
-      buildNotesTableSection(notesPage.data),
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: `Deal: ${deal.name}`,
+      sections: [
+        { heading: 'Overview', lines: overviewLines },
+        {
+          heading: 'Custom Fields',
+          lines: customFieldLines,
+          emptyMessage: 'No custom fields defined.',
+        },
+        buildContactsTableSection(contacts),
+        buildNotesTableSection(notesPage.data),
+      ],
+    },
+    branding,
+  );
 }

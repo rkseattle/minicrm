@@ -6,6 +6,7 @@
 import type { Request, Response } from 'express';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -94,6 +95,7 @@ export async function exportWinLossInsightsPdfHandler(_req: Request, res: Respon
     },
   ];
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, 'win-loss-insights.pdf');
-  renderPdfDocument(res, { title: 'Win/Loss Pattern Insights', sections });
+  await renderPdfDocument(res, { title: 'Win/Loss Pattern Insights', sections }, branding);
 }

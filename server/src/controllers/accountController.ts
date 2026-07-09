@@ -33,6 +33,7 @@ import { queueAssignmentNotification } from '../services/notificationService.js'
 import { serializeToCsv, csvFilename, formatExportDate } from '../utils/csvUtils.js';
 import { listDefinitions, getValuesForRecord } from '../services/customFieldService.js';
 import { listNotes } from '../services/noteService.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -382,16 +383,21 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
   }));
   const rows: PdfTableRow[] = data.rows;
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename('accounts'));
-  renderPdfDocument(res, {
-    title: 'Accounts',
-    sections: [
-      {
-        heading: 'Accounts',
-        table: { columns, rows, emptyMessage: 'No accounts match the current filters.' },
-      },
-    ],
-  });
+  await renderPdfDocument(
+    res,
+    {
+      title: 'Accounts',
+      sections: [
+        {
+          heading: 'Accounts',
+          table: { columns, rows, emptyMessage: 'No accounts match the current filters.' },
+        },
+      ],
+    },
+    branding,
+  );
 }
 
 /**
@@ -446,28 +452,33 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
     account_type: c.account_type,
   }));
 
+  const branding = await getBranding();
   setPdfResponseHeaders(res, pdfFilename(`account-${id}`));
-  renderPdfDocument(res, {
-    title: `Account: ${account.name}`,
-    sections: [
-      { heading: 'Overview', lines: overviewLines },
-      {
-        heading: 'Custom Fields',
-        lines: customFieldLines,
-        emptyMessage: 'No custom fields defined.',
-      },
-      buildContactsTableSection(contactsPage.data),
-      {
-        heading: 'Child Accounts',
-        table: {
-          columns: childAccountColumns,
-          rows: childAccountRows,
-          emptyMessage: 'No child accounts.',
+  await renderPdfDocument(
+    res,
+    {
+      title: `Account: ${account.name}`,
+      sections: [
+        { heading: 'Overview', lines: overviewLines },
+        {
+          heading: 'Custom Fields',
+          lines: customFieldLines,
+          emptyMessage: 'No custom fields defined.',
         },
-      },
-      buildNotesTableSection(notesPage.data),
-    ],
-  });
+        buildContactsTableSection(contactsPage.data),
+        {
+          heading: 'Child Accounts',
+          table: {
+            columns: childAccountColumns,
+            rows: childAccountRows,
+            emptyMessage: 'No child accounts.',
+          },
+        },
+        buildNotesTableSection(notesPage.data),
+      ],
+    },
+    branding,
+  );
 }
 
 /**

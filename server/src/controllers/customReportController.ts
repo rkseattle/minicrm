@@ -19,6 +19,7 @@ import {
   reportConfigSchema,
   REPORT_ENTITY_TYPES,
 } from '@minicrm/shared/schemas/customReportSchema.js';
+import { getBranding } from '../services/brandingService.js';
 import {
   renderPdfDocument,
   setPdfResponseHeaders,
@@ -327,16 +328,21 @@ export async function exportCustomReportPdfHandler(req: Request, res: Response):
     const rows: PdfTableRow[] = result.rows;
     const filename = report.name.replace(/[^a-z0-9_\- ]/gi, '_');
 
+    const branding = await getBranding();
     setPdfResponseHeaders(res, pdfFilename(filename));
-    renderPdfDocument(res, {
-      title: report.name,
-      sections: [
-        {
-          heading: report.name,
-          table: { columns, rows, emptyMessage: 'No rows match the current report config.' },
-        },
-      ],
-    });
+    await renderPdfDocument(
+      res,
+      {
+        title: report.name,
+        sections: [
+          {
+            heading: report.name,
+            table: { columns, rows, emptyMessage: 'No rows match the current report config.' },
+          },
+        ],
+      },
+      branding,
+    );
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'INVALID_REPORT_FIELD') {
       res.status(400).json({
