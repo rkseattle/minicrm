@@ -349,6 +349,35 @@ describe('verifyAndConsumeRecoveryCode', () => {
     const valid = await verifyAndConsumeRecoveryCode(rcUserId, '  ' + code.toUpperCase() + '  ');
     expect(valid).toBe(true);
   });
+
+  it('accepts a code whose stored hash was rewritten (e.g. by regeneration) between the two DB reads', async () => {
+    // Reproduces the race the locked re-read guards against: the plaintext code
+    // is still valid, but the hash matched during the initial unlocked bcrypt
+    // scan is no longer present in the locked re-read (as if the user's codes
+    // were regenerated in between). Rewrite the stored hash for this code
+    // in place, then verify — the fallback bcrypt re-compare against the
+    // current row must find it rather than rejecting on the stale hash's
+    // absence from the freshly re-read array.
+    const code = recoveryCodes[3]!;
+    const before = await pool.query<{ mfa_recovery_codes: string[] }>(
+      'SELECT mfa_recovery_codes FROM users WHERE id = $1',
+      [rcUserId],
+    );
+    const stored = before.rows[0]!.mfa_recovery_codes;
+    const staleIndex = (
+      await Promise.all(stored.map((hash) => bcrypt.compare(code.toLowerCase(), hash)))
+    ).findIndex(Boolean);
+    expect(staleIndex).toBeGreaterThanOrEqual(0);
+    const rewritten = [...stored];
+    rewritten[staleIndex] = await bcrypt.hash(code.toLowerCase(), 10);
+    await pool.query('UPDATE users SET mfa_recovery_codes = $1 WHERE id = $2', [
+      rewritten,
+      rcUserId,
+    ]);
+
+    const valid = await verifyAndConsumeRecoveryCode(rcUserId, code);
+    expect(valid).toBe(true);
+  });
 });
 
 // ── HTTP: MFA login flow (verify-login + recovery-login) ─────────────────────

@@ -170,4 +170,37 @@ describe('ExportMenu', () => {
     fireEvent.click(screen.getByTestId('deals-export-menu-button'));
     expect(screen.getByTestId('export-csv-button')).toBeDisabled();
   });
+
+  it('renders an enabled link item as a real anchor with the given href', () => {
+    const items: ExportMenuItemConfig[] = [
+      { key: 'csv', testId: 'export-csv-link', label: 'Export CSV', href: '/api/export.csv' },
+    ];
+    renderWithProviders(
+      <ExportMenu label="Export" testId="reports-export-menu-button" items={items} />,
+    );
+    fireEvent.click(screen.getByTestId('reports-export-menu-button'));
+    const link = screen.getByTestId('export-csv-link');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '/api/export.csv');
+  });
+
+  it('renders a disabled link item as a disabled button, not a navigable anchor', () => {
+    const items: ExportMenuItemConfig[] = [
+      {
+        key: 'csv',
+        testId: 'export-csv-link',
+        label: 'Export CSV',
+        href: '/api/export.csv',
+        disabled: true,
+      },
+    ];
+    renderWithProviders(
+      <ExportMenu label="Export" testId="reports-export-menu-button" items={items} />,
+    );
+    fireEvent.click(screen.getByTestId('reports-export-menu-button'));
+    const item = screen.getByTestId('export-csv-link');
+    expect(item.tagName).toBe('BUTTON');
+    expect(item).toBeDisabled();
+    expect(item).not.toHaveAttribute('href');
+  });
 });

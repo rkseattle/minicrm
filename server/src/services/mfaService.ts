@@ -293,13 +293,26 @@ export async function verifyAndConsumeRecoveryCode(
     );
     const stored = row.rows[0]?.mfa_recovery_codes ?? [];
 
-    const matchedIndex = stored.indexOf(matchedHash);
+    // Look up the exact hash first (fast path, avoids re-hashing when nothing
+    // changed) but fall back to re-comparing the plaintext against the
+    // locked set — if codes were regenerated between the unlocked check above
+    // and this lock, matchedHash is stale even though the supplied plaintext
+    // may still validly match one of the current hashes.
+    let matchedIndex = stored.indexOf(matchedHash);
+    if (matchedIndex === -1) {
+      for (let idx = 0; idx < stored.length; idx += 1) {
+        if (await bcrypt.compare(normalizedCode, stored[idx])) {
+          matchedIndex = idx;
+          break;
+        }
+      }
+    }
     if (matchedIndex === -1) {
       await client.query('ROLLBACK');
       return false;
     }
 
-    // Remove only the matched index, not every occurrence of matchedHash —
+    // Remove only the matched index, not every occurrence of the matched hash —
     // bcrypt hashes are salted so a genuine collision is not expected, but
     // this keeps the same one-code-consumed-per-call guarantee the original
     // index-based removal had, rather than relying on hash uniqueness to hold.
