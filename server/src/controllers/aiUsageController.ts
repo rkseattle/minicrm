@@ -125,6 +125,9 @@ const AI_USAGE_EXPORT_HEADERS = [
   'Estimated Cost (USD)',
 ] as const;
 
+/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
+const AI_USAGE_NUMERIC_COLUMNS = new Set(['Input Tokens', 'Output Tokens', 'Estimated Cost (USD)']);
+
 /**
  * Resolves the requested date range and fetches export rows, shaped identically for
  * both the CSV and PDF export handlers so both formats reflect the same data. Returns
@@ -178,6 +181,7 @@ export async function exportAiUsagePdfHandler(req: Request, res: Response): Prom
   const columns: PdfTableColumn[] = AI_USAGE_EXPORT_HEADERS.map((label) => ({
     key: label,
     label,
+    align: AI_USAGE_NUMERIC_COLUMNS.has(label) ? 'right' : undefined,
   }));
   const tableRows: PdfTableRow[] = rows;
 

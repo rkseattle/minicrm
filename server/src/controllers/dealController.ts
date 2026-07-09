@@ -498,11 +498,18 @@ export async function exportDealsHandler(req: Request, res: Response): Promise<v
  *
  * Query params and ownership rules are identical to the CSV export above (MINCRM-601).
  */
+/** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
+const DEAL_PDF_NUMERIC_COLUMNS = new Set(['Value']);
+
 export async function exportDealsPdfHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveDealExportData(req, res);
   if (!data) return;
 
-  const columns: PdfTableColumn[] = data.headers.map((label) => ({ key: label, label }));
+  const columns: PdfTableColumn[] = data.headers.map((label) => ({
+    key: label,
+    label,
+    align: DEAL_PDF_NUMERIC_COLUMNS.has(label) ? 'right' : undefined,
+  }));
   const rows: PdfTableRow[] = data.rows;
 
   setPdfResponseHeaders(res, pdfFilename('deals'));

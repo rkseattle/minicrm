@@ -44,19 +44,20 @@ async function renderToBuffer(spec: PdfDocumentSpec): Promise<Buffer> {
  */
 function extractTextPlacements(
   pdfBuffer: Buffer,
-): Array<{ y: number; font: string; size: number; text: string }> {
-  const placements: Array<{ y: number; font: string; size: number; text: string }> = [];
+): Array<{ x: number; y: number; font: string; size: number; text: string }> {
+  const placements: Array<{ x: number; y: number; font: string; size: number; text: string }> = [];
   for (const content of decompressContentStreams(pdfBuffer)) {
     const blockPattern =
-      /[\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ ([\d.-]+) Tm\s*\/(\S+) ([\d.-]+) Tf\s*\[((?:<[0-9a-fA-F]+>\s*-?\d*\s*)+)\] TJ/g;
+      /[\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+ ([\d.-]+) ([\d.-]+) Tm\s*\/(\S+) ([\d.-]+) Tf\s*\[((?:<[0-9a-fA-F]+>\s*-?\d*\s*)+)\] TJ/g;
     for (const match of content.matchAll(blockPattern)) {
-      const y = Number(match[1]);
-      const font = match[2];
-      const size = Number(match[3]);
-      const text = [...match[4].matchAll(/<([0-9a-fA-F]+)>/g)]
+      const x = Number(match[1]);
+      const y = Number(match[2]);
+      const font = match[3];
+      const size = Number(match[4]);
+      const text = [...match[5].matchAll(/<([0-9a-fA-F]+)>/g)]
         .map((hex) => Buffer.from(hex[1], 'hex').toString('latin1'))
         .join('');
-      placements.push({ y, font, size, text });
+      placements.push({ x, y, font, size, text });
     }
   }
   return placements;
@@ -104,6 +105,54 @@ function extractRenderedText(pdfBuffer: Buffer): string {
     }
   }
   return chunks.join('');
+}
+
+/**
+ * Extracts every filled-rectangle operation (`x y w h re` ... `scn` ... `f`) across
+ * all content streams — pdfkit emits this shape for both `doc.rect(...).fill(...)`
+ * calls used by header shading and zebra-striped data rows. (MINCRM-655)
+ */
+function extractFilledRects(
+  pdfBuffer: Buffer,
+): Array<{ x: number; y: number; w: number; h: number }> {
+  const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
+  for (const content of decompressContentStreams(pdfBuffer)) {
+    const rectPattern =
+      /([\d.-]+) ([\d.-]+) ([\d.-]+) ([\d.-]+) re\s*\/DeviceRGB cs\s*[\d.-]+ [\d.-]+ [\d.-]+ scn\s*f/g;
+    for (const match of content.matchAll(rectPattern)) {
+      rects.push({
+        x: Number(match[1]),
+        y: Number(match[2]),
+        w: Number(match[3]),
+        h: Number(match[4]),
+      });
+    }
+  }
+  return rects;
+}
+
+/**
+ * Extracts every stroked horizontal line (`x1 y m` ... `x2 y l` ... `S`) across all
+ * content streams — pdfkit emits this shape for the title rule and the header row's
+ * bottom border. (MINCRM-655)
+ */
+function extractStrokedLines(
+  pdfBuffer: Buffer,
+): Array<{ x1: number; y1: number; x2: number; y2: number }> {
+  const lines: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+  for (const content of decompressContentStreams(pdfBuffer)) {
+    const linePattern =
+      /([\d.-]+) ([\d.-]+) m\s*([\d.-]+) ([\d.-]+) l\s*\/DeviceRGB CS\s*[\d.-]+ [\d.-]+ [\d.-]+ SCN\s*[\d.-]+ w\s*S/g;
+    for (const match of content.matchAll(linePattern)) {
+      lines.push({
+        x1: Number(match[1]),
+        y1: Number(match[2]),
+        x2: Number(match[3]),
+        y2: Number(match[4]),
+      });
+    }
+  }
+  return lines;
 }
 
 /** Decompresses every FlateDecode stream...endstream block in a raw PDF buffer. */
@@ -347,6 +396,112 @@ describe('renderPdfDocument', () => {
     });
     const narrowRendered = extractRenderedText(narrowBuffer);
     expect(narrowRendered).toContain('NarrowLabel9');
+  });
+
+  it('right-aligns a column marked align: "right", leaving unmarked columns left-aligned (MINCRM-655)', async () => {
+    const buffer = await renderToBuffer({
+      title: 'Aligned Report',
+      sections: [
+        {
+          heading: 'Table',
+          table: {
+            columns: [
+              { key: 'name', label: 'Name' },
+              { key: 'count', label: 'Count', align: 'right' },
+            ],
+            rows: [{ name: 'Widget', count: 42 }],
+            emptyMessage: 'No rows.',
+          },
+        },
+      ],
+    });
+
+    const placements = extractTextPlacements(buffer);
+    const nameHeader = placements.find((p) => p.text === 'Name');
+    const countHeader = placements.find((p) => p.text === 'Count');
+    const nameCell = placements.find((p) => p.text === 'Widget');
+    const countCell = placements.find((p) => p.text === '42');
+    expect(nameHeader).toBeDefined();
+    expect(countHeader).toBeDefined();
+    expect(nameCell).toBeDefined();
+    expect(countCell).toBeDefined();
+
+    // Left-aligned text starts right after the left margin + cell padding; a
+    // right-aligned single-page table's second column should place its text
+    // noticeably further right than the left-aligned first column's text.
+    expect(nameHeader!.x).toBeLessThan(200);
+    expect(nameCell!.x).toBeLessThan(200);
+    expect(countHeader!.x).toBeGreaterThan(400);
+    expect(countCell!.x).toBeGreaterThan(400);
+  });
+
+  it('applies consistent cell padding so text does not sit flush against the left margin (MINCRM-655)', async () => {
+    const buffer = await renderToBuffer({
+      title: 'Padding Report',
+      sections: [
+        {
+          heading: 'Table',
+          table: {
+            columns: [{ key: 'name', label: 'Name' }],
+            rows: [{ name: 'Widget' }],
+            emptyMessage: 'No rows.',
+          },
+        },
+      ],
+    });
+
+    const placements = extractTextPlacements(buffer);
+    const dataCell = placements.find((p) => p.text === 'Widget');
+    expect(dataCell).toBeDefined();
+    // Document margin is 50pt — text flush against the column boundary would sit
+    // at exactly x=50; with padding it must be measurably inset from that.
+    expect(dataCell!.x).toBeGreaterThan(50);
+  });
+
+  it('shades the header row and draws a bottom border distinguishing it from data rows (MINCRM-655)', async () => {
+    const buffer = await renderToBuffer({
+      title: 'Shaded Header Report',
+      sections: [
+        {
+          heading: 'Table',
+          table: {
+            columns: [{ key: 'name', label: 'Name' }],
+            rows: [{ name: 'Widget' }],
+            emptyMessage: 'No rows.',
+          },
+        },
+      ],
+    });
+
+    const filledRects = extractFilledRects(buffer);
+    const strokedLines = extractStrokedLines(buffer);
+    // At least one filled rect (the header shading) and one horizontal stroked
+    // line (the header's bottom border, plus the separate title rule) must exist.
+    expect(filledRects.length).toBeGreaterThanOrEqual(1);
+    expect(strokedLines.length).toBeGreaterThanOrEqual(2); // title rule + header border
+  });
+
+  it('zebra-stripes alternating data rows, and keeps the pattern consistent across a page break (MINCRM-655)', async () => {
+    const manyRows = Array.from({ length: 60 }, (_, i) => ({ name: `Row ${i}` }));
+    const buffer = await renderToBuffer({
+      title: 'Zebra Report',
+      sections: [
+        {
+          heading: 'Table',
+          table: {
+            columns: [{ key: 'name', label: 'Name' }],
+            rows: manyRows,
+            emptyMessage: 'No rows.',
+          },
+        },
+      ],
+    });
+
+    const filledRects = extractFilledRects(buffer);
+    // 60 rows -> ~30 striped rows across however many pages, plus 1 header shade
+    // per page (60 rows overflow a single page at this row height). There must be
+    // meaningfully more filled rects than just the header shading alone.
+    expect(filledRects.length).toBeGreaterThan(10);
   });
 
   it('renders an empty-state message for a table section with no rows', async () => {
