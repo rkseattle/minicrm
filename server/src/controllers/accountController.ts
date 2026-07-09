@@ -373,6 +373,18 @@ export async function exportAccountsHandler(req: Request, res: Response): Promis
 /** PDF-only: numeric columns rendered right-aligned instead of left-aligned like text. (MINCRM-655) */
 const ACCOUNT_PDF_NUMERIC_COLUMNS = new Set(['Contacts', 'Deals']);
 
+/**
+ * PDF-only: columns useful in CSV/spreadsheet form but low-value in a printed
+ * table, dropped once the 12-base-column export (plus any custom fields) exceeds
+ * WIDE_TABLE_COLUMN_THRESHOLD. CSV export is unaffected. (follow-up)
+ */
+const ACCOUNT_PDF_LOW_PRIORITY_COLUMNS = new Set([
+  'Website',
+  'Parent Account',
+  'Created',
+  'Updated',
+]);
+
 export async function exportAccountsPdfHandler(req: Request, res: Response): Promise<void> {
   const data = await resolveAccountExportData(req);
 
@@ -380,6 +392,7 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
     key: label,
     label,
     align: ACCOUNT_PDF_NUMERIC_COLUMNS.has(label) ? 'right' : undefined,
+    lowPriority: ACCOUNT_PDF_LOW_PRIORITY_COLUMNS.has(label),
   }));
   const rows: PdfTableRow[] = data.rows;
 
