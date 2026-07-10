@@ -123,6 +123,17 @@ Opportunities**, each showing a confidence percentage.
 > treat the confidence percentage and contributing factors as a prompt to check in with
 > the account, not as a guaranteed outcome.
 
+### AI sentiment tracking
+
+> **Feature flag:** `ai_sentiment_tracking`.
+
+Once the account has at least two scored activities across all of its contacts in the
+last 90 days, a **Warming**, **Stable**, or **Cooling** trend badge with a sparkline
+appears next to the account name — an aggregate view of the same per-activity sentiment
+scoring described on the [contacts page](contacts.md#ai-sentiment-tracking). A rep
+flagging an individual activity's sentiment as inaccurate excludes it from this
+aggregate too.
+
 ### Notifications
 
 When a churn risk signal is detected with high confidence, MiniCRM sends the account's

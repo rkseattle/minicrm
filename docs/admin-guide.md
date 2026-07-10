@@ -649,6 +649,12 @@ the API key (logged as `[redacted]`), and acknowledging or clearing the DPA.
   new provider before the data posture indicator turns green.
 - The master toggle and configuration are separate operations. You can configure AI
   without enabling it globally, which is useful for staging your setup before rollout.
+- **AI meeting brief news hook:** `ai_configuration.web_search_enabled` (default off)
+  gates the optional "recent news about this company" section of the AI pre-meeting
+  brief (see [Activities — AI pre-meeting brief](user-guide/activities.md#ai-pre-meeting-brief)).
+  Not yet exposed as a toggle in the AI settings UI — enable it directly in the database
+  if you want this section available, following the same not-yet-UI-exposed precedent as
+  `champion_blocker_deal_value_threshold` and `churn_expansion_confidence_threshold`.
 
 ### AI PII data minimization (MINCRM-445, MINCRM-461)
 
@@ -916,7 +922,8 @@ when the tokens were originally consumed.
 > `ai_lead_scoring`, `ai_lead_score_narrative`, `ai_deal_health_check`,
 > `ai_stage_advancement`, `ai_win_loss_insights`, `ai_champion_blocker_detection`,
 > `ai_churn_expansion_detection`, `ai_objection_pattern_matching`,
-> `ai_proposal_draft_generation`
+> `ai_proposal_draft_generation`, `ai_meeting_brief`, `ai_warm_intro_path`,
+> `ai_sentiment_tracking`
 
 Individual AI sub-features can be enabled or disabled per role. This lets you roll out
 specific AI capabilities to admins first, or restrict certain features to admins only,
@@ -941,6 +948,9 @@ without disabling AI entirely.
 | `ai_churn_expansion_detection`  | Nightly churn-risk and expansion-opportunity detection for accounts (`/insights/churn-expansion`) |
 | `ai_objection_pattern_matching` | On-demand objection categorization and precedent matching from won deals                          |
 | `ai_proposal_draft_generation`  | AI-drafted, editable proposal documents from a deal's context                                     |
+| `ai_meeting_brief`              | On-demand pre-meeting brief for upcoming Call/Meeting activities                                  |
+| `ai_warm_intro_path`            | Warm introduction path lookup through a rep's own contact network                                 |
+| `ai_sentiment_tracking`         | Per-activity sentiment scoring and Contact/Account trend badges                                   |
 
 ### How role overrides interact with the master toggle
 

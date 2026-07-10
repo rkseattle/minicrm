@@ -150,3 +150,32 @@ or **Concise** — to regenerate, edit the draft inline, and use **Copy to clipb
 paste it into your email client. If the contact has no recent activity, the draft falls
 back to a generic introduction based on their fields alone. Nothing is sent
 automatically and the draft is not saved — dismiss the panel or copy it yourself.
+
+### AI sentiment tracking
+
+> **Feature flag:** `ai_sentiment_tracking`.
+
+Every activity note and call summary is scored for sentiment (Positive, Neutral,
+Negative) shortly after you save it — this happens in the background, so there's no
+wait when logging an activity. Once a contact has at least two scored interactions, a
+**Warming**, **Stable**, or **Cooling** trend badge with a small sparkline appears next
+to their name, based on their last 10 interactions. Each activity in the timeline shows
+its own sentiment alongside a **Flag as inaccurate** link — flagged scores are excluded
+from the trend but not deleted. The equivalent aggregate trend for an account (across
+all its contacts, over the last 90 days) appears on the
+[account detail page](accounts.md#ai-sentiment-tracking).
+
+### AI warm introduction paths
+
+> **Feature flag:** `ai_warm_intro_path`.
+
+Click **Find warm path** on a contact's detail page to see whether anyone in your own
+contact network could introduce you. MiniCRM looks for contacts you've actually worked
+with (own or have logged activity against) who share an account, a hierarchy-linked
+parent/child account, or a deal with the target contact — or whose notes mention the
+target by name. Each result shows the path (**You → Known Contact → Target Contact**)
+and a suggested introduction message you can send to the intermediary yourself; MiniCRM
+never sends anything automatically. Paths are capped at one hop through your network
+(no speculative third-degree connections), and if no path exists the panel says so
+rather than guessing. The same lookup is available via the AI assistant — try
+"Who do I know that could introduce me to \<name\>?"

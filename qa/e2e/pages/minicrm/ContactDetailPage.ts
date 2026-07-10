@@ -533,6 +533,93 @@ export class ContactDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
+  // ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+
+  /**
+   * Returns true when the sentiment trend sparkline is currently visible, scoped
+   * to a contact ID. Guards presence first — the sparkline legitimately does not
+   * render until at least 2 non-flagged scored interactions exist.
+   */
+  async isSentimentTrendVisible(contactId: string): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(`[data-testid="sentiment-trend-${contactId}"]`, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `sentiment-trend-${contactId}` },
+          { type: 'css', value: `[data-testid="sentiment-trend-${contactId}"]` },
+        ],
+        { intent: 'AI sentiment trend sparkline on the contact detail page' },
+      )
+      .resolve();
+    return locator.isVisible().catch(() => false);
+  }
+
+  // ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
+
+  /** Returns a resolved locator for the "Find warm path" button, scoped to a contact ID. */
+  async findWarmPathButtonLocator(contactId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `find-warm-path-${contactId}` },
+          { type: 'role', value: 'button', options: { name: /find warm path/i } },
+        ],
+        { intent: 'Find warm path button on the contact detail page' },
+      )
+      .resolve();
+  }
+
+  /** Clicks the "Find warm path" button, scoped to a contact ID. */
+  async clickFindWarmPath(contactId: string): Promise<void> {
+    const locator = await this.findWarmPathButtonLocator(contactId);
+    await locator.click();
+  }
+
+  /**
+   * Returns true when the "Find warm path" button is currently visible, scoped
+   * to a contact ID. Guards presence first — the button legitimately does not
+   * render when the ai_warm_intro_path flag is off.
+   */
+  async isFindWarmPathButtonVisible(contactId: string): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(`[data-testid="find-warm-path-${contactId}"]`, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.findWarmPathButtonLocator(contactId);
+    return locator.isVisible().catch(() => false);
+  }
+
+  /** Returns a resolved locator for the warm-path results container, scoped to a contact ID. */
+  async warmPathResultsLocator(contactId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `warm-intro-paths-results-${contactId}` },
+          { type: 'css', value: `[data-testid="warm-intro-paths-results-${contactId}"]` },
+        ],
+        { intent: 'warm introduction path results container on the contact detail page' },
+      )
+      .resolve();
+  }
+
+  /** Returns a resolved locator for the no-warm-path-found empty state message. */
+  async warmPathEmptyMessageLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'warm-intro-empty' },
+          { type: 'css', value: '[data-testid="warm-intro-empty"]' },
+        ],
+        { intent: 'no-warm-path-found message on the contact detail page' },
+      )
+      .resolve();
+  }
+
   /** Returns a resolved locator for the "Draft Email" button. (MINCRM-437) */
   async draftEmailButtonLocator() {
     return this.page
