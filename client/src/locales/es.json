@@ -2598,6 +2598,25 @@
     "clipboardError": "No se pudo copiar al portapapeles.",
     "dismiss": "Descartar"
   },
+  "meetingBrief": {
+    "generateBriefButton": "Generar informe",
+    "generating": "Generando…",
+    "panelTitle": "Informe de reunión",
+    "dismiss": "Descartar",
+    "regenerate": "Regenerar",
+    "print": "Imprimir",
+    "copyToClipboard": "Copiar al portapapeles",
+    "copied": "¡Copiado!",
+    "clipboardError": "No se pudo copiar al portapapeles.",
+    "accountSummaryLabel": "Resumen de la cuenta",
+    "opportunitiesLabel": "Oportunidades abiertas",
+    "recentActivityLabel": "Actividad reciente",
+    "talkingPointsLabel": "Puntos de conversación sugeridos",
+    "objectionsLabel": "Objeciones conocidas",
+    "newsHookLabel": "Noticias recientes",
+    "loading": "Cargando informe…",
+    "notFound": "Aún no se ha generado ningún informe para esta actividad."
+  },
   "taskSuggestions": {
     "heading": "Tareas de seguimiento sugeridas",
     "dismissAll": "Descartar",

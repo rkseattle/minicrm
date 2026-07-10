@@ -2598,6 +2598,25 @@
     "clipboardError": "Konnte nicht in die Zwischenablage kopiert werden.",
     "dismiss": "Verwerfen"
   },
+  "meetingBrief": {
+    "generateBriefButton": "Briefing erstellen",
+    "generating": "Wird generiert…",
+    "panelTitle": "Meeting-Briefing",
+    "dismiss": "Verwerfen",
+    "regenerate": "Neu generieren",
+    "print": "Drucken",
+    "copyToClipboard": "In die Zwischenablage kopieren",
+    "copied": "Kopiert!",
+    "clipboardError": "Konnte nicht in die Zwischenablage kopiert werden.",
+    "accountSummaryLabel": "Kontoübersicht",
+    "opportunitiesLabel": "Offene Chancen",
+    "recentActivityLabel": "Letzte Aktivität",
+    "talkingPointsLabel": "Vorgeschlagene Gesprächspunkte",
+    "objectionsLabel": "Bekannte Einwände",
+    "newsHookLabel": "Aktuelle Nachrichten",
+    "loading": "Briefing wird geladen…",
+    "notFound": "Für diese Aktivität wurde noch kein Briefing erstellt."
+  },
   "taskSuggestions": {
     "heading": "Vorgeschlagene Folgeaufgaben",
     "dismissAll": "Verwerfen",

@@ -2598,6 +2598,25 @@
     "clipboardError": "Could not copy to clipboard.",
     "dismiss": "Dismiss"
   },
+  "meetingBrief": {
+    "generateBriefButton": "Generate Brief",
+    "generating": "Generating…",
+    "panelTitle": "Meeting Brief",
+    "dismiss": "Dismiss",
+    "regenerate": "Regenerate",
+    "print": "Print",
+    "copyToClipboard": "Copy to clipboard",
+    "copied": "Copied!",
+    "clipboardError": "Could not copy to clipboard.",
+    "accountSummaryLabel": "Account Summary",
+    "opportunitiesLabel": "Open Opportunities",
+    "recentActivityLabel": "Recent Activity",
+    "talkingPointsLabel": "Suggested Talking Points",
+    "objectionsLabel": "Known Objections",
+    "newsHookLabel": "Recent News",
+    "loading": "Loading brief…",
+    "notFound": "No brief has been generated for this activity yet."
+  },
   "taskSuggestions": {
     "heading": "Suggested follow-up tasks",
     "dismissAll": "Dismiss",

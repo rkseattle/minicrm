@@ -2598,6 +2598,25 @@
     "clipboardError": "[Ĉöüld ñöt ĉöpy tö ĉlïpböärd.~~~~~~~~~]",
     "dismiss": "[Dïŝmïŝŝ~~~]"
   },
+  "meetingBrief": {
+    "generateBriefButton": "[Gëñërätë Brïëf~~~~~]",
+    "generating": "[Gëñërätïñg…~~~~]",
+    "panelTitle": "[Mëëtïñg Brïëf~~~~]",
+    "dismiss": "[Dïŝmïŝŝ~~~]",
+    "regenerate": "[Rëgëñërätë~~~]",
+    "print": "[Prïñt~~]",
+    "copyToClipboard": "[Ĉöpy tö ĉlïpböärd~~~~~~]",
+    "copied": "[Ĉöpïëd!~~~]",
+    "clipboardError": "[Ĉöüld ñöt ĉöpy tö ĉlïpböärd.~~~~~~~~~]",
+    "accountSummaryLabel": "[Äĉĉöüñt Ŝümmäry~~~~~]",
+    "opportunitiesLabel": "[Öpëñ Öppörtüñïtïëŝ~~~~~~]",
+    "recentActivityLabel": "[Rëĉëñt Äĉtïvïty~~~~~]",
+    "talkingPointsLabel": "[Ŝüggëŝtëd Tälkïñg Pöïñtŝ~~~~~~~~]",
+    "objectionsLabel": "[Kñöwñ Öbjëĉtïöñŝ~~~~~]",
+    "newsHookLabel": "[Rëĉëñt Ñëwŝ~~~~]",
+    "loading": "[Löädïñg brïëf…~~~~~]",
+    "notFound": "[Ñö brïëf häŝ bëëñ gëñërätëd för thïŝ äĉtïvïty yët.~~~~~~~~~~~~~~~]"
+  },
   "taskSuggestions": {
     "heading": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
     "dismissAll": "[Dïŝmïŝŝ~~~]",
