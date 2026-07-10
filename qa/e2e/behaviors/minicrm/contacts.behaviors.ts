@@ -1590,6 +1590,62 @@ export async function isChampionBlockerBadgeVisible(
 }
 
 // ---------------------------------------------------------------------------
+// AI sentiment tracking (MINCRM-472)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the sentiment trend sparkline is currently visible for a contact. */
+export async function isSentimentTrendVisible(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const detail = new ContactDetailPage(context);
+  return detail.isSentimentTrendVisible(contactId);
+}
+
+// ---------------------------------------------------------------------------
+// AI warm introduction path mapping (MINCRM-468)
+// ---------------------------------------------------------------------------
+
+/** Clicks the "Find warm path" button for a contact. */
+export async function clickFindWarmPath(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const detail = new ContactDetailPage(context);
+  await detail.clickFindWarmPath(contactId);
+}
+
+/** Returns true when the "Find warm path" button is currently visible for a contact. */
+export async function isFindWarmPathButtonVisible(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const detail = new ContactDetailPage(context);
+  return detail.isFindWarmPathButtonVisible(contactId);
+}
+
+/** Asserts the warm-path results container is visible for a contact. */
+export async function expectWarmPathResultsVisible(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new ContactDetailPage(context);
+  const locator = await detail.warmPathResultsLocator(contactId);
+  await expect(locator).toBeVisible();
+}
+
+/** Asserts the no-warm-path-found empty state message is visible. */
+export async function expectWarmPathEmptyMessageVisible(
+  context: ContactsBehaviorContext,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const detail = new ContactDetailPage(context);
+  const locator = await detail.warmPathEmptyMessageLocator();
+  await expect(locator).toBeVisible();
+}
+
+// ---------------------------------------------------------------------------
 // AI email draft generation (MINCRM-437)
 // ---------------------------------------------------------------------------
 

@@ -139,3 +139,22 @@ available from an activity's detail view for any activity linked to a contact.
 
 > These suggestions are **AI-generated** from the activity's own text — review before
 > saving or acting on them.
+
+### AI pre-meeting brief
+
+> **Feature flag:** `ai_meeting_brief`.
+
+For any upcoming Call or Meeting activity linked to a contact, a **Generate Brief**
+button appears in the activity timeline. Click it to assemble a brief covering the
+contact's snapshot (name, title, company), a short account summary, open opportunities
+with an AI-suggested next step for each, a plain-language summary of recent activity,
+3–5 suggested talking points, and any objection categories previously logged for the
+contact. If your admin has enabled web search in AI settings, the brief may also
+include up to two recent news items about the contact's company — this section is
+omitted (not shown as an error) when no relevant news is found or the search fails.
+
+The brief opens in a sidebar panel with **Copy to clipboard**, **Print**, and
+**Regenerate** actions — regenerating replaces the previous brief rather than keeping
+both. The most recently generated brief for an activity is also available at its own
+page (`/activities/<id>/brief`) so you can pull it up on your phone right before a
+call — like every other page in MiniCRM, this still requires being logged in.

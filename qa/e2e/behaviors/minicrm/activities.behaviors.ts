@@ -340,3 +340,30 @@ export async function logActivity(
 ): Promise<void> {
   await new ActivityTimelinePage(context).logActivity(params);
 }
+
+// ---------------------------------------------------------------------------
+// AI pre-meeting brief generation (MINCRM-465)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the "Generate Brief" button is currently visible for an activity. */
+export async function isGenerateBriefButtonVisible(
+  activityId: string,
+  context: ActivitiesBehaviorContext,
+): Promise<boolean> {
+  return new ActivityTimelinePage(context).isGenerateBriefButtonVisible(activityId);
+}
+
+/** Clicks the "Generate Brief" button for an activity. */
+export async function clickGenerateBrief(
+  activityId: string,
+  context: ActivitiesBehaviorContext,
+): Promise<void> {
+  await new ActivityTimelinePage(context).clickGenerateBrief(activityId);
+}
+
+/** Returns true when the meeting brief panel is currently visible. */
+export async function isMeetingBriefPanelVisible(
+  context: ActivitiesBehaviorContext,
+): Promise<boolean> {
+  return new ActivityTimelinePage(context).isMeetingBriefPanelVisible();
+}

@@ -325,4 +325,52 @@ export class ActivityTimelinePage {
     await subjectLocator.fill(params.subject);
     await this.clickFormSubmit();
   }
+
+  // ── AI pre-meeting brief generation (MINCRM-465) ─────────────────────────────
+
+  /** Returns a resolved locator for the "Generate Brief" button, scoped to an activity ID. */
+  async generateBriefButtonLocator(activityId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `generate-brief-${activityId}` },
+          { type: 'css', value: `[data-testid="generate-brief-${activityId}"]` },
+        ],
+        { intent: 'Generate Brief button on an activity timeline row' },
+      )
+      .resolve();
+  }
+
+  /** Returns true when the "Generate Brief" button is currently visible, scoped to an activity ID. */
+  async isGenerateBriefButtonVisible(activityId: string): Promise<boolean> {
+    return this.isElementCurrentlyVisible(`[data-testid="generate-brief-${activityId}"]`, () =>
+      this.generateBriefButtonLocator(activityId),
+    );
+  }
+
+  /** Clicks the "Generate Brief" button, scoped to an activity ID. */
+  async clickGenerateBrief(activityId: string): Promise<void> {
+    const locator = await this.generateBriefButtonLocator(activityId);
+    await locator.click();
+  }
+
+  /** Returns a resolved locator for the meeting brief panel. */
+  async meetingBriefPanelLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'meeting-brief-panel' },
+          { type: 'css', value: '[data-testid="meeting-brief-panel"]' },
+        ],
+        { intent: 'AI pre-meeting brief panel shown after generating a brief' },
+      )
+      .resolve();
+  }
+
+  /** Returns true when the meeting brief panel is currently visible. */
+  async isMeetingBriefPanelVisible(): Promise<boolean> {
+    return this.isElementCurrentlyVisible('[data-testid="meeting-brief-panel"]', () =>
+      this.meetingBriefPanelLocator(),
+    );
+  }
 }
