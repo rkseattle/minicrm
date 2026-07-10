@@ -83,6 +83,15 @@ describe('assertUrlIsFetchSafe', () => {
     });
   });
 
+  it('rejects an IPv6 link-local address (fe80::/10) with reason blocked_address', async () => {
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce([
+      { address: 'fe80::1', family: 6 },
+    ] as never);
+    await expect(assertUrlIsFetchSafe('https://evil.internal/logo.png')).rejects.toMatchObject({
+      reason: 'blocked_address',
+    });
+  });
+
   it('accepts a public IPv4 address over HTTPS', async () => {
     vi.spyOn(dns.promises, 'lookup').mockResolvedValueOnce(MOCK_PUBLIC_IPV4 as never);
     await expect(assertUrlIsFetchSafe('https://example.com/logo.png')).resolves.toBeUndefined();

@@ -853,6 +853,49 @@ describe('renderPdfDocument branding (MINCRM-656)', () => {
     expect(buffer.toString('latin1')).toContain('/Subtype /Image');
   });
 
+  it('does not reserve logo-height whitespace under the title when no logo is configured (PR review)', async () => {
+    // Regression: doc.y was previously forced to at least margins.top + LOGO_HEIGHT
+    // unconditionally, injecting ~10pt of blank space below the title even when no
+    // logo rendered. The section heading should now sit noticeably higher (closer
+    // to the page top, i.e. a larger PDF-space Y) without a logo than with one.
+    const withoutLogo = await renderToBuffer({
+      title: 'Accounts',
+      sections: [{ heading: 'SectionHeading', lines: ['Row 1'] }],
+    });
+
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
+    const pngBuffer = Buffer.from(TEST_LOGO_PNG_BASE64, 'base64');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (key: string) =>
+            key.toLowerCase() === 'content-type'
+              ? 'image/png'
+              : key.toLowerCase() === 'content-length'
+                ? String(pngBuffer.length)
+                : null,
+        },
+        arrayBuffer: async () =>
+          pngBuffer.buffer.slice(pngBuffer.byteOffset, pngBuffer.byteOffset + pngBuffer.byteLength),
+      }),
+    );
+    const withLogo = await renderToBuffer(
+      { title: 'Accounts', sections: [{ heading: 'SectionHeading', lines: ['Row 1'] }] },
+      makeBranding({ logoUrl: 'https://example.com/logo.png' }),
+    );
+
+    const headingY = (buffer: Buffer): number => {
+      const placement = extractTextPlacements(buffer).find((p) => p.text === 'SectionHeading');
+      expect(placement).toBeDefined();
+      return placement!.y;
+    };
+
+    expect(headingY(withoutLogo)).toBeGreaterThan(headingY(withLogo));
+  });
+
   it('falls back to a text-only title when the logo fetch fails, without failing the export', async () => {
     vi.spyOn(dns.promises, 'lookup').mockResolvedValue(MOCK_PUBLIC_IPV4 as never);
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
