@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import ReactMarkdown from 'react-markdown';
 import NavBar from '@/components/NavBar.js';
 import NliResultBlock from '@/components/ai/results/NliResultBlock.js';
 import MutationConfirmationBlock from '@/components/ai/MutationConfirmationBlock.js';
@@ -84,7 +85,41 @@ function MessageBubble({
           aria-label={isUser ? t('ai.userRole') : t('ai.assistantRole')}
           data-testid={`ai-message-${message.role}`}
         >
-          {message.content}
+          {isUser ? (
+            message.content
+          ) : (
+            <div className="ai-markdown">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => (
+                    <ul className="list-disc ps-5 mb-2 last:mb-0 space-y-0.5">{children}</ul>
+                  ),
+                  ol: ({ children }) => (
+                    <ol className="list-decimal ps-5 mb-2 last:mb-0 space-y-0.5">{children}</ol>
+                  ),
+                  li: ({ children }) => <li>{children}</li>,
+                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  a: ({ children, href }) => (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-600 underline hover:text-primary-700"
+                      data-testid={`ai-message-markdown-link-${message.id}`}
+                    >
+                      {children}
+                    </a>
+                  ),
+                  code: ({ children }) => (
+                    <code className="bg-gray-100 rounded px-1 py-0.5 text-xs">{children}</code>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
           {hasToolResults && (
             <NliResultBlock toolResults={message.tool_results!} isLoading={isLoading} />
           )}
@@ -631,7 +666,7 @@ export default function AiPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       <NavBar />
 
       {/* Delete confirmation modal */}
