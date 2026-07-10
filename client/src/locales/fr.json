@@ -2617,6 +2617,14 @@
     "loading": "Chargement du briefing…",
     "notFound": "Aucun briefing n'a encore été généré pour cette activité."
   },
+  "warmIntro": {
+    "heading": "Voies d'introduction chaleureuse",
+    "findWarmPathButton": "Trouver une voie chaleureuse",
+    "loading": "Recherche de voies chaleureuses…",
+    "loadFailed": "Échec du chargement des voies d'introduction chaleureuse.",
+    "noPathsFound": "Aucune voie d'introduction chaleureuse trouvée.",
+    "pathLabel": "Vous → {{known}} → {{target}}"
+  },
   "taskSuggestions": {
     "heading": "Tâches de suivi suggérées",
     "dismissAll": "Ignorer",

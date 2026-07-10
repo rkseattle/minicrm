@@ -111,6 +111,7 @@ import {
 import { saveNliReport } from '../services/customReportService.js';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { getContactChampionBlockerStatus } from '../services/championBlockerService.js';
+import { findWarmIntroPaths } from '../services/warmIntroService.js';
 import {
   getAccountChurnExpansionSignal,
   listChurnExpansionSignals,
@@ -342,6 +343,13 @@ export async function executeToolCall(
           };
         }
         return await getContactChampionBlockerStatus(id);
+      }
+
+      case 'findWarmIntroPaths': {
+        const id = toolInput.id as string;
+        const result = await findWarmIntroPaths(id, ctx.userId, ctx.userRole);
+        if (!result) return notFound('Contact', id);
+        return result;
       }
 
       // ── Accounts ─────────────────────────────────────────────────────────────

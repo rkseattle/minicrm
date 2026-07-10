@@ -141,4 +141,16 @@ export const contactTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'findWarmIntroPaths',
+    description:
+      "Finds ranked warm introduction paths to a target contact through the requesting rep's own contact network (Rep -> Known Contact -> Target Contact, max 2 hops), based on shared accounts, shared deals, and notes mentions. Each path includes a suggested introduction message. Read-only — no automated outreach is sent. Returns an empty paths array when no path exists. (MINCRM-468)",
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'UUID of the target contact.' },
+      },
+      required: ['id'],
+    },
+  },
 ];

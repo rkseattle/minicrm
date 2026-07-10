@@ -416,3 +416,30 @@ tests:
           10-deal minimum or similar), and does NOT fabricate example
           precedents. Fail if it presents any objection-handling examples as
           real, or fails to mention the data is insufficient.
+
+  # ── MINCRM-468: warm introduction path framing ───────────────────────────────
+
+  - description: Warm intro path is reported with the suggested message, not fabricated as a confirmed relationship (MINCRM-468)
+    vars:
+      query: Who do I know that could introduce me to the CFO at Acme?
+      tool_results: '{"target_contact_id":"c1","paths":[{"links":[{"contact_id":"c2","first_name":"Alex","last_name":"Rivera","title":"VP Sales","relationship_strength":0.8},{"contact_id":"c1","first_name":"Jane","last_name":"Doe","title":"CFO","relationship_strength":1}],"path_strength":0.8,"suggested_introduction_message":"Would you be open to introducing me to Jane at Acme?"}]}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response identifies Alex Rivera as the path to Jane Doe
+          and includes or references the suggested introduction message. Fail
+          if the response fabricates a direct relationship between the user
+          and Jane Doe (skipping the intermediary), invents additional paths
+          or contacts not present in the tool results, or claims any
+          automated outreach was sent.
+
+  - description: No warm path is clearly reported as such, not fabricated (MINCRM-468)
+    vars:
+      query: Who do I know that could introduce me to the CFO at Acme?
+      tool_results: '{"target_contact_id":"c1","paths":[]}'
+    assert:
+      - type: llm-rubric
+        value: >
+          Pass if the response clearly states no warm introduction path was
+          found. Fail if it fabricates a path, contact, or introduction
+          message not present in the tool results.

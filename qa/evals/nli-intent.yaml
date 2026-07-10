@@ -34,7 +34,7 @@ prompts:
     listTags, attachTag, detachTag, renameTag,
     generateReport, saveReport, exportEntities, getWinLossPatterns,
     getContactChampionBlockerStatus, getAccountChurnExpansionSignal,
-    getAtRiskAndExpansionAccounts, getObjectionPrecedents.
+    getAtRiskAndExpansionAccounts, getObjectionPrecedents, findWarmIntroPaths.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -59,6 +59,11 @@ prompts:
     Rule: getObjectionPrecedents takes a category input (one of Price, Timing,
     Competitor, ProductFit, Authority, Risk, Other) inferred from the request,
     e.g. "price objections" implies category "Price".
+
+    Rule: findWarmIntroPaths is for "who do I know that could introduce me to X"
+    style requests — finding a path through the user's own contact network to a
+    target contact. Use getContact/searchContacts instead for plain lookups that
+    don't ask about mutual connections or introductions.
 
     Given the user request below, identify the single most appropriate tool
     to call FIRST. Respond ONLY with a JSON object in this exact format, with no
@@ -294,3 +299,15 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'getObjectionPrecedents' && parsed.input?.category === 'Price';
+
+  # ── MINCRM-468: warm introduction path mapping ───────────────────────────────
+
+  - description: Mutual-connection introduction question maps to findWarmIntroPaths (MINCRM-468)
+    vars:
+      query: Who do I know that could introduce me to the CFO at Acme?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'findWarmIntroPaths';

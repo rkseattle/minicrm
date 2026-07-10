@@ -57,6 +57,7 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
 import SentimentSparkline from '@/components/SentimentSparkline.js';
+import WarmIntroPathsPanel from '@/components/WarmIntroPathsPanel.js';
 import EmailDraftPanel from '@/components/EmailDraftPanel.js';
 import { generateEmailDraft } from '@/api/emailDraft.js';
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
@@ -122,6 +123,7 @@ export default function ContactDetailPage() {
   const { enabled: sequencingEnabled, isLoading: sequencingLoading } = useFeatureFlag('sequencing');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
   const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
+  const { enabled: warmIntroPathEnabled } = useFeatureFlag('ai_warm_intro_path');
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
@@ -1436,6 +1438,21 @@ export default function ContactDetailPage() {
                 )}
               </div>
             </section>
+
+            {/* AI warm introduction path mapping (MINCRM-468) */}
+            {warmIntroPathEnabled && id && (
+              <section className="mt-8" aria-labelledby="warm-intro-paths-heading">
+                <h2
+                  id="warm-intro-paths-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="warm-intro-paths-heading"
+                >
+                  {t('warmIntro.heading')}
+                </h2>
+                <WarmIntroPathsPanel contactId={id} />
+              </section>
+            )}
+
             {/* Sequence enrollments (MINCRM-403) — gated by sequencing feature flag */}
             {sequencingLoading ? (
               <div className="mt-8 h-24 bg-gray-100 rounded animate-pulse" aria-hidden="true" />

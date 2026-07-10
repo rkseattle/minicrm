@@ -2617,6 +2617,14 @@
     "loading": "正在加载简报……",
     "notFound": "此活动尚未生成简报。"
   },
+  "warmIntro": {
+    "heading": "热情引荐路径",
+    "findWarmPathButton": "查找热情引荐路径",
+    "loading": "正在查找路径……",
+    "loadFailed": "加载热情引荐路径失败。",
+    "noPathsFound": "未找到热情引荐路径。",
+    "pathLabel": "您 → {{known}} → {{target}}"
+  },
   "taskSuggestions": {
     "heading": "建议的后续任务",
     "dismissAll": "关闭",

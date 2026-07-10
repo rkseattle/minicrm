@@ -2617,6 +2617,14 @@
     "loading": "Cargando informe…",
     "notFound": "Aún no se ha generado ningún informe para esta actividad."
   },
+  "warmIntro": {
+    "heading": "Rutas de presentación cálida",
+    "findWarmPathButton": "Buscar ruta cálida",
+    "loading": "Buscando rutas cálidas…",
+    "loadFailed": "No se pudieron cargar las rutas de presentación cálida.",
+    "noPathsFound": "No se encontró ninguna ruta de presentación cálida.",
+    "pathLabel": "Usted → {{known}} → {{target}}"
+  },
   "taskSuggestions": {
     "heading": "Tareas de seguimiento sugeridas",
     "dismissAll": "Descartar",

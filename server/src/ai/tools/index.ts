@@ -51,6 +51,7 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   ['updateContact', 'contacts:edit' as Capability],
   ['deleteContact', 'contacts:delete' as Capability],
   ['getContactChampionBlockerStatus', 'contacts:view' as Capability],
+  ['findWarmIntroPaths', 'contacts:view' as Capability],
 
   // ── Accounts (no dedicated account capabilities — use contacts:* as proxy) ─
   ['searchAccounts', 'contacts:view' as Capability],
@@ -130,6 +131,7 @@ export const TOOL_FEATURE_FLAG_MAP: ReadonlyMap<string, string> = new Map([
   ['getAccountChurnExpansionSignal', 'ai_churn_expansion_detection'],
   ['getAtRiskAndExpansionAccounts', 'ai_churn_expansion_detection'],
   ['getObjectionPrecedents', 'ai_objection_pattern_matching'],
+  ['findWarmIntroPaths', 'ai_warm_intro_path'],
 ]);
 
 // ── Built-in role capability fallback ─────────────────────────────────────────
