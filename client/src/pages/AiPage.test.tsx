@@ -144,6 +144,87 @@ function mockStatefulSession() {
   );
 }
 
+describe('AiPage — markdown rendering (MINCRM-657)', () => {
+  it('renders markdown formatting in assistant replies', async () => {
+    server.use(
+      http.get('/api/v1/ai/sessions', () =>
+        HttpResponse.json({
+          sessions: [
+            {
+              id: SESSION_ID,
+              user_id: 'user-1',
+              name: 'Test session',
+              created_at: '2026-07-01T00:00:00.000Z',
+              updated_at: '2026-07-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+      http.get('/api/v1/ai/context', () => HttpResponse.json({ entries: [] })),
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      http.get(`/api/v1/ai/sessions/${SESSION_ID}`, () =>
+        HttpResponse.json({
+          id: SESSION_ID,
+          user_id: 'user-1',
+          name: 'Test session',
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+          messages: [
+            {
+              id: 'assistant-md-1',
+              session_id: SESSION_ID,
+              role: 'assistant',
+              content: '**Bold point** and a list:\n\n- First item\n- Second item',
+              tool_results: null,
+              pending_action: null,
+              context_proposal: null,
+              created_at: '2026-07-01T00:01:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<AiPage />);
+
+    const bubble = await screen.findByTestId('ai-message-assistant');
+
+    // Markdown syntax markers must not appear literally in the rendered text.
+    expect(bubble.textContent).not.toContain('**');
+    expect(bubble.textContent).not.toContain('- First item');
+
+    // Bold text renders as a real <strong> element.
+    const bold = screen.getByText('Bold point');
+    expect(bold.tagName).toBe('STRONG');
+
+    // Bullet items render as real list items.
+    expect(screen.getByText('First item').closest('li')).not.toBeNull();
+    expect(screen.getByText('Second item').closest('li')).not.toBeNull();
+  });
+
+  it('renders user messages as plain text without markdown parsing', async () => {
+    mockStatefulSession();
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const input = await screen.findByTestId('ai-message-input');
+    await user.type(input, '**not bold** for me');
+    await user.click(screen.getByTestId('ai-send-button'));
+
+    const userBubble = await screen.findByTestId('ai-message-user');
+    expect(userBubble.textContent).toContain('**not bold** for me');
+    expect(userBubble.querySelector('strong')).toBeNull();
+  });
+});
+
 describe('AiPage — retention window notice', () => {
   it('shows the retention window once loaded', async () => {
     mockEmptySessions();
