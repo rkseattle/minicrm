@@ -695,7 +695,12 @@ export async function renderPdfDocument(
     .font(fontForText(titleText, false, style.baseFontFamily))
     .text(titleText, titleX, doc.y, { width: titleWidth, align: 'left' });
   doc.font(standardFontName(style.baseFontFamily, false));
-  doc.y = Math.max(doc.y, doc.page.margins.top + LOGO_HEIGHT);
+  // Only reserve room for the logo's height when one actually rendered — applying
+  // this unconditionally injects ~10pt of blank space below the title in the
+  // unbranded/no-logo case, where the title's own line height already exceeds it.
+  if (logoWidth > 0) {
+    doc.y = Math.max(doc.y, doc.page.margins.top + LOGO_HEIGHT);
+  }
   doc.moveDown(0.3);
   // Rule under the title, visually separating it from body content. Uses the
   // branding accent color when configured. (MINCRM-655, MINCRM-656)

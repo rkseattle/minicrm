@@ -24,10 +24,13 @@ const BLOCKED_IPV4_CIDRS: Array<[ipaddr.IPv4, number]> = [
 
 /**
  * IPv6 CIDR ranges that must never be reachable via a server-initiated fetch of a
- * user-supplied URL. Covers: loopback (::1/128) and ULA (fc00::/7).
+ * user-supplied URL. Covers: loopback (::1/128), link-local (fe80::/10 — the IPv6
+ * counterpart to blocked IPv4 169.254.0.0/16, reachable on the adjacent network
+ * segment in dual-stack environments), and ULA (fc00::/7).
  */
 const BLOCKED_IPV6_CIDRS: Array<[ipaddr.IPv6, number]> = [
   ipaddr.IPv6.parseCIDR('::1/128'), // loopback
+  ipaddr.IPv6.parseCIDR('fe80::/10'), // link-local
   ipaddr.IPv6.parseCIDR('fc00::/7'), // ULA
 ];
 
