@@ -236,6 +236,10 @@ const SERIAL_FILES = [
   // leadScoreNarrativeService toggles the same ai_configuration singleton row as the other
   // on-demand AI test suites above. (MINCRM-441)
   'src/__tests__/leadScoreNarrativeService.test.ts',
+  // sentimentService toggles the same ai_configuration singleton row as the other
+  // background-job AI test suites above, and also flips the ai_sentiment_tracking
+  // feature_flags row. (MINCRM-472)
+  'src/__tests__/sentimentService.test.ts',
 ];
 
 const sharedResolve = {

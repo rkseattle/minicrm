@@ -172,6 +172,55 @@ describe('ContactDetailPage', () => {
     });
   });
 
+  // ── AI sentiment tracking (MINCRM-472) ───────────────────────────────────────────
+
+  it('shows no sentiment sparkline when there is insufficient data', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId(`sentiment-trend-${CONTACT_1.id}`)).not.toBeInTheDocument();
+  });
+
+  it('shows the sentiment trend sparkline when there is sufficient data', async () => {
+    server.use(
+      http.get('/api/v1/contacts/:id/sentiment-trend', () =>
+        HttpResponse.json({
+          contact_id: CONTACT_1.id,
+          trend: 'warming',
+          has_sufficient_data: true,
+          points: [
+            {
+              activity_id: '00000000-0000-0000-0000-000000000401',
+              sentiment: 'positive',
+              flagged_inaccurate: false,
+              created_at: '2026-07-01T00:00:00.000Z',
+            },
+            {
+              activity_id: '00000000-0000-0000-0000-000000000402',
+              sentiment: 'neutral',
+              flagged_inaccurate: false,
+              created_at: '2026-06-25T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`sentiment-trend-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`sentiment-trend-badge-${CONTACT_1.id}`)).toHaveTextContent(
+      'Warming',
+    );
+  });
+
   it('renders contact detail fields', async () => {
     renderWithProviders(<ContactDetailPage />, {
       initialEntries: [`/contacts/${CONTACT_1.id}`],

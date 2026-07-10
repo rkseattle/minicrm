@@ -56,6 +56,7 @@ import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import EntityDetailSidebar from '@/components/EntityDetailSidebar.js';
 import ChampionBlockerBadge from '@/components/ChampionBlockerBadge.js';
+import SentimentSparkline from '@/components/SentimentSparkline.js';
 import EmailDraftPanel from '@/components/EmailDraftPanel.js';
 import { generateEmailDraft } from '@/api/emailDraft.js';
 import type { EmailDraftResponse } from '@shared/schemas/emailDraftSchema.js';
@@ -64,6 +65,7 @@ import {
   dismissContactChampionBlocker,
   contactChampionBlockerQueryKey,
 } from '@/api/championBlocker.js';
+import { getContactSentimentTrend, contactSentimentTrendQueryKey } from '@/api/sentiment.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -119,6 +121,7 @@ export default function ContactDetailPage() {
 
   const { enabled: sequencingEnabled, isLoading: sequencingLoading } = useFeatureFlag('sequencing');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
+  const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
@@ -157,6 +160,13 @@ export default function ContactDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contactChampionBlockerQueryKey(id ?? '') });
     },
+  });
+
+  // AI sentiment trend (MINCRM-472) — passive, page-load read of the last 10 interactions.
+  const { data: sentimentTrend } = useQuery({
+    queryKey: contactSentimentTrendQueryKey(id ?? ''),
+    queryFn: () => getContactSentimentTrend(id!),
+    enabled: Boolean(id) && sentimentTrackingEnabled,
   });
 
   const emailDraftMutation = useMutation({
@@ -468,6 +478,14 @@ export default function ContactDetailPage() {
                 recentSignals={championBlocker.recent_signals}
                 onDismiss={() => dismissChampionBlockerMutation.mutate()}
                 isDismissing={dismissChampionBlockerMutation.isPending}
+              />
+            )}
+            {sentimentTrackingEnabled && sentimentTrend && (
+              <SentimentSparkline
+                entityId={contact.id}
+                trend={sentimentTrend.trend}
+                hasSufficientData={sentimentTrend.has_sufficient_data}
+                points={sentimentTrend.points}
               />
             )}
           </div>

@@ -46,6 +46,7 @@ import {
   dismissContactChampionBlockerHandler,
   overrideContactChampionBlockerHandler,
 } from '../controllers/championBlockerController.js';
+import { getContactSentimentTrendHandler } from '../controllers/sentimentController.js';
 import { requireRole } from '../middleware/requireRole.js';
 import {
   enrollContactHandler,
@@ -1084,6 +1085,16 @@ router.patch(
   authenticate,
   requireFeatureEnabled('ai_champion_blocker_detection'),
   asyncHandler(overrideContactChampionBlockerHandler),
+);
+
+// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+
+/** Returns the sentiment trend for the contact's last 10 interactions. */
+router.get(
+  '/:id/sentiment-trend',
+  authenticate,
+  requireFeatureEnabled('ai_sentiment_tracking'),
+  asyncHandler(getContactSentimentTrendHandler),
 );
 
 // ── AI email draft generation (MINCRM-437) ──────────────────────────────────────

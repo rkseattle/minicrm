@@ -30,10 +30,12 @@ import type { ActiveUser } from '@/api/users.js';
 import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js';
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import ChurnExpansionBanner from '@/components/ChurnExpansionBanner.js';
+import SentimentSparkline from '@/components/SentimentSparkline.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { getAccountSentimentTrend, accountSentimentTrendQueryKey } from '@/api/sentiment.js';
 
 /**
  * Single account detail page with view/edit/delete.
@@ -51,6 +53,7 @@ export default function AccountDetailPage() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
+  const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
 
   const accountQueryKey = ['accounts', id] as const;
 
@@ -92,6 +95,13 @@ export default function AccountDetailPage() {
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
     queryFn: listActiveUsers,
+  });
+
+  // AI sentiment trend (MINCRM-472) — passive, page-load read of the last 90 days.
+  const { data: sentimentTrend } = useQuery({
+    queryKey: accountSentimentTrendQueryKey(id ?? ''),
+    queryFn: () => getAccountSentimentTrend(id!),
+    enabled: Boolean(id) && sentimentTrackingEnabled,
   });
 
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
@@ -213,9 +223,19 @@ export default function AccountDetailPage() {
         {id && <ChurnExpansionBanner accountId={id} />}
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900" data-testid="account-name">
-            {account.name}
-          </h1>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900" data-testid="account-name">
+              {account.name}
+            </h1>
+            {sentimentTrackingEnabled && sentimentTrend && (
+              <SentimentSparkline
+                entityId={account.id}
+                trend={sentimentTrend.trend}
+                hasSufficientData={sentimentTrend.has_sufficient_data}
+                points={sentimentTrend.points}
+              />
+            )}
+          </div>
 
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">

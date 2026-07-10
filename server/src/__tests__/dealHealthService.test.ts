@@ -32,6 +32,7 @@ import { createActivity } from '../services/activityService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { generateDealHealthCheck } from '../services/dealHealthService.js';
 import { encryptVersioned } from '../services/cryptoService.js';
+import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'deal-health-svc';
 
@@ -71,6 +72,15 @@ beforeEach(async () => {
     `UPDATE ai_configuration SET enabled = true, api_key_encrypted = $1, api_key_key_version = $2, model = 'claude-sonnet-4-20250514'`,
     [ciphertext, keyVersion],
   );
+  // This file calls the real createActivity(), which fires scoreActivitySentiment
+  // fire-and-forget after every insert. With ai_configuration.enabled=true above, that
+  // background hook would otherwise call the same mocked Anthropic client and pollute
+  // mockCreate's call count/args for this file's own generateDealHealthCheck assertions.
+  // (MINCRM-472)
+  await pool.query(
+    `UPDATE feature_flags SET enabled = false WHERE flag_key = 'ai_sentiment_tracking'`,
+  );
+  invalidateFeatureFlagCache();
 });
 
 afterAll(async () => {

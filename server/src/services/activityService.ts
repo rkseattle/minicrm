@@ -21,6 +21,7 @@ import type { AuditActor } from './auditService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { buildVisibilityFilter } from './visibilityService.js';
 import { analyzeContactSignals } from './championBlockerService.js';
+import { scoreActivitySentiment } from './sentimentService.js';
 
 /** Columns that may be updated via updateActivity — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateActivityInput> = new Set([
@@ -135,6 +136,13 @@ export async function createActivity(
   void analyzeContactSignals({
     activityId: activity.id,
     contactId: activity.contact_id,
+    notes: activity.notes,
+    subject: activity.subject,
+  });
+
+  // Fire-and-forget: scoreActivitySentiment swallows all internal errors and logs them. (MINCRM-472)
+  void scoreActivitySentiment({
+    activityId: activity.id,
     notes: activity.notes,
     subject: activity.subject,
   });
@@ -356,6 +364,16 @@ export async function updateActivity(
         'activity.completed',
         activity as unknown as Record<string, unknown>,
       );
+    }
+
+    // Re-score only when the note text actually changed — avoids re-scoring on every
+    // unrelated field edit (e.g. status/due_date changes). (MINCRM-472)
+    if (activity && fields.includes('notes') && before && before.notes !== activity.notes) {
+      void scoreActivitySentiment({
+        activityId: activity.id,
+        notes: activity.notes,
+        subject: activity.subject,
+      });
     }
 
     return activity;

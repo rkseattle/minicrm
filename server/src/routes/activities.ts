@@ -28,6 +28,7 @@ import {
 } from '../controllers/objectionMatchingController.js';
 import { summarizeActivityHandler } from '../controllers/activitySummaryController.js';
 import { generateTaskSuggestionsHandler } from '../controllers/taskSuggestionController.js';
+import { flagActivitySentimentInaccurateHandler } from '../controllers/sentimentController.js';
 
 const router = Router();
 
@@ -690,6 +691,17 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_objection_pattern_matching'),
   asyncHandler(getObjectionPrecedentsHandler),
+);
+
+// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+
+/** Records a rep's "Not accurate" feedback on the activity's AI sentiment score. */
+router.post(
+  '/:id/sentiment/flag-inaccurate',
+  authenticate,
+  requireCapability(Capability.ActivitiesEdit),
+  requireFeatureEnabled('ai_sentiment_tracking'),
+  asyncHandler(flagActivitySentimentInaccurateHandler),
 );
 
 // ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────

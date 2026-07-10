@@ -28,6 +28,7 @@ import {
 } from '../controllers/tagController.js';
 import { bulkAccountsHandler } from '../controllers/bulkController.js';
 import { getAccountChurnExpansionSignalHandler } from '../controllers/churnExpansionController.js';
+import { getAccountSentimentTrendHandler } from '../controllers/sentimentController.js';
 
 const router = Router();
 
@@ -671,6 +672,16 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_churn_expansion_detection'),
   asyncHandler(getAccountChurnExpansionSignalHandler),
+);
+
+// ── AI sentiment tracking (MINCRM-472) ──────────────────────────────────────────
+
+/** Returns the aggregate sentiment trend across all contacts at the account, last 90 days. */
+router.get(
+  '/:id/sentiment-trend',
+  authenticate,
+  requireFeatureEnabled('ai_sentiment_tracking'),
+  asyncHandler(getAccountSentimentTrendHandler),
 );
 
 export default router;
