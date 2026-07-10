@@ -253,6 +253,10 @@ const SERIAL_FILES = [
   // meetingBriefController toggles the same ai_configuration/feature_flags rows via
   // supertest requests exercising the real createActivity() hook chain. (MINCRM-465)
   'src/__tests__/meetingBriefController.test.ts',
+  // warmIntroService toggles the same ai_configuration/feature_flags rows as the other
+  // on-demand AI test suites above, exercising the real createActivity() hook chain
+  // for its rep-engagement fixtures. (MINCRM-468)
+  'src/__tests__/warmIntroService.test.ts',
 ];
 
 const sharedResolve = {

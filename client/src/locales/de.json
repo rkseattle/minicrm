@@ -2617,6 +2617,14 @@
     "loading": "Briefing wird geladen…",
     "notFound": "Für diese Aktivität wurde noch kein Briefing erstellt."
   },
+  "warmIntro": {
+    "heading": "Warme Vorstellungswege",
+    "findWarmPathButton": "Warmen Kontakt finden",
+    "loading": "Wege werden gesucht…",
+    "loadFailed": "Warme Vorstellungswege konnten nicht geladen werden.",
+    "noPathsFound": "Kein warmer Vorstellungsweg gefunden.",
+    "pathLabel": "Sie → {{known}} → {{target}}"
+  },
   "taskSuggestions": {
     "heading": "Vorgeschlagene Folgeaufgaben",
     "dismissAll": "Verwerfen",

@@ -221,6 +221,18 @@ describe('ContactDetailPage', () => {
     );
   });
 
+  // ── AI warm introduction path mapping (MINCRM-468) ───────────────────────────────
+
+  it('shows the Find warm path action', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId(`find-warm-path-${CONTACT_1.id}`)).toBeInTheDocument();
+    });
+  });
+
   it('renders contact detail fields', async () => {
     renderWithProviders(<ContactDetailPage />, {
       initialEntries: [`/contacts/${CONTACT_1.id}`],

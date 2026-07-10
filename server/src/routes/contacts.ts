@@ -47,6 +47,7 @@ import {
   overrideContactChampionBlockerHandler,
 } from '../controllers/championBlockerController.js';
 import { getContactSentimentTrendHandler } from '../controllers/sentimentController.js';
+import { getWarmIntroPathsHandler } from '../controllers/warmIntroController.js';
 import { requireRole } from '../middleware/requireRole.js';
 import {
   enrollContactHandler,
@@ -1095,6 +1096,16 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_sentiment_tracking'),
   asyncHandler(getContactSentimentTrendHandler),
+);
+
+// ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
+
+/** Returns ranked warm introduction paths to the contact through the rep's own network. */
+router.get(
+  '/:id/warm-paths',
+  authenticate,
+  requireFeatureEnabled('ai_warm_intro_path'),
+  asyncHandler(getWarmIntroPathsHandler),
 );
 
 // ── AI email draft generation (MINCRM-437) ──────────────────────────────────────

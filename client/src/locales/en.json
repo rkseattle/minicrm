@@ -2617,6 +2617,14 @@
     "loading": "Loading brief…",
     "notFound": "No brief has been generated for this activity yet."
   },
+  "warmIntro": {
+    "heading": "Warm Introduction Paths",
+    "findWarmPathButton": "Find warm path",
+    "loading": "Finding warm paths…",
+    "loadFailed": "Failed to load warm introduction paths.",
+    "noPathsFound": "No warm introduction path found.",
+    "pathLabel": "You → {{known}} → {{target}}"
+  },
   "taskSuggestions": {
     "heading": "Suggested follow-up tasks",
     "dismissAll": "Dismiss",

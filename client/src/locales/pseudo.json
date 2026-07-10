@@ -2617,6 +2617,14 @@
     "loading": "[Löädïñg brïëf…~~~~~]",
     "notFound": "[Ñö brïëf häŝ bëëñ gëñërätëd för thïŝ äĉtïvïty yët.~~~~~~~~~~~~~~~]"
   },
+  "warmIntro": {
+    "heading": "[Wärm Ïñtrödüĉtïöñ Päthŝ~~~~~~~]",
+    "findWarmPathButton": "[Fïñd wärm päth~~~~~]",
+    "loading": "[Fïñdïñg wärm päthŝ…~~~~~~]",
+    "loadFailed": "[Fäïlëd tö löäd wärm ïñtrödüĉtïöñ päthŝ.~~~~~~~~~~~~]",
+    "noPathsFound": "[Ñö wärm ïñtrödüĉtïöñ päth föüñd.~~~~~~~~~~]",
+    "pathLabel": "[Yöü → {{known}} → {{target}}~~~~~~~~~]"
+  },
   "taskSuggestions": {
     "heading": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
     "dismissAll": "[Dïŝmïŝŝ~~~]",

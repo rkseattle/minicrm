@@ -2717,6 +2717,13 @@ export const handlers = [
     );
   }),
 
+  // ── Warm introduction path mapping (MINCRM-468) ──────────────────────────────────
+
+  /** Contacts: GET /api/contacts/:id/warm-paths — defaults to no paths found. */
+  http.get('/api/v1/contacts/:id/warm-paths', ({ params }) => {
+    return HttpResponse.json({ target_contact_id: params['id'] as string, paths: [] });
+  }),
+
   // ── Win/loss pattern insights (MINCRM-464) ──────────────────────────────────────
 
   /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */
