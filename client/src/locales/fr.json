@@ -2462,6 +2462,23 @@
     "singleThreadedRiskWarning": "Risque de contact unique — un seul contact est impliqué dans cette opportunité.",
     "stakeholderMapSummary": "{{engaged}} contacts impliqués · {{champions}} champion(s) · {{blockers}} frein(s)"
   },
+  "sentiment": {
+    "trend": {
+      "warming": "En amélioration",
+      "stable": "Stable",
+      "cooling": "En refroidissement"
+    },
+    "value": {
+      "positive": "Positif",
+      "neutral": "Neutre",
+      "negative": "Négatif"
+    },
+    "sparklineLabel": "Sparkline de tendance du sentiment",
+    "flagInaccurate": "Signaler comme inexact",
+    "flagging": "Signalement…",
+    "flagged": "Signalé comme inexact",
+    "aiInferredLabel": "Déduit par l'IA, non factuel"
+  },
   "insights": {
     "winLossHeading": "Analyse des tendances gains/pertes",
     "notAvailable": "Cette fonctionnalité n'est pas disponible.",

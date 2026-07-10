@@ -270,10 +270,10 @@
     "duplicateGoToExisting": "[Gö tö ëxïŝtïñg ĉöñtäĉt~~~~~~~]",
     "duplicateCreateAnyway": "[Ĉrëätë äñywäy~~~~]",
     "exportCsv": "[Ëxpört ĈŜV~~~]",
-    "exportPdf": "[Ëxpört ṖDF~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
     "exportAll": "[Ëxpört Äll~~~]",
     "exporting": "[Ëxpörtïñg…~~~]",
-    "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Pl̈ëäsë try ägäïn.~~~]",
+    "exportPdfError": "[Fäïlëd tö ëxpört PDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "convertedFromLead": "[Ĉöñvërtëd fröm lëäd — ĉlïĉk tö vïëw örïgïñäl lëäd~~~~~~~~~~~~~~~]",
     "addressSection": "[Äddrëŝŝ~~~]",
     "addressLine1Label": "[Äddrëŝŝ lïñë 1~~~~~]",
@@ -386,10 +386,10 @@
     "searchPlaceholder": "[Ŝëärĉh by ĉömpäñy ñämë…~~~~~~~]",
     "industryFilterPlaceholder": "[Fïltër by ïñdüŝtry…~~~~~~]",
     "exportCsv": "[Ëxpört ĈŜV~~~]",
-    "exportPdf": "[Ëxpört ṖDF~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
     "exportAll": "[Ëxpört Äll~~~]",
     "exporting": "[Ëxpörtïñg…~~~]",
-    "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Pl̈ëäsë try ägäïn.~~~]",
+    "exportPdfError": "[Fäïlëd tö ëxpört PDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "columnType": "[Typë~~]",
     "accountTypeLabel": "[Äĉĉöüñt typë~~~~]",
     "accountTypeNone": "[— Ñö typë —~~~~]",
@@ -409,7 +409,7 @@
     "parentAccountLink": "[Vïëw pärëñt äĉĉöüñt~~~~~~]",
     "subsidiaryAccountsHeading": "[Ŝübŝïdïäry Äĉĉöüñtŝ~~~~~~]",
     "duplicateWarningTitle": "[Pöŝŝïblë düplïĉätë~~~~~~]",
-    "duplicateWarningMessage": "[Äñ äĉĉöüñt wïth thïŝ ñämë älrëädy ëxïŝtŝ: {{name}}.~~~~~~~~~~~~~~~~~]",
+    "duplicateWarningMessage": "[Äñ äĉĉöüñt wïth thïŝ ñämë älrëädy ëxïŝtŝ: {{name}}.~~~~~~~~~~~~~~~~]",
     "duplicateGoToExisting": "[Gö tö ëxïŝtïñg äĉĉöüñt~~~~~~~]",
     "duplicateCreateAnyway": "[Ĉrëätë äñywäy~~~~]"
   },
@@ -450,6 +450,16 @@
     "filteredEmptyTitle": "[Ñö dëälŝ mätĉh yöür fïltërŝ~~~~~~~~~]",
     "notFound": "[Dëäl ñöt föüñd.~~~~~]",
     "backToDeals": "[Bäĉk tö dëälŝ~~~~]",
+    "dealHealthHeading": "[Dëäl Hëälth~~~~]",
+    "dealHealthRunCheck": "[Ĉhëĉk hëälth~~~~]",
+    "dealHealthRunning": "[Ĉhëĉkïñg…~~~]",
+    "dealHealthEmpty": "[Rüñ ä hëälth ĉhëĉk tö ŝëë ÄÏ-ïdëñtïfïëd rïŝk ŝïgñälŝ för thïŝ dëäl.~~~~~~~~~~~~~~~~~~~~~]",
+    "dealHealthStatus": {
+      "on_track": "[Öñ Träĉk~~~]",
+      "at_risk": "[Ät Rïŝk~~~]",
+      "stalled": "[Ŝtällëd~~~]"
+    },
+    "stageAdvancementReadyLabel": "[Rëädy tö ädväñĉë tö {{stage}}?~~~~~~~~~]",
     "linkedContactsHeading": "[Lïñkëd Ĉöñtäĉtŝ~~~~~]",
     "linkedContactsEmpty": "[Ñö ĉöñtäĉtŝ lïñkëd tö thïŝ dëäl.~~~~~~~~~~]",
     "linkContact": "[Lïñk ĉöñtäĉt~~~~]",
@@ -461,10 +471,10 @@
     "viewList": "[Lïŝt vïëw~~~]",
     "pipelineSummaryLabel": "[Pïpëlïñë ŝümmäry~~~~~]",
     "exportCsv": "[Ëxpört ĈŜV~~~]",
-    "exportPdf": "[Ëxpört ṖDF~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
     "exportAll": "[Ëxpört Äll~~~]",
     "exporting": "[Ëxpörtïñg…~~~]",
-    "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Pl̈ëäsë try ägäïn.~~~]",
+    "exportPdfError": "[Fäïlëd tö ëxpört PDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "convertedFromLead": "[Ĉöñvërtëd fröm lëäd — ĉlïĉk tö vïëw örïgïñäl lëäd~~~~~~~~~~~~~~~]",
     "probabilityLabel": "[Pröbäbïlïty (%)~~~~~]",
     "probabilityDefault": "[Ŝtägë dëfäült pröbäbïlïty~~~~~~~~]",
@@ -546,14 +556,14 @@
       "action": "[Ŝümmärïzë~~~]",
       "title": "[Ŝümmärïzë äĉtïvïty~~~~~~]",
       "inputLabel": "[Päŝtë träñŝĉrïpt ör ñötëŝ~~~~~~~~]",
-      "inputPlaceholder": "[Päŝtë ä ĉäll träñŝĉrïpt, mëëtïñg ñötëŝ, ör räw tëxt…~~~~~~~~~~~~~~~~~]",
+      "inputPlaceholder": "[Päŝtë ä ĉäll träñŝĉrïpt, mëëtïñg ñötëŝ, ör räw tëxt…~~~~~~~~~~~~~~~~]",
       "submit": "[Ŝümmärïzë~~~]",
       "summarizing": "[Ŝümmärïzïñg…~~~~]",
-      "summaryLabel": "[Ŝümmäry~~]",
+      "summaryLabel": "[Ŝümmäry~~~]",
       "actionItemsLabel": "[Äĉtïöñ ïtëmŝ~~~~]",
       "suggestedTasksLabel": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
-      "dismissTask": "[Dïŝmïŝŝ~~]",
-      "apply": "[Äpply tö äĉtïvïty~~~~~]"
+      "dismissTask": "[Dïŝmïŝŝ~~~]",
+      "apply": "[Äpply tö äĉtïvïty~~~~~~]"
     }
   },
   "myTasks": {
@@ -1006,9 +1016,9 @@
       "totalsRow": "[Tötäl~~]",
       "empty": "[Ñö äĉtïvïtïëŝ löggëd för thïŝ përïöd.~~~~~~~~~~~~]",
       "exportCsv": "[Ëxpört ĈŜV~~~]",
-      "exportPdf": "[Ëxpört ṖDF~~~]",
-      "exporting": "[Ëxpörtïñg…~~~~]",
-      "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]"
+      "exportPdf": "[Ëxpört PDF~~~]",
+      "exporting": "[Ëxpörtïñg…~~~]",
+      "exportPdfError": "[Fäïlëd tö ëxpört PDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]"
     },
     "winLoss": {
       "pageTitle": "[Wïñ/Löŝŝ Rëpört~~~~~]",
@@ -1128,7 +1138,7 @@
       "resultsCount_other": "[{{count}} röwŝ~~~~~]",
       "resultsEmpty": "[Ñö röwŝ rëtürñëd för thïŝ qüëry.~~~~~~~~~~]",
       "exportCsv": "[Ëxpört ĈŜV~~~]",
-      "exportPdf": "[Ëxpört ṖDF~~~]",
+      "exportPdf": "[Ëxpört PDF~~~]",
       "errorRun": "[Fäïlëd tö rüñ rëpört. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
       "errorSave": "[Fäïlëd tö ŝävë rëpört. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
       "operatorEq": "[ëqüälŝ~~]",
@@ -1301,7 +1311,8 @@
     "save": "[Ŝävë~~]",
     "saving": "[Ŝävïñg…~~~]",
     "expand": "[Ëxpäñd~~]",
-    "collapse": "[Ĉölläpŝë~~~]"
+    "collapse": "[Ĉölläpŝë~~~]",
+    "export": "[Ëxpört~~]"
   },
   "errors": {
     "boundaryTitle": "[Ŝömëthïñg wëñt wröñg~~~~~~]",
@@ -1492,9 +1503,11 @@
     "delete": "[Dëlëtë~~]",
     "deleting": "[Dëlëtïñg…~~~]",
     "converting": "[Ĉöñvërtïñg…~~~~]",
-    "exportPdf": "[Ëxpört ṖDF~~~]",
+    "exportCsv": "[Ëxpört ĈŜV~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
+    "exportAll": "[Ëxpört Äll~~~]",
     "exporting": "[Ëxpörtïñg…~~~]",
-    "exportPdfError": "[Fäïlëd tö ëxpört ṖDF. Pl̈ëäsë try ägäïn.~~~]",
+    "exportPdfError": "[Fäïlëd tö ëxpört PDF. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "confirmDelete": "[Ärë yöü ŝürë yöü wäñt tö dëlëtë thïŝ lëäd? Thïŝ ĉäññöt bë üñdöñë.~~~~~~~~~~~~~~~~~~~~]",
     "firstNameLabel": "[Fïrŝt ñämë~~~]",
     "firstNamePlaceholder": "[Jäñë~~]",
@@ -2021,6 +2034,13 @@
   },
   "aiSettings": {
     "loadError": "[Fäïlëd tö löäd ÄÏ ŝëttïñgŝ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
+    "section": {
+      "navLabel": "[ÄÏ ŝëttïñgŝ ŝëĉtïöñŝ~~~~~~]",
+      "general": "[Gëñëräl~~~]",
+      "usageBudgets": "[Üŝägë & Büdgëtŝ~~~~~]",
+      "dataRetention": "[Dätä Rëtëñtïöñ~~~~~]",
+      "dataMinimization": "[Dätä Mïñïmïzätïöñ~~~~~~]"
+    },
     "header": {
       "deploymentMode": "[Dëplöymëñt Mödë~~~~~]"
     },
@@ -2328,7 +2348,7 @@
     "pageTitle": "[ÄÏ Üŝägë & Ĉöŝt Däŝhböärd~~~~~~~~]",
     "description": "[Möñïtör ÄÏ tökëñ üŝägë äñd ëŝtïmätëd ŝpëñd äĉröŝŝ yöür örgäñïzätïöñ.~~~~~~~~~~~~~~~~~~~~~]",
     "exportCsv": "[Ëxpört ĈŜV~~~]",
-    "exportPdf": "[Ëxpört ṖDF~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
     "exporting": "[Ëxpörtïñg…~~~]",
     "exportError": "[Fäïlëd tö ëxpört üŝägë dätä. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
     "exportPdfError": "[Fäïlëd tö ëxpört üŝägë dätä. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
@@ -2357,6 +2377,125 @@
     "tableTopFeature": "[Töp Fëätürë~~~~]",
     "tableFeature": "[Fëätürë~~~]",
     "noUsageData": "[Ñö üŝägë dätä för thïŝ räñgë.~~~~~~~~~]"
+  },
+  "proposalDraft": {
+    "sectionHeading": "[Pröpöŝäl Dräft~~~~~]",
+    "generateButton": "[Gëñërätë Pröpöŝäl Dräft~~~~~~~]",
+    "generating": "[Gëñërätïñg…~~~~]",
+    "editorTitle": "[Pröpöŝäl Dräft~~~~~]",
+    "copyToClipboard": "[Ĉöpy tö ĉlïpböärd~~~~~~]",
+    "copied": "[Ĉöpïëd!~~~]",
+    "downloadMarkdown": "[Döwñlöäd äŝ Märkdöwñ~~~~~~]",
+    "downloadDocx": "[Döwñlöäd äŝ DÖĈX~~~~~]",
+    "exporting": "[Ëxpörtïñg…~~~]",
+    "docxExportError": "[Fäïlëd tö ëxpört DÖĈX. Plëäŝë try ägäïñ.~~~~~~~~~~~~]",
+    "clipboardError": "[Fäïlëd tö ĉöpy tö ĉlïpböärd. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]",
+    "regenerate": "[Rëgëñërätë~~~]",
+    "regenerating": "[Rëgëñërätïñg…~~~~]",
+    "regenerateSubmit": "[Rëgëñërätë~~~]",
+    "focusNotesLabel": "[Föĉüŝ thïŝ dräft öñ~~~~~~]",
+    "focusNotesPlaceholder": "[ë.g. RÖÏ, ëxëĉütïvë äüdïëñĉë, tëĉhñïĉäl dëtäïl~~~~~~~~~~~~~~]",
+    "preparedForLabel": "[Prëpärëd för~~~~]",
+    "preparedByLabel": "[Prëpärëd by~~~~]",
+    "executiveSummaryHeading": "[Ëxëĉütïvë Ŝümmäry~~~~~~]",
+    "problemStatementHeading": "[Pröblëm Ŝtätëmëñt~~~~~~]",
+    "proposedSolutionHeading": "[Pröpöŝëd Ŝölütïöñ~~~~~~]",
+    "pricingHeading": "[Pröpöŝëd Ïñvëŝtmëñt~~~~~~]",
+    "lineItemDescriptionPlaceholder": "[Lïñë ïtëm dëŝĉrïptïöñ~~~~~~~]",
+    "removeLineItem": "[Rëmövë lïñë ïtëm~~~~~]",
+    "addLineItem": "[Ädd lïñë ïtëm~~~~]",
+    "nextStepsHeading": "[Ñëxt Ŝtëpŝ~~~]"
+  },
+  "objections": {
+    "category": {
+      "Price": "[Prïĉë~~]",
+      "Timing": "[Tïmïñg~~]",
+      "Competitor": "[Ĉömpëtïtör~~~]",
+      "ProductFit": "[Prödüĉt Fït~~~~]",
+      "Authority": "[Äüthörïty~~~]",
+      "Risk": "[Rïŝk~~]",
+      "Other": "[Öthër~~]"
+    },
+    "aiInferredLabel": "[ÄÏ-ïñfërrëd öbjëĉtïöñ ĉätëgöry~~~~~~~~~]",
+    "classificationFailed": "[Ĉöüldñ't ĉhëĉk thïŝ ñötë för öbjëĉtïöñŝ.~~~~~~~~~~~~]",
+    "howHandledBefore": "[Höw wäŝ thïŝ häñdlëd bëförë?~~~~~~~~~]",
+    "precedentsPanelLabel": "[Päŝt öbjëĉtïöñ prëĉëdëñtŝ~~~~~~~~]",
+    "loadFailed": "[Fäïlëd tö löäd prëĉëdëñtŝ.~~~~~~~~]",
+    "objectionQuote": "[“{{quote}}”~~~~]",
+    "insufficientData": "[Ñöt ëñöügh ĉlöŝëd-wöñ dëäl hïŝtöry yët ({{count}} öf {{required}} rëqüïrëd).~~~~~~~~~~~~~~~~~~~~~~~]",
+    "noPrecedentsFound": "[Ñö ŝïmïlär öbjëĉtïöñŝ föüñd ïñ päŝt wöñ dëälŝ.~~~~~~~~~~~~~~]",
+    "timeToClose": "[Ĉlöŝëd ïñ {{days}} däyŝ äftër thïŝ öbjëĉtïöñ~~~~~~~~~~~~~~]"
+  },
+  "churnExpansion": {
+    "churnRiskDetected": "[Ĉhürñ rïŝk dëtëĉtëd~~~~~~]",
+    "expansionSignalDetected": "[Ëxpäñŝïöñ ŝïgñäl dëtëĉtëd~~~~~~~~]",
+    "detectedOn": "[Dëtëĉtëd öñ {{date}}~~~~~~]",
+    "insightsHeading": "[Ät-Rïŝk & Ëxpäñŝïöñ Äĉĉöüñtŝ~~~~~~~~~]",
+    "notAvailable": "[Thïŝ fëätürë ïŝ ñöt äväïläblë.~~~~~~~~~]",
+    "loadFailed": "[Fäïlëd tö löäd ĉhürñ/ëxpäñŝïöñ ïñŝïghtŝ.~~~~~~~~~~~~]",
+    "atRiskHeading": "[Ät-Rïŝk Äĉĉöüñtŝ~~~~~]",
+    "atRiskEmpty": "[Ñö äĉĉöüñtŝ ĉürrëñtly ät rïŝk.~~~~~~~~~]",
+    "expansionHeading": "[Ëxpäñŝïöñ Öppörtüñïtïëŝ~~~~~~~]",
+    "expansionEmpty": "[Ñö ëxpäñŝïöñ öppörtüñïtïëŝ dëtëĉtëd.~~~~~~~~~~~]",
+    "confidenceLabel": "[{{confidence}}% ĉöñfïdëñĉë~~~~~~~~]"
+  },
+  "notifications": {
+    "bellLabel": "[Ñötïfïĉätïöñŝ ({{count}} üñrëäd)~~~~~~~~~~]",
+    "heading": "[Ñötïfïĉätïöñŝ~~~~]",
+    "markAllRead": "[Märk äll äŝ rëäd~~~~~]",
+    "empty": "[Ñö ñötïfïĉätïöñŝ yët.~~~~~~~]"
+  },
+  "championBlocker": {
+    "status": {
+      "champion": "[Ĉhämpïöñ~~~]",
+      "likely_champion": "[Lïkëly Ĉhämpïöñ~~~~~]",
+      "neutral": "[Ñëüträl~~~]",
+      "likely_blocker": "[Lïkëly Blöĉkër~~~~~]",
+      "blocker": "[Blöĉkër~~~]"
+    },
+    "whyButton": "[Why?~~]",
+    "whyLabel": "[Why wäŝ thïŝ ĉöñtäĉt ĉläŝŝïfïëd thïŝ wäy?~~~~~~~~~~~~~]",
+    "aiInferredLabel": "[ÄÏ-ïñfërrëd, ñöt fäĉtüäl~~~~~~~~]",
+    "notAccurate": "[Ñöt äĉĉürätë~~~~]",
+    "dismissing": "[Dïŝmïŝŝïñg…~~~~]",
+    "stakeholderMapHeading": "[Ŝtäkëhöldër Mäp~~~~~]",
+    "singleThreadedRiskWarning": "[Ŝïñglë-thrëädëd rïŝk — öñly öñë ĉöñtäĉt ïŝ ëñgägëd öñ thïŝ dëäl.~~~~~~~~~~~~~~~~~~~~]",
+    "stakeholderMapSummary": "[{{engaged}} ĉöñtäĉtŝ ëñgägëd · {{champions}} ĉhämpïöñ(ŝ) · {{blockers}} blöĉkër(ŝ)~~~~~~~~~~~~~~~~~~~~~~~~~]"
+  },
+  "sentiment": {
+    "trend": {
+      "warming": "[Wärmïñg~~~]",
+      "stable": "[Ŝtäblë~~]",
+      "cooling": "[Ĉöölïñg~~~]"
+    },
+    "value": {
+      "positive": "[Pöŝïtïvë~~~]",
+      "neutral": "[Ñëüträl~~~]",
+      "negative": "[Ñëgätïvë~~~]"
+    },
+    "sparklineLabel": "[Ŝëñtïmëñt trëñd ŝpärklïñë~~~~~~~~]",
+    "flagInaccurate": "[Fläg äŝ ïñäĉĉürätë~~~~~~]",
+    "flagging": "[Fläggïñg…~~~]",
+    "flagged": "[Fläggëd äŝ ïñäĉĉürätë~~~~~~~]",
+    "aiInferredLabel": "[ÄÏ-ïñfërrëd, ñöt fäĉtüäl~~~~~~~~]"
+  },
+  "insights": {
+    "winLossHeading": "[Wïñ/Löŝŝ Pättërñ Ïñŝïghtŝ~~~~~~~~]",
+    "notAvailable": "[Thïŝ fëätürë ïŝ ñöt äväïläblë.~~~~~~~~~]",
+    "loadFailed": "[Fäïlëd tö löäd wïñ/löŝŝ ïñŝïghtŝ.~~~~~~~~~~]",
+    "exportCsv": "[Ëxpört ĈŜV~~~]",
+    "exportPdf": "[Ëxpört PDF~~~]",
+    "exporting": "[Ëxpörtïñg…~~~]",
+    "exportFailed": "[Ëxpört fäïlëd. Plëäŝë try ägäïñ.~~~~~~~~~~]",
+    "insufficientData": "[Ñöt ëñöügh ĉlöŝëd dëäl hïŝtöry yët — pättërñŝ wïll äppëär öñĉë yöü hävë {{count}}+ ĉlöŝëd dëälŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "winPatternsHeading": "[Wïñ Pättërñŝ~~~~]",
+    "winPatternsEmpty": "[Ñö wïñ pättërñŝ äväïläblë yët.~~~~~~~~~]",
+    "lossPatternsHeading": "[Löŝŝ Pättërñŝ~~~~]",
+    "lossPatternsEmpty": "[Ñö löŝŝ pättërñŝ äväïläblë yët.~~~~~~~~~~]",
+    "lossReasonTrendsHeading": "[Löŝŝ Rëäŝöñ Trëñdŝ~~~~~~]",
+    "lossReasonTrendsEmpty": "[Ñö löŝŝ rëäŝöñ trëñdŝ äväïläblë yët.~~~~~~~~~~~]",
+    "trendBadge": "[Trëñd~~]",
+    "insightStats": "[{{winRateWith}} vŝ {{winRateWithout}} · {{count}} dëälŝ~~~~~~~~~~~~~~~~~]"
   },
   "ai": {
     "pageTitle": "[ÄÏ Äŝŝïŝtäñt~~~~]",
@@ -2393,12 +2532,15 @@
         "title_win_loss": "[Wïñ / Löŝŝ Rëpört~~~~~~]",
         "title_activity_volume": "[Äĉtïvïty Völümë Rëpört~~~~~~~]",
         "title_stage_trend": "[Pïpëlïñë Ŝtägë Trëñd~~~~~~]",
+        "title_leads_summary": "[Lëädŝ Ŝümmäry Rëpört~~~~~~]",
         "won": "[Wöñ~]",
         "lost": "[Löŝt~~]",
         "winRate": "[Wïñ Rätë~~~]",
         "rep": "[Rëp~]",
         "total": "[Tötäl~~]",
         "totalActivities": "[{{count}} äĉtïvïtïëŝ tötäl~~~~~~~~]",
+        "totalLeads": "[{{count}} lëädŝ tötäl~~~~~~~]",
+        "status": "[Ŝtätüŝ~~]",
         "stage": "[Ŝtägë~~]",
         "entries": "[Ëñtrïëŝ~~~]",
         "conversions": "[Ĉöñvërŝïöñŝ~~~~]",
@@ -2442,46 +2584,46 @@
     }
   },
   "emailDraft": {
-    "draftEmailButton": "[Dräft Ëmäïl~~~]",
-    "generating": "[Gëñërätïñg…~~~]",
-    "panelTitle": "[Ëmäïl Dräft~~~]",
+    "draftEmailButton": "[Dräft Ëmäïl~~~~]",
+    "generating": "[Gëñërätïñg…~~~~]",
+    "panelTitle": "[Ëmäïl Dräft~~~~]",
     "toneLabel": "[Töñë~~]",
     "toneProfessional": "[Pröfëŝŝïöñäl~~~~]",
-    "toneFriendly": "[Frïëñdly~~]",
-    "toneConcise": "[Ĉöñĉïŝë~~]",
-    "subjectLabel": "[Ŝübjëĉt~~]",
+    "toneFriendly": "[Frïëñdly~~~]",
+    "toneConcise": "[Ĉöñĉïŝë~~~]",
+    "subjectLabel": "[Ŝübjëĉt~~~]",
     "bodyLabel": "[Bödy~~]",
-    "copyToClipboard": "[Ĉöpy tö ĉlïpböärd~~~~~]",
-    "copied": "[Ĉöpïëd!~~]",
+    "copyToClipboard": "[Ĉöpy tö ĉlïpböärd~~~~~~]",
+    "copied": "[Ĉöpïëd!~~~]",
     "clipboardError": "[Ĉöüld ñöt ĉöpy tö ĉlïpböärd.~~~~~~~~~]",
-    "dismiss": "[Dïŝmïŝŝ~~]"
+    "dismiss": "[Dïŝmïŝŝ~~~]"
   },
   "taskSuggestions": {
     "heading": "[Ŝüggëŝtëd föllöw-üp täŝkŝ~~~~~~~~]",
-    "dismissAll": "[Dïŝmïŝŝ~~]",
-    "addTask": "[Ädd Täŝk~~]",
-    "dismiss": "[Dïŝmïŝŝ~~]",
+    "dismissAll": "[Dïŝmïŝŝ~~~]",
+    "addTask": "[Ädd Täŝk~~~]",
+    "dismiss": "[Dïŝmïŝŝ~~~]",
     "allResolved": "[Äll ŝüggëŝtïöñŝ rëŝölvëd.~~~~~~~~]",
     "acceptedCount": "[{{count}} täŝk äddëd~~~~~~]"
   },
   "contactEnrichment": {
     "action": "[Ëñrïĉh fröm tëxt~~~~~]",
     "title": "[Ëñrïĉh ĉöñtäĉt fröm tëxt~~~~~~~~]",
-    "inputLabel": "[Päŝtë LïñkëdÏñ bïö, ëmäïl ŝïgñätürë, ör büŝïñëŝŝ ĉärd tëxt~~~~~~~~~~~~~~~~~~~]",
+    "inputLabel": "[Päŝtë LïñkëdÏñ bïö, ëmäïl ŝïgñätürë, ör büŝïñëŝŝ ĉärd tëxt~~~~~~~~~~~~~~~~~~]",
     "inputPlaceholder": "[Päŝtë frëëförm tëxt…~~~~~~]",
-    "submit": "[Ëxträĉt~~]",
-    "extracting": "[Ëxträĉtïñg…~~~]",
+    "submit": "[Ëxträĉt~~~]",
+    "extracting": "[Ëxträĉtïñg…~~~~]",
     "apply": "[Äpply tö förm~~~~]",
-    "insufficientData": "[Ĉöüldñ't ëxträĉt ëñöügh ïñförmätïöñ — plëäŝë fïll ïñ mäñüälly.~~~~~~~~~~~~~~~~~~~~]"
+    "insufficientData": "[Ĉöüldñ't ëxträĉt ëñöügh ïñförmätïöñ — plëäŝë fïll ïñ mäñüälly.~~~~~~~~~~~~~~~~~~~]"
   },
   "duplicateExplanation": {
-    "explainButton": "[Ëxpläïñ~~]",
-    "explaining": "[Ëxpläïñïñg…~~~]"
+    "explainButton": "[Ëxpläïñ~~~]",
+    "explaining": "[Ëxpläïñïñg…~~~~]"
   },
   "leadScore": {
     "badgeLabel": "[Ŝĉörë: {{score}}~~~~~]",
     "whyThisScore": "[Why thïŝ ŝĉörë?~~~~~]",
-    "explaining": "[Ëxpläïñïñg…~~~]",
-    "insufficientData": "[Ñöt ëñöügh äĉtïvïty dätä tö ëxpläïñ thïŝ ŝĉörë yët.~~~~~~~~~~~~~~~~~]"
+    "explaining": "[Ëxpläïñïñg…~~~~]",
+    "insufficientData": "[Ñöt ëñöügh äĉtïvïty dätä tö ëxpläïñ thïŝ ŝĉörë yët.~~~~~~~~~~~~~~~~]"
   }
 }

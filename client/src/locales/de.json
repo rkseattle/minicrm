@@ -2462,6 +2462,23 @@
     "singleThreadedRiskWarning": "Risiko durch Einzelkontakt — nur ein Kontakt ist bei diesem Geschäft eingebunden.",
     "stakeholderMapSummary": "{{engaged}} Kontakte eingebunden · {{champions}} Fürsprecher · {{blockers}} Blockierer"
   },
+  "sentiment": {
+    "trend": {
+      "warming": "Aufwärmend",
+      "stable": "Stabil",
+      "cooling": "Abkühlend"
+    },
+    "value": {
+      "positive": "Positiv",
+      "neutral": "Neutral",
+      "negative": "Negativ"
+    },
+    "sparklineLabel": "Stimmungsverlauf-Sparkline",
+    "flagInaccurate": "Als ungenau markieren",
+    "flagging": "Wird markiert…",
+    "flagged": "Als ungenau markiert",
+    "aiInferredLabel": "KI-abgeleitet, kein Fakt"
+  },
   "insights": {
     "winLossHeading": "Gewinn-/Verlust-Muster-Insights",
     "notAvailable": "Diese Funktion ist nicht verfügbar.",

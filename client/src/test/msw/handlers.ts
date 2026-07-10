@@ -2678,6 +2678,33 @@ export const handlers = [
     });
   }),
 
+  // ── Sentiment tracking (MINCRM-472) ──────────────────────────────────────────────
+
+  /** Contacts: GET /api/contacts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
+  http.get('/api/v1/contacts/:id/sentiment-trend', ({ params }) => {
+    return HttpResponse.json({
+      contact_id: params['id'] as string,
+      trend: null,
+      has_sufficient_data: false,
+      points: [],
+    });
+  }),
+
+  /** Accounts: GET /api/accounts/:id/sentiment-trend — defaults to insufficient data (no sparkline rendered). */
+  http.get('/api/v1/accounts/:id/sentiment-trend', ({ params }) => {
+    return HttpResponse.json({
+      account_id: params['id'] as string,
+      trend: null,
+      has_sufficient_data: false,
+      points: [],
+    });
+  }),
+
+  /** Activities: POST /api/activities/:id/sentiment/flag-inaccurate */
+  http.post('/api/v1/activities/:id/sentiment/flag-inaccurate', ({ params }) => {
+    return HttpResponse.json({ activity_id: params['id'] as string, flagged_inaccurate: true });
+  }),
+
   // ── Win/loss pattern insights (MINCRM-464) ──────────────────────────────────────
 
   /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */

@@ -2462,6 +2462,23 @@
     "singleThreadedRiskWarning": "Single-threaded risk — only one contact is engaged on this deal.",
     "stakeholderMapSummary": "{{engaged}} contacts engaged · {{champions}} champion(s) · {{blockers}} blocker(s)"
   },
+  "sentiment": {
+    "trend": {
+      "warming": "Warming",
+      "stable": "Stable",
+      "cooling": "Cooling"
+    },
+    "value": {
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative"
+    },
+    "sparklineLabel": "Sentiment trend sparkline",
+    "flagInaccurate": "Flag as inaccurate",
+    "flagging": "Flagging…",
+    "flagged": "Flagged as inaccurate",
+    "aiInferredLabel": "AI-inferred, not factual"
+  },
   "insights": {
     "winLossHeading": "Win/Loss Pattern Insights",
     "notAvailable": "This feature is not available.",

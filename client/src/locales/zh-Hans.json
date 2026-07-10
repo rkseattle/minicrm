@@ -2462,6 +2462,23 @@
     "singleThreadedRiskWarning": "单线风险——此商机仅有一位联系人参与。",
     "stakeholderMapSummary": "{{engaged}} 位联系人参与 · {{champions}} 位支持者 · {{blockers}} 位阻碍者"
   },
+  "sentiment": {
+    "trend": {
+      "warming": "回暖",
+      "stable": "稳定",
+      "cooling": "转冷"
+    },
+    "value": {
+      "positive": "积极",
+      "neutral": "中性",
+      "negative": "消极"
+    },
+    "sparklineLabel": "情绪趋势迷你图",
+    "flagInaccurate": "标记为不准确",
+    "flagging": "标记中…",
+    "flagged": "已标记为不准确",
+    "aiInferredLabel": "AI 推断，非事实"
+  },
   "insights": {
     "winLossHeading": "赢单/丢单模式洞察",
     "notAvailable": "此功能不可用。",

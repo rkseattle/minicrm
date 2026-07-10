@@ -59,6 +59,49 @@ describe('AccountDetailPage', () => {
     });
   });
 
+  // ── AI sentiment tracking (MINCRM-472) ───────────────────────────────────────────
+
+  it('shows no sentiment sparkline when there is insufficient data', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('account-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId(`sentiment-trend-${ACCOUNT_1.id}`)).not.toBeInTheDocument();
+  });
+
+  it('shows the sentiment trend sparkline when there is sufficient data', async () => {
+    server.use(
+      http.get('/api/v1/accounts/:id/sentiment-trend', () =>
+        HttpResponse.json({
+          account_id: ACCOUNT_1.id,
+          trend: 'cooling',
+          has_sufficient_data: true,
+          points: [
+            {
+              activity_id: '00000000-0000-0000-0000-000000000401',
+              sentiment: 'negative',
+              flagged_inaccurate: false,
+              created_at: '2026-07-01T00:00:00.000Z',
+            },
+            {
+              activity_id: '00000000-0000-0000-0000-000000000402',
+              sentiment: 'positive',
+              flagged_inaccurate: false,
+              created_at: '2026-06-01T00:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId(`sentiment-trend-${ACCOUNT_1.id}`)).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`sentiment-trend-badge-${ACCOUNT_1.id}`)).toHaveTextContent(
+      'Cooling',
+    );
+  });
+
   it('renders industry in the detail card', async () => {
     renderAccountDetail();
     await waitFor(() => {

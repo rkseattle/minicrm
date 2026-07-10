@@ -725,4 +725,97 @@ describe('ActivityTimeline', () => {
       });
     });
   });
+
+  // MINCRM-472: AI sentiment tracking
+  describe('sentiment tracking', () => {
+    it('shows the sentiment indicator for an activity with a scored sentiment', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+        ),
+        http.get('/api/v1/contacts/:id/sentiment-trend', ({ params }) =>
+          HttpResponse.json({
+            contact_id: params['id'],
+            trend: 'stable',
+            has_sufficient_data: true,
+            points: [
+              {
+                activity_id: ACTIVITY_2.id,
+                sentiment: 'positive',
+                flagged_inaccurate: false,
+                created_at: '2026-07-01T00:00:00.000Z',
+              },
+            ],
+          }),
+        ),
+      );
+      renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`activity-sentiment-${ACTIVITY_2.id}`)).toBeInTheDocument();
+      });
+      expect(screen.getByTestId(`activity-sentiment-${ACTIVITY_2.id}`)).toHaveTextContent(
+        'Positive',
+      );
+    });
+
+    it('does not show a sentiment indicator for an activity with no scored sentiment', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+        ),
+      );
+      renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`activity-item-${ACTIVITY_2.id}`)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId(`activity-sentiment-${ACTIVITY_2.id}`)).not.toBeInTheDocument();
+    });
+
+    it('flags a sentiment score as inaccurate and removes the indicator after refetch', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [ACTIVITY_2], total: 1, page: 1, limit: 10 }),
+        ),
+      );
+
+      let flagged = false;
+      server.use(
+        http.get('/api/v1/contacts/:id/sentiment-trend', ({ params }) =>
+          HttpResponse.json({
+            contact_id: params['id'],
+            trend: flagged ? null : 'stable',
+            has_sufficient_data: !flagged,
+            points: flagged
+              ? []
+              : [
+                  {
+                    activity_id: ACTIVITY_2.id,
+                    sentiment: 'negative',
+                    flagged_inaccurate: false,
+                    created_at: '2026-07-01T00:00:00.000Z',
+                  },
+                ],
+          }),
+        ),
+        http.post('/api/v1/activities/:id/sentiment/flag-inaccurate', ({ params }) => {
+          flagged = true;
+          return HttpResponse.json({ activity_id: params['id'], flagged_inaccurate: true });
+        }),
+      );
+
+      const user = userEvent.setup();
+      renderWithProviders(<ActivityTimeline contactId={ACTIVITY_2.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`activity-sentiment-flag-${ACTIVITY_2.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`activity-sentiment-flag-${ACTIVITY_2.id}`));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId(`activity-sentiment-${ACTIVITY_2.id}`)).not.toBeInTheDocument();
+      });
+    });
+  });
 });

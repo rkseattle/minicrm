@@ -25,6 +25,13 @@ import {
 } from '@/api/activities.js';
 import { generateEmailDraft } from '@/api/emailDraft.js';
 import { generateTaskSuggestions } from '@/api/taskSuggestions.js';
+import {
+  getContactSentimentTrend,
+  getAccountSentimentTrend,
+  contactSentimentTrendQueryKey,
+  accountSentimentTrendQueryKey,
+  flagActivitySentimentInaccurate,
+} from '@/api/sentiment.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type {
@@ -69,6 +76,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
+  const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -255,6 +263,39 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     },
     onError: (error: Parameters<typeof resolveApiError>[0]) => {
       setEmailDraftError(resolveApiError(error, t));
+    },
+  });
+
+  // AI sentiment tracking (MINCRM-472) — per-activity indicator sourced from the same
+  // trend endpoints the Contact/Account detail pages use, keyed by activity_id. Only
+  // contact- and account-scoped timelines have a trend endpoint; deal-scoped timelines
+  // show no per-activity sentiment (activities can't be scored by deal alone).
+  const { data: contactSentimentTrend } = useQuery({
+    queryKey: contactSentimentTrendQueryKey(contactId ?? ''),
+    queryFn: () => getContactSentimentTrend(contactId!),
+    enabled: Boolean(contactId) && sentimentTrackingEnabled,
+  });
+  const { data: accountSentimentTrend } = useQuery({
+    queryKey: accountSentimentTrendQueryKey(accountId ?? ''),
+    queryFn: () => getAccountSentimentTrend(accountId!),
+    enabled: Boolean(accountId) && sentimentTrackingEnabled,
+  });
+  const sentimentByActivityId = new Map(
+    (contactSentimentTrend?.points ?? accountSentimentTrend?.points ?? []).map((point) => [
+      point.activity_id,
+      point,
+    ]),
+  );
+
+  const flagSentimentMutation = useMutation({
+    mutationFn: (activityId: string) => flagActivitySentimentInaccurate(activityId),
+    onSuccess: () => {
+      if (contactId) {
+        void queryClient.invalidateQueries({ queryKey: contactSentimentTrendQueryKey(contactId) });
+      }
+      if (accountId) {
+        void queryClient.invalidateQueries({ queryKey: accountSentimentTrendQueryKey(accountId) });
+      }
     },
   });
 
@@ -474,6 +515,31 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                           activityId={activity.id}
                           hasNotes={Boolean(activity.notes)}
                         />
+                        {sentimentTrackingEnabled &&
+                          (() => {
+                            const sentimentPoint = sentimentByActivityId.get(activity.id);
+                            if (!sentimentPoint || sentimentPoint.flagged_inaccurate) return null;
+                            return (
+                              <p
+                                className="mt-1 flex items-center gap-2 text-xs text-gray-500"
+                                data-testid={`activity-sentiment-${activity.id}`}
+                              >
+                                <span>{t(`sentiment.value.${sentimentPoint.sentiment}`)}</span>
+                                <button
+                                  type="button"
+                                  data-testid={`activity-sentiment-flag-${activity.id}`}
+                                  className="text-gray-400 hover:text-gray-600 underline decoration-dotted"
+                                  disabled={flagSentimentMutation.isPending}
+                                  onClick={() => flagSentimentMutation.mutate(activity.id)}
+                                >
+                                  {flagSentimentMutation.isPending &&
+                                  flagSentimentMutation.variables === activity.id
+                                    ? t('sentiment.flagging')
+                                    : t('sentiment.flagInaccurate')}
+                                </button>
+                              </p>
+                            );
+                          })()}
                         {activity.outcome && (
                           <p
                             className="mt-1 text-sm text-gray-500 whitespace-pre-wrap"
