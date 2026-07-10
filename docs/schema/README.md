@@ -41,7 +41,7 @@
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
 | [public.feature_flags](public.feature_flags.md) | 13 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
-| [public.ai_configuration](public.ai_configuration.md) | 23 |  | BASE TABLE |
+| [public.ai_configuration](public.ai_configuration.md) | 24 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
 | [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
 | [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
@@ -71,6 +71,8 @@
 | [public.account_churn_expansion_signals](public.account_churn_expansion_signals.md) | 7 | Nightly AI churn/expansion signals per closed-won account (MINCRM-469). A new row is inserted per detection run; cleared_at is set (not deleted) when contradicted by new positive activity. | BASE TABLE |
 | [public.notifications](public.notifications.md) | 8 | Minimal in-app notification feed (MINCRM-469). type is free text (not a DB enum) so new notification-producing features can start writing rows without a migration, same convention as ai_token_usage_daily.feature. | BASE TABLE |
 | [public.activity_objection_signals](public.activity_objection_signals.md) | 4 | AI objection classification per activity (MINCRM-471). One row per classified activity — classification runs on-demand, not pre-computed, so this table is populated lazily as reps view objection-logged activities. | BASE TABLE |
+| [public.activity_meeting_briefs](public.activity_meeting_briefs.md) | 5 | Most recently generated AI pre-meeting brief per activity (MINCRM-465). One row per activity — replaced on regenerate, not appended. | BASE TABLE |
+| [public.activity_sentiment_scores](public.activity_sentiment_scores.md) | 8 | Per-activity AI sentiment classification (MINCRM-472). One row per activity, scored asynchronously after save. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -235,6 +237,10 @@ erDiagram
 "public.account_churn_expansion_signals" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.activity_objection_signals" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.activity_meeting_briefs" }o--|| "public.users" : "FOREIGN KEY (generated_by) REFERENCES users(id) ON DELETE RESTRICT"
+"public.activity_meeting_briefs" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.activity_sentiment_scores" }o--o| "public.users" : "FOREIGN KEY (flagged_inaccurate_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.activity_sentiment_scores" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -679,6 +685,7 @@ erDiagram
   integer win_loss_min_sample_size "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
   numeric_15_2_ champion_blocker_deal_value_threshold "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
   numeric_3_2_ churn_expansion_confidence_threshold "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
+  boolean web_search_enabled "Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465)"
 }
 "public.smtp_configuration" {
   boolean singleton ""
@@ -913,6 +920,23 @@ erDiagram
   uuid activity_id FK ""
   text category ""
   timestamp_with_time_zone classified_at ""
+}
+"public.activity_meeting_briefs" {
+  uuid id ""
+  uuid activity_id FK ""
+  jsonb brief_json ""
+  uuid generated_by FK ""
+  timestamp_with_time_zone generated_at ""
+}
+"public.activity_sentiment_scores" {
+  uuid id ""
+  uuid activity_id FK ""
+  text sentiment ""
+  numeric_3_2_ confidence ""
+  uuid flagged_inaccurate_by FK ""
+  timestamp_with_time_zone flagged_inaccurate_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 
