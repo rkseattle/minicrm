@@ -108,10 +108,13 @@ async function findCandidateLinks(
   // Candidates: contacts the rep has actually engaged with (owns, or has logged
   // activity against), excluding the target itself. Same-account/hierarchy/shared-deal
   // links are computed directly in SQL; notes-mention is a separate best-effort pass
-  // below since it needs the target's name as a search term.
-  const result = await withRlsQuery((client) =>
-    client.query<CandidateLinkRow>(
-      `WITH rep_activity AS (
+  // that needs the target's name as a search term. The two queries are independent
+  // (notes-mention resolves its own buildVisibilityFilter call internally), so they
+  // run concurrently rather than paying both DB round trips back-to-back.
+  const [result, notesMentionCandidates] = await Promise.all([
+    withRlsQuery((client) =>
+      client.query<CandidateLinkRow>(
+        `WITH rep_activity AS (
          SELECT contact_id, COUNT(*) AS activity_count, MAX(created_at) AS last_activity_at
          FROM activities
          WHERE owner_id = $1 AND contact_id IS NOT NULL
@@ -154,17 +157,17 @@ async function findCandidateLinks(
          )
        ORDER BY c.id, rep_activity_count DESC
        LIMIT 50`,
-      values,
+        values,
+      ),
     ),
-  );
-
-  const notesMentionCandidates = await findNotesMentionCandidates(
-    requestingUserId,
-    requestingUserRole,
-    targetContactId,
-    targetFirstName,
-    targetLastName,
-  );
+    findNotesMentionCandidates(
+      requestingUserId,
+      requestingUserRole,
+      targetContactId,
+      targetFirstName,
+      targetLastName,
+    ),
+  ]);
 
   const seen = new Set(result.rows.map((r) => r.known_contact_id));
   const merged = [...result.rows];

@@ -117,6 +117,21 @@ export default function ActivityBriefPage() {
           </section>
         )}
 
+        {content.recent_activity_summary.length > 0 && (
+          <section className="mt-4">
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">
+              {t('meetingBrief.recentActivityLabel')}
+            </h2>
+            <ul className="list-disc ps-4 space-y-1">
+              {content.recent_activity_summary.map((line, index) => (
+                <li key={index} className="text-sm text-gray-700">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="mt-4">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">
             {t('meetingBrief.talkingPointsLabel')}
@@ -129,6 +144,21 @@ export default function ActivityBriefPage() {
             ))}
           </ul>
         </section>
+
+        {content.known_objections.length > 0 && (
+          <section className="mt-4">
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">
+              {t('meetingBrief.objectionsLabel')}
+            </h2>
+            <ul className="list-disc ps-4 space-y-1">
+              {content.known_objections.map((category, index) => (
+                <li key={index} className="text-sm text-gray-700">
+                  {category}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {content.news_hook && content.news_hook.length > 0 && (
           <section className="mt-4">
