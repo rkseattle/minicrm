@@ -5038,6 +5038,13 @@
           "nullable": false,
           "default": "0.70",
           "comment": "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
+        },
+        {
+          "name": "web_search_enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "comment": "Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465)"
         }
       ],
       "indexes": [
@@ -8125,6 +8132,241 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.activity_meeting_briefs",
+      "type": "BASE TABLE",
+      "comment": "Most recently generated AI pre-meeting brief per activity (MINCRM-465). One row per activity — replaced on regenerate, not appended.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "activity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "brief_json",
+          "type": "jsonb",
+          "nullable": false
+        },
+        {
+          "name": "generated_by",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "activity_meeting_briefs_pkey",
+          "def": "CREATE UNIQUE INDEX activity_meeting_briefs_pkey ON public.activity_meeting_briefs USING btree (id)",
+          "table": "public.activity_meeting_briefs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_meeting_briefs_activity_id_unique",
+          "def": "CREATE UNIQUE INDEX activity_meeting_briefs_activity_id_unique ON public.activity_meeting_briefs USING btree (activity_id)",
+          "table": "public.activity_meeting_briefs",
+          "columns": [
+            "activity_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "activity_meeting_briefs_generated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (generated_by) REFERENCES users(id) ON DELETE RESTRICT",
+          "table": "public.activity_meeting_briefs",
+          "referenced_table": "public.users",
+          "columns": [
+            "generated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_meeting_briefs_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
+          "table": "public.activity_meeting_briefs",
+          "referenced_table": "public.activities",
+          "columns": [
+            "activity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_meeting_briefs_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.activity_meeting_briefs",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_meeting_briefs_activity_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (activity_id)",
+          "table": "public.activity_meeting_briefs",
+          "referenced_table": "",
+          "columns": [
+            "activity_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.activity_sentiment_scores",
+      "type": "BASE TABLE",
+      "comment": "Per-activity AI sentiment classification (MINCRM-472). One row per activity, scored asynchronously after save.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "activity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "sentiment",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "confidence",
+          "type": "numeric(3,2)",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "flagged_inaccurate_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "flagged_inaccurate_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "activity_sentiment_scores_pkey",
+          "def": "CREATE UNIQUE INDEX activity_sentiment_scores_pkey ON public.activity_sentiment_scores USING btree (id)",
+          "table": "public.activity_sentiment_scores",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_activity_id_unique",
+          "def": "CREATE UNIQUE INDEX activity_sentiment_scores_activity_id_unique ON public.activity_sentiment_scores USING btree (activity_id)",
+          "table": "public.activity_sentiment_scores",
+          "columns": [
+            "activity_id"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_activity_id_idx",
+          "def": "CREATE INDEX activity_sentiment_scores_activity_id_idx ON public.activity_sentiment_scores USING btree (activity_id)",
+          "table": "public.activity_sentiment_scores",
+          "columns": [
+            "activity_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "activity_sentiment_scores_sentiment_check",
+          "type": "CHECK",
+          "def": "CHECK ((sentiment = ANY (ARRAY['positive'::text, 'neutral'::text, 'negative'::text])))",
+          "table": "public.activity_sentiment_scores",
+          "referenced_table": "",
+          "columns": [
+            "sentiment"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_flagged_inaccurate_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (flagged_inaccurate_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.activity_sentiment_scores",
+          "referenced_table": "public.users",
+          "columns": [
+            "flagged_inaccurate_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_activity_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE",
+          "table": "public.activity_sentiment_scores",
+          "referenced_table": "public.activities",
+          "columns": [
+            "activity_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.activity_sentiment_scores",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "activity_sentiment_scores_activity_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (activity_id)",
+          "table": "public.activity_sentiment_scores",
+          "referenced_table": "",
+          "columns": [
+            "activity_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -9365,6 +9607,58 @@
     },
     {
       "table": "public.activity_objection_signals",
+      "columns": [
+        "activity_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.activities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.activity_meeting_briefs",
+      "columns": [
+        "generated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (generated_by) REFERENCES users(id) ON DELETE RESTRICT"
+    },
+    {
+      "table": "public.activity_meeting_briefs",
+      "columns": [
+        "activity_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.activities",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.activity_sentiment_scores",
+      "columns": [
+        "flagged_inaccurate_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (flagged_inaccurate_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.activity_sentiment_scores",
       "columns": [
         "activity_id"
       ],

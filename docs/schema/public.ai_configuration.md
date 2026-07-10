@@ -27,6 +27,7 @@
 | win_loss_min_sample_size | integer | 5 | false |  |  | Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464) |
 | champion_blocker_deal_value_threshold | numeric(15,2) | 10000 | false |  |  | Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466) |
 | churn_expansion_confidence_threshold | numeric(3,2) | 0.70 | false |  |  | Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469) |
+| web_search_enabled | boolean | false | false |  |  | Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465) |
 
 ## Constraints
 
@@ -82,6 +83,7 @@ erDiagram
   integer win_loss_min_sample_size "Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)"
   numeric_15_2_ champion_blocker_deal_value_threshold "Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)"
   numeric_3_2_ churn_expansion_confidence_threshold "Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)"
+  boolean web_search_enabled "Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465)"
 }
 "public.users" {
   uuid id ""

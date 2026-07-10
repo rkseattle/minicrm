@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.activity_objection_signals](public.activity_objection_signals.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.overdue_task_notifications](public.overdue_task_notifications.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.activity_objection_signals](public.activity_objection_signals.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) |  |  |
 | type | activity_type |  | false |  |  |  |
 | subject | varchar(255) |  | false |  |  |  |
 | notes | text |  | true |  |  |  |
@@ -58,6 +58,8 @@ erDiagram
 "public.overdue_task_notifications" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.contact_champion_blocker_signals" }o--o| "public.activities" : "FOREIGN KEY (last_activity_id) REFERENCES activities(id) ON DELETE SET NULL"
 "public.activity_objection_signals" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.activity_meeting_briefs" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
+"public.activity_sentiment_scores" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
@@ -107,6 +109,23 @@ erDiagram
   uuid activity_id FK ""
   text category ""
   timestamp_with_time_zone classified_at ""
+}
+"public.activity_meeting_briefs" {
+  uuid id ""
+  uuid activity_id FK ""
+  jsonb brief_json ""
+  uuid generated_by FK ""
+  timestamp_with_time_zone generated_at ""
+}
+"public.activity_sentiment_scores" {
+  uuid id ""
+  uuid activity_id FK ""
+  text sentiment ""
+  numeric_3_2_ confidence ""
+  uuid flagged_inaccurate_by FK ""
+  timestamp_with_time_zone flagged_inaccurate_at ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 "public.contacts" {
   uuid id ""
