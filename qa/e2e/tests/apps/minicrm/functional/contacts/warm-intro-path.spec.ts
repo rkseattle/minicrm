@@ -69,7 +69,14 @@ test(
 
     await clickFindWarmPath(contact.id, { page });
     await expectWarmPathResultsVisible(contact.id, { page });
-    await expectWarmPathEmptyMessageVisible({ page });
+
+    // The warm-path lookup is a real async HTTP round trip (unlike the
+    // deterministic E2E stub used by meeting-brief/task-suggestions) — the
+    // panel shows "Finding warm paths…" until the request resolves, so the
+    // empty-state assertion must retry rather than assert on the first paint.
+    await expect(async () => {
+      await expectWarmPathEmptyMessageVisible({ page });
+    }).toPass({ timeout: 10_000 });
   },
 );
 

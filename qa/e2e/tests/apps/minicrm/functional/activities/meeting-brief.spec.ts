@@ -70,6 +70,7 @@ test(
       subject: 'Upcoming discovery call',
       contact_id: contact.id,
       due_date: tomorrowDateString(),
+      direction: 'Outbound',
     });
 
     await navigateToContact(page, contact.id);
@@ -104,6 +105,7 @@ test(
       subject: 'Past discovery call',
       contact_id: contact.id,
       due_date: yesterdayDateString(),
+      direction: 'Outbound',
     });
 
     await navigateToContact(page, contact.id);
