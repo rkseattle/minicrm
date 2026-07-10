@@ -135,6 +135,11 @@ afterAll(async () => {
   await cleanup();
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
+  // Some tests in this file disable ai_sentiment_tracking mid-test (see
+  // setSentimentFlagEnabled(false) above) — restore it in case this file's last test left
+  // it disabled, since feature_flags is a shared global table read by every other test file
+  // running serially after this one.
+  await setSentimentFlagEnabled(true);
 });
 
 async function createTestContact(accountId?: string): Promise<string> {

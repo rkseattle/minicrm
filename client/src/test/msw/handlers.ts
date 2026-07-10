@@ -2705,6 +2705,18 @@ export const handlers = [
     return HttpResponse.json({ activity_id: params['id'] as string, flagged_inaccurate: true });
   }),
 
+  // ── Meeting brief generation (MINCRM-465) ────────────────────────────────────────
+
+  /** Activities: GET /api/activities/:id/brief — defaults to not-found (no brief generated yet). */
+  http.get('/api/v1/activities/:id/brief', () => {
+    return HttpResponse.json(
+      {
+        error: { code: 'NOT_FOUND', message: 'No brief has been generated for this activity yet' },
+      },
+      { status: 404 },
+    );
+  }),
+
   // ── Win/loss pattern insights (MINCRM-464) ──────────────────────────────────────
 
   /** Insights: GET /api/insights/win-loss — defaults to sufficient data with one win pattern. */

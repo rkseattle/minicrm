@@ -2598,6 +2598,25 @@
     "clipboardError": "Impossible de copier dans le presse-papiers.",
     "dismiss": "Ignorer"
   },
+  "meetingBrief": {
+    "generateBriefButton": "Générer le briefing",
+    "generating": "Génération…",
+    "panelTitle": "Briefing de réunion",
+    "dismiss": "Ignorer",
+    "regenerate": "Régénérer",
+    "print": "Imprimer",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "copied": "Copié !",
+    "clipboardError": "Impossible de copier dans le presse-papiers.",
+    "accountSummaryLabel": "Résumé du compte",
+    "opportunitiesLabel": "Opportunités ouvertes",
+    "recentActivityLabel": "Activité récente",
+    "talkingPointsLabel": "Points de discussion suggérés",
+    "objectionsLabel": "Objections connues",
+    "newsHookLabel": "Actualités récentes",
+    "loading": "Chargement du briefing…",
+    "notFound": "Aucun briefing n'a encore été généré pour cette activité."
+  },
   "taskSuggestions": {
     "heading": "Tâches de suivi suggérées",
     "dismissAll": "Ignorer",

@@ -37,6 +37,7 @@ const UsersPage = lazy(() => import('@/pages/UsersPage.js'));
 const AdminSettingsPage = lazy(() => import('@/pages/AdminSettingsPage.js'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage.js'));
 const ActivitiesPage = lazy(() => import('@/pages/ActivitiesPage.js'));
+const ActivityBriefPage = lazy(() => import('@/pages/ActivityBriefPage.js'));
 const AutomationRulesPage = lazy(() => import('@/pages/AutomationRulesPage.js'));
 const SequencesPage = lazy(() => import('@/pages/SequencesPage.js'));
 const SequenceDetailPage = lazy(() => import('@/pages/SequenceDetailPage.js'));
@@ -108,6 +109,7 @@ function AppRoutes() {
             <Route path="/pipeline" element={<Navigate to="/deals" replace />} />
             <Route path="/tasks" element={<MyTasksPage />} />
             <Route path="/activities" element={<ActivitiesPage />} />
+            <Route path="/activities/:id/brief" element={<ActivityBriefPage />} />
             {/* MINCRM-294: Reports shell page — adaptive SubPageNav */}
             <Route path="/reports" element={<ReportsPage />} />
             {/* Legacy deep-link redirects — keep old URLs working */}

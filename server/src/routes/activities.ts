@@ -29,6 +29,10 @@ import {
 import { summarizeActivityHandler } from '../controllers/activitySummaryController.js';
 import { generateTaskSuggestionsHandler } from '../controllers/taskSuggestionController.js';
 import { flagActivitySentimentInaccurateHandler } from '../controllers/sentimentController.js';
+import {
+  generateMeetingBriefHandler,
+  getMeetingBriefHandler,
+} from '../controllers/meetingBriefController.js';
 
 const router = Router();
 
@@ -702,6 +706,24 @@ router.post(
   requireCapability(Capability.ActivitiesEdit),
   requireFeatureEnabled('ai_sentiment_tracking'),
   asyncHandler(flagActivitySentimentInaccurateHandler),
+);
+
+// ── AI pre-meeting brief generation (MINCRM-465) ────────────────────────────────
+
+/** Generates (or regenerates) the AI pre-meeting brief for the activity. */
+router.post(
+  '/:id/brief',
+  authenticate,
+  requireFeatureEnabled('ai_meeting_brief'),
+  asyncHandler(generateMeetingBriefHandler),
+);
+
+/** Returns the most recently generated brief for the activity (shareable link target). */
+router.get(
+  '/:id/brief',
+  authenticate,
+  requireFeatureEnabled('ai_meeting_brief'),
+  asyncHandler(getMeetingBriefHandler),
 );
 
 // ── Bulk V2 routes (MINCRM-562) ───────────────────────────────────────────────

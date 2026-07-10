@@ -123,6 +123,13 @@ afterAll(async () => {
   await pool.query('DELETE FROM pipeline_stages WHERE pipeline_id = $1', [pipelineId]);
   await pool.query('DELETE FROM pipelines WHERE id = $1', [pipelineId]);
   await pool.query(`UPDATE ai_configuration SET enabled = false, api_key_encrypted = ''`);
+  // Restore the flag disabled in beforeEach — feature_flags is a shared global table and
+  // this file runs serially alongside every other test file, so leaving it disabled would
+  // break unrelated later suites (e.g. championBlockerService/-Controller). (MINCRM-472)
+  await pool.query(
+    `UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_sentiment_tracking'`,
+  );
+  invalidateFeatureFlagCache();
 });
 
 describe('checkStageAdvancement', () => {

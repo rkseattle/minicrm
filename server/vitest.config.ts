@@ -205,6 +205,11 @@ const SERIAL_FILES = [
   // championBlockerService toggles ai_configuration.enabled/api_key_encrypted (same global
   // singleton row as dealHealthService/stageAdvancementService/winLossAnalysisService). (MINCRM-466)
   'src/__tests__/championBlockerService.test.ts',
+  // championBlockerController reads the ai_champion_blocker_detection feature flag directly
+  // (no ai_configuration mutation of its own, hence previously safe in the parallel project),
+  // but several MINCRM-465/472 test files now toggle that same flag off/on around
+  // createActivity() calls — must run serial to avoid racing those toggles. (MINCRM-466)
+  'src/__tests__/championBlockerController.test.ts',
   // churnExpansionService toggles the same ai_configuration singleton row as the other
   // nightly-job test suites above. (MINCRM-469)
   'src/__tests__/churnExpansionService.test.ts',
@@ -240,6 +245,14 @@ const SERIAL_FILES = [
   // background-job AI test suites above, and also flips the ai_sentiment_tracking
   // feature_flags row. (MINCRM-472)
   'src/__tests__/sentimentService.test.ts',
+  // meetingBriefService toggles the same ai_configuration singleton row (including
+  // web_search_enabled) as the other on-demand AI test suites above, and also flips
+  // the ai_sentiment_tracking feature_flags row to avoid the createActivity() hook
+  // contamination described above. (MINCRM-465)
+  'src/__tests__/meetingBriefService.test.ts',
+  // meetingBriefController toggles the same ai_configuration/feature_flags rows via
+  // supertest requests exercising the real createActivity() hook chain. (MINCRM-465)
+  'src/__tests__/meetingBriefController.test.ts',
 ];
 
 const sharedResolve = {

@@ -32,6 +32,8 @@ import {
   accountSentimentTrendQueryKey,
   flagActivitySentimentInaccurate,
 } from '@/api/sentiment.js';
+import { generateMeetingBrief } from '@/api/meetingBrief.js';
+import MeetingBriefPanel from '@/components/MeetingBriefPanel.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import type {
@@ -42,6 +44,10 @@ import type {
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import type { BadgeProps } from '@/components/ui/Badge.js';
 import type { SuggestedTask } from '@shared/schemas/taskSuggestionSchema.js';
+import type { MeetingBriefResponse } from '@shared/schemas/meetingBriefSchema.js';
+
+/** Activity types eligible for pre-meeting brief generation (MINCRM-465). */
+const BRIEF_ELIGIBLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting']);
 
 /** Activity types the task-suggestion feature supports (MINCRM-438) */
 const TASK_SUGGESTABLE_TYPES: ReadonlySet<ActivityType> = new Set(['Call', 'Meeting', 'Email']);
@@ -77,6 +83,7 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const queryClient = useQueryClient();
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
   const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
+  const { enabled: meetingBriefEnabled } = useFeatureFlag('ai_meeting_brief');
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,6 +94,9 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
   const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
   const [draftingContactId, setDraftingContactId] = useState<string | null>(null);
+  const [meetingBriefResult, setMeetingBriefResult] = useState<MeetingBriefResponse | null>(null);
+  const [meetingBriefError, setMeetingBriefError] = useState<string | null>(null);
+  const [briefingActivityId, setBriefingActivityId] = useState<string | null>(null);
   const { enabled: taskSuggestionsEnabled } = useFeatureFlag('ai_task_suggestions');
   const [taskSuggestions, setTaskSuggestions] = useState<SuggestedTask[] | null>(null);
   // Three-way merge conflict state — tracks which activity has a pending conflict (MINCRM-351)
@@ -263,6 +273,17 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
     },
     onError: (error: Parameters<typeof resolveApiError>[0]) => {
       setEmailDraftError(resolveApiError(error, t));
+    },
+  });
+
+  const meetingBriefMutation = useMutation({
+    mutationFn: (targetActivityId: string) => generateMeetingBrief(targetActivityId),
+    onSuccess: (result) => {
+      setMeetingBriefResult(result);
+      setMeetingBriefError(null);
+    },
+    onError: (error: Parameters<typeof resolveApiError>[0]) => {
+      setMeetingBriefError(resolveApiError(error, t));
     },
   });
 
@@ -592,6 +613,32 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
                               : t('emailDraft.draftEmailButton')}
                           </Button>
                         )}
+                        {/* Generate Brief — only for future-dated Call/Meeting activities
+                            linked to a contact (MINCRM-465) */}
+                        {meetingBriefEnabled &&
+                          activity.contact_id &&
+                          BRIEF_ELIGIBLE_TYPES.has(activity.type as ActivityType) &&
+                          activity.due_date &&
+                          activity.due_date >= new Date().toISOString().slice(0, 10) && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              data-testid={`generate-brief-${activity.id}`}
+                              onClick={() => {
+                                setMeetingBriefError(null);
+                                setBriefingActivityId(activity.id);
+                                meetingBriefMutation.mutate(activity.id);
+                              }}
+                              disabled={
+                                meetingBriefMutation.isPending && briefingActivityId === activity.id
+                              }
+                            >
+                              {meetingBriefMutation.isPending && briefingActivityId === activity.id
+                                ? t('meetingBrief.generating')
+                                : t('meetingBrief.generateBriefButton')}
+                            </Button>
+                          )}
                         {/* Mark complete — only for open tasks */}
                         {activity.type === 'Task' && activity.status === 'open' && (
                           <Button
@@ -686,6 +733,26 @@ export default function ActivityTimeline({ contactId, accountId, dealId }: Activ
           onDismiss={() => {
             setEmailDraftResult(null);
             setDraftingContactId(null);
+          }}
+        />
+      )}
+      {meetingBriefError && (
+        <p
+          role="alert"
+          className="mt-2 text-xs text-red-600"
+          data-testid="meeting-brief-generate-error"
+        >
+          {meetingBriefError}
+        </p>
+      )}
+      {meetingBriefResult && briefingActivityId && (
+        <MeetingBriefPanel
+          brief={meetingBriefResult}
+          isRegenerating={meetingBriefMutation.isPending}
+          onRegenerate={() => meetingBriefMutation.mutate(briefingActivityId)}
+          onDismiss={() => {
+            setMeetingBriefResult(null);
+            setBriefingActivityId(null);
           }}
         />
       )}

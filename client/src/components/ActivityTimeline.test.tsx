@@ -818,4 +818,74 @@ describe('ActivityTimeline', () => {
       });
     });
   });
+
+  // MINCRM-465: AI pre-meeting brief generation
+  describe('meeting brief generation', () => {
+    const FUTURE_CALL_ACTIVITY = {
+      ...ACTIVITY_2,
+      id: '00000000-0000-0000-0000-000000000403',
+      type: 'Call',
+      due_date: '2099-01-01',
+    };
+
+    it('shows Generate Brief only for future-dated Call/Meeting activities linked to a contact', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({
+            data: [ACTIVITY_1, FUTURE_CALL_ACTIVITY],
+            total: 2,
+            page: 1,
+            limit: 10,
+          }),
+        ),
+      );
+      renderWithProviders(<ActivityTimeline contactId={FUTURE_CALL_ACTIVITY.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`generate-brief-${FUTURE_CALL_ACTIVITY.id}`)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId(`generate-brief-${ACTIVITY_1.id}`)).not.toBeInTheDocument();
+    });
+
+    it('generates a brief and opens the panel on click', async () => {
+      server.use(
+        http.get('/api/v1/activities', () =>
+          HttpResponse.json({ data: [FUTURE_CALL_ACTIVITY], total: 1, page: 1, limit: 10 }),
+        ),
+        http.post('/api/v1/activities/:id/brief', () =>
+          HttpResponse.json({
+            activity_id: FUTURE_CALL_ACTIVITY.id,
+            brief: {
+              contact_snapshot: {
+                name: 'Jane Doe',
+                title: 'VP Sales',
+                company: 'Acme',
+                contact_since: '2025-01-01T00:00:00.000Z',
+                last_interaction_at: null,
+              },
+              account_summary: 'Growing account.',
+              open_opportunities: [],
+              recent_activity_summary: [],
+              suggested_talking_points: ['Confirm budget.'],
+              known_objections: [],
+            },
+            generated_by: '00000000-0000-0000-0000-000000000001',
+            generated_at: '2026-07-01T00:00:00.000Z',
+          }),
+        ),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<ActivityTimeline contactId={FUTURE_CALL_ACTIVITY.contact_id!} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`generate-brief-${FUTURE_CALL_ACTIVITY.id}`)).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId(`generate-brief-${FUTURE_CALL_ACTIVITY.id}`));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('meeting-brief-panel')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Growing account.')).toBeInTheDocument();
+    });
+  });
 });

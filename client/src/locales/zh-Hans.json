@@ -2598,6 +2598,25 @@
     "clipboardError": "无法复制到剪贴板。",
     "dismiss": "关闭"
   },
+  "meetingBrief": {
+    "generateBriefButton": "生成简报",
+    "generating": "生成中……",
+    "panelTitle": "会议简报",
+    "dismiss": "关闭",
+    "regenerate": "重新生成",
+    "print": "打印",
+    "copyToClipboard": "复制到剪贴板",
+    "copied": "已复制！",
+    "clipboardError": "无法复制到剪贴板。",
+    "accountSummaryLabel": "客户摘要",
+    "opportunitiesLabel": "进行中的商机",
+    "recentActivityLabel": "近期活动",
+    "talkingPointsLabel": "建议的谈话要点",
+    "objectionsLabel": "已知异议",
+    "newsHookLabel": "最新消息",
+    "loading": "正在加载简报……",
+    "notFound": "此活动尚未生成简报。"
+  },
   "taskSuggestions": {
     "heading": "建议的后续任务",
     "dismissAll": "关闭",
