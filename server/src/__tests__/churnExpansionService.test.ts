@@ -114,7 +114,7 @@ afterAll(async () => {
 });
 
 /** Creates a closed-won account with a deal and an activity, matching the "closed-won accounts with activity history" scope. */
-async function createClosedWonAccountWithActivity(): Promise<string> {
+async function createClosedWonAccountWithActivity(notes = 'Routine check-in.'): Promise<string> {
   const accountResult = await pool.query<{ id: string }>(
     `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
     [`Test Account ${Date.now()}-${Math.random()}`, ownerId],
@@ -137,7 +137,7 @@ async function createClosedWonAccountWithActivity(): Promise<string> {
     {
       type: 'Call',
       subject: 'Check-in call',
-      notes: 'Routine check-in.',
+      notes,
       account_id: accountId,
       owner_id: ownerId,
     },
@@ -299,38 +299,65 @@ describe('detectChurnExpansionSignals', () => {
 
 describe('listChurnExpansionSignals', () => {
   it('separates at-risk and expansion accounts', async () => {
-    const churnAccountId = await createClosedWonAccountWithActivity();
-    const expansionAccountId = await createClosedWonAccountWithActivity();
+    // gatherClosedWonAccounts() scans every closed-won account in the shared test
+    // DB, not just this test's own rows — a closed-won account left over from a
+    // concurrently-running file would also be processed here. Branching the mock
+    // on each account's distinct note text (rather than assuming exactly two
+    // calls in creation order) keeps this assertion correct regardless of how
+    // many accounts detectChurnExpansionSignals() actually processes.
+    const CHURN_MARKER = `churn-marker-${Date.now()}-${Math.random()}`;
+    const EXPANSION_MARKER = `expansion-marker-${Date.now()}-${Math.random()}`;
+    const churnAccountId = await createClosedWonAccountWithActivity(CHURN_MARKER);
+    const expansionAccountId = await createClosedWonAccountWithActivity(EXPANSION_MARKER);
 
-    mockCreate.mockResolvedValueOnce({
-      usage: { input_tokens: 50, output_tokens: 20 },
-      content: [
-        {
-          type: 'tool_use',
-          name: 'report_churn_expansion_signal',
-          input: {
-            signal_detected: true,
-            signal_type: 'churn_risk',
-            confidence: 0.9,
-            contributing_factors: ['No activity in 45 days'],
+    mockCreate.mockImplementation(async (params: { messages: { content: string }[] }) => {
+      const content = params.messages[0]?.content ?? '';
+      if (content.includes(CHURN_MARKER)) {
+        return {
+          usage: { input_tokens: 50, output_tokens: 20 },
+          content: [
+            {
+              type: 'tool_use',
+              name: 'report_churn_expansion_signal',
+              input: {
+                signal_detected: true,
+                signal_type: 'churn_risk',
+                confidence: 0.9,
+                contributing_factors: ['No activity in 45 days'],
+              },
+            },
+          ],
+        };
+      }
+      if (content.includes(EXPANSION_MARKER)) {
+        return {
+          usage: { input_tokens: 50, output_tokens: 20 },
+          content: [
+            {
+              type: 'tool_use',
+              name: 'report_churn_expansion_signal',
+              input: {
+                signal_detected: true,
+                signal_type: 'expansion',
+                confidence: 0.8,
+                contributing_factors: ['New team mentioned'],
+              },
+            },
+          ],
+        };
+      }
+      // Any other closed-won account picked up from a concurrently-running file —
+      // report no signal so it doesn't pollute this test's at_risk/expansion assertions.
+      return {
+        usage: { input_tokens: 50, output_tokens: 20 },
+        content: [
+          {
+            type: 'tool_use',
+            name: 'report_churn_expansion_signal',
+            input: { signal_detected: false },
           },
-        },
-      ],
-    });
-    mockCreate.mockResolvedValueOnce({
-      usage: { input_tokens: 50, output_tokens: 20 },
-      content: [
-        {
-          type: 'tool_use',
-          name: 'report_churn_expansion_signal',
-          input: {
-            signal_detected: true,
-            signal_type: 'expansion',
-            confidence: 0.8,
-            contributing_factors: ['New team mentioned'],
-          },
-        },
-      ],
+        ],
+      };
     });
 
     await detectChurnExpansionSignals();
