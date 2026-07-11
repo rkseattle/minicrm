@@ -2207,6 +2207,7 @@
     "contactsLabel": "Kontakte",
     "dealsLabel": "Deals",
     "activitiesLabel": "Aktivitäten",
+    "accountsLabel": "Konten",
     "policy": {
       "private": "Privat (nur eigene Datensätze)",
       "team": "Team (Datensätze der Teammitglieder)",

@@ -24,6 +24,7 @@ import {
 } from '../services/accountService.js';
 import { listContacts } from '../services/contactService.js';
 import { getCoMemberIds } from '../services/teamService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   paginationParamsSchema,
   PAGINATION_MAX_LIMIT,
@@ -172,7 +173,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
 
 /**
  * GET /api/accounts/:id
- * Returns a single account by ID.
+ * Returns a single account by ID, subject to the org's account visibility policy.
  */
 export async function getAccountHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -180,6 +181,22 @@ export async function getAccountHandler(req: Request, res: Response): Promise<vo
 
   if (!account) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  const canAccess = await canAccessOwnedRecord(
+    'account',
+    account.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'You do not have visibility into this account.',
+      },
+    });
     return;
   }
 
@@ -416,8 +433,8 @@ export async function exportAccountsPdfHandler(req: Request, res: Response): Pro
 /**
  * GET /api/accounts/:id/export.pdf
  * Renders a single account as a one-record summary PDF, mirroring the data
- * shown on the account detail page. Visibility matches getAccountHandler — no
- * ownership restriction on read, consistent with GET /api/accounts/:id. (MINCRM-650)
+ * shown on the account detail page. Visibility matches getAccountHandler —
+ * subject to the org's account visibility policy. (MINCRM-650)
  */
 export async function exportAccountPdfHandler(req: Request, res: Response): Promise<void> {
   const id = String(req.params['id']);
@@ -425,6 +442,22 @@ export async function exportAccountPdfHandler(req: Request, res: Response): Prom
 
   if (!account) {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Account not found' } });
+    return;
+  }
+
+  const canAccess = await canAccessOwnedRecord(
+    'account',
+    account.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'You do not have visibility into this account.',
+      },
+    });
     return;
   }
 

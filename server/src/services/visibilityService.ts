@@ -75,7 +75,7 @@ export async function getVisibilityPolicy(
 }
 
 /**
- * Loads all three visibility policies in a single query.
+ * Loads all visibility policies in a single query.
  * Returns a map from object type to policy, falling back to 'org' for any missing rows.
  */
 export async function getAllVisibilityPolicies(): Promise<
@@ -89,6 +89,7 @@ export async function getAllVisibilityPolicies(): Promise<
     contact: 'org',
     deal: 'org',
     activity: 'org',
+    account: 'org',
   };
 
   for (const row of result.rows) {
@@ -171,7 +172,7 @@ export async function updateVisibilityConfig(
  * Resolves and returns the SQL visibility filter for the given requesting user
  * and object type.
  *
- * @param objectType   - The type of record being queried ('contact' | 'deal' | 'activity')
+ * @param objectType   - The type of record being queried ('contact' | 'deal' | 'activity' | 'account')
  * @param userId       - UUID of the requesting user
  * @param userRole     - Role of the requesting user
  * @param ownerColumn  - Qualified column name to filter on (e.g. 'c.owner_id', 'd.owner_id')
@@ -332,7 +333,7 @@ export async function validateReassignment(
  * endpoints but not through the record's own action endpoints. (MINCRM-472
  * self-review)
  *
- * @param objectType - The type of record being checked ('contact' | 'deal' | 'activity')
+ * @param objectType - The type of record being checked ('contact' | 'deal' | 'activity' | 'account')
  * @param ownerId    - The record's owner_id
  * @param userId     - UUID of the requesting user
  * @param userRole   - Role of the requesting user

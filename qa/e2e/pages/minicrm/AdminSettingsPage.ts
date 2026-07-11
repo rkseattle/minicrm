@@ -1457,6 +1457,19 @@ export class AdminSettingsPage {
       .resolve();
   }
 
+  /** Returns a resolved locator for the accounts visibility select element. */
+  async visibilityAccountsSelectLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'visibility-accounts-select' },
+          { type: 'role', value: 'combobox', options: { name: /accounts/i } },
+        ],
+        { intent: 'select for choosing the accounts visibility policy (private, team, or org)' },
+      )
+      .resolve();
+  }
+
   /** Returns a resolved locator for the save button in visibility settings. */
   async visibilitySaveButtonLocator() {
     return this.page

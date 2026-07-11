@@ -3253,14 +3253,14 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  /** Visibility settings: GET /api/settings/visibility (MINCRM-538) */
+  /** Visibility settings: GET /api/settings/visibility (MINCRM-538, MINCRM-472) */
   http.get('/api/v1/settings/visibility', () => {
     return HttpResponse.json({
-      visibility: { contact: 'org', deal: 'org', activity: 'org' },
+      visibility: { contact: 'org', deal: 'org', activity: 'org', account: 'org' },
     });
   }),
 
-  /** Visibility settings: PUT /api/settings/visibility (MINCRM-538) */
+  /** Visibility settings: PUT /api/settings/visibility (MINCRM-538, MINCRM-472) */
   http.put('/api/v1/settings/visibility', async ({ request }) => {
     const body = (await request.json()) as Record<string, string>;
     return HttpResponse.json({
@@ -3268,6 +3268,7 @@ export const handlers = [
         contact: body['contact'] ?? 'org',
         deal: body['deal'] ?? 'org',
         activity: body['activity'] ?? 'org',
+        account: body['account'] ?? 'org',
       },
     });
   }),

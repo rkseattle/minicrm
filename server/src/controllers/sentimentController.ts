@@ -58,12 +58,17 @@ export async function getAccountSentimentTrendHandler(req: Request, res: Respons
     return;
   }
 
-  if (account.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  const canAccess = await canAccessOwnedRecord(
+    'account',
+    account.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',
-        message:
-          'You can only view sentiment trends for accounts you own. Contact an admin to view trends for accounts owned by others.',
+        message: 'You do not have visibility into this account.',
       },
     });
     return;

@@ -4,7 +4,7 @@
  *
  * Verifies:
  * - Loading state renders while query is in flight
- * - Data loaded state: all three selects are present with defaults from the API
+ * - Data loaded state: all four selects are present with defaults from the API
  * - Error state: load error message renders when query fails
  * - Save button is disabled when no changes have been made
  * - Changing a select enables the save button
@@ -49,7 +49,7 @@ describe('VisibilitySettings — error state', () => {
 });
 
 describe('VisibilitySettings — loaded state', () => {
-  it('renders all three selects after data loads', async () => {
+  it('renders all four selects after data loads', async () => {
     renderWithProviders(<VisibilitySettings />);
 
     await waitFor(() => {
@@ -57,9 +57,10 @@ describe('VisibilitySettings — loaded state', () => {
     });
     expect(screen.getByTestId('visibility-deals-select')).toBeInTheDocument();
     expect(screen.getByTestId('visibility-activities-select')).toBeInTheDocument();
+    expect(screen.getByTestId('visibility-accounts-select')).toBeInTheDocument();
   });
 
-  it('shows org as the default selected value for all three selects', async () => {
+  it('shows org as the default selected value for all four selects', async () => {
     renderWithProviders(<VisibilitySettings />);
 
     await waitFor(() => {
@@ -71,6 +72,9 @@ describe('VisibilitySettings — loaded state', () => {
     );
     expect((screen.getByTestId('visibility-deals-select') as HTMLSelectElement).value).toBe('org');
     expect((screen.getByTestId('visibility-activities-select') as HTMLSelectElement).value).toBe(
+      'org',
+    );
+    expect((screen.getByTestId('visibility-accounts-select') as HTMLSelectElement).value).toBe(
       'org',
     );
   });
@@ -152,6 +156,23 @@ describe('VisibilitySettings — save flow', () => {
     });
 
     expect(screen.getByTestId('visibility-settings-save-button')).toBeDisabled();
+  });
+
+  it('saves a change to the accounts select', async () => {
+    renderWithProviders(<VisibilitySettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('visibility-accounts-select')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('visibility-accounts-select'), {
+      target: { value: 'private' },
+    });
+    fireEvent.click(screen.getByTestId('visibility-settings-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('visibility-settings-success')).toBeInTheDocument();
+    });
   });
 
   it('shows save error message when PUT fails', async () => {

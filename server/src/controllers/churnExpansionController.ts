@@ -5,6 +5,7 @@
 
 import type { Request, Response } from 'express';
 import { findAccountById } from '../services/accountService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   getAccountChurnExpansionSignal,
   listChurnExpansionSignals,
@@ -25,12 +26,17 @@ export async function getAccountChurnExpansionSignalHandler(
     return;
   }
 
-  if (account.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  const canAccess = await canAccessOwnedRecord(
+    'account',
+    account.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',
-        message:
-          'You can only view churn/expansion signals for accounts you own. Contact an admin to view signals for accounts owned by others.',
+        message: 'You do not have visibility into this account.',
       },
     });
     return;

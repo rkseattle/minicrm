@@ -6,7 +6,7 @@
 import { z } from 'zod';
 
 /** Object types that have configurable visibility policies */
-export const VISIBILITY_OBJECT_TYPES = ['contact', 'deal', 'activity'] as const;
+export const VISIBILITY_OBJECT_TYPES = ['contact', 'deal', 'activity', 'account'] as const;
 export type VisibilityObjectType = (typeof VISIBILITY_OBJECT_TYPES)[number];
 
 /** Visibility policy levels, from most to least restrictive */
@@ -27,6 +27,7 @@ export const visibilityConfigSchema = z.object({
   contact: z.enum(VISIBILITY_POLICIES),
   deal: z.enum(VISIBILITY_POLICIES),
   activity: z.enum(VISIBILITY_POLICIES),
+  account: z.enum(VISIBILITY_POLICIES),
 });
 export type VisibilityConfig = z.infer<typeof visibilityConfigSchema>;
 

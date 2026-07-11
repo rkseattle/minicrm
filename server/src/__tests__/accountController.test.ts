@@ -359,7 +359,7 @@ describe('GET /api/accounts — ?industry filter', () => {
 // ── GET /api/accounts/:id — visibility ───────────────────────────────────────
 
 describe('GET /api/accounts/:id — visibility', () => {
-  it('allows any authenticated user to view any account', async () => {
+  it('allows any authenticated user to view any account under the default org policy', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
@@ -368,6 +368,28 @@ describe('GET /api/accounts/:id — visibility', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.account.id).toBe(account.id);
+  });
+
+  it('returns 403 when a rep requests an account owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default.
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'account'`,
+    );
+    try {
+      const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+
+      const res = await request(app)
+        .get(`/api/v1/accounts/${account.id}`)
+        .set('Cookie', otherRepCookie);
+
+      expect(res.status).toBe(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'account'`,
+      );
+    }
   });
 });
 
@@ -552,7 +574,7 @@ describe('GET /api/accounts/:id/export.pdf', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('allows any authenticated user to export an account they do not own, matching GET /:id visibility', async () => {
+  it('allows any authenticated user to export an account they do not own under the default org policy, matching GET /:id visibility', async () => {
     const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
 
     const res = await request(app)
@@ -566,6 +588,28 @@ describe('GET /api/accounts/:id/export.pdf', () => {
       });
 
     expect(res.status).toBe(200);
+  });
+
+  it('returns 403 when a rep exports an account owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default.
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'account'`,
+    );
+    try {
+      const account = await createAccount({ ...BASE_ACCOUNT, owner_id: repId });
+
+      const res = await request(app)
+        .get(`/api/v1/accounts/${account.id}/export.pdf`)
+        .set('Cookie', otherRepCookie);
+
+      expect(res.status).toBe(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'account'`,
+      );
+    }
   });
 
   it('returns 401 without authentication', async () => {
