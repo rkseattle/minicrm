@@ -666,7 +666,7 @@ export default function AiPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-dvh bg-gray-50 flex flex-col overflow-hidden">
       <NavBar />
 
       {/* Delete confirmation modal */}
