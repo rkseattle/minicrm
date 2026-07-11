@@ -140,10 +140,23 @@ async function gatherNewsHook(
       if (!Array.isArray(block.content)) continue; // WebSearchToolResultError — skip
       for (const result of block.content) {
         if (items.length >= MAX_NEWS_ITEMS) break;
+        // Validate each item individually so one malformed result (missing
+        // title/url, or a URL that fails to parse) is skipped rather than
+        // either persisting a broken href or throwing and dropping every
+        // other valid item already found in this response. (MINCRM-465
+        // self-review)
+        if (typeof result.title !== 'string' || !result.title.trim()) continue;
+        if (typeof result.url !== 'string' || !result.url.trim()) continue;
+        let hostname: string;
+        try {
+          hostname = new URL(result.url).hostname;
+        } catch {
+          continue;
+        }
         items.push({
           title: result.title,
           url: result.url,
-          source: new URL(result.url).hostname,
+          source: hostname,
           published_at: result.page_age,
         });
       }

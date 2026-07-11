@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { findContactById } from '../services/contactService.js';
 import { findDealById } from '../services/dealService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   getContactChampionBlockerStatus,
   dismissContactClassification,
@@ -20,11 +21,10 @@ const overrideSchema = z.object({
   reason: z.string().trim().max(1000).nullable().optional(),
 });
 
-const FORBIDDEN_OWNERSHIP_ERROR = {
+const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
     code: 'FORBIDDEN',
-    message:
-      'You can only view or act on champion/blocker intelligence for contacts and deals you own. Contact an admin to act on records owned by others.',
+    message: 'You do not have visibility into this record.',
   },
 };
 
@@ -40,8 +40,14 @@ export async function getContactChampionBlockerHandler(req: Request, res: Respon
     return;
   }
 
-  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccessContact = await canAccessOwnedRecord(
+    'contact',
+    contact.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccessContact) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 
@@ -64,8 +70,14 @@ export async function dismissContactChampionBlockerHandler(
     return;
   }
 
-  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccessContact = await canAccessOwnedRecord(
+    'contact',
+    contact.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccessContact) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 
@@ -97,8 +109,14 @@ export async function overrideContactChampionBlockerHandler(
     return;
   }
 
-  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccessContact = await canAccessOwnedRecord(
+    'contact',
+    contact.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccessContact) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 
@@ -122,8 +140,14 @@ export async function getDealStakeholderMapHandler(req: Request, res: Response):
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccessDeal = await canAccessOwnedRecord(
+    'deal',
+    deal.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccessDeal) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 

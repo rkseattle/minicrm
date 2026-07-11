@@ -90,6 +90,12 @@ beforeEach(async () => {
     `UPDATE feature_flags SET enabled = false
      WHERE flag_key IN ('ai_sentiment_tracking', 'ai_champion_blocker_detection')`,
   );
+  // Guard against the ai_features master toggle being left disabled by another
+  // serial-project test file's in-flight PATCH (e.g. aiConfigController.test.ts's
+  // master-toggle test) — every ai_* sub-feature flag, including ai_meeting_brief,
+  // is gated on ai_features being enabled. Same defensive pattern as
+  // objectionMatchingController.test.ts's ensureAiFeaturesEnabled().
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_features'`);
   invalidateFeatureFlagCache();
 });
 
@@ -124,8 +130,19 @@ async function createTestActivity(): Promise<string> {
     },
     { id: repId, name: 'Meeting Brief Rep' },
   );
+  // due_date must be present and today-or-future — the brief generation
+  // endpoint enforces the same future-dated Call/Meeting eligibility gate the
+  // UI applies (see ActivityTimeline's BRIEF_ELIGIBLE_TYPES). (MINCRM-465 self-review)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
   const activity = await createActivity(
-    { type: 'Call', subject: 'Upcoming call', contact_id: contact.id, owner_id: repId },
+    {
+      type: 'Call',
+      subject: 'Upcoming call',
+      contact_id: contact.id,
+      owner_id: repId,
+      due_date: tomorrow.toISOString().slice(0, 10),
+    },
     { id: repId, name: 'Meeting Brief Rep' },
   );
   return activity.id;

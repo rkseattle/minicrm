@@ -322,6 +322,54 @@ export async function validateReassignment(
 }
 
 /**
+ * Answers "can this user read a single already-fetched record owned by ownerId?"
+ * using the exact same policy rules as buildVisibilityFilter (org policy for reps,
+ * team-scoping for managers, unrestricted for admin/viewer). Intended for
+ * single-record GET/action controllers that already have the record in hand and
+ * only need a yes/no visibility check — not the strict owner-or-admin equality
+ * check those controllers have historically used, which incorrectly rejects
+ * managers and org/team-policy reps who can view the record through list
+ * endpoints but not through the record's own action endpoints. (MINCRM-472
+ * self-review)
+ *
+ * @param objectType - The type of record being checked ('contact' | 'deal' | 'activity')
+ * @param ownerId    - The record's owner_id
+ * @param userId     - UUID of the requesting user
+ * @param userRole   - Role of the requesting user
+ */
+export async function canAccessOwnedRecord(
+  objectType: VisibilityObjectType,
+  ownerId: string,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  if (userRole === 'admin' || userRole === 'viewer') return true;
+  if (ownerId === userId) return true;
+
+  if (userRole === 'manager') {
+    const teamIds = await getTeamIdsForManager(userId);
+    if (teamIds.length === 0) return false;
+    const memberIds = await resolveTeamMemberIds(teamIds);
+    return memberIds.includes(ownerId);
+  }
+
+  // rep: apply the active org policy for this object type
+  const policy = await getVisibilityPolicy(objectType);
+  if (policy === 'org') return true;
+  if (policy === 'private') return false; // ownerId === userId already returned true above
+
+  // 'team': visible if ownerId shares a team with the requesting user
+  const result = await pool.query<{ team_id: string }>(
+    'SELECT team_id FROM team_memberships WHERE user_id = $1',
+    [userId],
+  );
+  const teamIds = result.rows.map((r) => r.team_id);
+  if (teamIds.length === 0) return false;
+  const memberIds = await resolveTeamMemberIds(teamIds);
+  return memberIds.includes(ownerId);
+}
+
+/**
  * Given a list of team IDs, returns the deduplicated list of member user UUIDs
  * across all those teams and their subtrees, using a single recursive CTE.
  */

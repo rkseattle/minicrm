@@ -6,13 +6,13 @@
 import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { findActivityById } from '../services/activityService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { generateTaskSuggestions } from '../services/taskSuggestionService.js';
 
-const FORBIDDEN_OWNERSHIP_ERROR = {
+const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
     code: 'FORBIDDEN',
-    message:
-      'You can only get task suggestions for activities you own. Contact an admin for others.',
+    message: 'You do not have visibility into this activity.',
   },
 };
 
@@ -30,8 +30,14 @@ export async function generateTaskSuggestionsHandler(req: Request, res: Response
     return;
   }
 
-  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord(
+    'activity',
+    activity.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 

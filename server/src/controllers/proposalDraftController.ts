@@ -7,6 +7,7 @@
 import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { findDealById } from '../services/dealService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   generateProposalDraft,
   exportProposalDraftDocx,
@@ -17,11 +18,10 @@ import {
   exportProposalDraftSchema,
 } from '@minicrm/shared/schemas/proposalDraftSchema.js';
 
-const FORBIDDEN_OWNERSHIP_ERROR = {
+const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
     code: 'FORBIDDEN',
-    message:
-      'You can only generate proposal drafts for deals you own. Contact an admin to act on deals owned by others.',
+    message: 'You do not have visibility into this deal.',
   },
 };
 
@@ -39,8 +39,9 @@ export async function generateProposalDraftHandler(req: Request, res: Response):
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord('deal', deal.owner_id, req.user!.id, req.user!.role);
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 
@@ -79,8 +80,9 @@ export async function exportProposalDraftDocxHandler(req: Request, res: Response
     return;
   }
 
-  if (deal.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord('deal', deal.owner_id, req.user!.id, req.user!.role);
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 

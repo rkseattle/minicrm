@@ -104,12 +104,24 @@ describe('GET /api/v1/contacts/:id/champion-blocker', () => {
       .expect(404);
   });
 
-  it('returns 403 when a rep requests a contact owned by another rep', async () => {
-    const contactId = await createTestContact();
-    await request(app)
-      .get(`/api/v1/contacts/${contactId}/champion-blocker`)
-      .set('Cookie', otherRepCookie)
-      .expect(403);
+  it('returns 403 when a rep requests a contact owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'contact'`,
+    );
+    try {
+      const contactId = await createTestContact();
+      await request(app)
+        .get(`/api/v1/contacts/${contactId}/champion-blocker`)
+        .set('Cookie', otherRepCookie)
+        .expect(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'contact'`,
+      );
+    }
   });
 });
 
@@ -177,7 +189,13 @@ describe('GET /api/v1/deals/:id/stakeholder-map', () => {
       .expect(404);
   });
 
-  it('returns 403 when a rep requests a stakeholder map for a deal owned by another rep', async () => {
+  it('returns 403 when a rep requests a stakeholder map for a deal owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'deal'`,
+    );
     const deal = await createDeal(
       {
         name: 'Cross-Owner Stakeholder Map Deal',
@@ -188,11 +206,16 @@ describe('GET /api/v1/deals/:id/stakeholder-map', () => {
       { id: repId, name: 'Champion Blocker Rep' },
     );
 
-    await request(app)
-      .get(`/api/v1/deals/${deal.id}/stakeholder-map`)
-      .set('Cookie', otherRepCookie)
-      .expect(403);
-
-    await pool.query('DELETE FROM deals WHERE id = $1', [deal.id]);
+    try {
+      await request(app)
+        .get(`/api/v1/deals/${deal.id}/stakeholder-map`)
+        .set('Cookie', otherRepCookie)
+        .expect(403);
+    } finally {
+      await pool.query('DELETE FROM deals WHERE id = $1', [deal.id]);
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'deal'`,
+      );
+    }
   });
 });

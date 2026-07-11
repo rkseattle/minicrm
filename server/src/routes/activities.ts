@@ -715,6 +715,7 @@ router.post(
   '/:id/brief',
   authenticate,
   requireFeatureEnabled('ai_meeting_brief'),
+  requireAiTokenBudget,
   asyncHandler(generateMeetingBriefHandler),
 );
 
