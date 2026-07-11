@@ -16,6 +16,7 @@ import BulkConfirmationBlock from '@/components/ai/BulkConfirmationBlock.js';
 import ContextPanel from '@/components/ai/ContextPanel.js';
 import ContextProposalChip from '@/components/ai/ContextProposalChip.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
+import { useVisualViewportHeight } from '@/hooks/useVisualViewportHeight.js';
 import {
   AI_SESSIONS_QUERY_KEY,
   aiMessagesQueryKey,
@@ -225,6 +226,7 @@ export default function AiPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { enabled: featureEnabled, isLoading: featureFlagLoading } = useFeatureFlag('ai_nli_page');
+  const visualViewportHeight = useVisualViewportHeight();
 
   // Retention window notice (MINCRM-462) — only fetched once the feature is enabled,
   // since the endpoint is gated by the same flag.
@@ -666,7 +668,13 @@ export default function AiPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div
+      className="h-dvh bg-gray-50 flex flex-col overflow-hidden"
+      // `dvh` doesn't shrink when a mobile keyboard overlays the layout viewport
+      // instead of resizing it (Greptile PR #348 follow-up) — pin the shell to
+      // the VisualViewport height in that case so the composer stays reachable.
+      style={visualViewportHeight !== undefined ? { height: visualViewportHeight } : undefined}
+    >
       <NavBar />
 
       {/* Delete confirmation modal */}
