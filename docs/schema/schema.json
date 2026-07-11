@@ -5780,7 +5780,7 @@
         {
           "name": "org_visibility_settings_object_type_check",
           "type": "CHECK",
-          "def": "CHECK ((object_type = ANY (ARRAY['contact'::text, 'deal'::text, 'activity'::text])))",
+          "def": "CHECK ((object_type = ANY (ARRAY['contact'::text, 'deal'::text, 'activity'::text, 'account'::text])))",
           "table": "public.org_visibility_settings",
           "referenced_table": "",
           "columns": [

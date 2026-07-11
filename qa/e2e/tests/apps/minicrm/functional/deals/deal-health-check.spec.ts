@@ -32,6 +32,7 @@ import {
   withFlags,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
+import { resetVisibilitySettings } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   runDealHealthCheck,
   waitForDealHealthResult,
@@ -128,8 +129,8 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  'F7-DH4: a rep cannot run a health check on a deal they do not own',
-  { tag: ['@functional'] },
+  'F7-DH4: a rep cannot run a health check on a deal they do not own @functional @serial',
+  { tag: ['@functional', '@serial'] },
   async ({ testData, restClient, page }) => {
     const account = await createTestAccount(testData, restClient, {
       name: `DH4-Acct ${test.info().title}`,
@@ -142,15 +143,25 @@ test(
       account_id: account.id,
     });
 
-    const rep = await createTestRep(testData, restClient);
-    await loginViaBrowser(rep.email, rep.password, { page });
-    await loginAs(restClient, rep.email, rep.password);
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default.
+    await restClient.put('/api/v1/settings/visibility', { deal: 'private' });
 
-    await navigateToDeal(page, adminOwnedDeal.id);
+    try {
+      const rep = await createTestRep(testData, restClient);
+      await loginViaBrowser(rep.email, rep.password, { page });
+      await loginAs(restClient, rep.email, rep.password);
 
-    const result = await runDealHealthCheck({ page });
-    expect(result.status).toBe(403);
+      await navigateToDeal(page, adminOwnedDeal.id);
 
-    await waitForDealHealthError({ page });
+      const result = await runDealHealthCheck({ page });
+      expect(result.status).toBe(403);
+
+      await waitForDealHealthError({ page });
+    } finally {
+      await loginAsAdmin(restClient);
+      await resetVisibilitySettings(restClient);
+    }
   },
 );

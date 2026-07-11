@@ -13,6 +13,7 @@
  *   F-VIS6  — Manager can reassign a contact to a team member
  *   F-VIS7  — Manager cannot reassign a contact to a user outside their team (403)
  *   F-VIS8  — Rep cannot access the PUT /settings/visibility endpoint (403)
+ *   F-VIS9  — Rep with private account policy cannot read an account owned by another rep
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional @serial
@@ -38,12 +39,14 @@ import {
   navigateToAdminSettings,
   expectVisibilitySettingsPanelVisible,
   expectVisibilityContactsSelectVisible,
+  expectVisibilityAccountsSelectVisible,
   selectVisibilityContacts,
   clickVisibilitySaveButton,
   expectVisibilitySaveSuccessVisible,
   resetVisibilitySettings,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createContactViaApi, listContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
+import { createAccountViaApi } from '@behaviors/minicrm/accounts.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -78,6 +81,7 @@ test('@functional @serial F-VIS1: admin can navigate to the visibility tab and s
   await expectVisibilitySettingsPanelVisible({ page }, 10_000);
 
   await expectVisibilityContactsSelectVisible({ page });
+  await expectVisibilityAccountsSelectVisible({ page });
 });
 
 // ---------------------------------------------------------------------------
@@ -429,6 +433,39 @@ test('@functional @serial F-VIS8: rep cannot call the visibility settings PUT en
   let caughtStatus: number | undefined;
   try {
     await restClient.put('/api/v1/settings/visibility', { contact: 'private' });
+  } catch (err: unknown) {
+    const e = err as { status?: number };
+    caughtStatus = e.status;
+  }
+  expect(caughtStatus).toBe(403);
+});
+
+// ---------------------------------------------------------------------------
+// F-VIS9 — Rep with private account policy cannot read another rep's account
+// ---------------------------------------------------------------------------
+
+test('@functional @serial F-VIS9: rep with private account policy cannot read an account owned by another rep', async ({
+  restClient,
+  testData,
+}) => {
+  const repA = await createTestRep(testData, restClient);
+  const repB = await createTestRep(testData, restClient);
+
+  // Account created by admin, owned by rep A — set the policy after creation so
+  // no concurrent shard reset can race here (this file runs in the dedicated
+  // e2e-serial job, --workers=1).
+  await loginAsAdmin(restClient);
+  const account = await createAccountViaApi(restClient, {
+    name: `VIS9-Account-${Date.now()}`,
+    owner_id: repA.userId,
+  });
+  await restClient.put('/api/v1/settings/visibility', { account: 'private' });
+
+  await loginAndVerify(restClient, repB.email, repB.password);
+
+  let caughtStatus: number | undefined;
+  try {
+    await restClient.get(`/api/v1/accounts/${account.id}`);
   } catch (err: unknown) {
     const e = err as { status?: number };
     caughtStatus = e.status;

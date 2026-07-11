@@ -29,6 +29,7 @@ export default function VisibilitySettings() {
   const [pendingContact, setPendingContact] = useState<VisibilityPolicy | null>(null);
   const [pendingDeal, setPendingDeal] = useState<VisibilityPolicy | null>(null);
   const [pendingActivity, setPendingActivity] = useState<VisibilityPolicy | null>(null);
+  const [pendingAccount, setPendingAccount] = useState<VisibilityPolicy | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
@@ -39,6 +40,7 @@ export default function VisibilitySettings() {
       setPendingContact(null);
       setPendingDeal(null);
       setPendingActivity(null);
+      setPendingAccount(null);
       setSaveSuccess(true);
       setSaveError(false);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -52,11 +54,13 @@ export default function VisibilitySettings() {
   const currentContact = pendingContact ?? data?.visibility.contact ?? 'org';
   const currentDeal = pendingDeal ?? data?.visibility.deal ?? 'org';
   const currentActivity = pendingActivity ?? data?.visibility.activity ?? 'org';
+  const currentAccount = pendingAccount ?? data?.visibility.account ?? 'org';
 
   const hasChanges =
     (pendingContact !== null && pendingContact !== data?.visibility.contact) ||
     (pendingDeal !== null && pendingDeal !== data?.visibility.deal) ||
-    (pendingActivity !== null && pendingActivity !== data?.visibility.activity);
+    (pendingActivity !== null && pendingActivity !== data?.visibility.activity) ||
+    (pendingAccount !== null && pendingAccount !== data?.visibility.account);
 
   function handleSave() {
     const updates: Record<string, VisibilityPolicy> = {};
@@ -68,6 +72,9 @@ export default function VisibilitySettings() {
     }
     if (pendingActivity !== null && pendingActivity !== data?.visibility.activity) {
       updates.activity = pendingActivity;
+    }
+    if (pendingAccount !== null && pendingAccount !== data?.visibility.account) {
+      updates.account = pendingAccount;
     }
     if (Object.keys(updates).length === 0) return;
     mutation.mutate(updates);
@@ -138,6 +145,20 @@ export default function VisibilitySettings() {
           value={currentActivity}
           onChange={(e) => setPendingActivity(e.target.value as VisibilityPolicy)}
           data-testid="visibility-activities-select"
+        >
+          {policyOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          id="visibility-accounts"
+          label={t('visibilitySettings.accountsLabel')}
+          value={currentAccount}
+          onChange={(e) => setPendingAccount(e.target.value as VisibilityPolicy)}
+          data-testid="visibility-accounts-select"
         >
           {policyOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>

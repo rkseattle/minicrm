@@ -2207,6 +2207,7 @@
     "contactsLabel": "联系人",
     "dealsLabel": "商机",
     "activitiesLabel": "活动",
+    "accountsLabel": "客户",
     "policy": {
       "private": "私有（仅自己的记录）",
       "team": "团队（团队成员的记录）",

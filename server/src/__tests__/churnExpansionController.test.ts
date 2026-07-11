@@ -101,15 +101,27 @@ describe('GET /api/v1/accounts/:id/churn-expansion-signal', () => {
       .expect(404);
   });
 
-  it('returns 403 when a rep requests the signal for an account owned by another rep', async () => {
-    const accountResult = await pool.query<{ id: string }>(
-      `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
-      ['Cross-Owner Test Account', repId],
+  it('returns 403 when a rep requests the signal for an account owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default.
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'account'`,
     );
-    await request(app)
-      .get(`/api/v1/accounts/${accountResult.rows[0].id}/churn-expansion-signal`)
-      .set('Cookie', otherRepCookie)
-      .expect(403);
+    try {
+      const accountResult = await pool.query<{ id: string }>(
+        `INSERT INTO accounts (name, owner_id) VALUES ($1, $2) RETURNING id`,
+        ['Cross-Owner Test Account', repId],
+      );
+      await request(app)
+        .get(`/api/v1/accounts/${accountResult.rows[0].id}/churn-expansion-signal`)
+        .set('Cookie', otherRepCookie)
+        .expect(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'account'`,
+      );
+    }
   });
 
   it('allows an admin to view the signal for an account owned by a rep', async () => {

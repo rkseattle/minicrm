@@ -682,6 +682,7 @@ export async function resetVisibilitySettings(restClient: RestClient): Promise<v
       contact: 'org',
       deal: 'org',
       activity: 'org',
+      account: 'org',
     })
     .catch(() => undefined);
 }
@@ -1447,6 +1448,26 @@ export async function selectVisibilityContacts(
 ): Promise<void> {
   await (
     await new AdminSettingsPage(context).visibilityContactsSelectLocator()
+  ).selectOption(value);
+}
+
+/** Asserts that the accounts visibility select is visible. */
+export async function expectVisibilityAccountsSelectVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).visibilityAccountsSelectLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}
+
+/** Selects a value in the accounts visibility select. */
+export async function selectVisibilityAccounts(
+  value: string,
+  context: AdminSettingsBehaviorContext,
+): Promise<void> {
+  await (
+    await new AdminSettingsPage(context).visibilityAccountsSelectLocator()
   ).selectOption(value);
 }
 

@@ -13,7 +13,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| org_visibility_settings_object_type_check | CHECK | CHECK ((object_type = ANY (ARRAY['contact'::text, 'deal'::text, 'activity'::text]))) |
+| org_visibility_settings_object_type_check | CHECK | CHECK ((object_type = ANY (ARRAY['contact'::text, 'deal'::text, 'activity'::text, 'account'::text]))) |
 | org_visibility_settings_policy_check | CHECK | CHECK ((policy = ANY (ARRAY['private'::text, 'team'::text, 'org'::text]))) |
 | org_visibility_settings_updated_by_fkey | FOREIGN KEY | FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL |
 | org_visibility_settings_pkey | PRIMARY KEY | PRIMARY KEY (object_type) |
