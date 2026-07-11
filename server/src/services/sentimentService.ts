@@ -160,9 +160,18 @@ export async function scoreActivitySentiment(params: ScoreActivitySentimentParam
        VALUES ($1, $2, $3, now())
        ON CONFLICT (activity_id) DO UPDATE
          SET sentiment = $2, confidence = $3, updated_at = now(),
-             -- A re-score (e.g. notes edited) supersedes any prior "not accurate" flag —
-             -- the flag applied to the previous classification, not this new one.
-             flagged_inaccurate_by = NULL, flagged_inaccurate_at = NULL`,
+             -- Only clear a prior "not accurate" flag when the classification actually
+             -- changes — a genuine re-score (e.g. notes edited) supersedes the flag since
+             -- it applied to the old classification, but a same-value duplicate write (a
+             -- delayed/duplicate fire-and-forget scoring call racing a rep's flag action)
+             -- must not silently un-flag a score the rep already reviewed. (MINCRM-472
+             -- self-review)
+             flagged_inaccurate_by = CASE
+               WHEN activity_sentiment_scores.sentiment IS DISTINCT FROM $2
+                 THEN NULL ELSE activity_sentiment_scores.flagged_inaccurate_by END,
+             flagged_inaccurate_at = CASE
+               WHEN activity_sentiment_scores.sentiment IS DISTINCT FROM $2
+                 THEN NULL ELSE activity_sentiment_scores.flagged_inaccurate_at END`,
       [params.activityId, result.sentiment, result.confidence],
     );
   } catch (err) {
@@ -195,7 +204,13 @@ interface SentimentRow {
   activity_id: string;
   sentiment: SentimentValue;
   flagged_inaccurate_at: Date | null;
-  created_at: Date;
+  // The activity's actual interaction time (due_date, falling back to the
+  // activity's created_at when due_date is unset) — NOT the sentiment row's
+  // own created_at, which is when scoring ran and can lag far behind the
+  // interaction itself (e.g. an older activity edited and scored for the
+  // first time). Ordering/windowing by this keeps the trend and sparkline in
+  // true chronological order of the interactions they represent.
+  interaction_at: Date;
 }
 
 function toPoints(rows: SentimentRow[]): SentimentScorePoint[] {
@@ -203,7 +218,7 @@ function toPoints(rows: SentimentRow[]): SentimentScorePoint[] {
     activity_id: row.activity_id,
     sentiment: row.sentiment,
     flagged_inaccurate: row.flagged_inaccurate_at !== null,
-    created_at: row.created_at.toISOString(),
+    created_at: row.interaction_at.toISOString(),
   }));
 }
 
@@ -212,11 +227,12 @@ export async function getContactSentimentTrend(
   contactId: string,
 ): Promise<ContactSentimentTrendResponse> {
   const result = await pool.query<SentimentRow>(
-    `SELECT s.activity_id, s.sentiment, s.flagged_inaccurate_at, s.created_at
+    `SELECT s.activity_id, s.sentiment, s.flagged_inaccurate_at,
+            COALESCE(a.due_date::timestamptz, a.created_at) AS interaction_at
      FROM activity_sentiment_scores s
      JOIN activities a ON a.id = s.activity_id
      WHERE a.contact_id = $1
-     ORDER BY s.created_at DESC
+     ORDER BY interaction_at DESC
      LIMIT $2`,
     [contactId, CONTACT_TREND_WINDOW],
   );
@@ -237,13 +253,15 @@ export async function getAccountSentimentTrend(
   accountId: string,
 ): Promise<AccountSentimentTrendResponse> {
   const result = await pool.query<SentimentRow>(
-    `SELECT s.activity_id, s.sentiment, s.flagged_inaccurate_at, s.created_at
+    `SELECT s.activity_id, s.sentiment, s.flagged_inaccurate_at,
+            COALESCE(a.due_date::timestamptz, a.created_at) AS interaction_at
      FROM activity_sentiment_scores s
      JOIN activities a ON a.id = s.activity_id
      LEFT JOIN contacts c ON c.id = a.contact_id
-     WHERE (a.account_id = $1 OR c.account_id = $1)
-       AND s.created_at >= now() - ($2 || ' days')::interval
-     ORDER BY s.created_at DESC`,
+     LEFT JOIN deals d ON d.id = a.deal_id
+     WHERE (a.account_id = $1 OR c.account_id = $1 OR d.account_id = $1)
+       AND COALESCE(a.due_date::timestamptz, a.created_at) >= now() - ($2 || ' days')::interval
+     ORDER BY interaction_at DESC`,
     [accountId, ACCOUNT_TREND_WINDOW_DAYS],
   );
 

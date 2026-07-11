@@ -7,17 +7,17 @@ import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { z } from 'zod';
 import { findActivityById } from '../services/activityService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   classifyActivityObjection,
   findObjectionPrecedents,
 } from '../services/objectionMatchingService.js';
 import { OBJECTION_CATEGORIES } from '@minicrm/shared/schemas/objectionSchema.js';
 
-const FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR = {
+const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
     code: 'FORBIDDEN',
-    message:
-      'You can only classify or look up objection precedents for activities you own. Contact an admin to act on activities owned by others.',
+    message: 'You do not have visibility into this activity.',
   },
 };
 
@@ -34,8 +34,14 @@ export async function classifyActivityObjectionHandler(req: Request, res: Respon
     return;
   }
 
-  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord(
+    'activity',
+    activity.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 
@@ -64,8 +70,14 @@ export async function getObjectionPrecedentsHandler(req: Request, res: Response)
     return;
   }
 
-  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_ACTIVITY_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord(
+    'activity',
+    activity.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 

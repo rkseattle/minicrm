@@ -163,11 +163,23 @@ describe('POST /api/v1/activities/:id/classify-objection', () => {
     expect(res.body.category).toBe('Price');
   });
 
-  it('returns 403 when a rep classifies an activity owned by another rep', async () => {
-    await request(app)
-      .post(`/api/v1/activities/${activityId}/classify-objection`)
-      .set('Cookie', otherRepCookie)
-      .expect(403);
+  it('returns 403 when a rep classifies an activity owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'activity'`,
+    );
+    try {
+      await request(app)
+        .post(`/api/v1/activities/${activityId}/classify-objection`)
+        .set('Cookie', otherRepCookie)
+        .expect(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'activity'`,
+      );
+    }
   });
 });
 
@@ -194,10 +206,22 @@ describe('GET /api/v1/activities/:id/objection-precedents', () => {
     expect(res.body.has_sufficient_data).toBe(false);
   });
 
-  it('returns 403 when a rep requests precedents anchored on an activity owned by another rep', async () => {
-    await request(app)
-      .get(`/api/v1/activities/${activityId}/objection-precedents?category=Price`)
-      .set('Cookie', otherRepCookie)
-      .expect(403);
+  it('returns 403 when a rep requests precedents anchored on an activity owned by another rep under a private visibility policy', async () => {
+    // Default org visibility policy is 'org' (all reps see all records) — this
+    // test asserts the private-policy denial path, so it must set that policy
+    // explicitly rather than relying on an unstated default. (MINCRM-472 self-review)
+    await pool.query(
+      `UPDATE org_visibility_settings SET policy = 'private' WHERE object_type = 'activity'`,
+    );
+    try {
+      await request(app)
+        .get(`/api/v1/activities/${activityId}/objection-precedents?category=Price`)
+        .set('Cookie', otherRepCookie)
+        .expect(403);
+    } finally {
+      await pool.query(
+        `UPDATE org_visibility_settings SET policy = 'org' WHERE object_type = 'activity'`,
+      );
+    }
   });
 });

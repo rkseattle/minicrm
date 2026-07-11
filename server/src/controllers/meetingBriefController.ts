@@ -16,6 +16,22 @@ const FORBIDDEN_OWNERSHIP_ERROR = {
   },
 };
 
+/** Activity types eligible for meeting brief generation — mirrors ActivityTimeline's BRIEF_ELIGIBLE_TYPES. */
+const BRIEF_ELIGIBLE_TYPES: ReadonlySet<string> = new Set(['Call', 'Meeting']);
+
+/**
+ * Mirrors the UI gate in ActivityTimeline (MINCRM-465): briefs are only for
+ * future-dated Call/Meeting activities linked to a contact. Enforced here too
+ * so a direct POST cannot generate a brief for an activity the UI would never
+ * show the action for (e.g. an owned Email, Note, or Task).
+ */
+function isBriefEligible(activity: { type: string; due_date: string | null }): boolean {
+  if (!BRIEF_ELIGIBLE_TYPES.has(activity.type)) return false;
+  if (!activity.due_date) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return activity.due_date >= today;
+}
+
 /**
  * POST /api/activities/:id/brief
  * Generates (or regenerates) the pre-meeting brief for the activity.
@@ -30,6 +46,17 @@ export async function generateMeetingBriefHandler(req: Request, res: Response): 
 
   if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
     res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+    return;
+  }
+
+  if (!activity.contact_id || !isBriefEligible(activity)) {
+    res.status(400).json({
+      error: {
+        code: 'NOT_BRIEF_ELIGIBLE',
+        message:
+          'A meeting brief can only be generated for a future-dated Call or Meeting activity linked to a contact.',
+      },
+    });
     return;
   }
 

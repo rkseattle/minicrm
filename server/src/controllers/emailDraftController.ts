@@ -7,13 +7,13 @@ import type { Request, Response } from 'express';
 import { handleAiServiceError } from '../utils/aiErrorHandling.js';
 import { generateEmailDraftSchema } from '@minicrm/shared/schemas/emailDraftSchema.js';
 import { findContactById } from '../services/contactService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import { generateEmailDraft } from '../services/emailDraftService.js';
 
-const FORBIDDEN_OWNERSHIP_ERROR = {
+const FORBIDDEN_VISIBILITY_ERROR = {
   error: {
     code: 'FORBIDDEN',
-    message:
-      'You can only draft an email for contacts you own. Contact an admin to draft for others.',
+    message: 'You do not have visibility into this contact.',
   },
 };
 
@@ -41,8 +41,14 @@ export async function generateEmailDraftHandler(req: Request, res: Response): Pr
     return;
   }
 
-  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
-    res.status(403).json(FORBIDDEN_OWNERSHIP_ERROR);
+  const canAccess = await canAccessOwnedRecord(
+    'contact',
+    contact.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
+    res.status(403).json(FORBIDDEN_VISIBILITY_ERROR);
     return;
   }
 

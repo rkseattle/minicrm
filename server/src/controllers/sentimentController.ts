@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { findContactById } from '../services/contactService.js';
 import { findAccountById } from '../services/accountService.js';
 import { findActivityById } from '../services/activityService.js';
+import { canAccessOwnedRecord } from '../services/visibilityService.js';
 import {
   getContactSentimentTrend,
   getAccountSentimentTrend,
@@ -25,12 +26,17 @@ export async function getContactSentimentTrendHandler(req: Request, res: Respons
     return;
   }
 
-  if (contact.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  const canAccess = await canAccessOwnedRecord(
+    'contact',
+    contact.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',
-        message:
-          'You can only view sentiment trends for contacts you own. Contact an admin to view trends for contacts owned by others.',
+        message: 'You do not have visibility into this contact.',
       },
     });
     return;
@@ -82,12 +88,17 @@ export async function flagActivitySentimentInaccurateHandler(
     return;
   }
 
-  if (activity.owner_id !== req.user!.id && req.user!.role !== 'admin') {
+  const canAccess = await canAccessOwnedRecord(
+    'activity',
+    activity.owner_id,
+    req.user!.id,
+    req.user!.role,
+  );
+  if (!canAccess) {
     res.status(403).json({
       error: {
         code: 'FORBIDDEN',
-        message:
-          'You can only flag sentiment scores for activities you own. Contact an admin to flag scores for activities owned by others.',
+        message: 'You do not have visibility into this activity.',
       },
     });
     return;
@@ -95,11 +106,9 @@ export async function flagActivitySentimentInaccurateHandler(
 
   const found = await flagSentimentScoreInaccurate(id, { id: req.user!.id, name: req.user!.name });
   if (!found) {
-    res
-      .status(404)
-      .json({
-        error: { code: 'NOT_FOUND', message: 'No sentiment score exists for this activity' },
-      });
+    res.status(404).json({
+      error: { code: 'NOT_FOUND', message: 'No sentiment score exists for this activity' },
+    });
     return;
   }
 
