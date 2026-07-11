@@ -18,6 +18,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { makeAuthCookie } from './testUtils.js';
+import { invalidateFeatureFlagCache } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'ai-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -47,6 +48,15 @@ async function resetAiConfig(): Promise<void> {
       updated_at                     = now(),
       updated_by                     = NULL
   `);
+  // The master-toggle route keeps feature_flags.ai_features in sync with
+  // ai_configuration.enabled via aiConfigService (see aiConfigService.ts's
+  // master-toggle handler). This direct SQL reset bypasses that service, so it
+  // must restore the flag itself — otherwise the 'enables and disables AI' test
+  // below leaves ai_features disabled for every subsequent serial file that
+  // depends on it (every ai_* sub-feature flag is gated behind this master
+  // toggle), since this file runs serially alongside the rest of the suite.
+  await pool.query(`UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_features'`);
+  invalidateFeatureFlagCache();
 }
 
 beforeAll(async () => {
