@@ -250,6 +250,48 @@ export async function setTagsRestrictCreation(
   return restricted;
 }
 
+// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+
+/** The key used to store the default display timezone setting (MINCRM-470) */
+const DEFAULT_TIMEZONE_KEY = 'default_timezone';
+
+/**
+ * Retrieves the current system-wide default display timezone.
+ * Falls back to 'UTC' if the row is missing.
+ *
+ * @returns The stored IANA timezone identifier.
+ */
+export async function getDefaultTimezone(): Promise<string> {
+  const result = await pool.query<SystemSettingRow>(
+    'SELECT value FROM system_settings WHERE key = $1 LIMIT 1',
+    [DEFAULT_TIMEZONE_KEY],
+  );
+  if (!result.rows[0]) {
+    logger.warn('system_settings row for default_timezone is missing — falling back to UTC');
+    return 'UTC';
+  }
+  return result.rows[0].value;
+}
+
+/**
+ * Persists a new system-wide default display timezone. Admin only. (MINCRM-470)
+ *
+ * @param timezone - A valid IANA timezone identifier (validated by the caller's Zod schema).
+ * @returns The updated timezone identifier.
+ */
+export async function setDefaultTimezone(
+  timezone: string,
+  actor: AuditActor = SYSTEM_ACTOR,
+): Promise<string> {
+  await pool.query(
+    `INSERT INTO system_settings (key, value, updated_at, updated_by)
+     VALUES ($1, $2, now(), $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [DEFAULT_TIMEZONE_KEY, timezone, actorIdOrNull(actor)],
+  );
+  return timezone;
+}
+
 // ── Onboarding / Setup Checklist (MINCRM-256, MINCRM-379, MINCRM-410) ────────
 
 /** Completion status for one setup checklist task (MINCRM-379) */

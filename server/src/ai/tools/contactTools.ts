@@ -153,4 +153,16 @@ export const contactTools: Anthropic.Messages.Tool[] = [
       required: ['id'],
     },
   },
+  {
+    name: 'getFollowUpTiming',
+    description:
+      'Returns the AI-suggested best day-of-week and time-of-day window to follow up with a contact, derived from their historical interaction pattern (e.g. "When should I follow up with Sarah at Acme?"). Requires at least 5 logged interactions with the contact — returns null when there is insufficient data. (MINCRM-470)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'UUID of the contact.' },
+      },
+      required: ['id'],
+    },
+  },
 ];

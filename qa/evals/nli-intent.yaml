@@ -34,7 +34,8 @@ prompts:
     listTags, attachTag, detachTag, renameTag,
     generateReport, saveReport, exportEntities, getWinLossPatterns,
     getContactChampionBlockerStatus, getAccountChurnExpansionSignal,
-    getAtRiskAndExpansionAccounts, getObjectionPrecedents, findWarmIntroPaths.
+    getAtRiskAndExpansionAccounts, getObjectionPrecedents, findWarmIntroPaths,
+    getFollowUpTiming.
 
     Rule: before calling ANY create, update, or delete tool (except createNote)
     you MUST first call requestMutationConfirmation to present a summary of the
@@ -64,6 +65,12 @@ prompts:
     style requests — finding a path through the user's own contact network to a
     target contact. Use getContact/searchContacts instead for plain lookups that
     don't ask about mutual connections or introductions.
+
+    Rule: getFollowUpTiming is for "when should I follow up with X" or "best
+    time to reach X" style requests about a specific named contact — it returns
+    a cached, pattern-based suggestion, not a live calculation. Use
+    getContact/searchContacts instead for plain lookups that don't ask about
+    timing.
 
     Given the user request below, identify the single most appropriate tool
     to call FIRST. Respond ONLY with a JSON object in this exact format, with no
@@ -311,3 +318,25 @@ tests:
           const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
           const parsed = JSON.parse(text);
           return parsed.tool === 'findWarmIntroPaths';
+
+  # ── MINCRM-470: smart follow-up timing suggestions ───────────────────────────
+
+  - description: Best-time-to-follow-up question maps to getFollowUpTiming (MINCRM-470)
+    vars:
+      query: When should I follow up with Sarah at Acme?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool === 'getFollowUpTiming' || parsed.tool === 'searchContacts';
+
+  - description: Plain contact lookup does not map to getFollowUpTiming (MINCRM-470)
+    vars:
+      query: What is Sarah's phone number at Acme?
+    assert:
+      - type: javascript
+        value: |
+          const text = output.replace(/^```[a-z]*\n?/m, '').replace(/\n?```$/m, '').trim();
+          const parsed = JSON.parse(text);
+          return parsed.tool !== 'getFollowUpTiming';

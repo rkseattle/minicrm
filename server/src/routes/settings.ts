@@ -22,6 +22,8 @@ import {
   updateCurrenciesHandler,
   getTagsRestrictCreationHandler,
   setTagsRestrictCreationHandler,
+  getDefaultTimezoneHandler,
+  setDefaultTimezoneHandler,
   getOnboardingStatusHandler,
   setOnboardingCompletedHandler,
   deletePipelineStagesReviewedHandler,
@@ -60,6 +62,10 @@ import {
   putSsoConfigHandler,
   deleteSsoConfigHandler,
 } from '../controllers/ssoSettingsController.js';
+import {
+  getAccountHealthScoringConfigHandler,
+  setAccountHealthScoringConfigHandler,
+} from '../controllers/relationshipHealthController.js';
 
 const router = Router();
 
@@ -545,6 +551,66 @@ router.patch(
   authenticate,
   requireRole('admin'),
   asyncHandler(setDefaultCurrencyHandler),
+);
+
+// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/default-timezone:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getDefaultTimezone
+ *     summary: Get the system default timezone (MINCRM-470)
+ *     description: >
+ *       Returns the current system-wide default display timezone (IANA identifier),
+ *       used to render AI follow-up timing suggestions in local terms. Public endpoint.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Current default timezone
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 timezone: { type: string, example: America/Los_Angeles }
+ */
+router.get('/default-timezone', asyncHandler(getDefaultTimezoneHandler));
+
+/**
+ * @openapi
+ * /api/v1/settings/default-timezone:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setDefaultTimezone
+ *     summary: Set the system default timezone (admin only, MINCRM-470)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [timezone]
+ *             properties:
+ *               timezone: { type: string, example: America/Los_Angeles }
+ *     responses:
+ *       200:
+ *         description: Default timezone updated
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/default-timezone',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setDefaultTimezoneHandler),
 );
 
 // ── Pipeline stage configuration (MINCRM-180) ────────────────────────────────
@@ -1402,6 +1468,58 @@ router.put(
   authenticate,
   requireRole('admin'),
   asyncHandler(putVisibilityConfigHandler),
+);
+
+// ── Relationship health scoring config (MINCRM-467) ───────────────────────────
+
+/**
+ * @openapi
+ * /api/v1/settings/relationship-health-config:
+ *   get:
+ *     tags: [Settings]
+ *     operationId: getRelationshipHealthConfig
+ *     summary: Get the admin-editable relationship health scoring weights/thresholds (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current scoring configuration
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get(
+  '/relationship-health-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getAccountHealthScoringConfigHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/settings/relationship-health-config:
+ *   patch:
+ *     tags: [Settings]
+ *     operationId: setRelationshipHealthConfig
+ *     summary: Update the relationship health scoring weights/thresholds (admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Scoring configuration updated
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.patch(
+  '/relationship-health-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setAccountHealthScoringConfigHandler),
 );
 
 export default router;

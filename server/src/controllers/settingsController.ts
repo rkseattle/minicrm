@@ -13,6 +13,8 @@ import {
   setEmailNotificationsEnabled,
   getDefaultCurrency,
   setDefaultCurrency,
+  getDefaultTimezone,
+  setDefaultTimezone,
   getTagsRestrictCreation,
   setTagsRestrictCreation,
   getOnboardingStatus,
@@ -26,6 +28,7 @@ import {
   setDefaultLanguageSchema,
   setNavLayoutSchema,
   setDefaultCurrencySchema,
+  setDefaultTimezoneSchema,
   updateCurrenciesSchema,
   SUPPORTED_CURRENCY_LIST,
 } from '@minicrm/shared/schemas/settingsSchema.js';
@@ -235,6 +238,57 @@ export async function setDefaultCurrencyHandler(req: Request, res: Response): Pr
     fieldName: 'Default Currency',
     oldValue: previousCurrency,
     newValue: currency,
+    changedById: req.user!.id,
+    changedByName: req.user!.name,
+  }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
+}
+
+// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+
+/**
+ * GET /api/settings/default-timezone
+ * Returns the current system-wide default display timezone.
+ * Public endpoint — the follow-up timing suggestion card needs this before auth resolves.
+ *
+ * @param _req - Express request (unused).
+ * @param res - Express response.
+ */
+export async function getDefaultTimezoneHandler(_req: Request, res: Response): Promise<void> {
+  const timezone = await getDefaultTimezone();
+  res.status(200).json({ timezone });
+}
+
+/**
+ * PATCH /api/settings/default-timezone
+ * Updates the system-wide default display timezone. Admin only. (MINCRM-470)
+ *
+ * @param req - Express request with body `{ timezone: string }`.
+ * @param res - Express response.
+ */
+export async function setDefaultTimezoneHandler(req: Request, res: Response): Promise<void> {
+  const parsed = setDefaultTimezoneSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: parsed.error.errors[0]?.message ?? 'Invalid request',
+      },
+    });
+    return;
+  }
+
+  const actor = { id: req.user!.id, name: req.user!.name };
+  const previousTimezone = await getDefaultTimezone();
+  const timezone = await setDefaultTimezone(parsed.data.timezone, actor);
+  res.status(200).json({ timezone });
+
+  void writeAuditEntryBestEffort({
+    recordType: 'system_settings',
+    recordName: 'Default Timezone',
+    eventType: 'updated',
+    fieldName: 'Default Timezone',
+    oldValue: previousTimezone,
+    newValue: timezone,
     changedById: req.user!.id,
     changedByName: req.user!.name,
   }).catch((err: unknown) => logger.warn({ err }, 'Failed to write settings audit entry'));
