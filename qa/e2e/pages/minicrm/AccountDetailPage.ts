@@ -321,4 +321,29 @@ export class AccountDetailPage {
     const locator = await this.expansionSignalBannerLocator();
     return locator.isVisible().catch(() => false);
   }
+
+  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+
+  /**
+   * Returns true when the relationship health badge is currently visible,
+   * scoped to an account ID. Guards presence first — the badge legitimately
+   * does not render until the nightly scoring job has computed a score.
+   */
+  async isHealthBadgeVisible(accountId: string): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(`[data-testid="account-health-badge-${accountId}"]`, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `account-health-badge-${accountId}` },
+          { type: 'css', value: `[data-testid="account-health-badge-${accountId}"]` },
+        ],
+        { intent: 'AI relationship health badge on the account detail page' },
+      )
+      .resolve();
+    return locator.isVisible().catch(() => false);
+  }
 }

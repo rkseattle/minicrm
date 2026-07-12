@@ -134,6 +134,35 @@ scoring described on the [contacts page](contacts.md#ai-sentiment-tracking). A r
 flagging an individual activity's sentiment as inaccurate excludes it from this
 aggregate too.
 
+### AI relationship health scoring
+
+> **Feature flag:** `ai_relationship_health_score`. Scores are computed by a nightly
+> job, not on demand — there is nothing to click to trigger this.
+
+Once an account has at least 3 logged activities, MiniCRM computes a relationship
+health score from five factors: how often you're communicating, how recently you last
+connected, the seniority of the contacts you're engaging, the account's sentiment
+trend, and how many distinct contacts are involved. The result is shown as a badge
+next to the account name:
+
+- **Strong** or **Healthy** — the relationship is in good shape.
+- **Cooling** — engagement is starting to decline.
+- **At Risk** or **Dormant** — the account needs attention soon.
+
+Click **Why?** next to the badge to see the top 2-3 factors driving the score in plain
+language (for example, "No contact in 45 days"). If only one contact at the account has
+been engaged in the last 90 days, an additional **Single-threaded risk** badge appears
+regardless of the overall score — a reminder to build relationships with more
+stakeholders before a single departure puts the account at risk.
+
+The account detail page also shows a 6-month sparkline of the score history, and the
+account list view has a **Show At Risk or Dormant accounts** filter to quickly surface
+every account that needs a check-in.
+
+> Relationship health scores are AI-computed from communication patterns — treat a
+> Cooling or At Risk score as a prompt to check in, not as a definitive judgment of the
+> relationship.
+
 ### Notifications
 
 When a churn risk signal is detected with high confidence, MiniCRM sends the account's

@@ -704,6 +704,19 @@ export async function isExpansionSignalBannerVisible(
   return detailPage.isExpansionSignalBannerVisible();
 }
 
+// ---------------------------------------------------------------------------
+// AI relationship health scoring (MINCRM-467)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the relationship health badge is currently visible for an account. */
+export async function isAccountHealthBadgeVisible(
+  accountId: string,
+  context: AccountsBehaviorContext,
+): Promise<boolean> {
+  const detailPage = new AccountDetailPage(context);
+  return detailPage.isHealthBadgeVisible(accountId);
+}
+
 /**
  * Clicks the account detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status

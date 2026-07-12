@@ -152,6 +152,8 @@ with an AI-suggested next step for each, a plain-language summary of recent acti
 contact. If your admin has enabled web search in AI settings, the brief may also
 include up to two recent news items about the contact's company — this section is
 omitted (not shown as an error) when no relevant news is found or the search fails.
+When enough interaction history exists, the brief also includes the contact's
+[smart follow-up timing suggestion](contacts.md#ai-smart-follow-up-timing-suggestions).
 
 The brief opens in a sidebar panel with **Copy to clipboard**, **Print**, and
 **Regenerate** actions — regenerating replaces the previous brief rather than keeping
