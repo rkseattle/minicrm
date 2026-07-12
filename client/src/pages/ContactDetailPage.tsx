@@ -67,6 +67,8 @@ import {
   contactChampionBlockerQueryKey,
 } from '@/api/championBlocker.js';
 import { getContactSentimentTrend, contactSentimentTrendQueryKey } from '@/api/sentiment.js';
+import { getFollowUpTiming, followUpTimingQueryKey } from '@/api/followUpTiming.js';
+import FollowUpTimingCard from '@/components/FollowUpTimingCard.js';
 
 /**
  * Single contact detail page with view/edit/delete.
@@ -126,6 +128,7 @@ export default function ContactDetailPage() {
   const { enabled: warmIntroPathEnabled } = useFeatureFlag('ai_warm_intro_path');
   const { enabled: emailDraftEnabled } = useFeatureFlag('ai_email_draft');
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
+  const { enabled: followUpTimingEnabled } = useFeatureFlag('ai_followup_timing_suggestions');
   const [emailDraftResult, setEmailDraftResult] = useState<EmailDraftResponse | null>(null);
   const [emailDraftError, setEmailDraftError] = useState<string | null>(null);
 
@@ -169,6 +172,13 @@ export default function ContactDetailPage() {
     queryKey: contactSentimentTrendQueryKey(id ?? ''),
     queryFn: () => getContactSentimentTrend(id!),
     enabled: Boolean(id) && sentimentTrackingEnabled,
+  });
+
+  // AI follow-up timing suggestion (MINCRM-470) — passive, page-load read of the cached suggestion.
+  const { data: followUpTiming } = useQuery({
+    queryKey: followUpTimingQueryKey(id ?? ''),
+    queryFn: () => getFollowUpTiming(id!),
+    enabled: Boolean(id) && followUpTimingEnabled,
   });
 
   const emailDraftMutation = useMutation({
@@ -1450,6 +1460,24 @@ export default function ContactDetailPage() {
                   {t('warmIntro.heading')}
                 </h2>
                 <WarmIntroPathsPanel contactId={id} />
+              </section>
+            )}
+
+            {/* AI smart follow-up timing suggestion (MINCRM-470) */}
+            {followUpTimingEnabled && id && followUpTiming?.suggestion && (
+              <section className="mt-8" aria-labelledby="followup-timing-heading">
+                <h2
+                  id="followup-timing-heading"
+                  className="text-sm font-semibold text-gray-900 mb-3"
+                  data-testid="followup-timing-heading"
+                >
+                  {t('followUpTiming.sectionTitle')}
+                </h2>
+                <FollowUpTimingCard
+                  contactId={id}
+                  contactName={`${contact.first_name} ${contact.last_name}`}
+                  suggestion={followUpTiming.suggestion}
+                />
               </section>
             )}
 

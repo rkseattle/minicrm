@@ -79,6 +79,35 @@ describe('MeetingBriefPanel', () => {
     expect(talkingPoints).toHaveTextContent('Review contract terms.');
   });
 
+  it('does not render a follow-up timing section when no suggestion is present', () => {
+    renderPanel();
+    expect(screen.queryByTestId('meeting-brief-followup-timing')).not.toBeInTheDocument();
+  });
+
+  it('renders the follow-up timing suggestion when present (MINCRM-470)', () => {
+    renderPanel({
+      brief: {
+        ...SAMPLE_BRIEF,
+        brief: {
+          ...SAMPLE_BRIEF.brief,
+          followup_timing: {
+            contact_id: 'c1',
+            day_of_week: 2,
+            hour_start: 9,
+            hour_end: 11,
+            timezone: 'UTC',
+            sample_size: 6,
+            computed_at: '2026-07-01T00:00:00.000Z',
+          },
+        },
+      },
+    });
+
+    const timing = screen.getByTestId('meeting-brief-followup-timing');
+    expect(timing).toHaveTextContent('Jane Doe');
+    expect(timing).toHaveTextContent('Tuesdays');
+  });
+
   it('renders a news hook item when present', () => {
     renderPanel({
       brief: {
