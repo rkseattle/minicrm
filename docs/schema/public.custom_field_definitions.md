@@ -10,9 +10,9 @@
 | field_type | varchar(16) |  | false |  |  |  |
 | options | jsonb |  | true |  |  |  |
 | sort_order | integer | 0 | false |  |  |  |
+| pii_excluded | boolean | false | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
-| pii_excluded | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -50,9 +50,9 @@ erDiagram
   varchar_16_ field_type ""
   jsonb options ""
   integer sort_order ""
+  boolean pii_excluded ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  boolean pii_excluded ""
 }
 "public.custom_field_values" {
   uuid id ""
