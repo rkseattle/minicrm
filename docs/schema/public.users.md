@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_sessions](public.ai_sessions.md) [public.email_templates](public.email_templates.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.notifications](public.notifications.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.system_settings](public.system_settings.md) [public.pipelines](public.pipelines.md) [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.automation_rules](public.automation_rules.md) [public.email_templates](public.email_templates.md) [public.attachments](public.attachments.md) [public.notes](public.notes.md) [public.webhook_subscriptions](public.webhook_subscriptions.md) [public.import_jobs](public.import_jobs.md) [public.gdpr_deletion_log](public.gdpr_deletion_log.md) [public.custom_reports](public.custom_reports.md) [public.sales_sequences](public.sales_sequences.md) [public.sequence_enrollments](public.sequence_enrollments.md) [public.feature_flags](public.feature_flags.md) [public.feature_flag_usage](public.feature_flag_usage.md) [public.feature_flag_beta_users](public.feature_flag_beta_users.md) [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) [public.ai_configuration](public.ai_configuration.md) [public.ai_token_budgets](public.ai_token_budgets.md) [public.ai_token_usage](public.ai_token_usage.md) [public.ai_sessions](public.ai_sessions.md) [public.user_ai_context](public.user_ai_context.md) [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.org_visibility_settings](public.org_visibility_settings.md) [public.user_custom_roles](public.user_custom_roles.md) [public.scim_tokens](public.scim_tokens.md) [public.feature_flag_groups](public.feature_flag_groups.md) [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) [public.ai_token_usage_daily](public.ai_token_usage_daily.md) [public.contact_champion_blocker_signals](public.contact_champion_blocker_signals.md) [public.notifications](public.notifications.md) [public.activity_meeting_briefs](public.activity_meeting_briefs.md) [public.activity_sentiment_scores](public.activity_sentiment_scores.md) [public.account_health_scoring_config](public.account_health_scoring_config.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password_hash | text |  | true |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
@@ -75,6 +75,7 @@ erDiagram
 "public.deals" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.activities" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.automation_rules" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT"
+"public.email_templates" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.attachments" }o--o| "public.users" : "FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.notes" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id)"
 "public.notes" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id)"
@@ -86,32 +87,32 @@ erDiagram
 "public.sequence_enrollments" }o--o| "public.users" : "FOREIGN KEY (enrolled_by_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flags" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.org_visibility_settings" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.user_custom_roles" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.scim_tokens" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_groups" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_group_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_group_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.email_templates" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_usage_daily" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.notifications" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.activity_meeting_briefs" }o--|| "public.users" : "FOREIGN KEY (generated_by) REFERENCES users(id) ON DELETE RESTRICT"
 "public.activity_sentiment_scores" }o--o| "public.users" : "FOREIGN KEY (flagged_inaccurate_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.account_health_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.users" {
   uuid id ""
@@ -268,6 +269,18 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
 }
+"public.email_templates" {
+  uuid id ""
+  varchar_200_ name ""
+  varchar_50_ category ""
+  varchar_500_ subject ""
+  text body ""
+  jsonb merge_tags ""
+  boolean enabled ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
 "public.attachments" {
   uuid id ""
   text record_type ""
@@ -368,19 +381,35 @@ erDiagram
   text description ""
   varchar_50_ category ""
   boolean enabled ""
-  jsonb role_overrides "Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live."
-  uuid updated_by FK ""
-  timestamp_with_time_zone updated_at ""
-  boolean system_flag ""
+  jsonb role_overrides "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
   timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
   smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
   jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
+  uuid updated_by FK ""
+  timestamp_with_time_zone updated_at ""
+  boolean system_flag ""
   varchar_100_ group_key FK ""
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
   timestamp_with_time_zone used_at ""
+}
+"public.feature_flag_beta_users" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
+"public.feature_flag_user_overrides" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  varchar_20_ override ""
+  text reason ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
 }
 "public.ai_configuration" {
   boolean singleton ""
@@ -422,6 +451,33 @@ erDiagram
   bigint output_tokens ""
   timestamp_with_time_zone updated_at ""
 }
+"public.ai_sessions" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_255_ name ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.user_ai_context" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_100_ key ""
+  varchar_500_ value ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.ai_gdpr_cascade_log" {
+  uuid id ""
+  uuid contact_id ""
+  timestamp_with_time_zone triggered_at ""
+  uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
+  integer messages_redacted ""
+  integer context_entries_removed ""
+  varchar_20_ status ""
+  text error_detail ""
+  text original_name ""
+  text original_email ""
+}
 "public.teams" {
   uuid id ""
   text name ""
@@ -453,22 +509,6 @@ erDiagram
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone last_used_at ""
 }
-"public.feature_flag_beta_users" {
-  uuid id ""
-  varchar_100_ flag_key FK ""
-  uuid user_id FK ""
-  uuid added_by FK ""
-  timestamp_with_time_zone added_at ""
-}
-"public.feature_flag_user_overrides" {
-  uuid id ""
-  varchar_100_ flag_key FK ""
-  uuid user_id FK ""
-  varchar_20_ override ""
-  text reason ""
-  uuid added_by FK ""
-  timestamp_with_time_zone added_at ""
-}
 "public.feature_flag_groups" {
   varchar_100_ group_key ""
   varchar_100_ label ""
@@ -483,45 +523,6 @@ erDiagram
   uuid user_id FK ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
-}
-"public.ai_sessions" {
-  uuid id ""
-  uuid user_id FK ""
-  varchar_255_ name ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.email_templates" {
-  uuid id ""
-  varchar_200_ name ""
-  varchar_50_ category ""
-  varchar_500_ subject ""
-  text body ""
-  jsonb merge_tags ""
-  boolean enabled ""
-  uuid created_by FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.user_ai_context" {
-  uuid id ""
-  uuid user_id FK ""
-  varchar_100_ key "Short label for this preference (e.g. #quot;a while#quot;, #quot;high-value#quot;). Max 100 chars."
-  varchar_500_ value "Plain-text definition of the preference (e.g. #quot;30+ days without activity#quot;). Max 500 chars."
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.ai_gdpr_cascade_log" {
-  uuid id ""
-  uuid contact_id ""
-  timestamp_with_time_zone triggered_at ""
-  uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
-  integer messages_redacted ""
-  integer context_entries_removed ""
-  varchar_20_ status ""
-  text error_detail ""
-  text original_name ""
-  text original_email ""
 }
 "public.ai_token_usage_daily" {
   uuid id ""
@@ -574,6 +575,23 @@ erDiagram
   timestamp_with_time_zone flagged_inaccurate_at ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.account_health_scoring_config" {
+  boolean id ""
+  numeric_4_3_ frequency_weight ""
+  numeric_4_3_ recency_weight ""
+  numeric_4_3_ seniority_weight ""
+  numeric_4_3_ sentiment_weight ""
+  numeric_4_3_ breadth_weight ""
+  numeric_5_2_ strong_threshold ""
+  numeric_5_2_ healthy_threshold ""
+  numeric_5_2_ cooling_threshold ""
+  numeric_5_2_ at_risk_threshold ""
+  integer min_logged_activities ""
+  integer recency_window_days ""
+  integer single_threaded_window_days ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
 }
 ```
 

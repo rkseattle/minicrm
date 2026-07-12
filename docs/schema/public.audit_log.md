@@ -18,8 +18,8 @@ Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid r
 | new_value | text |  | true |  |  |  |
 | changed_by_id | uuid |  | true |  |  |  |
 | changed_by_name | text |  | true |  |  |  |
-| created_at | timestamp with time zone | now() | false |  |  |  |
 | source | varchar(20) | NULL::character varying | true |  |  |  |
+| created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
@@ -42,8 +42,8 @@ Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid r
 
 | Name | Definition |
 | ---- | ---------- |
-| audit_log_no_modify | CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable() |
 | audit_log_after_insert | CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify() |
+| audit_log_no_modify | CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable() |
 
 ## Relations
 
@@ -62,8 +62,8 @@ erDiagram
   text new_value ""
   uuid changed_by_id ""
   text changed_by_name ""
-  timestamp_with_time_zone created_at ""
   varchar_20_ source ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

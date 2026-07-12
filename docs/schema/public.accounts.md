@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.account_tags](public.account_tags.md) [public.account_churn_expansion_signals](public.account_churn_expansion_signals.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.accounts](public.accounts.md) [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.activities](public.activities.md) [public.account_tags](public.account_tags.md) [public.account_churn_expansion_signals](public.account_churn_expansion_signals.md) [public.account_health_scores](public.account_health_scores.md) [public.account_health_score_history](public.account_health_score_history.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | industry | varchar(255) |  | true |  |  |  |
 | website | varchar(255) |  | true |  |  |  |
@@ -54,6 +54,8 @@ erDiagram
 "public.activities" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.account_churn_expansion_signals" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.account_health_scores" |o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
+"public.account_health_score_history" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.accounts" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 
 "public.accounts" {
@@ -168,6 +170,21 @@ erDiagram
   jsonb contributing_factors ""
   timestamp_with_time_zone detected_at ""
   timestamp_with_time_zone cleared_at ""
+}
+"public.account_health_scores" {
+  uuid account_id FK ""
+  numeric_5_2_ score ""
+  text state ""
+  boolean single_threaded_risk ""
+  jsonb contributing_factors ""
+  timestamp_with_time_zone computed_at ""
+}
+"public.account_health_score_history" {
+  uuid id ""
+  uuid account_id FK ""
+  numeric_5_2_ score ""
+  text state ""
+  timestamp_with_time_zone computed_at ""
 }
 "public.users" {
   uuid id ""

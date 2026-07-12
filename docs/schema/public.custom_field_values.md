@@ -59,9 +59,9 @@ erDiagram
   varchar_16_ field_type ""
   jsonb options ""
   integer sort_order ""
+  boolean pii_excluded ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-  boolean pii_excluded ""
 }
 ```
 
