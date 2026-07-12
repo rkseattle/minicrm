@@ -189,6 +189,22 @@ export default function MeetingBriefPanel({
             </div>
           )}
 
+          {/* AI smart follow-up timing suggestion (MINCRM-470) — read-only display, no schedule action here. */}
+          {content.followup_timing && (
+            <div>
+              <h4 className="text-xs font-medium text-gray-700 mb-1">
+                {t('followUpTiming.sectionTitle')}
+              </h4>
+              <p className="text-sm text-gray-700" data-testid="meeting-brief-followup-timing">
+                {t('followUpTiming.suggestion', {
+                  name: content.contact_snapshot.name,
+                  day: t(`followUpTiming.day.${content.followup_timing.day_of_week}`),
+                  timeRange: `${content.followup_timing.hour_start}:00–${content.followup_timing.hour_end}:00`,
+                })}
+              </p>
+            </div>
+          )}
+
           {content.news_hook && content.news_hook.length > 0 && (
             <div>
               <h4 className="text-xs font-medium text-gray-700 mb-1">

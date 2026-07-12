@@ -25,6 +25,45 @@ describe('ContactDetailPage', () => {
     });
   });
 
+  // ── AI smart follow-up timing suggestion (MINCRM-470) ───────────────────────────
+
+  it('shows no follow-up timing section when there is insufficient data', async () => {
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('followup-timing-heading')).not.toBeInTheDocument();
+  });
+
+  it('shows the follow-up timing card when a suggestion exists', async () => {
+    server.use(
+      http.get('/api/v1/contacts/:id/followup-timing', () =>
+        HttpResponse.json({
+          suggestion: {
+            contact_id: CONTACT_1.id,
+            day_of_week: 2,
+            hour_start: 9,
+            hour_end: 11,
+            timezone: 'UTC',
+            sample_size: 6,
+            computed_at: '2026-07-01T00:00:00.000Z',
+          },
+        }),
+      ),
+    );
+    renderWithProviders(<ContactDetailPage />, {
+      initialEntries: [`/contacts/${CONTACT_1.id}`],
+      path: '/contacts/:id',
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('followup-timing-heading')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`followup-timing-card-${CONTACT_1.id}`)).toBeInTheDocument();
+  });
+
   describe('Export PDF button', () => {
     beforeEach(() => {
       vi.spyOn(contactsApi, 'exportContactPdf').mockResolvedValue(undefined);
