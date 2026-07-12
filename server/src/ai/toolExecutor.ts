@@ -112,6 +112,7 @@ import { saveNliReport } from '../services/customReportService.js';
 import { getWinLossInsights } from '../services/winLossAnalysisService.js';
 import { getContactChampionBlockerStatus } from '../services/championBlockerService.js';
 import { findWarmIntroPaths } from '../services/warmIntroService.js';
+import { getFollowUpTiming } from '../services/followUpTimingService.js';
 import {
   getAccountChurnExpansionSignal,
   listChurnExpansionSignals,
@@ -350,6 +351,20 @@ export async function executeToolCall(
         const result = await findWarmIntroPaths(id, ctx.userId, ctx.userRole);
         if (!result) return notFound('Contact', id);
         return result;
+      }
+
+      case 'getFollowUpTiming': {
+        const id = toolInput.id as string;
+        const contact = await findContactById(id);
+        if (!contact) return notFound('Contact', id);
+        if (contact.owner_id !== ctx.userId && ctx.userRole !== 'admin') {
+          return {
+            error:
+              'You can only view follow-up timing suggestions for contacts you own. Ask an admin to view suggestions for contacts owned by others.',
+          };
+        }
+        const suggestion = await getFollowUpTiming(id);
+        return { suggestion };
       }
 
       // ── Accounts ─────────────────────────────────────────────────────────────

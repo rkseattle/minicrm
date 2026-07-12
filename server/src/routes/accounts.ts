@@ -29,6 +29,10 @@ import {
 import { bulkAccountsHandler } from '../controllers/bulkController.js';
 import { getAccountChurnExpansionSignalHandler } from '../controllers/churnExpansionController.js';
 import { getAccountSentimentTrendHandler } from '../controllers/sentimentController.js';
+import {
+  getAccountHealthScoreHandler,
+  getAccountHealthHistoryHandler,
+} from '../controllers/relationshipHealthController.js';
 
 const router = Router();
 
@@ -682,6 +686,24 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_sentiment_tracking'),
   asyncHandler(getAccountSentimentTrendHandler),
+);
+
+// ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+
+/** Returns the cached relationship health score for the account, or null when not yet computed. */
+router.get(
+  '/:id/health-score',
+  authenticate,
+  requireFeatureEnabled('ai_relationship_health_score'),
+  asyncHandler(getAccountHealthScoreHandler),
+);
+
+/** Returns up to 6 months of health score history for the trend sparkline. */
+router.get(
+  '/:id/health-score/history',
+  authenticate,
+  requireFeatureEnabled('ai_relationship_health_score'),
+  asyncHandler(getAccountHealthHistoryHandler),
 );
 
 export default router;

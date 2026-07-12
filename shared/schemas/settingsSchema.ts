@@ -111,6 +111,43 @@ export const defaultCurrencyResponseSchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES),
 });
 
+// ── Default timezone (MINCRM-470) ─────────────────────────────────────────────
+
+/**
+ * Validates a timezone string against the runtime's own tz database, rather
+ * than maintaining a hand-curated list that would drift over time.
+ * Intl.DateTimeFormat throws on an unrecognized zone; it accepts both IANA
+ * identifiers (e.g. "America/Los_Angeles") and the special value "UTC",
+ * unlike Intl.supportedValuesOf('timeZone') which omits the bare "UTC" alias.
+ */
+function isValidIanaTimezone(value: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Schema for the PATCH /api/settings/default-timezone request body. (MINCRM-470)
+ */
+export const setDefaultTimezoneSchema = z.object({
+  timezone: z
+    .string()
+    .min(1, { message: 'Timezone is required' })
+    .max(64, { message: 'Timezone must be 64 characters or fewer' })
+    .refine(isValidIanaTimezone, { message: 'Timezone must be a valid IANA timezone identifier' }),
+});
+
+/** The shape returned by GET /api/settings/default-timezone */
+export const defaultTimezoneResponseSchema = z.object({
+  timezone: z.string(),
+});
+
+export type SetDefaultTimezoneInput = z.infer<typeof setDefaultTimezoneSchema>;
+export type DefaultTimezoneResponse = z.infer<typeof defaultTimezoneResponseSchema>;
+
 /**
  * Schema for the PATCH /api/settings/nav-layout request body.
  */

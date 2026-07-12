@@ -20,6 +20,7 @@ import { findContactById } from './contactService.js';
 import { findAccountById } from './accountService.js';
 import { listContactDeals } from './dealService.js';
 import { withRlsQuery } from './rlsContextService.js';
+import { getFollowUpTiming } from './followUpTimingService.js';
 import type {
   MeetingBriefResponse,
   MeetingBriefContent,
@@ -434,6 +435,18 @@ export async function generateMeetingBrief(
       if (newsHook) {
         brief.news_hook = newsHook;
       }
+    }
+  }
+
+  // Follow-up timing suggestion (MINCRM-470) — a cached, deterministically-computed
+  // fact, not LLM-authored. Fetched at read time (after the AI call, not sent to the
+  // LLM as context) so it always reflects the latest cached suggestion regardless of
+  // whether the brief itself was just regenerated or served from the E2E stub path.
+  const activity = await findActivityById(activityId);
+  if (activity?.contact_id) {
+    const followupTiming = await getFollowUpTiming(activity.contact_id);
+    if (followupTiming) {
+      brief.followup_timing = followupTiming;
     }
   }
 

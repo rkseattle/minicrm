@@ -18,6 +18,8 @@ import { advanceDueEnrollments } from './services/sequenceService.js';
 import { runRetentionPurge } from './services/retentionService.js';
 import { analyzeWinLossPatterns } from './services/winLossAnalysisService.js';
 import { detectChurnExpansionSignals } from './services/churnExpansionService.js';
+import { computeAccountHealthScores } from './services/relationshipHealthService.js';
+import { computeFollowUpTimingSuggestions } from './services/followUpTimingService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
@@ -220,6 +222,30 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => churnExpansionCron.stop());
   process.once('SIGINT', () => churnExpansionCron.stop());
+
+  // Relationship health scoring — runs daily at 05:00 server time (MINCRM-467).
+  // Deterministic/SQL-driven (no AI call) — scores every account with at least
+  // one logged activity; the read path always serves the cached result.
+  const relationshipHealthCron = cron.schedule('0 5 * * *', () => {
+    logger.info('cron: running relationship health scoring');
+    void computeAccountHealthScores();
+  });
+  logger.info('Relationship health scoring cron scheduled (daily at 05:00)');
+
+  process.once('SIGTERM', () => relationshipHealthCron.stop());
+  process.once('SIGINT', () => relationshipHealthCron.stop());
+
+  // Follow-up timing suggestions — runs daily at 05:30 server time (MINCRM-470).
+  // Recomputes the cached best-time-to-contact suggestion for every contact
+  // whose interaction history changed since the last run.
+  const followUpTimingCron = cron.schedule('30 5 * * *', () => {
+    logger.info('cron: running follow-up timing suggestion refresh');
+    void computeFollowUpTimingSuggestions();
+  });
+  logger.info('Follow-up timing suggestion cron scheduled (daily at 05:30)');
+
+  process.once('SIGTERM', () => followUpTimingCron.stop());
+  process.once('SIGINT', () => followUpTimingCron.stop());
 
   // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,

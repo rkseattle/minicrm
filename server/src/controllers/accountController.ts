@@ -11,6 +11,10 @@ import {
   ACCOUNT_TYPE_VALUES,
 } from '@minicrm/shared/schemas/accountSchema.js';
 import {
+  ACCOUNT_HEALTH_LIST_FILTER_STATES,
+  type AccountHealthListFilterState,
+} from '@minicrm/shared/schemas/accountHealthScoreSchema.js';
+import {
   createAccount,
   findAccountById,
   findAccountByExactName,
@@ -157,6 +161,17 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
           .filter(Boolean)
       : undefined;
 
+  // Relationship health filter (MINCRM-467): ?health_status=at_risk,dormant — allowlist-validated
+  const healthStatuses =
+    typeof req.query.health_status === 'string' && req.query.health_status.trim().length > 0
+      ? req.query.health_status
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s): s is AccountHealthListFilterState =>
+            (ACCOUNT_HEALTH_LIST_FILTER_STATES as readonly string[]).includes(s),
+          )
+      : undefined;
+
   const result = await listAccounts({
     ownerId,
     ownerIds,
@@ -166,6 +181,7 @@ export async function listAccountsHandler(req: Request, res: Response): Promise<
     sort,
     dir,
     tagIds,
+    healthStatuses,
     ...paginationParsed.data,
   });
   res.status(200).json(result);

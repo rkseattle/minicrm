@@ -10,6 +10,7 @@ import type {
   UpdateAccountInput,
 } from '@minicrm/shared/schemas/accountSchema.js';
 import type { AccountType } from '@minicrm/shared/schemas/accountSchema.js';
+import type { AccountHealthState } from '@minicrm/shared/schemas/accountHealthScoreSchema.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import { writeAuditEntry, writeAuditEntries, diffFields } from './auditService.js';
 import type { AuditActor, AuditEntryInput } from './auditService.js';
@@ -50,6 +51,8 @@ export interface AccountRow {
   version: number;
   /** Tags attached to this account — only populated in list responses (MINCRM-186) */
   tags?: Array<{ id: string; name: string }>;
+  /** Cached relationship health badge — only populated in list responses; null if no score computed yet (MINCRM-467) */
+  health_score?: { score: number; state: AccountHealthState; single_threaded_risk: boolean } | null;
 }
 
 /** Columns that may be used for ORDER BY in listAccounts */
@@ -84,6 +87,8 @@ interface ListAccountsOptions {
   limit?: number;
   /** When provided, only accounts tagged with at least one of these tag IDs are returned (MINCRM-186) */
   tagIds?: string[];
+  /** When provided, only accounts whose cached relationship health state matches one of these (MINCRM-467) */
+  healthStatuses?: AccountHealthState[];
 }
 
 /**
@@ -327,6 +332,14 @@ export async function listAccounts(
     );
   }
 
+  // Relationship health filter (MINCRM-467) — "Show At Risk or Dormant accounts"
+  if (options.healthStatuses && options.healthStatuses.length > 0) {
+    values.push(options.healthStatuses);
+    conditions.push(
+      `EXISTS (SELECT 1 FROM account_health_scores ahs WHERE ahs.account_id = accounts.id AND ahs.state = ANY($${values.length}::text[]))`,
+    );
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Allowlist-validated sort column and direction (MINCRM-68)
@@ -347,6 +360,13 @@ export async function listAccounts(
       WHERE at2.account_id = accounts.id
     ), '[]'::json) AS tags`;
 
+  // Embed the cached health score badge via a scalar subquery (MINCRM-467) — avoids N+1
+  // without a separate request per row on the list view.
+  const healthScoreSubquery = `
+    (SELECT JSON_BUILD_OBJECT(
+       'score', ahs.score, 'state', ahs.state, 'single_threaded_risk', ahs.single_threaded_risk
+     ) FROM account_health_scores ahs WHERE ahs.account_id = accounts.id) AS health_score`;
+
   const [countResult, dataResult] = await Promise.all([
     withRlsQuery((client) =>
       client.query<{ count: string }>(
@@ -356,7 +376,7 @@ export async function listAccounts(
     ),
     withRlsQuery((client) =>
       client.query<AccountRow>(
-        `SELECT *, ${tagsSubquery} FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        `SELECT *, ${tagsSubquery}, ${healthScoreSubquery} FROM accounts ${whereClause} ORDER BY ${sortCol} ${sortDir} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, limit, offset],
       ),
     ),

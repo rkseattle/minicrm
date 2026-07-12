@@ -47,6 +47,7 @@ import {
   overrideContactChampionBlockerHandler,
 } from '../controllers/championBlockerController.js';
 import { getContactSentimentTrendHandler } from '../controllers/sentimentController.js';
+import { getFollowUpTimingHandler } from '../controllers/followUpTimingController.js';
 import { getWarmIntroPathsHandler } from '../controllers/warmIntroController.js';
 import { requireRole } from '../middleware/requireRole.js';
 import {
@@ -1096,6 +1097,16 @@ router.get(
   authenticate,
   requireFeatureEnabled('ai_sentiment_tracking'),
   asyncHandler(getContactSentimentTrendHandler),
+);
+
+// ── AI smart follow-up timing suggestions (MINCRM-470) ──────────────────────────
+
+/** Returns the best-time-to-contact suggestion for the contact, or null when insufficient data. */
+router.get(
+  '/:id/followup-timing',
+  authenticate,
+  requireFeatureEnabled('ai_followup_timing_suggestions'),
+  asyncHandler(getFollowUpTimingHandler),
 );
 
 // ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
