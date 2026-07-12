@@ -46,6 +46,7 @@ import { usePagination } from '@/hooks/usePagination.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { useExportAction } from '@/hooks/useExportAction.js';
 import { explainDuplicate } from '@/api/duplicateExplanation.js';
+import AccountHealthBadge from '@/components/AccountHealthBadge.js';
 
 /** React Query cache key for the accounts list */
 export const ACCOUNTS_QUERY_KEY = ['accounts'] as const;
@@ -83,6 +84,8 @@ export default function AccountsPage() {
   const [industryInput, setIndustryInput] = useState('');
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | ''>('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [atRiskOrDormantOnly, setAtRiskOrDormantOnly] = useState(false);
+  const { enabled: relationshipHealthEnabled } = useFeatureFlag('ai_relationship_health_score');
   const { page, limit, setPage, handleLimitChange } = usePagination();
 
   /**
@@ -128,6 +131,8 @@ export default function AccountsPage() {
 
   const ownerApiParam = ownerFilter === 'all' ? undefined : ownerFilter;
 
+  const healthStatusFilter = atRiskOrDormantOnly ? (['at_risk', 'dormant'] as const) : undefined;
+
   const accountsQueryKey = [
     ...ACCOUNTS_QUERY_KEY,
     {
@@ -138,6 +143,7 @@ export default function AccountsPage() {
       sort: 'name' as const,
       dir: sortDir === 'ascending' ? 'asc' : 'desc',
       tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+      health_status: healthStatusFilter,
       page,
       limit,
     },
@@ -154,6 +160,7 @@ export default function AccountsPage() {
         sort: 'name',
         dir: sortDir === 'ascending' ? 'asc' : 'desc',
         tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        health_status: healthStatusFilter ? [...healthStatusFilter] : undefined,
         page,
         limit,
       }),
@@ -594,6 +601,22 @@ export default function AccountsPage() {
                   onChange={setOwnerFilter}
                   testIdPrefix="accounts-owner-filter"
                 />
+                {/* Relationship health filter (MINCRM-467) */}
+                {relationshipHealthEnabled && (
+                  <label className="inline-flex items-center gap-1.5 text-sm text-gray-700 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      data-testid="accounts-health-filter"
+                      checked={atRiskOrDormantOnly}
+                      onChange={(e) => {
+                        setAtRiskOrDormantOnly(e.target.checked);
+                        setPage(1);
+                      }}
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    {t('relationshipHealth.listFilterLabel')}
+                  </label>
+                )}
                 {/* Tag filter (MINCRM-186) */}
                 {tagsData && tagsData.tags.length > 0 && (
                   <select
@@ -747,6 +770,11 @@ export default function AccountsPage() {
                     <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                       {t('tags.sectionTitle')}
                     </th>
+                    {relationshipHealthEnabled && (
+                      <th className="px-4 py-3 text-start text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {t('relationshipHealth.columnHeader')}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -816,6 +844,20 @@ export default function AccountsPage() {
                           ))}
                         </div>
                       </td>
+                      {relationshipHealthEnabled && (
+                        <td className="px-4 py-3" data-testid={`account-health-${account.id}`}>
+                          {account.health_score ? (
+                            <AccountHealthBadge
+                              accountId={account.id}
+                              state={account.health_score.state}
+                              singleThreadedRisk={account.health_score.single_threaded_risk}
+                              contributingFactors={[]}
+                            />
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -884,6 +926,16 @@ export default function AccountsPage() {
                             {account.tags.map((tag) => (
                               <TagBadge key={tag.id} tag={tag} />
                             ))}
+                          </div>
+                        )}
+                        {relationshipHealthEnabled && account.health_score && (
+                          <div className="mt-1" data-testid={`account-card-health-${account.id}`}>
+                            <AccountHealthBadge
+                              accountId={account.id}
+                              state={account.health_score.state}
+                              singleThreadedRisk={account.health_score.single_threaded_risk}
+                              contributingFactors={[]}
+                            />
                           </div>
                         )}
                       </div>

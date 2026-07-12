@@ -2653,5 +2653,36 @@
     "whyThisScore": "Why this score?",
     "explaining": "Explaining…",
     "insufficientData": "Not enough activity data to explain this score yet."
+  },
+  "relationshipHealth": {
+    "state": {
+      "strong": "Strong",
+      "healthy": "Healthy",
+      "cooling": "Cooling",
+      "at_risk": "At Risk",
+      "dormant": "Dormant"
+    },
+    "singleThreadedRisk": "Single-threaded risk",
+    "whyButton": "Why?",
+    "whyLabel": "Why was this account scored this way?",
+    "aiInferredLabel": "AI-inferred, not factual",
+    "sparklineLabel": "Relationship health trend sparkline",
+    "columnHeader": "Health",
+    "listFilterLabel": "Show At Risk or Dormant accounts"
+  },
+  "followUpTiming": {
+    "sectionTitle": "Best Time to Reach",
+    "suggestion": "Best time to reach {{name}}: {{day}} {{timeRange}}",
+    "scheduleButton": "Schedule follow-up",
+    "aiInferredLabel": "AI-inferred, not factual",
+    "day": {
+      "0": "Sundays",
+      "1": "Mondays",
+      "2": "Tuesdays",
+      "3": "Wednesdays",
+      "4": "Thursdays",
+      "5": "Fridays",
+      "6": "Saturdays"
+    }
   }
 }

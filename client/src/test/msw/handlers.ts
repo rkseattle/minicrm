@@ -2705,6 +2705,49 @@ export const handlers = [
     return HttpResponse.json({ activity_id: params['id'] as string, flagged_inaccurate: true });
   }),
 
+  // ── Relationship health scoring (MINCRM-467) ─────────────────────────────────────
+
+  /** Accounts: GET /api/accounts/:id/health-score — defaults to no computed score. */
+  http.get('/api/v1/accounts/:id/health-score', () => {
+    return HttpResponse.json({ score: null });
+  }),
+
+  /** Accounts: GET /api/accounts/:id/health-score/history — defaults to no history. */
+  http.get('/api/v1/accounts/:id/health-score/history', ({ params }) => {
+    return HttpResponse.json({ account_id: params['id'] as string, points: [] });
+  }),
+
+  /** Settings: GET /api/settings/relationship-health-config */
+  http.get('/api/v1/settings/relationship-health-config', () => {
+    return HttpResponse.json({
+      frequency_weight: 0.25,
+      recency_weight: 0.25,
+      seniority_weight: 0.15,
+      sentiment_weight: 0.2,
+      breadth_weight: 0.15,
+      strong_threshold: 80,
+      healthy_threshold: 60,
+      cooling_threshold: 40,
+      at_risk_threshold: 20,
+      min_logged_activities: 3,
+      recency_window_days: 90,
+      single_threaded_window_days: 90,
+      updated_at: '2026-07-01T00:00:00.000Z',
+    });
+  }),
+
+  // ── Follow-up timing suggestions (MINCRM-470) ────────────────────────────────────
+
+  /** Contacts: GET /api/contacts/:id/followup-timing — defaults to insufficient data. */
+  http.get('/api/v1/contacts/:id/followup-timing', () => {
+    return HttpResponse.json({ suggestion: null });
+  }),
+
+  /** Settings: GET /api/settings/default-timezone */
+  http.get('/api/v1/settings/default-timezone', () => {
+    return HttpResponse.json({ timezone: 'UTC' });
+  }),
+
   // ── Meeting brief generation (MINCRM-465) ────────────────────────────────────────
 
   /** Activities: GET /api/activities/:id/brief — defaults to not-found (no brief generated yet). */

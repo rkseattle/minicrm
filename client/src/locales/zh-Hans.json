@@ -2653,5 +2653,36 @@
     "whyThisScore": "为什么是这个评分？",
     "explaining": "解释中……",
     "insufficientData": "活动数据不足，暂无法解释此评分。"
+  },
+  "relationshipHealth": {
+    "state": {
+      "strong": "强劲",
+      "healthy": "健康",
+      "cooling": "降温中",
+      "at_risk": "有风险",
+      "dormant": "休眠"
+    },
+    "singleThreadedRisk": "单线联系风险",
+    "whyButton": "为什么？",
+    "whyLabel": "为什么该客户获得此评分？",
+    "aiInferredLabel": "AI 推断，非事实",
+    "sparklineLabel": "关系健康趋势图",
+    "columnHeader": "健康度",
+    "listFilterLabel": "仅显示有风险或休眠的客户"
+  },
+  "followUpTiming": {
+    "sectionTitle": "最佳联系时间",
+    "suggestion": "联系 {{name}} 的最佳时间：{{day}} {{timeRange}}",
+    "scheduleButton": "安排跟进",
+    "aiInferredLabel": "AI 推断，非事实",
+    "day": {
+      "0": "周日",
+      "1": "周一",
+      "2": "周二",
+      "3": "周三",
+      "4": "周四",
+      "5": "周五",
+      "6": "周六"
+    }
   }
 }

@@ -102,6 +102,72 @@ describe('AccountDetailPage', () => {
     );
   });
 
+  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+
+  it('shows no health badge when no score has been computed yet', async () => {
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('account-name')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId(`account-health-badge-${ACCOUNT_1.id}`)).not.toBeInTheDocument();
+  });
+
+  it('shows the health badge and single-threaded risk flag when a score exists', async () => {
+    server.use(
+      http.get('/api/v1/accounts/:id/health-score', () =>
+        HttpResponse.json({
+          score: {
+            account_id: ACCOUNT_1.id,
+            score: 18,
+            state: 'at_risk',
+            single_threaded_risk: true,
+            contributing_factors: [{ description: 'No contact in 45 days' }],
+            computed_at: '2026-07-01T05:00:00.000Z',
+          },
+        }),
+      ),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId(`account-health-badge-${ACCOUNT_1.id}`)).toHaveTextContent(
+        'At Risk',
+      );
+    });
+    expect(
+      screen.getByTestId(`account-health-single-threaded-${ACCOUNT_1.id}`),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the health sparkline when history has 2+ points', async () => {
+    server.use(
+      http.get('/api/v1/accounts/:id/health-score', () =>
+        HttpResponse.json({
+          score: {
+            account_id: ACCOUNT_1.id,
+            score: 72,
+            state: 'healthy',
+            single_threaded_risk: false,
+            contributing_factors: [],
+            computed_at: '2026-07-01T05:00:00.000Z',
+          },
+        }),
+      ),
+      http.get('/api/v1/accounts/:id/health-score/history', () =>
+        HttpResponse.json({
+          account_id: ACCOUNT_1.id,
+          points: [
+            { score: 60, state: 'healthy', computed_at: '2026-05-01T05:00:00.000Z' },
+            { score: 72, state: 'healthy', computed_at: '2026-06-01T05:00:00.000Z' },
+          ],
+        }),
+      ),
+    );
+    renderAccountDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId(`account-health-sparkline-${ACCOUNT_1.id}`)).toBeInTheDocument();
+    });
+  });
+
   it('renders industry in the detail card', async () => {
     renderAccountDetail();
     await waitFor(() => {

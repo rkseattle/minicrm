@@ -2653,5 +2653,36 @@
     "whyThisScore": "Warum diese Bewertung?",
     "explaining": "Wird erklärt…",
     "insufficientData": "Noch nicht genug Aktivitätsdaten, um diese Bewertung zu erklären."
+  },
+  "relationshipHealth": {
+    "state": {
+      "strong": "Stark",
+      "healthy": "Gesund",
+      "cooling": "Abkühlend",
+      "at_risk": "Gefährdet",
+      "dormant": "Inaktiv"
+    },
+    "singleThreadedRisk": "Einzelkontakt-Risiko",
+    "whyButton": "Warum?",
+    "whyLabel": "Warum wurde dieses Konto so bewertet?",
+    "aiInferredLabel": "KI-abgeleitet, nicht faktisch",
+    "sparklineLabel": "Trenddiagramm der Beziehungsgesundheit",
+    "columnHeader": "Gesundheit",
+    "listFilterLabel": "Gefährdete oder inaktive Konten anzeigen"
+  },
+  "followUpTiming": {
+    "sectionTitle": "Beste Zeit zur Kontaktaufnahme",
+    "suggestion": "Beste Zeit, um {{name}} zu erreichen: {{day}} {{timeRange}}",
+    "scheduleButton": "Nachfassaktion planen",
+    "aiInferredLabel": "KI-abgeleitet, nicht faktisch",
+    "day": {
+      "0": "sonntags",
+      "1": "montags",
+      "2": "dienstags",
+      "3": "mittwochs",
+      "4": "donnerstags",
+      "5": "freitags",
+      "6": "samstags"
+    }
   }
 }

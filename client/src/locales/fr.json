@@ -2653,5 +2653,36 @@
     "whyThisScore": "Pourquoi ce score ?",
     "explaining": "Explication en cours…",
     "insufficientData": "Pas encore assez de données d'activité pour expliquer ce score."
+  },
+  "relationshipHealth": {
+    "state": {
+      "strong": "Solide",
+      "healthy": "Sain",
+      "cooling": "En refroidissement",
+      "at_risk": "À Risque",
+      "dormant": "Dormant"
+    },
+    "singleThreadedRisk": "Risque de contact unique",
+    "whyButton": "Pourquoi ?",
+    "whyLabel": "Pourquoi ce compte a-t-il été noté ainsi ?",
+    "aiInferredLabel": "Déduit par IA, non factuel",
+    "sparklineLabel": "Graphique de tendance de la santé relationnelle",
+    "columnHeader": "Santé",
+    "listFilterLabel": "Afficher les comptes à risque ou dormants"
+  },
+  "followUpTiming": {
+    "sectionTitle": "Meilleur Moment pour Contacter",
+    "suggestion": "Meilleur moment pour contacter {{name}} : {{day}} {{timeRange}}",
+    "scheduleButton": "Planifier un suivi",
+    "aiInferredLabel": "Déduit par IA, non factuel",
+    "day": {
+      "0": "les dimanches",
+      "1": "les lundis",
+      "2": "les mardis",
+      "3": "les mercredis",
+      "4": "les jeudis",
+      "5": "les vendredis",
+      "6": "les samedis"
+    }
   }
 }
