@@ -179,3 +179,22 @@ never sends anything automatically. Paths are capped at one hop through your net
 (no speculative third-degree connections), and if no path exists the panel says so
 rather than guessing. The same lookup is available via the AI assistant — try
 "Who do I know that could introduce me to \<name\>?"
+
+### AI smart follow-up timing suggestions
+
+> **Feature flag:** `ai_followup_timing_suggestions`.
+
+Once you've logged at least 5 interactions with a contact, MiniCRM looks at when
+they've historically responded or engaged and suggests the best day and time to reach
+them — for example, "Best time to reach Sarah: Tuesday mornings, based on past
+engagement." The suggestion updates automatically as new interactions accumulate, and
+is shown in the org's configured display timezone (set by an admin under
+[Workspace settings](../admin-guide.md#default-timezone)).
+
+Click **Schedule follow-up** to open a Task creation form pre-populated with the
+suggested date and a subject line noting the suggested time — you can edit anything
+before saving. The same suggestion also appears in the
+[pre-meeting brief](activities.md#ai-pre-meeting-brief) for this contact,
+and via the AI assistant — try "When should I follow up with \<name\>?" If there isn't
+enough interaction history yet, the section simply doesn't appear rather than showing a
+low-confidence guess.

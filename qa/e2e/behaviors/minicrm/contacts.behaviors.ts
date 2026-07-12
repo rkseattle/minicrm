@@ -1603,6 +1603,19 @@ export async function isSentimentTrendVisible(
 }
 
 // ---------------------------------------------------------------------------
+// AI smart follow-up timing suggestions (MINCRM-470)
+// ---------------------------------------------------------------------------
+
+/** Returns true when the follow-up timing card is currently visible for a contact. */
+export async function isFollowUpTimingCardVisible(
+  contactId: string,
+  context: ContactsBehaviorContext,
+): Promise<boolean> {
+  const detail = new ContactDetailPage(context);
+  return detail.isFollowUpTimingCardVisible(contactId);
+}
+
+// ---------------------------------------------------------------------------
 // AI warm introduction path mapping (MINCRM-468)
 // ---------------------------------------------------------------------------
 

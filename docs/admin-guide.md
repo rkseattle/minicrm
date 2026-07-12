@@ -187,6 +187,23 @@ New deals default to this currency. Existing deals keep their own currency.
 
 ---
 
+### Default timezone
+
+> **Feature dependency:** used to display
+> [AI follow-up timing suggestions](contacts.md#ai-smart-follow-up-timing-suggestions)
+> in local terms. MiniCRM does not store a timezone per contact or per user — this is
+> the single org-wide display timezone.
+
+1. Go to **Admin → Settings → General** tab.
+2. Choose a **Default timezone** from the dropdown (any valid IANA timezone, e.g.
+   `America/Los_Angeles`, `Europe/London`).
+3. Click **Save**.
+
+Changing this setting only affects how times are _displayed_ going forward — it never
+rewrites any stored timestamp, so historical records and the audit trail are unaffected.
+
+---
+
 ### Reference: all system settings
 
 | Setting                                       | Location          | Notes                                                         |
@@ -194,6 +211,7 @@ New deals default to this currency. Existing deals keep their own currency.
 | Default language                              | General           | Language for all users who have not set a personal preference |
 | Nav layout                                    | General           | _Sidebar_ or _Top bar_ navigation style                       |
 | Default currency                              | General           | 3-letter currency code (USD, EUR, GBP, etc.)                  |
+| Default timezone                              | General           | IANA timezone; see above                                      |
 | Email notifications enabled                   | Notifications     | Master on/off for all outbound email                          |
 | SMTP host / port / user / password / from     | Notifications     | Outbound mail relay config                                    |
 | File storage endpoint / bucket / key / secret | Files             | S3-compatible storage for attachments                         |
@@ -805,6 +823,45 @@ in place until the next successful run.
 
 ---
 
+### AI relationship health scoring configuration (MINCRM-467)
+
+The weights and thresholds behind
+[relationship health scoring](accounts.md#ai-relationship-health-scoring) are
+admin-tunable via `GET`/`PATCH /api/v1/settings/relationship-health-config`
+(admin role required):
+
+| Setting                                         | Default           | What it controls                                                                  |
+| ----------------------------------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| Frequency weight                                | 0.25              | Contribution of recent communication frequency to the composite score.            |
+| Recency weight                                  | 0.25              | Contribution of how recently the account was last contacted.                      |
+| Seniority weight                                | 0.15              | Contribution of the seniority of engaged contacts.                                |
+| Sentiment weight                                | 0.20              | Contribution of the account's sentiment trend.                                    |
+| Breadth weight                                  | 0.15              | Contribution of how many distinct contacts are engaged.                           |
+| Strong / Healthy / Cooling / At Risk thresholds | 80 / 60 / 40 / 20 | Score cutoffs (0–100) separating each state; scores below the lowest are Dormant. |
+| Minimum logged activities                       | 3                 | Below this, no score is shown for the account (insufficient data).                |
+| Recency window (days)                           | 90                | Lookback window for frequency/recency scoring.                                    |
+| Single-threaded risk window (days)              | 90                | Lookback window used to flag single-threaded risk.                                |
+
+> **Current limitation:** these values are exposed via the API but not yet surfaced in
+> the **Admin Settings → AI** UI — there is no dedicated screen to change them today.
+> The five weight fields must sum to 1.0 and the four thresholds must be strictly
+> descending (Strong > Healthy > Cooling > At Risk); the API rejects any update that
+> violates either constraint.
+
+### AI relationship health / follow-up timing nightly jobs
+
+| Job                             | Schedule                 | What it does                                                                                     |
+| ------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------ |
+| AI Relationship Health Scoring  | Daily, 05:00 server time | Recomputes the health score for every account with at least the minimum logged activities above. |
+| AI Follow-Up Timing Suggestions | Daily, 05:30 server time | Recomputes the best-time-to-contact suggestion for every contact with 5+ logged interactions.    |
+
+Both jobs run automatically with no manual trigger. The follow-up timing suggestion
+also recomputes lazily on read if new interaction data has accumulated since the last
+nightly run, so a contact's suggestion stays current without waiting for the next
+scheduled run.
+
+---
+
 ## 10. AI Token Budgets
 
 > **Feature flags:** `ai_features`
@@ -923,7 +980,8 @@ when the tokens were originally consumed.
 > `ai_stage_advancement`, `ai_win_loss_insights`, `ai_champion_blocker_detection`,
 > `ai_churn_expansion_detection`, `ai_objection_pattern_matching`,
 > `ai_proposal_draft_generation`, `ai_meeting_brief`, `ai_warm_intro_path`,
-> `ai_sentiment_tracking`
+> `ai_sentiment_tracking`, `ai_relationship_health_score`,
+> `ai_followup_timing_suggestions`
 
 Individual AI sub-features can be enabled or disabled per role. This lets you roll out
 specific AI capabilities to admins first, or restrict certain features to admins only,
@@ -931,26 +989,28 @@ without disabling AI entirely.
 
 ### Available AI sub-features
 
-| Flag key                        | Feature                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `ai_nli_page`                   | Natural-language query page (ask questions in plain text)                                         |
-| `ai_activity_summarizer`        | Summarize recent activities on a contact, deal, or account                                        |
-| `ai_email_draft`                | Draft outbound emails from a prompt                                                               |
-| `ai_task_suggestions`           | Suggest follow-up tasks after an activity                                                         |
-| `ai_contact_enrichment`         | Enrich contact profiles with public data                                                          |
-| `ai_duplicate_explanation`      | Explain why two records were flagged as duplicates                                                |
-| `ai_lead_scoring`               | Rule-based quality score badge on the lead detail page                                            |
-| `ai_lead_score_narrative`       | Narrative explanation of a lead's score                                                           |
-| `ai_deal_health_check`          | Health assessment and risk flags for a deal                                                       |
-| `ai_stage_advancement`          | Suggested next pipeline stage and supporting rationale                                            |
-| `ai_win_loss_insights`          | Nightly AI-narrated win/loss behavioral pattern analysis (`/insights/win-loss`)                   |
-| `ai_champion_blocker_detection` | Champion/blocker classification for deal contacts and the stakeholder map                         |
-| `ai_churn_expansion_detection`  | Nightly churn-risk and expansion-opportunity detection for accounts (`/insights/churn-expansion`) |
-| `ai_objection_pattern_matching` | On-demand objection categorization and precedent matching from won deals                          |
-| `ai_proposal_draft_generation`  | AI-drafted, editable proposal documents from a deal's context                                     |
-| `ai_meeting_brief`              | On-demand pre-meeting brief for upcoming Call/Meeting activities                                  |
-| `ai_warm_intro_path`            | Warm introduction path lookup through a rep's own contact network                                 |
-| `ai_sentiment_tracking`         | Per-activity sentiment scoring and Contact/Account trend badges                                   |
+| Flag key                         | Feature                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `ai_nli_page`                    | Natural-language query page (ask questions in plain text)                                         |
+| `ai_activity_summarizer`         | Summarize recent activities on a contact, deal, or account                                        |
+| `ai_email_draft`                 | Draft outbound emails from a prompt                                                               |
+| `ai_task_suggestions`            | Suggest follow-up tasks after an activity                                                         |
+| `ai_contact_enrichment`          | Enrich contact profiles with public data                                                          |
+| `ai_duplicate_explanation`       | Explain why two records were flagged as duplicates                                                |
+| `ai_lead_scoring`                | Rule-based quality score badge on the lead detail page                                            |
+| `ai_lead_score_narrative`        | Narrative explanation of a lead's score                                                           |
+| `ai_deal_health_check`           | Health assessment and risk flags for a deal                                                       |
+| `ai_stage_advancement`           | Suggested next pipeline stage and supporting rationale                                            |
+| `ai_win_loss_insights`           | Nightly AI-narrated win/loss behavioral pattern analysis (`/insights/win-loss`)                   |
+| `ai_champion_blocker_detection`  | Champion/blocker classification for deal contacts and the stakeholder map                         |
+| `ai_churn_expansion_detection`   | Nightly churn-risk and expansion-opportunity detection for accounts (`/insights/churn-expansion`) |
+| `ai_objection_pattern_matching`  | On-demand objection categorization and precedent matching from won deals                          |
+| `ai_proposal_draft_generation`   | AI-drafted, editable proposal documents from a deal's context                                     |
+| `ai_meeting_brief`               | On-demand pre-meeting brief for upcoming Call/Meeting activities                                  |
+| `ai_warm_intro_path`             | Warm introduction path lookup through a rep's own contact network                                 |
+| `ai_sentiment_tracking`          | Per-activity sentiment scoring and Contact/Account trend badges                                   |
+| `ai_relationship_health_score`   | Nightly account relationship health scoring, badge, and trend sparkline                           |
+| `ai_followup_timing_suggestions` | Best-time-to-contact suggestions on the Contact detail page and pre-meeting brief                 |
 
 ### How role overrides interact with the master toggle
 

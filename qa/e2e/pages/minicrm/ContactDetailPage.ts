@@ -558,6 +558,31 @@ export class ContactDetailPage {
     return locator.isVisible().catch(() => false);
   }
 
+  // ── AI smart follow-up timing suggestions (MINCRM-470) ───────────────────────────
+
+  /**
+   * Returns true when the follow-up timing card is currently visible, scoped
+   * to a contact ID. Guards presence first — the card legitimately does not
+   * render until at least 5 logged interactions exist.
+   */
+  async isFollowUpTimingCardVisible(contactId: string): Promise<boolean> {
+    const present = await this.page
+      .waitForPresent(`[data-testid="followup-timing-card-${contactId}"]`, 500)
+      .then(() => true)
+      .catch(() => false);
+    if (!present) return false;
+    const locator = await this.page
+      .locate(
+        [
+          { type: 'testId', value: `followup-timing-card-${contactId}` },
+          { type: 'css', value: `[data-testid="followup-timing-card-${contactId}"]` },
+        ],
+        { intent: 'AI follow-up timing suggestion card on the contact detail page' },
+      )
+      .resolve();
+    return locator.isVisible().catch(() => false);
+  }
+
   // ── AI warm introduction path mapping (MINCRM-468) ──────────────────────────────
 
   /** Returns a resolved locator for the "Find warm path" button, scoped to a contact ID. */
