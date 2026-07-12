@@ -31,11 +31,19 @@ import type { CustomFieldValueInput } from '@shared/schemas/customFieldSchema.js
 import { ACCOUNTS_QUERY_KEY } from '@/pages/AccountsPage.js';
 import ChurnExpansionBanner from '@/components/ChurnExpansionBanner.js';
 import SentimentSparkline from '@/components/SentimentSparkline.js';
+import AccountHealthBadge from '@/components/AccountHealthBadge.js';
+import AccountHealthSparkline from '@/components/AccountHealthSparkline.js';
 import type { AccountFormValues } from '@/components/AccountForm.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
 import { useEntityConflictHandler } from '@/hooks/useEntityConflictHandler.js';
 import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import { getAccountSentimentTrend, accountSentimentTrendQueryKey } from '@/api/sentiment.js';
+import {
+  getAccountHealthScore,
+  getAccountHealthHistory,
+  accountHealthScoreQueryKey,
+  accountHealthHistoryQueryKey,
+} from '@/api/relationshipHealth.js';
 
 /**
  * Single account detail page with view/edit/delete.
@@ -54,6 +62,7 @@ export default function AccountDetailPage() {
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
   const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
+  const { enabled: relationshipHealthEnabled } = useFeatureFlag('ai_relationship_health_score');
 
   const accountQueryKey = ['accounts', id] as const;
 
@@ -102,6 +111,18 @@ export default function AccountDetailPage() {
     queryKey: accountSentimentTrendQueryKey(id ?? ''),
     queryFn: () => getAccountSentimentTrend(id!),
     enabled: Boolean(id) && sentimentTrackingEnabled,
+  });
+
+  // AI relationship health score (MINCRM-467) — cached, page-load read.
+  const { data: healthScoreData } = useQuery({
+    queryKey: accountHealthScoreQueryKey(id ?? ''),
+    queryFn: () => getAccountHealthScore(id!),
+    enabled: Boolean(id) && relationshipHealthEnabled,
+  });
+  const { data: healthHistoryData } = useQuery({
+    queryKey: accountHealthHistoryQueryKey(id ?? ''),
+    queryFn: () => getAccountHealthHistory(id!),
+    enabled: Boolean(id) && relationshipHealthEnabled && Boolean(healthScoreData?.score),
   });
 
   const activeUsers: ActiveUser[] = activeUsersData?.users ?? [];
@@ -234,6 +255,22 @@ export default function AccountDetailPage() {
                 hasSufficientData={sentimentTrend.has_sufficient_data}
                 points={sentimentTrend.points}
               />
+            )}
+            {relationshipHealthEnabled && healthScoreData?.score && (
+              <>
+                <AccountHealthBadge
+                  accountId={account.id}
+                  state={healthScoreData.score.state}
+                  singleThreadedRisk={healthScoreData.score.single_threaded_risk}
+                  contributingFactors={healthScoreData.score.contributing_factors}
+                />
+                {healthHistoryData && (
+                  <AccountHealthSparkline
+                    accountId={account.id}
+                    points={healthHistoryData.points}
+                  />
+                )}
+              </>
             )}
           </div>
 

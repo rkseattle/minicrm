@@ -12,6 +12,7 @@ import type {
   UpdateAccountInput,
 } from '@shared/schemas/accountSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import type { AccountHealthListFilterState } from '@shared/schemas/accountHealthScoreSchema.js';
 
 interface AccountSingleResponse {
   account: AccountResponse;
@@ -37,6 +38,8 @@ export interface ListAccountsParams {
   limit?: number;
   /** Tag IDs to filter by (any-match). MINCRM-186. */
   tags?: string[];
+  /** Relationship health states to filter by (any-match). MINCRM-467. */
+  health_status?: AccountHealthListFilterState[];
 }
 
 /**
@@ -57,6 +60,9 @@ export async function listAccounts(
   if (params.page !== undefined) queryParams.page = String(params.page);
   if (params.limit !== undefined) queryParams.limit = String(params.limit);
   if (params.tags && params.tags.length > 0) queryParams.tags = params.tags.join(',');
+  if (params.health_status && params.health_status.length > 0) {
+    queryParams.health_status = params.health_status.join(',');
+  }
   const response = await apiClient.get<PaginatedResponse<AccountResponse>>('/accounts', {
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });

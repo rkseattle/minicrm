@@ -37,6 +37,56 @@ describe('AccountsPage', () => {
     expect(screen.getAllByText(ACCOUNT_1.industry!).length).toBeGreaterThanOrEqual(1);
   });
 
+  // ── AI relationship health scoring (MINCRM-467) ─────────────────────────────────
+
+  it('shows a dash placeholder when the account has no computed health score', async () => {
+    renderWithProviders(<AccountsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`account-health-${ACCOUNT_1.id}`)).toHaveTextContent('—');
+    });
+  });
+
+  it('shows the health badge in the list when a score exists', async () => {
+    server.use(
+      http.get('/api/v1/accounts', () =>
+        HttpResponse.json({
+          data: [
+            {
+              ...ACCOUNT_1,
+              health_score: { score: 15, state: 'dormant', single_threaded_risk: true },
+            },
+          ],
+          total: 1,
+          page: 1,
+          limit: 50,
+        }),
+      ),
+    );
+    renderWithProviders(<AccountsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId(`account-health-badge-${ACCOUNT_1.id}`)).toHaveTextContent(
+        'Dormant',
+      );
+    });
+  });
+
+  it('renders the At Risk or Dormant filter checkbox and applies it to the query', async () => {
+    const listAccountsSpy = vi.spyOn(accountsApi, 'listAccounts');
+    const user = userEvent.setup();
+    renderWithProviders(<AccountsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('accounts-health-filter')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('accounts-health-filter'));
+
+    await waitFor(() => {
+      expect(listAccountsSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ health_status: ['at_risk', 'dormant'] }),
+      );
+    });
+  });
+
   it('shows empty state when no accounts are returned', async () => {
     server.use(
       http.get('/api/v1/accounts', () =>

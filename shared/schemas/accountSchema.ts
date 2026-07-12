@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { ACCOUNT_HEALTH_STATES } from './accountHealthScoreSchema.js';
 
 /** Valid values for the account_type field (MINCRM-183) */
 export const ACCOUNT_TYPE_VALUES = [
@@ -77,6 +78,15 @@ export const accountResponseSchema = z.object({
   version: z.number().int(),
   /** Tags attached to this account — only present in list responses (MINCRM-186) */
   tags: z.array(z.object({ id: z.string().uuid(), name: z.string() })).optional(),
+  /** Cached relationship health badge — only present in list responses; null if not yet computed (MINCRM-467) */
+  health_score: z
+    .object({
+      score: z.number(),
+      state: z.enum(ACCOUNT_HEALTH_STATES),
+      single_threaded_risk: z.boolean(),
+    })
+    .nullable()
+    .optional(),
 });
 
 // ── Envelope schemas (for API response validation) ─────────────────────────────

@@ -2653,5 +2653,36 @@
     "whyThisScore": "[Why thïŝ ŝĉörë?~~~~~]",
     "explaining": "[Ëxpläïñïñg…~~~~]",
     "insufficientData": "[Ñöt ëñöügh äĉtïvïty dätä tö ëxpläïñ thïŝ ŝĉörë yët.~~~~~~~~~~~~~~~~]"
+  },
+  "relationshipHealth": {
+    "state": {
+      "strong": "[Ŝtröñg~~]",
+      "healthy": "[Hëälthy~~~]",
+      "cooling": "[Ĉöölïñg~~~]",
+      "at_risk": "[Ät Rïŝk~~~]",
+      "dormant": "[Dörmäñt~~~]"
+    },
+    "singleThreadedRisk": "[Ŝïñglë-thrëädëd rïŝk~~~~~~]",
+    "whyButton": "[Why?~~]",
+    "whyLabel": "[Why wäŝ thïŝ äĉĉöüñt ŝĉörëd thïŝ wäy?~~~~~~~~~~~~]",
+    "aiInferredLabel": "[ÄÏ-ïñfërrëd, ñöt fäĉtüäl~~~~~~~~]",
+    "sparklineLabel": "[Rëlätïöñŝhïp hëälth trëñd ŝpärklïñë~~~~~~~~~~~]",
+    "columnHeader": "[Hëälth~~]",
+    "listFilterLabel": "[Ŝhöw Ät Rïŝk ör Dörmäñt äĉĉöüñtŝ~~~~~~~~~~]"
+  },
+  "followUpTiming": {
+    "sectionTitle": "[Bëŝt Tïmë tö Rëäĉh~~~~~~]",
+    "suggestion": "[Bëŝt tïmë tö rëäĉh {{name}}: {{day}} {{timeRange}}~~~~~~~~~~~~~~~]",
+    "scheduleButton": "[Ŝĉhëdülë föllöw-üp~~~~~~]",
+    "aiInferredLabel": "[ÄÏ-ïñfërrëd, ñöt fäĉtüäl~~~~~~~~]",
+    "day": {
+      "0": "[Ŝüñdäyŝ~~~]",
+      "1": "[Möñdäyŝ~~~]",
+      "2": "[Tüëŝdäyŝ~~~]",
+      "3": "[Wëdñëŝdäyŝ~~~]",
+      "4": "[Thürŝdäyŝ~~~]",
+      "5": "[Frïdäyŝ~~~]",
+      "6": "[Ŝätürdäyŝ~~~]"
+    }
   }
 }
