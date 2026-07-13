@@ -19,6 +19,25 @@ import {
 
 const FILE_PREFIX = 'followup-timing-svc';
 
+/**
+ * Returns the current UTC-offset (in whole hours) for `timezone`, e.g. -8 for
+ * America/Los_Angeles in PST or -7 in PDT. Used so timezone-projection test
+ * expectations reflect whatever DST rules are in effect when the suite runs,
+ * rather than hardcoding an offset that only holds for part of the year —
+ * projectToTimezone() itself uses the current week's offset (see MINCRM-470
+ * follow-up fix), so tests must match that same "now-relative" behavior.
+ */
+function currentUtcOffsetHours(timezone: string): number {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    timeZoneName: 'shortOffset',
+  }).formatToParts(now);
+  const offsetStr = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+0';
+  const match = /GMT([+-]\d+)/.exec(offsetStr);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 let ownerId: string;
 
 async function cleanup(): Promise<void> {
@@ -168,8 +187,11 @@ describe('getFollowUpTiming', () => {
     const suggestion = await getFollowUpTiming(contact.id);
     expect(suggestion).not.toBeNull();
     expect(suggestion!.timezone).toBe('America/Los_Angeles');
-    // 17:00 UTC in January (PST, UTC-8) is 09:00 local.
-    expect(suggestion!.hour_start).toBe(9);
+    // projectToTimezone uses the current week's DST offset (see MINCRM-470 follow-up
+    // fix), not the offset in effect on the fixture dates above — so the expected
+    // hour must be computed from today's offset, not hardcoded to January's PST.
+    const expectedHour = (17 + currentUtcOffsetHours('America/Los_Angeles') + 24) % 24;
+    expect(suggestion!.hour_start).toBe(expectedHour);
   });
 
   it('projects an hour_end_utc of 24 (end-of-day) into the display timezone instead of returning it raw', async () => {
@@ -195,11 +217,71 @@ describe('getFollowUpTiming', () => {
 
     const suggestion = await getFollowUpTiming(contact.id);
     expect(suggestion).not.toBeNull();
-    // 23:00 UTC in January (PST, UTC-8) is 15:00 local; hour_end_utc=24 (Wed 00:00 UTC)
-    // projects to 16:00 local the same day — a coherent 1-hour range, not "3pm-12pm".
-    expect(suggestion!.hour_start).toBe(15);
-    expect(suggestion!.hour_end).toBe(16);
+    // projectToTimezone uses the current week's DST offset (see MINCRM-470 follow-up
+    // fix), so expected hours are computed from today's offset rather than hardcoded
+    // to January's PST. hour_end_utc=24 (Wed 00:00 UTC) projects to hour_start + 1 —
+    // a coherent 1-hour range, not "3pm-12pm".
+    const offset = currentUtcOffsetHours('America/Los_Angeles');
+    const expectedStart = (23 + offset + 24) % 24;
+    expect(suggestion!.hour_start).toBe(expectedStart);
+    expect(suggestion!.hour_end).toBe((expectedStart + 1) % 24);
     expect(suggestion!.hour_end).toBeGreaterThan(suggestion!.hour_start);
+  });
+
+  it('projects using the currently-observed DST offset, not a fixed historical date', async () => {
+    // Regression test: projectToTimezone previously anchored every projection to
+    // January 1970, so a summer bucket in a DST-observing zone was projected using
+    // winter's offset instead of summer's. America/Los_Angeles is UTC-7 in July
+    // (PDT) but was UTC-8 in January 1970 (no DST that winter) — a 17:00 UTC bucket
+    // must project to 10:00 local (PDT), not 09:00 (the stale 1970 offset).
+    await setDefaultTimezone('America/Los_Angeles');
+    const contact = await createContact({
+      email: `${FILE_PREFIX}-dst-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      first_name: 'DST',
+      last_name: 'Contact',
+      owner_id: ownerId,
+    });
+    // 5 Tuesdays in July 2026 (PDT is in effect).
+    const tuesdays = ['2026-07-07', '2026-07-14', '2026-07-21', '2026-07-28', '2026-08-04'];
+    for (const date of tuesdays) {
+      await pool.query(
+        `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+         VALUES ('Call', 'Sync', 'Inbound', $1, $2, ($3::date + time '17:00')::timestamptz)`,
+        [contact.id, ownerId, date],
+      );
+    }
+
+    const suggestion = await getFollowUpTiming(contact.id);
+    expect(suggestion).not.toBeNull();
+    // 17:00 UTC in July (PDT, UTC-7) is 10:00 local.
+    expect(suggestion!.hour_start).toBe(10);
+  });
+
+  it('falls back to UTC when the stored default timezone is not a valid IANA identifier', async () => {
+    // Regression test: an invalid/corrupted timezone previously threw inside
+    // Intl.DateTimeFormat and surfaced as a server error on every read.
+    await pool.query(
+      `UPDATE system_settings SET value = 'Not/A_Real_Zone' WHERE key = 'default_timezone'`,
+    );
+    const contact = await createContact({
+      email: `${FILE_PREFIX}-badtz-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      first_name: 'BadTz',
+      last_name: 'Contact',
+      owner_id: ownerId,
+    });
+    const tuesdays = ['2026-01-06', '2026-01-13', '2026-01-20', '2026-01-27', '2026-02-03'];
+    for (const date of tuesdays) {
+      await pool.query(
+        `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+         VALUES ('Call', 'Sync', 'Inbound', $1, $2, ($3::date + time '14:00')::timestamptz)`,
+        [contact.id, ownerId, date],
+      );
+    }
+
+    const suggestion = await getFollowUpTiming(contact.id);
+    expect(suggestion).not.toBeNull();
+    expect(suggestion!.timezone).toBe('UTC');
+    expect(suggestion!.hour_start).toBe(14);
   });
 });
 

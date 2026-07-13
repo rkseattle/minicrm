@@ -141,21 +141,52 @@ export async function computeFollowUpTimingSuggestions(): Promise<void> {
 }
 
 /**
+ * Returns `timezone` if it is a recognized IANA identifier, otherwise falls back to
+ * UTC. Guards against a corrupted or stale system_settings row causing every
+ * follow-up timing read, meeting brief inclusion, and NLI tool call to 500.
+ */
+function resolveValidTimezone(timezone: string): string {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return timezone;
+  } catch (err) {
+    logger.warn({ err, timezone }, 'followUpTiming: invalid timezone, falling back to UTC');
+    return 'UTC';
+  }
+}
+
+/**
  * Projects a UTC day/hour window into a display timezone. Only the hour
  * component shifts across a timezone offset in the common case; a day
  * boundary crossing (e.g. UTC 23:00 -> previous/next local day) is handled
  * by re-deriving the day-of-week from the projected instant rather than the
  * stored UTC day, so the displayed day is always locally correct.
+ *
+ * `timezone` must already be validated (see resolveValidTimezone) — this
+ * function assumes it will not throw.
  */
 function projectToTimezone(
   dayOfWeek: number,
   hourUtc: number,
   timezone: string,
 ): { dayOfWeek: number; hour: number } {
-  // Anchor to a known UTC Sunday (1970-01-04 was a Sunday) plus dayOfWeek days and hourUtc hours,
-  // then read back the local day/hour in the target timezone. This sidesteps DST edge cases
-  // for a single reference week rather than hand-rolling offset arithmetic.
-  const anchor = new Date(Date.UTC(1970, 0, 4 + dayOfWeek, hourUtc));
+  // Anchor to the most recent UTC Sunday plus dayOfWeek days and hourUtc hours, then read
+  // back the local day/hour in the target timezone. Anchoring to the current week (rather
+  // than a fixed historical date) ensures DST-observing zones use the offset in effect now,
+  // not whatever offset applied on some arbitrary reference date.
+  const now = new Date();
+  const mostRecentSunday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - now.getUTCDay()),
+  );
+  const anchor = new Date(
+    Date.UTC(
+      mostRecentSunday.getUTCFullYear(),
+      mostRecentSunday.getUTCMonth(),
+      mostRecentSunday.getUTCDate() + dayOfWeek,
+      hourUtc,
+    ),
+  );
+
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     weekday: 'short',
@@ -183,8 +214,9 @@ function toSuggestion(
     sample_size: number;
     computed_at: Date;
   },
-  timezone: string,
+  requestedTimezone: string,
 ): FollowUpTimingSuggestion {
+  const timezone = resolveValidTimezone(requestedTimezone);
   const start = projectToTimezone(row.day_of_week, row.hour_start_utc, timezone);
   // hour_end_utc may be 24 (end of day, i.e. midnight of the *next* UTC day) — project
   // it as day+1/hour 0 so the timezone shift is applied correctly instead of reusing

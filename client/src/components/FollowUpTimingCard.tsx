@@ -28,14 +28,35 @@ interface FollowUpTimingCardProps {
 /**
  * Finds the next calendar date (today or later) that falls on the given
  * day-of-week, formatted as YYYY-MM-DD for the activity due_date field.
+ *
+ * `dayOfWeek` is expressed in `timezone` (the org's default display timezone,
+ * per suggestion.timezone) — "today" must be computed in that same timezone,
+ * not the browser's local timezone, or a suggestion near a UTC day boundary
+ * can resolve to the wrong calendar date when the two timezones disagree on
+ * what day it currently is.
  */
-function nextDateForDayOfWeek(dayOfWeek: number): string {
-  const today = new Date();
-  const todayDay = today.getDay();
-  const daysUntil = (dayOfWeek - todayDay + 7) % 7;
-  const target = new Date(today);
-  target.setDate(today.getDate() + daysUntil);
-  return target.toISOString().slice(0, 10);
+function nextDateForDayOfWeek(dayOfWeek: number, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  }).formatToParts(new Date());
+
+  const year = parts.find((p) => p.type === 'year')?.value ?? '1970';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '01';
+  const day = parts.find((p) => p.type === 'day')?.value ?? '01';
+  const weekdayStr = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun';
+
+  const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDay = WEEKDAYS.indexOf(weekdayStr);
+  const daysUntil = (dayOfWeek - (todayDay >= 0 ? todayDay : 0) + 7) % 7;
+
+  // today's date at UTC midnight, used purely as a calendar-arithmetic anchor —
+  // adding daysUntil and reading back the UTC calendar fields is timezone-safe.
+  const anchor = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + daysUntil));
+  return anchor.toISOString().slice(0, 10);
 }
 
 export default function FollowUpTimingCard({
@@ -103,7 +124,7 @@ export default function FollowUpTimingCard({
                 day: dayLabel,
                 timeRange,
               }),
-              due_date: nextDateForDayOfWeek(suggestion.day_of_week),
+              due_date: nextDateForDayOfWeek(suggestion.day_of_week, suggestion.timezone),
             }}
             onSubmit={(values) => scheduleMutation.mutate(values)}
             onCancel={() => {
