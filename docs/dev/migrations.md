@@ -58,6 +58,11 @@ docker exec minicrm-db pg_dump \
 #    - Wrap triggers/policies/constraints in DO $$ ... EXCEPTION WHEN duplicate_object blocks
 #    - Maintain dependency order (no forward FK references)
 #    - Update the migration list in the JSDoc header comment
+#    - Update exports.baselineCoveredMigrationCount in 000_baseline.js AND
+#      BASELINE_COVERED_MIGRATION_COUNT in server/src/migrate.ts to the same
+#      new value — countBaselineCoveredMigrations() asserts these two agree
+#      at runtime (MINCRM-658) and throws if they don't, so both must be
+#      updated together, in the same commit as the regenerated baseline.
 
 # 4. Verify against a clean Docker environment
 docker exec minicrm-db psql -U minicrm -c "CREATE DATABASE minicrm_baseline_test"
@@ -92,17 +97,37 @@ producing a `pgmigrations` row for a migration whose schema changes never actual
 invocation waits for the lock; if it is not released within 60 seconds (the first process is
 stuck or crashed), the second invocation fails fast with a clear "timed out waiting for migration
 lock" error rather than silently interleaving or hanging indefinitely. The lock is released in a
-`finally` block and is also released automatically if the holding connection drops, so a crashed
-process cannot leak the lock permanently.
+`finally` block (only if this session actually acquired it — a timed-out caller never held the
+lock and does not attempt to release it) and is also released automatically if the holding
+connection drops, so a crashed process cannot leak the lock permanently.
 
 Since every step in the sequence is idempotent (per the "Existing Deployments" section above), a
 second invocation that waits and then proceeds is always safe — it re-checks `pgmigrations` and
 finds everything already applied.
 
-`countBaselineCoveredMigrations()` also validates `BASELINE_COVERED_MIGRATION_COUNT` against the
-migration files actually present in `db/migrations` at call time, and throws if no file matches —
-this catches drift between two processes' views of the migrations directory (e.g. a stale build)
-before it can silently fake-mark a migration that was never really applied.
+**Relationship to node-pg-migrate's own lock:** `node-pg-migrate` already takes its own internal
+advisory lock (a different, library-fixed key) around each individual `migrationRunner()` call,
+and releases it before returning. That per-call lock is not sufficient on its own: this fix wraps
+the _entire_ three-step sequence (baseline → fake-mark → real-run) in one lock, closing the window
+between node-pg-migrate's per-call locks where one process's step 2 could still interleave with
+another process's step 1 or 3. The two locks use different keys and don't conflict — the custom
+lock is held for the whole sequence, and node-pg-migrate's own lock is acquired and released inside
+that window on each of the three calls.
+
+`countBaselineCoveredMigrations()` also validates `BASELINE_COVERED_MIGRATION_COUNT` two ways
+before every migration run:
+
+- Against `000_baseline.js`'s own `exports.baselineCoveredMigrationCount` — this catches drift in
+  _either_ direction (a stale server build's constant that is lower than what the actual baseline
+  file covers, e.g. an old `migrate.ts` paired with a rebuilt/newer baseline, or the reverse).
+  Checking only "does a file numbered N exist on disk" cannot catch the stale-low case, since
+  migration files are never deleted when the baseline is regenerated — a same-numbered file is
+  always still present regardless of which value the constant holds.
+- Against gaps in migration files `1..N` on disk — catches a partial/corrupt rebuild (e.g. a bad
+  Docker layer copy) that is missing some files in that range even though the highest-numbered one
+  happens to be present.
+
+Either check throws a clear error instead of silently mis-skipping or mis-executing migrations.
 
 ---
 

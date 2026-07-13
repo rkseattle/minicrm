@@ -53,6 +53,18 @@
 exports.shorthands = undefined;
 
 /**
+ * Number of migrations (001-N) this file was last regenerated to cover.
+ * server/src/migrate.ts's countBaselineCoveredMigrations() asserts its own
+ * BASELINE_COVERED_MIGRATION_COUNT constant equals this value at runtime
+ * (MINCRM-658) — this file is the single source of truth for what baseline
+ * actually covers, so the two can never silently drift apart (e.g. a stale
+ * server build's migrate.ts paired with a rebuilt/newer baseline file, or
+ * vice versa). Update this alongside BASELINE_COVERED_MIGRATION_COUNT
+ * whenever this file is regenerated.
+ */
+exports.baselineCoveredMigrationCount = 152;
+
+/**
  * Creates the full MiniCRM schema from scratch.
  * Safe to run against a pre-existing schema — every CREATE TABLE/INDEX/EXTENSION
  * uses IF NOT EXISTS. Called by `migrate:fresh` with count:1 so it runs alone.

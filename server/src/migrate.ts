@@ -18,11 +18,13 @@
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 import { readdirSync } from 'fs';
+import { createRequire } from 'module';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import pg from 'pg';
 import logger from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 
 /** Absolute path to the migrations directory */
 export const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
@@ -58,10 +60,10 @@ function sleep(ms: number): Promise<void> {
 export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promise<T>): Promise<T> {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
+  let acquired = false;
 
   try {
     const deadline = Date.now() + LOCK_WAIT_TIMEOUT_MS;
-    let acquired = false;
 
     while (Date.now() < deadline) {
       const { rows } = await client.query<{ pg_try_advisory_lock: boolean }>(
@@ -86,9 +88,13 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
 
     return await fn();
   } finally {
-    // Best-effort unlock; the lock is also released automatically when this
-    // session's connection closes, so a failed unlock here cannot leak it.
-    await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => {});
+    // Only unlock if this session actually acquired the lock — calling
+    // pg_advisory_unlock on a lock this session never held returns false and
+    // logs a spurious server-side WARNING on every timeout, which would add
+    // noise during an on-call investigation of a stuck migration lock.
+    if (acquired) {
+      await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => {});
+    }
     await client.end();
   }
 }
@@ -112,31 +118,75 @@ export const BASELINE_COVERED_MIGRATION_COUNT = 152;
 /** Matches the leading numeric prefix of a migration filename, e.g. "007" in "007_add_x.js". */
 const MIGRATION_FILENAME_PREFIX = /^(\d+)_/;
 
-/**
- * Count of migration files covered by 000_baseline. Used to bound the fake-mark
- * step so post-baseline migrations are not skipped.
- *
- * Validates BASELINE_COVERED_MIGRATION_COUNT against the migrations actually
- * present on disk (MINCRM-658) rather than trusting the constant blindly: if
- * two processes (e.g. a rebuilt Docker image vs. a stale one) have a different
- * view of MIGRATIONS_DIR, a mismatch here means the fake-mark step's bound no
- * longer matches reality, and running with it would silently mis-skip or
- * mis-execute migrations. Fails fast with a clear error instead of that
- * silent drift — the migration file whose number equals the constant must
- * exist on disk.
- */
-export function countBaselineCoveredMigrations(): number {
-  const files = readdirSync(MIGRATIONS_DIR);
-  const hasBaselineCoveredFile = files.some((file) => {
-    const match = MIGRATION_FILENAME_PREFIX.exec(file);
-    return match !== null && Number(match[1]) === BASELINE_COVERED_MIGRATION_COUNT;
-  });
+/** Path to the baseline migration file, whose exports.baselineCoveredMigrationCount is the source of truth this function validates against. */
+const BASELINE_FILE = resolve(MIGRATIONS_DIR, '000_baseline.js');
 
-  if (!hasBaselineCoveredFile) {
+/**
+ * Validates BASELINE_COVERED_MIGRATION_COUNT two ways (MINCRM-658) rather than
+ * trusting the constant blindly. Pure function of its inputs so it can be unit
+ * tested directly, without mocking fs or the require() of the baseline file.
+ *
+ *  1. Against 000_baseline.js's own declared coverage (`baselineCoveredCount`)
+ *     — this catches drift in BOTH directions (a stale server build's constant
+ *     that is lower than what the actual baseline file covers, e.g. an old
+ *     migrate.ts paired with a rebuilt/newer baseline; or higher, e.g. the
+ *     reverse). A same-numbered migration file is never deleted when the
+ *     baseline is regenerated, so checking "does file N exist" alone cannot
+ *     detect the stale-low case — only comparing against the baseline file's
+ *     own declared coverage can.
+ *  2. Against gaps in migration files 1..N on disk (`migrationFilenames`) —
+ *     catches a partial/corrupt rebuild (e.g. a bad Docker layer copy) that is
+ *     missing some files in that range even though the highest-numbered one
+ *     happens to be present.
+ *
+ * Fails fast with a clear error on either mismatch instead of silently
+ * mis-skipping or mis-executing migrations.
+ */
+export function assertBaselineCoverageMatches(
+  expectedCount: number,
+  baselineCoveredCount: number | undefined,
+  migrationFilenames: string[],
+): void {
+  if (baselineCoveredCount !== expectedCount) {
     throw new Error(
-      `BASELINE_COVERED_MIGRATION_COUNT (${BASELINE_COVERED_MIGRATION_COUNT}) does not match any migration file in ${MIGRATIONS_DIR} — the migrations directory view is inconsistent with server/src/migrate.ts. Rebuild so both agree before running migrations.`,
+      `BASELINE_COVERED_MIGRATION_COUNT in server/src/migrate.ts (${expectedCount}) does not match db/migrations/000_baseline.js's baselineCoveredMigrationCount (${baselineCoveredCount}) — these two files have drifted apart (e.g. a stale server build paired with a rebuilt migrations directory, or vice versa). Rebuild so both agree before running migrations.`,
     );
   }
+
+  const coveredNumbers = new Set(
+    migrationFilenames
+      .map((file) => MIGRATION_FILENAME_PREFIX.exec(file))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => Number(match[1])),
+  );
+  const missing: number[] = [];
+  for (let n = 1; n <= expectedCount; n++) {
+    if (!coveredNumbers.has(n)) {
+      missing.push(n);
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `BASELINE_COVERED_MIGRATION_COUNT (${expectedCount}) expects migrations 1-${expectedCount} on disk, but ${MIGRATIONS_DIR} is missing: ${missing.join(', ')}. The migrations directory is incomplete — rebuild before running migrations.`,
+    );
+  }
+}
+
+/**
+ * Count of migration files covered by 000_baseline. Used to bound the fake-mark
+ * step so post-baseline migrations are not skipped. See
+ * assertBaselineCoverageMatches() for the validation this performs.
+ */
+export function countBaselineCoveredMigrations(): number {
+  const baseline = require(BASELINE_FILE) as { baselineCoveredMigrationCount?: number };
+  const files = readdirSync(MIGRATIONS_DIR);
+
+  assertBaselineCoverageMatches(
+    BASELINE_COVERED_MIGRATION_COUNT,
+    baseline.baselineCoveredMigrationCount,
+    files,
+  );
 
   return BASELINE_COVERED_MIGRATION_COUNT;
 }

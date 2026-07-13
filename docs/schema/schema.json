@@ -4670,7 +4670,7 @@
           "name": "role_overrides",
           "type": "jsonb",
           "nullable": true,
-          "comment": "Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live."
+          "comment": "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
         },
         {
           "name": "updated_by",

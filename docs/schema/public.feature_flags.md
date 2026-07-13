@@ -9,7 +9,7 @@
 | description | text |  | false |  |  |  |
 | category | varchar(50) |  | false |  |  |  |
 | enabled | boolean | true | false |  |  |  |
-| role_overrides | jsonb |  | true |  |  | Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live. |
+| role_overrides | jsonb |  | true |  |  | Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565) |
 | updated_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | system_flag | boolean | true | false |  |  |  |
@@ -59,7 +59,7 @@ erDiagram
   text description ""
   varchar_50_ category ""
   boolean enabled ""
-  jsonb role_overrides "Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live."
+  jsonb role_overrides "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
   uuid updated_by FK ""
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""

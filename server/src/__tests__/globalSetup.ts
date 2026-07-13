@@ -10,7 +10,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
-import { MIGRATIONS_DIR, countBaselineCoveredMigrations } from '../migrate.js';
+import { MIGRATIONS_DIR, countBaselineCoveredMigrations, withMigrationLock } from '../migrate.js';
 
 export default async function globalSetup(): Promise<void> {
   const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
@@ -54,11 +54,18 @@ export default async function globalSetup(): Promise<void> {
     checkOrder: false,
     log: () => {},
   };
-  await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-  await migrationRunner({
-    ...SHARED_OPTIONS,
-    fake: true,
-    count: countBaselineCoveredMigrations(),
+
+  // Shares the same advisory lock key as runMigrations(), create-e2e-db.ts, and
+  // migrate-fresh.ts (MINCRM-658), so this bootstrap cannot interleave with a
+  // concurrent migration run against the same database (e.g. a developer
+  // running `npm test` while `server-e2e` is also booting against minicrm_test).
+  await withMigrationLock(databaseUrl, async () => {
+    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
+    await migrationRunner({
+      ...SHARED_OPTIONS,
+      fake: true,
+      count: countBaselineCoveredMigrations(),
+    });
+    await migrationRunner(SHARED_OPTIONS);
   });
-  await migrationRunner(SHARED_OPTIONS);
 }
