@@ -4,7 +4,7 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import FollowUpTimingCard from './FollowUpTimingCard.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
@@ -132,6 +132,43 @@ describe('FollowUpTimingCard', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
+  });
+
+  it('computes the pre-populated due date in the suggestion timezone, not the browser timezone', async () => {
+    // Regression test: nextDateForDayOfWeek previously computed "today" from the
+    // browser's local Date#getDay(), not suggestion.timezone (the org default).
+    // Freeze the system clock at a UTC instant where the two timezones disagree
+    // on the current calendar day: 2026-07-14 (Tue) 01:00 UTC is still Monday
+    // 2026-07-13 in America/Los_Angeles (UTC-7 in July).
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-07-14T01:00:00.000Z'));
+
+    const pacificSuggestion = {
+      ...SUGGESTION,
+      day_of_week: 2, // Tuesday, in America/Los_Angeles
+      timezone: 'America/Los_Angeles',
+    };
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProviders(
+      <FollowUpTimingCard
+        contactId={CONTACT_ID}
+        contactName="Sarah Lee"
+        suggestion={pacificSuggestion}
+      />,
+    );
+
+    await user.click(screen.getByTestId(`followup-timing-schedule-${CONTACT_ID}`));
+    await waitFor(() => {
+      expect(screen.getByTestId(`followup-timing-schedule-form-${CONTACT_ID}`)).toBeInTheDocument();
+    });
+
+    const dueDateInput = screen.getByLabelText(/due date/i) as HTMLInputElement;
+    // It is still Monday in America/Los_Angeles, so the next Tuesday is 2026-07-14
+    // (today in UTC) — not 2026-07-21, which a browser-UTC-based "today" of
+    // Tuesday would have incorrectly rolled forward to next week.
+    expect(dueDateInput.value).toBe('2026-07-14');
+
+    vi.useRealTimers();
   });
 
   it('closes the form without saving when Cancel is clicked', async () => {
