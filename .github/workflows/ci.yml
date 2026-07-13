@@ -1008,6 +1008,13 @@ jobs:
           path: |
             qa/e2e/test-results/results.xml
             qa/e2e/test-results/results.json
+            qa/e2e/test-results/**/trace.zip
+            qa/e2e/test-results/**/test-failed-*.png
+            qa/e2e/test-results/**/video.webm
+            qa/e2e/test-results/**/error-context.md
+            qa/e2e/test-results/healing-shard*.json
+            qa/e2e/test-results/healing-suggestions.md
+            qa/e2e/test-timing.jsonl
           retention-days: 14
           if-no-files-found: warn
 
