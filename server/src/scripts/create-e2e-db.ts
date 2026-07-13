@@ -17,7 +17,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
-import { MIGRATIONS_DIR, countBaselineCoveredMigrations } from '../migrate.js';
+import { MIGRATIONS_DIR, countBaselineCoveredMigrations, withMigrationLock } from '../migrate.js';
 
 const E2E_DB_NAME = 'minicrm_e2e';
 
@@ -69,13 +69,19 @@ async function main(): Promise<void> {
     checkOrder: false,
     log: () => {},
   };
-  await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
-  await migrationRunner({
-    ...SHARED_OPTIONS,
-    fake: true,
-    count: countBaselineCoveredMigrations(),
+
+  // Shares the same advisory lock key as runMigrations() (MINCRM-658), so this
+  // script cannot interleave with a concurrent server boot's migration run
+  // against the same database.
+  await withMigrationLock(databaseUrl, async () => {
+    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
+    await migrationRunner({
+      ...SHARED_OPTIONS,
+      fake: true,
+      count: countBaselineCoveredMigrations(),
+    });
+    await migrationRunner(SHARED_OPTIONS);
   });
-  await migrationRunner(SHARED_OPTIONS);
 
   console.log(`[create-e2e-db] Migrations complete on ${E2E_DB_NAME}.`);
 }
