@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button.js';
+import { formatHourOfDay } from '@/utils/formatHourOfDay.js';
 import type { MeetingBriefResponse } from '@shared/schemas/meetingBriefSchema.js';
 
 interface MeetingBriefPanelProps {
@@ -30,7 +31,7 @@ export default function MeetingBriefPanel({
   onRegenerate,
   isRegenerating,
 }: MeetingBriefPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -199,7 +200,7 @@ export default function MeetingBriefPanel({
                 {t('followUpTiming.suggestion', {
                   name: content.contact_snapshot.name,
                   day: t(`followUpTiming.day.${content.followup_timing.day_of_week}`),
-                  timeRange: `${content.followup_timing.hour_start}:00–${content.followup_timing.hour_end}:00`,
+                  timeRange: `${formatHourOfDay(content.followup_timing.hour_start, i18n.language)}–${formatHourOfDay(content.followup_timing.hour_end, i18n.language)}`,
                 })}
               </p>
             </div>

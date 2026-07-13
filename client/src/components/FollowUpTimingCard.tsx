@@ -16,6 +16,7 @@ import ActivityForm from '@/components/ActivityForm.js';
 import type { ActivityFormValues } from '@/components/ActivityForm.js';
 import { createActivity, ACTIVITIES_QUERY_KEY } from '@/api/activities.js';
 import { resolveApiError } from '@/utils/apiError.js';
+import { formatHourOfDay } from '@/utils/formatHourOfDay.js';
 import type { FollowUpTimingSuggestion } from '@shared/schemas/followUpTimingSchema.js';
 
 interface FollowUpTimingCardProps {
@@ -37,24 +38,18 @@ function nextDateForDayOfWeek(dayOfWeek: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-function formatHour(hour: number): string {
-  const period = hour < 12 ? 'am' : 'pm';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}${period}`;
-}
-
 export default function FollowUpTimingCard({
   contactId,
   contactName,
   suggestion,
 }: FollowUpTimingCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const dayLabel = t(`followUpTiming.day.${suggestion.day_of_week}`);
-  const timeRange = `${formatHour(suggestion.hour_start)}–${formatHour(suggestion.hour_end)}`;
+  const timeRange = `${formatHourOfDay(suggestion.hour_start, i18n.language)}–${formatHourOfDay(suggestion.hour_end, i18n.language)}`;
 
   const scheduleMutation = useMutation({
     mutationFn: (values: ActivityFormValues) =>
