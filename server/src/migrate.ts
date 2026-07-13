@@ -8,17 +8,90 @@
  *   2. Fake-mark the remaining baseline-covered migrations so they are never
  *      re-executed (no-op when they are already recorded in pgmigrations).
  *   3. Run all remaining truly-pending migrations for real.
+ *
+ * The whole sequence is wrapped in a Postgres advisory lock (MINCRM-658) so that
+ * concurrent invocations — e.g. `server-e2e`'s boot-time runMigrations() racing
+ * a developer's `npm run e2e:setup` against the same database — serialize instead
+ * of interleaving. See docs/dev/migrations.md "Concurrency & Locking".
  */
 
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
+import { readdirSync } from 'fs';
 import { runner as migrationRunner } from 'node-pg-migrate';
+import pg from 'pg';
 import logger from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Absolute path to the migrations directory */
 export const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
+
+/**
+ * Advisory lock key for the migration sequence. Postgres advisory locks are
+ * keyed by a bigint; this is a fixed, arbitrary constant unique to migrations
+ * within this application (chosen so it does not collide with any other
+ * advisory lock usage — there is none elsewhere in this codebase as of
+ * MINCRM-658). Kept within Number.MAX_SAFE_INTEGER so pg can bind it as a
+ * plain JS number rather than needing BigInt parameter support.
+ * Session-scoped: held by one client connection for the lifetime of the
+ * migration run, released explicitly or on disconnect.
+ */
+const MIGRATION_LOCK_KEY = 658_136_001;
+
+/** How often to retry acquiring the migration lock while another process holds it. */
+const LOCK_POLL_INTERVAL_MS = 500;
+
+/** Total time to wait for the migration lock before failing fast. */
+const LOCK_WAIT_TIMEOUT_MS = 60_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Acquires the migration advisory lock, runs `fn`, then releases the lock.
+ * Polls `pg_try_advisory_lock` rather than blocking on `pg_advisory_lock` so a
+ * timeout can be enforced — a stuck or crashed lock holder fails loudly rather
+ * than hanging every subsequent server boot or `e2e:setup` invocation forever.
+ */
+export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promise<T>): Promise<T> {
+  const client = new pg.Client({ connectionString: databaseUrl });
+  await client.connect();
+
+  try {
+    const deadline = Date.now() + LOCK_WAIT_TIMEOUT_MS;
+    let acquired = false;
+
+    while (Date.now() < deadline) {
+      const { rows } = await client.query<{ pg_try_advisory_lock: boolean }>(
+        'SELECT pg_try_advisory_lock($1)',
+        [MIGRATION_LOCK_KEY],
+      );
+      acquired = rows[0].pg_try_advisory_lock;
+
+      if (acquired) {
+        break;
+      }
+
+      logger.info('Migration lock held by another process, waiting...');
+      await sleep(LOCK_POLL_INTERVAL_MS);
+    }
+
+    if (!acquired) {
+      throw new Error(
+        `Timed out after ${LOCK_WAIT_TIMEOUT_MS}ms waiting for migration lock — another migration run appears stuck. Investigate the other process before retrying.`,
+      );
+    }
+
+    return await fn();
+  } finally {
+    // Best-effort unlock; the lock is also released automatically when this
+    // session's connection closes, so a failed unlock here cannot leak it.
+    await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]).catch(() => {});
+    await client.end();
+  }
+}
 
 /**
  * Number of migrations (001-N) that 000_baseline.js was last regenerated to cover.
@@ -36,11 +109,35 @@ export const MIGRATIONS_DIR = resolve(__dirname, '../../db/migrations');
  */
 export const BASELINE_COVERED_MIGRATION_COUNT = 136;
 
+/** Matches the leading numeric prefix of a migration filename, e.g. "007" in "007_add_x.js". */
+const MIGRATION_FILENAME_PREFIX = /^(\d+)_/;
+
 /**
  * Count of migration files covered by 000_baseline. Used to bound the fake-mark
  * step so post-baseline migrations are not skipped.
+ *
+ * Validates BASELINE_COVERED_MIGRATION_COUNT against the migrations actually
+ * present on disk (MINCRM-658) rather than trusting the constant blindly: if
+ * two processes (e.g. a rebuilt Docker image vs. a stale one) have a different
+ * view of MIGRATIONS_DIR, a mismatch here means the fake-mark step's bound no
+ * longer matches reality, and running with it would silently mis-skip or
+ * mis-execute migrations. Fails fast with a clear error instead of that
+ * silent drift — the migration file whose number equals the constant must
+ * exist on disk.
  */
 export function countBaselineCoveredMigrations(): number {
+  const files = readdirSync(MIGRATIONS_DIR);
+  const hasBaselineCoveredFile = files.some((file) => {
+    const match = MIGRATION_FILENAME_PREFIX.exec(file);
+    return match !== null && Number(match[1]) === BASELINE_COVERED_MIGRATION_COUNT;
+  });
+
+  if (!hasBaselineCoveredFile) {
+    throw new Error(
+      `BASELINE_COVERED_MIGRATION_COUNT (${BASELINE_COVERED_MIGRATION_COUNT}) does not match any migration file in ${MIGRATIONS_DIR} — the migrations directory view is inconsistent with server/src/migrate.ts. Rebuild so both agree before running migrations.`,
+    );
+  }
+
   return BASELINE_COVERED_MIGRATION_COUNT;
 }
 
@@ -58,15 +155,17 @@ export async function runMigrations(): Promise<void> {
     log: (msg: string) => logger.debug(msg),
   };
 
-  // Step 1: apply 000_baseline (no-op if already applied).
-  await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
+  await withMigrationLock(databaseUrl, async () => {
+    // Step 1: apply 000_baseline (no-op if already applied).
+    await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
 
-  // Step 2: fake-mark all baseline-covered migrations (no-op if already recorded).
-  const baselineCoveredCount = countBaselineCoveredMigrations();
-  await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
+    // Step 2: fake-mark all baseline-covered migrations (no-op if already recorded).
+    const baselineCoveredCount = countBaselineCoveredMigrations();
+    await migrationRunner({ ...SHARED_OPTIONS, fake: true, count: baselineCoveredCount });
 
-  // Step 3: run any truly-pending migrations (post-baseline) for real.
-  await migrationRunner(SHARED_OPTIONS);
+    // Step 3: run any truly-pending migrations (post-baseline) for real.
+    await migrationRunner(SHARED_OPTIONS);
+  });
 
   logger.info('Migrations complete.');
 }
