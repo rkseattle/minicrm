@@ -1,4 +1,4 @@
-# minicrm_test
+# minicrm
 
 ## Tables
 
@@ -17,7 +17,6 @@
 | [public.deals](public.deals.md) | 17 |  | BASE TABLE |
 | [public.activities](public.activities.md) | 17 |  | BASE TABLE |
 | [public.automation_rules](public.automation_rules.md) | 11 |  | BASE TABLE |
-| [public.email_templates](public.email_templates.md) | 10 |  | BASE TABLE |
 | [public.automation_rule_logs](public.automation_rule_logs.md) | 8 |  | BASE TABLE |
 | [public.attachments](public.attachments.md) | 9 | File attachment metadata for CRM entity records. record_type + record_id form a polymorphic reference — no FK constraint exists because PostgreSQL FKs cannot span multiple parent tables. Valid record_type values: 'contact', 'account', 'deal', 'lead' (extended in migration 047). Orphan cleanup is the application's responsibility: rows whose record_id no longer exists in the referenced entity table should be deleted when the parent is removed. The physical file (storage_key) must be deleted from object storage before or alongside the row. See CLAUDE.md — Polymorphic FK Pattern. (MINCRM-510) | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 12 | Append-only audit trail, partitioned monthly by created_at (MINCRM-521). Valid record_type values: contact, account, deal, lead, activity, user, system_settings, custom_report, sequence, sequence_enrollment, feature_flag, ai_settings. Valid event_type values: created, updated, deleted, login, logout, password_changed, role_changed, deactivated, reactivated, ownership_reassigned, merged, note_created, note_updated, note_deleted, note_visibility_changed, gdpr_erasure, mfa_enabled, mfa_disabled, sso_login, sso_provisioned, sso_linked, sso_unlinked. Enforced at service layer via AuditRecordType and AuditEventType TypeScript unions in server/src/services/auditService.ts. Partition naming: audit_log_y{YYYY}m{MM}. Default partition: audit_log_default. Future partitions created by auditPartitionService.ensureAuditLogPartitions(). | BASE TABLE |
@@ -34,7 +33,6 @@
 | [public.contact_tags](public.contact_tags.md) | 3 |  | BASE TABLE |
 | [public.account_tags](public.account_tags.md) | 3 |  | BASE TABLE |
 | [public.deal_tags](public.deal_tags.md) | 3 |  | BASE TABLE |
-| [public.lead_tags](public.lead_tags.md) | 3 |  | BASE TABLE |
 | [public.deal_contacts](public.deal_contacts.md) | 3 |  | BASE TABLE |
 | [public.custom_reports](public.custom_reports.md) | 8 |  | BASE TABLE |
 | [public.sales_sequences](public.sales_sequences.md) | 8 |  | BASE TABLE |
@@ -43,16 +41,10 @@
 | [public.sequence_enrollment_logs](public.sequence_enrollment_logs.md) | 7 |  | BASE TABLE |
 | [public.feature_flags](public.feature_flags.md) | 13 |  | BASE TABLE |
 | [public.feature_flag_usage](public.feature_flag_usage.md) | 3 |  | BASE TABLE |
-| [public.feature_flag_beta_users](public.feature_flag_beta_users.md) | 5 |  | BASE TABLE |
-| [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) | 7 |  | BASE TABLE |
 | [public.ai_configuration](public.ai_configuration.md) | 24 |  | BASE TABLE |
 | [public.smtp_configuration](public.smtp_configuration.md) | 8 |  | BASE TABLE |
 | [public.ai_token_budgets](public.ai_token_budgets.md) | 5 |  | BASE TABLE |
 | [public.ai_token_usage](public.ai_token_usage.md) | 5 |  | BASE TABLE |
-| [public.ai_sessions](public.ai_sessions.md) | 5 |  | BASE TABLE |
-| [public.ai_messages](public.ai_messages.md) | 8 |  | BASE TABLE |
-| [public.user_ai_context](public.user_ai_context.md) | 6 |  | BASE TABLE |
-| [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 10 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
 | [public.currency_rate_history](public.currency_rate_history.md) | 4 |  | BASE TABLE |
 | [public.teams](public.teams.md) | 7 |  | BASE TABLE |
 | [public.team_memberships](public.team_memberships.md) | 3 |  | BASE TABLE |
@@ -62,8 +54,16 @@
 | [public.user_custom_roles](public.user_custom_roles.md) | 2 | Assignment of custom roles to users (MINCRM-542). Effective capabilities are the union of all capabilities from all assigned roles. | BASE TABLE |
 | [public.scim_tokens](public.scim_tokens.md) | 5 |  | BASE TABLE |
 | [public.scim_group_role_mappings](public.scim_group_role_mappings.md) | 5 |  | BASE TABLE |
+| [public.feature_flag_beta_users](public.feature_flag_beta_users.md) | 5 |  | BASE TABLE |
+| [public.feature_flag_user_overrides](public.feature_flag_user_overrides.md) | 7 |  | BASE TABLE |
 | [public.feature_flag_groups](public.feature_flag_groups.md) | 7 |  | BASE TABLE |
 | [public.feature_flag_group_beta_users](public.feature_flag_group_beta_users.md) | 4 |  | BASE TABLE |
+| [public.ai_sessions](public.ai_sessions.md) | 5 |  | BASE TABLE |
+| [public.ai_messages](public.ai_messages.md) | 8 |  | BASE TABLE |
+| [public.email_templates](public.email_templates.md) | 10 |  | BASE TABLE |
+| [public.user_ai_context](public.user_ai_context.md) | 6 | Per-user key/value context entries injected into every Claude system prompt as a personalisation preamble. (MINCRM-427) | BASE TABLE |
+| [public.lead_tags](public.lead_tags.md) | 3 |  | BASE TABLE |
+| [public.ai_gdpr_cascade_log](public.ai_gdpr_cascade_log.md) | 10 | Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446) | BASE TABLE |
 | [public.ai_token_usage_daily](public.ai_token_usage_daily.md) | 7 | Per-day, per-feature token usage for the AI usage/cost dashboard. Additive to ai_token_usage, which remains the source of truth for monthly budget enforcement. (MINCRM-459) | BASE TABLE |
 | [public.ai_field_exclusions](public.ai_field_exclusions.md) | 6 | Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461) | BASE TABLE |
 | [public.deal_win_loss_insights](public.deal_win_loss_insights.md) | 9 | Cached nightly AI win/loss pattern analysis results (MINCRM-464). Fully replaced on each run of analyzeWinLossPatterns — not appended. | BASE TABLE |
@@ -168,7 +168,6 @@ erDiagram
 "public.activities" }o--o| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.automation_rules" }o--|| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT"
-"public.email_templates" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.automation_rule_logs" }o--|| "public.automation_rules" : "FOREIGN KEY (rule_id) REFERENCES automation_rules(id) ON DELETE CASCADE"
 "public.attachments" }o--o| "public.users" : "FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.overdue_task_notifications" |o--|| "public.activities" : "FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE"
@@ -188,8 +187,6 @@ erDiagram
 "public.account_tags" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.deal_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
 "public.deal_tags" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
-"public.lead_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-"public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
 "public.deal_contacts" }o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
 "public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.custom_reports" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
@@ -205,20 +202,10 @@ erDiagram
 "public.feature_flags" }o--o| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE SET NULL"
 "public.feature_flag_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_usage" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.feature_flag_user_overrides" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (dpa_acknowledged_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_configuration" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_budgets" }o--o| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.ai_token_usage" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_messages" }o--|| "public.ai_sessions" : "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE"
-"public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 "public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
@@ -229,10 +216,23 @@ erDiagram
 "public.user_custom_roles" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE CASCADE"
 "public.scim_tokens" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.scim_group_role_mappings" }o--|| "public.custom_roles" : "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT"
+"public.feature_flag_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_beta_users" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.feature_flag_user_overrides" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.feature_flag_user_overrides" }o--|| "public.feature_flags" : "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
 "public.feature_flag_groups" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_group_beta_users" }o--o| "public.users" : "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.feature_flag_group_beta_users" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.feature_flag_group_beta_users" }o--|| "public.feature_flag_groups" : "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
+"public.ai_sessions" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.ai_messages" }o--|| "public.ai_sessions" : "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE"
+"public.email_templates" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.user_ai_context" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.lead_tags" }o--|| "public.tags" : "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+"public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.ai_gdpr_cascade_log" }o--o| "public.users" : "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.ai_token_usage_daily" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (dismissed_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.contact_champion_blocker_signals" }o--o| "public.users" : "FOREIGN KEY (overridden_by) REFERENCES users(id) ON DELETE SET NULL"
@@ -445,18 +445,6 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
 }
-"public.email_templates" {
-  uuid id ""
-  varchar_200_ name ""
-  varchar_50_ category ""
-  varchar_500_ subject ""
-  text body ""
-  jsonb merge_tags ""
-  boolean enabled ""
-  uuid created_by FK ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
 "public.automation_rule_logs" {
   uuid id ""
   uuid rule_id FK ""
@@ -489,8 +477,8 @@ erDiagram
   text new_value ""
   uuid changed_by_id ""
   text changed_by_name ""
-  varchar_20_ source ""
   timestamp_with_time_zone created_at ""
+  varchar_20_ source ""
 }
 "public.overdue_task_notifications" {
   uuid activity_id FK ""
@@ -522,9 +510,9 @@ erDiagram
   varchar_16_ field_type ""
   jsonb options ""
   integer sort_order ""
-  boolean pii_excluded ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  boolean pii_excluded ""
 }
 "public.custom_field_values" {
   uuid id ""
@@ -604,11 +592,6 @@ erDiagram
   uuid tag_id FK ""
   timestamp_with_time_zone created_at ""
 }
-"public.lead_tags" {
-  uuid lead_id FK ""
-  uuid tag_id FK ""
-  timestamp_with_time_zone created_at ""
-}
 "public.deal_contacts" {
   uuid deal_id FK ""
   uuid contact_id FK ""
@@ -672,35 +655,19 @@ erDiagram
   text description ""
   varchar_50_ category ""
   boolean enabled ""
-  jsonb role_overrides "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
-  timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
-  smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
-  jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
+  jsonb role_overrides "Transitional column: per-role enable/disable overrides. Keys must be valid role names (admin, rep), values are booleans. Will be superseded by MINCRM-487 targeting tables and dropped once that epic is live."
   uuid updated_by FK ""
   timestamp_with_time_zone updated_at ""
   boolean system_flag ""
+  timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
+  smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
+  jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
   varchar_100_ group_key FK ""
 }
 "public.feature_flag_usage" {
   varchar_100_ flag_key FK ""
   uuid user_id FK ""
   timestamp_with_time_zone used_at ""
-}
-"public.feature_flag_beta_users" {
-  uuid id ""
-  varchar_100_ flag_key FK ""
-  uuid user_id FK ""
-  uuid added_by FK ""
-  timestamp_with_time_zone added_at ""
-}
-"public.feature_flag_user_overrides" {
-  uuid id ""
-  varchar_100_ flag_key FK ""
-  uuid user_id FK ""
-  varchar_20_ override ""
-  text reason ""
-  uuid added_by FK ""
-  timestamp_with_time_zone added_at ""
 }
 "public.ai_configuration" {
   boolean singleton ""
@@ -751,43 +718,6 @@ erDiagram
   bigint input_tokens ""
   bigint output_tokens ""
   timestamp_with_time_zone updated_at ""
-}
-"public.ai_sessions" {
-  uuid id ""
-  uuid user_id FK ""
-  varchar_255_ name ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.ai_messages" {
-  uuid id ""
-  uuid session_id FK ""
-  varchar_20_ role ""
-  text content ""
-  jsonb tool_results ""
-  jsonb pending_action ""
-  jsonb context_proposal ""
-  timestamp_with_time_zone created_at ""
-}
-"public.user_ai_context" {
-  uuid id ""
-  uuid user_id FK ""
-  varchar_100_ key ""
-  varchar_500_ value ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.ai_gdpr_cascade_log" {
-  uuid id ""
-  uuid contact_id ""
-  timestamp_with_time_zone triggered_at ""
-  uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
-  integer messages_redacted ""
-  integer context_entries_removed ""
-  varchar_20_ status ""
-  text error_detail ""
-  text original_name ""
-  text original_email ""
 }
 "public.currency_rate_history" {
   uuid id ""
@@ -845,6 +775,22 @@ erDiagram
   uuid role_id FK ""
   timestamp_with_time_zone created_at ""
 }
+"public.feature_flag_beta_users" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
+"public.feature_flag_user_overrides" {
+  uuid id ""
+  varchar_100_ flag_key FK ""
+  uuid user_id FK ""
+  varchar_20_ override ""
+  text reason ""
+  uuid added_by FK ""
+  timestamp_with_time_zone added_at ""
+}
 "public.feature_flag_groups" {
   varchar_100_ group_key ""
   varchar_100_ label ""
@@ -859,6 +805,60 @@ erDiagram
   uuid user_id FK ""
   uuid added_by FK ""
   timestamp_with_time_zone added_at ""
+}
+"public.ai_sessions" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_255_ name ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.ai_messages" {
+  uuid id ""
+  uuid session_id FK ""
+  varchar_20_ role ""
+  text content ""
+  timestamp_with_time_zone created_at ""
+  jsonb tool_results "Structured tool call results for native CRM result rendering. Array of {toolName, input, output} objects. NULL for user messages and assistant messages that did not invoke tools. (MINCRM-423, MINCRM-431)"
+  jsonb pending_action "Pending mutation action awaiting user confirmation. Object with {operation, entityType, entityId?, entityName?, fields, isBulk, bulkCount?, bulkSample?, isBulkDelete?, summary}. NULL when no confirmation is pending. (MINCRM-425, MINCRM-426)"
+  jsonb context_proposal "AI-proposed context entry awaiting user accept/dismiss. Object with {key, value, reason}. NULL when no proposal is present. (MINCRM-429, MINCRM-430)"
+}
+"public.email_templates" {
+  uuid id ""
+  varchar_200_ name ""
+  varchar_50_ category ""
+  varchar_500_ subject ""
+  text body ""
+  jsonb merge_tags ""
+  boolean enabled ""
+  uuid created_by FK ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.user_ai_context" {
+  uuid id ""
+  uuid user_id FK ""
+  varchar_100_ key "Short label for this preference (e.g. #quot;a while#quot;, #quot;high-value#quot;). Max 100 chars."
+  varchar_500_ value "Plain-text definition of the preference (e.g. #quot;30+ days without activity#quot;). Max 500 chars."
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+}
+"public.lead_tags" {
+  uuid lead_id FK ""
+  uuid tag_id FK ""
+  timestamp_with_time_zone created_at ""
+}
+"public.ai_gdpr_cascade_log" {
+  uuid id ""
+  uuid contact_id ""
+  timestamp_with_time_zone triggered_at ""
+  uuid triggered_by FK "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
+  integer messages_redacted ""
+  integer context_entries_removed ""
+  varchar_20_ status ""
+  text error_detail ""
+  text original_name ""
+  text original_email ""
 }
 "public.ai_token_usage_daily" {
   uuid id ""

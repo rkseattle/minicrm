@@ -1,25 +1,25 @@
 /**
- * Migration 000: Schema baseline — squash of migrations 001–136 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446)
+ * Migration 000: Schema baseline — squash of migrations 001–152 (MINCRM-528, MINCRM-542, MINCRM-540, MINCRM-541, MINCRM-488, MINCRM-489, MINCRM-490, MINCRM-492, MINCRM-447, MINCRM-446, MINCRM-459, MINCRM-461, MINCRM-464, MINCRM-466, MINCRM-469, MINCRM-471, MINCRM-473, MINCRM-441, MINCRM-465, MINCRM-468, MINCRM-472, MINCRM-467, MINCRM-470, MINCRM-658)
  *
  * PURPOSE
  * -------
- * Captures the full schema as it exists after all 136 migrations (001–136), so
+ * Captures the full schema as it exists after all 152 migrations (001–152), so
  * fresh environments can bootstrap with a single `migrate:fresh` run instead of
- * replaying all 136 individual migrations.
+ * replaying all 152 individual migrations.
  *
  * FRESH ENVIRONMENT SETUP
  * -----------------------
- * Do NOT use `npm run migrate` on a brand-new database — it will run all 136
- * files (000_baseline + 001–135) and fail because 001–135 re-create objects
+ * Do NOT use `npm run migrate` on a brand-new database — it will run all 152
+ * files (000_baseline + 001–151) and fail because 001–151 re-create objects
  * that 000_baseline already created. Use the two-step bootstrap instead:
  *
  *   npm run migrate:fresh --workspace=minicrm-server
  *
  * This script:
  *   1. Runs ONLY `000_baseline` (count: 1) to create the full schema
- *   2. Marks 001–136 as applied via node-pg-migrate's `--fake` mode so they
+ *   2. Marks 001–152 as applied via node-pg-migrate's `--fake` mode so they
  *      are never executed
- *   3. Future migrations (137+) run normally via `npm run migrate`
+ *   3. Future migrations (153+) run normally via `npm run migrate`
  *
  * EXISTING DEPLOYMENTS
  * --------------------
@@ -42,11 +42,11 @@
  *
  * REGENERATING THIS FILE
  * ----------------------
- * See CLAUDE.md → "Migration Baseline Squash" for the documented process.
- * Generated from the live schema using:
+ * See docs/dev/migrations.md → "Regenerating the Baseline" for the documented
+ * process. Generated from the live schema using:
  *   docker exec minicrm-db pg_dump --username=minicrm --dbname=minicrm \
  *     --schema-only --no-owner --no-acl --schema=public
- * with migrations 001–136 fully applied.
+ * with migrations 001–152 fully applied.
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -964,12 +964,38 @@ exports.up = (pgm) => {
       ai_session_retention_days        integer DEFAULT 90 NOT NULL
                                          CONSTRAINT ai_configuration_session_retention_min
                                            CHECK (ai_session_retention_days >= 30),
+      ai_input_cost_per_million_cents  integer NOT NULL DEFAULT 300
+                                         CONSTRAINT ai_configuration_input_cost_nonnegative
+                                           CHECK (ai_input_cost_per_million_cents >= 0),
+      ai_output_cost_per_million_cents integer NOT NULL DEFAULT 1500
+                                         CONSTRAINT ai_configuration_output_cost_nonnegative
+                                           CHECK (ai_output_cost_per_million_cents >= 0),
+      win_loss_min_closed_deals        integer NOT NULL DEFAULT 20
+                                         CONSTRAINT ai_configuration_win_loss_min_closed_deals_positive
+                                           CHECK (win_loss_min_closed_deals > 0),
+      win_loss_min_sample_size         integer NOT NULL DEFAULT 5
+                                         CONSTRAINT ai_configuration_win_loss_min_sample_size_positive
+                                           CHECK (win_loss_min_sample_size > 0),
+      champion_blocker_deal_value_threshold numeric(15,2) NOT NULL DEFAULT 10000
+                                         CONSTRAINT ai_configuration_champion_blocker_threshold_nonnegative
+                                           CHECK (champion_blocker_deal_value_threshold >= 0),
+      churn_expansion_confidence_threshold numeric(3,2) NOT NULL DEFAULT 0.70
+                                         CONSTRAINT ai_configuration_churn_expansion_confidence_threshold_range
+                                           CHECK (churn_expansion_confidence_threshold BETWEEN 0 AND 1),
+      web_search_enabled               boolean NOT NULL DEFAULT false,
       CONSTRAINT ai_configuration_singleton CHECK (singleton),
       CONSTRAINT ai_configuration_singleton_unique UNIQUE (singleton)
     )
   `);
   pgm.sql(`COMMENT ON COLUMN public.ai_configuration.api_key_key_version IS 'Key version used to encrypt api_key_encrypted. References ENCRYPTION_KEY_V<n> env var (MINCRM-519)'`);
   pgm.sql(`COMMENT ON COLUMN public.ai_configuration.ai_session_retention_days IS 'Days to retain ai_sessions/ai_messages before nightly hard-delete purge. Minimum 30, default 90. user_ai_context is NOT subject to this policy. (MINCRM-447)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.ai_input_cost_per_million_cents IS 'Admin-configured cost rate in cents per 1,000,000 input tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.ai_output_cost_per_million_cents IS 'Admin-configured cost rate in cents per 1,000,000 output tokens, used to estimate spend on the AI usage dashboard. (MINCRM-459)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.win_loss_min_closed_deals IS 'Minimum total closed (won+lost) deals required before win/loss patterns are surfaced. (MINCRM-464)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.win_loss_min_sample_size IS 'Minimum supporting deal count for a pattern to be surfaced (confidence threshold). (MINCRM-464)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.champion_blocker_deal_value_threshold IS 'Deal value above which the single-threaded-risk warning applies when only one contact is engaged. (MINCRM-466)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.churn_expansion_confidence_threshold IS 'Minimum confidence for a churn/expansion signal to be surfaced; lower-confidence signals are suppressed. (MINCRM-469)'`);
+  pgm.sql(`COMMENT ON COLUMN public.ai_configuration.web_search_enabled IS 'Admin toggle for the optional news-hook section of AI meeting briefs. (MINCRM-465)'`);
 
   // smtp_configuration — singleton SMTP config (MINCRM-519 key versioning)
   pgm.sql(`
@@ -1471,7 +1497,8 @@ exports.up = (pgm) => {
       ('onboarding_completed',        'false', now()),
       ('require_mfa',                 'false', now()),
       ('default_currency',            'USD',   now()),
-      ('pipeline_stages_reviewed',    'false', now())
+      ('pipeline_stages_reviewed',    'false', now()),
+      ('default_timezone',            'UTC',   now())
     ON CONFLICT (key) DO NOTHING
   `);
 
@@ -1530,7 +1557,18 @@ exports.up = (pgm) => {
       ('ai_duplicate_explanation', 'Duplicate Explanation',       'Provides a natural language explanation of why two records were flagged as potential duplicates.',       'AI', true, '{"admin":true,"rep":true}', true),
       ('ai_lead_score_narrative',  'Lead Score Narrative',        'Generates a plain-English explanation of the factors contributing to a lead score.',                    'AI', true, '{"admin":true,"rep":true}', true),
       ('ai_deal_health_check',     'Deal Health Check',           'Assesses overall deal health and surfaces risk signals using AI analysis of deal activity.',             'AI', true, '{"admin":true,"rep":true}', true),
-      ('ai_stage_advancement',     'Stage Advancement Suggestion','Suggests when a deal is ready to advance to the next pipeline stage based on activity signals.',         'AI', true, '{"admin":true,"rep":true}', true)
+      ('ai_stage_advancement',     'Stage Advancement Suggestion','Suggests when a deal is ready to advance to the next pipeline stage based on activity signals.',         'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_win_loss_insights',            'Win/Loss Pattern Insights',        'Nightly AI analysis of closed deals surfacing patterns that correlate with winning and losing.',                                     'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_champion_blocker_detection',   'Champion/Blocker Detection',       'AI-inferred champion and blocker signals detected from activity notes, shown as badges on contacts.',                              'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_churn_expansion_detection',    'Churn/Expansion Detection',        'Nightly AI monitoring of closed-won accounts for churn risk and expansion opportunity signals.',                                    'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_objection_pattern_matching',   'Objection Pattern Matching',       'AI classification of objections in activity notes, with precedent matching against how similar objections were handled in past won deals.', 'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_proposal_draft_generation',    'Proposal Draft Generation',        'AI-generated first-draft proposal documents from a deal, editable before export as Markdown or DOCX.',                             'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_lead_scoring',                 'Lead Scoring',                     'Computes a rule-based quality score for leads, shown on the Lead detail page.',                                                      'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_meeting_brief',                'AI Meeting Brief',                 'Generates an AI pre-meeting brief for upcoming call and meeting activities.',                                                       'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_warm_intro_path',              'AI Warm Introduction Paths',       'Surfaces warm introduction paths through a rep''s contact network on the Contact detail view and via NLI queries.',                'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_sentiment_tracking',           'AI Sentiment Tracking',            'Scores activity notes and call summaries for sentiment and shows trend indicators on Contact and Account detail views.',              'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_relationship_health_score',    'AI Relationship Health Score',     'Nightly AI-computed relationship health score per account, shown as a badge with trend history and single-threaded risk flag.',           'AI', true, '{"admin":true,"rep":true}', true),
+      ('ai_followup_timing_suggestions',  'AI Follow-Up Timing Suggestions',  'Suggests the optimal day/time to follow up with a contact based on historical engagement patterns.',                              'AI', true, '{"admin":true,"rep":true}', true)
     ON CONFLICT (flag_key) DO NOTHING
   `);
 
@@ -1573,7 +1611,8 @@ exports.up = (pgm) => {
     END
     $$
   `);
-  // org_visibility_settings (migration 105 — MINCRM-538)
+  // org_visibility_settings (migration 105 — MINCRM-538; object_type widened to
+  // include 'account' by migration 150 — MINCRM-472)
   pgm.sql(`
     CREATE TABLE IF NOT EXISTS public.org_visibility_settings (
       object_type  text        NOT NULL,
@@ -1584,12 +1623,12 @@ exports.up = (pgm) => {
       CONSTRAINT org_visibility_settings_policy_check
         CHECK (policy IN ('private', 'team', 'org')),
       CONSTRAINT org_visibility_settings_object_type_check
-        CHECK (object_type IN ('contact', 'deal', 'activity'))
+        CHECK (object_type IN ('contact', 'deal', 'activity', 'account'))
     )
   `);
   pgm.sql(`
     INSERT INTO public.org_visibility_settings (object_type, policy)
-    VALUES ('contact', 'org'), ('deal', 'org'), ('activity', 'org')
+    VALUES ('contact', 'org'), ('deal', 'org'), ('activity', 'org'), ('account', 'org')
     ON CONFLICT (object_type) DO NOTHING
   `);
 
@@ -1804,6 +1843,288 @@ exports.up = (pgm) => {
   pgm.sql(`
     CREATE INDEX IF NOT EXISTS feature_flags_group_key_index ON public.feature_flags USING btree (group_key)
   `);
+
+  // -------------------------------------------------------------------------
+  // AI feature tables (migrations 138-152) — see docs/dev/migrations.md for
+  // the individual migration files this section squashes.
+  // -------------------------------------------------------------------------
+
+  // ai_token_usage_daily (migration 138 — MINCRM-459)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.ai_token_usage_daily (
+      id             uuid DEFAULT gen_random_uuid() NOT NULL,
+      user_id        uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      usage_date     date NOT NULL,
+      feature        text NOT NULL DEFAULT 'nli_chat',
+      input_tokens   bigint NOT NULL DEFAULT 0,
+      output_tokens  bigint NOT NULL DEFAULT 0,
+      updated_at     timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT ai_token_usage_daily_pkey PRIMARY KEY (id)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.ai_token_usage_daily IS 'Per-day, per-feature token usage for the AI usage/cost dashboard. Additive to ai_token_usage, which remains the source of truth for monthly budget enforcement. (MINCRM-459)'`);
+  pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS ai_token_usage_daily_user_date_feature_idx ON public.ai_token_usage_daily USING btree (user_id, usage_date, feature)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_daily_usage_date_idx ON public.ai_token_usage_daily USING btree (usage_date)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS ai_token_usage_daily_feature_idx ON public.ai_token_usage_daily USING btree (feature)`);
+
+  // ai_field_exclusions (migration 139 — MINCRM-461)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.ai_field_exclusions (
+      id           uuid DEFAULT gen_random_uuid() NOT NULL,
+      entity_type  varchar(16) NOT NULL,
+      field_name   text NOT NULL,
+      excluded     boolean NOT NULL DEFAULT false,
+      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at   timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT ai_field_exclusions_pkey PRIMARY KEY (id),
+      CONSTRAINT ai_field_exclusions_entity_type_check CHECK (((entity_type)::text = ANY ((ARRAY['contact'::character varying, 'account'::character varying, 'deal'::character varying])::text[])))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.ai_field_exclusions IS 'Admin-configurable AI payload exclusion toggles for standard entity fields. Immutable defaults live in code (ALWAYS_EXCLUDED_FIELDS), not here. (MINCRM-461)'`);
+  pgm.sql(`CREATE UNIQUE INDEX IF NOT EXISTS ai_field_exclusions_entity_field_idx ON public.ai_field_exclusions USING btree (entity_type, field_name)`);
+
+  // deal_win_loss_insights (migration 140 — MINCRM-464)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.deal_win_loss_insights (
+      id                uuid DEFAULT gen_random_uuid() NOT NULL,
+      signal_type       text NOT NULL,
+      observation       text NOT NULL,
+      win_rate_with     numeric(5,2) NOT NULL,
+      win_rate_without  numeric(5,2) NOT NULL,
+      sample_size       integer NOT NULL,
+      is_win_pattern    boolean NOT NULL,
+      supporting_deal_ids uuid[] NOT NULL DEFAULT '{}',
+      generated_at      timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT deal_win_loss_insights_pkey PRIMARY KEY (id),
+      CONSTRAINT deal_win_loss_insights_sample_size_positive CHECK (sample_size >= 0)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.deal_win_loss_insights IS 'Cached nightly AI win/loss pattern analysis results (MINCRM-464). Fully replaced on each run of analyzeWinLossPatterns — not appended.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS deal_win_loss_insights_generated_at_idx ON public.deal_win_loss_insights USING btree (generated_at)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS deal_win_loss_insights_is_win_pattern_idx ON public.deal_win_loss_insights USING btree (is_win_pattern)`);
+
+  // contact_champion_blocker_signals (migration 141 — MINCRM-466)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.contact_champion_blocker_signals (
+      id                    uuid DEFAULT gen_random_uuid() NOT NULL,
+      contact_id            uuid NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+      status                text NOT NULL DEFAULT 'neutral',
+      confidence            numeric(3,2) NOT NULL DEFAULT 0,
+      contributing_signals  jsonb NOT NULL DEFAULT '[]',
+      last_activity_id      uuid REFERENCES public.activities(id) ON DELETE SET NULL,
+      override_status       text,
+      override_reason       text,
+      overridden_by         uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      overridden_at         timestamp with time zone,
+      dismissed_by          uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      dismissed_at          timestamp with time zone,
+      created_at            timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at            timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT contact_champion_blocker_signals_pkey PRIMARY KEY (id),
+      CONSTRAINT contact_champion_blocker_signals_contact_id_unique UNIQUE (contact_id),
+      CONSTRAINT contact_champion_blocker_signals_status_check
+        CHECK (status IN ('champion', 'likely_champion', 'neutral', 'likely_blocker', 'blocker')),
+      CONSTRAINT contact_champion_blocker_signals_override_status_check
+        CHECK (override_status IS NULL OR override_status IN ('champion', 'likely_champion', 'neutral', 'likely_blocker', 'blocker'))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.contact_champion_blocker_signals IS 'Per-contact AI champion/blocker classification (MINCRM-466). One row per contact — replaced/updated after each new activity, not appended.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS contact_champion_blocker_signals_status_idx ON public.contact_champion_blocker_signals USING btree (status)`);
+
+  // account_churn_expansion_signals + notifications (migration 142 — MINCRM-469)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.account_churn_expansion_signals (
+      id                    uuid DEFAULT gen_random_uuid() NOT NULL,
+      account_id            uuid NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+      signal_type           text NOT NULL,
+      confidence            numeric(3,2) NOT NULL DEFAULT 0,
+      contributing_factors  jsonb NOT NULL DEFAULT '[]',
+      detected_at           timestamp with time zone DEFAULT now() NOT NULL,
+      cleared_at            timestamp with time zone,
+      CONSTRAINT account_churn_expansion_signals_pkey PRIMARY KEY (id),
+      CONSTRAINT account_churn_expansion_signals_signal_type_check
+        CHECK (signal_type IN ('churn_risk', 'expansion')),
+      CONSTRAINT account_churn_expansion_signals_confidence_range
+        CHECK (confidence BETWEEN 0 AND 1)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.account_churn_expansion_signals IS 'Nightly AI churn/expansion signals per closed-won account (MINCRM-469). A new row is inserted per detection run; cleared_at is set (not deleted) when contradicted by new positive activity.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS account_churn_expansion_signals_account_id_idx ON public.account_churn_expansion_signals USING btree (account_id)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS account_churn_expansion_signals_active_idx ON public.account_churn_expansion_signals USING btree (signal_type) WHERE cleared_at IS NULL`);
+
+  // Prevents duplicate active churn/expansion signals per account (migration 145 — MINCRM-469)
+  pgm.sql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS account_churn_expansion_signals_one_active_per_type
+      ON public.account_churn_expansion_signals USING btree (account_id, signal_type)
+      WHERE cleared_at IS NULL
+  `);
+  pgm.sql(`COMMENT ON INDEX public.account_churn_expansion_signals_one_active_per_type IS 'At most one active (cleared_at IS NULL) signal per account per signal_type — guards against overlapping nightly-job runs racing to insert duplicates. (MINCRM-469)'`);
+
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.notifications (
+      id           uuid DEFAULT gen_random_uuid() NOT NULL,
+      user_id      uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      type         text NOT NULL,
+      title        text NOT NULL,
+      body         text,
+      link_path    text,
+      read_at      timestamp with time zone,
+      created_at   timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT notifications_pkey PRIMARY KEY (id)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.notifications IS 'Minimal in-app notification feed (MINCRM-469). type is free text (not a DB enum) so new notification-producing features can start writing rows without a migration, same convention as ai_token_usage_daily.feature.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS notifications_user_id_created_at_idx ON public.notifications USING btree (user_id, created_at DESC)`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS notifications_user_id_unread_idx ON public.notifications USING btree (user_id) WHERE read_at IS NULL`);
+
+  // activity_objection_signals (migration 143 — MINCRM-471)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.activity_objection_signals (
+      id            uuid DEFAULT gen_random_uuid() NOT NULL,
+      activity_id   uuid NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
+      category      text NOT NULL,
+      classified_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT activity_objection_signals_pkey PRIMARY KEY (id),
+      CONSTRAINT activity_objection_signals_activity_id_unique UNIQUE (activity_id),
+      CONSTRAINT activity_objection_signals_category_check
+        CHECK (category IN ('Price', 'Timing', 'Competitor', 'Product Fit', 'Authority', 'Risk', 'Other'))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.activity_objection_signals IS 'AI objection classification per activity (MINCRM-471). One row per classified activity — classification runs on-demand, not pre-computed, so this table is populated lazily as reps view objection-logged activities.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS activity_objection_signals_category_idx ON public.activity_objection_signals USING btree (category)`);
+
+  // activity_meeting_briefs (migration 147 — MINCRM-465)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.activity_meeting_briefs (
+      id             uuid DEFAULT gen_random_uuid() NOT NULL,
+      activity_id    uuid NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
+      brief_json     jsonb NOT NULL,
+      generated_by   uuid NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+      generated_at   timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT activity_meeting_briefs_pkey PRIMARY KEY (id),
+      CONSTRAINT activity_meeting_briefs_activity_id_unique UNIQUE (activity_id)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.activity_meeting_briefs IS 'Most recently generated AI pre-meeting brief per activity (MINCRM-465). One row per activity — replaced on regenerate, not appended.'`);
+
+  // activity_sentiment_scores (migration 149 — MINCRM-472)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.activity_sentiment_scores (
+      id                      uuid DEFAULT gen_random_uuid() NOT NULL,
+      activity_id             uuid NOT NULL REFERENCES public.activities(id) ON DELETE CASCADE,
+      sentiment               text NOT NULL,
+      confidence              numeric(3,2) NOT NULL DEFAULT 0,
+      flagged_inaccurate_by   uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      flagged_inaccurate_at   timestamp with time zone,
+      created_at              timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at              timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT activity_sentiment_scores_pkey PRIMARY KEY (id),
+      CONSTRAINT activity_sentiment_scores_activity_id_unique UNIQUE (activity_id),
+      CONSTRAINT activity_sentiment_scores_sentiment_check
+        CHECK (sentiment IN ('positive', 'neutral', 'negative'))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.activity_sentiment_scores IS 'Per-activity AI sentiment classification (MINCRM-472). One row per activity, scored asynchronously after save.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS activity_sentiment_scores_activity_id_idx ON public.activity_sentiment_scores USING btree (activity_id)`);
+
+  // account_health_scoring_config / account_health_scores / account_health_score_history (migration 151 — MINCRM-467)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.account_health_scoring_config (
+      id                              boolean NOT NULL DEFAULT true,
+      frequency_weight                numeric(4,3) NOT NULL DEFAULT 0.250,
+      recency_weight                  numeric(4,3) NOT NULL DEFAULT 0.250,
+      seniority_weight                numeric(4,3) NOT NULL DEFAULT 0.150,
+      sentiment_weight                numeric(4,3) NOT NULL DEFAULT 0.200,
+      breadth_weight                  numeric(4,3) NOT NULL DEFAULT 0.150,
+      strong_threshold                numeric(5,2) NOT NULL DEFAULT 80.00,
+      healthy_threshold               numeric(5,2) NOT NULL DEFAULT 60.00,
+      cooling_threshold               numeric(5,2) NOT NULL DEFAULT 40.00,
+      at_risk_threshold                numeric(5,2) NOT NULL DEFAULT 20.00,
+      min_logged_activities           integer NOT NULL DEFAULT 3,
+      recency_window_days             integer NOT NULL DEFAULT 90,
+      single_threaded_window_days     integer NOT NULL DEFAULT 90,
+      updated_at                      timestamptz NOT NULL DEFAULT now(),
+      updated_by                      uuid REFERENCES public.users(id) ON DELETE SET NULL,
+      CONSTRAINT account_health_scoring_config_pkey PRIMARY KEY (id),
+      CONSTRAINT account_health_scoring_config_singleton CHECK (id = true),
+      CONSTRAINT account_health_scoring_config_weights_sum_check
+        CHECK (
+          frequency_weight + recency_weight + seniority_weight + sentiment_weight + breadth_weight
+          BETWEEN 0.999 AND 1.001
+        ),
+      CONSTRAINT account_health_scoring_config_threshold_order_check
+        CHECK (
+          strong_threshold > healthy_threshold
+          AND healthy_threshold > cooling_threshold
+          AND cooling_threshold > at_risk_threshold
+        ),
+      CONSTRAINT account_health_scoring_config_min_activities_check
+        CHECK (min_logged_activities >= 1),
+      CONSTRAINT account_health_scoring_config_windows_check
+        CHECK (recency_window_days >= 1 AND single_threaded_window_days >= 1)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.account_health_scoring_config IS 'Singleton admin-editable weights/thresholds for account health scoring (MINCRM-467). id is a boolean-typed singleton key (id = true) following the single-row-config convention.'`);
+  pgm.sql(`
+    INSERT INTO public.account_health_scoring_config (id) VALUES (true)
+    ON CONFLICT (id) DO NOTHING
+  `);
+
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.account_health_scores (
+      account_id                uuid NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+      score                     numeric(5,2) NOT NULL,
+      state                     text NOT NULL,
+      single_threaded_risk      boolean NOT NULL DEFAULT false,
+      contributing_factors      jsonb NOT NULL DEFAULT '[]',
+      computed_at                timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT account_health_scores_pkey PRIMARY KEY (account_id),
+      CONSTRAINT account_health_scores_score_range CHECK (score BETWEEN 0 AND 100),
+      CONSTRAINT account_health_scores_state_check
+        CHECK (state IN ('strong', 'healthy', 'cooling', 'at_risk', 'dormant'))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.account_health_scores IS 'Current cached relationship health score per account (MINCRM-467). Upserted nightly; the read path never computes live. Absence of a row means insufficient data (fewer than min_logged_activities logged activities).'`);
+
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.account_health_score_history (
+      id            uuid DEFAULT gen_random_uuid() NOT NULL,
+      account_id    uuid NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+      score         numeric(5,2) NOT NULL,
+      state         text NOT NULL,
+      computed_at   timestamptz DEFAULT now() NOT NULL,
+      CONSTRAINT account_health_score_history_pkey PRIMARY KEY (id),
+      CONSTRAINT account_health_score_history_score_range CHECK (score BETWEEN 0 AND 100),
+      CONSTRAINT account_health_score_history_state_check
+        CHECK (state IN ('strong', 'healthy', 'cooling', 'at_risk', 'dormant'))
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.account_health_score_history IS 'Append-only per-run history of account health scores (MINCRM-467), feeding the 6-month trend sparkline on the Account detail view. One row inserted per account per nightly run.'`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS account_health_score_history_account_id_computed_at_idx ON public.account_health_score_history USING btree (account_id, computed_at DESC)`);
+
+  // contact_followup_timing_suggestions (migration 152 — MINCRM-470)
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS public.contact_followup_timing_suggestions (
+      contact_id       uuid NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
+      day_of_week      smallint NOT NULL,
+      hour_start_utc   smallint NOT NULL,
+      hour_end_utc     smallint NOT NULL,
+      sample_size      integer NOT NULL,
+      computed_at       timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT contact_followup_timing_suggestions_pkey PRIMARY KEY (contact_id),
+      CONSTRAINT contact_followup_timing_suggestions_day_check
+        CHECK (day_of_week BETWEEN 0 AND 6),
+      CONSTRAINT contact_followup_timing_suggestions_hour_start_check
+        CHECK (hour_start_utc BETWEEN 0 AND 23),
+      CONSTRAINT contact_followup_timing_suggestions_hour_end_check
+        CHECK (hour_end_utc BETWEEN 1 AND 24),
+      CONSTRAINT contact_followup_timing_suggestions_hour_order_check
+        CHECK (hour_end_utc > hour_start_utc),
+      CONSTRAINT contact_followup_timing_suggestions_sample_size_check
+        CHECK (sample_size >= 5)
+    )
+  `);
+  pgm.sql(`COMMENT ON TABLE public.contact_followup_timing_suggestions IS 'Cached best-time-to-contact suggestion per contact (MINCRM-470). day_of_week/hour_start_utc/hour_end_utc are UTC-anchored; project to a display timezone at read time, never store localized values. Absence of a row means fewer than 5 logged interactions (insufficient data).'`);
 
 };
 
