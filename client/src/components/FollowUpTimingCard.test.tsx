@@ -31,7 +31,7 @@ describe('FollowUpTimingCard', () => {
       'Sarah Lee',
     );
     expect(screen.getByTestId(`followup-timing-suggestion-${CONTACT_ID}`)).toHaveTextContent(
-      '9am–11am',
+      '9 AM–11 AM',
     );
   });
 

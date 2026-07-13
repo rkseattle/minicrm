@@ -61,7 +61,7 @@ export async function generateMeetingBriefHandler(req: Request, res: Response): 
   }
 
   try {
-    const result = await generateMeetingBrief(id, req.user!.id);
+    const result = await generateMeetingBrief(id, req.user!.id, req.user!.role);
     if (!result) {
       res.status(400).json({
         error: {

@@ -21,6 +21,7 @@ import { findAccountById } from './accountService.js';
 import { listContactDeals } from './dealService.js';
 import { withRlsQuery } from './rlsContextService.js';
 import { getFollowUpTiming } from './followUpTimingService.js';
+import { isFlagEnabledForUser } from './featureFlagService.js';
 import type {
   MeetingBriefResponse,
   MeetingBriefContent,
@@ -300,6 +301,7 @@ function buildSystemPrompt(): string {
 export async function generateMeetingBrief(
   activityId: string,
   userId: string,
+  userRole: string,
 ): Promise<MeetingBriefResponse | null> {
   const context = await gatherBriefContext(activityId);
   if (!context) return null;
@@ -442,8 +444,13 @@ export async function generateMeetingBrief(
   // fact, not LLM-authored. Fetched at read time (after the AI call, not sent to the
   // LLM as context) so it always reflects the latest cached suggestion regardless of
   // whether the brief itself was just regenerated or served from the E2E stub path.
+  // Gated on the same flag as the standalone endpoint/NLI tool — this UI path must
+  // not expose data the caller couldn't reach directly when the flag is off for them.
   const activity = await findActivityById(activityId);
-  if (activity?.contact_id) {
+  if (
+    activity?.contact_id &&
+    (await isFlagEnabledForUser('ai_followup_timing_suggestions', userId, userRole))
+  ) {
     const followupTiming = await getFollowUpTiming(activity.contact_id);
     if (followupTiming) {
       brief.followup_timing = followupTiming;

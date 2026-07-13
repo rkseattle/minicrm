@@ -88,18 +88,20 @@ function deriveTimingBucket(interactions: InteractionRow[]): TimingBucket | null
   const [dayStr, hourStr] = bestKey.split(':');
   const day = parseInt(dayStr, 10);
   const hour = parseInt(hourStr, 10);
-  const hourEnd = Math.min(hour + 2, 24);
 
   return {
     dayOfWeek: day,
     hourStartUtc: hour,
-    hourEndUtc: hourEnd > hour ? hourEnd : hour + 1,
+    // hour is always 0-23 (from getUTCHours()), so hour + 2 is always > hour;
+    // capped at 24 (end of day) for the last two hour buckets (22, 23).
+    hourEndUtc: Math.min(hour + 2, 24),
     sampleSize: source.length,
   };
 }
 
-async function persistSuggestion(contactId: string, bucket: TimingBucket): Promise<void> {
-  await pool.query(
+/** Upserts the cached suggestion and returns the computed_at timestamp the row was written with. */
+async function persistSuggestion(contactId: string, bucket: TimingBucket): Promise<Date> {
+  const result = await pool.query<{ computed_at: Date }>(
     `INSERT INTO contact_followup_timing_suggestions
        (contact_id, day_of_week, hour_start_utc, hour_end_utc, sample_size, computed_at)
      VALUES ($1, $2, $3, $4, $5, now())
@@ -108,9 +110,11 @@ async function persistSuggestion(contactId: string, bucket: TimingBucket): Promi
        hour_start_utc = EXCLUDED.hour_start_utc,
        hour_end_utc = EXCLUDED.hour_end_utc,
        sample_size = EXCLUDED.sample_size,
-       computed_at = EXCLUDED.computed_at`,
+       computed_at = EXCLUDED.computed_at
+     RETURNING computed_at`,
     [contactId, bucket.dayOfWeek, bucket.hourStartUtc, bucket.hourEndUtc, bucket.sampleSize],
   );
+  return result.rows[0].computed_at;
 }
 
 /**
@@ -182,15 +186,19 @@ function toSuggestion(
   timezone: string,
 ): FollowUpTimingSuggestion {
   const start = projectToTimezone(row.day_of_week, row.hour_start_utc, timezone);
-  // hour_end_utc may be 24 (end of day); project the wall-clock hour it represents.
-  const endHourUtc = row.hour_end_utc % 24;
-  const end = projectToTimezone(row.day_of_week, endHourUtc, timezone);
+  // hour_end_utc may be 24 (end of day, i.e. midnight of the *next* UTC day) — project
+  // it as day+1/hour 0 so the timezone shift is applied correctly instead of reusing
+  // hour_start_utc's day, which would otherwise treat "24" as the same day's midnight.
+  const end =
+    row.hour_end_utc === 24
+      ? projectToTimezone((row.day_of_week + 1) % 7, 0, timezone)
+      : projectToTimezone(row.day_of_week, row.hour_end_utc, timezone);
 
   return {
     contact_id: row.contact_id,
     day_of_week: start.dayOfWeek,
     hour_start: start.hour,
-    hour_end: row.hour_end_utc === 24 ? 24 : end.hour,
+    hour_end: end.hour === 0 ? 24 : end.hour,
     timezone,
     sample_size: row.sample_size,
     computed_at: row.computed_at.toISOString(),
@@ -236,24 +244,19 @@ export async function getFollowUpTiming(
     const interactions = await gatherInteractions(contactId);
     const bucket = deriveTimingBucket(interactions);
     if (!bucket) return null;
-    await persistSuggestion(contactId, bucket);
-    const refreshed = await pool.query<{
-      contact_id: string;
-      day_of_week: number;
-      hour_start_utc: number;
-      hour_end_utc: number;
-      sample_size: number;
-      computed_at: Date;
-    }>(
-      `SELECT contact_id, day_of_week, hour_start_utc, hour_end_utc, sample_size, computed_at
-       FROM contact_followup_timing_suggestions
-       WHERE contact_id = $1`,
-      [contactId],
-    );
-    const row = refreshed.rows[0];
-    if (!row) return null;
+    const computedAt = await persistSuggestion(contactId, bucket);
     const timezone = await getDefaultTimezone();
-    return toSuggestion(row, timezone);
+    return toSuggestion(
+      {
+        contact_id: contactId,
+        day_of_week: bucket.dayOfWeek,
+        hour_start_utc: bucket.hourStartUtc,
+        hour_end_utc: bucket.hourEndUtc,
+        sample_size: bucket.sampleSize,
+        computed_at: computedAt,
+      },
+      timezone,
+    );
   }
 
   const timezone = await getDefaultTimezone();

@@ -155,7 +155,11 @@ function mockBriefResponse(overrides: Partial<Record<string, unknown>> = {}): vo
 
 describe('generateMeetingBrief', () => {
   it('returns null when the activity does not exist', async () => {
-    const result = await generateMeetingBrief('00000000-0000-0000-0000-000000000000', ownerId);
+    const result = await generateMeetingBrief(
+      '00000000-0000-0000-0000-000000000000',
+      ownerId,
+      OWNER_USER.role,
+    );
     expect(result).toBeNull();
   });
 
@@ -169,7 +173,7 @@ describe('generateMeetingBrief', () => {
       { id: ownerId, name: OWNER_USER.name },
     );
 
-    const result = await generateMeetingBrief(activity.id, ownerId);
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
     expect(result).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
   });
@@ -197,7 +201,7 @@ describe('generateMeetingBrief', () => {
 
     mockBriefResponse({ next_steps: [{ deal_id: deal.id, next_step: 'Send updated proposal.' }] });
 
-    const result = await generateMeetingBrief(activity.id, ownerId);
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     expect(result).not.toBeNull();
     expect(result?.brief.contact_snapshot.title).toBe('VP Sales');
@@ -210,6 +214,63 @@ describe('generateMeetingBrief', () => {
     expect(persisted?.brief.account_summary).toBe(result?.brief.account_summary);
   });
 
+  // ── AI follow-up timing suggestion integration (MINCRM-470) ────────────────────
+
+  it('includes the follow-up timing suggestion when the flag is enabled and a suggestion exists', async () => {
+    const contactId = await createTestContact();
+    const activity = await createActivity(
+      { type: 'Call', subject: 'Upcoming call', contact_id: contactId, owner_id: ownerId },
+      { id: ownerId, name: OWNER_USER.name },
+    );
+    // 5 Tuesdays at 14:00 UTC — enough Inbound interactions for a cached suggestion.
+    const tuesdays = ['2026-01-06', '2026-01-13', '2026-01-20', '2026-01-27', '2026-02-03'];
+    for (const date of tuesdays) {
+      await pool.query(
+        `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+         VALUES ('Call', 'Sync', 'Inbound', $1, $2, ($3::date + time '14:00')::timestamptz)`,
+        [contactId, ownerId, date],
+      );
+    }
+
+    mockBriefResponse();
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
+
+    expect(result?.brief.followup_timing).toBeDefined();
+    expect(result?.brief.followup_timing?.day_of_week).toBe(2);
+  });
+
+  it('omits the follow-up timing suggestion when ai_followup_timing_suggestions is disabled', async () => {
+    await pool.query(
+      `UPDATE feature_flags SET enabled = false WHERE flag_key = 'ai_followup_timing_suggestions'`,
+    );
+    invalidateFeatureFlagCache();
+    try {
+      const contactId = await createTestContact();
+      const activity = await createActivity(
+        { type: 'Call', subject: 'Upcoming call', contact_id: contactId, owner_id: ownerId },
+        { id: ownerId, name: OWNER_USER.name },
+      );
+      const tuesdays = ['2026-01-06', '2026-01-13', '2026-01-20', '2026-01-27', '2026-02-03'];
+      for (const date of tuesdays) {
+        await pool.query(
+          `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+           VALUES ('Call', 'Sync', 'Inbound', $1, $2, ($3::date + time '14:00')::timestamptz)`,
+          [contactId, ownerId, date],
+        );
+      }
+
+      mockBriefResponse();
+      const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
+
+      expect(result?.brief.followup_timing).toBeUndefined();
+    } finally {
+      await pool.query(
+        `UPDATE feature_flags SET enabled = true WHERE flag_key = 'ai_followup_timing_suggestions'`,
+      );
+      invalidateFeatureFlagCache();
+    }
+  });
+
   it('overwrites the prior brief on regenerate rather than appending', async () => {
     const contactId = await createTestContact();
     const activity = await createActivity(
@@ -218,10 +279,10 @@ describe('generateMeetingBrief', () => {
     );
 
     mockBriefResponse({ account_summary: 'First version.' });
-    await generateMeetingBrief(activity.id, ownerId);
+    await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     mockBriefResponse({ account_summary: 'Second version.' });
-    await generateMeetingBrief(activity.id, ownerId);
+    await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     const rows = await pool.query(
       'SELECT COUNT(*) AS count FROM activity_meeting_briefs WHERE activity_id = $1',
@@ -241,9 +302,11 @@ describe('generateMeetingBrief', () => {
       { id: ownerId, name: OWNER_USER.name },
     );
 
-    await expect(generateMeetingBrief(activity.id, ownerId)).rejects.toMatchObject({
-      statusCode: 503,
-    });
+    await expect(generateMeetingBrief(activity.id, ownerId, OWNER_USER.role)).rejects.toMatchObject(
+      {
+        statusCode: 503,
+      },
+    );
   });
 
   it('does not attempt a news search when web_search_enabled is false', async () => {
@@ -254,7 +317,7 @@ describe('generateMeetingBrief', () => {
     );
 
     mockBriefResponse();
-    const result = await generateMeetingBrief(activity.id, ownerId);
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     expect(result?.brief.news_hook).toBeUndefined();
     expect(mockCreate).toHaveBeenCalledTimes(1);
@@ -306,7 +369,7 @@ describe('generateMeetingBrief', () => {
         ],
       });
 
-    const result = await generateMeetingBrief(activity.id, ownerId);
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     expect(result?.brief.news_hook).toHaveLength(1);
     expect(result?.brief.news_hook?.[0].title).toBe('Acme raises Series B');
@@ -343,7 +406,7 @@ describe('generateMeetingBrief', () => {
       })
       .mockRejectedValueOnce(new Error('search unavailable'));
 
-    const result = await generateMeetingBrief(activity.id, ownerId);
+    const result = await generateMeetingBrief(activity.id, ownerId, OWNER_USER.role);
 
     expect(result).not.toBeNull();
     expect(result?.brief.news_hook).toBeUndefined();

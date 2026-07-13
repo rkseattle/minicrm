@@ -171,6 +171,36 @@ describe('getFollowUpTiming', () => {
     // 17:00 UTC in January (PST, UTC-8) is 09:00 local.
     expect(suggestion!.hour_start).toBe(9);
   });
+
+  it('projects an hour_end_utc of 24 (end-of-day) into the display timezone instead of returning it raw', async () => {
+    // Regression test: hour_end_utc=24 previously bypassed timezone projection
+    // entirely, returning the literal 24 regardless of the target timezone —
+    // producing an end time before the start time once hour_start was projected.
+    await setDefaultTimezone('America/Los_Angeles');
+    const contact = await createContact({
+      email: `${FILE_PREFIX}-endofday-contact-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      first_name: 'EndOfDay',
+      last_name: 'Contact',
+      owner_id: ownerId,
+    });
+    // 5 Tuesdays at 23:00 UTC — buckets to hour_start_utc=23, hour_end_utc=24 (capped).
+    const tuesdays = ['2026-01-06', '2026-01-13', '2026-01-20', '2026-01-27', '2026-02-03'];
+    for (const date of tuesdays) {
+      await pool.query(
+        `INSERT INTO activities (type, subject, direction, contact_id, owner_id, created_at)
+         VALUES ('Call', 'Sync', 'Inbound', $1, $2, ($3::date + time '23:00')::timestamptz)`,
+        [contact.id, ownerId, date],
+      );
+    }
+
+    const suggestion = await getFollowUpTiming(contact.id);
+    expect(suggestion).not.toBeNull();
+    // 23:00 UTC in January (PST, UTC-8) is 15:00 local; hour_end_utc=24 (Wed 00:00 UTC)
+    // projects to 16:00 local the same day — a coherent 1-hour range, not "3pm-12pm".
+    expect(suggestion!.hour_start).toBe(15);
+    expect(suggestion!.hour_end).toBe(16);
+    expect(suggestion!.hour_end).toBeGreaterThan(suggestion!.hour_start);
+  });
 });
 
 describe('computeFollowUpTimingSuggestions', () => {
