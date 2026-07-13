@@ -71,6 +71,41 @@ docker exec minicrm-db psql -U minicrm -c "DROP DATABASE minicrm_baseline_test"
 
 ---
 
+## Concurrency & Locking
+
+All three migration entry points — `runMigrations()` (`server/src/migrate.ts`, called at every
+server boot), `create-e2e-db.ts` (`npm run e2e:setup`), and `migrate-fresh.ts`
+(`npm run migrate:fresh`) — run the same three-step baseline/fake-mark/real-run sequence and
+share a single Postgres advisory lock (`withMigrationLock()` in `server/src/migrate.ts`,
+MINCRM-658).
+
+**Why:** before this lock existed, two of these entry points could run concurrently against the
+same database — e.g. `docker compose --profile e2e up -d` boots `server-e2e`, which calls
+`runMigrations()` at startup, while a developer's `npm run e2e:setup` moments later runs
+`create-e2e-db.ts`'s own unlocked sequence against the same `minicrm_e2e` database. With no
+coordination, one process's fake-mark step could interleave with another's real-run step,
+producing a `pgmigrations` row for a migration whose schema changes never actually landed.
+
+**How it works:** each entry point opens a dedicated `pg.Client` and polls
+`pg_try_advisory_lock` (a fixed, namespaced key unique to migrations) with a 500ms interval and a
+60-second timeout, before running the baseline/fake-mark/real-run sequence. A second concurrent
+invocation waits for the lock; if it is not released within 60 seconds (the first process is
+stuck or crashed), the second invocation fails fast with a clear "timed out waiting for migration
+lock" error rather than silently interleaving or hanging indefinitely. The lock is released in a
+`finally` block and is also released automatically if the holding connection drops, so a crashed
+process cannot leak the lock permanently.
+
+Since every step in the sequence is idempotent (per the "Existing Deployments" section above), a
+second invocation that waits and then proceeds is always safe — it re-checks `pgmigrations` and
+finds everything already applied.
+
+`countBaselineCoveredMigrations()` also validates `BASELINE_COVERED_MIGRATION_COUNT` against the
+migration files actually present in `db/migrations` at call time, and throws if no file matches —
+this catches drift between two processes' views of the migrations directory (e.g. a stale build)
+before it can silently fake-mark a migration that was never really applied.
+
+---
+
 ## ERD (Schema Documentation)
 
 `docs/schema/` contains auto-generated Markdown and Mermaid ERD output from [tbls](https://github.com/k1LoW/tbls). There is no automated CI staleness check (tbls output is non-deterministic across postgres versions).
