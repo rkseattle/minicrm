@@ -11,9 +11,8 @@ import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { runner as migrationRunner } from 'node-pg-migrate';
-import type * as fsModule from 'fs';
 import pool from '../db.js';
-import { withMigrationLock } from '../migrate.js';
+import { withMigrationLock, assertBaselineCoverageMatches } from '../migrate.js';
 
 const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
 const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
@@ -94,6 +93,11 @@ describe('withMigrationLock', () => {
       migrationsTable: FIXTURE_MIGRATIONS_TABLE,
       checkOrder: false,
       log: () => {},
+      // node-pg-migrate takes its own internal advisory lock around every
+      // migrationRunner() call by default, which would make this test pass
+      // even without withMigrationLock. Disabling it here means the assertions
+      // below can only hold if withMigrationLock is doing the serializing.
+      noLock: true,
     };
 
     try {
@@ -124,25 +128,34 @@ describe('withMigrationLock', () => {
   });
 });
 
-describe('countBaselineCoveredMigrations', () => {
-  it('throws when BASELINE_COVERED_MIGRATION_COUNT does not match any file on disk', async () => {
-    // Re-import with a stubbed fs to simulate a directory view that has drifted
-    // from the constant (MINCRM-658's second suspected root cause), without
-    // touching the real db/migrations directory.
-    vi.resetModules();
-    vi.doMock('fs', async (importOriginal) => {
-      const actual = await importOriginal<typeof fsModule>();
-      return {
-        ...actual,
-        readdirSync: () => ['001_create_users.js', '002_add_column.js'],
-      };
-    });
+describe('assertBaselineCoverageMatches', () => {
+  it("throws when BASELINE_COVERED_MIGRATION_COUNT disagrees with 000_baseline.js's own declared coverage", () => {
+    // Simulates a stale server build (old migrate.ts, old constant) paired with
+    // a rebuilt/newer baseline file, or vice versa — the exact bidirectional
+    // drift a same-numbered-file-exists check alone cannot catch, since files
+    // are never deleted when the baseline is regenerated (MINCRM-658).
+    expect(() =>
+      assertBaselineCoverageMatches(152, 136, ['001_create_users.js', '152_add_x.js']),
+    ).toThrow(
+      /does not match db\/migrations\/000_baseline\.js's baselineCoveredMigrationCount \(136\)/,
+    );
+  });
 
-    const { countBaselineCoveredMigrations: countWithDriftedDir } = await import('../migrate.js');
+  it('throws when the migrations directory is missing files within the covered range (gap detection)', () => {
+    // baselineCoveredCount (152) matches expectedCount (152), so this exercises
+    // the gap check in isolation: the directory is missing files even though
+    // the migration numbered exactly 152 is present.
+    expect(() =>
+      assertBaselineCoverageMatches(152, 152, [
+        '001_create_users.js',
+        '152_add_followup_timing_suggestions.js',
+      ]),
+    ).toThrow(/is missing: 2, 3, 4/);
+  });
 
-    expect(() => countWithDriftedDir()).toThrow(/does not match any migration file/);
+  it('does not throw when the count and directory both match', () => {
+    const filenames = Array.from({ length: 5 }, (_, i) => `${String(i + 1).padStart(3, '0')}_x.js`);
 
-    vi.doUnmock('fs');
-    vi.resetModules();
+    expect(() => assertBaselineCoverageMatches(5, 5, filenames)).not.toThrow();
   });
 });
