@@ -44,6 +44,7 @@ import { login } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   navigateToUrlAndWait,
   waitForRedirectToDashboard,
+  waitForRedirectToPath,
   isNavLinkHidden,
 } from '@behaviors/minicrm/nav.behaviors.js';
 import {
@@ -400,10 +401,12 @@ test('@functional F7-FU4: rep navigating directly to /reports can access the rep
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
 
-    // /reports/win-loss now redirects to /reports?view=win-loss (MINCRM-294)
+    // /reports/win-loss now redirects to /reports?view=win-loss (MINCRM-294). The redirect
+    // is client-side (<Navigate>) behind a lazy-loaded chunk + feature-flag fetch, so
+    // networkidle can settle before it commits — wait for the URL itself, not just network idle.
     await navigateToUrlAndWait('/reports/win-loss', { page });
 
-    const finalPath = new URL(page.url()).pathname;
+    const { pathname: finalPath } = await waitForRedirectToPath('/reports', { page }, 10_000);
     expect(finalPath, 'rep navigating to /reports/win-loss should redirect to /reports').toBe(
       '/reports',
     );

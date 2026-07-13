@@ -649,8 +649,22 @@ export async function waitForRedirectToDashboard(
   context: NavBehaviorContext,
   timeout = 10_000,
 ): Promise<WaitForRedirectResult> {
+  return waitForRedirectToPath('/', context, timeout);
+}
+
+/**
+ * Waits for the browser to redirect to the given pathname.
+ * Used to assert that a client-side route (e.g. a <Navigate> redirect) has
+ * committed, rather than reading page.url() immediately after goto() —
+ * networkidle can settle before a JS-driven redirect finishes.
+ */
+export async function waitForRedirectToPath(
+  pathname: string,
+  context: NavBehaviorContext,
+  timeout = 10_000,
+): Promise<WaitForRedirectResult> {
   await context.page
-    .waitForURL((url) => new URL(url).pathname === '/', { timeout })
+    .waitForURL((url) => new URL(url).pathname === pathname, { timeout })
     .catch(() => null);
   return { pathname: new URL(context.page.url()).pathname };
 }
