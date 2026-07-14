@@ -1019,15 +1019,31 @@ jobs:
           path: |
             qa/e2e/test-results/results.xml
             qa/e2e/test-results/results.json
-            qa/e2e/test-results/**/trace.zip
-            qa/e2e/test-results/**/test-failed-*.png
-            qa/e2e/test-results/**/video.webm
-            qa/e2e/test-results/**/error-context.md
             qa/e2e/test-results/healing-shard*.json
             qa/e2e/test-results/healing-suggestions.md
             qa/e2e/test-timing.jsonl
           retention-days: 14
           if-no-files-found: warn
+
+      # MINCRM-658: separate step so results.xml/results.json above keep their
+      # flat archive layout (upload-artifact derives the archive root from the
+      # common ancestor of ALL globs in one call — mixing in nested test-results/**
+      # patterns here previously pushed results.xml down into a test-results/
+      # subfolder in the zip, breaking e2e-functional-report's expected flat
+      # artifacts/serial/results.xml download path and making the PR comment's
+      # "serial (desktop)" row always show "❓ Unknown, 0/0/0" even on a passing run).
+      - name: Upload serial failure diagnostics (screenshots/video/trace)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-serial-diagnostics
+          path: |
+            qa/e2e/test-results/**/trace.zip
+            qa/e2e/test-results/**/test-failed-*.png
+            qa/e2e/test-results/**/video.webm
+            qa/e2e/test-results/**/error-context.md
+          retention-days: 14
+          if-no-files-found: ignore
 
   # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
   # Job dependency chain:
