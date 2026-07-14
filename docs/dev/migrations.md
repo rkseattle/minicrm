@@ -93,11 +93,14 @@ producing a `pgmigrations` row for a migration whose schema changes never actual
 
 **How it works:** each entry point opens a dedicated `pg.Client` and polls
 `pg_try_advisory_lock` (a fixed, namespaced key unique to migrations) with a 500ms interval and a
-60-second timeout, before running the baseline/fake-mark/real-run sequence. A second concurrent
-invocation waits for the lock; if it is not released within 60 seconds (the first process is
-stuck or crashed), the second invocation fails fast with a clear "timed out waiting for migration
-lock" error rather than silently interleaving or hanging indefinitely. The lock is released in a
-`finally` block (only if this session actually acquired it — a timed-out caller never held the
+default 60-second timeout, before running the baseline/fake-mark/real-run sequence. A second
+concurrent invocation waits for the lock; if it is not released within the timeout (the first
+process is stuck or crashed — **or** is a legitimately slow migration, e.g. a large `CREATE INDEX`
+in production), the second invocation fails fast with a clear "timed out waiting for migration
+lock" error rather than silently interleaving or hanging indefinitely. Set `MIGRATION_LOCK_TIMEOUT_MS`
+to raise the timeout for a deploy expected to run a slow migration — the default is generous
+relative to the fresh-install target (under 10s, see below) but not unbounded. The lock is released
+in a `finally` block (only if this session actually acquired it — a timed-out caller never held the
 lock and does not attempt to release it) and is also released automatically if the holding
 connection drops, so a crashed process cannot leak the lock permanently.
 

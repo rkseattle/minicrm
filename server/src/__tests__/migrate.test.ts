@@ -67,6 +67,32 @@ describe('withMigrationLock', () => {
     expect(events).toEqual(['first-start', 'first-end', 'second-start', 'second-end']);
   });
 
+  it('respects MIGRATION_LOCK_TIMEOUT_MS to fail fast sooner than the default 60s', async () => {
+    const originalTimeout = process.env.MIGRATION_LOCK_TIMEOUT_MS;
+    process.env.MIGRATION_LOCK_TIMEOUT_MS = '200';
+
+    try {
+      const holder = withMigrationLock(databaseUrl, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      });
+
+      // Give the holder a head start so it reliably acquires the lock first.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await expect(withMigrationLock(databaseUrl, async () => {})).rejects.toThrow(
+        /Timed out after 200ms waiting for migration lock/,
+      );
+
+      await holder;
+    } finally {
+      if (originalTimeout === undefined) {
+        delete process.env.MIGRATION_LOCK_TIMEOUT_MS;
+      } else {
+        process.env.MIGRATION_LOCK_TIMEOUT_MS = originalTimeout;
+      }
+    }
+  });
+
   it('releases the lock even when the wrapped function throws, so a subsequent caller is not blocked', async () => {
     await expect(
       withMigrationLock(databaseUrl, async () => {
