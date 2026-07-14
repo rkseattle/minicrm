@@ -44,8 +44,20 @@ const MIGRATION_LOCK_KEY = 658_136_001;
 /** How often to retry acquiring the migration lock while another process holds it. */
 const LOCK_POLL_INTERVAL_MS = 500;
 
-/** Total time to wait for the migration lock before failing fast. */
-const LOCK_WAIT_TIMEOUT_MS = 60_000;
+/**
+ * Default total time to wait for the migration lock before failing fast.
+ * Generous relative to a normal fresh-install run (target: under 10s, see
+ * docs/dev/migrations.md), but a real production migration (e.g. a large
+ * CREATE INDEX added in a future migration) can legitimately run longer —
+ * override via MIGRATION_LOCK_TIMEOUT_MS so a waiting caller isn't forced to
+ * fail behind a healthy, still-in-progress migration during a slow deploy.
+ */
+const DEFAULT_LOCK_WAIT_TIMEOUT_MS = 60_000;
+
+function getLockWaitTimeoutMs(): number {
+  const override = Number(process.env.MIGRATION_LOCK_TIMEOUT_MS);
+  return Number.isFinite(override) && override > 0 ? override : DEFAULT_LOCK_WAIT_TIMEOUT_MS;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,9 +73,10 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
   let acquired = false;
+  const lockWaitTimeoutMs = getLockWaitTimeoutMs();
 
   try {
-    const deadline = Date.now() + LOCK_WAIT_TIMEOUT_MS;
+    const deadline = Date.now() + lockWaitTimeoutMs;
 
     while (Date.now() < deadline) {
       const { rows } = await client.query<{ pg_try_advisory_lock: boolean }>(
@@ -82,7 +95,7 @@ export async function withMigrationLock<T>(databaseUrl: string, fn: () => Promis
 
     if (!acquired) {
       throw new Error(
-        `Timed out after ${LOCK_WAIT_TIMEOUT_MS}ms waiting for migration lock — another migration run appears stuck. Investigate the other process before retrying.`,
+        `Timed out after ${lockWaitTimeoutMs}ms waiting for migration lock — another migration run appears stuck, or set MIGRATION_LOCK_TIMEOUT_MS higher if a legitimate migration is expected to take longer. Investigate the other process before retrying.`,
       );
     }
 
