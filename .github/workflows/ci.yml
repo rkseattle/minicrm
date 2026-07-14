@@ -817,11 +817,22 @@ jobs:
   # Currently: visibility.spec.ts (org-level visibility policy).
   e2e-serial:
     name: Phase 3 - E2E Serial (global-state tests)
-    needs: [server-tests, client-tests, changes]
+    # MINCRM-658: runs after e2e-functional's 8 shard jobs finish rather than
+    # concurrently with them. Previously e2e-serial had no dependency on
+    # e2e-functional and ran alongside all 8 shards, which meant 9 jobs
+    # simultaneously spinning up their own Postgres/MinIO/Mailhog/Playwright on
+    # GitHub's shared runners — confirmed (via repeated historical CI failures
+    # with an identical signature, and a clean local repro of the full serial
+    # suite at full test volume with no timing degradation) to cause
+    # intermittent resource-contention timeouts in the serial job's UI-timing
+    # assertions, which have no sharding to spread load. Trades ~10 min of
+    # added wall-clock time (waiting for shards) for removing that contention.
+    needs: [server-tests, client-tests, changes, e2e-functional]
     if: |
       always() &&
       (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
       (needs.client-tests.result == 'success' || needs.client-tests.result == 'skipped') &&
+      (needs.e2e-functional.result == 'success' || needs.e2e-functional.result == 'skipped' || needs.e2e-functional.result == 'failure') &&
       (needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true')
     runs-on: ubuntu-latest
 
