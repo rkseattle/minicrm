@@ -19,6 +19,10 @@
  *  - Sending on the new-session-on-demand path (no cache entry yet when
  *    onSuccess fires) does not lose the exchange — the background
  *    invalidation populates the cache once the session GET completes.
+ *  - Sending on the new-session-on-demand path when the initial session GET
+ *    resolves empty before the send POST commits does not lose the exchange —
+ *    createMutation seeds the cache up front so there is no in-flight GET for
+ *    invalidateQueries to be defeated by.
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -526,6 +530,109 @@ describe('AiPage — send handshake cache correctness (MINCRM-602)', () => {
     });
     expect(screen.getByText('First message in new session')).toBeInTheDocument();
     expect(screen.queryByTestId('ai-send-error')).not.toBeInTheDocument();
+  });
+
+  it('shows the assistant reply on the new-session-on-demand path even when the initial session GET reaches the server before the send POST commits and only resolves afterwards', async () => {
+    // Targets the actual production bug (found investigating an intermittent
+    // CI failure on F-AI6): the messages query fires its own GET the moment
+    // it mounts for a session created via the on-demand path — regardless of
+    // any data already seeded in its cache (React Query always fetches once
+    // on a query key's genuinely first mount). If that GET reached the
+    // server before the send POST's transaction committed, it resolves with
+    // an empty message list — a real GET response, not a broken mock — and
+    // since a query's own fetch result always replaces cached data wholesale
+    // rather than merging with it, applying that response after the POST's
+    // cache write silently clobbers the just-written exchange back to empty.
+    // No error, no rejected promise — the messages are just gone. The fix is
+    // to suppress this GET outright for a session created via the on-demand
+    // path (see skipInitialMessagesFetchRef in AiPage.tsx) rather than trying
+    // to win or detect the race after the fact.
+    //
+    // This is a deterministic repro of that ordering: the GET is held open
+    // (so it is provably still in flight, i.e. not yet suppressed or
+    // resolved, at the moment the send POST resolves) and always returns the
+    // pre-commit empty state, mirroring a request that reached the server
+    // first. Mirrors the sibling test above, which covers the same held-open
+    // ordering but with the GET returning post-commit data — already safe
+    // even before this fix, since a returned exchange for the same turn is
+    // reconciled rather than duplicated. This test covers the case that
+    // was NOT safe: the GET winning the race with stale data.
+    const NEW_SESSION_ID = '33333333-3333-3333-3333-333333333333';
+    mockEmptySessions();
+
+    let releaseInitialGet: (() => void) | undefined;
+    const initialGetHeld = new Promise<void>((resolve) => {
+      releaseInitialGet = resolve;
+    });
+
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      http.post('/api/v1/ai/sessions', () =>
+        HttpResponse.json({
+          id: NEW_SESSION_ID,
+          user_id: 'user-1',
+          name: null,
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+        }),
+      ),
+      // Held open until after the send POST resolves, then returns the
+      // pre-commit (empty) state — simulating a GET that reached the server
+      // before the POST's transaction committed, but whose response only
+      // arrives at the client afterwards.
+      http.get(`/api/v1/ai/sessions/${NEW_SESSION_ID}`, async () => {
+        await initialGetHeld;
+        return HttpResponse.json({
+          id: NEW_SESSION_ID,
+          user_id: 'user-1',
+          name: null,
+          created_at: '2026-07-01T00:00:00.000Z',
+          updated_at: '2026-07-01T00:00:00.000Z',
+          messages: [],
+        });
+      }),
+      http.post(`/api/v1/ai/sessions/${NEW_SESSION_ID}/messages`, () => {
+        const response = HttpResponse.json({
+          id: 'assistant-msg-race',
+          session_id: NEW_SESSION_ID,
+          role: 'assistant' as const,
+          content: 'Reply after empty GET race',
+          tool_results: null,
+          pending_action: null,
+          context_proposal: null,
+          created_at: '2026-07-01T00:01:00.000Z',
+        });
+        // Release the held GET only after the POST has resolved and its
+        // onSuccess has run — guarantees the GET is still in flight (not
+        // suppressed or already settled) at that moment, then lets it apply
+        // its stale empty result afterwards, exactly the ordering the fix
+        // must prevent from mattering.
+        releaseInitialGet?.();
+        return response;
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const input = await screen.findByTestId('ai-message-input');
+    await user.type(input, 'Message racing an empty GET');
+    await user.click(screen.getByTestId('ai-send-button'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Reply after empty GET race')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Message racing an empty GET')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-send-error')).not.toBeInTheDocument();
+
+    // The stale GET must not be allowed to land later and wipe the exchange
+    // back out — give it a chance to resolve (it already has, having been
+    // released above) and confirm the reply is still present.
+    await waitFor(() => {
+      expect(screen.getByText('Reply after empty GET race')).toBeInTheDocument();
+    });
   });
 
   it('does not show a duplicate user bubble when a partial refetch lands with only the user message reconciled', async () => {
