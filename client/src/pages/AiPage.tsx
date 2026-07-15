@@ -264,6 +264,30 @@ export default function AiPage() {
   const threadEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Session IDs created via the on-demand path (handleSend creating a session
+  // because none existed yet) whose messages cache entry was seeded directly
+  // by createMutation.onSuccess and must not be overwritten by the messages
+  // query's own first-mount GET. See the messages useQuery's `enabled` below
+  // for why: that GET is dispatched the moment this session's messages query
+  // mounts (React Query always fetches once on a query key's first mount,
+  // regardless of staleTime/refetchOnMount/existing seeded data), and it
+  // races the send that immediately follows session creation. If the GET
+  // resolves after the send's POST has written the real exchange into the
+  // cache, it clobbers that write back to empty — silently, since a
+  // successful fetch is indistinguishable from a valid update from React
+  // Query's point of view. Every write path in this component (create/send/
+  // delete) already keeps this cache correct directly, so a session id, once
+  // added, is only ever removed on sendMutation failure — see
+  // sendMutation.onError — never on success (removing it there would
+  // re-enable the query on the very render its own cache write triggers,
+  // which counts as that query's first "enable" and fires the exact GET this
+  // exists to prevent). State, not a ref: `enabled` below reads it during
+  // render, and only state changes are guaranteed to schedule the re-render
+  // that a change here needs to take effect.
+  const [skipInitialMessagesFetchIds, setSkipInitialMessagesFetchIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   // ── Sessions list ────────────────────────────────────────────────────────────
 
   const {
@@ -291,7 +315,8 @@ export default function AiPage() {
   } = useQuery({
     queryKey: resolvedSessionId ? aiMessagesQueryKey(resolvedSessionId) : ['ai_session_none'],
     queryFn: () => (resolvedSessionId ? getAiSession(resolvedSessionId) : null),
-    enabled: !!resolvedSessionId && featureEnabled,
+    enabled:
+      !!resolvedSessionId && featureEnabled && !skipInitialMessagesFetchIds.has(resolvedSessionId),
   });
 
   const persistedMessages = activeSession?.messages ?? [];
@@ -319,6 +344,18 @@ export default function AiPage() {
     mutationFn: createAiSession,
     onSuccess: (newSession) => {
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
+      // Seed the messages cache directly instead of waiting for the messages
+      // query to fetch it — a brand-new session always has zero messages, so
+      // this is never a guess. Also suppress that query's first-mount GET
+      // outright (see skipInitialMessagesFetchIds above) rather than relying
+      // on this seed to survive it: the GET races the send that immediately
+      // follows session creation and, if left enabled, can resolve after the
+      // send's cache write and silently clobber it back to empty.
+      setSkipInitialMessagesFetchIds((prev) => new Set(prev).add(newSession.id));
+      queryClient.setQueryData<AiSessionWithMessagesResponse>(aiMessagesQueryKey(newSession.id), {
+        ...newSession,
+        messages: [],
+      });
       setActiveSessionId(newSession.id);
       // No optimisticMessages clear needed: a brand-new session has no
       // entries of its own, and displayedOptimisticMessages filters by
@@ -362,6 +399,16 @@ export default function AiPage() {
       setDisabledPendingActionId(null);
       setSendError(null);
       void queryClient.invalidateQueries({ queryKey: AI_SESSIONS_QUERY_KEY });
+      // Deliberately NOT un-suppressing the messages query's fetch for
+      // sessionId here (see skipInitialMessagesFetchIds' declaration). Doing
+      // so before the cache write below re-enables the query on the same
+      // render that write triggers, which counts as that query's genuinely
+      // first "enable" transition and fires the exact GET this whole
+      // mechanism exists to prevent — the fetch would land after this write
+      // and clobber it right back out. Every write path in this component
+      // (create/send/delete) already keeps this cache correct directly, so
+      // there is no correctness reason to ever let this query fetch this key
+      // again for the lifetime of this component instance.
 
       // Single round-trip: the POST response already contains the persisted
       // assistant message, so commit it straight into the query cache instead
@@ -392,12 +439,16 @@ export default function AiPage() {
         queryClient.setQueryData<AiSessionWithMessagesResponse>(
           aiMessagesQueryKey(sessionId),
           (old) => {
-            // No cache entry yet (e.g. the initial session GET hasn't resolved
-            // on the new-session-on-demand path) — nothing to append onto, so
-            // there is no cache write to make here. The un-awaited
-            // invalidateQueries below still fires and will populate the cache
-            // with both messages once that GET completes; the messages are
-            // never lost, only briefly not reflected in this cache entry.
+            // No cache entry yet — nothing to append onto, so there is no
+            // cache write to make here. createMutation.onSuccess seeds this
+            // key for the new-session-on-demand path, so this should only be
+            // reachable via cache eviction; the un-awaited invalidateQueries
+            // below still fires as a fallback, but note it does NOT force a
+            // fresh fetch if a GET for this key is already in flight — it
+            // just awaits that existing request, which can race the POST
+            // that got us here and leave this cache entry unpopulated. Do
+            // not rely on this branch for correctness; the seed above is the
+            // real fix.
             if (!old) return old;
             // Guard against the exchange already being present: if a session
             // refetch (the reconciliation invalidateQueries below, or the
@@ -461,6 +512,17 @@ export default function AiPage() {
       }
       // Re-enable any disabled confirmation block so the user can retry.
       setDisabledPendingActionId(null);
+      // The send that would have populated this session's messages cache
+      // failed — the seeded (empty) entry is all there is. Un-suppress the
+      // messages query's fetch so a retry, or simply re-opening this
+      // session, can still pick up any state a partially-succeeded request
+      // may have left server-side.
+      setSkipInitialMessagesFetchIds((prev) => {
+        if (!prev.has(sessionId)) return prev;
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
     },
   });
 
