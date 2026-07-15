@@ -151,11 +151,22 @@ export class UsersPage {
   async openActionsMenu(userId: string): Promise<void> {
     // Desktop renders data-testid="user-actions-{id}"; mobile prefixes with "mobile-".
     // Both are in the DOM simultaneously but only one is visible at the current viewport.
+    // The role fallback is scoped `within` this user's row: on a shared E2E
+    // database, other users' rows are visible on the same page, and an
+    // unscoped `role: button, name: /actions/i` fallback would resolve to
+    // whichever such button happens to be the sole match at probe time —
+    // silently opening a DIFFERENT user's actions menu with no error (see
+    // MINCRM-410 F-OB8 CI failure).
     await this.page.click(
       [
         { type: 'testId', value: `user-actions-${userId}` },
         { type: 'testId', value: `mobile-user-actions-${userId}` },
-        { type: 'role', value: 'button', options: { name: /actions/i } },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: /actions/i },
+          within: `user-card-${userId}`,
+        },
       ],
       { intent: 'meatball actions menu trigger button for a user row' },
     );
@@ -171,7 +182,16 @@ export class UsersPage {
     await this.page.click(
       [
         { type: 'testId', value: `reset-onboarding-${userId}` },
-        { type: 'role', value: 'menuitem', options: { name: /reset onboarding/i } },
+        // Scoped `within` this user's row for the same reason as
+        // openActionsMenu above — the menu renders in-place (no portal), so
+        // scoping to the row also correctly excludes any other user's menu
+        // that might still be in the DOM.
+        {
+          type: 'role',
+          value: 'menuitem',
+          options: { name: /reset onboarding/i },
+          within: `user-card-${userId}`,
+        },
       ],
       { intent: 'reset onboarding menu item in the user actions menu' },
     );
@@ -249,13 +269,31 @@ export class UsersPage {
     // Switch to the largest page size to minimise page count (100 rows/page).
     await this._setPageSize(100);
 
-    // Read "Page N of M" and jump to the last page.
+    if (await this._searchBackwardsFromLastPage(userId)) return;
+
+    // The shared E2E database can gain users from concurrently-running CI
+    // shards between the first backward search and now, shifting which page
+    // is actually "last" and pushing this user's row past where the first
+    // search looked (see MINCRM-410 F-OB8 CI failure). Re-read the total page
+    // count and search once more from the (possibly new) last page before
+    // giving up — this is a full re-jump, not a resumption, since inserts
+    // could have landed anywhere, not just past the original last page.
+    if (await this._searchBackwardsFromLastPage(userId)) return;
+
+    throw new Error(`[UsersPage] User card ${userId} not found after two full backward searches`);
+  }
+
+  /**
+   * Jumps to the current last page and searches backwards for userId's card,
+   * up to MAX_BACK pages. Returns true if found (page is left on the card's
+   * page), false if exhausted without finding it.
+   */
+  private async _searchBackwardsFromLastPage(userId: string): Promise<boolean> {
     const totalPages = await this._readTotalPages();
     if (totalPages > 1) {
       await this._jumpToPage(totalPages);
     }
 
-    // Paginate backwards from the last page — new users are always near the end.
     const MAX_BACK = 20;
     for (let attempt = 0; attempt < MAX_BACK; attempt++) {
       try {
@@ -268,7 +306,7 @@ export class UsersPage {
             { intent: 'user card in the users management list', fallbackTimeout: 2_000 },
           )
           .resolve();
-        if ((await card.count()) > 0) return;
+        if ((await card.count()) > 0) return true;
       } catch {
         // Card not on this page — try previous.
       }
@@ -283,14 +321,11 @@ export class UsersPage {
         );
         await this.page.waitForLoadState('networkidle');
       } catch {
-        throw new Error(
-          `[UsersPage] User card ${userId} not found after searching ${attempt + 1} page(s) from the end`,
-        );
+        // No previous page left — exhausted this search.
+        return false;
       }
     }
-    throw new Error(
-      `[UsersPage] User card ${userId} not found after ${MAX_BACK} pages from the end`,
-    );
+    return false;
   }
 
   /** Sets the pagination page-size select to the given value. */
