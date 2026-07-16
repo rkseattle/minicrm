@@ -1566,6 +1566,18 @@
     "notesPlaceholder": "Añadir notas…",
     "ownerLabel": "Propietario",
     "ownerUnknown": "Desconocido",
+    "territoryLabel": "Territorio",
+    "territoryPlaceholder": "Costa Oeste",
+    "industryLabel": "Sector",
+    "industryPlaceholder": "SaaS",
+    "employeeRangeLabel": "Tamaño de la empresa",
+    "employeeRangePlaceholder": "51-200",
+    "routingSuggestionHeading": "Sugerido: {{name}}",
+    "routingConfidenceHigh": "Confianza alta",
+    "routingConfidenceMedium": "Confianza media",
+    "routingConfidenceLow": "Confianza baja",
+    "routingSuggestionApply": "Usar esta",
+    "routingSuggestionDismiss": "Descartar",
     "createdLabel": "Creado",
     "disqualificationReasonLabel": "Motivo de descalificación",
     "columnName": "Nombre",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "Uso y presupuestos",
       "dataRetention": "Retención de datos",
       "dataMinimization": "Minimización de datos",
-      "coaching": "Coaching de comerciales"
+      "coaching": "Coaching de comerciales",
+      "leadRouting": "Asignación de leads"
     },
     "header": {
       "deploymentMode": "Modo de implementación"
@@ -2159,6 +2172,27 @@
       "runNow": "Ejecutar ahora",
       "runAccepted": "Recálculo iniciado. La información se actualizará en breve.",
       "runError": "Error al iniciar el recálculo. Inténtalo de nuevo."
+    },
+    "leadRouting": {
+      "heading": "Sugerencia de asignación de leads",
+      "description": "Configura cuánto contribuye cada factor a la sugerencia de asignación que se muestra al crear un nuevo lead.",
+      "loadError": "Error al cargar la configuración de asignación de leads. Inténtalo de nuevo.",
+      "territoryWeightLabel": "Peso de coincidencia de territorio",
+      "industryWeightLabel": "Peso de coincidencia de sector",
+      "workloadWeightLabel": "Peso de carga de trabajo",
+      "winRateWeightLabel": "Peso de tasa de conversión",
+      "availabilityWeightLabel": "Peso de disponibilidad",
+      "lowConfidenceThresholdLabel": "Umbral de confianza baja",
+      "mediumConfidenceThresholdLabel": "Umbral de confianza media",
+      "minClosedDealsLabel": "Mínimo de negocios cerrados para la tasa de conversión",
+      "validationNumeric": "Todos los campos deben ser números válidos.",
+      "validationWeightsSum": "Los cinco pesos deben sumar 1,0.",
+      "validationThresholdOrder": "El umbral de confianza media debe ser mayor que el umbral de confianza baja.",
+      "validationMinClosedDeals": "El mínimo de negocios cerrados debe ser al menos 1.",
+      "saveSuccess": "Configuración de asignación de leads guardada.",
+      "saveError": "Error al guardar la configuración de asignación de leads. Inténtalo de nuevo.",
+      "teamOverridesHeading": "Excepciones por equipo",
+      "teamOverridesDescription": "Desactiva la asignación inteligente de leads para un equipo específico; se recurre a la asignación manual para los miembros de ese equipo."
     },
     "tokenBudgets": {
       "heading": "Presupuestos de tokens",

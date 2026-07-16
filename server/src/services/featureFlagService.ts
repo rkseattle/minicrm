@@ -728,6 +728,24 @@ export async function isFlagEnabledForUser(
   if (userOverride === 'force_enabled') return true;
   if (userOverride === 'force_disabled') return false;
 
+  // Step 1.5: per-team override — a manager can disable a flag for their whole team
+  // (e.g. ai_lead_routing_suggestion, MINCRM-475). Loses to a per-user force override
+  // (checked above) so an admin's explicit per-user exception still wins, but blocks
+  // everything else below (group gate, beta, rollout, role/enabled) for team members
+  // whose team has explicitly disabled the flag. A user belonging to multiple teams
+  // with conflicting overrides is blocked if ANY of their teams disabled the flag —
+  // team-level opt-out is deliberately the more conservative direction.
+  const teamOverrideResult = await pool.query<{ enabled: boolean }>(
+    `SELECT tfo.enabled
+     FROM team_feature_overrides tfo
+     JOIN team_memberships tm ON tm.team_id = tfo.team_id
+     WHERE tfo.flag_key = $1 AND tm.user_id = $2
+     ORDER BY tfo.enabled ASC
+     LIMIT 1`,
+    [key, userId],
+  );
+  if (teamOverrideResult.rows[0]?.enabled === false) return false;
+
   // Step 2: group gate — if the flag belongs to a group, check the group before flag-level rules.
   // A disabled group blocks the flag for everyone except users in the group's own beta list.
   // The group gate is a kill switch for all non-force-overridden users. (MINCRM-491)

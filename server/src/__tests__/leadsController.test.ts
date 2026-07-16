@@ -815,3 +815,25 @@ describe('GET /api/leads — ?owner=my_team filter', () => {
     await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [[solo.id, other.id]]);
   });
 });
+
+describe('POST /api/v1/leads/routing-suggestion (MINCRM-475)', () => {
+  it('returns 401 without authentication', async () => {
+    await request(app).post('/api/v1/leads/routing-suggestion').send({}).expect(401);
+  });
+
+  it('returns 204 when no confident suggestion is available (no differentiating profile data)', async () => {
+    await request(app)
+      .post('/api/v1/leads/routing-suggestion')
+      .set('Cookie', repCookie)
+      .send({})
+      .expect(204);
+  });
+
+  it('returns 400 for an invalid body', async () => {
+    await request(app)
+      .post('/api/v1/leads/routing-suggestion')
+      .set('Cookie', repCookie)
+      .send({ territory: 123 })
+      .expect(400);
+  });
+});

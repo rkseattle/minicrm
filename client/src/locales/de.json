@@ -1566,6 +1566,18 @@
     "notesPlaceholder": "Notizen hinzufügen…",
     "ownerLabel": "Eigentümer",
     "ownerUnknown": "Unbekannt",
+    "territoryLabel": "Gebiet",
+    "territoryPlaceholder": "Westküste",
+    "industryLabel": "Branche",
+    "industryPlaceholder": "SaaS",
+    "employeeRangeLabel": "Unternehmensgröße",
+    "employeeRangePlaceholder": "51-200",
+    "routingSuggestionHeading": "Vorschlag: {{name}}",
+    "routingConfidenceHigh": "Hohe Konfidenz",
+    "routingConfidenceMedium": "Mittlere Konfidenz",
+    "routingConfidenceLow": "Niedrige Konfidenz",
+    "routingSuggestionApply": "Übernehmen",
+    "routingSuggestionDismiss": "Verwerfen",
     "createdLabel": "Erstellt",
     "disqualificationReasonLabel": "Disqualifizierungsgrund",
     "columnName": "Name",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "Nutzung & Budgets",
       "dataRetention": "Datenaufbewahrung",
       "dataMinimization": "Datenminimierung",
-      "coaching": "Vertriebscoaching"
+      "coaching": "Vertriebscoaching",
+      "leadRouting": "Lead-Verteilung"
     },
     "header": {
       "deploymentMode": "Bereitstellungsmodus"
@@ -2159,6 +2172,27 @@
       "runNow": "Jetzt ausführen",
       "runAccepted": "Neuberechnung gestartet. Die Einblicke werden in Kürze aktualisiert.",
       "runError": "Die Neuberechnung konnte nicht gestartet werden. Bitte erneut versuchen."
+    },
+    "leadRouting": {
+      "heading": "Lead-Verteilungsvorschlag",
+      "description": "Legen Sie fest, wie stark jeder Faktor zum Verteilungsvorschlag beiträgt, der bei der Erstellung eines neuen Leads angezeigt wird.",
+      "loadError": "Lead-Verteilungseinstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
+      "territoryWeightLabel": "Gewichtung Gebietsübereinstimmung",
+      "industryWeightLabel": "Gewichtung Branchenübereinstimmung",
+      "workloadWeightLabel": "Gewichtung Arbeitsauslastung",
+      "winRateWeightLabel": "Gewichtung Abschlussquote",
+      "availabilityWeightLabel": "Gewichtung Verfügbarkeit",
+      "lowConfidenceThresholdLabel": "Schwellenwert für niedrige Konfidenz",
+      "mediumConfidenceThresholdLabel": "Schwellenwert für mittlere Konfidenz",
+      "minClosedDealsLabel": "Mindestanzahl abgeschlossener Deals für Abschlussquote",
+      "validationNumeric": "Alle Felder müssen gültige Zahlen sein.",
+      "validationWeightsSum": "Die fünf Gewichtungen müssen zusammen 1,0 ergeben.",
+      "validationThresholdOrder": "Der Schwellenwert für mittlere Konfidenz muss größer sein als der Schwellenwert für niedrige Konfidenz.",
+      "validationMinClosedDeals": "Die Mindestanzahl abgeschlossener Deals muss mindestens 1 betragen.",
+      "saveSuccess": "Lead-Verteilungskonfiguration gespeichert.",
+      "saveError": "Lead-Verteilungskonfiguration konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "teamOverridesHeading": "Teamspezifische Ausnahmen",
+      "teamOverridesDescription": "Deaktiviert die intelligente Lead-Verteilung für ein bestimmtes Team — für die Mitglieder dieses Teams wird auf manuelle Zuweisung zurückgegriffen."
     },
     "tokenBudgets": {
       "heading": "Token-Budgets",

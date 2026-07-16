@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { LEAD_ROUTING_CONFIDENCE_LEVELS, LEAD_ROUTING_FACTOR_TYPES } from './leadRoutingSchema.js';
 
 /** Valid lead source values */
 export const LEAD_SOURCES = ['Web', 'Referral', 'Trade Show', 'Cold Outreach', 'Other'] as const;
@@ -34,6 +35,28 @@ export const createLeadSchema = z.object({
   lead_source: z.enum(LEAD_SOURCES).optional(),
   notes: z.string().trim().optional(),
   owner_id: z.string().uuid('Owner must be a valid user UUID').optional(),
+  /** Free-text sales territory, matched against the rep's own territory for routing suggestions (MINCRM-475) */
+  territory: z.string().trim().optional(),
+  /** Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475) */
+  industry: z.string().trim().optional(),
+  /** Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475) */
+  employee_range: z.string().trim().optional(),
+  /**
+   * Echoes back the routing suggestion the manager saw (from a prior
+   * computeLeadRoutingSuggestion() call), if any, so createLead can log
+   * whether it was accepted or overridden. Not a persisted lead field —
+   * consumed only by leadsController/leadsService, never written to a
+   * leads column. (MINCRM-475)
+   */
+  routing_suggestion: z
+    .object({
+      suggested_rep_id: z.string().uuid(),
+      confidence: z.enum(LEAD_ROUTING_CONFIDENCE_LEVELS),
+      contributing_factors: z.array(
+        z.object({ type: z.enum(LEAD_ROUTING_FACTOR_TYPES), description: z.string() }),
+      ),
+    })
+    .optional(),
 });
 
 /**
@@ -100,6 +123,9 @@ export const leadResponseSchema = z.object({
   disqualification_reason: z.string().nullable(),
   notes: z.string().nullable(),
   owner_id: z.string().uuid(),
+  territory: z.string().nullable(),
+  industry: z.string().nullable(),
+  employee_range: z.string().nullable(),
   converted_at: z.string().or(z.date()).nullable(),
   converted_contact_id: z.string().uuid().nullable(),
   converted_account_id: z.string().uuid().nullable(),

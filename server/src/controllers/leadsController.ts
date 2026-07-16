@@ -11,6 +11,7 @@ import {
   updateLeadSchema,
   convertLeadSchema,
 } from '@minicrm/shared/schemas/leadSchema.js';
+import { leadRoutingSuggestionRequestSchema } from '@minicrm/shared/schemas/leadRoutingSchema.js';
 import {
   createLead,
   findLeadByEmail,
@@ -25,6 +26,7 @@ import {
   LEAD_SORT_COLUMNS,
 } from '../services/leadsService.js';
 import type { LeadExportRow } from '../services/leadsService.js';
+import { computeLeadRoutingSuggestion } from '../services/leadRoutingService.js';
 import { getCoMemberIds } from '../services/teamService.js';
 import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import { findUserById } from '../services/userService.js';
@@ -88,6 +90,37 @@ export async function createLeadHandler(req: Request, res: Response): Promise<vo
     { id: req.user!.id, name: req.user!.name },
   );
   res.status(201).json({ lead });
+}
+
+/**
+ * POST /api/v1/leads/routing-suggestion
+ * Computes a routing suggestion for a draft lead, before it is created.
+ * Returns 204 (no body) when confidence would be low — per the AC, the
+ * suggestion is suppressed and the client should default to unassigned.
+ * (MINCRM-475)
+ */
+export async function getLeadRoutingSuggestionHandler(req: Request, res: Response): Promise<void> {
+  const parsed = leadRoutingSuggestionRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const suggestion = await computeLeadRoutingSuggestion({
+    territory: parsed.data.territory ?? null,
+    industry: parsed.data.industry ?? null,
+    employeeRange: parsed.data.employee_range ?? null,
+    leadSource: parsed.data.lead_source ?? null,
+  });
+
+  if (!suggestion) {
+    res.status(204).send();
+    return;
+  }
+
+  res.status(200).json(suggestion);
 }
 
 /**

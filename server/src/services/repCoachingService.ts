@@ -883,15 +883,19 @@ export async function setRepCoachingConfig(
       'win_rate_outlier_delta',
     ];
     for (const field of fieldsToCompare) {
-      const oldValue = String(before[field]);
-      const newValue = String(params[field]);
-      if (oldValue !== newValue) {
+      // Postgres numeric columns round-trip as strings with fixed decimal padding
+      // (e.g. "1.50"), which never string-equals the JS number's own stringification
+      // (e.g. "1.5") even when the value is unchanged — compare as numbers instead,
+      // and only stringify for the audit entry itself once a real change is confirmed.
+      const oldNumeric = Number(before[field]);
+      const newNumeric = Number(params[field]);
+      if (oldNumeric !== newNumeric) {
         await writeAuditEntry(client, {
           ...auditBase,
           eventType: 'updated',
           fieldName: field,
-          oldValue,
-          newValue,
+          oldValue: String(oldNumeric),
+          newValue: String(newNumeric),
         });
       }
     }

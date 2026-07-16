@@ -43,6 +43,12 @@ import {
   triggerManualRepCoachingRunHandler,
 } from '../controllers/repCoachingController.js';
 import {
+  getLeadRoutingConfigHandler,
+  setLeadRoutingConfigHandler,
+  listTeamRoutingOverridesHandler,
+  setTeamRoutingOverrideHandler,
+} from '../controllers/leadRoutingController.js';
+import {
   listFieldExclusionsHandler,
   setFieldExclusionHandler,
 } from '../controllers/aiFieldExclusionController.js';
@@ -539,6 +545,131 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(triggerManualRepCoachingRunHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/lead-routing-config:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the current lead routing suggestion scoring weights and thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current lead routing scoring configuration
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/lead-routing-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getLeadRoutingConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/lead-routing-config:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Update the lead routing suggestion scoring weights and thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Updated lead routing scoring configuration
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/lead-routing-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setLeadRoutingConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/lead-routing/team-overrides:
+ *   get:
+ *     tags: [AI]
+ *     summary: List every team's ai_lead_routing_suggestion override
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Team overrides
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/lead-routing/team-overrides',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(listTeamRoutingOverridesHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/lead-routing/team-overrides/{teamId}:
+ *   put:
+ *     tags: [AI]
+ *     summary: Set or clear a team's ai_lead_routing_suggestion override
+ *     description: >
+ *       enabled=false disables intelligent lead routing for every member of the
+ *       team, falling back to manual assignment. enabled=null clears the
+ *       override, reverting to the global flag state. (MINCRM-475)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enabled]
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Override updated
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ *       404:
+ *         description: Team not found
+ */
+router.put(
+  '/lead-routing/team-overrides/:teamId',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setTeamRoutingOverrideHandler),
 );
 
 /**
