@@ -523,4 +523,97 @@ describe('DashboardPage', () => {
       });
     });
   });
+
+  describe('My Performance (MINCRM-474)', () => {
+    it('renders nothing when there is insufficient coaching data', async () => {
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('dashboard-heading')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('my-performance-section')).not.toBeInTheDocument();
+    });
+
+    it('renders nothing when there are no outlier insights', async () => {
+      server.use(
+        http.get('/api/v1/insights/coaching/me', () =>
+          HttpResponse.json({
+            rep_id: ADMIN_USER.id,
+            rep_name: ADMIN_USER.name,
+            insights: [
+              {
+                id: 'i1',
+                metric_type: 'activity_frequency',
+                segment: null,
+                observation: 'On par with the team.',
+                recommended_action: 'Keep it up.',
+                rep_value: 2,
+                team_average_value: 2,
+                is_outlier: false,
+                closed_deal_count: 12,
+                computed_at: '2026-07-01T04:00:00.000Z',
+              },
+            ],
+            has_sufficient_data: true,
+            min_closed_deals_required: 10,
+            closed_deal_count: 12,
+          }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('dashboard-heading')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('my-performance-section')).not.toBeInTheDocument();
+    });
+
+    it('renders outlier insights with a link to the full coaching page', async () => {
+      server.use(
+        http.get('/api/v1/insights/coaching/me', () =>
+          HttpResponse.json({
+            rep_id: ADMIN_USER.id,
+            rep_name: ADMIN_USER.name,
+            insights: [
+              {
+                id: 'i1',
+                metric_type: 'avg_stage_days',
+                segment: null,
+                observation: 'You spend 22 days in Proposal vs. 11 team average.',
+                recommended_action: 'Consider a follow-up task at day 7.',
+                rep_value: 22,
+                team_average_value: 11,
+                is_outlier: true,
+                closed_deal_count: 12,
+                computed_at: '2026-07-01T04:00:00.000Z',
+              },
+            ],
+            has_sufficient_data: true,
+            min_closed_deals_required: 10,
+            closed_deal_count: 12,
+          }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('my-performance-section')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/You spend 22 days in Proposal/)).toBeInTheDocument();
+      expect(screen.getByTestId('my-performance-view-all')).toHaveAttribute(
+        'href',
+        '/insights/coaching',
+      );
+    });
+
+    it('renders nothing when the feature flag is disabled', async () => {
+      server.use(
+        http.get('/api/v1/feature-flags/me', () =>
+          HttpResponse.json({ flags: { ai_rep_coaching_insights: false } }),
+        ),
+      );
+      renderWithProviders(<DashboardPage />);
+      await waitFor(() => {
+        expect(screen.getByTestId('dashboard-heading')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('my-performance-section')).not.toBeInTheDocument();
+    });
+  });
 });

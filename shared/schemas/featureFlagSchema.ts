@@ -14,6 +14,7 @@ import { z } from 'zod';
  * ai_meeting_brief, ai_warm_intro_path, and ai_sentiment_tracking were added in
  * migrations 147-149 (MINCRM-465, MINCRM-468, MINCRM-472). ai_relationship_health_score and
  * ai_followup_timing_suggestions were added in migrations 151-152 (MINCRM-467, MINCRM-470).
+ * ai_rep_coaching_insights was added in migration 153 (MINCRM-474).
  */
 export const FEATURE_FLAG_KEYS = [
   'notes',
@@ -55,6 +56,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_sentiment_tracking',
   'ai_relationship_health_score',
   'ai_followup_timing_suggestions',
+  'ai_rep_coaching_insights',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

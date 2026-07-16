@@ -371,6 +371,42 @@ export const setAiSessionRetentionSchema = z.object({
 
 export type SetAiSessionRetentionInput = z.infer<typeof setAiSessionRetentionSchema>;
 
+/** Schema for PATCH /api/v1/admin/ai/coaching-config request body. (MINCRM-474) */
+export const setRepCoachingConfigSchema = z.object({
+  min_closed_deals: z
+    .number({ required_error: 'min_closed_deals is required' })
+    .int({ message: 'min_closed_deals must be an integer' })
+    .min(1, { message: 'min_closed_deals must be at least 1' }),
+  stage_time_outlier_ratio: z
+    .number({ required_error: 'stage_time_outlier_ratio is required' })
+    .gt(1, { message: 'stage_time_outlier_ratio must be greater than 1' }),
+  activity_frequency_outlier_ratio: z
+    .number({ required_error: 'activity_frequency_outlier_ratio is required' })
+    .gt(0, { message: 'activity_frequency_outlier_ratio must be greater than 0' })
+    .lt(1, { message: 'activity_frequency_outlier_ratio must be less than 1' }),
+  response_time_outlier_hours: z
+    .number({ required_error: 'response_time_outlier_hours is required' })
+    .int({ message: 'response_time_outlier_hours must be an integer' })
+    .min(1, { message: 'response_time_outlier_hours must be at least 1' }),
+  win_rate_outlier_delta: z
+    .number({ required_error: 'win_rate_outlier_delta is required' })
+    .gt(0, { message: 'win_rate_outlier_delta must be greater than 0' })
+    .lt(1, { message: 'win_rate_outlier_delta must be less than 1' }),
+});
+
+export type SetRepCoachingConfigInput = z.infer<typeof setRepCoachingConfigSchema>;
+
+/** Response shape for GET /api/v1/admin/ai/coaching-config. (MINCRM-474) */
+export interface RepCoachingConfigResponse {
+  min_closed_deals: number;
+  stage_time_outlier_ratio: number;
+  activity_frequency_outlier_ratio: number;
+  response_time_outlier_hours: number;
+  win_rate_outlier_delta: number;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 /**
  * Response shape for GET /api/v1/admin/ai/retention-stats.
  * Counts of AI session data currently stored, shown alongside the configured

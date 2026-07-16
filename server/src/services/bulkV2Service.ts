@@ -19,6 +19,7 @@ import type { AuditActor } from './auditService.js';
 import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { getStageNames } from './pipelineStageService.js';
+import { writeDealStageHistoryEntry } from './dealService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
 import { fireAutomationTrigger } from './automationService.js';
@@ -469,6 +470,7 @@ interface DealBulkRow {
   name: string;
   stage: string;
   owner_id: string;
+  pipeline_id: string;
 }
 
 /**
@@ -502,7 +504,7 @@ export async function bulkPatchDeals(
     await client.query('BEGIN');
 
     const fetchResult = await client.query<DealBulkRow>(
-      `SELECT id, name, stage, owner_id FROM deals WHERE id = ANY($1)`,
+      `SELECT id, name, stage, owner_id, pipeline_id FROM deals WHERE id = ANY($1)`,
       [ids],
     );
     const rowMap = new Map(fetchResult.rows.map((r) => [r.id, r]));
@@ -559,6 +561,10 @@ export async function bulkPatchDeals(
             changedById: actor.id,
             changedByName: actor.name,
           });
+          // Stage history row on a real transition only (MINCRM-474)
+          if (row.stage !== patch.stage) {
+            await writeDealStageHistoryEntry(client, id, row.pipeline_id, patch.stage);
+          }
         }
 
         await client.query(`RELEASE SAVEPOINT ${sp}`);

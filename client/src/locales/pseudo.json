@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "[Üñlïñkëd rëĉörd~~~~~]",
     "currencyConvertedFootnote": "[Ĉöñvërtëd tö {{currency}} · rätëŝ äŝ öf {{date}}~~~~~~~~~~~~~~~]",
     "unratedDealsNote": "[{{count}} dëäl ĉürrëñĉy häŝ ñö rätë ĉöñfïgürëd.~~~~~~~~~~~~~~~]",
-    "unratedDealsNote_other": "[{{count}} dëäl ĉürrëñĉïëŝ hävë ñö rätë ĉöñfïgürëd.~~~~~~~~~~~~~~~]"
+    "unratedDealsNote_other": "[{{count}} dëäl ĉürrëñĉïëŝ hävë ñö rätë ĉöñfïgürëd.~~~~~~~~~~~~~~~]",
+    "myPerformanceHeading": "[My Përförmäñĉë~~~~]",
+    "myPerformanceViewAll": "[Vïëw äll~~~]"
   },
   "contacts": {
     "pageTitle": "[Ĉöñtäĉtŝ~~~]",
@@ -2039,7 +2041,8 @@
       "general": "[Gëñëräl~~~]",
       "usageBudgets": "[Üŝägë & Büdgëtŝ~~~~~]",
       "dataRetention": "[Dätä Rëtëñtïöñ~~~~~]",
-      "dataMinimization": "[Dätä Mïñïmïzätïöñ~~~~~~]"
+      "dataMinimization": "[Dätä Mïñïmïzätïöñ~~~~~~]",
+      "coaching": "[Rëp Ĉöäĉhïñg~~~~]"
     },
     "header": {
       "deploymentMode": "[Dëplöymëñt Mödë~~~~~]"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "[Pürgë ñöw~~~]",
       "purgeAccepted": "[Pürgë ŝtärtëd. Ŝëŝŝïöñ äñd mëŝŝägë ĉöüñtŝ wïll üpdätë ŝhörtly.~~~~~~~~~~~~~~~~~~~]",
       "purgeError": "[Fäïlëd tö ŝtärt thë pürgë. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~]"
+    },
+    "coaching": {
+      "heading": "[Rëp Ĉöäĉhïñg Ïñŝïghtŝ~~~~~~~]",
+      "description": "[Ĉöñfïgürë thë thrëŝhöldŝ üŝëd tö gëñërätë ñïghtly për-rëp ĉöäĉhïñg ïñŝïghtŝ äñd fläg öütlïërŝ ägäïñŝt tëäm ävërägëŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "loadError": "[Fäïlëd tö löäd ĉöäĉhïñg ïñŝïght ŝëttïñgŝ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~]",
+      "minClosedDealsLabel": "[Mïñïmüm ĉlöŝëd dëälŝ rëqüïrëd~~~~~~~~~]",
+      "stageRatioLabel": "[Ŝtägë tïmë öütlïër rätïö~~~~~~~~]",
+      "activityRatioLabel": "[Äĉtïvïty frëqüëñĉy öütlïër rätïö~~~~~~~~~~]",
+      "responseHoursLabel": "[Rëŝpöñŝë tïmë öütlïër (höürŝ)~~~~~~~~~]",
+      "winRateDeltaLabel": "[Wïñ rätë öütlïër dëltä~~~~~~~]",
+      "validationMinClosedDeals": "[Mïñïmüm ĉlöŝëd dëälŝ müŝt bë ät lëäŝt 1.~~~~~~~~~~~~]",
+      "validationStageRatio": "[Ŝtägë tïmë öütlïër rätïö müŝt bë grëätër thäñ 1.~~~~~~~~~~~~~~~]",
+      "validationActivityRatio": "[Äĉtïvïty frëqüëñĉy öütlïër rätïö müŝt bë bëtwëëñ 0 äñd 1.~~~~~~~~~~~~~~~~~~]",
+      "validationResponseHours": "[Rëŝpöñŝë tïmë öütlïër müŝt bë ät lëäŝt 1 höür.~~~~~~~~~~~~~~]",
+      "validationWinRateDelta": "[Wïñ rätë öütlïër dëltä müŝt bë bëtwëëñ 0 äñd 1.~~~~~~~~~~~~~~~]",
+      "saveSuccess": "[Ĉöäĉhïñg ïñŝïght thrëŝhöldŝ ŝävëd.~~~~~~~~~~~]",
+      "saveError": "[Fäïlëd tö ŝävë ĉöäĉhïñg ïñŝïght thrëŝhöldŝ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~]",
+      "runNowDescription": "[Rëĉömpütë ĉöäĉhïñg ïñŝïghtŝ ïmmëdïätëly, öütŝïdë thë ñïghtly ŝĉhëdülë.~~~~~~~~~~~~~~~~~~~~~]",
+      "runNow": "[Rüñ ñöw~~~]",
+      "runAccepted": "[Rëĉömpütätïöñ ŝtärtëd. Ïñŝïghtŝ wïll üpdätë ŝhörtly.~~~~~~~~~~~~~~~~]",
+      "runError": "[Fäïlëd tö ŝtärt thë rëĉömpütätïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
     },
     "tokenBudgets": {
       "heading": "[Tökëñ Büdgëtŝ~~~~]",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "[Ëxpäñŝïöñ Öppörtüñïtïëŝ~~~~~~~]",
     "expansionEmpty": "[Ñö ëxpäñŝïöñ öppörtüñïtïëŝ dëtëĉtëd.~~~~~~~~~~~]",
     "confidenceLabel": "[{{confidence}}% ĉöñfïdëñĉë~~~~~~~~]"
+  },
+  "coaching": {
+    "insightsHeading": "[Rëp Ĉöäĉhïñg Ïñŝïghtŝ~~~~~~~]",
+    "notAvailable": "[Thïŝ fëätürë ïŝ ñöt äväïläblë.~~~~~~~~~]",
+    "loadFailed": "[Fäïlëd tö löäd ĉöäĉhïñg ïñŝïghtŝ.~~~~~~~~~~]",
+    "repSelectorLabel": "[Rëp~]",
+    "outlierBadge": "[Öütlïër~~]",
+    "insufficientData": "[Ñöt ëñöügh ĉlöŝëd dëäl hïŝtöry yët ({{count}} öf {{required}} ĉlöŝëd dëälŝ rëqüïrëd).~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "insufficientDataShort": "[ïñŝüffïĉïëñt dätä~~~~~]",
+    "noInsights": "[Ñö ĉöäĉhïñg ïñŝïghtŝ äväïläblë yët.~~~~~~~~~~~]",
+    "noRepsAvailable": "[Ñö rëpŝ äväïläblë.~~~~~~]"
   },
   "notifications": {
     "bellLabel": "[Ñötïfïĉätïöñŝ ({{count}} üñrëäd)~~~~~~~~~~]",

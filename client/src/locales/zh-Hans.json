@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "未关联记录",
     "currencyConvertedFootnote": "已换算为 {{currency}} · 汇率截至 {{date}}",
     "unratedDealsNote": "{{count}} 种交易货币未配置汇率。",
-    "unratedDealsNote_other": "{{count}} 种交易货币未配置汇率。"
+    "unratedDealsNote_other": "{{count}} 种交易货币未配置汇率。",
+    "myPerformanceHeading": "我的业绩",
+    "myPerformanceViewAll": "查看全部"
   },
   "contacts": {
     "pageTitle": "联系人",
@@ -2039,7 +2041,8 @@
       "general": "常规",
       "usageBudgets": "使用量与预算",
       "dataRetention": "数据保留",
-      "dataMinimization": "数据最小化"
+      "dataMinimization": "数据最小化",
+      "coaching": "销售辅导"
     },
     "header": {
       "deploymentMode": "部署模式"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "立即清理",
       "purgeAccepted": "清理已开始。会话和消息数量将很快更新。",
       "purgeError": "无法启动清理，请重试。"
+    },
+    "coaching": {
+      "heading": "销售辅导洞察",
+      "description": "配置用于每晚生成每位销售代表的辅导洞察并标记与团队平均值相比的异常值的阈值。",
+      "loadError": "加载辅导洞察设置失败，请重试。",
+      "minClosedDealsLabel": "所需的最少成交数量",
+      "stageRatioLabel": "阶段耗时异常比率",
+      "activityRatioLabel": "活动频率异常比率",
+      "responseHoursLabel": "响应时间异常值（小时）",
+      "winRateDeltaLabel": "成交率异常差值",
+      "validationMinClosedDeals": "最少成交数量必须至少为 1。",
+      "validationStageRatio": "阶段耗时异常比率必须大于 1。",
+      "validationActivityRatio": "活动频率异常比率必须介于 0 和 1 之间。",
+      "validationResponseHours": "响应时间异常值必须至少为 1 小时。",
+      "validationWinRateDelta": "成交率异常差值必须介于 0 和 1 之间。",
+      "saveSuccess": "辅导洞察阈值已保存。",
+      "saveError": "保存辅导洞察阈值失败，请重试。",
+      "runNowDescription": "立即重新计算辅导洞察，不受夜间计划限制。",
+      "runNow": "立即运行",
+      "runAccepted": "重新计算已开始，洞察将很快更新。",
+      "runError": "无法启动重新计算，请重试。"
     },
     "tokenBudgets": {
       "heading": "Token 预算",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "扩展机会",
     "expansionEmpty": "未检测到扩展机会。",
     "confidenceLabel": "置信度 {{confidence}}%"
+  },
+  "coaching": {
+    "insightsHeading": "销售代表辅导洞察",
+    "notAvailable": "此功能不可用。",
+    "loadFailed": "加载辅导洞察失败。",
+    "repSelectorLabel": "销售代表",
+    "outlierBadge": "异常值",
+    "insufficientData": "已成交的交易数据尚不足（需要 {{required}} 笔，目前 {{count}} 笔）。",
+    "insufficientDataShort": "数据不足",
+    "noInsights": "暂无可用的辅导洞察。",
+    "noRepsAvailable": "暂无可用的销售代表。"
   },
   "notifications": {
     "bellLabel": "通知（{{count}} 条未读）",
