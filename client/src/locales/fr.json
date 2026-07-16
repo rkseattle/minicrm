@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "Enregistrement non lié",
     "currencyConvertedFootnote": "Converti en {{currency}} · taux au {{date}}",
     "unratedDealsNote": "{{count}} devise d'affaire n'a pas de taux configuré.",
-    "unratedDealsNote_other": "{{count}} devises d'affaires n'ont pas de taux configuré."
+    "unratedDealsNote_other": "{{count}} devises d'affaires n'ont pas de taux configuré.",
+    "myPerformanceHeading": "Ma performance",
+    "myPerformanceViewAll": "Tout voir"
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -2039,7 +2041,8 @@
       "general": "Général",
       "usageBudgets": "Utilisation et budgets",
       "dataRetention": "Conservation des données",
-      "dataMinimization": "Minimisation des données"
+      "dataMinimization": "Minimisation des données",
+      "coaching": "Coaching commercial"
     },
     "header": {
       "deploymentMode": "Mode de déploiement"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "Purger maintenant",
       "purgeAccepted": "Purge démarrée. Le nombre de sessions et de messages sera bientôt mis à jour.",
       "purgeError": "Échec du démarrage de la purge. Veuillez réessayer."
+    },
+    "coaching": {
+      "heading": "Informations de coaching commercial",
+      "description": "Configurez les seuils utilisés pour générer chaque nuit des informations de coaching par commercial et signaler les valeurs aberrantes par rapport aux moyennes de l'équipe.",
+      "loadError": "Échec du chargement des paramètres d'informations de coaching. Veuillez réessayer.",
+      "minClosedDealsLabel": "Nombre minimum d'affaires conclues requis",
+      "stageRatioLabel": "Ratio aberrant de durée par étape",
+      "activityRatioLabel": "Ratio aberrant de fréquence d'activité",
+      "responseHoursLabel": "Valeur aberrante du délai de réponse (heures)",
+      "winRateDeltaLabel": "Écart aberrant du taux de conversion",
+      "validationMinClosedDeals": "Le nombre minimum d'affaires conclues doit être d'au moins 1.",
+      "validationStageRatio": "Le ratio aberrant de durée par étape doit être supérieur à 1.",
+      "validationActivityRatio": "Le ratio aberrant de fréquence d'activité doit être compris entre 0 et 1.",
+      "validationResponseHours": "La valeur aberrante du délai de réponse doit être d'au moins 1 heure.",
+      "validationWinRateDelta": "L'écart aberrant du taux de conversion doit être compris entre 0 et 1.",
+      "saveSuccess": "Seuils des informations de coaching enregistrés.",
+      "saveError": "Échec de l'enregistrement des seuils des informations de coaching. Veuillez réessayer.",
+      "runNowDescription": "Recalculez immédiatement les informations de coaching, en dehors du calendrier nocturne.",
+      "runNow": "Exécuter maintenant",
+      "runAccepted": "Recalcul démarré. Les informations seront bientôt mises à jour.",
+      "runError": "Échec du démarrage du recalcul. Veuillez réessayer."
     },
     "tokenBudgets": {
       "heading": "Budgets de tokens",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "Opportunités d'expansion",
     "expansionEmpty": "Aucune opportunité d'expansion détectée.",
     "confidenceLabel": "{{confidence}} % de confiance"
+  },
+  "coaching": {
+    "insightsHeading": "Informations de coaching des commerciaux",
+    "notAvailable": "Cette fonctionnalité n'est pas disponible.",
+    "loadFailed": "Échec du chargement des informations de coaching.",
+    "repSelectorLabel": "Commercial",
+    "outlierBadge": "Valeur atypique",
+    "insufficientData": "Historique de contrats conclus insuffisant ({{count}} sur {{required}} requis).",
+    "insufficientDataShort": "données insuffisantes",
+    "noInsights": "Aucune information de coaching disponible pour le moment.",
+    "noRepsAvailable": "Aucun commercial disponible."
   },
   "notifications": {
     "bellLabel": "Notifications ({{count}} non lues)",

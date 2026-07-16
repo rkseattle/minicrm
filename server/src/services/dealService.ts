@@ -20,6 +20,26 @@ import { buildVisibilityFilter, validateReassignment } from './visibilityService
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
+/**
+ * Records a deal entering a stage in deal_stage_history — one row per real
+ * transition, including the day-0 row on creation. Must run inside the same
+ * transaction/client as the deal write it accompanies. Exported so
+ * bulkService/bulkV2Service's change_stage actions (which bypass updateDeal)
+ * can write the same history row. Not called from pipelineStageService's
+ * stage-rename path — renaming a stage's label is not a transition. (MINCRM-474)
+ */
+export async function writeDealStageHistoryEntry(
+  client: PoolClient,
+  dealId: string,
+  pipelineId: string,
+  stage: string,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO deal_stage_history (deal_id, pipeline_id, stage) VALUES ($1, $2, $3)`,
+    [dealId, pipelineId, stage],
+  );
+}
+
 /** Columns that may be updated via updateDeal — guards against SQL injection from dynamic field names */
 const ALLOWED_UPDATE_FIELDS: ReadonlySet<keyof UpdateDealInput> = new Set([
   'name',
@@ -181,6 +201,9 @@ export async function createDeal(
       changedByName: actor.name,
       source: actor.source ?? null,
     });
+
+    // Day-0 stage history row (MINCRM-474)
+    await writeDealStageHistoryEntry(client, deal.id, resolvedPipelineId, stage);
 
     await client.query('COMMIT');
 
@@ -514,6 +537,12 @@ export async function updateDeal(
       }
 
       await writeAuditEntries(client, [...fieldEntries, ...ownershipEntries]);
+    }
+
+    // Stage history row on a real transition only (MINCRM-474) — not written when
+    // stage is present in the payload but unchanged (see the `else if` branch above).
+    if (deal && params.stage !== undefined && deal.stage !== previousStage) {
+      await writeDealStageHistoryEntry(client, deal.id, deal.pipeline_id, deal.stage);
     }
 
     await client.query('COMMIT');

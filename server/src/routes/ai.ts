@@ -38,6 +38,11 @@ import {
   triggerManualAiPurgeHandler,
 } from '../controllers/aiRetentionController.js';
 import {
+  getRepCoachingConfigHandler,
+  setRepCoachingConfigHandler,
+  triggerManualRepCoachingRunHandler,
+} from '../controllers/repCoachingController.js';
+import {
   listFieldExclusionsHandler,
   setFieldExclusionHandler,
 } from '../controllers/aiFieldExclusionController.js';
@@ -438,6 +443,102 @@ router.post(
   authenticate,
   requireRole('admin'),
   asyncHandler(triggerManualAiPurgeHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/coaching-config:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the current rep coaching insight thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current coaching insight thresholds
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/coaching-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getRepCoachingConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/coaching-config:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Update the rep coaching insight thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - min_closed_deals
+ *               - stage_time_outlier_ratio
+ *               - activity_frequency_outlier_ratio
+ *               - response_time_outlier_hours
+ *               - win_rate_outlier_delta
+ *             properties:
+ *               min_closed_deals:
+ *                 type: integer
+ *                 minimum: 1
+ *               stage_time_outlier_ratio:
+ *                 type: number
+ *               activity_frequency_outlier_ratio:
+ *                 type: number
+ *               response_time_outlier_hours:
+ *                 type: integer
+ *                 minimum: 1
+ *               win_rate_outlier_delta:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Updated coaching insight thresholds
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/coaching-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setRepCoachingConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/coaching/run:
+ *   post:
+ *     tags: [AI]
+ *     summary: Trigger an immediate rep coaching insight recomputation outside the nightly schedule
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       202:
+ *         description: Recomputation accepted and running asynchronously
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.post(
+  '/coaching/run',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(triggerManualRepCoachingRunHandler),
 );
 
 /**

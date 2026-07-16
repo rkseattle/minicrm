@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "Unlinked record",
     "currencyConvertedFootnote": "Converted to {{currency}} · rates as of {{date}}",
     "unratedDealsNote": "{{count}} deal currency has no rate configured.",
-    "unratedDealsNote_other": "{{count}} deal currencies have no rate configured."
+    "unratedDealsNote_other": "{{count}} deal currencies have no rate configured.",
+    "myPerformanceHeading": "My Performance",
+    "myPerformanceViewAll": "View all"
   },
   "contacts": {
     "pageTitle": "Contacts",
@@ -2039,7 +2041,8 @@
       "general": "General",
       "usageBudgets": "Usage & Budgets",
       "dataRetention": "Data Retention",
-      "dataMinimization": "Data Minimization"
+      "dataMinimization": "Data Minimization",
+      "coaching": "Rep Coaching"
     },
     "header": {
       "deploymentMode": "Deployment Mode"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "Purge now",
       "purgeAccepted": "Purge started. Session and message counts will update shortly.",
       "purgeError": "Failed to start the purge. Please try again."
+    },
+    "coaching": {
+      "heading": "Rep Coaching Insights",
+      "description": "Configure the thresholds used to generate nightly per-rep coaching insights and flag outliers against team averages.",
+      "loadError": "Failed to load coaching insight settings. Please try again.",
+      "minClosedDealsLabel": "Minimum closed deals required",
+      "stageRatioLabel": "Stage time outlier ratio",
+      "activityRatioLabel": "Activity frequency outlier ratio",
+      "responseHoursLabel": "Response time outlier (hours)",
+      "winRateDeltaLabel": "Win rate outlier delta",
+      "validationMinClosedDeals": "Minimum closed deals must be at least 1.",
+      "validationStageRatio": "Stage time outlier ratio must be greater than 1.",
+      "validationActivityRatio": "Activity frequency outlier ratio must be between 0 and 1.",
+      "validationResponseHours": "Response time outlier must be at least 1 hour.",
+      "validationWinRateDelta": "Win rate outlier delta must be between 0 and 1.",
+      "saveSuccess": "Coaching insight thresholds saved.",
+      "saveError": "Failed to save coaching insight thresholds. Please try again.",
+      "runNowDescription": "Recompute coaching insights immediately, outside the nightly schedule.",
+      "runNow": "Run now",
+      "runAccepted": "Recomputation started. Insights will update shortly.",
+      "runError": "Failed to start the recomputation. Please try again."
     },
     "tokenBudgets": {
       "heading": "Token Budgets",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "Expansion Opportunities",
     "expansionEmpty": "No expansion opportunities detected.",
     "confidenceLabel": "{{confidence}}% confidence"
+  },
+  "coaching": {
+    "insightsHeading": "Rep Coaching Insights",
+    "notAvailable": "This feature is not available.",
+    "loadFailed": "Failed to load coaching insights.",
+    "repSelectorLabel": "Rep",
+    "outlierBadge": "Outlier",
+    "insufficientData": "Not enough closed deal history yet ({{count}} of {{required}} closed deals required).",
+    "insufficientDataShort": "insufficient data",
+    "noInsights": "No coaching insights available yet.",
+    "noRepsAvailable": "No reps available."
   },
   "notifications": {
     "bellLabel": "Notifications ({{count}} unread)",

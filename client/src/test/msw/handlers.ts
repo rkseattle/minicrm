@@ -2612,6 +2612,35 @@ export const handlers = [
     return HttpResponse.json({ at_risk: [], expansion: [] });
   }),
 
+  /** Insights: GET /api/insights/coaching/me — defaults to insufficient data, no insights (MINCRM-474). */
+  http.get('/api/v1/insights/coaching/me', () => {
+    return HttpResponse.json({
+      rep_id: ADMIN_USER.id,
+      rep_name: ADMIN_USER.name,
+      insights: [],
+      has_sufficient_data: false,
+      min_closed_deals_required: 10,
+      closed_deal_count: 0,
+    });
+  }),
+
+  /** Insights: GET /api/insights/coaching/team — defaults to an empty rep list (MINCRM-474). */
+  http.get('/api/v1/insights/coaching/team', () => {
+    return HttpResponse.json({ reps: [], min_closed_deals_required: 10 });
+  }),
+
+  /** Insights: GET /api/insights/coaching/:repId — defaults to insufficient data (MINCRM-474). */
+  http.get('/api/v1/insights/coaching/:repId', ({ params }) => {
+    return HttpResponse.json({
+      rep_id: params.repId as string,
+      rep_name: 'Test Rep',
+      insights: [],
+      has_sufficient_data: false,
+      min_closed_deals_required: 10,
+      closed_deal_count: 0,
+    });
+  }),
+
   // ── In-app notification feed (MINCRM-469) ───────────────────────────────────────
 
   /** Notifications: GET /api/notifications — defaults to an empty feed. */
@@ -3107,6 +3136,39 @@ export const handlers = [
   http.post('/api/v1/admin/ai/retention/purge', () => {
     return HttpResponse.json(
       { accepted: true, message: 'AI session purge started' },
+      { status: 202 },
+    );
+  }),
+
+  // ── Rep coaching insight config handlers (MINCRM-474) ──────────────────────
+
+  /** GET /api/v1/admin/ai/coaching-config — defaults to the migration-seeded values. */
+  http.get('/api/v1/admin/ai/coaching-config', () => {
+    return HttpResponse.json({
+      min_closed_deals: 10,
+      stage_time_outlier_ratio: 1.5,
+      activity_frequency_outlier_ratio: 0.5,
+      response_time_outlier_hours: 48,
+      win_rate_outlier_delta: 0.15,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: null,
+    });
+  }),
+
+  /** PATCH /api/v1/admin/ai/coaching-config — echoes the submitted values back. */
+  http.patch('/api/v1/admin/ai/coaching-config', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      ...body,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: ADMIN_USER.id,
+    });
+  }),
+
+  /** POST /api/v1/admin/ai/coaching/run — manual recomputation trigger. */
+  http.post('/api/v1/admin/ai/coaching/run', () => {
+    return HttpResponse.json(
+      { accepted: true, message: 'Rep coaching insight recomputation started' },
       { status: 202 },
     );
   }),

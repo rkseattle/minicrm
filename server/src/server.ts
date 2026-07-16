@@ -20,6 +20,7 @@ import { analyzeWinLossPatterns } from './services/winLossAnalysisService.js';
 import { detectChurnExpansionSignals } from './services/churnExpansionService.js';
 import { computeAccountHealthScores } from './services/relationshipHealthService.js';
 import { computeFollowUpTimingSuggestions } from './services/followUpTimingService.js';
+import { generateRepCoachingInsights } from './services/repCoachingService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
@@ -246,6 +247,19 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => followUpTimingCron.stop());
   process.once('SIGINT', () => followUpTimingCron.stop());
+
+  // Rep coaching insights — runs daily at 06:00 server time (MINCRM-474).
+  // Deterministic/SQL-driven (no AI call) — recomputes coaching insights for
+  // every rep with at least min_closed_deals closed deals; the read path
+  // always serves the cached result.
+  const repCoachingCron = cron.schedule('0 6 * * *', () => {
+    logger.info('cron: running rep coaching insights generation');
+    void generateRepCoachingInsights();
+  });
+  logger.info('Rep coaching insights cron scheduled (daily at 06:00)');
+
+  process.once('SIGTERM', () => repCoachingCron.stop());
+  process.once('SIGINT', () => repCoachingCron.stop());
 
   // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,

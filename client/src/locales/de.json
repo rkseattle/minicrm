@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "Nicht verknüpfter Datensatz",
     "currencyConvertedFootnote": "Umgerechnet in {{currency}} · Kurse vom {{date}}",
     "unratedDealsNote": "{{count}} Deal-Währung hat keinen konfigurierten Kurs.",
-    "unratedDealsNote_other": "{{count}} Deal-Währungen haben keine konfigurierten Kurse."
+    "unratedDealsNote_other": "{{count}} Deal-Währungen haben keine konfigurierten Kurse.",
+    "myPerformanceHeading": "Meine Leistung",
+    "myPerformanceViewAll": "Alle anzeigen"
   },
   "contacts": {
     "pageTitle": "Kontakte",
@@ -2039,7 +2041,8 @@
       "general": "Allgemein",
       "usageBudgets": "Nutzung & Budgets",
       "dataRetention": "Datenaufbewahrung",
-      "dataMinimization": "Datenminimierung"
+      "dataMinimization": "Datenminimierung",
+      "coaching": "Vertriebscoaching"
     },
     "header": {
       "deploymentMode": "Bereitstellungsmodus"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "Jetzt bereinigen",
       "purgeAccepted": "Bereinigung gestartet. Die Sitzungs- und Nachrichtenanzahl wird in Kürze aktualisiert.",
       "purgeError": "Bereinigung konnte nicht gestartet werden. Bitte erneut versuchen."
+    },
+    "coaching": {
+      "heading": "Vertriebscoaching-Einblicke",
+      "description": "Konfigurieren Sie die Schwellenwerte für die nächtliche Generierung von Coaching-Einblicken pro Vertriebsmitarbeiter und die Kennzeichnung von Ausreißern gegenüber den Teamdurchschnittswerten.",
+      "loadError": "Coaching-Einblick-Einstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
+      "minClosedDealsLabel": "Erforderliche Mindestanzahl abgeschlossener Deals",
+      "stageRatioLabel": "Ausreißerverhältnis für Phasendauer",
+      "activityRatioLabel": "Ausreißerverhältnis für Aktivitätshäufigkeit",
+      "responseHoursLabel": "Ausreißer bei Reaktionszeit (Stunden)",
+      "winRateDeltaLabel": "Ausreißer-Delta der Abschlussquote",
+      "validationMinClosedDeals": "Die Mindestanzahl abgeschlossener Deals muss mindestens 1 betragen.",
+      "validationStageRatio": "Das Ausreißerverhältnis für die Phasendauer muss größer als 1 sein.",
+      "validationActivityRatio": "Das Ausreißerverhältnis für die Aktivitätshäufigkeit muss zwischen 0 und 1 liegen.",
+      "validationResponseHours": "Der Ausreißer bei der Reaktionszeit muss mindestens 1 Stunde betragen.",
+      "validationWinRateDelta": "Das Ausreißer-Delta der Abschlussquote muss zwischen 0 und 1 liegen.",
+      "saveSuccess": "Coaching-Schwellenwerte gespeichert.",
+      "saveError": "Coaching-Schwellenwerte konnten nicht gespeichert werden. Bitte erneut versuchen.",
+      "runNowDescription": "Coaching-Einblicke sofort neu berechnen, außerhalb des nächtlichen Zeitplans.",
+      "runNow": "Jetzt ausführen",
+      "runAccepted": "Neuberechnung gestartet. Die Einblicke werden in Kürze aktualisiert.",
+      "runError": "Die Neuberechnung konnte nicht gestartet werden. Bitte erneut versuchen."
     },
     "tokenBudgets": {
       "heading": "Token-Budgets",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "Expansionsmöglichkeiten",
     "expansionEmpty": "Keine Expansionsmöglichkeiten erkannt.",
     "confidenceLabel": "{{confidence}} % Konfidenz"
+  },
+  "coaching": {
+    "insightsHeading": "Coaching-Einblicke für Vertriebsmitarbeiter",
+    "notAvailable": "Diese Funktion ist nicht verfügbar.",
+    "loadFailed": "Coaching-Einblicke konnten nicht geladen werden.",
+    "repSelectorLabel": "Vertriebsmitarbeiter",
+    "outlierBadge": "Ausreißer",
+    "insufficientData": "Noch nicht genügend abgeschlossene Geschäfte ({{count}} von {{required}} erforderlich).",
+    "insufficientDataShort": "unzureichende Daten",
+    "noInsights": "Noch keine Coaching-Einblicke verfügbar.",
+    "noRepsAvailable": "Keine Vertriebsmitarbeiter verfügbar."
   },
   "notifications": {
     "bellLabel": "Benachrichtigungen ({{count}} ungelesen)",

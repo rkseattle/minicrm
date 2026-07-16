@@ -214,7 +214,9 @@
     "recentActivityUnlinked": "Registro sin vincular",
     "currencyConvertedFootnote": "Convertido a {{currency}} · tasas al {{date}}",
     "unratedDealsNote": "{{count}} moneda de negocio no tiene tasa configurada.",
-    "unratedDealsNote_other": "{{count}} monedas de negocios no tienen tasa configurada."
+    "unratedDealsNote_other": "{{count}} monedas de negocios no tienen tasa configurada.",
+    "myPerformanceHeading": "Mi desempeño",
+    "myPerformanceViewAll": "Ver todo"
   },
   "contacts": {
     "pageTitle": "Contactos",
@@ -2039,7 +2041,8 @@
       "general": "General",
       "usageBudgets": "Uso y presupuestos",
       "dataRetention": "Retención de datos",
-      "dataMinimization": "Minimización de datos"
+      "dataMinimization": "Minimización de datos",
+      "coaching": "Coaching de comerciales"
     },
     "header": {
       "deploymentMode": "Modo de implementación"
@@ -2135,6 +2138,27 @@
       "purgeConfirmAction": "Purgar ahora",
       "purgeAccepted": "Purga iniciada. El recuento de sesiones y mensajes se actualizará en breve.",
       "purgeError": "No se pudo iniciar la purga. Por favor, inténtalo de nuevo."
+    },
+    "coaching": {
+      "heading": "Información de coaching de comerciales",
+      "description": "Configura los umbrales utilizados para generar cada noche información de coaching por comercial y señalar valores atípicos frente a los promedios del equipo.",
+      "loadError": "Error al cargar la configuración de información de coaching. Inténtalo de nuevo.",
+      "minClosedDealsLabel": "Mínimo de negocios cerrados requeridos",
+      "stageRatioLabel": "Ratio atípico de tiempo por etapa",
+      "activityRatioLabel": "Ratio atípico de frecuencia de actividad",
+      "responseHoursLabel": "Valor atípico de tiempo de respuesta (horas)",
+      "winRateDeltaLabel": "Delta atípico de tasa de conversión",
+      "validationMinClosedDeals": "El mínimo de negocios cerrados debe ser al menos 1.",
+      "validationStageRatio": "El ratio atípico de tiempo por etapa debe ser mayor que 1.",
+      "validationActivityRatio": "El ratio atípico de frecuencia de actividad debe estar entre 0 y 1.",
+      "validationResponseHours": "El valor atípico de tiempo de respuesta debe ser de al menos 1 hora.",
+      "validationWinRateDelta": "El delta atípico de tasa de conversión debe estar entre 0 y 1.",
+      "saveSuccess": "Umbrales de información de coaching guardados.",
+      "saveError": "Error al guardar los umbrales de información de coaching. Inténtalo de nuevo.",
+      "runNowDescription": "Recalcula la información de coaching de inmediato, fuera del horario nocturno.",
+      "runNow": "Ejecutar ahora",
+      "runAccepted": "Recálculo iniciado. La información se actualizará en breve.",
+      "runError": "Error al iniciar el recálculo. Inténtalo de nuevo."
     },
     "tokenBudgets": {
       "heading": "Presupuestos de tokens",
@@ -2439,6 +2463,17 @@
     "expansionHeading": "Oportunidades de expansión",
     "expansionEmpty": "No se detectaron oportunidades de expansión.",
     "confidenceLabel": "{{confidence}}% de confianza"
+  },
+  "coaching": {
+    "insightsHeading": "Información de coaching para representantes",
+    "notAvailable": "Esta función no está disponible.",
+    "loadFailed": "Error al cargar la información de coaching.",
+    "repSelectorLabel": "Representante",
+    "outlierBadge": "Atípico",
+    "insufficientData": "Aún no hay suficiente historial de negocios cerrados ({{count}} de {{required}} requeridos).",
+    "insufficientDataShort": "datos insuficientes",
+    "noInsights": "Aún no hay información de coaching disponible.",
+    "noRepsAvailable": "No hay representantes disponibles."
   },
   "notifications": {
     "bellLabel": "Notificaciones ({{count}} sin leer)",

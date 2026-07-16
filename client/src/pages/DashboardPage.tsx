@@ -18,11 +18,13 @@ import { useTranslation } from 'react-i18next';
 import NavBar from '@/components/NavBar.js';
 import EmptyState from '@/components/EmptyState.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag.js';
 import {
   getDashboardSummary,
   DASHBOARD_QUERY_KEY,
   type RecentActivityEntry,
 } from '@/api/dashboard.js';
+import { getMyCoachingInsights, MY_COACHING_INSIGHTS_QUERY_KEY } from '@/api/repCoaching.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 
 /**
@@ -130,6 +132,63 @@ function relativeTime(isoString: string): string {
   if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+}
+
+/**
+ * Renders the authenticated user's own AI coaching insights on the dashboard,
+ * under a "My Performance" heading. (MINCRM-474)
+ * Any rep, manager, or admin sees only their own data here — the org-wide
+ * manager/admin view lives at /insights/coaching. Silently renders nothing
+ * when the feature flag is off, insufficient data exists, or there are no
+ * outlier insights yet, since this is a supplementary dashboard section, not
+ * a page the user navigated to specifically for this data.
+ */
+function MyPerformanceSection() {
+  const { t } = useTranslation();
+  const { enabled: featureEnabled } = useFeatureFlag('ai_rep_coaching_insights');
+
+  const { data } = useQuery({
+    queryKey: MY_COACHING_INSIGHTS_QUERY_KEY,
+    queryFn: getMyCoachingInsights,
+    enabled: featureEnabled,
+  });
+
+  if (!featureEnabled || !data || !data.has_sufficient_data) return null;
+
+  const outlierInsights = data.insights.filter((insight) => insight.is_outlier);
+  if (outlierInsights.length === 0) return null;
+
+  return (
+    <div
+      className="bg-white rounded-lg border border-gray-200 mt-6"
+      data-testid="my-performance-section"
+    >
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-gray-900">
+          {t('dashboard.myPerformanceHeading')}
+        </h2>
+        <Link
+          to="/insights/coaching"
+          className="text-sm text-primary-600 hover:underline"
+          data-testid="my-performance-view-all"
+        >
+          {t('dashboard.myPerformanceViewAll')}
+        </Link>
+      </div>
+      <ul className="divide-y divide-gray-100" data-testid="my-performance-list">
+        {outlierInsights.map((insight) => (
+          <li
+            key={`${insight.metric_type}-${insight.segment ?? 'all'}`}
+            className="px-6 py-3"
+            data-testid={`my-performance-insight-${insight.metric_type}-${insight.segment ?? 'all'}`}
+          >
+            <p className="text-sm text-gray-900">{insight.observation}</p>
+            <p className="text-sm text-gray-600 mt-1">{insight.recommended_action}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 /**
@@ -485,6 +544,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* My Performance — own AI coaching insights (MINCRM-474) */}
+            <MyPerformanceSection />
 
             {/* Recent activity feed (MINCRM-185) */}
             <RecentActivityFeed activities={data.recentActivities} />

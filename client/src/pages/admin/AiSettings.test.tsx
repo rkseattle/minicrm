@@ -145,14 +145,15 @@ describe('AiSettings — sub-navigation', () => {
     fireEvent.keyDown(generalTab, { key: 'ArrowRight' });
     expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toHaveFocus();
 
+    // 'coaching' is now the last tab (added after 'data-minimization', MINCRM-474).
     fireEvent.keyDown(screen.getByTestId('ai-settings-tab-usage-budgets'), { key: 'End' });
-    expect(screen.getByTestId('ai-settings-tab-data-minimization')).toHaveFocus();
+    expect(screen.getByTestId('ai-settings-tab-coaching')).toHaveFocus();
 
-    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-data-minimization'), { key: 'Home' });
+    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-coaching'), { key: 'Home' });
     expect(screen.getByTestId('ai-settings-tab-general')).toHaveFocus();
 
     fireEvent.keyDown(screen.getByTestId('ai-settings-tab-general'), { key: 'ArrowLeft' });
-    expect(screen.getByTestId('ai-settings-tab-data-minimization')).toHaveFocus();
+    expect(screen.getByTestId('ai-settings-tab-coaching')).toHaveFocus();
   });
 
   it('deep-links to the section named in the ?section= query param', async () => {
@@ -873,5 +874,96 @@ describe('AiSettings — cost rates section', () => {
       'href',
       '/admin/ai/usage',
     );
+  });
+});
+
+// ── Coaching section — rep coaching insight thresholds (MINCRM-474) ────────────
+
+describe('AiSettings — coaching section', () => {
+  it('shows a loading state, then renders threshold inputs with the seeded values', async () => {
+    renderSection('coaching');
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-min-closed-deals-input')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('ai-coaching-min-closed-deals-input')).toHaveValue(10);
+    expect(screen.getByTestId('ai-coaching-stage-ratio-input')).toHaveValue(1.5);
+    expect(screen.getByTestId('ai-coaching-activity-ratio-input')).toHaveValue(0.5);
+    expect(screen.getByTestId('ai-coaching-response-hours-input')).toHaveValue(48);
+    expect(screen.getByTestId('ai-coaching-win-rate-delta-input')).toHaveValue(0.15);
+  });
+
+  it('shows an error state when the config fetch fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/ai/coaching-config', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderSection('coaching');
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-error')).toBeInTheDocument();
+    });
+  });
+
+  it('shows a validation error for an out-of-range stage ratio', async () => {
+    renderSection('coaching');
+    await waitFor(() => screen.getByTestId('ai-coaching-stage-ratio-input'));
+
+    fireEvent.change(screen.getByTestId('ai-coaching-stage-ratio-input'), {
+      target: { value: '0.5' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coaching-save-button'));
+
+    expect(screen.getByTestId('ai-coaching-validation-error')).toBeInTheDocument();
+  });
+
+  it('shows a success message after saving valid thresholds', async () => {
+    renderSection('coaching');
+    await waitFor(() => screen.getByTestId('ai-coaching-min-closed-deals-input'));
+
+    fireEvent.change(screen.getByTestId('ai-coaching-min-closed-deals-input'), {
+      target: { value: '15' },
+    });
+    fireEvent.click(screen.getByTestId('ai-coaching-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-save-success')).toBeInTheDocument();
+    });
+  });
+
+  it('shows an error message when the save request fails', async () => {
+    server.use(
+      http.patch('/api/v1/admin/ai/coaching-config', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderSection('coaching');
+    await waitFor(() => screen.getByTestId('ai-coaching-min-closed-deals-input'));
+
+    fireEvent.click(screen.getByTestId('ai-coaching-save-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-save-error')).toBeInTheDocument();
+    });
+  });
+
+  it('shows an accepted message after triggering a manual run', async () => {
+    renderSection('coaching');
+    await waitFor(() => screen.getByTestId('ai-coaching-run-now-button'));
+
+    fireEvent.click(screen.getByTestId('ai-coaching-run-now-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-run-accepted')).toBeInTheDocument();
+    });
+  });
+
+  it('shows an error message when the manual run request fails', async () => {
+    server.use(
+      http.post('/api/v1/admin/ai/coaching/run', () => new HttpResponse(null, { status: 500 })),
+    );
+    renderSection('coaching');
+    await waitFor(() => screen.getByTestId('ai-coaching-run-now-button'));
+
+    fireEvent.click(screen.getByTestId('ai-coaching-run-now-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-coaching-run-error')).toBeInTheDocument();
+    });
   });
 });

@@ -48,6 +48,7 @@ const LeadDetailPage = lazy(() => import('@/pages/LeadDetailPage.js'));
 const AiPage = lazy(() => import('@/pages/AiPage.js'));
 const WinLossInsightsPage = lazy(() => import('@/pages/WinLossInsightsPage.js'));
 const ChurnExpansionInsightsPage = lazy(() => import('@/pages/ChurnExpansionInsightsPage.js'));
+const CoachingInsightsPage = lazy(() => import('@/pages/CoachingInsightsPage.js'));
 const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
 
 /**
@@ -132,6 +133,8 @@ function AppRoutes() {
             <Route path="/insights/win-loss" element={<WinLossInsightsPage />} />
             {/* MINCRM-469: AI churn/expansion signal insights */}
             <Route path="/insights/churn-expansion" element={<ChurnExpansionInsightsPage />} />
+            {/* MINCRM-474: AI rep coaching insights — page self-gates to manager/admin roles */}
+            <Route path="/insights/coaching" element={<CoachingInsightsPage />} />
           </Route>
         </Route>
 

@@ -11,7 +11,7 @@ import { queueAssignmentNotification } from './notificationService.js';
 import { findUserById } from './userService.js';
 import { fireAutomationTrigger } from './automationService.js';
 import { dispatchWebhookEvent } from './webhookService.js';
-import { findDealById } from './dealService.js';
+import { findDealById, writeDealStageHistoryEntry } from './dealService.js';
 import { getStageNames } from './pipelineStageService.js';
 import type { AuditActor } from './auditService.js';
 import { setRlsUserId } from './rlsContextService.js';
@@ -348,7 +348,8 @@ export async function bulkDeals(
       name: string;
       stage: string;
       owner_id: string;
-    }>('SELECT id, name, stage, owner_id FROM deals WHERE id = ANY($1)', [actualIds]);
+      pipeline_id: string;
+    }>('SELECT id, name, stage, owner_id, pipeline_id FROM deals WHERE id = ANY($1)', [actualIds]);
     const nameMap = new Map(beforeResult.rows.map((r) => [r.id, r.name]));
     const ownerMap = new Map(beforeResult.rows.map((r) => [r.id, r.owner_id]));
     const previousStageMap = new Map(beforeResult.rows.map((r) => [r.id, r.stage]));
@@ -403,6 +404,17 @@ export async function bulkDeals(
           changedById: actor.id,
           changedByName: actor.name,
         });
+        // Stage history row for each deal that actually changed stage (MINCRM-474).
+        // Bulk change_stage always targets a single new stage across all ids, so this
+        // is always a real transition when row.stage !== stage (rows already at the
+        // target stage are skipped to avoid a duplicate day-0-style row).
+        if (row.stage !== stage) {
+          // Non-null assertion: the action === 'change_stage' guard above (line 319-324)
+          // already returned early when stage was falsy, so stage is guaranteed defined
+          // by the time this branch runs — TS just can't narrow it across the intervening
+          // await/transaction scope.
+          await writeDealStageHistoryEntry(client, row.id, row.pipeline_id, stage!);
+        }
       }
     }
 

@@ -22,6 +22,7 @@ import { AiGeneralSection } from './ai-settings/AiGeneralSection.js';
 import { AiUsageBudgetsSection } from './ai-settings/AiUsageBudgetsSection.js';
 import { AiDataRetentionSection } from './ai-settings/AiDataRetentionSection.js';
 import { AiDataMinimizationSection } from './ai-settings/AiDataMinimizationSection.js';
+import { AiCoachingSection } from './ai-settings/AiCoachingSection.js';
 
 function formatTimestamp(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -101,6 +102,7 @@ const AI_SETTINGS_SECTIONS = [
   'usage-budgets',
   'data-retention',
   'data-minimization',
+  'coaching',
 ] as const;
 type AiSettingsSection = (typeof AI_SETTINGS_SECTIONS)[number];
 
@@ -290,6 +292,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
             <AiDataRetentionSection retentionDays={data.ai_session_retention_days} />
           )}
           {activeSection === 'data-minimization' && <AiDataMinimizationSection />}
+          {activeSection === 'coaching' && <AiCoachingSection />}
         </div>
       </fieldset>
     </div>
