@@ -1566,6 +1566,18 @@
     "notesPlaceholder": "Ajouter des notes…",
     "ownerLabel": "Propriétaire",
     "ownerUnknown": "Inconnu",
+    "territoryLabel": "Territoire",
+    "territoryPlaceholder": "Côte Ouest",
+    "industryLabel": "Secteur",
+    "industryPlaceholder": "SaaS",
+    "employeeRangeLabel": "Taille de l'entreprise",
+    "employeeRangePlaceholder": "51-200",
+    "routingSuggestionHeading": "Suggéré : {{name}}",
+    "routingConfidenceHigh": "Confiance élevée",
+    "routingConfidenceMedium": "Confiance moyenne",
+    "routingConfidenceLow": "Confiance faible",
+    "routingSuggestionApply": "Utiliser",
+    "routingSuggestionDismiss": "Ignorer",
     "createdLabel": "Créé",
     "disqualificationReasonLabel": "Motif de disqualification",
     "columnName": "Nom",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "Utilisation et budgets",
       "dataRetention": "Conservation des données",
       "dataMinimization": "Minimisation des données",
-      "coaching": "Coaching commercial"
+      "coaching": "Coaching commercial",
+      "leadRouting": "Routage des prospects"
     },
     "header": {
       "deploymentMode": "Mode de déploiement"
@@ -2159,6 +2172,27 @@
       "runNow": "Exécuter maintenant",
       "runAccepted": "Recalcul démarré. Les informations seront bientôt mises à jour.",
       "runError": "Échec du démarrage du recalcul. Veuillez réessayer."
+    },
+    "leadRouting": {
+      "heading": "Suggestion de routage des prospects",
+      "description": "Configurez la contribution de chaque facteur à la suggestion de routage affichée lors de la création d'un nouveau prospect.",
+      "loadError": "Échec du chargement des paramètres de routage des prospects. Veuillez réessayer.",
+      "territoryWeightLabel": "Pondération de correspondance de territoire",
+      "industryWeightLabel": "Pondération de correspondance de secteur",
+      "workloadWeightLabel": "Pondération de charge de travail",
+      "winRateWeightLabel": "Pondération du taux de conversion",
+      "availabilityWeightLabel": "Pondération de disponibilité",
+      "lowConfidenceThresholdLabel": "Seuil de faible confiance",
+      "mediumConfidenceThresholdLabel": "Seuil de confiance moyenne",
+      "minClosedDealsLabel": "Nombre minimum d'affaires conclues pour le taux de conversion",
+      "validationNumeric": "Tous les champs doivent être des nombres valides.",
+      "validationWeightsSum": "Les cinq pondérations doivent totaliser 1,0.",
+      "validationThresholdOrder": "Le seuil de confiance moyenne doit être supérieur au seuil de faible confiance.",
+      "validationMinClosedDeals": "Le nombre minimum d'affaires conclues doit être d'au moins 1.",
+      "saveSuccess": "Configuration de routage des prospects enregistrée.",
+      "saveError": "Échec de l'enregistrement de la configuration de routage des prospects. Veuillez réessayer.",
+      "teamOverridesHeading": "Exceptions par équipe",
+      "teamOverridesDescription": "Désactive le routage intelligent des prospects pour une équipe spécifique — l'attribution manuelle est utilisée à la place pour les membres de cette équipe."
     },
     "tokenBudgets": {
       "heading": "Budgets de tokens",

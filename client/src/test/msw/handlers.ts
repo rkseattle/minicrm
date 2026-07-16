@@ -375,6 +375,9 @@ export const LEAD_1: LeadResponse = {
   disqualification_reason: null,
   notes: 'Met at conference',
   owner_id: '00000000-0000-0000-0000-000000000001',
+  territory: null,
+  industry: null,
+  employee_range: null,
   converted_at: null,
   converted_contact_id: null,
   converted_account_id: null,
@@ -2639,6 +2642,48 @@ export const handlers = [
       min_closed_deals_required: 10,
       closed_deal_count: 0,
     });
+  }),
+
+  /** Leads: POST /api/leads/routing-suggestion — defaults to no confident suggestion (MINCRM-475). */
+  http.post('/api/v1/leads/routing-suggestion', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  /** AI admin: GET /api/v1/admin/ai/lead-routing-config — defaults to the migration-seeded values. */
+  http.get('/api/v1/admin/ai/lead-routing-config', () => {
+    return HttpResponse.json({
+      territory_weight: 0.25,
+      industry_weight: 0.25,
+      workload_weight: 0.2,
+      win_rate_weight: 0.2,
+      availability_weight: 0.1,
+      low_confidence_threshold: 0.4,
+      medium_confidence_threshold: 0.65,
+      min_closed_deals_for_win_rate: 3,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: null,
+    });
+  }),
+
+  /** AI admin: PATCH /api/v1/admin/ai/lead-routing-config — echoes the submitted values back. */
+  http.patch('/api/v1/admin/ai/lead-routing-config', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      ...body,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: ADMIN_USER.id,
+    });
+  }),
+
+  /** AI admin: GET /api/v1/admin/ai/lead-routing/team-overrides — defaults to no overrides. */
+  http.get('/api/v1/admin/ai/lead-routing/team-overrides', () => {
+    return HttpResponse.json({ overrides: [] });
+  }),
+
+  /** AI admin: PUT /api/v1/admin/ai/lead-routing/team-overrides/:teamId */
+  http.put('/api/v1/admin/ai/lead-routing/team-overrides/:teamId', async ({ params, request }) => {
+    const body = (await request.json()) as { enabled: boolean | null };
+    return HttpResponse.json({ team_id: params.teamId as string, enabled: body.enabled });
   }),
 
   // ── In-app notification feed (MINCRM-469) ───────────────────────────────────────

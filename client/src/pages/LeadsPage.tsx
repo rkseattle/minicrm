@@ -232,6 +232,20 @@ export default function LeadsPage() {
           lead_source: (values.lead_source as LeadFormValues['lead_source']) || undefined,
           notes: values.notes || undefined,
           owner_id: values.owner_id || undefined,
+          territory: values.territory || undefined,
+          industry: values.industry || undefined,
+          employee_range: values.employee_range || undefined,
+          // Only echo the suggestion back when the manager actually applied it to
+          // owner_id — a dismissed/never-fetched suggestion has nothing to log.
+          routing_suggestion:
+            values.routingSuggestion &&
+            values.owner_id === values.routingSuggestion.suggested_rep_id
+              ? {
+                  suggested_rep_id: values.routingSuggestion.suggested_rep_id,
+                  confidence: values.routingSuggestion.confidence,
+                  contributing_factors: values.routingSuggestion.contributing_factors,
+                }
+              : undefined,
         },
         force,
       ),
@@ -435,6 +449,7 @@ export default function LeadsPage() {
               onSubmit={handleFormSubmit}
               isSubmitting={createMutation.isPending}
               onCancel={handleFormClose}
+              isCreate
             />
           </div>
         )}

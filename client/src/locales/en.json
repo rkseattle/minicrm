@@ -1531,6 +1531,18 @@
     "notesPlaceholder": "Add notes…",
     "ownerLabel": "Owner",
     "ownerUnknown": "Unknown",
+    "territoryLabel": "Territory",
+    "territoryPlaceholder": "West Coast",
+    "industryLabel": "Industry",
+    "industryPlaceholder": "SaaS",
+    "employeeRangeLabel": "Company size",
+    "employeeRangePlaceholder": "51-200",
+    "routingSuggestionHeading": "Suggested: {{name}}",
+    "routingConfidenceHigh": "High confidence",
+    "routingConfidenceMedium": "Medium confidence",
+    "routingConfidenceLow": "Low confidence",
+    "routingSuggestionApply": "Use this",
+    "routingSuggestionDismiss": "Dismiss",
     "createdLabel": "Created",
     "disqualificationReasonLabel": "Disqualification reason",
     "columnName": "Name",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "Usage & Budgets",
       "dataRetention": "Data Retention",
       "dataMinimization": "Data Minimization",
-      "coaching": "Rep Coaching"
+      "coaching": "Rep Coaching",
+      "leadRouting": "Lead Routing"
     },
     "header": {
       "deploymentMode": "Deployment Mode"
@@ -2159,6 +2172,27 @@
       "runNow": "Run now",
       "runAccepted": "Recomputation started. Insights will update shortly.",
       "runError": "Failed to start the recomputation. Please try again."
+    },
+    "leadRouting": {
+      "heading": "Lead Routing Suggestion",
+      "description": "Configure how much each factor contributes to the routing suggestion shown when a new lead is created.",
+      "loadError": "Failed to load lead routing settings. Please try again.",
+      "territoryWeightLabel": "Territory match weight",
+      "industryWeightLabel": "Industry match weight",
+      "workloadWeightLabel": "Workload weight",
+      "winRateWeightLabel": "Win rate weight",
+      "availabilityWeightLabel": "Availability weight",
+      "lowConfidenceThresholdLabel": "Low confidence threshold",
+      "mediumConfidenceThresholdLabel": "Medium confidence threshold",
+      "minClosedDealsLabel": "Minimum closed deals for win rate",
+      "validationNumeric": "All fields must be valid numbers.",
+      "validationWeightsSum": "The five weights must sum to 1.0.",
+      "validationThresholdOrder": "Medium confidence threshold must be greater than the low confidence threshold.",
+      "validationMinClosedDeals": "Minimum closed deals must be at least 1.",
+      "saveSuccess": "Lead routing configuration saved.",
+      "saveError": "Failed to save lead routing configuration. Please try again.",
+      "teamOverridesHeading": "Per-Team Overrides",
+      "teamOverridesDescription": "Disable intelligent lead routing for a specific team — falls back to manual assignment for that team's members."
     },
     "tokenBudgets": {
       "heading": "Token Budgets",

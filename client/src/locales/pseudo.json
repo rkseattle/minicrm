@@ -1531,6 +1531,18 @@
     "notesPlaceholder": "[Ädd ñötëŝ…~~~]",
     "ownerLabel": "[Öwñër~~]",
     "ownerUnknown": "[Üñkñöwñ~~~]",
+    "territoryLabel": "[Tërrïtöry~~~]",
+    "territoryPlaceholder": "[Wëŝt Ĉöäŝt~~~]",
+    "industryLabel": "[Ïñdüŝtry~~~]",
+    "industryPlaceholder": "[ŜääŜ~~]",
+    "employeeRangeLabel": "[Ĉömpäñy ŝïzë~~~~]",
+    "employeeRangePlaceholder": "[51-200~~]",
+    "routingSuggestionHeading": "[Ŝüggëŝtëd: {{name}}~~~~~~]",
+    "routingConfidenceHigh": "[Hïgh ĉöñfïdëñĉë~~~~~]",
+    "routingConfidenceMedium": "[Mëdïüm ĉöñfïdëñĉë~~~~~~]",
+    "routingConfidenceLow": "[Löw ĉöñfïdëñĉë~~~~~]",
+    "routingSuggestionApply": "[Üŝë thïŝ~~~]",
+    "routingSuggestionDismiss": "[Dïŝmïŝŝ~~~]",
     "createdLabel": "[Ĉrëätëd~~~]",
     "disqualificationReasonLabel": "[Dïŝqüälïfïĉätïöñ rëäŝöñ~~~~~~~]",
     "columnName": "[Ñämë~~]",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "[Üŝägë & Büdgëtŝ~~~~~]",
       "dataRetention": "[Dätä Rëtëñtïöñ~~~~~]",
       "dataMinimization": "[Dätä Mïñïmïzätïöñ~~~~~~]",
-      "coaching": "[Rëp Ĉöäĉhïñg~~~~]"
+      "coaching": "[Rëp Ĉöäĉhïñg~~~~]",
+      "leadRouting": "[Lëäd Röütïñg~~~~~]"
     },
     "header": {
       "deploymentMode": "[Dëplöymëñt Mödë~~~~~]"
@@ -2159,6 +2172,27 @@
       "runNow": "[Rüñ ñöw~~~]",
       "runAccepted": "[Rëĉömpütätïöñ ŝtärtëd. Ïñŝïghtŝ wïll üpdätë ŝhörtly.~~~~~~~~~~~~~~~~]",
       "runError": "[Fäïlëd tö ŝtärt thë rëĉömpütätïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]"
+    },
+    "leadRouting": {
+      "heading": "[Lëäd Röütïñg Ŝüggëŝtïöñ~~~~~~~~]",
+      "description": "[Ĉöñfïgürë höw müĉh ëäĉh fäĉtör ĉöñtrïbütëŝ tö thë röütïñg ŝüggëŝtïöñ ŝhöwñ whëñ ä ñëw lëäd ïŝ ĉrëätëd.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "loadError": "[Fäïlëd tö löäd lëäd röütïñg ŝëttïñgŝ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~]",
+      "territoryWeightLabel": "[Tërrïtöry mätĉh wëïght~~~~~~~]",
+      "industryWeightLabel": "[Ïñdüŝtry mätĉh wëïght~~~~~~~]",
+      "workloadWeightLabel": "[Wörklöäd wëïght~~~~~]",
+      "winRateWeightLabel": "[Wïñ rätë wëïght~~~~~]",
+      "availabilityWeightLabel": "[Äväïläbïlïty wëïght~~~~~~~]",
+      "lowConfidenceThresholdLabel": "[Löw ĉöñfïdëñĉë thrëŝhöld~~~~~~~~]",
+      "mediumConfidenceThresholdLabel": "[Mëdïüm ĉöñfïdëñĉë thrëŝhöld~~~~~~~~~]",
+      "minClosedDealsLabel": "[Mïñïmüm ĉlöŝëd dëälŝ för wïñ rätë~~~~~~~~~]",
+      "validationNumeric": "[Äll fïëldŝ müŝt bë välïd ñümbërŝ.~~~~~~~~]",
+      "validationWeightsSum": "[Thë fïvë wëïghtŝ müŝt ŝüm tö 1.0.~~~~~~~~]",
+      "validationThresholdOrder": "[Mëdïüm ĉöñfïdëñĉë thrëŝhöld müŝt bë grëätër thäñ thë löw ĉöñfïdëñĉë thrëŝhöld.~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+      "validationMinClosedDeals": "[Mïñïmüm ĉlöŝëd dëälŝ müŝt bë ät lëäŝt 1.~~~~~~~~~~~~]",
+      "saveSuccess": "[Lëäd röütïñg ĉöñfïgürätïöñ ŝävëd.~~~~~~~~~~]",
+      "saveError": "[Fäïlëd tö ŝävë lëäd röütïñg ĉöñfïgürätïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~~~]",
+      "teamOverridesHeading": "[Për-Tëäm Övërrïdëŝ~~~~~~]",
+      "teamOverridesDescription": "[Dïŝäblë ïñtëllïgëñt lëäd röütïñg för ä ŝpëĉïfïĉ tëäm — fällŝ bäĉk tö mäñüäl äŝŝïgñmëñt för thät tëäm'ŝ mëmbërŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]"
     },
     "tokenBudgets": {
       "heading": "[Tökëñ Büdgëtŝ~~~~]",

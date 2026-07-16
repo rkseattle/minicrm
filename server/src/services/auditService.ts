@@ -77,7 +77,9 @@ export type AuditRecordType =
   /** Global tag definitions renamed by NLI or admin (MINCRM-433) */
   | 'tag'
   /** AI data minimization field exclusion toggles (MINCRM-461) */
-  | 'ai_field_exclusion';
+  | 'ai_field_exclusion'
+  /** AI lead routing suggestion decisions (MINCRM-475) */
+  | 'lead_routing_decision';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
@@ -112,7 +114,10 @@ export type AuditEventType =
   | 'api_token_issued'
   | 'api_token_revoked'
   /** GDPR AI data cascade — PII redaction from ai_messages/user_ai_context (MINCRM-446) */
-  | 'ai_gdpr_cascade';
+  | 'ai_gdpr_cascade'
+  /** AI lead routing suggestion accepted or overridden (MINCRM-475) */
+  | 'routing_accepted'
+  | 'routing_overridden';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

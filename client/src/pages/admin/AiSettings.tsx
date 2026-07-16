@@ -23,6 +23,7 @@ import { AiUsageBudgetsSection } from './ai-settings/AiUsageBudgetsSection.js';
 import { AiDataRetentionSection } from './ai-settings/AiDataRetentionSection.js';
 import { AiDataMinimizationSection } from './ai-settings/AiDataMinimizationSection.js';
 import { AiCoachingSection } from './ai-settings/AiCoachingSection.js';
+import { AiLeadRoutingSection } from './ai-settings/AiLeadRoutingSection.js';
 
 function formatTimestamp(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -103,6 +104,7 @@ const AI_SETTINGS_SECTIONS = [
   'data-retention',
   'data-minimization',
   'coaching',
+  'lead-routing',
 ] as const;
 type AiSettingsSection = (typeof AI_SETTINGS_SECTIONS)[number];
 
@@ -293,6 +295,7 @@ export default function AiSettings({ disabled = false }: AiSettingsProps) {
           )}
           {activeSection === 'data-minimization' && <AiDataMinimizationSection />}
           {activeSection === 'coaching' && <AiCoachingSection />}
+          {activeSection === 'lead-routing' && <AiLeadRoutingSection />}
         </div>
       </fieldset>
     </div>

@@ -22,6 +22,7 @@ import {
   exportLeadPdfHandler,
   exportLeadsHandler,
   exportLeadsPdfHandler,
+  getLeadRoutingSuggestionHandler,
 } from '../controllers/leadsController.js';
 import { eraseLeadHandler, gdprExportLeadHandler } from '../controllers/gdprController.js';
 import { bulkPatchLeadsHandler, bulkDeleteLeadsHandler } from '../controllers/bulkV2Controller.js';
@@ -55,6 +56,53 @@ const router = Router();
  *         description: Not authenticated
  */
 router.get('/accounts/search', authenticate, asyncHandler(searchAccountsHandler));
+
+/**
+ * @openapi
+ * /api/v1/leads/routing-suggestion:
+ *   post:
+ *     tags: [Leads]
+ *     operationId: getLeadRoutingSuggestion
+ *     summary: Compute an AI routing suggestion for a draft lead, before it is created
+ *     description: >
+ *       Deterministic weighted-factor scoring (territory alignment, industry match,
+ *       workload, historical win rate, availability) — no AI provider call, runs
+ *       well within the 3-second budget. Returns 204 (no body) when confidence
+ *       would be low, per the AC: the suggestion is suppressed and the client
+ *       should default the assignee field to unassigned. Gated by the
+ *       ai_lead_routing_suggestion feature flag (including any per-team override).
+ *       (MINCRM-475)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               territory: { type: string }
+ *               industry: { type: string }
+ *               employee_range: { type: string }
+ *               lead_source: { type: string }
+ *     responses:
+ *       200:
+ *         description: Routing suggestion computed
+ *       204:
+ *         description: No confident suggestion available
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: The ai_lead_routing_suggestion flag is disabled (globally or for the caller's team)
+ */
+router.post(
+  '/routing-suggestion',
+  authenticate,
+  requireFeatureEnabled('ai_lead_routing_suggestion'),
+  asyncHandler(getLeadRoutingSuggestionHandler),
+);
 
 /**
  * @openapi

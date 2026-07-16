@@ -1566,6 +1566,18 @@
     "notesPlaceholder": "添加备注…",
     "ownerLabel": "负责人",
     "ownerUnknown": "未知",
+    "territoryLabel": "地区",
+    "territoryPlaceholder": "西海岸",
+    "industryLabel": "行业",
+    "industryPlaceholder": "SaaS",
+    "employeeRangeLabel": "公司规模",
+    "employeeRangePlaceholder": "51-200",
+    "routingSuggestionHeading": "建议：{{name}}",
+    "routingConfidenceHigh": "高置信度",
+    "routingConfidenceMedium": "中等置信度",
+    "routingConfidenceLow": "低置信度",
+    "routingSuggestionApply": "使用此建议",
+    "routingSuggestionDismiss": "关闭",
     "createdLabel": "创建时间",
     "disqualificationReasonLabel": "失效原因",
     "columnName": "姓名",
@@ -2042,7 +2054,8 @@
       "usageBudgets": "使用量与预算",
       "dataRetention": "数据保留",
       "dataMinimization": "数据最小化",
-      "coaching": "销售辅导"
+      "coaching": "销售辅导",
+      "leadRouting": "线索分配"
     },
     "header": {
       "deploymentMode": "部署模式"
@@ -2159,6 +2172,27 @@
       "runNow": "立即运行",
       "runAccepted": "重新计算已开始，洞察将很快更新。",
       "runError": "无法启动重新计算，请重试。"
+    },
+    "leadRouting": {
+      "heading": "线索分配建议",
+      "description": "配置新建线索时显示的分配建议中，各因素所占的权重。",
+      "loadError": "加载线索分配设置失败，请重试。",
+      "territoryWeightLabel": "区域匹配权重",
+      "industryWeightLabel": "行业匹配权重",
+      "workloadWeightLabel": "工作负载权重",
+      "winRateWeightLabel": "成交率权重",
+      "availabilityWeightLabel": "可用性权重",
+      "lowConfidenceThresholdLabel": "低置信度阈值",
+      "mediumConfidenceThresholdLabel": "中置信度阈值",
+      "minClosedDealsLabel": "计算成交率所需的最少成交数量",
+      "validationNumeric": "所有字段必须为有效数字。",
+      "validationWeightsSum": "五项权重之和必须为 1.0。",
+      "validationThresholdOrder": "中置信度阈值必须大于低置信度阈值。",
+      "validationMinClosedDeals": "最少成交数量必须至少为 1。",
+      "saveSuccess": "线索分配配置已保存。",
+      "saveError": "保存线索分配配置失败，请重试。",
+      "teamOverridesHeading": "团队级例外设置",
+      "teamOverridesDescription": "为特定团队禁用智能线索分配——该团队成员将回退为手动分配。"
     },
     "tokenBudgets": {
       "heading": "Token 预算",

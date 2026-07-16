@@ -17,6 +17,7 @@ import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
+import { persistRoutingDecision } from './leadRoutingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -32,6 +33,9 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'disqualification_reason',
   'notes',
   'owner_id',
+  'territory',
+  'industry',
+  'employee_range',
 ]);
 
 /** Shape of a lead row returned from the database */
@@ -47,6 +51,12 @@ export interface LeadRow {
   disqualification_reason: string | null;
   notes: string | null;
   owner_id: string;
+  /** Free-text sales territory, used for routing suggestions (MINCRM-475) */
+  territory: string | null;
+  /** Free-text industry/vertical, used for routing suggestions (MINCRM-475) */
+  industry: string | null;
+  /** Free-text company-size bucket, used for routing suggestions (MINCRM-475) */
+  employee_range: string | null;
   converted_at: Date | null;
   converted_contact_id: string | null;
   converted_account_id: string | null;
@@ -114,8 +124,20 @@ export async function createLead(
   params: CreateLeadInput & { owner_id: string },
   actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<LeadRow> {
-  const { first_name, last_name, email, phone, company_name, lead_source, notes, owner_id } =
-    params;
+  const {
+    first_name,
+    last_name,
+    email,
+    phone,
+    company_name,
+    lead_source,
+    notes,
+    owner_id,
+    territory,
+    industry,
+    employee_range,
+    routing_suggestion,
+  } = params;
 
   const client: PoolClient = await pool.connect();
   try {
@@ -124,8 +146,8 @@ export async function createLead(
 
     const result = await client.query<LeadRow>(
       `INSERT INTO leads
-         (first_name, last_name, email, phone, company_name, lead_source, notes, owner_id, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (first_name, last_name, email, phone, company_name, lead_source, notes, owner_id, status, territory, industry, employee_range)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         first_name,
@@ -137,6 +159,9 @@ export async function createLead(
         notes ?? null,
         owner_id,
         'New',
+        territory ?? null,
+        industry ?? null,
+        employee_range ?? null,
       ],
     );
 
@@ -158,6 +183,24 @@ export async function createLead(
       changedByName: actor.name,
       source: actor.source ?? null,
     });
+
+    // Log the routing decision when the manager was shown a suggestion before
+    // creating this lead (MINCRM-475) — no-op when the create request never
+    // echoed one back (e.g. routing suggestion feature disabled, or the manager
+    // never requested one).
+    if (routing_suggestion) {
+      await persistRoutingDecision(
+        client,
+        {
+          leadId: lead.id,
+          suggestedRepId: routing_suggestion.suggested_rep_id,
+          confidence: routing_suggestion.confidence,
+          contributingFactors: routing_suggestion.contributing_factors,
+          finalOwnerId: owner_id,
+        },
+        actor,
+      );
+    }
 
     await client.query('COMMIT');
     return lead;

@@ -98,6 +98,9 @@ export default function LeadDetailPage() {
         lead_source: (values.lead_source as LeadFormValues['lead_source']) || undefined,
         notes: values.notes || undefined,
         owner_id: values.owner_id || undefined,
+        territory: values.territory || undefined,
+        industry: values.industry || undefined,
+        employee_range: values.employee_range || undefined,
         // Prefer explicit version (from conflict resolution); fall back to cache for normal edits (MINCRM-349)
         version:
           version ??
@@ -333,6 +336,9 @@ export default function LeadDetailPage() {
                 lead_source: (lead.lead_source ?? '') as LeadFormValues['lead_source'],
                 notes: lead.notes ?? '',
                 owner_id: lead.owner_id,
+                territory: lead.territory ?? '',
+                industry: lead.industry ?? '',
+                employee_range: lead.employee_range ?? '',
               }}
               onSubmit={(values) => updateMutation.mutate({ values })}
               isSubmitting={updateMutation.isPending}
