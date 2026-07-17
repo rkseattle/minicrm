@@ -43,6 +43,9 @@
     ],
     "!(docs/schema/**).md": [
       "markdownlint-cli2"
+    ],
+    ".github/workflows/*.{yml,yaml}": [
+      "actionlint"
     ]
   },
   "overrides": {

@@ -195,6 +195,12 @@ Steps 1–5 run before every commit. **E2E does not gate individual commits** �
 multi-commit/multi-phase branch, run the E2E suite once at the end, immediately
 before pushing to the remote (see below), not after each commit.
 
+**Editing `.github/workflows/*.yml`:** the pre-commit hook runs `actionlint` on any
+staged workflow file and hard-fails the commit if it isn't installed —
+`brew install actionlint` once per machine. A CI job in
+`.github/workflows/lint-workflows.yml` re-validates on push/PR as a backstop, since a
+malformed `ci.yml` can't reliably self-report failures from a job defined inside it.
+
 ### E2E — required once before every push, no exceptions
 
 ```bash

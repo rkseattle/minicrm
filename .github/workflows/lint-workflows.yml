@@ -1,0 +1,31 @@
+name: Lint Workflows
+
+# Kept in its own file, separate from ci.yml, so it can still run and report
+# a failure even when ci.yml itself is malformed enough to fail GitHub's own
+# workflow schema parse — a broken ci.yml causes every job defined inside it
+# to be skipped outright, including any validation job that lived there.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Validate workflow YAML (actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+
+      - name: Run actionlint
+        run: ./actionlint .github/workflows/*.yml
