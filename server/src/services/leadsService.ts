@@ -17,7 +17,7 @@ import type { AuditActor } from './auditService.js';
 import { getDefaultPipelineId } from './pipelineService.js';
 import { setRlsUserId, withRlsQuery } from './rlsContextService.js';
 import { softDeleteNotesByEntity } from './noteService.js';
-import { persistRoutingDecision } from './leadRoutingService.js';
+import { computeLeadRoutingSuggestion, persistRoutingDecision } from './leadRoutingService.js';
 
 const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
@@ -188,18 +188,35 @@ export async function createLead(
     // creating this lead (MINCRM-475) — no-op when the create request never
     // echoed one back (e.g. routing suggestion feature disabled, or the manager
     // never requested one).
+    //
+    // The client's routing_suggestion is only a "a suggestion was shown" signal,
+    // never trusted as the suggestion's actual content — recompute it server-side
+    // from the same draft profile and persist THAT result. Otherwise a client
+    // could submit a fabricated suggested_rep_id/confidence/contributing_factors
+    // (e.g. claiming its own manual pick was "AI-suggested, high confidence") and
+    // corrupt the routing feature's own acceptance-rate audit trail. Recomputation
+    // is the same cheap deterministic SQL-only scoring used by the pre-create
+    // endpoint, so this stays well within the request's normal latency budget.
     if (routing_suggestion) {
-      await persistRoutingDecision(
-        client,
-        {
-          leadId: lead.id,
-          suggestedRepId: routing_suggestion.suggested_rep_id,
-          confidence: routing_suggestion.confidence,
-          contributingFactors: routing_suggestion.contributing_factors,
-          finalOwnerId: owner_id,
-        },
-        actor,
-      );
+      const recomputed = await computeLeadRoutingSuggestion({
+        territory: territory ?? null,
+        industry: industry ?? null,
+        employeeRange: employee_range ?? null,
+        leadSource: lead_source ?? null,
+      });
+      if (recomputed) {
+        await persistRoutingDecision(
+          client,
+          {
+            leadId: lead.id,
+            suggestedRepId: recomputed.suggested_rep_id,
+            confidence: recomputed.confidence,
+            contributingFactors: recomputed.contributing_factors,
+            finalOwnerId: owner_id,
+          },
+          actor,
+        );
+      }
     }
 
     await client.query('COMMIT');

@@ -68,10 +68,15 @@ export async function dismissHygieneFindingHandler(req: Request, res: Response):
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
+  const isAdmin = req.user!.role === 'admin';
   try {
-    await dismissHygieneFinding(findingId, parsed.data.reason, actor);
+    await dismissHygieneFinding(findingId, parsed.data.reason, actor, isAdmin);
     res.status(200).json({ dismissed: true });
   } catch (err) {
+    // NOT_FOUND is returned both when the finding truly doesn't exist and when a
+    // non-admin's WHERE ... AND (owner_id = $x OR admin) excludes a finding they
+    // don't own — same response either way, so ownership can't be probed via a
+    // 403-vs-404 status difference.
     if ((err as { code?: string }).code === 'NOT_FOUND') {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Hygiene finding not found' } });
       return;
@@ -100,8 +105,31 @@ export async function clearFindingsForEntityHandler(req: Request, res: Response)
     return;
   }
 
-  await clearFindingsForEntity(parsed.data.entityType, parsed.data.entityId);
-  res.status(200).json({ cleared: true });
+  const isAdmin = req.user!.role === 'admin';
+  try {
+    await clearFindingsForEntity(
+      parsed.data.entityType,
+      parsed.data.entityId,
+      req.user!.id,
+      isAdmin,
+    );
+    res.status(200).json({ cleared: true });
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === 'NOT_FOUND') {
+      res
+        .status(404)
+        .json({ error: { code: 'NOT_FOUND', message: 'No hygiene findings for this entity' } });
+      return;
+    }
+    if (code === 'FORBIDDEN') {
+      res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'You do not have access to this record’s findings.' },
+      });
+      return;
+    }
+    throw err;
+  }
 }
 
 const mergeDuplicatesSchema = z.object({
@@ -126,8 +154,9 @@ export async function mergeDuplicateContactFindingsHandler(
   }
 
   const actor = { id: req.user!.id, name: req.user!.name };
+  const isAdmin = req.user!.role === 'admin';
   try {
-    await mergeDuplicateContactFindings(parsed.data.winnerId, parsed.data.loserId, actor);
+    await mergeDuplicateContactFindings(parsed.data.winnerId, parsed.data.loserId, actor, isAdmin);
     res.status(200).json({ merged: true });
   } catch (err) {
     const code = (err as { code?: string }).code;
@@ -135,6 +164,15 @@ export async function mergeDuplicateContactFindingsHandler(
       res
         .status(400)
         .json({ error: { code: 'SELF_MERGE', message: 'Cannot merge a contact with itself' } });
+      return;
+    }
+    if (code === 'FORBIDDEN') {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You do not have access to merge these contacts.',
+        },
+      });
       return;
     }
     throw err;

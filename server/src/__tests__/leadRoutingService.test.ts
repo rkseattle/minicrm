@@ -226,54 +226,64 @@ describe('computeLeadRoutingSuggestion (DB integration — weak assertions only)
 });
 
 describe('createLead with routing_suggestion echo — persists a routing decision', () => {
-  it('logs decision=accepted when the final owner matches the suggested rep', async () => {
+  // The client's routing_suggestion is only a "a suggestion was shown" signal —
+  // createLead must recompute the suggestion server-side from the draft profile
+  // and persist THAT result, never the client-supplied content verbatim. Otherwise
+  // a client could fabricate suggested_rep_id/confidence/contributing_factors and
+  // corrupt the routing feature's own acceptance-rate audit trail. These tests
+  // assert against the independently-recomputed suggestion, not the fake echo.
+
+  it('ignores a fabricated suggested_rep_id and persists the recomputed suggestion instead', async () => {
+    const fakeRepId = '00000000-0000-0000-0000-000000000099';
+    const recomputed = await computeLeadRoutingSuggestion({
+      territory: null,
+      industry: null,
+      employeeRange: null,
+      leadSource: null,
+    });
+
     const lead = await createLead(
       {
         first_name: 'Echo',
-        last_name: 'Accepted',
-        email: `${FILE_PREFIX}-${uid()}-accepted@example.com`,
+        last_name: 'Fabricated',
+        email: `${FILE_PREFIX}-${uid()}-fabricated@example.com`,
         owner_id: repAId,
+        // Fabricated: a real client would never learn this repId from a genuine
+        // suggestion, and the confidence/factors are invented outright.
         routing_suggestion: {
-          suggested_rep_id: repAId,
+          suggested_rep_id: fakeRepId,
           confidence: 'high',
           contributing_factors: [
-            { type: 'territory_match', description: 'Territory match (West)' },
+            { type: 'territory_match', description: 'Fabricated factor that was never computed' },
           ],
         },
       },
       ACTOR,
     );
 
-    const decisionResult = await pool.query<{ decision: string; actual_assignee_id: string }>(
-      `SELECT decision, actual_assignee_id FROM lead_routing_decisions WHERE lead_id = $1`,
+    const decisionResult = await pool.query<{
+      suggested_rep_id: string | null;
+      confidence: string | null;
+      decision: string | null;
+      actual_assignee_id: string;
+    }>(
+      `SELECT suggested_rep_id, confidence, decision, actual_assignee_id
+       FROM lead_routing_decisions WHERE lead_id = $1`,
       [lead.id],
     );
-    expect(decisionResult.rows[0].decision).toBe('accepted');
-    expect(decisionResult.rows[0].actual_assignee_id).toBe(repAId);
-  });
 
-  it('logs decision=overridden when the final owner differs from the suggested rep', async () => {
-    const lead = await createLead(
-      {
-        first_name: 'Echo',
-        last_name: 'Overridden',
-        email: `${FILE_PREFIX}-${uid()}-overridden@example.com`,
-        owner_id: repBId,
-        routing_suggestion: {
-          suggested_rep_id: repAId,
-          confidence: 'medium',
-          contributing_factors: [{ type: 'workload', description: 'Has capacity' }],
-        },
-      },
-      ACTOR,
-    );
-
-    const decisionResult = await pool.query<{ decision: string; actual_assignee_id: string }>(
-      `SELECT decision, actual_assignee_id FROM lead_routing_decisions WHERE lead_id = $1`,
-      [lead.id],
-    );
-    expect(decisionResult.rows[0].decision).toBe('overridden');
-    expect(decisionResult.rows[0].actual_assignee_id).toBe(repBId);
+    if (recomputed === null) {
+      // No confident suggestion for this profile — nothing should be persisted,
+      // certainly not the fabricated payload.
+      expect(decisionResult.rows.length).toBe(0);
+    } else {
+      expect(decisionResult.rows[0].suggested_rep_id).toBe(recomputed.suggested_rep_id);
+      expect(decisionResult.rows[0].suggested_rep_id).not.toBe(fakeRepId);
+      expect(decisionResult.rows[0].confidence).toBe(recomputed.confidence);
+      const expectedDecision = recomputed.suggested_rep_id === repAId ? 'accepted' : 'overridden';
+      expect(decisionResult.rows[0].decision).toBe(expectedDecision);
+      expect(decisionResult.rows[0].actual_assignee_id).toBe(repAId);
+    }
   });
 
   it('writes no lead_routing_decisions row when the create request has no routing_suggestion', async () => {

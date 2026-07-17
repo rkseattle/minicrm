@@ -8,7 +8,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { makeAuthCookie, uid } from './testUtils.js';
 
 const FILE_PREFIX = 'rep-coaching-ctrl';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
@@ -25,7 +25,7 @@ beforeAll(async () => {
     `DELETE FROM team_memberships WHERE user_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const rep = await createUser({
@@ -62,7 +62,10 @@ beforeAll(async () => {
     name: manager.name,
   });
 
-  const team = await createTeam({ name: `${FILE_PREFIX} Team`, manager_id: managerId }, ACTOR);
+  const team = await createTeam(
+    { name: `${FILE_PREFIX} Team ${uid()}`, manager_id: managerId },
+    ACTOR,
+  );
   await addTeamMember(team.id, repId, 'member', ACTOR);
   // otherRep is deliberately NOT added to the manager's team.
 
@@ -86,7 +89,7 @@ afterAll(async () => {
     `DELETE FROM team_memberships WHERE user_id IN (SELECT id FROM users WHERE email LIKE $1)`,
     [`${FILE_PREFIX}-%`],
   );
-  await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}-%`]);
+  await pool.query(`DELETE FROM teams WHERE name LIKE $1`, [`${FILE_PREFIX}%`]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 });
 

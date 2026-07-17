@@ -23,6 +23,7 @@ import {
   listHygieneFindings,
   dismissHygieneFinding,
   clearFindingsForEntity,
+  mergeDuplicateContactFindings,
   getDataHygieneConfig,
   setDataHygieneConfig,
 } from '../services/dataHygieneService.js';
@@ -31,6 +32,7 @@ const FILE_PREFIX = 'hygiene-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
 let ownerId: string;
+let otherOwnerId: string;
 
 async function cleanup(): Promise<void> {
   await pool.query(
@@ -77,6 +79,15 @@ beforeAll(async () => {
     status: 'active',
   });
   ownerId = owner.id;
+
+  const otherOwner = await createUser({
+    email: `${FILE_PREFIX}-other-owner@example.com`,
+    name: 'Other Owner',
+    role: 'rep',
+    passwordHash: '$2b$12$placeholder_hash',
+    status: 'active',
+  });
+  otherOwnerId = otherOwner.id;
 });
 
 beforeEach(async () => {
@@ -392,10 +403,15 @@ describe('dismissHygieneFinding', () => {
     const finding = findings.find((f) => f.entity_id === contact.id)!;
     expect(finding).toBeDefined();
 
-    await dismissHygieneFinding(finding.id, 'Will fix later', {
-      id: ownerId,
-      name: 'Hygiene Owner',
-    });
+    await dismissHygieneFinding(
+      finding.id,
+      'Will fix later',
+      {
+        id: ownerId,
+        name: 'Hygiene Owner',
+      },
+      false,
+    );
 
     const afterDismiss = await listHygieneFindings(ownerId);
     expect(afterDismiss.some((f) => f.id === finding.id)).toBe(false);
@@ -403,16 +419,72 @@ describe('dismissHygieneFinding', () => {
 
   it('throws NOT_FOUND for a non-existent finding', async () => {
     await expect(
-      dismissHygieneFinding('00000000-0000-0000-0000-000000000000', 'reason', {
-        id: ownerId,
-        name: 'Hygiene Owner',
-      }),
+      dismissHygieneFinding(
+        '00000000-0000-0000-0000-000000000000',
+        'reason',
+        {
+          id: ownerId,
+          name: 'Hygiene Owner',
+        },
+        false,
+      ),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('throws NOT_FOUND when a non-admin caller does not own the finding (IDOR guard)', async () => {
+    const contact = await createContact({
+      first_name: 'Someone',
+      last_name: 'Elses',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+
+    const findings = await listHygieneFindings(ownerId);
+    const finding = findings.find((f) => f.entity_id === contact.id)!;
+    expect(finding).toBeDefined();
+
+    await expect(
+      dismissHygieneFinding(
+        finding.id,
+        'Not mine to dismiss',
+        { id: otherOwnerId, name: 'Other Owner' },
+        false,
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    // Confirm it's still visible/open for the actual owner — the non-owner's
+    // attempt must not have silently succeeded.
+    const stillThere = await listHygieneFindings(ownerId);
+    expect(stillThere.some((f) => f.id === finding.id)).toBe(true);
+  });
+
+  it('allows an admin to dismiss a finding they do not own', async () => {
+    const contact = await createContact({
+      first_name: 'Admin',
+      last_name: 'Dismissible',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+
+    const findings = await listHygieneFindings(ownerId);
+    const finding = findings.find((f) => f.entity_id === contact.id)!;
+
+    await dismissHygieneFinding(
+      finding.id,
+      'Admin override',
+      { id: otherOwnerId, name: 'Admin User' },
+      true,
+    );
+
+    const afterDismiss = await listHygieneFindings(ownerId);
+    expect(afterDismiss.some((f) => f.id === finding.id)).toBe(false);
   });
 });
 
 describe('clearFindingsForEntity', () => {
-  it('removes all findings for a given entity', async () => {
+  it('removes all findings for a given entity when the caller owns it', async () => {
     const contact = await createContact({
       first_name: 'Clear',
       last_name: 'Me',
@@ -424,10 +496,144 @@ describe('clearFindingsForEntity', () => {
     let findings = await listHygieneFindings(ownerId);
     expect(findings.some((f) => f.entity_id === contact.id)).toBe(true);
 
-    await clearFindingsForEntity('contact', contact.id);
+    await clearFindingsForEntity('contact', contact.id, ownerId, false);
 
     findings = await listHygieneFindings(ownerId);
     expect(findings.some((f) => f.entity_id === contact.id)).toBe(false);
+  });
+
+  it('throws FORBIDDEN when a non-admin caller does not own the entity (IDOR guard)', async () => {
+    const contact = await createContact({
+      first_name: 'NotYours',
+      last_name: 'ToClear',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+
+    let findings = await listHygieneFindings(ownerId);
+    expect(findings.some((f) => f.entity_id === contact.id)).toBe(true);
+
+    await expect(
+      clearFindingsForEntity('contact', contact.id, otherOwnerId, false),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    findings = await listHygieneFindings(ownerId);
+    expect(findings.some((f) => f.entity_id === contact.id)).toBe(true);
+  });
+
+  it('throws NOT_FOUND when no findings exist for the entity', async () => {
+    await expect(
+      clearFindingsForEntity('contact', '00000000-0000-0000-0000-000000000000', ownerId, false),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('allows an admin to clear findings they do not own', async () => {
+    const contact = await createContact({
+      first_name: 'Admin',
+      last_name: 'Clearable',
+      email: '',
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+
+    await clearFindingsForEntity('contact', contact.id, otherOwnerId, true);
+
+    const findings = await listHygieneFindings(ownerId);
+    expect(findings.some((f) => f.entity_id === contact.id)).toBe(false);
+  });
+});
+
+describe('mergeDuplicateContactFindings', () => {
+  async function createFlaggedDuplicatePair(): Promise<{ winnerId: string; loserId: string }> {
+    const account = await createAccount({ name: `${FILE_PREFIX} Merge Co`, owner_id: ownerId });
+    const contactA = await createContact({
+      first_name: 'Dana',
+      last_name: 'Okafor',
+      email: `${FILE_PREFIX}-${uid()}-dana-a@example.com`,
+      account_id: account.id,
+      owner_id: ownerId,
+    });
+    const contactB = await createContact({
+      first_name: 'Dana',
+      last_name: 'Okafor',
+      email: `${FILE_PREFIX}-${uid()}-dana-b@example.com`,
+      account_id: account.id,
+      owner_id: ownerId,
+    });
+    await runDataHygieneScan();
+    return { winnerId: contactA.id, loserId: contactB.id };
+  }
+
+  it('merges a flagged duplicate pair when the caller owns the finding', async () => {
+    const { winnerId, loserId } = await createFlaggedDuplicatePair();
+
+    await mergeDuplicateContactFindings(
+      winnerId,
+      loserId,
+      { id: ownerId, name: 'Hygiene Owner' },
+      false,
+    );
+
+    const winner = await findContactById(winnerId);
+    expect(winner).not.toBeNull();
+    const loser = await findContactById(loserId);
+    expect(loser).toBeNull();
+  });
+
+  it('throws FORBIDDEN when a non-admin caller does not own the flagged pair (IDOR guard)', async () => {
+    const { winnerId, loserId } = await createFlaggedDuplicatePair();
+
+    await expect(
+      mergeDuplicateContactFindings(
+        winnerId,
+        loserId,
+        { id: otherOwnerId, name: 'Other Owner' },
+        false,
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    // Neither contact should have been touched by the rejected attempt.
+    expect(await findContactById(winnerId)).not.toBeNull();
+    expect(await findContactById(loserId)).not.toBeNull();
+  });
+
+  it('throws FORBIDDEN for an arbitrary contact pair with no matching finding at all', async () => {
+    const contactA = await createContact({
+      first_name: 'Unrelated',
+      last_name: 'One',
+      email: `${FILE_PREFIX}-${uid()}-unrelated-a@example.com`,
+      owner_id: ownerId,
+    });
+    const contactB = await createContact({
+      first_name: 'Unrelated',
+      last_name: 'Two',
+      email: `${FILE_PREFIX}-${uid()}-unrelated-b@example.com`,
+      owner_id: ownerId,
+    });
+
+    await expect(
+      mergeDuplicateContactFindings(
+        contactA.id,
+        contactB.id,
+        { id: ownerId, name: 'Hygiene Owner' },
+        false,
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('allows an admin to merge a pair they do not own', async () => {
+    const { winnerId, loserId } = await createFlaggedDuplicatePair();
+
+    await mergeDuplicateContactFindings(
+      winnerId,
+      loserId,
+      { id: otherOwnerId, name: 'Admin User' },
+      true,
+    );
+
+    expect(await findContactById(winnerId)).not.toBeNull();
+    expect(await findContactById(loserId)).toBeNull();
   });
 });
 
