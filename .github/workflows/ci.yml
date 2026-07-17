@@ -1040,6 +1040,9 @@ jobs:
             qa/e2e/test-results/**/trace.zip
             qa/e2e/test-results/**/test-failed-*.png
             qa/e2e/test-results/**/video.webm
+            qa/e2e/test-results/**/error-context.md
+          retention-days: 14
+          if-no-files-found: ignore
 
       # qa/e2e/test-timing.jsonl sits one level up from qa/e2e/test-results/ —
       # mixing it into the results-artifact glob above reintroduces the exact
@@ -1054,9 +1057,6 @@ jobs:
           path: qa/e2e/test-timing.jsonl
           retention-days: 14
           if-no-files-found: warn
-            qa/e2e/test-results/**/error-context.md
-          retention-days: 14
-          if-no-files-found: ignore
 
   # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
   # Job dependency chain:
