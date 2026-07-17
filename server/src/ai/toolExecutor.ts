@@ -119,6 +119,8 @@ import {
 } from '../services/churnExpansionService.js';
 import { findObjectionPrecedents } from '../services/objectionMatchingService.js';
 import type { ObjectionCategory } from '@minicrm/shared/schemas/objectionSchema.js';
+import { listHygieneFindings } from '../services/dataHygieneService.js';
+import type { DataHygieneEntityType } from '@minicrm/shared/schemas/dataHygieneSchema.js';
 
 // ── Pipeline / Stage ───────────────────────────────────────────────────────────
 import { listPipelines, findPipelineById } from '../services/pipelineService.js';
@@ -459,6 +461,17 @@ export async function executeToolCall(
       case 'getAtRiskAndExpansionAccounts': {
         const ownerId = ctx.userRole !== 'admin' ? ctx.userId : null;
         return await listChurnExpansionSignals(ownerId);
+      }
+
+      // ── Data hygiene ─────────────────────────────────────────────────────────
+      case 'getDataHygieneFindings': {
+        const ownerId = ctx.userRole !== 'admin' ? ctx.userId : null;
+        return {
+          findings: await listHygieneFindings(
+            ownerId,
+            toolInput.entity_type as DataHygieneEntityType | undefined,
+          ),
+        };
       }
 
       // ── Leads ────────────────────────────────────────────────────────────────

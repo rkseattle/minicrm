@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.teams](public.teams.md) [public.team_memberships](public.team_memberships.md) [public.team_feature_overrides](public.team_feature_overrides.md) |  |  |
 | name | text |  | false |  |  |  |
 | manager_id | uuid |  | true |  | [public.users](public.users.md) |  |
 | parent_team_id | uuid |  | true |  | [public.teams](public.teams.md) |  |
@@ -44,6 +44,7 @@ erDiagram
 
 "public.teams" }o--o| "public.teams" : "FOREIGN KEY (parent_team_id) REFERENCES teams(id) ON DELETE SET NULL"
 "public.team_memberships" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.team_feature_overrides" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.teams" }o--o| "public.users" : "FOREIGN KEY (manager_id) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.teams" {
@@ -59,6 +60,14 @@ erDiagram
   uuid team_id FK ""
   uuid user_id FK ""
   text role ""
+}
+"public.team_feature_overrides" {
+  uuid id ""
+  uuid team_id FK ""
+  varchar_100_ flag_key ""
+  boolean enabled ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
 }
 "public.users" {
   uuid id ""
@@ -88,6 +97,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 ```
 

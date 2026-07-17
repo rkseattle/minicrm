@@ -2055,7 +2055,8 @@
       "dataRetention": "Data Retention",
       "dataMinimization": "Data Minimization",
       "coaching": "Rep Coaching",
-      "leadRouting": "Lead Routing"
+      "leadRouting": "Lead Routing",
+      "dataHygiene": "Data Hygiene"
     },
     "header": {
       "deploymentMode": "Deployment Mode"
@@ -2193,6 +2194,28 @@
       "saveError": "Failed to save lead routing configuration. Please try again.",
       "teamOverridesHeading": "Per-Team Overrides",
       "teamOverridesDescription": "Disable intelligent lead routing for a specific team — falls back to manual assignment for that team's members."
+    },
+    "dataHygiene": {
+      "heading": "Data Hygiene Assistant",
+      "description": "Configure the thresholds used by the nightly data hygiene scan to flag stale, incomplete, or invalid records.",
+      "loadError": "Failed to load data hygiene settings. Please try again.",
+      "contactInactivityDaysLabel": "Contact inactivity window (days)",
+      "accountInactivityDaysLabel": "Account inactivity window (days)",
+      "titleStalenessDaysLabel": "Job title staleness window (days)",
+      "opportunityInactivityDaysLabel": "Opportunity inactivity window (days)",
+      "dismissSuppressionDaysLabel": "Dismiss suppression window (days)",
+      "weeklyDigestLabel": "Send a weekly digest email",
+      "validationContactInactivityDays": "Contact inactivity window must be at least 1 day.",
+      "validationAccountInactivityDays": "Account inactivity window must be at least 1 day.",
+      "validationTitleStalenessDays": "Job title staleness window must be at least 1 day.",
+      "validationOpportunityInactivityDays": "Opportunity inactivity window must be at least 1 day.",
+      "validationDismissSuppressionDays": "Dismiss suppression window must be at least 1 day.",
+      "saveSuccess": "Data hygiene configuration saved.",
+      "saveError": "Failed to save data hygiene configuration. Please try again.",
+      "runNowDescription": "Run the data hygiene scan immediately, outside the nightly schedule.",
+      "runNow": "Run now",
+      "runAccepted": "Scan started. The queue will update shortly.",
+      "runError": "Failed to start the scan. Please try again."
     },
     "tokenBudgets": {
       "heading": "Token Budgets",
@@ -2508,6 +2531,46 @@
     "insufficientDataShort": "insufficient data",
     "noInsights": "No coaching insights available yet.",
     "noRepsAvailable": "No reps available."
+  },
+  "dataHygiene": {
+    "adminHeading": "Data Hygiene Queue",
+    "myHeading": "My Data Hygiene Queue",
+    "notAvailable": "This feature is not available.",
+    "loadError": "Failed to load the data hygiene queue.",
+    "actionError": "Failed to complete the action. Please try again.",
+    "emptyTitle": "Nothing to review",
+    "emptyDescription": "No data hygiene issues are currently flagged.",
+    "lastActivity": "last activity {{date}}",
+    "actionUpdate": "Update",
+    "actionMerge": "Merge",
+    "actionArchive": "Archive",
+    "actionDismiss": "Dismiss",
+    "dismissDialogTitle": "Dismiss this finding?",
+    "dismissReasonLabel": "Reason",
+    "mergeDialogTitle": "Merge duplicate contacts",
+    "mergeDialogBody": "Choose which contact to keep. The other contact's data will be merged into it and then deleted.",
+    "mergeDialogKeepLabel": "Keep",
+    "filter": {
+      "all": "All",
+      "contact": "Contacts",
+      "account": "Accounts",
+      "opportunity": "Opportunities"
+    },
+    "issue": {
+      "contact_no_activity": "No activity in over a year",
+      "contact_missing_contact_info": "Missing email or phone",
+      "contact_stale_title": "Job title not updated in a long time",
+      "contact_unresolvable_email_domain": "Email domain no longer resolves",
+      "contact_duplicate": "Possible duplicate contact",
+      "account_no_contacts": "No associated contacts",
+      "account_no_activity": "No activity in over a year",
+      "account_website_unreachable": "Website is unreachable",
+      "account_missing_firmographics": "Missing industry or company size",
+      "opportunity_no_activity": "No activity in 30+ days",
+      "opportunity_close_date_passed": "Close date has passed",
+      "opportunity_no_contact": "No contact associated",
+      "opportunity_zero_value": "Deal value is $0"
+    }
   },
   "notifications": {
     "bellLabel": "Notifications ({{count}} unread)",

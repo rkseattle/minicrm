@@ -21,6 +21,7 @@ import { detectChurnExpansionSignals } from './services/churnExpansionService.js
 import { computeAccountHealthScores } from './services/relationshipHealthService.js';
 import { computeFollowUpTimingSuggestions } from './services/followUpTimingService.js';
 import { generateRepCoachingInsights } from './services/repCoachingService.js';
+import { runDataHygieneScan } from './services/dataHygieneService.js';
 import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
@@ -260,6 +261,28 @@ if (process.env.NODE_ENV !== 'test') {
 
   process.once('SIGTERM', () => repCoachingCron.stop());
   process.once('SIGINT', () => repCoachingCron.stop());
+
+  // Data hygiene assistant — runs daily at 06:30 server time (MINCRM-476).
+  // Unlike the other nightly jobs above, this one does real per-record network
+  // I/O (MX lookups, website reachability checks), so a re-entrancy guard
+  // prevents overlapping runs if a scan takes longer than 24 hours on a large
+  // dataset — mirrors the 15-minute sequence-enrollment cron's guard pattern.
+  let dataHygieneScanRunning = false;
+  const dataHygieneCron = cron.schedule('30 6 * * *', () => {
+    if (dataHygieneScanRunning) {
+      logger.warn('dataHygiene: previous scan still in progress — skipping this tick');
+      return;
+    }
+    logger.info('cron: running data hygiene scan');
+    dataHygieneScanRunning = true;
+    void runDataHygieneScan().finally(() => {
+      dataHygieneScanRunning = false;
+    });
+  });
+  logger.info('Data hygiene scan cron scheduled (daily at 06:30)');
+
+  process.once('SIGTERM', () => dataHygieneCron.stop());
+  process.once('SIGINT', () => dataHygieneCron.stop());
 
   // audit_log partition maintenance — runs at midnight UTC on the 1st of each month (MINCRM-521).
   // Pre-creates audit_log_y{YYYY}m{MM} partitions for the current month + 3 months ahead,

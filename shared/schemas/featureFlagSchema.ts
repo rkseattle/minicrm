@@ -16,6 +16,7 @@ import { z } from 'zod';
  * ai_followup_timing_suggestions were added in migrations 151-152 (MINCRM-467, MINCRM-470).
  * ai_rep_coaching_insights was added in migration 153 (MINCRM-474).
  * ai_lead_routing_suggestion was added in migration 154 (MINCRM-475).
+ * ai_data_hygiene_assistant was added in migration 155 (MINCRM-476).
  */
 export const FEATURE_FLAG_KEYS = [
   'notes',
@@ -59,6 +60,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_followup_timing_suggestions',
   'ai_rep_coaching_insights',
   'ai_lead_routing_suggestion',
+  'ai_data_hygiene_assistant',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

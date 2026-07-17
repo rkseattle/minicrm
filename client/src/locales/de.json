@@ -2055,7 +2055,8 @@
       "dataRetention": "Datenaufbewahrung",
       "dataMinimization": "Datenminimierung",
       "coaching": "Vertriebscoaching",
-      "leadRouting": "Lead-Verteilung"
+      "leadRouting": "Lead-Verteilung",
+      "dataHygiene": "Datenhygiene"
     },
     "header": {
       "deploymentMode": "Bereitstellungsmodus"
@@ -2193,6 +2194,28 @@
       "saveError": "Lead-Verteilungskonfiguration konnte nicht gespeichert werden. Bitte erneut versuchen.",
       "teamOverridesHeading": "Teamspezifische Ausnahmen",
       "teamOverridesDescription": "Deaktiviert die intelligente Lead-Verteilung für ein bestimmtes Team — für die Mitglieder dieses Teams wird auf manuelle Zuweisung zurückgegriffen."
+    },
+    "dataHygiene": {
+      "heading": "Datenhygiene-Assistent",
+      "description": "Konfigurieren Sie die Schwellenwerte für den nächtlichen Datenhygiene-Scan, der veraltete, unvollständige oder ungültige Datensätze kennzeichnet.",
+      "loadError": "Datenhygiene-Einstellungen konnten nicht geladen werden. Bitte erneut versuchen.",
+      "contactInactivityDaysLabel": "Inaktivitätsfenster für Kontakte (Tage)",
+      "accountInactivityDaysLabel": "Inaktivitätsfenster für Konten (Tage)",
+      "titleStalenessDaysLabel": "Aktualitätsfenster für Berufsbezeichnung (Tage)",
+      "opportunityInactivityDaysLabel": "Inaktivitätsfenster für Deals (Tage)",
+      "dismissSuppressionDaysLabel": "Unterdrückungsfenster nach Verwerfen (Tage)",
+      "weeklyDigestLabel": "Wöchentliche Zusammenfassung per E-Mail senden",
+      "validationContactInactivityDays": "Das Inaktivitätsfenster für Kontakte muss mindestens 1 Tag betragen.",
+      "validationAccountInactivityDays": "Das Inaktivitätsfenster für Konten muss mindestens 1 Tag betragen.",
+      "validationTitleStalenessDays": "Das Aktualitätsfenster für Berufsbezeichnung muss mindestens 1 Tag betragen.",
+      "validationOpportunityInactivityDays": "Das Inaktivitätsfenster für Deals muss mindestens 1 Tag betragen.",
+      "validationDismissSuppressionDays": "Das Unterdrückungsfenster nach Verwerfen muss mindestens 1 Tag betragen.",
+      "saveSuccess": "Datenhygiene-Konfiguration gespeichert.",
+      "saveError": "Datenhygiene-Konfiguration konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "runNowDescription": "Den Datenhygiene-Scan sofort ausführen, außerhalb des nächtlichen Zeitplans.",
+      "runNow": "Jetzt ausführen",
+      "runAccepted": "Scan gestartet. Die Warteschlange wird in Kürze aktualisiert.",
+      "runError": "Der Scan konnte nicht gestartet werden. Bitte erneut versuchen."
     },
     "tokenBudgets": {
       "heading": "Token-Budgets",
@@ -2508,6 +2531,46 @@
     "insufficientDataShort": "unzureichende Daten",
     "noInsights": "Noch keine Coaching-Einblicke verfügbar.",
     "noRepsAvailable": "Keine Vertriebsmitarbeiter verfügbar."
+  },
+  "dataHygiene": {
+    "adminHeading": "Datenhygiene-Warteschlange",
+    "myHeading": "Meine Datenhygiene-Warteschlange",
+    "notAvailable": "Diese Funktion ist nicht verfügbar.",
+    "loadError": "Die Datenhygiene-Warteschlange konnte nicht geladen werden.",
+    "actionError": "Aktion konnte nicht abgeschlossen werden. Bitte erneut versuchen.",
+    "emptyTitle": "Nichts zu überprüfen",
+    "emptyDescription": "Derzeit sind keine Datenhygiene-Probleme gekennzeichnet.",
+    "lastActivity": "letzte Aktivität {{date}}",
+    "actionUpdate": "Aktualisieren",
+    "actionMerge": "Zusammenführen",
+    "actionArchive": "Archivieren",
+    "actionDismiss": "Verwerfen",
+    "dismissDialogTitle": "Diesen Befund verwerfen?",
+    "dismissReasonLabel": "Grund",
+    "mergeDialogTitle": "Doppelte Kontakte zusammenführen",
+    "mergeDialogBody": "Wählen Sie aus, welcher Kontakt erhalten bleiben soll. Die Daten des anderen Kontakts werden übernommen und dieser anschließend gelöscht.",
+    "mergeDialogKeepLabel": "Behalten",
+    "filter": {
+      "all": "Alle",
+      "contact": "Kontakte",
+      "account": "Konten",
+      "opportunity": "Deals"
+    },
+    "issue": {
+      "contact_no_activity": "Seit über einem Jahr keine Aktivität",
+      "contact_missing_contact_info": "E-Mail-Adresse oder Telefonnummer fehlt",
+      "contact_stale_title": "Berufsbezeichnung seit langem nicht aktualisiert",
+      "contact_unresolvable_email_domain": "E-Mail-Domain ist nicht mehr auflösbar",
+      "contact_duplicate": "Mögliches Duplikat eines Kontakts",
+      "account_no_contacts": "Keine zugehörigen Kontakte",
+      "account_no_activity": "Seit über einem Jahr keine Aktivität",
+      "account_website_unreachable": "Webseite ist nicht erreichbar",
+      "account_missing_firmographics": "Branche oder Unternehmensgröße fehlt",
+      "opportunity_no_activity": "Seit über 30 Tagen keine Aktivität",
+      "opportunity_close_date_passed": "Abschlussdatum liegt in der Vergangenheit",
+      "opportunity_no_contact": "Kein Kontakt zugeordnet",
+      "opportunity_zero_value": "Deal-Wert beträgt 0 $"
+    }
   },
   "notifications": {
     "bellLabel": "Benachrichtigungen ({{count}} ungelesen)",

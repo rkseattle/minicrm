@@ -27,6 +27,7 @@
 | twitter_x_url | varchar(500) |  | true |  |  |  |
 | other_url | varchar(500) |  | true |  |  |  |
 | version | integer | 1 | false |  |  |  |
+| title_updated_at | timestamp with time zone |  | true |  |  | Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as "at least as stale as created_at." |
 
 ## Constraints
 
@@ -97,6 +98,7 @@ erDiagram
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
+  timestamp_with_time_zone title_updated_at "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as #quot;at least as stale as created_at.#quot;"
 }
 "public.leads" {
   uuid id ""
@@ -118,6 +120,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
   integer version ""
+  varchar_255_ territory "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+  varchar_255_ industry "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+  varchar_50_ employee_range "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a #quot;similar lead profile#quot; for historical win-rate comparison."
 }
 "public.contact_addresses" {
   uuid id ""
@@ -227,6 +232,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 "public.accounts" {
   uuid id ""

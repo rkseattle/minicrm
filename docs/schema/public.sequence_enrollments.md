@@ -111,6 +111,7 @@ erDiagram
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
+  timestamp_with_time_zone title_updated_at "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as #quot;at least as stale as created_at.#quot;"
 }
 "public.users" {
   uuid id ""
@@ -140,6 +141,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 "public.sales_sequence_steps" {
   uuid id ""

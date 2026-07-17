@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.lead_status_history](public.lead_status_history.md) [public.lead_tags](public.lead_tags.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.contacts](public.contacts.md) [public.deals](public.deals.md) [public.lead_status_history](public.lead_status_history.md) [public.lead_tags](public.lead_tags.md) [public.lead_routing_decisions](public.lead_routing_decisions.md) |  |  |
 | first_name | text |  | false |  |  |  |
 | last_name | text |  | true |  |  |  |
 | email | text |  | false |  |  |  |
@@ -23,6 +23,9 @@
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | is_demo | boolean | false | false |  |  |  |
 | version | integer | 1 | false |  |  |  |
+| territory | varchar(255) |  | true |  |  | Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range. |
+| industry | varchar(255) |  | true |  |  | Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion. |
+| employee_range | varchar(50) |  | true |  |  | Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a "similar lead profile" for historical win-rate comparison. |
 
 ## Constraints
 
@@ -63,6 +66,7 @@ erDiagram
 "public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
 "public.lead_status_history" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
 "public.lead_tags" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.lead_routing_decisions" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
 "public.leads" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.leads" }o--o| "public.contacts" : "FOREIGN KEY (converted_contact_id) REFERENCES contacts(id) ON DELETE SET NULL"
 "public.leads" }o--o| "public.accounts" : "FOREIGN KEY (converted_account_id) REFERENCES accounts(id) ON DELETE SET NULL"
@@ -88,6 +92,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
   integer version ""
+  varchar_255_ territory "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+  varchar_255_ industry "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+  varchar_50_ employee_range "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a #quot;similar lead profile#quot; for historical win-rate comparison."
 }
 "public.contacts" {
   uuid id ""
@@ -113,6 +120,7 @@ erDiagram
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
+  timestamp_with_time_zone title_updated_at "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as #quot;at least as stale as created_at.#quot;"
 }
 "public.deals" {
   uuid id ""
@@ -147,6 +155,17 @@ erDiagram
   uuid tag_id FK ""
   timestamp_with_time_zone created_at ""
 }
+"public.lead_routing_decisions" {
+  uuid id ""
+  uuid lead_id FK ""
+  uuid suggested_rep_id FK ""
+  text confidence ""
+  jsonb contributing_factors ""
+  text decision ""
+  uuid actual_assignee_id FK ""
+  timestamp_with_time_zone decided_at ""
+  timestamp_with_time_zone created_at ""
+}
 "public.users" {
   uuid id ""
   varchar_255_ email ""
@@ -175,6 +194,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 "public.accounts" {
   uuid id ""
