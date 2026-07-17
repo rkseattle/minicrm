@@ -400,6 +400,142 @@ export class LeadsPage {
   }
 
   /**
+   * Fills the lead territory field. Part of the routing suggestion profile
+   * (MINCRM-475) alongside industry and employee range.
+   *
+   * @param value - Territory to enter.
+   */
+  async fillTerritory(value: string): Promise<void> {
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-territory' },
+        { type: 'label', value: 'Territory', options: { exact: false } },
+      ],
+      { intent: 'lead territory input used for the AI routing suggestion profile' },
+    );
+  }
+
+  /**
+   * Fills the lead industry field. Part of the routing suggestion profile
+   * (MINCRM-475) alongside territory and employee range.
+   *
+   * @param value - Industry to enter.
+   */
+  async fillIndustry(value: string): Promise<void> {
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-industry' },
+        { type: 'label', value: 'Industry', options: { exact: false } },
+      ],
+      { intent: 'lead industry input used for the AI routing suggestion profile' },
+    );
+  }
+
+  /**
+   * Fills the lead employee range field. Part of the routing suggestion
+   * profile (MINCRM-475) alongside territory and industry.
+   *
+   * @param value - Employee range to enter.
+   */
+  async fillEmployeeRange(value: string): Promise<void> {
+    await this.page.fill(
+      value,
+      [
+        { type: 'testId', value: 'lead-employee-range' },
+        { type: 'label', value: 'Employees', options: { exact: false } },
+      ],
+      { intent: 'lead employee range input used for the AI routing suggestion profile' },
+    );
+  }
+
+  /**
+   * Returns the currently selected value of the lead form's owner selector.
+   */
+  async ownerSelectValue(): Promise<string> {
+    const select = await this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-owner-select' },
+          { type: 'css', value: '[data-testid="lead-owner-select"]' },
+        ],
+        { intent: 'owner selector dropdown in the lead create/edit form' },
+      )
+      .resolve();
+    return select.inputValue();
+  }
+
+  // ---------------------------------------------------------------------------
+  // AI routing suggestion panel (MINCRM-475)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns true once the routing suggestion panel is visible, false if it
+   * never appears within the timeout. Never throws.
+   */
+  async isRoutingSuggestionPanelVisible(timeout = 10_000): Promise<boolean> {
+    try {
+      await this.page.waitForPresent('[data-testid="lead-routing-suggestion-panel"]', timeout);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Returns a resolved locator for the routing suggestion panel. */
+  async routingSuggestionPanelLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'lead-routing-suggestion-panel' },
+          { type: 'css', value: '[data-testid="lead-routing-suggestion-panel"]' },
+        ],
+        { intent: 'AI routing suggestion panel shown while filling out a new lead' },
+      )
+      .resolve();
+  }
+
+  /**
+   * Returns the routing suggestion panel's full text content (includes the
+   * suggested rep's name, confidence level, and contributing factors).
+   * Uses the whole-panel textContent rather than drilling into a child
+   * element — SafeLocator deliberately forbids .locator()/.first() chaining
+   * to keep every DOM lookup on the healing path (see safe-locator.ts).
+   */
+  async routingSuggestionPanelText(): Promise<string> {
+    const panel = await this.routingSuggestionPanelLocator();
+    return (await panel.textContent()) ?? '';
+  }
+
+  /** Clicks the routing suggestion panel's Apply button. */
+  async clickRoutingSuggestionApply(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'lead-routing-suggestion-apply' },
+        { type: 'role', value: 'button', options: { name: /apply|accept/i } },
+      ],
+      { intent: 'button to apply the AI-suggested rep as the lead owner' },
+    );
+  }
+
+  /** Clicks the routing suggestion panel's Dismiss button. */
+  async clickRoutingSuggestionDismiss(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'lead-routing-suggestion-dismiss' },
+        { type: 'role', value: 'button', options: { name: /dismiss/i } },
+      ],
+      { intent: 'button to dismiss the AI routing suggestion without applying it' },
+    );
+  }
+
+  /** Waits until the routing suggestion panel is no longer present in the DOM. */
+  async waitForRoutingSuggestionPanelAbsent(timeout = 10_000): Promise<void> {
+    await this.page.waitForAbsent('[data-testid="lead-routing-suggestion-panel"]', timeout);
+  }
+
+  /**
    * Submits the lead creation form.
    */
   async submitForm(): Promise<void> {
