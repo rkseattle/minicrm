@@ -1021,7 +1021,6 @@ jobs:
             qa/e2e/test-results/results.json
             qa/e2e/test-results/healing-shard*.json
             qa/e2e/test-results/healing-suggestions.md
-            qa/e2e/test-timing.jsonl
           retention-days: 14
           if-no-files-found: warn
 
@@ -1041,6 +1040,20 @@ jobs:
             qa/e2e/test-results/**/trace.zip
             qa/e2e/test-results/**/test-failed-*.png
             qa/e2e/test-results/**/video.webm
+
+      # qa/e2e/test-timing.jsonl sits one level up from qa/e2e/test-results/ —
+      # mixing it into the results-artifact glob above reintroduces the exact
+      # MINCRM-658 bug (a shallower sibling path widens the common ancestor,
+      # pushing results.xml down a directory). Uploaded separately so the
+      # results artifact's archive root stays flat.
+      - name: Upload serial test timing artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-serial-timing
+          path: qa/e2e/test-timing.jsonl
+          retention-days: 14
+          if-no-files-found: warn
             qa/e2e/test-results/**/error-context.md
           retention-days: 14
           if-no-files-found: ignore
