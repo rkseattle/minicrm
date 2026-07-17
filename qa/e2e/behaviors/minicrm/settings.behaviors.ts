@@ -2904,3 +2904,31 @@ export async function getAiFieldExclusionToggle(
 ) {
   return new AdminSettingsPage(context).aiFieldExclusionToggleLocator(entityType, fieldName);
 }
+
+/**
+ * Clicks the data hygiene sub-section's manual "run now" button and waits for
+ * the underlying POST /api/v1/admin/ai/data-hygiene/run response, returning
+ * its status so the spec can assert a real scan was triggered. (MINCRM-476)
+ */
+export async function clickDataHygieneRunNowAndAwaitResponse(
+  context: AdminSettingsBehaviorContext,
+): Promise<{ status: number }> {
+  const responsePromise = context.page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/admin/ai/data-hygiene/run') &&
+      response.request().method() === 'POST',
+  );
+  await new AdminSettingsPage(context).clickDataHygieneRunNowButton();
+  const response = await responsePromise;
+  return { status: response.status() };
+}
+
+/** Asserts that the data hygiene "run accepted" confirmation message is visible. (MINCRM-476) */
+export async function expectDataHygieneRunAcceptedVisible(
+  context: AdminSettingsBehaviorContext,
+  timeout?: number,
+): Promise<void> {
+  const { expect } = await import('@playwright/test');
+  const locator = await new AdminSettingsPage(context).dataHygieneRunAcceptedLocator();
+  await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
+}

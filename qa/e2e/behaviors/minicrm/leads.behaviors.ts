@@ -770,3 +770,86 @@ export async function clickLeadExportPdfAndAwaitResponse(
     contentType: response.headers()['content-type'] ?? '',
   };
 }
+
+// ---------------------------------------------------------------------------
+// AI routing suggestion (MINCRM-475)
+// ---------------------------------------------------------------------------
+
+/** Draft profile fields that feed the routing suggestion — at least one must be set. */
+export interface RoutingSuggestionProfileFields {
+  territory?: string;
+  industry?: string;
+  employee_range?: string;
+}
+
+/**
+ * Navigates to /leads (admin only — the routing suggestion panel and owner
+ * selector both require isAdmin per LeadForm.tsx), opens the create form,
+ * fills first name/email plus the given routing profile fields, and leaves
+ * the form open without submitting so the caller can assert on the
+ * suggestion panel and/or apply/dismiss it.
+ */
+export async function openLeadCreateFormWithRoutingProfile(
+  fields: CreateLeadUIFields & RoutingSuggestionProfileFields,
+  context: LeadsBehaviorContext,
+): Promise<void> {
+  const leadsPage = new LeadsPage(context);
+  await leadsPage.navigate();
+  await leadsPage.clickNew();
+
+  await leadsPage.fillFirstName(fields.first_name);
+  await leadsPage.fillEmail(fields.email);
+
+  if (fields.territory !== undefined) await leadsPage.fillTerritory(fields.territory);
+  if (fields.industry !== undefined) await leadsPage.fillIndustry(fields.industry);
+  if (fields.employee_range !== undefined) {
+    await leadsPage.fillEmployeeRange(fields.employee_range);
+  }
+}
+
+/**
+ * Returns true once the AI routing suggestion panel becomes visible, false if
+ * it never appears within the timeout. Never throws.
+ */
+export async function isRoutingSuggestionPanelVisible(
+  context: LeadsBehaviorContext,
+  timeout = 10_000,
+): Promise<boolean> {
+  const leadsPage = new LeadsPage(context);
+  return leadsPage.isRoutingSuggestionPanelVisible(timeout);
+}
+
+/** Returns the routing suggestion panel's full text content. */
+export async function getRoutingSuggestionPanelText(
+  context: LeadsBehaviorContext,
+): Promise<string> {
+  const leadsPage = new LeadsPage(context);
+  return leadsPage.routingSuggestionPanelText();
+}
+
+/**
+ * Clicks the routing suggestion panel's Apply button, which populates the
+ * owner selector with the suggested rep (MINCRM-475). Purely a client-side
+ * state update — no network request to await.
+ */
+export async function applyRoutingSuggestion(context: LeadsBehaviorContext): Promise<void> {
+  const leadsPage = new LeadsPage(context);
+  await leadsPage.clickRoutingSuggestionApply();
+}
+
+/**
+ * Clicks the routing suggestion panel's Dismiss button and waits for the
+ * panel to disappear. Purely a client-side state update — no network
+ * request to await.
+ */
+export async function dismissRoutingSuggestion(context: LeadsBehaviorContext): Promise<void> {
+  const leadsPage = new LeadsPage(context);
+  await leadsPage.clickRoutingSuggestionDismiss();
+  await leadsPage.waitForRoutingSuggestionPanelAbsent();
+}
+
+/** Returns the currently selected value (user ID, or '' if unset) of the owner selector. */
+export async function getLeadFormOwnerValue(context: LeadsBehaviorContext): Promise<string> {
+  const leadsPage = new LeadsPage(context);
+  return leadsPage.ownerSelectValue();
+}

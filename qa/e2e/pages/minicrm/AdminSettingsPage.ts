@@ -1710,4 +1710,28 @@ export class AdminSettingsPage {
       )
       .resolve();
   }
+
+  /** Clicks the data hygiene sub-section's manual "run now" button. (MINCRM-476) */
+  async clickDataHygieneRunNowButton(): Promise<void> {
+    await this.page.click(
+      [
+        { type: 'testId', value: 'hygiene-run-now-button' },
+        { type: 'role', value: 'button', options: { name: /run/i } },
+      ],
+      { intent: 'button to trigger an immediate data hygiene scan outside the nightly schedule' },
+    );
+  }
+
+  /** Returns a resolved locator for the data hygiene "run accepted" confirmation message. (MINCRM-476) */
+  async dataHygieneRunAcceptedLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'hygiene-run-accepted' },
+          { type: 'css', value: '[data-testid="hygiene-run-accepted"]' },
+        ],
+        { intent: 'confirmation message shown after a manual data hygiene scan is accepted' },
+      )
+      .resolve();
+  }
 }
