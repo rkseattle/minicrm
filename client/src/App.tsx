@@ -49,6 +49,7 @@ const AiPage = lazy(() => import('@/pages/AiPage.js'));
 const WinLossInsightsPage = lazy(() => import('@/pages/WinLossInsightsPage.js'));
 const ChurnExpansionInsightsPage = lazy(() => import('@/pages/ChurnExpansionInsightsPage.js'));
 const CoachingInsightsPage = lazy(() => import('@/pages/CoachingInsightsPage.js'));
+const DataHygienePage = lazy(() => import('@/pages/DataHygienePage.js'));
 const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
 
 /**
@@ -135,6 +136,8 @@ function AppRoutes() {
             <Route path="/insights/churn-expansion" element={<ChurnExpansionInsightsPage />} />
             {/* MINCRM-474: AI rep coaching insights — page self-gates to manager/admin roles */}
             <Route path="/insights/coaching" element={<CoachingInsightsPage />} />
+            {/* MINCRM-476: personal data hygiene queue — the caller's own flagged records */}
+            <Route path="/hygiene" element={<DataHygienePage scope="mine" />} />
           </Route>
         </Route>
 
@@ -153,6 +156,8 @@ function AppRoutes() {
             <Route path="/admin/automation" element={<AutomationRulesPage />} />
             <Route path="/admin/sequences" element={<SequencesPage />} />
             <Route path="/admin/sequences/:id" element={<SequenceDetailPage />} />
+            {/* MINCRM-476: org-wide data hygiene queue */}
+            <Route path="/admin/hygiene" element={<DataHygienePage scope="all" />} />
           </Route>
         </Route>
 

@@ -97,6 +97,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 ```
 

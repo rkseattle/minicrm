@@ -156,6 +156,12 @@
           "name": "scim_external_id",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "territory",
+          "type": "varchar(255)",
+          "nullable": true,
+          "comment": "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
         }
       ],
       "indexes": [
@@ -858,6 +864,24 @@
           "type": "integer",
           "nullable": false,
           "default": "1"
+        },
+        {
+          "name": "territory",
+          "type": "varchar(255)",
+          "nullable": true,
+          "comment": "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+        },
+        {
+          "name": "industry",
+          "type": "varchar(255)",
+          "nullable": true,
+          "comment": "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+        },
+        {
+          "name": "employee_range",
+          "type": "varchar(50)",
+          "nullable": true,
+          "comment": "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a \"similar lead profile\" for historical win-rate comparison."
         }
       ],
       "indexes": [
@@ -1296,6 +1320,12 @@
           "type": "integer",
           "nullable": false,
           "default": "1"
+        },
+        {
+          "name": "title_updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "comment": "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as \"at least as stale as created_at.\""
         }
       ],
       "indexes": [
@@ -8873,6 +8903,1218 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.deal_stage_history",
+      "type": "BASE TABLE",
+      "comment": "Append-only log of real deal stage transitions (MINCRM-474). One row per deal per stage entered, including a day-0 row on creation. Never updated, only inserted. Powers average-days-per-stage and stage-conversion-rate metrics for rep coaching insights.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "deal_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "pipeline_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "stage",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "entered_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "deal_stage_history_pkey",
+          "def": "CREATE UNIQUE INDEX deal_stage_history_pkey ON public.deal_stage_history USING btree (id)",
+          "table": "public.deal_stage_history",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_stage_history_deal_id_entered_at_idx",
+          "def": "CREATE INDEX deal_stage_history_deal_id_entered_at_idx ON public.deal_stage_history USING btree (deal_id, entered_at)",
+          "table": "public.deal_stage_history",
+          "columns": [
+            "deal_id",
+            "entered_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "deal_stage_history_pipeline_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE",
+          "table": "public.deal_stage_history",
+          "referenced_table": "public.pipelines",
+          "columns": [
+            "pipeline_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_stage_history_deal_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE",
+          "table": "public.deal_stage_history",
+          "referenced_table": "public.deals",
+          "columns": [
+            "deal_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "deal_stage_history_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.deal_stage_history",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.rep_coaching_scoring_config",
+      "type": "BASE TABLE",
+      "comment": "Singleton admin-editable thresholds for rep coaching insight generation (MINCRM-474). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "min_closed_deals",
+          "type": "integer",
+          "nullable": false,
+          "default": "10"
+        },
+        {
+          "name": "stage_time_outlier_ratio",
+          "type": "numeric(4,2)",
+          "nullable": false,
+          "default": "1.50"
+        },
+        {
+          "name": "activity_frequency_outlier_ratio",
+          "type": "numeric(4,2)",
+          "nullable": false,
+          "default": "0.50"
+        },
+        {
+          "name": "response_time_outlier_hours",
+          "type": "integer",
+          "nullable": false,
+          "default": "48"
+        },
+        {
+          "name": "win_rate_outlier_delta",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.150"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "rep_coaching_scoring_config_pkey",
+          "def": "CREATE UNIQUE INDEX rep_coaching_scoring_config_pkey ON public.rep_coaching_scoring_config USING btree (id)",
+          "table": "public.rep_coaching_scoring_config",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "rep_coaching_scoring_config_activity_ratio_check",
+          "type": "CHECK",
+          "def": "CHECK (((activity_frequency_outlier_ratio \u003e (0)::numeric) AND (activity_frequency_outlier_ratio \u003c (1)::numeric)))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "activity_frequency_outlier_ratio"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_min_closed_deals_check",
+          "type": "CHECK",
+          "def": "CHECK ((min_closed_deals \u003e= 1))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "min_closed_deals"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_response_hours_check",
+          "type": "CHECK",
+          "def": "CHECK ((response_time_outlier_hours \u003e= 1))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "response_time_outlier_hours"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_singleton",
+          "type": "CHECK",
+          "def": "CHECK ((id = true))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_stage_ratio_check",
+          "type": "CHECK",
+          "def": "CHECK ((stage_time_outlier_ratio \u003e (1)::numeric))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "stage_time_outlier_ratio"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_win_rate_delta_check",
+          "type": "CHECK",
+          "def": "CHECK (((win_rate_outlier_delta \u003e (0)::numeric) AND (win_rate_outlier_delta \u003c (1)::numeric)))",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "win_rate_outlier_delta"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_scoring_config_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.rep_coaching_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.rep_coaching_insights",
+      "type": "BASE TABLE",
+      "comment": "Current cached per-rep coaching insight per metric (MINCRM-474). Upserted nightly by repCoachingService; the read path never computes live. Absence of rows for a rep means fewer than min_closed_deals closed deals. Never exposed as an NLI tool — read exclusively via the dedicated /insights/coaching and dashboard endpoints, gated by role, to protect rep privacy.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "rep_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "metric_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text"
+        },
+        {
+          "name": "observation",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "recommended_action",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "rep_value",
+          "type": "numeric(12,4)",
+          "nullable": false
+        },
+        {
+          "name": "team_average_value",
+          "type": "numeric(12,4)",
+          "nullable": false
+        },
+        {
+          "name": "is_outlier",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "closed_deal_count",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "computed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "rep_coaching_insights_pkey",
+          "def": "CREATE UNIQUE INDEX rep_coaching_insights_pkey ON public.rep_coaching_insights USING btree (id)",
+          "table": "public.rep_coaching_insights",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_insights_rep_metric_segment_unique",
+          "def": "CREATE UNIQUE INDEX rep_coaching_insights_rep_metric_segment_unique ON public.rep_coaching_insights USING btree (rep_id, metric_type, segment)",
+          "table": "public.rep_coaching_insights",
+          "columns": [
+            "rep_id",
+            "metric_type",
+            "segment"
+          ]
+        },
+        {
+          "name": "rep_coaching_insights_rep_id_idx",
+          "def": "CREATE INDEX rep_coaching_insights_rep_id_idx ON public.rep_coaching_insights USING btree (rep_id)",
+          "table": "public.rep_coaching_insights",
+          "columns": [
+            "rep_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "rep_coaching_insights_closed_deal_count_check",
+          "type": "CHECK",
+          "def": "CHECK ((closed_deal_count \u003e= 0))",
+          "table": "public.rep_coaching_insights",
+          "referenced_table": "",
+          "columns": [
+            "closed_deal_count"
+          ]
+        },
+        {
+          "name": "rep_coaching_insights_rep_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.rep_coaching_insights",
+          "referenced_table": "public.users",
+          "columns": [
+            "rep_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_insights_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.rep_coaching_insights",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_insights_rep_metric_segment_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (rep_id, metric_type, segment)",
+          "table": "public.rep_coaching_insights",
+          "referenced_table": "",
+          "columns": [
+            "rep_id",
+            "metric_type",
+            "segment"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.rep_coaching_insight_history",
+      "type": "BASE TABLE",
+      "comment": "Append-only per-run history of rep coaching insights (MINCRM-474), one row per rep per metric per nightly run. Reserved for a future trend view; not read by any endpoint in this ticket.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "rep_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "metric_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "nullable": false,
+          "default": "''::text"
+        },
+        {
+          "name": "rep_value",
+          "type": "numeric(12,4)",
+          "nullable": false
+        },
+        {
+          "name": "team_average_value",
+          "type": "numeric(12,4)",
+          "nullable": false
+        },
+        {
+          "name": "is_outlier",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "computed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "rep_coaching_insight_history_pkey",
+          "def": "CREATE UNIQUE INDEX rep_coaching_insight_history_pkey ON public.rep_coaching_insight_history USING btree (id)",
+          "table": "public.rep_coaching_insight_history",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_insight_history_rep_id_computed_at_idx",
+          "def": "CREATE INDEX rep_coaching_insight_history_rep_id_computed_at_idx ON public.rep_coaching_insight_history USING btree (rep_id, computed_at DESC)",
+          "table": "public.rep_coaching_insight_history",
+          "columns": [
+            "rep_id",
+            "computed_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "rep_coaching_insight_history_rep_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.rep_coaching_insight_history",
+          "referenced_table": "public.users",
+          "columns": [
+            "rep_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "rep_coaching_insight_history_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.rep_coaching_insight_history",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.lead_routing_decisions",
+      "type": "BASE TABLE",
+      "comment": "One row per lead created after a routing suggestion was shown to the manager (MINCRM-475). Written once, at lead-creation time, in the same transaction as the lead insert — never updated. Doubles as the AC-required routing decision log. Leads created without ever requesting a suggestion have no row here.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "lead_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "suggested_rep_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "confidence",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "contributing_factors",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "decision",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "actual_assignee_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "lead_routing_decisions_pkey",
+          "def": "CREATE UNIQUE INDEX lead_routing_decisions_pkey ON public.lead_routing_decisions USING btree (id)",
+          "table": "public.lead_routing_decisions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_lead_id_idx",
+          "def": "CREATE INDEX lead_routing_decisions_lead_id_idx ON public.lead_routing_decisions USING btree (lead_id)",
+          "table": "public.lead_routing_decisions",
+          "columns": [
+            "lead_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "lead_routing_decisions_confidence_check",
+          "type": "CHECK",
+          "def": "CHECK ((confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])))",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "",
+          "columns": [
+            "confidence"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_decision_check",
+          "type": "CHECK",
+          "def": "CHECK ((decision = ANY (ARRAY['accepted'::text, 'overridden'::text])))",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "",
+          "columns": [
+            "decision"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_actual_assignee_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (actual_assignee_id) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "public.users",
+          "columns": [
+            "actual_assignee_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_suggested_rep_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (suggested_rep_id) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "public.users",
+          "columns": [
+            "suggested_rep_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_lead_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "public.leads",
+          "columns": [
+            "lead_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_decisions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.lead_routing_decisions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.team_feature_overrides",
+      "type": "BASE TABLE",
+      "comment": "Per-team feature flag overrides (MINCRM-475). Generic, not routing-specific — any future per-team toggle can reuse this table. enabled=false blocks the flag for every member of the team regardless of rollout/beta/group state, but a per-user force_enabled override in feature_flag_user_overrides still wins (checked first in isFlagEnabledForUser).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "team_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "flag_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "team_feature_overrides_pkey",
+          "def": "CREATE UNIQUE INDEX team_feature_overrides_pkey ON public.team_feature_overrides USING btree (id)",
+          "table": "public.team_feature_overrides",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_feature_overrides_team_flag_unique",
+          "def": "CREATE UNIQUE INDEX team_feature_overrides_team_flag_unique ON public.team_feature_overrides USING btree (team_id, flag_key)",
+          "table": "public.team_feature_overrides",
+          "columns": [
+            "team_id",
+            "flag_key"
+          ]
+        },
+        {
+          "name": "team_feature_overrides_flag_key_idx",
+          "def": "CREATE INDEX team_feature_overrides_flag_key_idx ON public.team_feature_overrides USING btree (flag_key)",
+          "table": "public.team_feature_overrides",
+          "columns": [
+            "flag_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "team_feature_overrides_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.team_feature_overrides",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_feature_overrides_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.team_feature_overrides",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_feature_overrides_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.team_feature_overrides",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "team_feature_overrides_team_flag_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, flag_key)",
+          "table": "public.team_feature_overrides",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "flag_key"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.lead_routing_scoring_config",
+      "type": "BASE TABLE",
+      "comment": "Singleton admin-editable weights/thresholds for lead routing suggestion scoring (MINCRM-475). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151; rep_coaching_scoring_config, migration 153).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "territory_weight",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.250"
+        },
+        {
+          "name": "industry_weight",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.250"
+        },
+        {
+          "name": "workload_weight",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.200"
+        },
+        {
+          "name": "win_rate_weight",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.200"
+        },
+        {
+          "name": "availability_weight",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.100"
+        },
+        {
+          "name": "low_confidence_threshold",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.400"
+        },
+        {
+          "name": "medium_confidence_threshold",
+          "type": "numeric(4,3)",
+          "nullable": false,
+          "default": "0.650"
+        },
+        {
+          "name": "min_closed_deals_for_win_rate",
+          "type": "integer",
+          "nullable": false,
+          "default": "3"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "lead_routing_scoring_config_pkey",
+          "def": "CREATE UNIQUE INDEX lead_routing_scoring_config_pkey ON public.lead_routing_scoring_config USING btree (id)",
+          "table": "public.lead_routing_scoring_config",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "lead_routing_scoring_config_min_closed_deals_check",
+          "type": "CHECK",
+          "def": "CHECK ((min_closed_deals_for_win_rate \u003e= 1))",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "min_closed_deals_for_win_rate"
+          ]
+        },
+        {
+          "name": "lead_routing_scoring_config_singleton",
+          "type": "CHECK",
+          "def": "CHECK ((id = true))",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_scoring_config_threshold_order_check",
+          "type": "CHECK",
+          "def": "CHECK ((medium_confidence_threshold \u003e low_confidence_threshold))",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "medium_confidence_threshold",
+            "low_confidence_threshold"
+          ]
+        },
+        {
+          "name": "lead_routing_scoring_config_weights_sum_check",
+          "type": "CHECK",
+          "def": "CHECK (((((((territory_weight + industry_weight) + workload_weight) + win_rate_weight) + availability_weight) \u003e= 0.999) AND (((((territory_weight + industry_weight) + workload_weight) + win_rate_weight) + availability_weight) \u003c= 1.001)))",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "territory_weight",
+            "industry_weight",
+            "workload_weight",
+            "win_rate_weight",
+            "availability_weight"
+          ]
+        },
+        {
+          "name": "lead_routing_scoring_config_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_routing_scoring_config_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.lead_routing_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.data_hygiene_scoring_config",
+      "type": "BASE TABLE",
+      "comment": "Singleton admin-editable thresholds for the data hygiene scan (MINCRM-476). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "contact_inactivity_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "365"
+        },
+        {
+          "name": "account_inactivity_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "365"
+        },
+        {
+          "name": "title_staleness_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "1095"
+        },
+        {
+          "name": "opportunity_inactivity_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "30"
+        },
+        {
+          "name": "dismiss_suppression_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "90"
+        },
+        {
+          "name": "weekly_digest_enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "data_hygiene_scoring_config_pkey",
+          "def": "CREATE UNIQUE INDEX data_hygiene_scoring_config_pkey ON public.data_hygiene_scoring_config USING btree (id)",
+          "table": "public.data_hygiene_scoring_config",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "data_hygiene_scoring_config_account_inactivity_check",
+          "type": "CHECK",
+          "def": "CHECK ((account_inactivity_days \u003e= 1))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "account_inactivity_days"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_contact_inactivity_check",
+          "type": "CHECK",
+          "def": "CHECK ((contact_inactivity_days \u003e= 1))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "contact_inactivity_days"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_dismiss_suppression_check",
+          "type": "CHECK",
+          "def": "CHECK ((dismiss_suppression_days \u003e= 1))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "dismiss_suppression_days"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_opportunity_inactivity_check",
+          "type": "CHECK",
+          "def": "CHECK ((opportunity_inactivity_days \u003e= 1))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "opportunity_inactivity_days"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_singleton",
+          "type": "CHECK",
+          "def": "CHECK ((id = true))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_title_staleness_check",
+          "type": "CHECK",
+          "def": "CHECK ((title_staleness_days \u003e= 1))",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "title_staleness_days"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_updated_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "public.users",
+          "columns": [
+            "updated_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "data_hygiene_scoring_config_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.data_hygiene_scoring_config",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.data_hygiene_findings",
+      "type": "BASE TABLE",
+      "comment": "Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "entity_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "entity_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "issue_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "related_entity_id",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "last_activity_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "suggested_action",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'open'::text"
+        },
+        {
+          "name": "dismissed_until",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "dismissed_reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "detected_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "data_hygiene_findings_pkey",
+          "def": "CREATE UNIQUE INDEX data_hygiene_findings_pkey ON public.data_hygiene_findings USING btree (id)",
+          "table": "public.data_hygiene_findings",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_entity_issue_unique",
+          "def": "CREATE UNIQUE INDEX data_hygiene_findings_entity_issue_unique ON public.data_hygiene_findings USING btree (entity_type, entity_id, issue_type)",
+          "table": "public.data_hygiene_findings",
+          "columns": [
+            "entity_type",
+            "entity_id",
+            "issue_type"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_owner_id_idx",
+          "def": "CREATE INDEX data_hygiene_findings_owner_id_idx ON public.data_hygiene_findings USING btree (owner_id)",
+          "table": "public.data_hygiene_findings",
+          "columns": [
+            "owner_id"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_entity_idx",
+          "def": "CREATE INDEX data_hygiene_findings_entity_idx ON public.data_hygiene_findings USING btree (entity_type, entity_id)",
+          "table": "public.data_hygiene_findings",
+          "columns": [
+            "entity_type",
+            "entity_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "data_hygiene_findings_entity_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((entity_type = ANY (ARRAY['contact'::text, 'account'::text, 'opportunity'::text])))",
+          "table": "public.data_hygiene_findings",
+          "referenced_table": "",
+          "columns": [
+            "entity_type"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['open'::text, 'dismissed'::text])))",
+          "table": "public.data_hygiene_findings",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_owner_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.data_hygiene_findings",
+          "referenced_table": "public.users",
+          "columns": [
+            "owner_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.data_hygiene_findings",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "data_hygiene_findings_entity_issue_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (entity_type, entity_id, issue_type)",
+          "table": "public.data_hygiene_findings",
+          "referenced_table": "",
+          "columns": [
+            "entity_type",
+            "entity_id",
+            "issue_type"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -10227,6 +11469,175 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_stage_history",
+      "columns": [
+        "pipeline_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.pipelines",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.deal_stage_history",
+      "columns": [
+        "deal_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.deals",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.rep_coaching_scoring_config",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.rep_coaching_insights",
+      "columns": [
+        "rep_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.rep_coaching_insight_history",
+      "columns": [
+        "rep_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.lead_routing_decisions",
+      "columns": [
+        "actual_assignee_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (actual_assignee_id) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.lead_routing_decisions",
+      "columns": [
+        "suggested_rep_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (suggested_rep_id) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.lead_routing_decisions",
+      "columns": [
+        "lead_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.leads",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.team_feature_overrides",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.team_feature_overrides",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.lead_routing_scoring_config",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.data_hygiene_scoring_config",
+      "columns": [
+        "updated_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.data_hygiene_findings",
+      "columns": [
+        "owner_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

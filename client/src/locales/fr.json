@@ -2055,7 +2055,8 @@
       "dataRetention": "Conservation des données",
       "dataMinimization": "Minimisation des données",
       "coaching": "Coaching commercial",
-      "leadRouting": "Routage des prospects"
+      "leadRouting": "Routage des prospects",
+      "dataHygiene": "Hygiène des données"
     },
     "header": {
       "deploymentMode": "Mode de déploiement"
@@ -2193,6 +2194,28 @@
       "saveError": "Échec de l'enregistrement de la configuration de routage des prospects. Veuillez réessayer.",
       "teamOverridesHeading": "Exceptions par équipe",
       "teamOverridesDescription": "Désactive le routage intelligent des prospects pour une équipe spécifique — l'attribution manuelle est utilisée à la place pour les membres de cette équipe."
+    },
+    "dataHygiene": {
+      "heading": "Assistant d'hygiène des données",
+      "description": "Configurez les seuils utilisés par l'analyse nocturne d'hygiène des données pour signaler les enregistrements obsolètes, incomplets ou invalides.",
+      "loadError": "Échec du chargement des paramètres d'hygiène des données. Veuillez réessayer.",
+      "contactInactivityDaysLabel": "Fenêtre d'inactivité des contacts (jours)",
+      "accountInactivityDaysLabel": "Fenêtre d'inactivité des comptes (jours)",
+      "titleStalenessDaysLabel": "Fenêtre d'obsolescence du poste (jours)",
+      "opportunityInactivityDaysLabel": "Fenêtre d'inactivité des opportunités (jours)",
+      "dismissSuppressionDaysLabel": "Fenêtre de suppression après ignorance (jours)",
+      "weeklyDigestLabel": "Envoyer un résumé hebdomadaire par e-mail",
+      "validationContactInactivityDays": "La fenêtre d'inactivité des contacts doit être d'au moins 1 jour.",
+      "validationAccountInactivityDays": "La fenêtre d'inactivité des comptes doit être d'au moins 1 jour.",
+      "validationTitleStalenessDays": "La fenêtre d'obsolescence du poste doit être d'au moins 1 jour.",
+      "validationOpportunityInactivityDays": "La fenêtre d'inactivité des opportunités doit être d'au moins 1 jour.",
+      "validationDismissSuppressionDays": "La fenêtre de suppression après ignorance doit être d'au moins 1 jour.",
+      "saveSuccess": "Configuration d'hygiène des données enregistrée.",
+      "saveError": "Échec de l'enregistrement de la configuration d'hygiène des données. Veuillez réessayer.",
+      "runNowDescription": "Exécutez immédiatement l'analyse d'hygiène des données, en dehors du calendrier nocturne.",
+      "runNow": "Exécuter maintenant",
+      "runAccepted": "Analyse démarrée. La file d'attente sera bientôt mise à jour.",
+      "runError": "Échec du démarrage de l'analyse. Veuillez réessayer."
     },
     "tokenBudgets": {
       "heading": "Budgets de tokens",
@@ -2508,6 +2531,46 @@
     "insufficientDataShort": "données insuffisantes",
     "noInsights": "Aucune information de coaching disponible pour le moment.",
     "noRepsAvailable": "Aucun commercial disponible."
+  },
+  "dataHygiene": {
+    "adminHeading": "File d'attente d'hygiène des données",
+    "myHeading": "Ma file d'attente d'hygiène des données",
+    "notAvailable": "Cette fonctionnalité n'est pas disponible.",
+    "loadError": "Échec du chargement de la file d'attente d'hygiène des données.",
+    "actionError": "Échec de l'exécution de l'action. Veuillez réessayer.",
+    "emptyTitle": "Rien à examiner",
+    "emptyDescription": "Aucun problème d'hygiène des données n'est actuellement signalé.",
+    "lastActivity": "dernière activité le {{date}}",
+    "actionUpdate": "Mettre à jour",
+    "actionMerge": "Fusionner",
+    "actionArchive": "Archiver",
+    "actionDismiss": "Ignorer",
+    "dismissDialogTitle": "Ignorer ce constat ?",
+    "dismissReasonLabel": "Raison",
+    "mergeDialogTitle": "Fusionner des contacts en doublon",
+    "mergeDialogBody": "Choisissez le contact à conserver. Les données de l'autre contact seront fusionnées avec celui-ci, puis supprimées.",
+    "mergeDialogKeepLabel": "Conserver",
+    "filter": {
+      "all": "Tous",
+      "contact": "Contacts",
+      "account": "Comptes",
+      "opportunity": "Opportunités"
+    },
+    "issue": {
+      "contact_no_activity": "Aucune activité depuis plus d'un an",
+      "contact_missing_contact_info": "E-mail ou téléphone manquant",
+      "contact_stale_title": "Poste non mis à jour depuis longtemps",
+      "contact_unresolvable_email_domain": "Le domaine de l'e-mail ne résout plus",
+      "contact_duplicate": "Doublon de contact possible",
+      "account_no_contacts": "Aucun contact associé",
+      "account_no_activity": "Aucune activité depuis plus d'un an",
+      "account_website_unreachable": "Le site web est inaccessible",
+      "account_missing_firmographics": "Secteur ou taille d'entreprise manquant",
+      "opportunity_no_activity": "Aucune activité depuis plus de 30 jours",
+      "opportunity_close_date_passed": "La date de clôture est dépassée",
+      "opportunity_no_contact": "Aucun contact associé",
+      "opportunity_zero_value": "Valeur de l'affaire égale à 0 $"
+    }
   },
   "notifications": {
     "bellLabel": "Notifications ({{count}} non lues)",

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.pipeline_stages](public.pipeline_stages.md) [public.deals](public.deals.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.pipeline_stages](public.pipeline_stages.md) [public.deals](public.deals.md) [public.deal_stage_history](public.deal_stage_history.md) |  |  |
 | name | varchar(100) |  | false |  |  |  |
 | is_default | boolean | false | false |  |  |  |
 | created_by | uuid |  | true |  | [public.users](public.users.md) |  |
@@ -39,6 +39,7 @@ erDiagram
 
 "public.pipeline_stages" }o--o| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
 "public.deals" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE RESTRICT"
+"public.deal_stage_history" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
 "public.pipelines" }o--o| "public.users" : "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.pipelines" {
@@ -80,6 +81,13 @@ erDiagram
   uuid pipeline_id FK ""
   uuid pipeline_stage_id FK ""
 }
+"public.deal_stage_history" {
+  uuid id ""
+  uuid deal_id FK ""
+  uuid pipeline_id FK ""
+  text stage ""
+  timestamp_with_time_zone entered_at ""
+}
 "public.users" {
   uuid id ""
   varchar_255_ email ""
@@ -108,6 +116,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 ```
 

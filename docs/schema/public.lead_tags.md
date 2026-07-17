@@ -56,6 +56,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
   integer version ""
+  varchar_255_ territory "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+  varchar_255_ industry "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+  varchar_50_ employee_range "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a #quot;similar lead profile#quot; for historical win-rate comparison."
 }
 "public.tags" {
   uuid id ""

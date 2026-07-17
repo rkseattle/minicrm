@@ -2055,7 +2055,8 @@
       "dataRetention": "数据保留",
       "dataMinimization": "数据最小化",
       "coaching": "销售辅导",
-      "leadRouting": "线索分配"
+      "leadRouting": "线索分配",
+      "dataHygiene": "数据整洁度"
     },
     "header": {
       "deploymentMode": "部署模式"
@@ -2193,6 +2194,28 @@
       "saveError": "保存线索分配配置失败，请重试。",
       "teamOverridesHeading": "团队级例外设置",
       "teamOverridesDescription": "为特定团队禁用智能线索分配——该团队成员将回退为手动分配。"
+    },
+    "dataHygiene": {
+      "heading": "数据整洁度助手",
+      "description": "配置夜间数据整洁度扫描使用的阈值，用于标记过期、不完整或无效的记录。",
+      "loadError": "加载数据整洁度设置失败，请重试。",
+      "contactInactivityDaysLabel": "联系人不活跃时长（天）",
+      "accountInactivityDaysLabel": "客户不活跃时长（天）",
+      "titleStalenessDaysLabel": "职位过期时长（天）",
+      "opportunityInactivityDaysLabel": "商机不活跃时长（天）",
+      "dismissSuppressionDaysLabel": "忽略抑制时长（天）",
+      "weeklyDigestLabel": "发送每周摘要邮件",
+      "validationContactInactivityDays": "联系人不活跃时长必须至少为 1 天。",
+      "validationAccountInactivityDays": "客户不活跃时长必须至少为 1 天。",
+      "validationTitleStalenessDays": "职位过期时长必须至少为 1 天。",
+      "validationOpportunityInactivityDays": "商机不活跃时长必须至少为 1 天。",
+      "validationDismissSuppressionDays": "忽略抑制时长必须至少为 1 天。",
+      "saveSuccess": "数据整洁度配置已保存。",
+      "saveError": "保存数据整洁度配置失败，请重试。",
+      "runNowDescription": "立即运行数据整洁度扫描，不受夜间计划限制。",
+      "runNow": "立即运行",
+      "runAccepted": "扫描已开始，队列将很快更新。",
+      "runError": "无法启动扫描，请重试。"
     },
     "tokenBudgets": {
       "heading": "Token 预算",
@@ -2508,6 +2531,46 @@
     "insufficientDataShort": "数据不足",
     "noInsights": "暂无可用的辅导洞察。",
     "noRepsAvailable": "暂无可用的销售代表。"
+  },
+  "dataHygiene": {
+    "adminHeading": "数据整洁度队列",
+    "myHeading": "我的数据整洁度队列",
+    "notAvailable": "此功能不可用。",
+    "loadError": "加载数据整洁度队列失败。",
+    "actionError": "操作失败，请重试。",
+    "emptyTitle": "暂无待处理项",
+    "emptyDescription": "当前没有标记的数据整洁度问题。",
+    "lastActivity": "最近活动：{{date}}",
+    "actionUpdate": "更新",
+    "actionMerge": "合并",
+    "actionArchive": "归档",
+    "actionDismiss": "忽略",
+    "dismissDialogTitle": "忽略此问题？",
+    "dismissReasonLabel": "原因",
+    "mergeDialogTitle": "合并重复联系人",
+    "mergeDialogBody": "选择要保留的联系人。另一个联系人的数据将被合并到该联系人中，然后被删除。",
+    "mergeDialogKeepLabel": "保留",
+    "filter": {
+      "all": "全部",
+      "contact": "联系人",
+      "account": "客户",
+      "opportunity": "商机"
+    },
+    "issue": {
+      "contact_no_activity": "超过一年无活动",
+      "contact_missing_contact_info": "缺少邮箱或电话",
+      "contact_stale_title": "职位长期未更新",
+      "contact_unresolvable_email_domain": "邮箱域名已无法解析",
+      "contact_duplicate": "可能存在重复联系人",
+      "account_no_contacts": "没有关联联系人",
+      "account_no_activity": "超过一年无活动",
+      "account_website_unreachable": "网站无法访问",
+      "account_missing_firmographics": "缺少行业或公司规模信息",
+      "opportunity_no_activity": "超过 30 天无活动",
+      "opportunity_close_date_passed": "预计关闭日期已过",
+      "opportunity_no_contact": "未关联联系人",
+      "opportunity_zero_value": "交易金额为 $0"
+    }
   },
   "notifications": {
     "bellLabel": "通知（{{count}} 条未读）",

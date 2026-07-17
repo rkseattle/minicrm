@@ -60,6 +60,7 @@ erDiagram
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
+  timestamp_with_time_zone title_updated_at "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as #quot;at least as stale as created_at.#quot;"
 }
 "public.tags" {
   uuid id ""

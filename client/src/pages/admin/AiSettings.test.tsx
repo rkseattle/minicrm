@@ -145,15 +145,15 @@ describe('AiSettings — sub-navigation', () => {
     fireEvent.keyDown(generalTab, { key: 'ArrowRight' });
     expect(screen.getByTestId('ai-settings-tab-usage-budgets')).toHaveFocus();
 
-    // 'lead-routing' is now the last tab (added after 'coaching', MINCRM-475).
+    // 'data-hygiene' is now the last tab (added after 'lead-routing', MINCRM-476).
     fireEvent.keyDown(screen.getByTestId('ai-settings-tab-usage-budgets'), { key: 'End' });
-    expect(screen.getByTestId('ai-settings-tab-lead-routing')).toHaveFocus();
+    expect(screen.getByTestId('ai-settings-tab-data-hygiene')).toHaveFocus();
 
-    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-lead-routing'), { key: 'Home' });
+    fireEvent.keyDown(screen.getByTestId('ai-settings-tab-data-hygiene'), { key: 'Home' });
     expect(screen.getByTestId('ai-settings-tab-general')).toHaveFocus();
 
     fireEvent.keyDown(screen.getByTestId('ai-settings-tab-general'), { key: 'ArrowLeft' });
-    expect(screen.getByTestId('ai-settings-tab-lead-routing')).toHaveFocus();
+    expect(screen.getByTestId('ai-settings-tab-data-hygiene')).toHaveFocus();
   });
 
   it('deep-links to the section named in the ?section= query param', async () => {

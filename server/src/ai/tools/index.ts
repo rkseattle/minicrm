@@ -29,6 +29,7 @@ import { reportTools } from './reportTools.js';
 import { exportTools } from './exportTools.js';
 import { adminTools } from './adminTools.js';
 import { mutationConfirmationTools } from './mutationConfirmationTool.js';
+import { dataHygieneTools } from './dataHygieneTools.js';
 
 // ── Capability map ─────────────────────────────────────────────────────────────
 //
@@ -107,6 +108,9 @@ export const TOOL_CAPABILITY_MAP: ReadonlyMap<string, Capability> = new Map([
   // ── Export ────────────────────────────────────────────────────────────────
   ['exportEntities', 'data:export' as Capability],
 
+  // ── Data hygiene (no dedicated capability — spans contacts/accounts/deals) ─
+  ['getDataHygieneFindings', 'contacts:view' as Capability],
+
   // ── Admin: Config / Automation / Webhooks ─────────────────────────────────
   ['listPipelines', 'settings:manage' as Capability],
   ['getPipeline', 'settings:manage' as Capability],
@@ -134,6 +138,7 @@ export const TOOL_FEATURE_FLAG_MAP: ReadonlyMap<string, string> = new Map([
   ['getObjectionPrecedents', 'ai_objection_pattern_matching'],
   ['findWarmIntroPaths', 'ai_warm_intro_path'],
   ['getFollowUpTiming', 'ai_followup_timing_suggestions'],
+  ['getDataHygieneFindings', 'ai_data_hygiene_assistant'],
 ]);
 
 // ── Built-in role capability fallback ─────────────────────────────────────────
@@ -249,6 +254,7 @@ export const ALL_TOOLS: Anthropic.Messages.Tool[] = [
   ...reportTools,
   ...exportTools,
   ...adminTools,
+  ...dataHygieneTools,
 ];
 
 /**

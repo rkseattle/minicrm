@@ -49,6 +49,11 @@ import {
   setTeamRoutingOverrideHandler,
 } from '../controllers/leadRoutingController.js';
 import {
+  getDataHygieneConfigHandler,
+  setDataHygieneConfigHandler,
+  triggerManualHygieneScanHandler,
+} from '../controllers/dataHygieneController.js';
+import {
   listFieldExclusionsHandler,
   setFieldExclusionHandler,
 } from '../controllers/aiFieldExclusionController.js';
@@ -670,6 +675,83 @@ router.put(
   authenticate,
   requireRole('admin'),
   asyncHandler(setTeamRoutingOverrideHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/data-hygiene-config:
+ *   get:
+ *     tags: [AI]
+ *     summary: Get the current data hygiene scan thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current data hygiene thresholds
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.get(
+  '/data-hygiene-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(getDataHygieneConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/data-hygiene-config:
+ *   patch:
+ *     tags: [AI]
+ *     summary: Update the data hygiene scan thresholds
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Updated data hygiene thresholds
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.patch(
+  '/data-hygiene-config',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(setDataHygieneConfigHandler),
+);
+
+/**
+ * @openapi
+ * /admin/ai/data-hygiene/run:
+ *   post:
+ *     tags: [AI]
+ *     summary: Trigger an immediate data hygiene scan outside the nightly schedule
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       202:
+ *         description: Scan accepted and running asynchronously
+ *       401:
+ *         description: Unauthenticated
+ *       403:
+ *         description: Admin role required
+ */
+router.post(
+  '/data-hygiene/run',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(triggerManualHygieneScanHandler),
 );
 
 /**

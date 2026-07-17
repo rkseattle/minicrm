@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.activities](public.activities.md) [public.deal_tags](public.deal_tags.md) [public.deal_contacts](public.deal_contacts.md) |  |  |
+| id | uuid | gen_random_uuid() | false | [public.leads](public.leads.md) [public.activities](public.activities.md) [public.deal_tags](public.deal_tags.md) [public.deal_contacts](public.deal_contacts.md) [public.deal_stage_history](public.deal_stage_history.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | stage | varchar(50) |  | false |  |  |  |
 | value | numeric(15,2) |  | true |  |  |  |
@@ -64,6 +64,7 @@ erDiagram
 "public.activities" }o--o| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.deal_tags" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.deal_contacts" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+"public.deal_stage_history" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
 "public.deals" }o--o| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
 "public.deals" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT"
 "public.deals" }o--o| "public.leads" : "FOREIGN KEY (source_lead_id) REFERENCES leads(id) ON DELETE SET NULL"
@@ -109,6 +110,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
   integer version ""
+  varchar_255_ territory "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+  varchar_255_ industry "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+  varchar_50_ employee_range "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a #quot;similar lead profile#quot; for historical win-rate comparison."
 }
 "public.activities" {
   uuid id ""
@@ -138,6 +142,13 @@ erDiagram
   uuid deal_id FK ""
   uuid contact_id FK ""
   timestamp_with_time_zone created_at ""
+}
+"public.deal_stage_history" {
+  uuid id ""
+  uuid deal_id FK ""
+  uuid pipeline_id FK ""
+  text stage ""
+  timestamp_with_time_zone entered_at ""
 }
 "public.accounts" {
   uuid id ""
@@ -182,6 +193,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 "public.pipelines" {
   uuid id ""

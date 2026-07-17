@@ -62,6 +62,8 @@ export interface ContactRow {
   email: string;
   phone: string | null;
   title: string | null;
+  /** Timestamp of the most recent change to `title` specifically (MINCRM-476) */
+  title_updated_at: Date | null;
   department: string | null;
   account_id: string | null;
   owner_id: string;
@@ -515,9 +517,16 @@ export async function updateContact(
       const setClauses = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
       const versionParam = fields.length + 2;
 
+      // Stamp title_updated_at only when title is actually changing — updated_at
+      // bumps on any field edit, so it can't answer "how long has the title been
+      // stale" on its own (MINCRM-476).
+      const titleChanging =
+        fields.includes('title') && before !== undefined && normalized.title !== before.title;
+      const titleUpdatedAtClause = titleChanging ? ', title_updated_at = now()' : '';
+
       const result = await client.query<ContactRow>(
         `UPDATE contacts
-         SET ${setClauses}, updated_at = now(), version = version + 1
+         SET ${setClauses}, updated_at = now()${titleUpdatedAtClause}, version = version + 1
          WHERE id = $1 AND version = $${versionParam}
          RETURNING *`,
         [id, ...fields.map((f) => normalized[f as keyof typeof normalized]), version],

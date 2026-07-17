@@ -2686,6 +2686,35 @@ export const handlers = [
     return HttpResponse.json({ team_id: params.teamId as string, enabled: body.enabled });
   }),
 
+  /** AI admin: GET /api/v1/admin/ai/data-hygiene-config — defaults to the migration-seeded values. */
+  http.get('/api/v1/admin/ai/data-hygiene-config', () => {
+    return HttpResponse.json({
+      contact_inactivity_days: 365,
+      account_inactivity_days: 365,
+      title_staleness_days: 1095,
+      opportunity_inactivity_days: 30,
+      dismiss_suppression_days: 90,
+      weekly_digest_enabled: false,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: null,
+    });
+  }),
+
+  /** AI admin: PATCH /api/v1/admin/ai/data-hygiene-config — echoes the submitted values back. */
+  http.patch('/api/v1/admin/ai/data-hygiene-config', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      ...body,
+      updated_at: '2026-07-01T00:00:00.000Z',
+      updated_by: ADMIN_USER.id,
+    });
+  }),
+
+  /** AI admin: POST /api/v1/admin/ai/data-hygiene/run — triggers a manual scan. */
+  http.post('/api/v1/admin/ai/data-hygiene/run', () => {
+    return HttpResponse.json({ accepted: true }, { status: 202 });
+  }),
+
   // ── In-app notification feed (MINCRM-469) ───────────────────────────────────────
 
   /** Notifications: GET /api/notifications — defaults to an empty feed. */

@@ -4,15 +4,15 @@
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.users](public.users.md) | 27 |  | BASE TABLE |
+| [public.users](public.users.md) | 28 |  | BASE TABLE |
 | [public.tags](public.tags.md) | 4 |  | BASE TABLE |
 | [public.system_settings](public.system_settings.md) | 4 |  | BASE TABLE |
 | [public.currencies](public.currencies.md) | 6 |  | BASE TABLE |
 | [public.pipelines](public.pipelines.md) | 6 |  | BASE TABLE |
 | [public.pipeline_stages](public.pipeline_stages.md) | 10 |  | BASE TABLE |
-| [public.leads](public.leads.md) | 19 |  | BASE TABLE |
+| [public.leads](public.leads.md) | 22 |  | BASE TABLE |
 | [public.accounts](public.accounts.md) | 13 |  | BASE TABLE |
-| [public.contacts](public.contacts.md) | 23 |  | BASE TABLE |
+| [public.contacts](public.contacts.md) | 24 |  | BASE TABLE |
 | [public.contact_addresses](public.contact_addresses.md) | 12 |  | BASE TABLE |
 | [public.deals](public.deals.md) | 17 |  | BASE TABLE |
 | [public.activities](public.activities.md) | 17 |  | BASE TABLE |
@@ -77,6 +77,15 @@
 | [public.account_health_scores](public.account_health_scores.md) | 6 | Current cached relationship health score per account (MINCRM-467). Upserted nightly; the read path never computes live. Absence of a row means insufficient data (fewer than min_logged_activities logged activities). | BASE TABLE |
 | [public.account_health_score_history](public.account_health_score_history.md) | 5 | Append-only per-run history of account health scores (MINCRM-467), feeding the 6-month trend sparkline on the Account detail view. One row inserted per account per nightly run. | BASE TABLE |
 | [public.contact_followup_timing_suggestions](public.contact_followup_timing_suggestions.md) | 6 | Cached best-time-to-contact suggestion per contact (MINCRM-470). day_of_week/hour_start_utc/hour_end_utc are UTC-anchored; project to a display timezone at read time, never store localized values. Absence of a row means fewer than 5 logged interactions (insufficient data). | BASE TABLE |
+| [public.deal_stage_history](public.deal_stage_history.md) | 5 | Append-only log of real deal stage transitions (MINCRM-474). One row per deal per stage entered, including a day-0 row on creation. Never updated, only inserted. Powers average-days-per-stage and stage-conversion-rate metrics for rep coaching insights. | BASE TABLE |
+| [public.rep_coaching_scoring_config](public.rep_coaching_scoring_config.md) | 8 | Singleton admin-editable thresholds for rep coaching insight generation (MINCRM-474). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151). | BASE TABLE |
+| [public.rep_coaching_insights](public.rep_coaching_insights.md) | 11 | Current cached per-rep coaching insight per metric (MINCRM-474). Upserted nightly by repCoachingService; the read path never computes live. Absence of rows for a rep means fewer than min_closed_deals closed deals. Never exposed as an NLI tool — read exclusively via the dedicated /insights/coaching and dashboard endpoints, gated by role, to protect rep privacy. | BASE TABLE |
+| [public.rep_coaching_insight_history](public.rep_coaching_insight_history.md) | 8 | Append-only per-run history of rep coaching insights (MINCRM-474), one row per rep per metric per nightly run. Reserved for a future trend view; not read by any endpoint in this ticket. | BASE TABLE |
+| [public.lead_routing_decisions](public.lead_routing_decisions.md) | 9 | One row per lead created after a routing suggestion was shown to the manager (MINCRM-475). Written once, at lead-creation time, in the same transaction as the lead insert — never updated. Doubles as the AC-required routing decision log. Leads created without ever requesting a suggestion have no row here. | BASE TABLE |
+| [public.team_feature_overrides](public.team_feature_overrides.md) | 6 | Per-team feature flag overrides (MINCRM-475). Generic, not routing-specific — any future per-team toggle can reuse this table. enabled=false blocks the flag for every member of the team regardless of rollout/beta/group state, but a per-user force_enabled override in feature_flag_user_overrides still wins (checked first in isFlagEnabledForUser). | BASE TABLE |
+| [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) | 11 | Singleton admin-editable weights/thresholds for lead routing suggestion scoring (MINCRM-475). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151; rep_coaching_scoring_config, migration 153). | BASE TABLE |
+| [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) | 9 | Singleton admin-editable thresholds for the data hygiene scan (MINCRM-476). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151). | BASE TABLE |
+| [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -249,6 +258,19 @@ erDiagram
 "public.account_health_scores" |o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.account_health_score_history" }o--|| "public.accounts" : "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE"
 "public.contact_followup_timing_suggestions" |o--|| "public.contacts" : "FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE"
+"public.deal_stage_history" }o--|| "public.pipelines" : "FOREIGN KEY (pipeline_id) REFERENCES pipelines(id) ON DELETE CASCADE"
+"public.deal_stage_history" }o--|| "public.deals" : "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
+"public.rep_coaching_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.rep_coaching_insights" }o--|| "public.users" : "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.rep_coaching_insight_history" }o--|| "public.users" : "FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE"
+"public.lead_routing_decisions" }o--|| "public.users" : "FOREIGN KEY (actual_assignee_id) REFERENCES users(id) ON DELETE SET NULL"
+"public.lead_routing_decisions" }o--o| "public.users" : "FOREIGN KEY (suggested_rep_id) REFERENCES users(id) ON DELETE SET NULL"
+"public.lead_routing_decisions" }o--|| "public.leads" : "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+"public.team_feature_overrides" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.team_feature_overrides" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.lead_routing_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.data_hygiene_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
+"public.data_hygiene_findings" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   uuid id ""
@@ -278,6 +300,7 @@ erDiagram
   text api_token_hash ""
   timestamp_with_time_zone api_token_issued_at ""
   text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
 }
 "public.tags" {
   uuid id ""
@@ -339,6 +362,9 @@ erDiagram
   timestamp_with_time_zone updated_at ""
   boolean is_demo ""
   integer version ""
+  varchar_255_ territory "Free-text sales territory, matched against users.territory for routing suggestions (MINCRM-475). No DB-level enum, same convention as accounts.industry/employee_range."
+  varchar_255_ industry "Free-text industry/vertical, matched against historical deal outcomes for routing suggestions (MINCRM-475). Independent of accounts.industry — leads have no account until conversion."
+  varchar_50_ employee_range "Free-text company-size bucket, same convention as accounts.employee_range (MINCRM-475). Used alongside industry and lead_source to define a #quot;similar lead profile#quot; for historical win-rate comparison."
 }
 "public.accounts" {
   uuid id ""
@@ -379,6 +405,7 @@ erDiagram
   varchar_500_ twitter_x_url ""
   varchar_500_ other_url ""
   integer version ""
+  timestamp_with_time_zone title_updated_at "Timestamp of the most recent change to contacts.title specifically (MINCRM-476) — stamped only by contactService.updateContact when title actually changes, unlike updated_at which bumps on any field edit. NULL means never explicitly changed since this column was added; the hygiene scan treats NULL as #quot;at least as stale as created_at.#quot;"
 }
 "public.contact_addresses" {
   uuid id ""
@@ -985,6 +1012,104 @@ erDiagram
   smallint hour_end_utc ""
   integer sample_size ""
   timestamp_with_time_zone computed_at ""
+}
+"public.deal_stage_history" {
+  uuid id ""
+  uuid deal_id FK ""
+  uuid pipeline_id FK ""
+  text stage ""
+  timestamp_with_time_zone entered_at ""
+}
+"public.rep_coaching_scoring_config" {
+  boolean id ""
+  integer min_closed_deals ""
+  numeric_4_2_ stage_time_outlier_ratio ""
+  numeric_4_2_ activity_frequency_outlier_ratio ""
+  integer response_time_outlier_hours ""
+  numeric_4_3_ win_rate_outlier_delta ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
+}
+"public.rep_coaching_insights" {
+  uuid id ""
+  uuid rep_id FK ""
+  text metric_type ""
+  text segment ""
+  text observation ""
+  text recommended_action ""
+  numeric_12_4_ rep_value ""
+  numeric_12_4_ team_average_value ""
+  boolean is_outlier ""
+  integer closed_deal_count ""
+  timestamp_with_time_zone computed_at ""
+}
+"public.rep_coaching_insight_history" {
+  uuid id ""
+  uuid rep_id FK ""
+  text metric_type ""
+  text segment ""
+  numeric_12_4_ rep_value ""
+  numeric_12_4_ team_average_value ""
+  boolean is_outlier ""
+  timestamp_with_time_zone computed_at ""
+}
+"public.lead_routing_decisions" {
+  uuid id ""
+  uuid lead_id FK ""
+  uuid suggested_rep_id FK ""
+  text confidence ""
+  jsonb contributing_factors ""
+  text decision ""
+  uuid actual_assignee_id FK ""
+  timestamp_with_time_zone decided_at ""
+  timestamp_with_time_zone created_at ""
+}
+"public.team_feature_overrides" {
+  uuid id ""
+  uuid team_id FK ""
+  varchar_100_ flag_key ""
+  boolean enabled ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
+}
+"public.lead_routing_scoring_config" {
+  boolean id ""
+  numeric_4_3_ territory_weight ""
+  numeric_4_3_ industry_weight ""
+  numeric_4_3_ workload_weight ""
+  numeric_4_3_ win_rate_weight ""
+  numeric_4_3_ availability_weight ""
+  numeric_4_3_ low_confidence_threshold ""
+  numeric_4_3_ medium_confidence_threshold ""
+  integer min_closed_deals_for_win_rate ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
+}
+"public.data_hygiene_scoring_config" {
+  boolean id ""
+  integer contact_inactivity_days ""
+  integer account_inactivity_days ""
+  integer title_staleness_days ""
+  integer opportunity_inactivity_days ""
+  integer dismiss_suppression_days ""
+  boolean weekly_digest_enabled ""
+  timestamp_with_time_zone updated_at ""
+  uuid updated_by FK ""
+}
+"public.data_hygiene_findings" {
+  uuid id ""
+  text entity_type ""
+  uuid entity_id ""
+  text issue_type ""
+  uuid related_entity_id ""
+  uuid owner_id FK ""
+  timestamp_with_time_zone last_activity_at ""
+  text suggested_action ""
+  text status ""
+  timestamp_with_time_zone dismissed_until ""
+  text dismissed_reason ""
+  timestamp_with_time_zone detected_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 

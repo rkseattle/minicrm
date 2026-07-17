@@ -2055,7 +2055,8 @@
       "dataRetention": "Retención de datos",
       "dataMinimization": "Minimización de datos",
       "coaching": "Coaching de comerciales",
-      "leadRouting": "Asignación de leads"
+      "leadRouting": "Asignación de leads",
+      "dataHygiene": "Higiene de datos"
     },
     "header": {
       "deploymentMode": "Modo de implementación"
@@ -2193,6 +2194,28 @@
       "saveError": "Error al guardar la configuración de asignación de leads. Inténtalo de nuevo.",
       "teamOverridesHeading": "Excepciones por equipo",
       "teamOverridesDescription": "Desactiva la asignación inteligente de leads para un equipo específico; se recurre a la asignación manual para los miembros de ese equipo."
+    },
+    "dataHygiene": {
+      "heading": "Asistente de higiene de datos",
+      "description": "Configura los umbrales que utiliza el análisis nocturno de higiene de datos para señalar registros obsoletos, incompletos o no válidos.",
+      "loadError": "Error al cargar la configuración de higiene de datos. Inténtalo de nuevo.",
+      "contactInactivityDaysLabel": "Ventana de inactividad de contactos (días)",
+      "accountInactivityDaysLabel": "Ventana de inactividad de cuentas (días)",
+      "titleStalenessDaysLabel": "Ventana de antigüedad del puesto (días)",
+      "opportunityInactivityDaysLabel": "Ventana de inactividad de oportunidades (días)",
+      "dismissSuppressionDaysLabel": "Ventana de supresión tras descartar (días)",
+      "weeklyDigestLabel": "Enviar un resumen semanal por correo electrónico",
+      "validationContactInactivityDays": "La ventana de inactividad de contactos debe ser de al menos 1 día.",
+      "validationAccountInactivityDays": "La ventana de inactividad de cuentas debe ser de al menos 1 día.",
+      "validationTitleStalenessDays": "La ventana de antigüedad del puesto debe ser de al menos 1 día.",
+      "validationOpportunityInactivityDays": "La ventana de inactividad de oportunidades debe ser de al menos 1 día.",
+      "validationDismissSuppressionDays": "La ventana de supresión tras descartar debe ser de al menos 1 día.",
+      "saveSuccess": "Configuración de higiene de datos guardada.",
+      "saveError": "Error al guardar la configuración de higiene de datos. Inténtalo de nuevo.",
+      "runNowDescription": "Ejecuta el análisis de higiene de datos de inmediato, fuera del horario nocturno.",
+      "runNow": "Ejecutar ahora",
+      "runAccepted": "Análisis iniciado. La cola se actualizará en breve.",
+      "runError": "Error al iniciar el análisis. Inténtalo de nuevo."
     },
     "tokenBudgets": {
       "heading": "Presupuestos de tokens",
@@ -2508,6 +2531,46 @@
     "insufficientDataShort": "datos insuficientes",
     "noInsights": "Aún no hay información de coaching disponible.",
     "noRepsAvailable": "No hay representantes disponibles."
+  },
+  "dataHygiene": {
+    "adminHeading": "Cola de higiene de datos",
+    "myHeading": "Mi cola de higiene de datos",
+    "notAvailable": "Esta función no está disponible.",
+    "loadError": "Error al cargar la cola de higiene de datos.",
+    "actionError": "Error al completar la acción. Inténtalo de nuevo.",
+    "emptyTitle": "Nada que revisar",
+    "emptyDescription": "No hay problemas de higiene de datos señalados actualmente.",
+    "lastActivity": "última actividad {{date}}",
+    "actionUpdate": "Actualizar",
+    "actionMerge": "Fusionar",
+    "actionArchive": "Archivar",
+    "actionDismiss": "Descartar",
+    "dismissDialogTitle": "¿Descartar este hallazgo?",
+    "dismissReasonLabel": "Motivo",
+    "mergeDialogTitle": "Fusionar contactos duplicados",
+    "mergeDialogBody": "Elige qué contacto conservar. Los datos del otro contacto se fusionarán con este y luego se eliminarán.",
+    "mergeDialogKeepLabel": "Conservar",
+    "filter": {
+      "all": "Todos",
+      "contact": "Contactos",
+      "account": "Cuentas",
+      "opportunity": "Oportunidades"
+    },
+    "issue": {
+      "contact_no_activity": "Sin actividad desde hace más de un año",
+      "contact_missing_contact_info": "Falta correo electrónico o teléfono",
+      "contact_stale_title": "El puesto no se ha actualizado en mucho tiempo",
+      "contact_unresolvable_email_domain": "El dominio de correo electrónico ya no resuelve",
+      "contact_duplicate": "Posible contacto duplicado",
+      "account_no_contacts": "Sin contactos asociados",
+      "account_no_activity": "Sin actividad desde hace más de un año",
+      "account_website_unreachable": "El sitio web no está disponible",
+      "account_missing_firmographics": "Falta el sector o el tamaño de la empresa",
+      "opportunity_no_activity": "Sin actividad en más de 30 días",
+      "opportunity_close_date_passed": "La fecha de cierre ya pasó",
+      "opportunity_no_contact": "Sin contacto asociado",
+      "opportunity_zero_value": "El valor del negocio es $0"
+    }
   },
   "notifications": {
     "bellLabel": "Notificaciones ({{count}} sin leer)",
