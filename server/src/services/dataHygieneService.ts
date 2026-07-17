@@ -185,6 +185,7 @@ async function gatherContactDuplicates(): Promise<RawFinding[]> {
   for (const row of result.rows) {
     const key = `${row.first_name.trim().toLowerCase()}|${row.last_name.trim().toLowerCase()}|${(row.company_name ?? '').trim().toLowerCase()}`;
     if (!groups.has(key)) groups.set(key, []);
+    // Safe: the line above guarantees `key` is present before this lookup.
     groups.get(key)!.push(row);
   }
 
@@ -684,11 +685,18 @@ export async function listHygieneFindings(
 /**
  * Dismisses a finding for the admin-configured suppression window (default
  * 90 days). Requires a reason per the AC.
+ *
+ * Ownership-scoped: a non-admin caller may only dismiss a finding whose
+ * owner_id matches their own id (WHERE ... AND (owner_id = $x OR admin), per
+ * CLAUDE.md's ownership rule) — otherwise any rep could dismiss another
+ * rep's finding by guessing/enumerating its id, defeating the scope=mine
+ * boundary enforced on the list endpoint.
  */
 export async function dismissHygieneFinding(
   findingId: string,
   reason: string,
   actor: AuditActor,
+  isAdmin: boolean,
 ): Promise<void> {
   const config = await getHygieneConfig();
 
@@ -699,9 +707,9 @@ export async function dismissHygieneFinding(
            dismissed_until = now() + ($1 || ' days')::interval,
            dismissed_reason = $2,
            updated_at = now()
-       WHERE id = $3
+       WHERE id = $3 AND (owner_id = $4 OR $5)
        RETURNING id`,
-      [config.dismiss_suppression_days, reason, findingId],
+      [config.dismiss_suppression_days, reason, findingId, actor.id, isAdmin],
     );
     if (result.rowCount === 0) {
       throw Object.assign(new Error('Hygiene finding not found'), { code: 'NOT_FOUND' });
@@ -727,11 +735,36 @@ export async function dismissHygieneFinding(
  * record's findings. Delegates to the entity's own service so ownership
  * rules, cascades, and audit entries stay consistent with the rest of the app —
  * this function only removes the now-stale hygiene queue rows.
+ *
+ * Ownership-scoped: a non-admin caller may only clear findings for an entity
+ * they own — otherwise any rep could clear (and thereby permanently hide)
+ * another rep's finding by guessing the entity's id.
+ *
+ * @throws Error with code NOT_FOUND if no finding exists for this entity, or
+ *   FORBIDDEN if a non-admin caller does not own the entity.
  */
 export async function clearFindingsForEntity(
   entityType: DataHygieneEntityType,
   entityId: string,
+  actorId: string,
+  isAdmin: boolean,
 ): Promise<void> {
+  if (!isAdmin) {
+    const ownerResult = await pool.query<{ owner_id: string }>(
+      `SELECT owner_id FROM data_hygiene_findings WHERE entity_type = $1 AND entity_id = $2 LIMIT 1`,
+      [entityType, entityId],
+    );
+    const ownerId = ownerResult.rows[0]?.owner_id;
+    if (ownerId === undefined) {
+      throw Object.assign(new Error('No hygiene findings for this entity'), { code: 'NOT_FOUND' });
+    }
+    if (ownerId !== actorId) {
+      throw Object.assign(new Error('Cannot clear another owner’s hygiene findings'), {
+        code: 'FORBIDDEN',
+      });
+    }
+  }
+
   await pool.query(`DELETE FROM data_hygiene_findings WHERE entity_type = $1 AND entity_id = $2`, [
     entityType,
     entityId,
@@ -744,12 +777,39 @@ export async function clearFindingsForEntity(
  * reimplementing merge logic. Clears both contacts' hygiene findings —
  * the loser no longer exists, and the winner's duplicate finding is
  * resolved by the merge itself.
+ *
+ * Ownership-scoped: a non-admin caller may only merge a pair actually
+ * flagged as a contact_duplicate finding they own (either side) — otherwise
+ * this endpoint would let any rep merge arbitrary contacts org-wide, far
+ * beyond what the hygiene queue's "review and merge your own duplicate" UI
+ * exposes to them.
+ *
+ * @throws Error with code FORBIDDEN if a non-admin caller does not own a
+ *   contact_duplicate finding naming this winner/loser pair (in either order).
  */
 export async function mergeDuplicateContactFindings(
   winnerId: string,
   loserId: string,
   actor: AuditActor,
+  isAdmin: boolean,
 ): Promise<void> {
+  if (!isAdmin) {
+    const findingResult = await pool.query<{ owner_id: string }>(
+      `SELECT owner_id FROM data_hygiene_findings
+       WHERE entity_type = 'contact' AND issue_type = 'contact_duplicate'
+         AND owner_id = $1
+         AND ((entity_id = $2 AND related_entity_id = $3) OR (entity_id = $3 AND related_entity_id = $2))
+       LIMIT 1`,
+      [actor.id, winnerId, loserId],
+    );
+    if (findingResult.rowCount === 0) {
+      throw Object.assign(
+        new Error('No owned contact_duplicate finding matches this winner/loser pair'),
+        { code: 'FORBIDDEN' },
+      );
+    }
+  }
+
   await mergeContacts({ winnerId, loserId, fieldChoices: {} }, actor);
   await pool.query(
     `DELETE FROM data_hygiene_findings WHERE entity_type = 'contact' AND entity_id = ANY($1::uuid[])`,

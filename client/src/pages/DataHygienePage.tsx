@@ -6,7 +6,7 @@
  * the only difference is the scope prop and page heading.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +67,32 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
   const [dismissDialog, setDismissDialog] = useState<DismissDialogState | null>(null);
   const [mergeDialog, setMergeDialog] = useState<MergeDialogState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Focus management for the dismiss/merge dialogs, matching ConvertLeadModal's
+  // convention: move focus into the dialog's cancel control on open, and let
+  // Escape close it — the dialogs are conditionally rendered <div>s rather than
+  // native <dialog> elements, so nothing does this automatically.
+  const dismissCancelRef = useRef<HTMLButtonElement>(null);
+  const mergeCancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (dismissDialog) dismissCancelRef.current?.focus();
+  }, [dismissDialog]);
+
+  useEffect(() => {
+    if (mergeDialog) mergeCancelRef.current?.focus();
+  }, [mergeDialog]);
+
+  useEffect(() => {
+    if (!dismissDialog && !mergeDialog) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      setDismissDialog(null);
+      setMergeDialog(null);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dismissDialog, mergeDialog]);
 
   const entityTypeParam = entityTypeFilter === 'all' ? undefined : entityTypeFilter;
   const queryKey = hygieneFindingsQueryKey(scope, entityTypeParam);
@@ -270,6 +296,10 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
                       size="sm"
                       variant="ghost"
                       data-testid={`data-hygiene-archive-${finding.id}`}
+                      disabled={
+                        clearMutation.isPending &&
+                        clearMutation.variables?.entityId === finding.entity_id
+                      }
                       onClick={() =>
                         clearMutation.mutate({
                           entityType: finding.entity_type,
@@ -323,6 +353,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
             />
             <div className="mt-4 flex justify-end gap-3">
               <Button
+                ref={dismissCancelRef}
                 type="button"
                 variant="ghost"
                 onClick={() => setDismissDialog(null)}
@@ -378,6 +409,7 @@ export default function DataHygienePage({ scope }: DataHygienePageProps) {
             </fieldset>
             <div className="flex justify-end gap-3">
               <Button
+                ref={mergeCancelRef}
                 type="button"
                 variant="ghost"
                 onClick={() => setMergeDialog(null)}

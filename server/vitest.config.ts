@@ -257,6 +257,26 @@ const SERIAL_FILES = [
   // on-demand AI test suites above, exercising the real createActivity() hook chain
   // for its rep-engagement fixtures. (MINCRM-468)
   'src/__tests__/warmIntroService.test.ts',
+  // dataHygieneService's runDataHygieneScan() and dataHygieneController's endpoints
+  // scan ALL contacts/accounts/opportunities org-wide (no owner filter) to build
+  // data_hygiene_findings — running either file in parallel with any other test file
+  // that creates/deletes contacts/accounts/deals/users causes FK violations when the
+  // scan tries to insert a finding row for an owner_id another file just deleted, or
+  // races on shared data_hygiene_scoring_config reads. (MINCRM-476)
+  'src/__tests__/dataHygieneService.test.ts',
+  'src/__tests__/dataHygieneController.test.ts',
+  // repCoachingService's generateRepCoachingInsights() and repCoachingController's
+  // endpoints likewise aggregate ALL reps'/managers' deals and activities org-wide
+  // (no owner filter) to compute team averages — same class of cross-file race as
+  // dataHygieneService above. (MINCRM-474)
+  'src/__tests__/repCoachingService.test.ts',
+  'src/__tests__/repCoachingController.test.ts',
+  // leadRoutingService's computeLeadRoutingSuggestion() and createLead's routing-decision
+  // recompute query ALL active reps/managers org-wide as routing candidates — running in
+  // parallel with any test file creating/deleting users races on the candidate pool.
+  // (MINCRM-475)
+  'src/__tests__/leadRoutingService.test.ts',
+  'src/__tests__/leadRoutingController.test.ts',
 ];
 
 const sharedResolve = {

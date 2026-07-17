@@ -498,6 +498,7 @@ export async function generateRepCoachingInsights(): Promise<void> {
     for (const entry of metric.values) {
       if (!eligibleRepIds.has(entry.ownerId)) continue;
       if (!bySegment.has(entry.segment)) bySegment.set(entry.segment, []);
+      // Safe: the line above guarantees `entry.segment` is present before this lookup.
       bySegment.get(entry.segment)!.push(entry.value);
     }
     for (const [segment, values] of bySegment) {
