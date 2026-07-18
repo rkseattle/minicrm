@@ -52,7 +52,8 @@ export function parseE2eStubScenario(content: string): E2eStubScenario | null {
 
 export const E2E_STUB_READ_QUERY_CONTACT = {
   id: '00000000-0000-4000-8000-000000000001',
-  name: 'E2E Stub Contact',
+  first_name: 'E2E',
+  last_name: 'Stub Contact',
   email: 'e2e-stub@example.com',
 } as const;
 
