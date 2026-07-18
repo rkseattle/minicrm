@@ -562,6 +562,25 @@ export async function getAiSessionViaApi(
   return res.body;
 }
 
+/**
+ * Fetches a session's full message history (including pending_action /
+ * tool_results / context_proposal on each message) via the REST API. Useful
+ * for asserting on server-persisted state directly, sidestepping any client
+ * cache-reconciliation timing.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param sessionId - Session UUID.
+ */
+export async function getAiSessionMessagesViaApi(
+  restClient: RestClient,
+  sessionId: string,
+): Promise<AiMessageResponse[]> {
+  const res = await restClient.get<{ messages: AiMessageResponse[] }>(
+    `/api/v1/ai/sessions/${sessionId}`,
+  );
+  return res.body.messages;
+}
+
 // ---------------------------------------------------------------------------
 // Confirmation block behaviors (MINCRM-425, MINCRM-426)
 // ---------------------------------------------------------------------------
@@ -596,12 +615,13 @@ export interface ClickConfirmResult {
 }
 
 /**
- * Clicks the Confirm button on the visible confirmation block.
+ * Clicks the Confirm button on the visible confirmation block (standard or bulk).
  * Returns whether the button was clicked.
  */
 export async function clickConfirmButton(context: AiBehaviorContext): Promise<ClickConfirmResult> {
   const aiPage = new AiPage(context);
-  const visible = await aiPage.isConfirmationBlockVisible();
+  const visible =
+    (await aiPage.isConfirmationBlockVisible()) || (await aiPage.isBulkConfirmationBlockVisible());
   if (!visible) return { clicked: false };
   await aiPage.clickConfirmButton();
   return { clicked: true };
