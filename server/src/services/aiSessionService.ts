@@ -12,7 +12,10 @@
  * of MAX_TOOL_ROUNDS is reached.
  *
  * In E2E environments (E2E=true) the Anthropic SDK call is replaced by a deterministic
- * stub response so that test runs never consume real API tokens.
+ * stub response so that test runs never consume real API tokens. A reserved message
+ * prefix additionally opts into fixed pending_action / tool_results / context_proposal
+ * payloads for E2E specs that need to exercise those UI paths — see
+ * resolveE2eStubResponse() and shared/schemas/aiE2eStub.ts. (MINCRM-435)
  * (MINCRM-420, MINCRM-421, MINCRM-422)
  */
 
@@ -42,6 +45,19 @@ import type { EntityType } from '@minicrm/shared/schemas/customFieldSchema.js';
 import { listContextEntries } from './aiContextService.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 import type { AiContextProposal } from '@minicrm/shared/schemas/aiContextSchema.js';
+import {
+  parseE2eStubScenario,
+  E2E_STUB_RESPONSE,
+  E2E_STUB_SCENARIOS,
+  E2E_STUB_READ_QUERY_CONTACT,
+  E2E_STUB_MUTATION_CREATE,
+  E2E_STUB_MUTATION_UPDATE,
+  E2E_STUB_MUTATION_BULK,
+  E2E_STUB_MUTATION_BULK_DELETE,
+  E2E_STUB_RBAC_DENIED_MESSAGE,
+  E2E_STUB_CONTEXT_PROPOSAL,
+  E2E_STUB_CONTEXT_PROPOSAL_LEAD_TEXT,
+} from '@minicrm/shared/schemas/aiE2eStub.js';
 
 // ── Row types ──────────────────────────────────────────────────────────────────
 
@@ -106,9 +122,6 @@ const PERSISTABLE_TOOL_NAMES = new Set([
   'getObjectionPrecedents',
 ]);
 
-/** Deterministic response returned in E2E environments instead of calling Anthropic. */
-const E2E_STUB_RESPONSE = '[E2E stub response]';
-
 /** Maximum number of tool-call rounds before aborting to prevent runaway loops. */
 const MAX_TOOL_ROUNDS = 10;
 
@@ -161,6 +174,116 @@ function serialiseMessage(row: AiMessageRow): AiMessageResponse {
 function deriveSessionName(firstUserContent: string): string {
   const trimmed = firstUserContent.trim();
   return trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 60)}…`;
+}
+
+/** Result of resolving an E2E stub scenario for a single sendMessage() call. */
+interface E2eStubResult {
+  assistantContent: string;
+  rawPendingAction: unknown;
+  toolResults: AiToolResult[];
+}
+
+/**
+ * TEST-ONLY: resolves the deterministic E2E stub response for a message,
+ * dispatching on the reserved __E2E_STUB__: prefix (see
+ * shared/schemas/aiE2eStub.ts). Never calls Anthropic. Only invoked when
+ * IS_E2E is true.
+ *
+ * The RBAC_DENIED scenario throws a statusCode:403 error matching the shape
+ * toolExecutor.ts produces for a real admin-only tool call, so it flows
+ * through the same try/catch and controller error-mapping path a real RBAC
+ * denial would use. (MINCRM-435)
+ *
+ * priorSdkMessages is used only by CONTEXT_PROPOSAL, to suppress re-proposing
+ * the same context entry within a session that already saw it.
+ */
+function resolveE2eStubResponse(
+  content: string,
+  priorSdkMessages: Anthropic.MessageParam[],
+): E2eStubResult {
+  const scenario = parseE2eStubScenario(content);
+  if (!scenario) {
+    return { assistantContent: E2E_STUB_RESPONSE, rawPendingAction: null, toolResults: [] };
+  }
+
+  switch (scenario) {
+    case E2E_STUB_SCENARIOS.READ_QUERY: {
+      return {
+        assistantContent: `Here is the contact you asked about: ${E2E_STUB_READ_QUERY_CONTACT.name}.`,
+        rawPendingAction: null,
+        toolResults: [
+          {
+            toolName: 'searchContacts',
+            input: { query: 'stub' },
+            output: { contacts: [E2E_STUB_READ_QUERY_CONTACT], total: 1 },
+          },
+        ],
+      };
+    }
+    case E2E_STUB_SCENARIOS.MUTATION_CREATE: {
+      return {
+        assistantContent: '',
+        rawPendingAction: { operation: 'create', isBulk: false, ...E2E_STUB_MUTATION_CREATE },
+        toolResults: [],
+      };
+    }
+    case E2E_STUB_SCENARIOS.MUTATION_UPDATE: {
+      return {
+        assistantContent: '',
+        rawPendingAction: { operation: 'update', isBulk: false, ...E2E_STUB_MUTATION_UPDATE },
+        toolResults: [],
+      };
+    }
+    case E2E_STUB_SCENARIOS.MUTATION_BULK: {
+      return {
+        assistantContent: '',
+        rawPendingAction: { operation: 'update', isBulk: true, ...E2E_STUB_MUTATION_BULK },
+        toolResults: [],
+      };
+    }
+    case E2E_STUB_SCENARIOS.MUTATION_BULK_DELETE: {
+      return {
+        assistantContent: '',
+        rawPendingAction: {
+          operation: 'delete',
+          isBulk: true,
+          isBulkDelete: true,
+          ...E2E_STUB_MUTATION_BULK_DELETE,
+        },
+        toolResults: [],
+      };
+    }
+    case E2E_STUB_SCENARIOS.RBAC_DENIED: {
+      throw Object.assign(new Error(E2E_STUB_RBAC_DENIED_MESSAGE), { statusCode: 403 });
+    }
+    case E2E_STUB_SCENARIOS.CONTEXT_PROPOSAL: {
+      // Suppress re-proposal within the same session once the assistant has
+      // already emitted this scenario once — mirrors the "no re-proposal in
+      // session" requirement for context proposals. Checked against the lead
+      // text rather than the %%CONTEXT_PROPOSAL%% marker itself, because the
+      // marker is stripped from assistantContent before persistence
+      // (extractContextProposal) — by the time this message reappears in
+      // priorSdkMessages (loaded from ai_messages history), only the lead
+      // text remains. Only assistant messages are checked (never the
+      // current/prior user messages, which contain the
+      // __E2E_STUB__:CONTEXT_PROPOSAL trigger string, not the lead text).
+      const alreadyProposedInSession = priorSdkMessages.some(
+        (m) =>
+          m.role === 'assistant' &&
+          typeof m.content === 'string' &&
+          m.content.includes(E2E_STUB_CONTEXT_PROPOSAL_LEAD_TEXT),
+      );
+      if (alreadyProposedInSession) {
+        return { assistantContent: E2E_STUB_RESPONSE, rawPendingAction: null, toolResults: [] };
+      }
+      const marker = `%%CONTEXT_PROPOSAL%%${JSON.stringify(E2E_STUB_CONTEXT_PROPOSAL)}%%`;
+      return {
+        assistantContent: `${E2E_STUB_CONTEXT_PROPOSAL_LEAD_TEXT}${marker}`,
+        rawPendingAction: null,
+        toolResults: [],
+      };
+    }
+  }
 }
 
 // ── Public service functions ───────────────────────────────────────────────────
@@ -435,7 +558,10 @@ export async function sendMessage(
   let rawContextProposal: AiContextProposal | null = null;
 
   if (IS_E2E) {
-    assistantContent = E2E_STUB_RESPONSE;
+    const stubResult = resolveE2eStubResponse(content, sdkMessages);
+    assistantContent = stubResult.assistantContent;
+    rawPendingAction = stubResult.rawPendingAction;
+    collectedToolResults.push(...stubResult.toolResults);
   } else {
     // Fetch config with a fresh pool query — no open transaction.
     const configResult = await pool.query<AiConfigRow>(
@@ -644,11 +770,11 @@ export async function sendMessage(
   // propose saving an ambiguity resolution or correction as a user preference.
   // The cleaned content is stored as message content; the proposal is stored
   // in its own column for the client to render as an accept/dismiss chip. (MINCRM-429, MINCRM-430)
-  if (!IS_E2E) {
-    const extraction = extractContextProposal(assistantContent);
-    assistantContent = extraction.cleanContent;
-    rawContextProposal = extraction.proposal;
-  }
+  // Always run — a safe no-op when assistantContent has no marker (true for the
+  // default E2E_STUB_RESPONSE and every E2E stub scenario except CONTEXT_PROPOSAL).
+  const extraction = extractContextProposal(assistantContent);
+  assistantContent = extraction.cleanContent;
+  rawContextProposal = extraction.proposal;
 
   // ── Tx 2: insert assistant message, update session, write audit entry ─────
 

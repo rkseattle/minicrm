@@ -130,6 +130,21 @@ export async function sendAiMessageHandler(req: Request, res: Response): Promise
       });
       return;
     }
+    if (tagged.statusCode === 403) {
+      res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: tagged.message ?? 'You do not have permission to perform this action',
+        },
+      });
+      return;
+    }
+    if (tagged.statusCode === 401) {
+      res.status(401).json({
+        error: { code: 'AUTH_INVALID_TOKEN', message: tagged.message ?? 'Authentication required' },
+      });
+      return;
+    }
     throw err;
   }
 }
