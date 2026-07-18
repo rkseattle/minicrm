@@ -100,8 +100,8 @@ jobs:
       - name: Create MinIO test bucket
         run: |
           MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
-          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
-          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+          docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
       - name: Seed E2E storage config
         run: npm run seed:e2e-storage
