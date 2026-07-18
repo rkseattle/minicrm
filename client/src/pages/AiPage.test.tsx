@@ -405,6 +405,34 @@ describe('AiPage — send message handshake (MINCRM-602)', () => {
     expect(screen.queryByText('This will fail')).not.toBeInTheDocument();
     expect(screen.queryByTestId('ai-thinking-indicator')).not.toBeInTheDocument();
   });
+
+  it('surfaces the plain-language FORBIDDEN message for a 403 send response (MINCRM-435)', async () => {
+    mockSingleSession();
+    server.use(
+      http.get('/api/v1/ai/retention-window', () =>
+        HttpResponse.json({ ai_session_retention_days: 90 }),
+      ),
+      http.post(`/api/v1/ai/sessions/${SESSION_ID}/messages`, () =>
+        HttpResponse.json(
+          { error: { code: 'FORBIDDEN', message: "Tool 'deleteAccount' requires admin role" } },
+          { status: 403 },
+        ),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<AiPage />);
+
+    const input = await screen.findByTestId('ai-message-input');
+    await user.type(input, 'Delete all accounts');
+    await user.click(screen.getByTestId('ai-send-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-send-error')).toHaveTextContent(
+        "You don't have permission to perform this action.",
+      );
+    });
+  });
 });
 
 describe('AiPage — send handshake cache correctness (MINCRM-602)', () => {

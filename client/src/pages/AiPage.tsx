@@ -27,6 +27,7 @@ import {
   sendAiMessage,
 } from '@/api/aiSessions.js';
 import { getMyRetentionWindow, MY_RETENTION_WINDOW_QUERY_KEY } from '@/api/ai.js';
+import { resolveApiError } from '@/utils/apiError.js';
 import type {
   AiSessionResponse,
   AiMessageResponse,
@@ -503,12 +504,12 @@ export default function AiPage() {
       // entries are actually being cleared.
       setOptimisticMessages((prev) => prev.filter((m) => m.session_id !== sessionId));
     },
-    onError: (_error, { sessionId, isDisplayedSession }) => {
+    onError: (error, { sessionId, isDisplayedSession }) => {
       // Scoped to this session's own entries — see the onSuccess settle path
       // above for why a blanket clear would be unsafe.
       setOptimisticMessages((prev) => prev.filter((m) => m.session_id !== sessionId));
       if (isDisplayedSession) {
-        setSendError(t('ai.errorSend'));
+        setSendError(resolveApiError(error, t, 'ai.errorSend'));
       }
       // Re-enable any disabled confirmation block so the user can retry.
       setDisabledPendingActionId(null);
