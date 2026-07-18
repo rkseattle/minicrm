@@ -174,7 +174,7 @@ describe('sendMessage — E2E stub scenarios (MINCRM-435)', () => {
       {
         toolName: 'searchContacts',
         input: { query: 'stub' },
-        output: { contacts: [stubConstants.E2E_STUB_READ_QUERY_CONTACT], total: 1 },
+        output: { data: [stubConstants.E2E_STUB_READ_QUERY_CONTACT], total: 1 },
       },
     ]);
     expect(mockCreate).not.toHaveBeenCalled();

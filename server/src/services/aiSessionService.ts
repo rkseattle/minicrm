@@ -209,13 +209,16 @@ function resolveE2eStubResponse(
   switch (scenario) {
     case E2E_STUB_SCENARIOS.READ_QUERY: {
       return {
-        assistantContent: `Here is the contact you asked about: ${E2E_STUB_READ_QUERY_CONTACT.name}.`,
+        assistantContent: `Here is the contact you asked about: ${E2E_STUB_READ_QUERY_CONTACT.first_name} ${E2E_STUB_READ_QUERY_CONTACT.last_name}.`,
         rawPendingAction: null,
+        // Matches the real listContacts()/searchContacts tool output shape
+        // ({ data: [...], total: number }) so NliResultBlock's extractItems()
+        // renders it exactly as it would a real search result.
         toolResults: [
           {
             toolName: 'searchContacts',
             input: { query: 'stub' },
-            output: { contacts: [E2E_STUB_READ_QUERY_CONTACT], total: 1 },
+            output: { data: [E2E_STUB_READ_QUERY_CONTACT], total: 1 },
           },
         ],
       };

@@ -13,13 +13,19 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiPage } from '@pages/minicrm/AiPage.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
+import type { AiMessageResponse } from '@minicrm/shared/schemas/aiSessionSchema.js';
+import {
+  E2E_STUB_RESPONSE,
+  e2eStubMessage,
+  type E2eStubScenario,
+} from '@minicrm/shared/schemas/aiE2eStub.js';
 
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
 
-/** Deterministic stub returned by the E2E server (E2E=true mode). */
-export const E2E_STUB = '[E2E stub response]';
+/** Deterministic stub returned by the E2E server (E2E=true mode) for a non-prefixed message. */
+export const E2E_STUB = E2E_STUB_RESPONSE;
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -499,6 +505,48 @@ export async function sendAiMessageViaApi(
   return res.body.content;
 }
 
+// ---------------------------------------------------------------------------
+// E2E stub scenario behaviors (MINCRM-435)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends a reserved E2E stub-scenario trigger message to a session via the
+ * REST API and returns the full assistant message response (including
+ * pending_action / tool_results / context_proposal), so specs can assert on
+ * the deterministic payload without driving the model. Only meaningful
+ * against an E2E=true server.
+ *
+ * @param restClient - Authenticated RestClient.
+ * @param sessionId - Session UUID.
+ * @param scenario - E2E stub scenario key (see shared/schemas/aiE2eStub.ts).
+ */
+export async function sendE2eStubMessageViaApi(
+  restClient: RestClient,
+  sessionId: string,
+  scenario: E2eStubScenario,
+): Promise<AiMessageResponse> {
+  const res = await restClient.post<AiMessageResponse>(
+    `/api/v1/ai/sessions/${sessionId}/messages`,
+    { content: e2eStubMessage(scenario) },
+  );
+  return res.body;
+}
+
+/**
+ * Types a reserved E2E stub-scenario trigger message into the AI input and
+ * clicks Send via the UI, waiting for the new assistant reply bubble the same
+ * way sendAiMessageViaUI does. Returns the same result shape.
+ *
+ * @param context - Playwright fixture context.
+ * @param scenario - E2E stub scenario key (see shared/schemas/aiE2eStub.ts).
+ */
+export async function sendE2eStubMessageViaUI(
+  context: AiBehaviorContext,
+  scenario: E2eStubScenario,
+): Promise<SendAiMessageResult> {
+  return sendAiMessageViaUI(context, e2eStubMessage(scenario));
+}
+
 /**
  * Fetches a single AI session by ID via the REST API.
  * Throws when the session is not found (404).
@@ -730,4 +778,78 @@ export async function getContextEntriesViaApi(
     entries: Array<{ id: string; key: string; value: string }>;
   }>('/api/v1/ai/context');
   return response.body.entries;
+}
+
+// ---------------------------------------------------------------------------
+// NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the native CRM result block is visible in the thread.
+ */
+export async function isNliResultBlockVisible(context: AiBehaviorContext): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  const locator = await aiPage.nliResultBlockLocator().catch(() => null);
+  if (!locator) return false;
+  return locator.isVisible().catch(() => false);
+}
+
+/**
+ * Returns true when a rendered result card for the given contact ID is visible.
+ */
+export async function isNliContactCardVisible(
+  context: AiBehaviorContext,
+  contactId: string,
+): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  const locator = await aiPage.nliContactCardLocator(contactId).catch(() => null);
+  if (!locator) return false;
+  return locator.isVisible().catch(() => false);
+}
+
+// ---------------------------------------------------------------------------
+// Context proposal chip (MINCRM-429, MINCRM-430, MINCRM-435)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the context proposal chip for the given assistant
+ * message ID is visible in the thread.
+ */
+export async function isContextProposalChipVisible(
+  context: AiBehaviorContext,
+  messageId: string,
+): Promise<boolean> {
+  const aiPage = new AiPage(context);
+  const locator = await aiPage.contextProposalChipLocator(messageId).catch(() => null);
+  if (!locator) return false;
+  return locator.isVisible().catch(() => false);
+}
+
+/**
+ * Clicks the Accept button on a context proposal chip and waits for the
+ * chip to switch to its "accepted" state.
+ */
+export async function acceptContextProposalViaUI(
+  context: AiBehaviorContext,
+  messageId: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+  const acceptBtn = await aiPage.contextProposalAcceptButtonLocator(messageId);
+  await acceptBtn.click();
+  const accepted = await aiPage.contextProposalAcceptedLocator(messageId);
+  await accepted.waitFor({ state: 'visible' });
+}
+
+/**
+ * Clicks the Dismiss button on a context proposal chip and waits for the
+ * chip to disappear from the thread.
+ */
+export async function dismissContextProposalViaUI(
+  context: AiBehaviorContext,
+  messageId: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+  const dismissBtn = await aiPage.contextProposalDismissButtonLocator(messageId);
+  await dismissBtn.click();
+  await context.page.waitForAbsent(`[data-testid="ai-context-proposal-chip-${messageId}"]`);
 }

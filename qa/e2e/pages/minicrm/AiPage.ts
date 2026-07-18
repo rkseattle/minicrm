@@ -607,4 +607,86 @@ export class AiPage {
       )
       .resolve();
   }
+
+  // ── NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435) ─────────────
+
+  /** Returns the native CRM result block rendered under an assistant turn. */
+  async nliResultBlockLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'nli-result-block' },
+          { type: 'css', value: '[data-testid="nli-result-block"]' },
+        ],
+        { intent: 'native CRM result block rendered from AI tool results' },
+      )
+      .resolve();
+  }
+
+  /** Returns the rendered result card for a specific contact ID. */
+  async nliContactCardLocator(contactId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `nli-contact-card-${contactId}` },
+          { type: 'css', value: `[data-testid="nli-contact-card-${contactId}"]` },
+        ],
+        { intent: `NLI result card for contact ${contactId}` },
+      )
+      .resolve();
+  }
+
+  // ── Context proposal chip (MINCRM-429, MINCRM-430) ─────────────────────────
+
+  /** Returns the context proposal chip attached to a specific assistant message. */
+  async contextProposalChipLocator(messageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-proposal-chip-${messageId}` },
+          { type: 'css', value: `[data-testid="ai-context-proposal-chip-${messageId}"]` },
+        ],
+        { intent: `AI context proposal accept/dismiss chip for message ${messageId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the Accept button on a context proposal chip. */
+  async contextProposalAcceptButtonLocator(messageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-proposal-accept-button-${messageId}` },
+          { type: 'css', value: `[data-testid="ai-context-proposal-accept-button-${messageId}"]` },
+        ],
+        { intent: `Accept button for context proposal on message ${messageId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the Dismiss button on a context proposal chip. */
+  async contextProposalDismissButtonLocator(messageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-proposal-dismiss-button-${messageId}` },
+          { type: 'css', value: `[data-testid="ai-context-proposal-dismiss-button-${messageId}"]` },
+        ],
+        { intent: `Dismiss button for context proposal on message ${messageId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the "accepted" confirmation state shown after accepting a context proposal. */
+  async contextProposalAcceptedLocator(messageId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-proposal-accepted-${messageId}` },
+          { type: 'css', value: `[data-testid="ai-context-proposal-accepted-${messageId}"]` },
+        ],
+        { intent: `Accepted confirmation for context proposal on message ${messageId}` },
+      )
+      .resolve();
+  }
 }
