@@ -435,7 +435,7 @@ jobs:
         run: |
           for i in $(seq 0 $(( ${{ env.TOTAL_SHARDS }} - 1 ))); do
             npx tsx qa/e2e/scripts/gen-shard-config.ts \
-              --shard-index=$i \
+              --shard-index="$i" \
               --total-shards=${{ env.TOTAL_SHARDS }}
           done
 
@@ -581,8 +581,8 @@ jobs:
       - name: Create MinIO test bucket
         run: |
           MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
-          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
-          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+          docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
       # MINCRM-278: Write MinIO storage config into system_settings so the server
       # finds a configured backend at startup — no manual admin setup required.
@@ -748,12 +748,12 @@ jobs:
           if [ -f "$REPORT" ] && [ -s "$REPORT" ]; then
             TOTAL=$(node -e "const r=require('./$REPORT'); console.log(r.totalHeals ?? r.total ?? 0)")
             if [ "$TOTAL" -gt 0 ]; then
-              echo "exists=true" >> $GITHUB_OUTPUT
+              echo "exists=true" >> "$GITHUB_OUTPUT"
             else
-              echo "exists=false" >> $GITHUB_OUTPUT
+              echo "exists=false" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload healing report artifact (MINCRM-149)
@@ -919,8 +919,8 @@ jobs:
       - name: Create MinIO test bucket
         run: |
           MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
-          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
-          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+          docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
       - name: Seed E2E storage config
         run: npm run seed:e2e-storage
@@ -1113,7 +1113,7 @@ jobs:
         run: |
           mkdir -p ./blob-report
           find ./shard-artifacts -name "*.zip" -path "*/blob-report/*" -exec cp {} ./blob-report/ \;
-          echo "Blob zips collected: $(ls ./blob-report | wc -l)"
+          echo "Blob zips collected: $(find ./blob-report -maxdepth 1 -type f | wc -l)"
 
       - name: Merge Playwright reports
         run: >
@@ -1219,12 +1219,12 @@ jobs:
           # If every shard reported "No heal events this run.", collapse to one line.
           # MINCRM-225
           SUGGESTIONS_OUT="healing-suggestions-${{ matrix.project }}.md"
-          SUGGESTION_FILES=$(find ./shard-artifacts -name "healing-suggestions.md" 2>/dev/null | sort)
-          if [ -z "$SUGGESTION_FILES" ]; then
+          mapfile -t SUGGESTION_FILES < <(find ./shard-artifacts -name "healing-suggestions.md" 2>/dev/null | sort)
+          if [ "${#SUGGESTION_FILES[@]}" -eq 0 ]; then
             echo "No heal events this run." > "$SUGGESTIONS_OUT"
           else
             # Strip "No heal events" placeholder lines; keep real content.
-            REAL_CONTENT=$(cat $SUGGESTION_FILES | grep -v "^No heal events this run\.$" | grep -v "^$" || true)
+            REAL_CONTENT=$(cat "${SUGGESTION_FILES[@]}" | grep -v "^No heal events this run\.$" | grep -v "^$" || true)
             if [ -z "$REAL_CONTENT" ]; then
               echo "No heal events this run." > "$SUGGESTIONS_OUT"
             else
@@ -1232,7 +1232,7 @@ jobs:
                 echo "# Healing Patch Suggestions"
                 echo ""
                 # Extract suggestion bodies (lines after the # headings).
-                cat $SUGGESTION_FILES | grep -v "^No heal events this run\.$" | grep -v "^# Healing Patch Suggestions$"
+                cat "${SUGGESTION_FILES[@]}" | grep -v "^No heal events this run\.$" | grep -v "^# Healing Patch Suggestions$"
               } > "$SUGGESTIONS_OUT"
             fi
           fi
@@ -1459,7 +1459,7 @@ jobs:
 
           # MINCRM-332: Also write to job summary so the merged pass/fail table
           # is visible in the Actions workflow run summary tab.
-          cat /tmp/e2e-comment-body.md >> $GITHUB_STEP_SUMMARY
+          cat /tmp/e2e-comment-body.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post combined summary comment (MINCRM-135)
         uses: marocchino/sticky-pull-request-comment@v2
@@ -1564,7 +1564,7 @@ jobs:
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
           } > /tmp/coverage-comment-body.md
-          cat /tmp/coverage-comment-body.md >> $GITHUB_STEP_SUMMARY
+          cat /tmp/coverage-comment-body.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post coverage comment
         uses: marocchino/sticky-pull-request-comment@v2
@@ -1679,8 +1679,8 @@ jobs:
       - name: Create MinIO test bucket
         run: |
           MINIO_ID=$(docker ps --filter "ancestor=minio/minio:latest" --format "{{.ID}}")
-          docker exec $MINIO_ID mc alias set local http://localhost:9000 minioadmin minioadmin
-          docker exec $MINIO_ID mc mb local/minicrm-test-bucket
+          docker exec "$MINIO_ID" mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec "$MINIO_ID" mc mb local/minicrm-test-bucket
 
       - name: Seed E2E storage config
         run: npm run seed:e2e-storage
@@ -1776,6 +1776,11 @@ jobs:
 
       - name: Commit and push updated snapshots
         id: commit-snapshots
+        env:
+          # Passed through an env var rather than interpolated directly into the
+          # script — github.head_ref is attacker-controlled (a PR branch name)
+          # and inline expression interpolation is a script-injection vector.
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -1791,8 +1796,8 @@ jobs:
             # Without this the [skip ci] baseline commit becomes HEAD and the PR's
             # required checks stay "Waiting for status to be reported" indefinitely.
             git commit --allow-empty -m "ci: re-trigger checks after baseline update (MINCRM-324)"
-            git push origin HEAD:${{ github.head_ref }}
-            echo "Pushed $CHANGED updated snapshot file(s) to ${{ github.head_ref }}."
+            git push origin "HEAD:$HEAD_REF"
+            echo "Pushed $CHANGED updated snapshot file(s) to $HEAD_REF."
             # Signal to the verify steps that new baselines were just committed.
             # They must not run now — the re-trigger commit above will run CI
             # again on the stable baselines, and the verify steps will run then.
