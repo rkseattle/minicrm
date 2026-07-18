@@ -9,7 +9,7 @@
  * time. The stream is cancelled on unmount or when filters/page change.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -202,14 +202,15 @@ export default function AuditLogPage() {
 
   // ── Live stream ───────────────────────────────────────────────────────────────
 
-  // Use a ref so the stream loop closure always has the latest setter.
-  const setLiveEventsRef = useRef(setLiveEvents);
-  setLiveEventsRef.current = setLiveEvents;
-
-  // Clear live events whenever filter/page state changes.
-  useEffect(() => {
+  // Clears live events whenever filter/page state changes. Adjusted during
+  // render rather than via an effect — avoids the extra render an
+  // effect-based reset would cause. See:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevLiveEventsKey, setPrevLiveEventsKey] = useState({ appliedFilters, page });
+  if (prevLiveEventsKey.appliedFilters !== appliedFilters || prevLiveEventsKey.page !== page) {
+    setPrevLiveEventsKey({ appliedFilters, page });
     setLiveEvents([]);
-  }, [appliedFilters, page]);
+  }
 
   // Open the stream only on the first unfiltered page.
   // Reconnects automatically on transient failures (proxy timeout, network blip,
@@ -228,7 +229,7 @@ export default function AuditLogPage() {
           for await (const event of stream) {
             // Discard the stream-ready sentinel emitted by the server on subscribe (MINCRM-554)
             if (event.action === '__stream_ready__') continue;
-            setLiveEventsRef.current((prev) => [grpcEventToEntry(event), ...prev]);
+            setLiveEvents((prev) => [grpcEventToEntry(event), ...prev]);
           }
           // Server closed the stream cleanly — reconnect immediately.
         } catch (err) {
@@ -258,7 +259,7 @@ export default function AuditLogPage() {
     return () => {
       abortController.abort();
     };
-  }, [isUnfilteredFirstPage, navigate, queryClient]);
+  }, [isUnfilteredFirstPage, navigate, queryClient, setLiveEvents]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
 

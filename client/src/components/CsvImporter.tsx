@@ -71,6 +71,7 @@ export default function CsvImporter({ entity, entityLabel, options = [] }: CsvIm
     let timerId: ReturnType<typeof setTimeout> | null = null;
     let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initializes the counter this same effect's setInterval below drives; not a derived-state sync
     setElapsedSeconds(0);
     elapsedTimer = setInterval(() => {
       setElapsedSeconds((s) => s + 1);

@@ -3,7 +3,7 @@
  * Extracted from AdminSettingsPage.tsx (MINCRM-259).
  */
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -102,10 +102,14 @@ export default function NotificationSettings() {
   );
   const [smtpTestErrorMessage, setSmtpTestErrorMessage] = useState('');
 
-  // Track the last server data snapshot we've applied so we re-sync on invalidation.
-  const smtpLastSyncedRef = useRef<typeof smtpData | null>(null);
-  if (smtpData && smtpData !== smtpLastSyncedRef.current) {
-    smtpLastSyncedRef.current = smtpData;
+  // Re-syncs local form state whenever the server snapshot changes (initial
+  // load or query invalidation after a save). Adjusted during render rather
+  // than via an effect — avoids the extra render an effect-based sync would
+  // cause. See:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevSmtpData, setPrevSmtpData] = useState(smtpData);
+  if (smtpData && smtpData !== prevSmtpData) {
+    setPrevSmtpData(smtpData);
     setSmtpHost(smtpData.smtp_host);
     setSmtpPort(smtpData.smtp_port);
     setSmtpUser(smtpData.smtp_user);

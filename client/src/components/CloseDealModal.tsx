@@ -5,7 +5,7 @@
  * an optional loss reason before the deal update is submitted.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/Input.js';
 import { Button } from '@/components/ui/Button.js';
@@ -61,10 +61,17 @@ export default function CloseDealModal({
   const [closeDate, setCloseDate] = useState(initialCloseDate);
   const [lossReason, setLossReason] = useState('');
 
-  /** Keep closeDate in sync if initialCloseDate changes (e.g. day rolls over between opens) */
-  useEffect(() => {
+  /**
+   * Keeps closeDate in sync if initialCloseDate changes (e.g. day rolls over
+   * between opens). Adjusted during render rather than via an effect — avoids
+   * the extra render an effect-based sync would cause. See:
+   * https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+   */
+  const [prevInitialCloseDate, setPrevInitialCloseDate] = useState(initialCloseDate);
+  if (initialCloseDate !== prevInitialCloseDate) {
+    setPrevInitialCloseDate(initialCloseDate);
     setCloseDate(initialCloseDate);
-  }, [initialCloseDate]);
+  }
 
   const isClosedLost = targetStage === 'Closed Lost';
 

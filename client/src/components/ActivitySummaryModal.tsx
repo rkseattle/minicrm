@@ -70,11 +70,15 @@ export default function ActivitySummaryModal({
       });
     } else {
       previousFocusRef.current?.focus();
+      /* eslint-disable react-hooks/set-state-in-effect --
+         reset-on-close is bundled with the focus-restore side effect above,
+         which must stay in an effect. */
       setRawText('');
       setSummary('');
       setActionItems([]);
       setSuggestedTasks([]);
       setDismissedTaskIndexes(new Set());
+      /* eslint-enable react-hooks/set-state-in-effect */
       summarizeMutation.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset-on-close only needs isOpen

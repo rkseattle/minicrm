@@ -54,10 +54,12 @@ export default function MfaSetupModal({ isOpen, onSuccess, onCancel }: MfaSetupM
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement as HTMLElement;
+      /* eslint-disable react-hooks/set-state-in-effect -- reset-on-open is bundled with setupMutation.mutate() below, which must stay in an effect */
       setStep('qr');
       setCode('');
       setInvalidCode(false);
       setQrDataUrl(null);
+      /* eslint-enable react-hooks/set-state-in-effect */
       setupMutation.mutate();
     } else {
       previousFocusRef.current?.focus();
