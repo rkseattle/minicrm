@@ -84,6 +84,15 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
   const queryClient = useQueryClient();
 
   const [inputValue, setInputValue] = useState(String(retentionDays));
+  // Adjusts local state during render when retentionDays changes, rather than
+  // syncing via an effect — avoids the extra render an effect-based sync would
+  // cause (react-hooks/set-state-in-effect). See:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevRetentionDays, setPrevRetentionDays] = useState(retentionDays);
+  if (retentionDays !== prevRetentionDays) {
+    setPrevRetentionDays(retentionDays);
+    setInputValue(String(retentionDays));
+  }
   const [validationError, setValidationError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -125,10 +134,6 @@ export function AiDataRetentionSection({ retentionDays }: { retentionDays: numbe
       setPurgeAccepted(false);
     },
   });
-
-  useEffect(() => {
-    setInputValue(String(retentionDays));
-  }, [retentionDays]);
 
   // Clear the success-message and purge-refetch timers on unmount to prevent
   // setState/refetch scheduling on an unmounted component.

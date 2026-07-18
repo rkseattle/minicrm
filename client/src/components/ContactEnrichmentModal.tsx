@@ -49,6 +49,7 @@ export default function ContactEnrichmentModal({
       });
     } else {
       previousFocusRef.current?.focus();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bundled with the focus-restore side effect above, which must stay in an effect
       setRawText('');
       enrichMutation.reset();
     }

@@ -3,7 +3,7 @@
  * Extracted from AdminSettingsPage.tsx (MINCRM-259).
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -92,8 +92,14 @@ export default function CurrencySettings() {
   const [exchangeRatesSaveError, setExchangeRatesSaveError] = useState<string | null>(null);
   const [exchangeRatesSaving, setExchangeRatesSaving] = useState(false);
 
-  useEffect(() => {
-    if (!currenciesConfigData) return;
+  // Re-syncs local form state whenever the server snapshot changes (initial
+  // load or query invalidation after a save). Adjusted during render rather
+  // than via an effect — avoids the extra render an effect-based sync would
+  // cause. See:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [prevCurrenciesConfigData, setPrevCurrenciesConfigData] = useState(currenciesConfigData);
+  if (currenciesConfigData && currenciesConfigData !== prevCurrenciesConfigData) {
+    setPrevCurrenciesConfigData(currenciesConfigData);
     setHomeCurrency(currenciesConfigData.home_currency);
     const nonHomeRows: RateRow[] = currenciesConfigData.currencies
       .filter((c) => !c.is_home)
@@ -106,7 +112,7 @@ export default function CurrencySettings() {
       }));
     setRateRows(nonHomeRows);
     setRatesRecalculated(false);
-  }, [currenciesConfigData]);
+  }
 
   function handleHomeCurrencyChange(newHome: string): void {
     if (newHome === homeCurrency) return;

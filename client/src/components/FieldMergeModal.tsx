@@ -139,6 +139,7 @@ export default function FieldMergeModal({
       rows.forEach((row) => {
         if (row.kind === 'conflict') initial[row.key] = 'theirs';
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-on-open depends on rows, which isn't a dep of this effect by design (see exhaustive-deps disable below)
       setChoices(initial);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
