@@ -608,6 +608,55 @@ export class AiPage {
       .resolve();
   }
 
+  /**
+   * Clicks the delete button for a context entry, arming acceptNextDialog()
+   * beforehand so the native window.confirm() prompt is auto-accepted.
+   */
+  async deleteContextEntryViaUI(entryId: string): Promise<void> {
+    this.page.acceptNextDialog();
+    const deleteBtn = await this.contextDeleteButtonLocator(entryId);
+    await deleteBtn.click();
+  }
+
+  /** Returns the edit form's key input for a specific context entry. */
+  async contextEditKeyInputLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-edit-key-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-edit-key-${entryId}"]` },
+        ],
+        { intent: `edit form key input for context entry ${entryId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the edit form's value input for a specific context entry. */
+  async contextEditValueInputLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-edit-value-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-edit-value-${entryId}"]` },
+        ],
+        { intent: `edit form value input for context entry ${entryId}` },
+      )
+      .resolve();
+  }
+
+  /** Returns the edit form's save button for a specific context entry. */
+  async contextEditSaveButtonLocator(entryId: string) {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: `ai-context-edit-save-${entryId}` },
+          { type: 'css', value: `[data-testid="ai-context-edit-save-${entryId}"]` },
+        ],
+        { intent: `edit form save button for context entry ${entryId}` },
+      )
+      .resolve();
+  }
+
   // ── NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435) ─────────────
 
   /** Returns the native CRM result block rendered under an assistant turn. */
