@@ -125,6 +125,25 @@ export async function isAiSendButtonVisible(context: AiBehaviorContext): Promise
 }
 
 // ---------------------------------------------------------------------------
+// getAiSendErrorText()
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the text content of the message send error banner, or null if it
+ * is not present/visible.
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function getAiSendErrorText(context: AiBehaviorContext): Promise<string | null> {
+  const aiPage = new AiPage(context);
+  const locator = await aiPage.sendErrorLocator().catch(() => null);
+  if (!locator) return null;
+  const visible = await locator.isVisible().catch(() => false);
+  if (!visible) return null;
+  return locator.textContent();
+}
+
+// ---------------------------------------------------------------------------
 // isAiAddContextButtonVisible()
 // ---------------------------------------------------------------------------
 
@@ -275,6 +294,37 @@ export async function sendAiMessageViaUI(
   await aiPage.waitForAssistantMessageCountAbove(assistantCountBefore, 30_000);
 
   return { userMessageVisible: true, assistantMessageVisible: true };
+}
+
+// ---------------------------------------------------------------------------
+// sendAiMessageExpectingErrorViaUI()
+// ---------------------------------------------------------------------------
+
+/**
+ * Types the given message into the AI input and clicks Send, waiting for the
+ * send request to settle with a non-2xx response (rather than
+ * sendAiMessageViaUI's 200-only wait, which would time out for 60s on an
+ * error response before its caller's .catch() could rescue it). Does not
+ * wait for an assistant bubble — there is none on an error response.
+ *
+ * @param context - Playwright fixture context.
+ * @param content - Message text to send.
+ */
+export async function sendAiMessageExpectingErrorViaUI(
+  context: AiBehaviorContext,
+  content: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+  const errorReceived = context.page.waitForResponse(
+    (res) =>
+      res.request().method() === 'POST' &&
+      res.url().includes('/api/v1/ai/sessions') &&
+      res.url().includes('/messages') &&
+      res.status() >= 400,
+    { timeout: 15_000 },
+  );
+  await aiPage.sendMessage(content);
+  await errorReceived;
 }
 
 // ---------------------------------------------------------------------------
@@ -545,6 +595,23 @@ export async function sendE2eStubMessageViaUI(
   scenario: E2eStubScenario,
 ): Promise<SendAiMessageResult> {
   return sendAiMessageViaUI(context, e2eStubMessage(scenario));
+}
+
+/**
+ * Types a reserved E2E stub-scenario trigger message into the AI input and
+ * clicks Send, waiting for a non-2xx response rather than an assistant
+ * bubble — use for scenarios expected to fail the send (e.g. RBAC_DENIED).
+ * See sendAiMessageExpectingErrorViaUI() for why this differs from
+ * sendE2eStubMessageViaUI().
+ *
+ * @param context - Playwright fixture context.
+ * @param scenario - E2E stub scenario key (see shared/schemas/aiE2eStub.ts).
+ */
+export async function sendE2eStubMessageExpectingErrorViaUI(
+  context: AiBehaviorContext,
+  scenario: E2eStubScenario,
+): Promise<void> {
+  return sendAiMessageExpectingErrorViaUI(context, e2eStubMessage(scenario));
 }
 
 /**

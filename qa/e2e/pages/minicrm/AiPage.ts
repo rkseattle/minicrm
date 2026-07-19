@@ -80,6 +80,19 @@ export class AiPage {
       .resolve();
   }
 
+  /** Returns the message send error banner. */
+  async sendErrorLocator() {
+    return this.page
+      .locate(
+        [
+          { type: 'testId', value: 'ai-send-error' },
+          { type: 'css', value: '[data-testid="ai-send-error"]' },
+        ],
+        { intent: 'AI message send error banner' },
+      )
+      .resolve();
+  }
+
   /** Returns the Add Context button in the context sidebar. */
   async addContextButtonLocator() {
     return this.page
