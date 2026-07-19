@@ -5,13 +5,17 @@
  * key/value preferences that are injected into every AI session's system prompt.
  *
  * E2E limitations:
- *   The E2E server uses the stub AI response ("[E2E stub response]") — real AI
- *   context injection and the %%CONTEXT_PROPOSAL%% protocol cannot be exercised
- *   end-to-end. Those behaviors are covered by:
+ *   The E2E server uses the stub AI response ("[E2E stub response]") — real
+ *   injection of saved context entries into a live model's system prompt
+ *   cannot be exercised end-to-end (no real Anthropic call is ever made in
+ *   E2E). The %%CONTEXT_PROPOSAL%% accept/dismiss protocol itself IS covered
+ *   end-to-end via the __E2E_STUB__:CONTEXT_PROPOSAL trigger — see
+ *   ai-context-proposal.spec.ts (MINCRM-435). This file covers CRUD on the
+ *   context panel only. Additional coverage:
  *     - server/src/__tests__/aiContextService.test.ts (service logic)
  *     - server/src/__tests__/contextProposal.test.ts (proposal extraction)
  *     - qa/evals/nli-semantic.yaml (proposal protocol semantics)
- *     - client/src/components/ai/ContextPanel.test.tsx (UI)
+ *     - client/src/components/ai/ContextPanel.test.tsx (UI, incl. delete-confirm/cancel)
  *     - client/src/components/ai/ContextProposalChip.test.tsx (chip UI)
  *
  * Test groups:
@@ -20,8 +24,10 @@
  *   F-AI-CTX-3 — Adding a context entry via the UI saves and displays it
  *   F-AI-CTX-4 — A context entry created via API appears in the panel after reload
  *   F-AI-CTX-5 — Cancelling the add form discards the entry
+ *   F-AI-CTX-6 — Editing a context entry via the panel updates it (MINCRM-435)
+ *   F-AI-CTX-7 — Deleting a context entry via the panel removes it (MINCRM-435)
  *
- * (MINCRM-427, MINCRM-428)
+ * (MINCRM-427, MINCRM-428, MINCRM-435)
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
@@ -34,6 +40,8 @@ import {
   isAiAddContextButtonVisible,
   addContextEntryViaUI,
   cancelContextEntryViaUI,
+  editContextEntryViaUI,
+  deleteContextEntryViaUI,
   createContextEntryViaApi,
   deleteAllContextEntriesViaApi,
   getContextEntriesViaApi,
@@ -157,6 +165,57 @@ test(
         const emptyVisible = await isContextPanelEmptyStateVisible({ page });
         expect(emptyVisible).toBe(true);
       }).toPass({ timeout: 3000 });
+    }
+  },
+);
+
+test(
+  'F-AI-CTX-6 — Editing a context entry via the panel updates it @functional @serial',
+  { tag: ['@functional', '@serial'] },
+  async ({ page, restClient }) => {
+    const entryId = await createContextEntryViaApi(restClient, 'original-key', 'original value');
+
+    await navigateToAiPage({ page });
+    await waitForAiConversationPanel({ page });
+
+    const viewportWidth = page.viewportSize()?.width ?? 1280;
+    if (viewportWidth >= 1024) {
+      const entryVisible = await isContextEntryVisible({ page }, entryId);
+      expect(entryVisible).toBe(true);
+
+      await editContextEntryViaUI({ page }, entryId, 'updated-key', 'updated value');
+
+      await expect(async () => {
+        const entries = await getContextEntriesViaApi(restClient);
+        const updated = entries.find((e) => e.id === entryId);
+        expect(updated).toBeDefined();
+        expect(updated?.key).toBe('updated-key');
+        expect(updated?.value).toBe('updated value');
+      }).toPass({ timeout: 5000 });
+    }
+  },
+);
+
+test(
+  'F-AI-CTX-7 — Deleting a context entry via the panel removes it @functional @serial',
+  { tag: ['@functional', '@serial'] },
+  async ({ page, restClient }) => {
+    const entryId = await createContextEntryViaApi(restClient, 'to-delete', 'value to delete');
+
+    await navigateToAiPage({ page });
+    await waitForAiConversationPanel({ page });
+
+    const viewportWidth = page.viewportSize()?.width ?? 1280;
+    if (viewportWidth >= 1024) {
+      const entryVisible = await isContextEntryVisible({ page }, entryId);
+      expect(entryVisible).toBe(true);
+
+      await deleteContextEntryViaUI({ page }, entryId);
+
+      await expect(async () => {
+        const entries = await getContextEntriesViaApi(restClient);
+        expect(entries.find((e) => e.id === entryId)).toBeUndefined();
+      }).toPass({ timeout: 5000 });
     }
   },
 );

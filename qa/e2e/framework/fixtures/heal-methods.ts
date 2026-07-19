@@ -426,6 +426,21 @@ export interface HealMethods {
    * @param timeout - Poll timeout in milliseconds (default 8 000).
    */
   waitForTextContent(selector: string, text: string, timeout?: number): Promise<void>;
+
+  /**
+   * Arms a one-shot handler that accepts the next native browser dialog
+   * (window.confirm / window.alert / window.prompt) as soon as it opens.
+   * Must be called BEFORE the action that triggers the dialog — Playwright
+   * auto-dismisses native dialogs with no registered handler, so triggering
+   * the dialog first would cancel it before this could attach.
+   *
+   * There is deliberately no raw page.on('dialog', ...) exposed on
+   * PageFactory/SafePage — this narrow, purpose-built method is the sanctioned
+   * way to drive a UI flow gated behind a native confirm dialog (e.g. a
+   * delete-confirmation prompt) without opening up arbitrary Playwright event
+   * access.
+   */
+  acceptNextDialog(): void;
 }
 
 /** Backwards-compatible alias — existing code importing HealPage continues to work. */
@@ -788,6 +803,12 @@ export function buildHealPage(
         undefined,
         { timeout },
       );
+    },
+
+    acceptNextDialog(): void {
+      page.once('dialog', (dialog) => {
+        void dialog.accept();
+      });
     },
   };
 }

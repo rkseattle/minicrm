@@ -710,14 +710,56 @@ export async function cancelContextEntryViaUI(
 
 /**
  * Deletes a context entry by ID via the REST API.
- * UI delete requires accepting a native browser confirm dialog;
- * use deleteAllContextEntriesViaApi() for test teardown instead.
+ * Prefer this for test teardown; use deleteContextEntryViaUI() when the
+ * point of the test is exercising the delete-from-panel UI flow itself.
  */
 export async function deleteContextEntryViaApi(
   restClient: RestClient,
   entryId: string,
 ): Promise<void> {
   await restClient.delete(`/api/v1/ai/context/${entryId}`);
+}
+
+/**
+ * Deletes a context entry via the panel's delete button, accepting the
+ * native window.confirm() prompt it triggers. Waits for the entry row to
+ * disappear from the panel.
+ */
+export async function deleteContextEntryViaUI(
+  context: AiBehaviorContext,
+  entryId: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+  await aiPage.deleteContextEntryViaUI(entryId);
+  await context.page.waitForAbsent(`[data-testid="ai-context-entry-${entryId}"]`);
+}
+
+/**
+ * Clicks the edit button for a context entry, fills the key/value inputs,
+ * and saves. Waits for the edit form to disappear after save, indicating
+ * success.
+ */
+export async function editContextEntryViaUI(
+  context: AiBehaviorContext,
+  entryId: string,
+  key: string,
+  value: string,
+): Promise<void> {
+  const aiPage = new AiPage(context);
+
+  const editBtn = await aiPage.contextEditButtonLocator(entryId);
+  await editBtn.click();
+
+  const keyInput = await aiPage.contextEditKeyInputLocator(entryId);
+  await keyInput.fill(key);
+
+  const valueInput = await aiPage.contextEditValueInputLocator(entryId);
+  await valueInput.fill(value);
+
+  const saveBtn = await aiPage.contextEditSaveButtonLocator(entryId);
+  await saveBtn.click();
+
+  await context.page.waitForAbsent(`[data-testid="ai-context-edit-form-${entryId}"]`);
 }
 
 /**
