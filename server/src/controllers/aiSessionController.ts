@@ -139,12 +139,6 @@ export async function sendAiMessageHandler(req: Request, res: Response): Promise
       });
       return;
     }
-    if (tagged.statusCode === 401) {
-      res.status(401).json({
-        error: { code: 'AUTH_INVALID_TOKEN', message: tagged.message ?? 'Authentication required' },
-      });
-      return;
-    }
     throw err;
   }
 }
