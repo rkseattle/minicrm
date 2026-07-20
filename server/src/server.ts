@@ -26,6 +26,9 @@ import { ensureAuditLogPartitions } from './services/auditPartitionService.js';
 import { startRolloutScheduler, stopRolloutScheduler } from './services/featureFlagService.js';
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
+import { NodeV8CoverageAgent } from './coverageAgent/NodeV8CoverageAgent.js';
+import { resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
+import { join } from 'path';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -40,6 +43,9 @@ const ENCRYPTION_KEY_HEX_LENGTH = 64;
 
 /** Drain timeout in milliseconds before forcing process exit */
 const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+/** Directory backend coverage dumps are written under (MINCRM-604). */
+const COVERAGE_DUMPS_ROOT = join(process.cwd(), 'coverage-dumps');
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
 if (
@@ -87,6 +93,18 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 const server = http.createServer(app);
 
+// Coverage/TIA instrumentation (MINCRM-604). Disabled unless
+// COVERAGE_INSTRUMENTATION=true — an unset env var means start()/stop() are
+// never called and this has zero effect on a normal boot.
+const coverageConfig = resolveCoverageConfig();
+const coverageAgent = coverageConfig.enabled
+  ? new NodeV8CoverageAgent({
+      dumpsRoot: COVERAGE_DUMPS_ROOT,
+      commitSha: coverageConfig.commitSha,
+      granularity: coverageConfig.granularity,
+    })
+  : undefined;
+
 // Disable Nagle's algorithm for all connections so that small streaming frames
 // (e.g. the ConnectRPC stream-ready sentinel) are delivered immediately rather
 // than being buffered until the TCP send buffer fills (MINCRM-554).
@@ -127,6 +145,11 @@ async function shutdown(signal: string): Promise<void> {
     await pool.end();
     logger.info('Database pool closed');
 
+    if (coverageAgent) {
+      await coverageAgent.dump('shutdown');
+      logger.info('Coverage: final shutdown dump written');
+    }
+
     clearTimeout(forceExitTimer);
     logger.info('Graceful shutdown complete');
     process.exit(0); // eslint-disable-line n/no-process-exit
@@ -141,6 +164,9 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 
 void (async () => {
   try {
+    if (coverageAgent) {
+      await coverageAgent.start();
+    }
     await runMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);
