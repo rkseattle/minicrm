@@ -714,6 +714,18 @@ jobs:
             qa/e2e/blob-report/
             qa/e2e/test-timing.jsonl
           retention-days: 7
+
+      # MINCRM-604/606: no-op unless a shard explicitly sets COVERAGE_INSTRUMENTATION=true
+      # in the "Start application server" step above — not enabled on the default matrix,
+      # so this never changes existing shard timing/behavior. if-no-files-found:warn
+      # matches the "Upload shard artifacts" step's convention above.
+      - name: Upload coverage dump artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-coverage-dumps-${{ matrix.project }}-${{ matrix.shard }}-${{ github.run_id }}
+          path: server/coverage-dumps/**
+          retention-days: 7
           if-no-files-found: warn
 
       - name: Publish results to GitHub Checks (MINCRM-135)
