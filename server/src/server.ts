@@ -148,8 +148,17 @@ async function shutdown(signal: string): Promise<void> {
     logger.info('Database pool closed');
 
     if (coverageAgent) {
-      await coverageAgent.dump('shutdown');
-      logger.info('Coverage: final shutdown dump written');
+      // Isolated from the critical-path try/catch below: coverage dumping is
+      // best-effort instrumentation, not part of graceful shutdown. A failure
+      // here (disk full, unwritable dump dir, inspector session error) must
+      // not be reported as a failed shutdown — the HTTP server, audit bus,
+      // and DB pool have already closed successfully by this point.
+      try {
+        await coverageAgent.dump('shutdown');
+        logger.info('Coverage: final shutdown dump written');
+      } catch (err) {
+        logger.warn({ err }, 'Coverage: final shutdown dump failed — shutdown continues normally');
+      }
     }
 
     clearTimeout(forceExitTimer);

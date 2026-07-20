@@ -64,4 +64,23 @@ describe('resolveCoverageConfig', () => {
     const { commitSha } = resolveCoverageConfig();
     expect(commitSha).toMatch(/^[0-9a-f]{40}$/);
   });
+
+  it('rejects a GIT_COMMIT_SHA containing path traversal, falling back to unknown', () => {
+    // Regression test: commitSha is used verbatim as a directory segment
+    // under COVERAGE_DUMPS_ROOT (NodeV8CoverageAgent.persist /
+    // coverageDumpService.ingestBrowserCoverage). An unsanitized value here
+    // could move dump writes outside the intended dumps root.
+    process.env.GIT_COMMIT_SHA = '../../tmp/evil';
+    expect(resolveCoverageConfig().commitSha).toBe('unknown');
+  });
+
+  it('rejects a GIT_COMMIT_SHA containing a path separator even without traversal', () => {
+    process.env.GIT_COMMIT_SHA = 'abc/def';
+    expect(resolveCoverageConfig().commitSha).toBe('unknown');
+  });
+
+  it('accepts a GIT_COMMIT_SHA containing only safe filename characters', () => {
+    process.env.GIT_COMMIT_SHA = 'a1b2c3d4.feature-branch_v2';
+    expect(resolveCoverageConfig().commitSha).toBe('a1b2c3d4.feature-branch_v2');
+  });
 });

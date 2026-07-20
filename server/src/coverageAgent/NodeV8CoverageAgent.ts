@@ -46,9 +46,28 @@ export class NodeV8CoverageAgent implements CoverageAgent {
   private readonly session = new Session();
   private readonly dumpIndex: DumpIndex;
   private started = false;
+  // Serializes reset/snapshot/dump: Profiler.takePreciseCoverage() clears
+  // counters as a side effect of reading them, so two overlapping admin
+  // requests (e.g. a reset racing a dump) could otherwise observe each
+  // other's clear — one dump would silently capture near-zero coverage
+  // instead of what it actually recorded. Every call to takePreciseCoverage
+  // is chained onto this promise so only one is ever in flight at a time.
+  private operationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly options: NodeV8CoverageAgentOptions) {
     this.dumpIndex = new DumpIndex(options.dumpsRoot);
+  }
+
+  /**
+   * Runs `fn` only after every previously-queued takePreciseCoverage call
+   * has settled, and queues subsequent calls behind it in turn.
+   */
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.operationQueue.then(fn, fn);
+    // Swallow rejections in the queue chain itself (not in `result`) so one
+    // failed operation doesn't permanently wedge the queue for later callers.
+    this.operationQueue = result.catch(() => undefined);
+    return result;
   }
 
   /** Directory this agent writes dumps and its index under. */
@@ -96,18 +115,28 @@ export class NodeV8CoverageAgent implements CoverageAgent {
   async reset(): Promise<void> {
     this.assertStarted();
     // No non-destructive "clear" exists — reading and discarding IS the reset.
-    await this.post('Profiler.takePreciseCoverage');
+    // Queued so it can't race a concurrent snapshot()/dump() on the same
+    // underlying takePreciseCoverage call.
+    await this.enqueue(() => this.post('Profiler.takePreciseCoverage'));
   }
 
   async snapshot(label: string): Promise<CoverageDump> {
     this.assertStarted();
-    const { result } = await this.post<ScriptCoverageResult>('Profiler.takePreciseCoverage');
+    const { result } = await this.enqueue(() =>
+      this.post<ScriptCoverageResult>('Profiler.takePreciseCoverage'),
+    );
+    // persist() (disk I/O) intentionally runs outside the queue — only the
+    // takePreciseCoverage call itself needs serializing against concurrent
+    // callers; writing this call's own already-captured result to disk has
+    // no shared state to race on.
     return this.persist(label, result, { writeToDisk: false });
   }
 
   async dump(label: string): Promise<CoverageDump> {
     this.assertStarted();
-    const { result } = await this.post<ScriptCoverageResult>('Profiler.takePreciseCoverage');
+    const { result } = await this.enqueue(() =>
+      this.post<ScriptCoverageResult>('Profiler.takePreciseCoverage'),
+    );
     return this.persist(label, result, { writeToDisk: true });
   }
 

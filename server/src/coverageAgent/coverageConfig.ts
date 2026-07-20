@@ -35,6 +35,13 @@ export interface CoverageConfig {
 const DEFAULT_GRANULARITY: CoverageGranularity = 'block';
 const UNKNOWN_COMMIT_SHA = 'unknown';
 
+// Commit SHA is used verbatim as a directory segment under COVERAGE_DUMPS_ROOT
+// (see NodeV8CoverageAgent.persist / coverageDumpService.ingestBrowserCoverage).
+// A path-separator or traversal sequence in an operator/CI-supplied
+// GIT_COMMIT_SHA/GITHUB_SHA value could otherwise move dump writes outside
+// the intended dumps root — restrict to a safe filename-segment charset.
+const SAFE_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;
+
 function resolveGranularity(): CoverageGranularity {
   return process.env.COVERAGE_GRANULARITY === 'function' ? 'function' : DEFAULT_GRANULARITY;
 }
@@ -45,14 +52,29 @@ function resolveGranularity(): CoverageGranularity {
  * Precedence: GIT_COMMIT_SHA (explicit, vendor-neutral override) >
  * GITHUB_SHA (set natively in GitHub Actions) > `git rev-parse HEAD` (local
  * dev fallback). Never throws — a missing .git directory (e.g. some prod
- * containers) degrades to 'unknown' rather than crashing server startup.
+ * containers) or a value unsafe to use as a filesystem path segment
+ * degrades to 'unknown' rather than crashing server startup or writing
+ * outside the dumps root.
  */
 function resolveCommitSha(): string {
   const explicit = process.env.GIT_COMMIT_SHA ?? process.env.GITHUB_SHA;
-  if (explicit) return explicit;
+  if (explicit) {
+    if (!SAFE_PATH_SEGMENT_PATTERN.test(explicit)) {
+      logger.warn(
+        { explicit },
+        'coverageConfig: GIT_COMMIT_SHA/GITHUB_SHA contains characters unsafe for a filesystem path segment — tagging dumps as unknown',
+      );
+      return UNKNOWN_COMMIT_SHA;
+    }
+    return explicit;
+  }
 
   try {
-    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    // git rev-parse HEAD output is a 40-char hex SHA under normal operation,
+    // so this should always match SAFE_PATH_SEGMENT_PATTERN — validated
+    // anyway for defense in depth against an unexpected/corrupted .git state.
+    return SAFE_PATH_SEGMENT_PATTERN.test(sha) ? sha : UNKNOWN_COMMIT_SHA;
   } catch (err) {
     logger.warn(
       { err },
