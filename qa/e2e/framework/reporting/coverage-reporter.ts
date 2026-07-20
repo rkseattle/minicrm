@@ -11,46 +11,24 @@
  *
  * Runs outside the fixture/test context (reporters have no access to the
  * `request` fixture), so it authenticates and calls the control API with a
- * plain fetch() rather than RestClient.
+ * plain fetch() rather than RestClient — see admin-session-fetch.ts.
  *
  * Register in playwright.config.ts:
  *   reporters: [['./framework/reporting/coverage-reporter.ts']]
  */
 
 import type { Reporter, FullResult } from '@playwright/test/reporter';
+import { fetchAdminSessionCookie, resolveE2eApiUrl } from '../coverageAgent/admin-session-fetch.js';
 
-const DEFAULT_API_URL = 'http://localhost:3001';
-const LOGIN_ENDPOINT = '/api/v1/auth/login';
 const DUMP_ENDPOINT = '/api/v1/admin/coverage/dump';
 const PER_RUN_MODE = 'per-run';
 
-/** Extracts the raw session cookie from a login response's Set-Cookie header. */
-function extractSessionCookie(setCookieHeader: string | null): string | undefined {
-  if (!setCookieHeader) return undefined;
-  return setCookieHeader.split(';')[0];
-}
-
 async function dumpFinalRunCoverage(status: FullResult['status']): Promise<void> {
-  const apiUrl = process.env['E2E_API_URL'] ?? DEFAULT_API_URL;
-  const email = process.env['E2E_ADMIN_EMAIL'];
-  const password = process.env['E2E_ADMIN_PASSWORD'];
-  if (!email || !password) {
-    // No admin credentials configured — nothing this reporter can do.
-    return;
-  }
+  const cookie = await fetchAdminSessionCookie();
+  if (!cookie) return;
 
   try {
-    const loginResponse = await fetch(`${apiUrl}${LOGIN_ENDPOINT}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!loginResponse.ok) return;
-
-    const cookie = extractSessionCookie(loginResponse.headers.get('set-cookie'));
-    if (!cookie) return;
-
-    await fetch(`${apiUrl}${DUMP_ENDPOINT}`, {
+    await fetch(`${resolveE2eApiUrl()}${DUMP_ENDPOINT}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({ label: `run-${status}` }),

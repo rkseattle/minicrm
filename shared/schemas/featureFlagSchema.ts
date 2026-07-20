@@ -17,6 +17,7 @@ import { z } from 'zod';
  * ai_rep_coaching_insights was added in migration 153 (MINCRM-474).
  * ai_lead_routing_suggestion was added in migration 154 (MINCRM-475).
  * ai_data_hygiene_assistant was added in migration 155 (MINCRM-476).
+ * coverage_instrumentation was added in migration 156 (MINCRM-606).
  */
 export const FEATURE_FLAG_KEYS = [
   'notes',
@@ -61,17 +62,19 @@ export const FEATURE_FLAG_KEYS = [
   'ai_rep_coaching_insights',
   'ai_lead_routing_suggestion',
   'ai_data_hygiene_assistant',
+  'coverage_instrumentation',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];
 
-/** UI grouping categories — must match the category values in migration 066. */
+/** UI grouping categories — must match the category values in migration 066 and 156. */
 export const FEATURE_FLAG_CATEGORIES = [
   'Core CRM',
   'Productivity',
   'Data',
   'Integrations',
   'AI',
+  'Developer Tools',
 ] as const;
 
 export type FeatureFlagCategory = (typeof FEATURE_FLAG_CATEGORIES)[number];

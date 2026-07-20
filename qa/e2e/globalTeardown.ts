@@ -11,33 +11,19 @@
  * MINCRM-606
  */
 
-const DEFAULT_API_URL = 'http://localhost:3001';
-const LOGIN_ENDPOINT = '/api/v1/auth/login';
+import {
+  fetchAdminSessionCookie,
+  resolveE2eApiUrl,
+} from './framework/coverageAgent/admin-session-fetch.js';
+
 const RESET_ENDPOINT = '/api/v1/admin/coverage/reset';
 
-function extractSessionCookie(setCookieHeader: string | null): string | undefined {
-  if (!setCookieHeader) return undefined;
-  return setCookieHeader.split(';')[0];
-}
-
 export default async function globalTeardown(): Promise<void> {
-  const apiUrl = process.env['E2E_API_URL'] ?? DEFAULT_API_URL;
-  const email = process.env['E2E_ADMIN_EMAIL'];
-  const password = process.env['E2E_ADMIN_PASSWORD'];
-  if (!email || !password) return;
+  const cookie = await fetchAdminSessionCookie();
+  if (!cookie) return;
 
   try {
-    const loginResponse = await fetch(`${apiUrl}${LOGIN_ENDPOINT}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!loginResponse.ok) return;
-
-    const cookie = extractSessionCookie(loginResponse.headers.get('set-cookie'));
-    if (!cookie) return;
-
-    await fetch(`${apiUrl}${RESET_ENDPOINT}`, {
+    await fetch(`${resolveE2eApiUrl()}${RESET_ENDPOINT}`, {
       method: 'POST',
       headers: { Cookie: cookie },
     });
