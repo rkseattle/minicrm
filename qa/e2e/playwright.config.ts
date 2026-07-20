@@ -22,6 +22,10 @@ export default defineConfig({
   // MINCRM-192: Run globalSetup once before all workers to save the admin session.
   globalSetup: './globalSetup.ts',
 
+  // MINCRM-605/607: Coverage reset safety net — best-effort, no-ops when
+  // coverage instrumentation is not configured.
+  globalTeardown: './globalTeardown.ts',
+
   // Point to qa/tsconfig.json so Playwright's transform resolves @framework/* path aliases.
   // MINCRM-126
   tsconfig: path.resolve(__dirname, '../tsconfig.json'),
@@ -74,6 +78,11 @@ export default defineConfig({
     // test-timing.jsonl (gitignored). Always-on so local runs accumulate history
     // used by the LPT shard assignment pipeline.
     ['./framework/reporting/timing-reporter.ts'],
+    // MINCRM-605/607: Coverage reporter — dumps final backend coverage when
+    // E2E_COVERAGE_GRANULARITY=per-run. Unconditional (not IS_CI-gated) so
+    // local COVERAGE=true runs also produce dumps for manual exploratory use.
+    // No-ops immediately unless that env var is set to 'per-run'.
+    ['./framework/reporting/coverage-reporter.ts'],
     // MINCRM-217: blob reporter for sharded CI runs only; MINCRM-218 aggregation job
     // uses `playwright merge-reports` to combine blob outputs across all shards.
     ...(process.env['SHARD_INDEX']

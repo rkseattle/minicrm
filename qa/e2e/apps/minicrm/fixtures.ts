@@ -36,11 +36,21 @@ import type { Page } from '@playwright/test';
 import { HealingRegistry } from '@framework/healing/index.js';
 import { createPageFacade } from '@framework/types/page-facade.js';
 import type { PageFacade } from '@framework/types/page-facade.js';
+import { pullAndSubmitBrowserCoverage } from '@framework/coverageAgent/browser-coverage-agent.js';
+import type { RestClient } from '@framework/clients/rest-client.js';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import './locale.js';
+
+/**
+ * Per-test frontend coverage granularity (MINCRM-605, MINCRM-607).
+ * 'per-run' is handled by coverage-reporter.ts instead — pulling and
+ * submitting per test there would double-count against the reporter's
+ * single end-of-run dump.
+ */
+const E2E_COVERAGE_PER_TEST = process.env['E2E_COVERAGE_GRANULARITY'] !== 'per-run';
 
 // File path substrings used to identify page-object frames in the V8 stack
 // when inferring heal-event attribution automatically.
@@ -93,7 +103,11 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // heal event produced by page objects in pages/minicrm/ is attributed
   // to "Unknown.unknown" because the framework layer has no knowledge of
   // where the app's page objects live.
-  page: async ({ page: rawPage }: { page: Page }, use, testInfo) => {
+  page: async (
+    { page: rawPage, restClient }: { page: Page; restClient: RestClient },
+    use,
+    testInfo,
+  ) => {
     const facade = createPageFacade(rawPage, testInfo.title, PAGE_OBJECT_PATH_SEGMENTS);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,6 +116,20 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
       await facade.unmockAllRoutes();
       HealingRegistry.instance.flush();
       HealingRegistry.instance._reset();
+
+      // MINCRM-605/607: per-test frontend coverage pull+submit. No-ops
+      // when the served bundle wasn't built with COVERAGE=true (the
+      // common case) or when E2E_COVERAGE_GRANULARITY=per-run (the
+      // reporter handles that mode instead — see coverage-reporter.ts).
+      // Each test runs in its own fresh browser context (Playwright's
+      // default; not overridden anywhere in this framework), so
+      // window.__coverage__ always starts empty per test — no explicit
+      // reset-at-start is needed to prevent cross-test bleed.
+      if (E2E_COVERAGE_PER_TEST) {
+        await pullAndSubmitBrowserCoverage(facade, restClient, testInfo.title).catch(() => {
+          // Coverage submission must never fail the test itself.
+        });
+      }
     }
   },
 });
