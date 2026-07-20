@@ -51,6 +51,11 @@ export class NodeV8CoverageAgent implements CoverageAgent {
     this.dumpIndex = new DumpIndex(options.dumpsRoot);
   }
 
+  /** Directory this agent writes dumps and its index under. */
+  get dumpsRoot(): string {
+    return this.options.dumpsRoot;
+  }
+
   /**
    * Promisified wrapper around inspector.Session#post, which is
    * callback-only on the stable (non-`/promises`) module.

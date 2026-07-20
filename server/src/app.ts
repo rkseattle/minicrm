@@ -27,6 +27,7 @@ import settingsRoutes from './routes/settings.js';
 import automationRoutes from './routes/automation.js';
 import webhookRoutes from './routes/webhooks.js';
 import demoRoutes from './routes/demo.js';
+import coverageRoutes from './routes/coverage.js';
 import searchRoutes from './routes/search.js';
 import importRoutes from './routes/import.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -145,6 +146,8 @@ app.use(`${API_V1}/automation/rules`, automationRoutes);
 app.use(`${API_V1}/admin/webhooks`, webhookRoutes);
 app.use(`${API_V1}/admin/demo`, demoRoutes);
 app.use(`${API_V1}/admin/import`, importRoutes);
+// Coverage/TIA control API (MINCRM-604, MINCRM-606)
+app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 app.use(`${API_V1}/search`, searchRoutes);
 app.use(`${API_V1}/attachments`, attachmentRoutes);
 app.use(`${API_V1}/audit-log`, auditLogRoutes);

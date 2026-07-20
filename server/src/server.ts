@@ -27,8 +27,8 @@ import { startRolloutScheduler, stopRolloutScheduler } from './services/featureF
 import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 import { NodeV8CoverageAgent } from './coverageAgent/NodeV8CoverageAgent.js';
-import { resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
-import { join } from 'path';
+import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
+import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
 
 /** Default port for the API server */
 const DEFAULT_PORT = 3001;
@@ -43,9 +43,6 @@ const ENCRYPTION_KEY_HEX_LENGTH = 64;
 
 /** Drain timeout in milliseconds before forcing process exit */
 const SHUTDOWN_TIMEOUT_MS = 10_000;
-
-/** Directory backend coverage dumps are written under (MINCRM-604). */
-const COVERAGE_DUMPS_ROOT = join(process.cwd(), 'coverage-dumps');
 
 const jwtSecret = process.env.JWT_SECRET ?? '';
 if (
@@ -104,6 +101,11 @@ const coverageAgent = coverageConfig.enabled
       granularity: coverageConfig.granularity,
     })
   : undefined;
+if (coverageAgent) {
+  // Makes the agent reachable from coverageDumpService without a
+  // server.ts -> service -> server.ts import cycle.
+  registerCoverageAgent(coverageAgent);
+}
 
 // Disable Nagle's algorithm for all connections so that small streaming frames
 // (e.g. the ConnectRPC stream-ready sentinel) are delivered immediately rather

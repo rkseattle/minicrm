@@ -7,7 +7,18 @@
  */
 
 import { execFileSync } from 'child_process';
+import { join } from 'path';
 import logger from '../logger.js';
+
+/**
+ * Directory backend/browser coverage dumps are written under.
+ *
+ * Single source of truth: both server.ts (constructing the agent) and
+ * coverageDumpService.ts (ingesting browser dumps, looking up dumps by ID)
+ * must resolve to the exact same path, or dumps written by one and looked
+ * up by the other would silently miss.
+ */
+export const COVERAGE_DUMPS_ROOT = join(process.cwd(), 'coverage-dumps');
 
 /** Coverage granularity: block/branch-level (default) or function-level only. */
 export type CoverageGranularity = 'block' | 'function';

@@ -633,6 +633,24 @@ const componentSchemas = {
       role: { type: 'string', enum: ['lead', 'member'], example: 'member' },
     },
   },
+
+  // ── Coverage (MINCRM-606) ─────────────────────────────────────────────────
+  CoverageDump: {
+    type: 'object',
+    required: ['dumpId', 'agent', 'label', 'commitSha', 'capturedAt', 'format', 'path'],
+    properties: {
+      dumpId: { type: 'string', format: 'uuid' },
+      agent: { type: 'string', enum: ['node-v8', 'browser-istanbul'] },
+      label: { type: 'string', example: 'coverage-instrumentation-spec' },
+      commitSha: { type: 'string', example: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
+      capturedAt: { type: 'string', format: 'date-time' },
+      format: { type: 'string', enum: ['v8-script-coverage', 'istanbul'] },
+      path: {
+        type: 'string',
+        description: 'Path to the raw payload file, relative to the dumps root',
+      },
+    },
+  },
 };
 
 /** swagger-jsdoc options */
@@ -706,6 +724,11 @@ All endpoints except \`POST /api/v1/auth/login\`, \`POST /api/v1/auth/logout\`, 
         name: 'Teams',
         description:
           'Team management with nested hierarchy and membership. Read endpoints are open to all authenticated users; mutations require admin role. (MINCRM-537)',
+      },
+      {
+        name: 'Coverage',
+        description:
+          'Coverage/TIA control API — drives the backend V8 coverage agent and ingests frontend coverage dumps. Admin only, feature-flag gated, off by default in production. (MINCRM-604, MINCRM-606)',
       },
     ],
     components: {
