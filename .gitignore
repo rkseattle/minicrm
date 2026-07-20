@@ -62,6 +62,8 @@ coverage-raw/
 test-results/
 junit.xml
 playwright-report/
+# MINCRM-604: runtime coverage dumps written by the backend V8 coverage agent
+coverage-dumps/
 
 # ─── QA workspace ─────────────────────────────────────────────────────────────
 qa/.env
