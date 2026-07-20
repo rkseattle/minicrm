@@ -85,6 +85,34 @@ describe('NodeV8CoverageAgent', () => {
     expect(first.dumpId).not.toBe(second.dumpId);
   });
 
+  it('serializes concurrent reset/snapshot/dump calls without error or dropped results', async () => {
+    // Regression test: reset/snapshot/dump previously called
+    // Profiler.takePreciseCoverage() on the shared inspector session with no
+    // serialization. Since that V8 call clears counters as a side effect of
+    // reading them, overlapping admin requests could race — this doesn't
+    // assert exact counter values (real V8 coverage counts depend on what
+    // code paths execute during the test run, which would make that
+    // assertion flaky), but does assert every concurrent call resolves
+    // cleanly with its own distinct dump, which the pre-fix race could not
+    // guarantee under contention.
+    const [resetResult, snapshotResult, dumpResultA, dumpResultB] = await Promise.all([
+      agent.reset(),
+      agent.snapshot('concurrent-snapshot'),
+      agent.dump('concurrent-dump-a'),
+      agent.dump('concurrent-dump-b'),
+    ]);
+
+    expect(resetResult).toBeUndefined();
+    expect(snapshotResult.dumpId).toMatch(UUID_PATTERN);
+    expect(dumpResultA.dumpId).toMatch(UUID_PATTERN);
+    expect(dumpResultB.dumpId).toMatch(UUID_PATTERN);
+    expect(new Set([snapshotResult.dumpId, dumpResultA.dumpId, dumpResultB.dumpId]).size).toBe(3);
+
+    // Both concurrent dumps must have actually persisted to disk.
+    await expect(readFile(join(dumpsRoot, dumpResultA.path), 'utf8')).resolves.toBeTruthy();
+    await expect(readFile(join(dumpsRoot, dumpResultB.path), 'utf8')).resolves.toBeTruthy();
+  });
+
   it('passes detailed:true for block granularity and detailed:false for function granularity', async () => {
     await agent.stop();
 
