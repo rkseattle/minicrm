@@ -4,13 +4,29 @@
 
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import istanbul from 'vite-plugin-istanbul';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Coverage/TIA frontend instrumentation (MINCRM-605). Only added when
+    // COVERAGE=true — an unset env var means this plugin is never in the
+    // array, so a normal `vite build`/`vite dev` is byte-identical to
+    // today. Sourcemapped to original .tsx via Vite's own sourcemap chain,
+    // which this plugin relies on rather than doing anything bespoke.
+    process.env.COVERAGE === 'true' &&
+      istanbul({
+        include: 'src/**/*.{ts,tsx}',
+        exclude: ['src/test/**', '**/*.test.tsx', '**/*.test.ts', 'node_modules'],
+        extension: ['.ts', '.tsx'],
+        requireEnv: false,
+        forceBuildInstrument: process.env.COVERAGE === 'true',
+      }),
+  ].filter(Boolean),
   resolve: {
     alias: {
       /** @shared resolves to the shared package at the repo root */
