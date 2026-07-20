@@ -25,7 +25,11 @@ interface IndexEntry {
 export class DumpIndex {
   private readonly indexPath: string;
   private readonly cache = new Map<string, IndexEntry>();
-  private cacheWarmed = false;
+  // Caches the in-flight warm operation itself, not just a completion flag —
+  // storing a boolean set before the read resolves would let a second
+  // concurrent cold-start lookup see "warmed" while the cache is still
+  // empty, producing a false negative for a dump that exists on disk.
+  private warmPromise: Promise<void> | undefined;
 
   constructor(private readonly dumpsRoot: string) {
     this.indexPath = join(dumpsRoot, 'index.jsonl');
@@ -53,10 +57,14 @@ export class DumpIndex {
     return this.cache.get(dumpId)?.metaPath;
   }
 
-  private async warmCache(): Promise<void> {
-    if (this.cacheWarmed) return;
-    this.cacheWarmed = true;
+  private warmCache(): Promise<void> {
+    // Assign synchronously so a second concurrent caller sees the same
+    // promise instead of starting its own redundant read.
+    this.warmPromise ??= this.readIndexIntoCache();
+    return this.warmPromise;
+  }
 
+  private async readIndexIntoCache(): Promise<void> {
     let raw: string;
     try {
       raw = await readFile(this.indexPath, 'utf8');

@@ -115,7 +115,12 @@ app.use(
 app.use(expressConnectMiddleware({ routes: registerAuditService, requestPathPrefix: '/api' }));
 
 // ── Body parsing ───────────────────────────────────────────────────────────────
-app.use(express.json());
+// MINCRM-606: raised from the express.json() default of 100kb — real frontend
+// Istanbul coverage payloads (POST /api/v1/admin/coverage/dump, source:'browser')
+// commonly exceed that (a manual test produced a ~370KB backend V8 payload;
+// browser Istanbul maps run comparably large or larger for a full SPA).
+const JSON_BODY_SIZE_LIMIT = '10mb';
+app.use(express.json({ limit: JSON_BODY_SIZE_LIMIT }));
 // SAML POST binding sends assertions as application/x-www-form-urlencoded (MINCRM-399)
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -299,6 +304,20 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       error: {
         code: 'SERVICE_UNAVAILABLE',
         message: 'The server is temporarily unable to handle the request. Please try again.',
+      },
+    });
+    return;
+  }
+
+  // body-parser/raw-body sets .type = 'entity.too.large' on oversized request
+  // bodies (MINCRM-606: relevant to POST /api/v1/admin/coverage/dump, which
+  // can carry a multi-MB frontend coverage payload) — map explicitly so it
+  // returns the app's error shape instead of falling through to a raw 500.
+  if ((err as { type?: string }).type === 'entity.too.large') {
+    res.status(413).json({
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'Request body exceeds the maximum allowed size.',
       },
     });
     return;

@@ -22,6 +22,7 @@ import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
 import { DumpIndex } from '../coverageAgent/dumpIndex.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from '../coverageAgent/coverageConfig.js';
 import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
+import logger from '../logger.js';
 
 // Single source of truth (coverageConfig.ts) — must match the root the
 // registered agent itself was constructed with, or dumps written by one
@@ -104,7 +105,13 @@ export async function findCoverageDump(dumpId: string): Promise<CoverageDump | u
   try {
     const raw = await readFile(metaPath, 'utf8');
     return JSON.parse(raw) as CoverageDump;
-  } catch {
+  } catch (err) {
+    // The index has an entry for this dumpId, so the metadata file was
+    // expected to exist and parse cleanly — a failure here means disk
+    // corruption or a partial write, not "dump never existed". Still
+    // returns undefined (the controller maps that to 404) but logs so
+    // it's distinguishable from a genuine unknown-dumpId lookup.
+    logger.warn({ err, dumpId, metaPath }, 'findCoverageDump: meta file missing or unparseable');
     return undefined;
   }
 }

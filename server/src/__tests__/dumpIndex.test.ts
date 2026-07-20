@@ -65,4 +65,25 @@ describe('DumpIndex', () => {
 
     await expect(index.lookup('never-appended')).resolves.toBeUndefined();
   });
+
+  it('finds both entries when two different dumpIds are looked up concurrently on a cold cache', async () => {
+    // Regression test: warmCache() previously set a "warmed" boolean
+    // synchronously before its readFile() awaited, so a second concurrent
+    // cold-start lookup could see "warmed" while the cache was still empty,
+    // producing a false miss for a dump that exists on disk.
+    const writer = new DumpIndex(dumpsRoot);
+    const metaPathA = join(dumpsRoot, 'abc123', 'dump-a.meta.json');
+    const metaPathB = join(dumpsRoot, 'abc123', 'dump-b.meta.json');
+    await writer.append(makeDump('dump-a'), metaPathA);
+    await writer.append(makeDump('dump-b'), metaPathB);
+
+    const reader = new DumpIndex(dumpsRoot);
+    const [resultA, resultB] = await Promise.all([
+      reader.lookup('dump-a'),
+      reader.lookup('dump-b'),
+    ]);
+
+    expect(resultA).toBe(metaPathA);
+    expect(resultB).toBe(metaPathB);
+  });
 });
