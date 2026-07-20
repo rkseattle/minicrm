@@ -40,7 +40,7 @@ const UNKNOWN_COMMIT_SHA = 'unknown';
 // A path-separator or traversal sequence in an operator/CI-supplied
 // GIT_COMMIT_SHA/GITHUB_SHA value could otherwise move dump writes outside
 // the intended dumps root — restrict to a safe filename-segment charset.
-const SAFE_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;
+const SAFE_PATH_SEGMENT_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
 
 function resolveGranularity(): CoverageGranularity {
   return process.env.COVERAGE_GRANULARITY === 'function' ? 'function' : DEFAULT_GRANULARITY;
