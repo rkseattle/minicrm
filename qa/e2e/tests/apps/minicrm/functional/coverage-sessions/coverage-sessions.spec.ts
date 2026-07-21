@@ -88,8 +88,8 @@ test('@functional @serial CVS-01: start and end succeed and return well-formed s
   expect(session.status).toBe('active');
   expect(session.version).toBe(1);
 
-  const listBeforeEnd = await restClient.get<{ sessions: SessionBody[] }>(SESSIONS_ENDPOINT);
-  expect(listBeforeEnd.body.sessions.map((s) => s.id)).toContain(session.id);
+  const listBeforeEnd = await restClient.get<{ data: SessionBody[] }>(SESSIONS_ENDPOINT);
+  expect(listBeforeEnd.body.data.map((s) => s.id)).toContain(session.id);
 
   const endRes = await restClient.post<{ session: SessionBody }>(
     `${SESSIONS_ENDPOINT}/${session.id}/end`,
@@ -98,8 +98,8 @@ test('@functional @serial CVS-01: start and end succeed and return well-formed s
   expect(endRes.status).toBe(200);
   expect(endRes.body.session.status).toBe('ended');
 
-  const listAfterEnd = await restClient.get<{ sessions: SessionBody[] }>(SESSIONS_ENDPOINT);
-  expect(listAfterEnd.body.sessions.map((s) => s.id)).not.toContain(session.id);
+  const listAfterEnd = await restClient.get<{ data: SessionBody[] }>(SESSIONS_ENDPOINT);
+  expect(listAfterEnd.body.data.map((s) => s.id)).not.toContain(session.id);
 });
 
 // ---------------------------------------------------------------------------

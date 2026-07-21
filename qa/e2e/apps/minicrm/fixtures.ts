@@ -113,11 +113,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // to "Unknown.unknown" because the framework layer has no knowledge of
   // where the app's page objects live.
   page: async (
-    {
-      page: rawPage,
-      restClient,
-      request,
-    }: { page: Page; restClient: RestClient; request: APIRequestContext },
+    { page: rawPage, request }: { page: Page; request: APIRequestContext },
     use,
     testInfo,
   ) => {
@@ -168,9 +164,17 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
       // window.__coverage__ always starts empty per test — no explicit
       // reset-at-start is needed to prevent cross-test bleed.
       if (E2E_COVERAGE_PER_TEST) {
-        const dump = await pullAndSubmitBrowserCoverage(facade, restClient, testInfo.title).catch(
-          () => undefined,
-        );
+        // Submitted via sessionClient (admin-authenticated), not the test's
+        // own restClient — a test may authenticate restClient as a
+        // non-admin ephemeral user, log it out, or never authenticate it at
+        // all, and POST /api/v1/admin/coverage/dump requires admin. Using
+        // restClient here would silently swallow an auth failure (the
+        // .catch below) and leave the session with no coverage dump.
+        const dump = await pullAndSubmitBrowserCoverage(
+          facade,
+          sessionClient,
+          testInfo.title,
+        ).catch(() => undefined);
 
         // MINCRM-609/610/612: attribute the dump to this test's session (if
         // one started) and close the session out. attempt tracks Playwright

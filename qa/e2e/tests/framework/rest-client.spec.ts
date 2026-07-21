@@ -307,6 +307,112 @@ test.describe('Auth strategies', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Default headers — set on a client instance, applied to every subsequent
+// request until cleared (MINCRM-610)
+// ---------------------------------------------------------------------------
+
+test.describe('Default headers', () => {
+  function captureHeadersContext(capturedHeaders: Record<string, string>): APIRequestContext {
+    return mockContext((_method, _url, options) => {
+      const headers = (options?.['headers'] ?? {}) as Record<string, string>;
+      Object.assign(capturedHeaders, headers);
+      return mockApiResponse(200, {});
+    });
+  }
+
+  test('constructor option applies a default header to every request', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      defaultHeaders: { 'x-coverage-correlation-id': 'corr-1' },
+    });
+
+    await client.get('/resource');
+
+    expect(headers['x-coverage-correlation-id']).toBe('corr-1');
+  });
+
+  test('setDefaultHeader() applies to requests made after it is called', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    client.setDefaultHeader('x-coverage-correlation-id', 'corr-2');
+    await client.post('/resource', {});
+
+    expect(headers['x-coverage-correlation-id']).toBe('corr-2');
+  });
+
+  test('setDefaultHeader() overwrites a previously-set value for the same name', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      defaultHeaders: { 'x-coverage-correlation-id': 'corr-1' },
+    });
+
+    client.setDefaultHeader('x-coverage-correlation-id', 'corr-2');
+    await client.get('/resource');
+
+    expect(headers['x-coverage-correlation-id']).toBe('corr-2');
+  });
+
+  test('clearDefaultHeader() stops the header from being sent on subsequent requests', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      defaultHeaders: { 'x-coverage-correlation-id': 'corr-1' },
+    });
+
+    client.clearDefaultHeader('x-coverage-correlation-id');
+    await client.get('/resource');
+
+    expect(headers['x-coverage-correlation-id']).toBeUndefined();
+  });
+
+  test('clearDefaultHeader() is a no-op when the header was never set', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    expect(() => client.clearDefaultHeader('x-never-set')).not.toThrow();
+    await client.get('/resource');
+
+    expect(headers['x-never-set']).toBeUndefined();
+  });
+
+  test('per-request extra header overrides a default header for the same key', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      defaultHeaders: { 'x-coverage-correlation-id': 'corr-default' },
+    });
+
+    await client.get('/resource', { headers: { 'x-coverage-correlation-id': 'corr-override' } });
+
+    expect(headers['x-coverage-correlation-id']).toBe('corr-override');
+  });
+
+  test('default header is applied alongside an auth strategy header', async () => {
+    const headers: Record<string, string> = {};
+    const ctx = captureHeadersContext(headers);
+    const client = new RestClient(ctx, {
+      baseUrl: 'http://localhost:5173',
+      authStrategy: new BearerAuthStrategy('token'),
+      defaultHeaders: { 'x-coverage-correlation-id': 'corr-1' },
+    });
+
+    await client.get('/resource');
+
+    expect(headers['Authorization']).toBe('Bearer token');
+    expect(headers['x-coverage-correlation-id']).toBe('corr-1');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AC3 (continued) — Base URL override works correctly
 // ---------------------------------------------------------------------------
 
