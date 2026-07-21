@@ -83,4 +83,20 @@ describe('resolveCoverageConfig', () => {
     process.env.GIT_COMMIT_SHA = 'a1b2c3d4.feature-branch_v2';
     expect(resolveCoverageConfig().commitSha).toBe('a1b2c3d4.feature-branch_v2');
   });
+
+  it('rejects a bare "." or ".." even though both match the safe charset', () => {
+    // "." and ".." contain no path-separator character, so a charset-only
+    // check would let them through — but join(dumpsRoot, '..', ...) still
+    // escapes the dumps root one level. Hardened via a negative lookahead.
+    process.env.GIT_COMMIT_SHA = '.';
+    expect(resolveCoverageConfig().commitSha).toBe('unknown');
+
+    process.env.GIT_COMMIT_SHA = '..';
+    expect(resolveCoverageConfig().commitSha).toBe('unknown');
+  });
+
+  it('still accepts a value that merely starts with dots, e.g. a hidden-file-style tag', () => {
+    process.env.GIT_COMMIT_SHA = '..abc';
+    expect(resolveCoverageConfig().commitSha).toBe('..abc');
+  });
 });
