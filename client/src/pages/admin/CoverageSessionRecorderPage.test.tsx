@@ -162,7 +162,7 @@ describe('CoverageSessionRecorderPage', () => {
     });
   });
 
-  it('checks out: dumps, records attribution, and ends the session', async () => {
+  it('checks out: dumps (attribution is automatic server-side) and ends the session', async () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
       http.post('/api/v1/admin/coverage/sessions', () =>
@@ -170,9 +170,6 @@ describe('CoverageSessionRecorderPage', () => {
       ),
       http.post('/api/v1/admin/coverage/dump', () =>
         HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 }),
-      ),
-      http.post('/api/v1/admin/coverage/sessions/:sessionId/dumps', () =>
-        HttpResponse.json({ sessionDump: { id: 'sd-1' } }, { status: 201 }),
       ),
       http.post('/api/v1/admin/coverage/sessions/:sessionId/end', () =>
         HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
@@ -199,7 +196,7 @@ describe('CoverageSessionRecorderPage', () => {
     expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
   });
 
-  it('shows an error when check-out fails', async () => {
+  it("still ends the session on check-out even when the dump request fails (coverage_instrumentation may be off independently of this page's own flag)", async () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
       http.post('/api/v1/admin/coverage/sessions', () =>
@@ -208,6 +205,44 @@ describe('CoverageSessionRecorderPage', () => {
       http.post('/api/v1/admin/coverage/dump', () =>
         HttpResponse.json(
           { error: { code: 'COVERAGE_NOT_ENABLED', message: 'Failed' } },
+          { status: 409 },
+        ),
+      ),
+      http.post('/api/v1/admin/coverage/sessions/:sessionId/end', () =>
+        HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
+      ),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
+    await user.click(screen.getByTestId('coverage-session-check-in-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('coverage-session-check-out-button'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('coverage-session-recording-panel')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows an error when check-out fails to end the session', async () => {
+    server.use(
+      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.post('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
+      ),
+      http.post('/api/v1/admin/coverage/dump', () =>
+        HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 }),
+      ),
+      http.post('/api/v1/admin/coverage/sessions/:sessionId/end', () =>
+        HttpResponse.json(
+          { error: { code: 'COVERAGE_SESSION_CONFLICT', message: 'Failed' } },
           { status: 409 },
         ),
       ),

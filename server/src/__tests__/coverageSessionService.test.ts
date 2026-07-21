@@ -15,9 +15,11 @@ import {
   endCoverageSession,
   findCoverageSession,
   listActiveCoverageSessions,
+  findActiveCoverageSessionByCorrelationId,
   recordCoverageSessionDump,
   CoverageSessionNotFoundError,
   CoverageSessionConflictError,
+  CoverageSessionEndedError,
 } from '../services/coverageSessionService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -231,6 +233,30 @@ describe('listActiveCoverageSessions', () => {
   });
 });
 
+describe('findActiveCoverageSessionByCorrelationId', () => {
+  it('finds an active session by its correlation ID', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+
+    const found = await findActiveCoverageSessionByCorrelationId(session.correlationId);
+
+    expect(found?.id).toBe(session.id);
+  });
+
+  it('returns null once the session has ended', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await endCoverageSession(session.id, session.version, actor);
+
+    const found = await findActiveCoverageSessionByCorrelationId(session.correlationId);
+
+    expect(found).toBeNull();
+  });
+
+  it('returns null for an unknown correlation ID', async () => {
+    const found = await findActiveCoverageSessionByCorrelationId(randomUUID());
+    expect(found).toBeNull();
+  });
+});
+
 // ── recordCoverageSessionDump ────────────────────────────────────────────────
 
 describe('recordCoverageSessionDump', () => {
@@ -296,6 +322,30 @@ describe('recordCoverageSessionDump', () => {
     await expect(
       recordCoverageSessionDump('00000000-0000-0000-0000-000000000000', randomUUID(), randomUUID()),
     ).rejects.toMatchObject({ code: '23503' });
+  });
+
+  it('rejects a dump recorded against an already-ended session', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await endCoverageSession(session.id, session.version, actor);
+
+    await expect(
+      recordCoverageSessionDump(session.id, randomUUID(), session.correlationId),
+    ).rejects.toBeInstanceOf(CoverageSessionEndedError);
+  });
+
+  it('does not insert a row when rejecting a dump for an ended session', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await endCoverageSession(session.id, session.version, actor);
+    const dumpId = randomUUID();
+
+    await expect(
+      recordCoverageSessionDump(session.id, dumpId, session.correlationId),
+    ).rejects.toBeInstanceOf(CoverageSessionEndedError);
+
+    const rows = await pool.query('SELECT id FROM coverage_session_dumps WHERE dump_id = $1', [
+      dumpId,
+    ]);
+    expect(rows.rows).toHaveLength(0);
   });
 
   it('allows concurrent sessions to record dumps without cross-contamination', async () => {

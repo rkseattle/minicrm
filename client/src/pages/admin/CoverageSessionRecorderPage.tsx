@@ -4,7 +4,15 @@
  * session, optionally ties it to a MiniCRM issue key), records while
  * exercising the app in this same browser tab (the correlation-ID header is
  * injected for the duration via the shared axios instance), and checks out
- * to trigger a dump, attribute it to the session, and end it.
+ * to trigger a dump and end the session.
+ *
+ * Dump attribution is automatic server-side (see
+ * attributeDumpToSessionIfCorrelated in coverageController.ts): because every
+ * request from this tab already carries x-coverage-correlation-id while
+ * recording, the dump POST below is attributed to the active session that
+ * correlation ID belongs to without a separate client-side call — calling
+ * the record-dump endpoint explicitly here as well would just 409 on the
+ * dump ID the auto-attribution path already claimed.
  */
 
 import { useState } from 'react';
@@ -24,8 +32,6 @@ import { CORRELATION_ID_HEADER } from '@shared/schemas/coverageSessionSchema.js'
 import type { CoverageSession } from '@shared/schemas/coverageSessionSchema.js';
 
 const COVERAGE_DUMP_ENDPOINT = '/admin/coverage/dump';
-const COVERAGE_SESSION_DUMPS_ENDPOINT = (sessionId: string): string =>
-  `/admin/coverage/sessions/${sessionId}/dumps`;
 
 interface CoverageDumpResponse {
   dump: { dumpId: string };
@@ -75,18 +81,20 @@ export default function CoverageSessionRecorderPage() {
 
   const checkOutMutation = useMutation({
     mutationFn: async (session: CoverageSession) => {
-      const dumpResponse = await apiClient.post<CoverageDumpResponse>(COVERAGE_DUMP_ENDPOINT, {
-        label: session.label,
-      });
-      const dumpId = dumpResponse.data.dump.dumpId;
-      await apiClient.post(COVERAGE_SESSION_DUMPS_ENDPOINT(session.id), {
-        dumpId,
-        correlationId: session.correlationId,
-      });
+      // Best-effort: coverage_instrumentation may be off even though
+      // coverage_session_management (this page's own gate) is on — the two
+      // flags are deliberately independent (see migration 157). A failed
+      // dump must not prevent ending the session and clearing the header;
+      // otherwise a disabled-instrumentation environment would permanently
+      // strand every recording session.
+      await apiClient
+        .post<CoverageDumpResponse>(COVERAGE_DUMP_ENDPOINT, {
+          label: session.label,
+        })
+        .catch(() => undefined);
       return endCoverageSession(session.id, session.version);
     },
     onSuccess: () => {
-      delete apiClient.defaults.headers.common[CORRELATION_ID_HEADER];
       setRecordingSession(null);
       setLabel('');
       setIssueKey('');
@@ -94,6 +102,13 @@ export default function CoverageSessionRecorderPage() {
       void queryClient.invalidateQueries({ queryKey: COVERAGE_SESSIONS_QUERY_KEY });
     },
     onError: () => setActionError(t('coverageSessionRecorder.checkOutError')),
+    // Always clear the correlation header when checking out settles, success
+    // or failure — leaving it set on the shared axios instance would tag
+    // every subsequent request from this tab (any page, not just this one)
+    // until a full reload, with no UI affordance to notice or clear it.
+    onSettled: () => {
+      delete apiClient.defaults.headers.common[CORRELATION_ID_HEADER];
+    },
   });
 
   if (featureFlagLoading) {

@@ -255,7 +255,7 @@ router.post(
  *       403:
  *         $ref: '#/components/responses/Forbidden'
  *       409:
- *         description: dumpId is already attributed to a session
+ *         description: dumpId is already attributed to a session, or the session has already ended
  */
 router.post(
   '/:sessionId/dumps',
