@@ -132,6 +132,16 @@ export default function CoverageSessionRecorderPage() {
       return endCoverageSession(session.id, session.version);
     },
     onSuccess: () => {
+      // Clear the correlation header only on the success path, when the
+      // recorder actually leaves the recording state (recordingSession is
+      // set to null below). Clearing it unconditionally in onSettled would
+      // leave the UI showing "recording" (recordingSession still set after
+      // a failed endCoverageSession — see onError) while new requests from
+      // the tab silently stop carrying the header, attributing nothing to
+      // any session with no indication to the admin. Leaving it set on the
+      // shared axios instance until a real reload is safer than that silent
+      // gap: it just means the next successful check-out clears it.
+      delete apiClient.defaults.headers.common[CORRELATION_ID_HEADER];
       setRecordingSession(null);
       setLabel('');
       setIssueKey('');
@@ -139,13 +149,6 @@ export default function CoverageSessionRecorderPage() {
       void queryClient.invalidateQueries({ queryKey: COVERAGE_SESSIONS_QUERY_KEY });
     },
     onError: () => setActionError(t('coverageSessionRecorder.checkOutError')),
-    // Always clear the correlation header when checking out settles, success
-    // or failure — leaving it set on the shared axios instance would tag
-    // every subsequent request from this tab (any page, not just this one)
-    // until a full reload, with no UI affordance to notice or clear it.
-    onSettled: () => {
-      delete apiClient.defaults.headers.common[CORRELATION_ID_HEADER];
-    },
   });
 
   if (featureFlagLoading) {
