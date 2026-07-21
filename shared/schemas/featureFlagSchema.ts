@@ -18,6 +18,7 @@ import { z } from 'zod';
  * ai_lead_routing_suggestion was added in migration 154 (MINCRM-475).
  * ai_data_hygiene_assistant was added in migration 155 (MINCRM-476).
  * coverage_instrumentation was added in migration 156 (MINCRM-606).
+ * coverage_session_management was added in migration 157 (MINCRM-609..612).
  */
 export const FEATURE_FLAG_KEYS = [
   'notes',
@@ -63,6 +64,7 @@ export const FEATURE_FLAG_KEYS = [
   'ai_lead_routing_suggestion',
   'ai_data_hygiene_assistant',
   'coverage_instrumentation',
+  'coverage_session_management',
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

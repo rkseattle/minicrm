@@ -2572,6 +2572,23 @@
       "opportunity_zero_value": "交易金额为 $0"
     }
   },
+  "coverageSessionRecorder": {
+    "heading": "覆盖率会话记录器",
+    "description": "记录一次手动测试会话，以便您的探索性测试像自动化测试一样被捕获和归因。",
+    "notAvailable": "此功能不可用。",
+    "labelInputLabel": "会话标签",
+    "issueKeyInputLabel": "问题编号（可选）",
+    "checkInButton": "签到",
+    "checkOutButton": "签退",
+    "checkingOut": "正在签退…",
+    "checkInError": "无法启动覆盖率会话，请重试。",
+    "checkOutError": "无法结束覆盖率会话，请重试。",
+    "recordingLabel": "正在记录：{{label}}",
+    "recordingSince": "开始于 {{date}}",
+    "activeSessionsHeading": "活动会话",
+    "loadError": "无法加载活动的覆盖率会话。",
+    "noActiveSessions": "当前没有活动的覆盖率会话。"
+  },
   "notifications": {
     "bellLabel": "通知（{{count}} 条未读）",
     "heading": "通知",

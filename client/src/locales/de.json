@@ -2572,6 +2572,23 @@
       "opportunity_zero_value": "Deal-Wert beträgt 0 $"
     }
   },
+  "coverageSessionRecorder": {
+    "heading": "Coverage-Sitzungsrekorder",
+    "description": "Zeichnen Sie eine manuelle Testsitzung auf, damit Ihre explorativen Tests erfasst und wie automatisierte Tests zugeordnet werden.",
+    "notAvailable": "Diese Funktion ist nicht verfügbar.",
+    "labelInputLabel": "Sitzungsbezeichnung",
+    "issueKeyInputLabel": "Ticket-Schlüssel (optional)",
+    "checkInButton": "Einchecken",
+    "checkOutButton": "Auschecken",
+    "checkingOut": "Wird ausgecheckt…",
+    "checkInError": "Die Coverage-Sitzung konnte nicht gestartet werden. Bitte erneut versuchen.",
+    "checkOutError": "Die Coverage-Sitzung konnte nicht beendet werden. Bitte erneut versuchen.",
+    "recordingLabel": "Aufzeichnung: {{label}}",
+    "recordingSince": "Gestartet {{date}}",
+    "activeSessionsHeading": "Aktive Sitzungen",
+    "loadError": "Aktive Coverage-Sitzungen konnten nicht geladen werden.",
+    "noActiveSessions": "Derzeit sind keine Coverage-Sitzungen aktiv."
+  },
   "notifications": {
     "bellLabel": "Benachrichtigungen ({{count}} ungelesen)",
     "heading": "Benachrichtigungen",
