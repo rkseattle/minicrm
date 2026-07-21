@@ -2572,6 +2572,23 @@
       "opportunity_zero_value": "El valor del negocio es $0"
     }
   },
+  "coverageSessionRecorder": {
+    "heading": "Grabador de sesiones de cobertura",
+    "description": "Graba una sesión de pruebas manuales para que tus pruebas exploratorias queden capturadas y atribuidas como las pruebas automatizadas.",
+    "notAvailable": "Esta función no está disponible.",
+    "labelInputLabel": "Etiqueta de la sesión",
+    "issueKeyInputLabel": "Clave de incidencia (opcional)",
+    "checkInButton": "Registrar entrada",
+    "checkOutButton": "Registrar salida",
+    "checkingOut": "Registrando salida…",
+    "checkInError": "No se pudo iniciar la sesión de cobertura. Inténtalo de nuevo.",
+    "checkOutError": "No se pudo finalizar la sesión de cobertura. Inténtalo de nuevo.",
+    "recordingLabel": "Grabando: {{label}}",
+    "recordingSince": "Iniciada {{date}}",
+    "activeSessionsHeading": "Sesiones activas",
+    "loadError": "No se pudieron cargar las sesiones de cobertura activas.",
+    "noActiveSessions": "No hay sesiones de cobertura activas en este momento."
+  },
   "notifications": {
     "bellLabel": "Notificaciones ({{count}} sin leer)",
     "heading": "Notificaciones",
