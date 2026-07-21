@@ -44,6 +44,15 @@ export class CoverageSessionConflictError extends Error {
   }
 }
 
+/** Thrown when attempting to record a dump against a session that has already ended. */
+export class CoverageSessionEndedError extends Error {
+  readonly code = 'COVERAGE_SESSION_ENDED';
+  constructor(sessionId: string) {
+    super(`Coverage session ${sessionId} has already ended — cannot attribute a dump to it.`);
+    this.name = 'CoverageSessionEndedError';
+  }
+}
+
 interface CoverageSessionRow {
   id: string;
   label: string;
@@ -208,6 +217,24 @@ export async function listActiveCoverageSessions(): Promise<CoverageSession[]> {
 }
 
 /**
+ * Finds the active session tagged with the given correlation ID, or null if
+ * none is active for it (unknown ID, or its session already ended). Used by
+ * the coverage dump endpoint to auto-attribute a dump when the caller sent
+ * the x-coverage-correlation-id header, without requiring every caller to
+ * separately know and pass a sessionId. (MINCRM-610)
+ */
+export async function findActiveCoverageSessionByCorrelationId(
+  correlationId: string,
+): Promise<CoverageSession | null> {
+  const result = await pool.query<CoverageSessionRow>(
+    `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
+     FROM coverage_sessions WHERE correlation_id = $1 AND status = 'active'`,
+    [correlationId],
+  );
+  return result.rows[0] ? toCoverageSession(result.rows[0]) : null;
+}
+
+/**
  * Records a coverage dump's attribution to a session. Not wrapped in the
  * audit-log pattern — this is high-frequency telemetry (one row per test per
  * session), not a user-facing mutation of session state, mirroring how
@@ -224,6 +251,10 @@ export async function recordCoverageSessionDump(
   correlationId: string,
   options: { testId?: string; testName?: string; attempt?: number } = {},
 ): Promise<CoverageSessionDump> {
+  // INSERT ... SELECT rather than a plain VALUES INSERT so "the session must
+  // be active" is enforced atomically by the same statement that performs the
+  // insert — no separate check-then-insert TOCTOU window. A dump can only
+  // ever be attributed to a session while it's still active. (MINCRM-612)
   const result = await pool.query<{
     id: string;
     session_id: string;
@@ -235,7 +266,8 @@ export async function recordCoverageSessionDump(
     recorded_at: Date;
   }>(
     `INSERT INTO coverage_session_dumps (session_id, dump_id, correlation_id, test_id, test_name, attempt)
-     VALUES ($1, $2, $3, $4, $5, $6)
+     SELECT $1, $2, $3, $4, $5, $6
+     WHERE EXISTS (SELECT 1 FROM coverage_sessions WHERE id = $1 AND status = 'active')
      RETURNING id, session_id, dump_id, correlation_id, test_id, test_name, attempt, recorded_at`,
     [
       sessionId,
@@ -246,6 +278,20 @@ export async function recordCoverageSessionDump(
       options.attempt ?? 1,
     ],
   );
+
+  if (result.rowCount === 0) {
+    const sessionCheck = await pool.query<{ id: string }>(
+      'SELECT id FROM coverage_sessions WHERE id = $1',
+      [sessionId],
+    );
+    if (sessionCheck.rows.length === 0) {
+      throw Object.assign(new Error(`Coverage session ${sessionId} not found`), {
+        code: '23503', // mirrors the FK-violation code the controller already maps to 400
+      });
+    }
+    throw new CoverageSessionEndedError(sessionId);
+  }
+
   const row = result.rows[0];
   return {
     id: row.id,

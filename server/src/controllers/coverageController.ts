@@ -18,8 +18,39 @@ import {
   resetCoverage,
   snapshotCoverage,
 } from '../services/coverageDumpService.js';
+import {
+  findActiveCoverageSessionByCorrelationId,
+  recordCoverageSessionDump,
+} from '../services/coverageSessionService.js';
+import logger from '../logger.js';
 
 const DEFAULT_DUMP_LABEL = 'unlabeled';
+
+/**
+ * Best-effort: if the caller sent x-coverage-correlation-id (see
+ * correlationId middleware) and it matches a currently-active session,
+ * attributes this dump to that session automatically — the auto-attribution
+ * path MINCRM-610 describes ("agent partitions coverage by correlation ID
+ * rather than global reset/dump"), so callers that already propagate the
+ * header don't also need to separately call the record-dump endpoint.
+ * Never allowed to fail the dump response itself: attribution is
+ * observability layered on top of the dump, not a precondition for it.
+ */
+async function attributeDumpToSessionIfCorrelated(req: Request, dumpId: string): Promise<void> {
+  const correlationId = req.coverageCorrelationId;
+  if (!correlationId) return;
+
+  try {
+    const session = await findActiveCoverageSessionByCorrelationId(correlationId);
+    if (!session) return;
+    await recordCoverageSessionDump(session.id, dumpId, correlationId);
+  } catch (err) {
+    logger.warn(
+      { err, dumpId, correlationId },
+      'dumpCoverageHandler: failed to auto-attribute dump to correlated session',
+    );
+  }
+}
 
 /**
  * POST /api/v1/admin/coverage/reset
@@ -95,11 +126,13 @@ export async function dumpCoverageHandler(req: Request, res: Response): Promise<
         return;
       }
       const dump = await ingestBrowserCoverage(label, payload);
+      await attributeDumpToSessionIfCorrelated(req, dump.dumpId);
       res.status(201).json({ dump });
       return;
     }
 
     const dump = await dumpBackendCoverage(label);
+    await attributeDumpToSessionIfCorrelated(req, dump.dumpId);
     res.status(201).json({ dump });
   } catch (err) {
     if (err instanceof CoverageNotEnabledError) {

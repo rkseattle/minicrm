@@ -160,10 +160,14 @@ app.use(`${API_V1}/automation/rules`, automationRoutes);
 app.use(`${API_V1}/admin/webhooks`, webhookRoutes);
 app.use(`${API_V1}/admin/demo`, demoRoutes);
 app.use(`${API_V1}/admin/import`, importRoutes);
+// Coverage/TIA session management (MINCRM-609..612) — mounted at the more
+// specific /admin/coverage/sessions path BEFORE the general /admin/coverage
+// router below, so a future route added to coverage.ts (e.g. a top-level
+// `/:something`) can never shadow this one, mirroring the
+// /reports/custom-before-/reports precedent elsewhere in this file.
+app.use(`${API_V1}/admin/coverage/sessions`, coverageSessionRoutes);
 // Coverage/TIA control API (MINCRM-604, MINCRM-606)
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
-// Coverage/TIA session management (MINCRM-609..612)
-app.use(`${API_V1}/admin/coverage/sessions`, coverageSessionRoutes);
 app.use(`${API_V1}/search`, searchRoutes);
 app.use(`${API_V1}/attachments`, attachmentRoutes);
 app.use(`${API_V1}/audit-log`, auditLogRoutes);
