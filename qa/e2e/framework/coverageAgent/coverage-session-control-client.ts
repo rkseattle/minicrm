@@ -113,12 +113,22 @@ export async function getCoverageSession(
   return response.body.session;
 }
 
-/** Lists currently-active coverage sessions. */
+/**
+ * Lists currently-active coverage sessions. The control API paginates this
+ * endpoint (see paginationParamsSchema) — this wrapper always requests the
+ * first page. Callers needing more than PAGINATION_DEFAULT_LIMIT sessions
+ * should call the endpoint directly with an explicit page/limit.
+ */
 export async function listActiveCoverageSessions(
   restClient: RestClient,
 ): Promise<CoverageSessionMetadata[]> {
-  const response = await restClient.get<{ sessions: CoverageSessionMetadata[] }>(SESSIONS_ENDPOINT);
-  return response.body.sessions;
+  const response = await restClient.get<{
+    data: CoverageSessionMetadata[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(SESSIONS_ENDPOINT);
+  return response.body.data;
 }
 
 export interface RecordCoverageSessionDumpParams {

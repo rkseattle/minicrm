@@ -15,7 +15,7 @@
  * dump ID the auto-attribution path already claimed.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import NavBar from '@/components/NavBar.js';
@@ -37,6 +37,17 @@ interface CoverageDumpResponse {
   dump: { dumpId: string };
 }
 
+/**
+ * Reads window.__coverage__ from this same tab. Present only when the served
+ * bundle was built with COVERAGE=true (vite-plugin-istanbul instrumentation
+ * — see client/vite.config.ts); absent in a normal build, in which case
+ * there's nothing to submit and check-out just ends the session.
+ */
+function pullBrowserCoverage(): Record<string, unknown> | undefined {
+  const globalWithCoverage = window as unknown as { __coverage__?: Record<string, unknown> };
+  return globalWithCoverage.__coverage__;
+}
+
 export default function CoverageSessionRecorderPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -47,6 +58,20 @@ export default function CoverageSessionRecorderPage() {
   const [issueKey, setIssueKey] = useState('');
   const [recordingSession, setRecordingSession] = useState<CoverageSession | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Clears the correlation header if the admin navigates away (or the page
+  // otherwise unmounts) while still checked in, rather than only on an
+  // explicit check-out. Without this, leaving the recorder mid-session
+  // leaves the header on the shared axios instance, silently tagging every
+  // later request from the tab — on any page, not just this one — with a
+  // session correlation ID until a full reload.
+  useEffect(() => {
+    return () => {
+      if (recordingSession) {
+        delete apiClient.defaults.headers.common[CORRELATION_ID_HEADER];
+      }
+    };
+  }, [recordingSession]);
 
   const {
     data: activeSessionsResponse,
@@ -82,17 +107,28 @@ export default function CoverageSessionRecorderPage() {
 
   const checkOutMutation = useMutation({
     mutationFn: async (session: CoverageSession) => {
-      // Best-effort: coverage_instrumentation may be off even though
-      // coverage_session_management (this page's own gate) is on — the two
-      // flags are deliberately independent (see migration 157). A failed
-      // dump must not prevent ending the session and clearing the header;
-      // otherwise a disabled-instrumentation environment would permanently
-      // strand every recording session.
-      await apiClient
-        .post<CoverageDumpResponse>(COVERAGE_DUMP_ENDPOINT, {
-          label: session.label,
-        })
-        .catch(() => undefined);
+      // Submit THIS tab's browser (Istanbul) coverage — the exploratory
+      // interactions the recorder exists to capture — not a bare {label}
+      // POST, which the server would instead treat as a backend V8 dump
+      // request and record process-wide server counters unrelated to what
+      // the admin actually clicked through.
+      const coverageMap = pullBrowserCoverage();
+      if (coverageMap && Object.keys(coverageMap).length > 0) {
+        // Best-effort: coverage_instrumentation may be off even though
+        // coverage_session_management (this page's own gate) is on — the two
+        // flags are deliberately independent (see migration 157), and the
+        // served bundle may not even be an instrumented build. A failed
+        // dump must not prevent ending the session and clearing the header;
+        // otherwise a disabled-instrumentation environment would permanently
+        // strand every recording session.
+        await apiClient
+          .post<CoverageDumpResponse>(COVERAGE_DUMP_ENDPOINT, {
+            label: session.label,
+            source: 'browser',
+            payload: coverageMap,
+          })
+          .catch(() => undefined);
+      }
       return endCoverageSession(session.id, session.version);
     },
     onSuccess: () => {

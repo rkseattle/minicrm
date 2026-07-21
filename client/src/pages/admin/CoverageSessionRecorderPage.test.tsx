@@ -172,7 +172,7 @@ describe('CoverageSessionRecorderPage', () => {
     });
   });
 
-  it('checks out: dumps (attribution is automatic server-side) and ends the session', async () => {
+  it('checks out: no window.__coverage__ present, so no dump is submitted, but the session still ends', async () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
@@ -180,9 +180,9 @@ describe('CoverageSessionRecorderPage', () => {
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
       ),
-      http.post('/api/v1/admin/coverage/dump', () =>
-        HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 }),
-      ),
+      http.post('/api/v1/admin/coverage/dump', () => {
+        throw new Error('dump must not be submitted when window.__coverage__ is absent');
+      }),
       http.post('/api/v1/admin/coverage/sessions/:sessionId/end', () =>
         HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
       ),
@@ -206,6 +206,88 @@ describe('CoverageSessionRecorderPage', () => {
     });
     // Back to the check-in form after checking out.
     expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
+  });
+
+  it('checks out: submits window.__coverage__ as a browser-source dump when present', async () => {
+    const coverageMap = { 'src/App.tsx': { path: 'src/App.tsx', s: { '0': 1 } } };
+    (window as unknown as { __coverage__?: unknown }).__coverage__ = coverageMap;
+
+    let capturedBody: unknown;
+    server.use(
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
+      http.post('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
+      ),
+      http.post('/api/v1/admin/coverage/dump', async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 });
+      }),
+      http.post('/api/v1/admin/coverage/sessions/:sessionId/end', () =>
+        HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
+      ),
+    );
+
+    try {
+      renderPage();
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+      });
+
+      const user = userEvent.setup();
+      await user.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
+      await user.click(screen.getByTestId('coverage-session-check-in-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('coverage-session-check-out-button'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('coverage-session-recording-panel')).not.toBeInTheDocument();
+      });
+
+      // Must be tagged as a browser dump with the actual coverage payload —
+      // not the bare {label} POST that would take the backend-dump path
+      // and record unrelated server counters instead.
+      expect(capturedBody).toMatchObject({ source: 'browser', payload: coverageMap });
+    } finally {
+      delete (window as unknown as { __coverage__?: unknown }).__coverage__;
+    }
+  });
+
+  it('clears the correlation header on unmount even without an explicit check-out', async () => {
+    server.use(
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
+      http.post('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
+      ),
+    );
+
+    const { unmount } = renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
+    await user.click(screen.getByTestId('coverage-session-check-in-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-recording-panel')).toBeInTheDocument();
+    });
+
+    const { default: apiClient } = await import('@/api/axiosInstance.js');
+    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
+      ACTIVE_SESSION.correlationId,
+    );
+
+    unmount();
+
+    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBeUndefined();
   });
 
   it("still ends the session on check-out even when the dump request fails (coverage_instrumentation may be off independently of this page's own flag)", async () => {
