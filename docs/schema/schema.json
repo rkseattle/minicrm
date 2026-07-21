@@ -10161,7 +10161,7 @@
         {
           "name": "started_by",
           "type": "uuid",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "started_at",
@@ -10250,7 +10250,7 @@
         {
           "name": "coverage_sessions_started_by_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE",
+          "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE SET NULL",
           "table": "public.coverage_sessions",
           "referenced_table": "public.users",
           "columns": [
@@ -11944,8 +11944,8 @@
       "parent_columns": [
         "id"
       ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE"
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.coverage_session_dumps",

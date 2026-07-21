@@ -11,6 +11,7 @@ import {
   endCoverageSessionRequestSchema,
   recordCoverageSessionDumpRequestSchema,
 } from '@minicrm/shared/schemas/coverageSessionSchema.js';
+import { paginationParamsSchema } from '@minicrm/shared/schemas/paginationSchema.js';
 import {
   startCoverageSession,
   endCoverageSession,
@@ -20,6 +21,7 @@ import {
   CoverageSessionNotFoundError,
   CoverageSessionConflictError,
   CoverageSessionEndedError,
+  CoverageSessionCorrelationMismatchError,
 } from '../services/coverageSessionService.js';
 
 const sessionIdParamSchema = z.string().uuid();
@@ -63,14 +65,25 @@ export async function startCoverageSessionHandler(req: Request, res: Response): 
 
 /**
  * GET /api/v1/admin/coverage/sessions
- * Lists currently-active coverage sessions. Admin only.
+ * Lists currently-active coverage sessions, paginated. Admin only.
  */
 export async function listActiveCoverageSessionsHandler(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
-  const sessions = await listActiveCoverageSessions();
-  res.status(200).json({ sessions });
+  const paginationParsed = paginationParamsSchema.safeParse({
+    page: req.query['page'],
+    limit: req.query['limit'],
+  });
+  if (!paginationParsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: paginationParsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const result = await listActiveCoverageSessions(paginationParsed.data);
+  res.status(200).json(result);
 }
 
 /**
@@ -149,6 +162,10 @@ export async function recordCoverageSessionDumpHandler(req: Request, res: Respon
   } catch (err: unknown) {
     if (err instanceof CoverageSessionEndedError) {
       res.status(409).json({ error: { code: err.code, message: err.message } });
+      return;
+    }
+    if (err instanceof CoverageSessionCorrelationMismatchError) {
+      res.status(400).json({ error: { code: err.code, message: err.message } });
       return;
     }
     const code =

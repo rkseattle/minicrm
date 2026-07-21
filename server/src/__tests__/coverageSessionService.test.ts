@@ -20,6 +20,7 @@ import {
   CoverageSessionNotFoundError,
   CoverageSessionConflictError,
   CoverageSessionEndedError,
+  CoverageSessionCorrelationMismatchError,
 } from '../services/coverageSessionService.js';
 import { createUser } from '../services/userService.js';
 import pool from '../db.js';
@@ -225,11 +226,31 @@ describe('listActiveCoverageSessions', () => {
     );
     await endCoverageSession(toEnd.id, toEnd.version, actor);
 
-    const activeSessions = await listActiveCoverageSessions();
-    const ids = activeSessions.map((s) => s.id);
+    const result = await listActiveCoverageSessions({ page: 1, limit: 25 });
+    const ids = result.data.map((s) => s.id);
 
     expect(ids).toContain(active.id);
     expect(ids).not.toContain(toEnd.id);
+  });
+
+  it('paginates results and reports the correct total', async () => {
+    await startCoverageSession({ ...BASE_SESSION_PARAMS, label: 'page-test 1' }, actor);
+    await startCoverageSession({ ...BASE_SESSION_PARAMS, label: 'page-test 2' }, actor);
+    await startCoverageSession({ ...BASE_SESSION_PARAMS, label: 'page-test 3' }, actor);
+
+    const firstPage = await listActiveCoverageSessions({ page: 1, limit: 2 });
+    expect(firstPage.data).toHaveLength(2);
+    expect(firstPage.total).toBeGreaterThanOrEqual(3);
+    expect(firstPage.page).toBe(1);
+    expect(firstPage.limit).toBe(2);
+
+    const secondPage = await listActiveCoverageSessions({ page: 2, limit: 2 });
+    expect(secondPage.data.length).toBeGreaterThanOrEqual(1);
+    // No overlap between pages.
+    const firstIds = new Set(firstPage.data.map((s) => s.id));
+    for (const session of secondPage.data) {
+      expect(firstIds.has(session.id)).toBe(false);
+    }
   });
 });
 
@@ -341,6 +362,43 @@ describe('recordCoverageSessionDump', () => {
     await expect(
       recordCoverageSessionDump(session.id, dumpId, session.correlationId),
     ).rejects.toBeInstanceOf(CoverageSessionEndedError);
+
+    const rows = await pool.query('SELECT id FROM coverage_session_dumps WHERE dump_id = $1', [
+      dumpId,
+    ]);
+    expect(rows.rows).toHaveLength(0);
+  });
+
+  it('rejects a dump whose correlationId belongs to a different session', async () => {
+    const sessionA = await startCoverageSession(
+      { ...BASE_SESSION_PARAMS, label: 'mismatch A' },
+      actor,
+    );
+    const sessionB = await startCoverageSession(
+      { ...BASE_SESSION_PARAMS, label: 'mismatch B' },
+      actor,
+    );
+
+    // Attribute to sessionA's id, but stamp with sessionB's correlation ID.
+    await expect(
+      recordCoverageSessionDump(sessionA.id, randomUUID(), sessionB.correlationId),
+    ).rejects.toBeInstanceOf(CoverageSessionCorrelationMismatchError);
+  });
+
+  it('does not insert a row when rejecting a correlationId mismatch', async () => {
+    const sessionA = await startCoverageSession(
+      { ...BASE_SESSION_PARAMS, label: 'mismatch A no-op' },
+      actor,
+    );
+    const sessionB = await startCoverageSession(
+      { ...BASE_SESSION_PARAMS, label: 'mismatch B no-op' },
+      actor,
+    );
+    const dumpId = randomUUID();
+
+    await expect(
+      recordCoverageSessionDump(sessionA.id, dumpId, sessionB.correlationId),
+    ).rejects.toBeInstanceOf(CoverageSessionCorrelationMismatchError);
 
     const rows = await pool.query('SELECT id FROM coverage_session_dumps WHERE dump_id = $1', [
       dumpId,

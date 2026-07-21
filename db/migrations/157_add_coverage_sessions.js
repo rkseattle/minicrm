@@ -29,6 +29,12 @@
  * varchar + CHECK for status/source, not a PG ENUM, per repo convention
  * (see CLAUDE.md "varchar + CHECK for new constrained-string columns —
  * never new PG ENUMs").
+ *
+ * coverage_sessions.started_by is nullable with ON DELETE SET NULL, not
+ * CASCADE — deleting a user must not silently destroy coverage/testing
+ * history, mirroring migration 074's fix (MINCRM-505) for the same
+ * anti-pattern on import_jobs.created_by / webhook_subscriptions.created_by.
+ * "Every other created_by/owner FK in the schema uses RESTRICT or SET NULL."
  */
 
 /** @type {import('node-pg-migrate').ColumnDefinitions | undefined} */
@@ -63,7 +69,7 @@ exports.up = (pgm) => {
       build_sha       text NOT NULL,
       environment     text NOT NULL,
       issue_key       text,
-      started_by      uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+      started_by      uuid REFERENCES public.users(id) ON DELETE SET NULL,
       started_at      timestamptz NOT NULL DEFAULT now(),
       ended_at        timestamptz,
       version         integer NOT NULL DEFAULT 1,

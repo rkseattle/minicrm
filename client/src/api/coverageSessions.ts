@@ -9,15 +9,12 @@ import type {
   CoverageSession,
   StartCoverageSessionRequest,
 } from '@shared/schemas/coverageSessionSchema.js';
+import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
 
 export const COVERAGE_SESSIONS_QUERY_KEY = ['coverage_sessions'] as const;
 
 interface CoverageSessionResponse {
   session: CoverageSession;
-}
-
-interface ListCoverageSessionsResponse {
-  sessions: CoverageSession[];
 }
 
 export async function startCoverageSession(
@@ -30,9 +27,23 @@ export async function startCoverageSession(
   return response.data.session;
 }
 
-export async function listActiveCoverageSessions(): Promise<CoverageSession[]> {
-  const response = await apiClient.get<ListCoverageSessionsResponse>('/admin/coverage/sessions');
-  return response.data.sessions;
+export interface ListActiveCoverageSessionsParams {
+  page?: number;
+  limit?: number;
+}
+
+export async function listActiveCoverageSessions(
+  params: ListActiveCoverageSessionsParams = {},
+): Promise<PaginatedResponse<CoverageSession>> {
+  const queryParams: Record<string, string> = {};
+  if (params.page !== undefined) queryParams['page'] = String(params.page);
+  if (params.limit !== undefined) queryParams['limit'] = String(params.limit);
+
+  const response = await apiClient.get<PaginatedResponse<CoverageSession>>(
+    '/admin/coverage/sessions',
+    { params: queryParams },
+  );
+  return response.data;
 }
 
 export async function endCoverageSession(

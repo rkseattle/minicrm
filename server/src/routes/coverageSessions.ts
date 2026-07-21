@@ -83,21 +83,43 @@ router.post('/', ...requireCoverageSessionAccess, asyncHandler(startCoverageSess
  *   get:
  *     tags: [Coverage]
  *     operationId: listActiveCoverageSessions
- *     summary: List currently-active coverage sessions
+ *     summary: List currently-active coverage sessions, paginated
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 25
  *     responses:
  *       200:
- *         description: Active coverage sessions
+ *         description: A page of active coverage sessions
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 sessions:
+ *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/CoverageSession'
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       403:
@@ -231,6 +253,7 @@ router.post(
  *               correlationId:
  *                 type: string
  *                 format: uuid
+ *                 description: Must equal this session's own correlationId — a mismatch is rejected with 400 COVERAGE_SESSION_CORRELATION_MISMATCH.
  *               testId:
  *                 type: string
  *               testName:

@@ -25,6 +25,10 @@ import type {
   CoverageSessionDump,
   StartCoverageSessionRequest,
 } from '@minicrm/shared/schemas/coverageSessionSchema.js';
+import type {
+  PaginatedResponse,
+  PaginationParams,
+} from '@minicrm/shared/schemas/paginationSchema.js';
 
 /** Thrown when ending a session that does not exist. */
 export class CoverageSessionNotFoundError extends Error {
@@ -53,6 +57,22 @@ export class CoverageSessionEndedError extends Error {
   }
 }
 
+/**
+ * Thrown when the correlationId supplied to recordCoverageSessionDump does
+ * not match the target session's own correlation_id. Without this check a
+ * caller could attribute a dump to sessionId while stamping it with a
+ * different session's correlation ID, corrupting any downstream lookup keyed
+ * on coverage_session_dumps.correlation_id (e.g.
+ * findActiveCoverageSessionByCorrelationId).
+ */
+export class CoverageSessionCorrelationMismatchError extends Error {
+  readonly code = 'COVERAGE_SESSION_CORRELATION_MISMATCH';
+  constructor(sessionId: string) {
+    super(`correlationId does not match coverage session ${sessionId}'s own correlation ID.`);
+    this.name = 'CoverageSessionCorrelationMismatchError';
+  }
+}
+
 interface CoverageSessionRow {
   id: string;
   label: string;
@@ -62,7 +82,9 @@ interface CoverageSessionRow {
   build_sha: string;
   environment: string;
   issue_key: string | null;
-  started_by: string;
+  // Nullable — ON DELETE SET NULL when the starting user is later deleted,
+  // so the session's own history survives (see migration 157's comment).
+  started_by: string | null;
   started_at: Date;
   ended_at: Date | null;
   version: number;
@@ -207,13 +229,36 @@ export async function findCoverageSession(sessionId: string): Promise<CoverageSe
   return result.rows[0] ? toCoverageSession(result.rows[0]) : null;
 }
 
-/** Lists all currently-active sessions. */
-export async function listActiveCoverageSessions(): Promise<CoverageSession[]> {
-  const result = await pool.query<CoverageSessionRow>(
-    `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
-     FROM coverage_sessions WHERE status = 'active' ORDER BY started_at DESC`,
-  );
-  return result.rows.map(toCoverageSession);
+/**
+ * Lists currently-active sessions, paginated. Sessions can accumulate
+ * unboundedly if never explicitly ended (a crashed E2E run, a browser tab
+ * closed mid-recording) — there's no cleanup job — so this endpoint follows
+ * the same pagination convention as every other list endpoint rather than
+ * returning every active session unbounded.
+ */
+export async function listActiveCoverageSessions(
+  pagination: PaginationParams,
+): Promise<PaginatedResponse<CoverageSession>> {
+  const { page, limit } = pagination;
+  const offset = (page - 1) * limit;
+
+  const [countResult, rowsResult] = await Promise.all([
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) AS count FROM coverage_sessions WHERE status = 'active'`,
+    ),
+    pool.query<CoverageSessionRow>(
+      `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
+       FROM coverage_sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    ),
+  ]);
+
+  return {
+    data: rowsResult.rows.map(toCoverageSession),
+    total: parseInt(countResult.rows[0].count, 10),
+    page,
+    limit,
+  };
 }
 
 /**
@@ -252,9 +297,14 @@ export async function recordCoverageSessionDump(
   options: { testId?: string; testName?: string; attempt?: number } = {},
 ): Promise<CoverageSessionDump> {
   // INSERT ... SELECT rather than a plain VALUES INSERT so "the session must
-  // be active" is enforced atomically by the same statement that performs the
-  // insert — no separate check-then-insert TOCTOU window. A dump can only
-  // ever be attributed to a session while it's still active. (MINCRM-612)
+  // be active" AND "correlationId must be this session's own correlation_id"
+  // are both enforced atomically by the same statement that performs the
+  // insert — no separate check-then-insert TOCTOU window, and no way for a
+  // caller to attribute a dump to sessionId while stamping it with a
+  // different session's correlation ID (which would corrupt any downstream
+  // lookup keyed on coverage_session_dumps.correlation_id, e.g.
+  // findActiveCoverageSessionByCorrelationId). A dump can only ever be
+  // attributed to a session while it's still active. (MINCRM-612)
   const result = await pool.query<{
     id: string;
     session_id: string;
@@ -267,7 +317,10 @@ export async function recordCoverageSessionDump(
   }>(
     `INSERT INTO coverage_session_dumps (session_id, dump_id, correlation_id, test_id, test_name, attempt)
      SELECT $1, $2, $3, $4, $5, $6
-     WHERE EXISTS (SELECT 1 FROM coverage_sessions WHERE id = $1 AND status = 'active')
+     WHERE EXISTS (
+       SELECT 1 FROM coverage_sessions
+       WHERE id = $1 AND status = 'active' AND correlation_id = $3
+     )
      RETURNING id, session_id, dump_id, correlation_id, test_id, test_name, attempt, recorded_at`,
     [
       sessionId,
@@ -280,8 +333,8 @@ export async function recordCoverageSessionDump(
   );
 
   if (result.rowCount === 0) {
-    const sessionCheck = await pool.query<{ id: string }>(
-      'SELECT id FROM coverage_sessions WHERE id = $1',
+    const sessionCheck = await pool.query<{ status: string; correlation_id: string }>(
+      'SELECT status, correlation_id FROM coverage_sessions WHERE id = $1',
       [sessionId],
     );
     if (sessionCheck.rows.length === 0) {
@@ -289,7 +342,14 @@ export async function recordCoverageSessionDump(
         code: '23503', // mirrors the FK-violation code the controller already maps to 400
       });
     }
-    throw new CoverageSessionEndedError(sessionId);
+    const existing = sessionCheck.rows[0];
+    if (existing.status !== 'active') {
+      throw new CoverageSessionEndedError(sessionId);
+    }
+    // Session is active and the row still wasn't inserted — the only
+    // remaining reason the WHERE EXISTS guard failed is a correlationId
+    // that doesn't match this session's own correlation_id.
+    throw new CoverageSessionCorrelationMismatchError(sessionId);
   }
 
   const row = result.rows[0];

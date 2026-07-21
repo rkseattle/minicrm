@@ -49,14 +49,15 @@ export default function CoverageSessionRecorderPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const {
-    data: activeSessions,
+    data: activeSessionsResponse,
     isLoading,
     isError,
   } = useQuery({
     queryKey: COVERAGE_SESSIONS_QUERY_KEY,
-    queryFn: listActiveCoverageSessions,
+    queryFn: () => listActiveCoverageSessions(),
     enabled: featureEnabled,
   });
+  const activeSessions = activeSessionsResponse?.data ?? [];
 
   const checkInMutation = useMutation({
     mutationFn: () =>
@@ -250,18 +251,18 @@ export default function CoverageSessionRecorderPage() {
           </p>
         )}
 
-        {!isLoading && !isError && (activeSessions ?? []).length === 0 && (
+        {!isLoading && !isError && activeSessions.length === 0 && (
           <p className="text-sm text-gray-500" data-testid="coverage-session-recorder-empty">
             {t('coverageSessionRecorder.noActiveSessions')}
           </p>
         )}
 
-        {!isLoading && !isError && (activeSessions ?? []).length > 0 && (
+        {!isLoading && !isError && activeSessions.length > 0 && (
           <ul
             className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100"
             data-testid="coverage-session-list"
           >
-            {(activeSessions ?? []).map((session) => (
+            {activeSessions.map((session) => (
               <li
                 key={session.id}
                 className="px-4 py-3 flex items-center justify-between gap-2"
