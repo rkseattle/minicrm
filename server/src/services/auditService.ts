@@ -79,7 +79,9 @@ export type AuditRecordType =
   /** AI data minimization field exclusion toggles (MINCRM-461) */
   | 'ai_field_exclusion'
   /** AI lead routing suggestion decisions (MINCRM-475) */
-  | 'lead_routing_decision';
+  | 'lead_routing_decision'
+  /** Coverage/TIA testing sessions (MINCRM-609..612) */
+  | 'coverage_session';
 
 /** Event types that can appear in the audit log */
 export type AuditEventType =
@@ -117,7 +119,10 @@ export type AuditEventType =
   | 'ai_gdpr_cascade'
   /** AI lead routing suggestion accepted or overridden (MINCRM-475) */
   | 'routing_accepted'
-  | 'routing_overridden';
+  | 'routing_overridden'
+  /** Coverage/TIA session lifecycle (MINCRM-609..612) */
+  | 'coverage_session_started'
+  | 'coverage_session_ended';
 
 /** Input for a single audit log entry */
 export interface AuditEntryInput {

@@ -651,6 +651,62 @@ const componentSchemas = {
       },
     },
   },
+
+  // ── Coverage sessions (MINCRM-609..612) ─────────────────────────────────
+  CoverageSession: {
+    type: 'object',
+    required: [
+      'id',
+      'label',
+      'source',
+      'status',
+      'correlationId',
+      'buildSha',
+      'environment',
+      'issueKey',
+      'startedById',
+      'startedAt',
+      'endedAt',
+      'version',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      label: { type: 'string', example: 'deals functional suite' },
+      source: { type: 'string', enum: ['automated-e2e', 'manual'] },
+      status: { type: 'string', enum: ['active', 'ended'] },
+      correlationId: { type: 'string', format: 'uuid' },
+      buildSha: { type: 'string', example: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
+      environment: { type: 'string', example: 'ci' },
+      issueKey: { type: 'string', nullable: true, example: 'MINCRM-609' },
+      startedById: { type: 'string', format: 'uuid' },
+      startedAt: { type: 'string', format: 'date-time' },
+      endedAt: { type: 'string', format: 'date-time', nullable: true },
+      version: { type: 'integer', example: 1 },
+    },
+  },
+  CoverageSessionDump: {
+    type: 'object',
+    required: [
+      'id',
+      'sessionId',
+      'dumpId',
+      'correlationId',
+      'testId',
+      'testName',
+      'attempt',
+      'recordedAt',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      sessionId: { type: 'string', format: 'uuid' },
+      dumpId: { type: 'string', format: 'uuid' },
+      correlationId: { type: 'string', format: 'uuid' },
+      testId: { type: 'string', nullable: true },
+      testName: { type: 'string', nullable: true },
+      attempt: { type: 'integer', example: 1 },
+      recordedAt: { type: 'string', format: 'date-time' },
+    },
+  },
 };
 
 /** swagger-jsdoc options */

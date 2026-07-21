@@ -1,6 +1,6 @@
 # Coverage/TIA Instrumentation
 
-Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). This phase covers instrumentation and collection only (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607); see [Deferred to later phases](#deferred-to-later-phases) for what is intentionally out of scope.
+Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
 
 ## Files
 
@@ -25,6 +25,20 @@ Runtime code coverage collection from the live MiniCRM stack — backend and fro
 | `qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/` | Functional spec exercising the control API end to end                      |
 
 Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/` — the repo's `.gitignore` has an unanchored `coverage/` pattern (for Vitest's test-coverage output) that would otherwise silently ignore a literal `coverage/` directory anywhere in the tree, including this one.
+
+### Phase 2 — Session management files
+
+| Path                                                                | Purpose                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `server/src/middleware/correlationId.ts`                            | Reads `x-coverage-correlation-id` into `req.coverageCorrelationId`  |
+| `server/src/services/coverageSessionService.ts`                     | `CoverageSession` CRUD + dump attribution, transactional + audited  |
+| `server/src/controllers/coverageSessionController.ts`               | Request/response shaping for the session control API                |
+| `server/src/routes/coverageSessions.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/sessions`     |
+| `shared/schemas/coverageSessionSchema.ts`                           | Zod schemas for sessions + the `CORRELATION_ID_HEADER` constant     |
+| `db/migrations/157_add_coverage_sessions.js`                        | `coverage_sessions` + `coverage_session_dumps` tables, feature flag |
+| `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)      |
+| `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI   |
+| `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)          |
 
 ## Mounting
 
@@ -117,6 +131,39 @@ All 43 tests passed in every configuration — no failures or timeouts attributa
 
 This was measured manually, not via an automated CI gate — wiring an automated regression assertion against these numbers is a reasonable follow-up once they're re-validated with a real instrumented client build, not a day-one requirement.
 
+## Session Management (MINCRM-609..612)
+
+A `CoverageSession` is a logical grouping of one or more coverage dumps attributed to a single automated test run or manual-exploratory-testing session. It does **not** provide physically isolated V8 counters — `NodeV8CoverageAgent` remains a single process-wide counter set (see the Shared test environment note above). Instead, attribution works by tagging dumps produced during a session with that session's `correlationId`, so overlapping sessions on the same server instance can be told apart in the _stored data_ even though the underlying counters are shared.
+
+### Data model
+
+- `coverage_sessions` — one row per session. `status` transitions `active` → `ended` (never reopened). `version` supports optimistic locking so two concurrent end-session requests can't both succeed. `correlation_id` (unique) is minted at start time.
+- `coverage_session_dumps` — join table attributing a `dumpId` (still file-based, per Phase 1 — not FK'd, only referenced by UUID) to a session, plus optional `testId`/`testName`/`attempt` for retry attribution. `attempt` distinguishes a Playwright retry re-running the same `testId`: the first (possibly failed) attempt and the retry are two distinct rows, never overwritten or merged.
+
+### Correlation-ID propagation
+
+`x-coverage-correlation-id` (see `CORRELATION_ID_HEADER` in `coverageSessionSchema.ts`) is read by `correlationId` middleware — mounted globally in `app.ts`, before the route table — into `req.coverageCorrelationId`. It's a no-op for the overwhelming majority of requests, which carry no such header. The E2E harness and the manual-testing recorder are the only senders today.
+
+### Session control API
+
+| Method | Path                                               | Purpose                                                                     |
+| ------ | -------------------------------------------------- | --------------------------------------------------------------------------- |
+| `POST` | `/api/v1/admin/coverage/sessions`                  | Start a session; mints and returns a `correlationId`.                       |
+| `GET`  | `/api/v1/admin/coverage/sessions`                  | List currently-active sessions.                                             |
+| `GET`  | `/api/v1/admin/coverage/sessions/:sessionId`       | Look up a single session.                                                   |
+| `POST` | `/api/v1/admin/coverage/sessions/:sessionId/end`   | End a session (optimistic-locked on `version`). `409` on conflict.          |
+| `POST` | `/api/v1/admin/coverage/sessions/:sessionId/dumps` | Record a `dumpId`'s attribution to a session (after `POST /coverage/dump`). |
+
+Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_session_management')`, mirroring `coverage.ts`. The `coverage_session_management` flag is independent of `coverage_instrumentation` (migration 156) — a session can exist even when the backend V8 agent itself never started, e.g. a browser-only manual session.
+
+### E2E harness hooks (MINCRM-609)
+
+Wired into `qa/e2e/apps/minicrm/fixtures.ts`'s `page` fixture — the same `try/finally` block that already handles per-test coverage pull+submit. No per-spec-file edits are required. On test start the fixture starts (or joins) a session tagged with the test ID/name and build SHA and injects the correlation-ID header into the browser context and `RestClient`; the existing `finally` block ends the session alongside the coverage dump.
+
+### Manual-testing session recorder (MINCRM-611)
+
+An in-app admin control panel (`client/src/pages/admin/CoverageSessionRecorderPage.tsx`) to check in (name the session, optionally a MiniCRM issue key), record (injects the correlation-ID header on subsequent browser requests), and check out (triggers a dump, tags it, and ends the session). Ties to the current build SHA automatically.
+
 ## Local / CI / Shared-env setup
 
 **Local — backend only:**
@@ -149,7 +196,7 @@ Then enable the `coverage_instrumentation` feature flag (via the admin UI, or di
 Not built here — later `pr-tia-*` phases:
 
 - Test-to-code mapping (which test exercised which line) — mapping engine phase
-- Session management / a manual-testing session recorder UI
+- Physically isolated per-session V8 counters — sessions group and attribute dumps; the backend agent's counters remain process-wide (see Session Management above)
 - ML-based test selection
 - Historical coverage trend storage or dashboards
 - Coverage-driven CI gating (failing a build on coverage drop)

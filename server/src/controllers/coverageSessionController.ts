@@ -1,0 +1,151 @@
+/**
+ * Coverage/TIA session controller — request/response shaping only. All
+ * business logic and DB access goes through coverageSessionService.
+ * (MINCRM-609..612)
+ */
+
+import type { Request, Response } from 'express';
+import {
+  startCoverageSessionRequestSchema,
+  endCoverageSessionRequestSchema,
+  recordCoverageSessionDumpRequestSchema,
+} from '@minicrm/shared/schemas/coverageSessionSchema.js';
+import {
+  startCoverageSession,
+  endCoverageSession,
+  findCoverageSession,
+  listActiveCoverageSessions,
+  recordCoverageSessionDump,
+  CoverageSessionNotFoundError,
+  CoverageSessionConflictError,
+} from '../services/coverageSessionService.js';
+
+function actorFromRequest(req: Request): { id: string; name: string } {
+  // Route middleware guarantees req.user is set (authenticate runs first).
+  return { id: req.user!.id, name: req.user!.name };
+}
+
+/**
+ * POST /api/v1/admin/coverage/sessions
+ * Starts a new coverage session. Admin only.
+ */
+export async function startCoverageSessionHandler(req: Request, res: Response): Promise<void> {
+  const parsed = startCoverageSessionRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const session = await startCoverageSession(parsed.data, actorFromRequest(req));
+  res.status(201).json({ session });
+}
+
+/**
+ * GET /api/v1/admin/coverage/sessions
+ * Lists currently-active coverage sessions. Admin only.
+ */
+export async function listActiveCoverageSessionsHandler(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  const sessions = await listActiveCoverageSessions();
+  res.status(200).json({ sessions });
+}
+
+/**
+ * GET /api/v1/admin/coverage/sessions/:sessionId
+ * Looks up a single coverage session. Admin only.
+ */
+export async function getCoverageSessionHandler(req: Request, res: Response): Promise<void> {
+  const sessionId = String(req.params['sessionId']);
+  const session = await findCoverageSession(sessionId);
+
+  if (!session) {
+    res
+      .status(404)
+      .json({
+        error: { code: 'COVERAGE_SESSION_NOT_FOUND', message: 'Coverage session not found' },
+      });
+    return;
+  }
+
+  res.status(200).json({ session });
+}
+
+/**
+ * POST /api/v1/admin/coverage/sessions/:sessionId/end
+ * Ends an active coverage session. Admin only.
+ */
+export async function endCoverageSessionHandler(req: Request, res: Response): Promise<void> {
+  const sessionId = String(req.params['sessionId']);
+  const parsed = endCoverageSessionRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  try {
+    const session = await endCoverageSession(sessionId, parsed.data.version, actorFromRequest(req));
+    res.status(200).json({ session });
+  } catch (err) {
+    if (err instanceof CoverageSessionNotFoundError) {
+      res.status(404).json({ error: { code: err.code, message: err.message } });
+      return;
+    }
+    if (err instanceof CoverageSessionConflictError) {
+      res.status(409).json({ error: { code: err.code, message: err.message } });
+      return;
+    }
+    throw err;
+  }
+}
+
+/**
+ * POST /api/v1/admin/coverage/sessions/:sessionId/dumps
+ * Records a coverage dump's attribution to a session. Admin only.
+ */
+export async function recordCoverageSessionDumpHandler(req: Request, res: Response): Promise<void> {
+  const sessionId = String(req.params['sessionId']);
+  const parsed = recordCoverageSessionDumpRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.errors[0].message },
+    });
+    return;
+  }
+
+  const { dumpId, correlationId, testId, testName, attempt } = parsed.data;
+  try {
+    const sessionDump = await recordCoverageSessionDump(sessionId, dumpId, correlationId, {
+      testId,
+      testName,
+      attempt,
+    });
+    res.status(201).json({ sessionDump });
+  } catch (err: unknown) {
+    const code =
+      err instanceof Error && 'code' in err ? (err as { code?: string }).code : undefined;
+    if (code === '23503') {
+      res
+        .status(400)
+        .json({
+          error: { code: 'COVERAGE_SESSION_NOT_FOUND', message: 'Coverage session not found' },
+        });
+      return;
+    }
+    if (code === '23505') {
+      res.status(409).json({
+        error: {
+          code: 'DUMP_ALREADY_RECORDED',
+          message: `Dump ${dumpId} is already attributed to a session`,
+        },
+      });
+      return;
+    }
+    throw err;
+  }
+}

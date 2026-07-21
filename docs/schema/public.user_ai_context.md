@@ -1,17 +1,13 @@
 # public.user_ai_context
 
-## Description
-
-Per-user key/value context entries injected into every Claude system prompt as a personalisation preamble. (MINCRM-427)
-
 ## Columns
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | uuid | gen_random_uuid() | false |  |  |  |
 | user_id | uuid |  | false |  | [public.users](public.users.md) |  |
-| key | varchar(100) |  | false |  |  | Short label for this preference (e.g. "a while", "high-value"). Max 100 chars. |
-| value | varchar(500) |  | false |  |  | Plain-text definition of the preference (e.g. "30+ days without activity"). Max 500 chars. |
+| key | varchar(100) |  | false |  |  |  |
+| value | varchar(500) |  | false |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 
@@ -28,8 +24,8 @@ Per-user key/value context entries injected into every Claude system prompt as a
 | Name | Definition |
 | ---- | ---------- |
 | user_ai_context_pkey | CREATE UNIQUE INDEX user_ai_context_pkey ON public.user_ai_context USING btree (id) |
-| user_ai_context_user_id_idx | CREATE INDEX user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id) |
 | user_ai_context_user_id_key_unique | CREATE UNIQUE INDEX user_ai_context_user_id_key_unique ON public.user_ai_context USING btree (user_id, key) |
+| user_ai_context_user_id_idx | CREATE INDEX user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id) |
 
 ## Triggers
 
@@ -47,8 +43,8 @@ erDiagram
 "public.user_ai_context" {
   uuid id ""
   uuid user_id FK ""
-  varchar_100_ key "Short label for this preference (e.g. #quot;a while#quot;, #quot;high-value#quot;). Max 100 chars."
-  varchar_500_ value "Plain-text definition of the preference (e.g. #quot;30+ days without activity#quot;). Max 500 chars."
+  varchar_100_ key ""
+  varchar_500_ value ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }

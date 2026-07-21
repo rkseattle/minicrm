@@ -1,0 +1,110 @@
+# public.coverage_sessions
+
+## Description
+
+Coverage/TIA testing sessions (MINCRM-609..612) — a logical grouping of one or more coverage dumps attributed to a single automated test run or manual-exploratory-testing session. correlation_id is the value propagated via the x-coverage-correlation-id header (see correlationId middleware) and stamped onto dumps in coverage_session_dumps; it is NOT a physically isolated V8 counter scope — the backend coverage agent remains a single process-wide counter set (see NodeV8CoverageAgent), so overlapping sessions on the same server instance still share the same underlying counters. version supports optimistic locking against concurrent end-session requests.
+
+## Columns
+
+| Name | Type | Default | Nullable | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| id | uuid | gen_random_uuid() | false | [public.coverage_session_dumps](public.coverage_session_dumps.md) |  |  |
+| label | text |  | false |  |  |  |
+| source | varchar(20) |  | false |  |  |  |
+| status | varchar(20) | 'active'::character varying | false |  |  |  |
+| correlation_id | uuid | gen_random_uuid() | false |  |  |  |
+| build_sha | text |  | false |  |  |  |
+| environment | text |  | false |  |  |  |
+| issue_key | text |  | true |  |  |  |
+| started_by | uuid |  | false |  | [public.users](public.users.md) |  |
+| started_at | timestamp with time zone | now() | false |  |  |  |
+| ended_at | timestamp with time zone |  | true |  |  |  |
+| version | integer | 1 | false |  |  |  |
+
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| coverage_sessions_ended_at_check | CHECK | CHECK (((((status)::text = 'active'::text) AND (ended_at IS NULL)) OR (((status)::text = 'ended'::text) AND (ended_at IS NOT NULL)))) |
+| coverage_sessions_source_check | CHECK | CHECK (((source)::text = ANY ((ARRAY['automated-e2e'::character varying, 'manual'::character varying])::text[]))) |
+| coverage_sessions_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'ended'::character varying])::text[]))) |
+| coverage_sessions_started_by_fkey | FOREIGN KEY | FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE |
+| coverage_sessions_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| coverage_sessions_correlation_id_unique | UNIQUE | UNIQUE (correlation_id) |
+
+## Indexes
+
+| Name | Definition |
+| ---- | ---------- |
+| coverage_sessions_pkey | CREATE UNIQUE INDEX coverage_sessions_pkey ON public.coverage_sessions USING btree (id) |
+| coverage_sessions_correlation_id_unique | CREATE UNIQUE INDEX coverage_sessions_correlation_id_unique ON public.coverage_sessions USING btree (correlation_id) |
+| coverage_sessions_status_idx | CREATE INDEX coverage_sessions_status_idx ON public.coverage_sessions USING btree (status) |
+| coverage_sessions_started_by_idx | CREATE INDEX coverage_sessions_started_by_idx ON public.coverage_sessions USING btree (started_by) |
+
+## Relations
+
+```mermaid
+erDiagram
+
+"public.coverage_session_dumps" }o--|| "public.coverage_sessions" : "FOREIGN KEY (session_id) REFERENCES coverage_sessions(id) ON DELETE CASCADE"
+"public.coverage_sessions" }o--|| "public.users" : "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE"
+
+"public.coverage_sessions" {
+  uuid id ""
+  text label ""
+  varchar_20_ source ""
+  varchar_20_ status ""
+  uuid correlation_id ""
+  text build_sha ""
+  text environment ""
+  text issue_key ""
+  uuid started_by FK ""
+  timestamp_with_time_zone started_at ""
+  timestamp_with_time_zone ended_at ""
+  integer version ""
+}
+"public.coverage_session_dumps" {
+  uuid id ""
+  uuid session_id FK ""
+  uuid dump_id ""
+  uuid correlation_id ""
+  text test_id ""
+  text test_name ""
+  integer attempt ""
+  timestamp_with_time_zone recorded_at ""
+}
+"public.users" {
+  uuid id ""
+  varchar_255_ email ""
+  text password_hash ""
+  varchar_255_ name ""
+  varchar_20_ role ""
+  varchar_10_ status ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
+  boolean must_change_password ""
+  varchar_10_ preferred_language ""
+  varchar_64_ password_reset_token_hash ""
+  timestamp_with_time_zone password_reset_expires_at ""
+  timestamp_with_time_zone password_changed_at ""
+  boolean notify_overdue_tasks ""
+  boolean notify_assignments ""
+  boolean notify_deal_stage_changes ""
+  boolean mfa_enabled ""
+  text mfa_secret ""
+  text mfa_pending_secret ""
+  text__ mfa_recovery_codes ""
+  boolean onboarding_completed ""
+  timestamp_with_time_zone onboarding_completed_at ""
+  varchar_20_ sso_provider "SSO protocol that provisioned this user: saml | oidc"
+  text sso_subject "Stable external identity: SAML nameID or OIDC sub claim"
+  text api_token_hash ""
+  timestamp_with_time_zone api_token_issued_at ""
+  text scim_external_id ""
+  varchar_255_ territory "Free-text sales territory a rep is assigned to, matched against leads.territory for routing suggestions (MINCRM-475)."
+}
+```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

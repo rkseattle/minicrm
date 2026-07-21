@@ -34,6 +34,13 @@ declare global {
   namespace Express {
     interface Request {
       user?: JwtTokenPayload;
+      /**
+       * Coverage/TIA correlation ID read from the x-coverage-correlation-id
+       * header by the correlationId middleware (MINCRM-610). Undefined when
+       * the header was absent — coverage session attribution is opt-in per
+       * request, not required on every route.
+       */
+      coverageCorrelationId?: string;
     }
     interface Locals {
       /**
