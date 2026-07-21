@@ -678,7 +678,7 @@ const componentSchemas = {
       buildSha: { type: 'string', example: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
       environment: { type: 'string', example: 'ci' },
       issueKey: { type: 'string', nullable: true, example: 'MINCRM-609' },
-      startedById: { type: 'string', format: 'uuid' },
+      startedById: { type: 'string', format: 'uuid', nullable: true },
       startedAt: { type: 'string', format: 'date-time' },
       endedAt: { type: 'string', format: 'date-time', nullable: true },
       version: { type: 'integer', example: 1 },

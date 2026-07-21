@@ -273,7 +273,7 @@ erDiagram
 "public.lead_routing_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.data_hygiene_scoring_config" }o--o| "public.users" : "FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.data_hygiene_findings" }o--|| "public.users" : "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
-"public.coverage_sessions" }o--|| "public.users" : "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE"
+"public.coverage_sessions" }o--o| "public.users" : "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE SET NULL"
 "public.coverage_session_dumps" }o--|| "public.coverage_sessions" : "FOREIGN KEY (session_id) REFERENCES coverage_sessions(id) ON DELETE CASCADE"
 
 "public.users" {

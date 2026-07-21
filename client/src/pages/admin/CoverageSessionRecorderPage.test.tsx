@@ -36,7 +36,7 @@ describe('CoverageSessionRecorderPage', () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
-        return HttpResponse.json({ sessions: [] });
+        return HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 });
       }),
     );
     renderPage();
@@ -65,7 +65,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('shows the empty state when there are no active sessions', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
     );
     renderPage();
     await waitFor(() => {
@@ -76,7 +78,7 @@ describe('CoverageSessionRecorderPage', () => {
   it('renders active sessions from the control API', async () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ sessions: [ACTIVE_SESSION] }),
+        HttpResponse.json({ data: [ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
       ),
     );
     renderPage();
@@ -94,7 +96,9 @@ describe('CoverageSessionRecorderPage', () => {
       // useFeatureFlag treats the flag as enabled while its own query is loading
       // (avoids a flash-of-disabled-content), so the sessions query briefly
       // fires with enabled: true before the flags settle to false.
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
     );
     renderPage();
     await waitFor(() => {
@@ -104,7 +108,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('disables the check-in button until a label is entered', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
     );
     renderPage();
     await waitFor(() => {
@@ -119,7 +125,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('checks in and shows the recording panel', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
       ),
@@ -140,7 +148,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('shows an error when check-in fails', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json(
           { error: { code: 'COVERAGE_NOT_ENABLED', message: 'Failed' } },
@@ -164,7 +174,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('checks out: dumps (attribution is automatic server-side) and ends the session', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
       ),
@@ -198,7 +210,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it("still ends the session on check-out even when the dump request fails (coverage_instrumentation may be off independently of this page's own flag)", async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
       ),
@@ -233,7 +247,9 @@ describe('CoverageSessionRecorderPage', () => {
 
   it('shows an error when check-out fails to end the session', async () => {
     server.use(
-      http.get('/api/v1/admin/coverage/sessions', () => HttpResponse.json({ sessions: [] })),
+      http.get('/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+      ),
       http.post('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
       ),

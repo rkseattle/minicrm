@@ -55,7 +55,9 @@ export const coverageSessionSchema = z.object({
   buildSha: z.string(),
   environment: z.string(),
   issueKey: z.string().nullable(),
-  startedById: z.string().uuid(),
+  // Nullable — the starting user may have been deleted since (ON DELETE
+  // SET NULL on coverage_sessions.started_by; see migration 157).
+  startedById: z.string().uuid().nullable(),
   startedAt: z.string(),
   endedAt: z.string().nullable(),
   version: z.number().int(),

@@ -16,7 +16,7 @@ Coverage/TIA testing sessions (MINCRM-609..612) — a logical grouping of one or
 | build_sha | text |  | false |  |  |  |
 | environment | text |  | false |  |  |  |
 | issue_key | text |  | true |  |  |  |
-| started_by | uuid |  | false |  | [public.users](public.users.md) |  |
+| started_by | uuid |  | true |  | [public.users](public.users.md) |  |
 | started_at | timestamp with time zone | now() | false |  |  |  |
 | ended_at | timestamp with time zone |  | true |  |  |  |
 | version | integer | 1 | false |  |  |  |
@@ -28,7 +28,7 @@ Coverage/TIA testing sessions (MINCRM-609..612) — a logical grouping of one or
 | coverage_sessions_ended_at_check | CHECK | CHECK (((((status)::text = 'active'::text) AND (ended_at IS NULL)) OR (((status)::text = 'ended'::text) AND (ended_at IS NOT NULL)))) |
 | coverage_sessions_source_check | CHECK | CHECK (((source)::text = ANY ((ARRAY['automated-e2e'::character varying, 'manual'::character varying])::text[]))) |
 | coverage_sessions_status_check | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'ended'::character varying])::text[]))) |
-| coverage_sessions_started_by_fkey | FOREIGN KEY | FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE |
+| coverage_sessions_started_by_fkey | FOREIGN KEY | FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE SET NULL |
 | coverage_sessions_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | coverage_sessions_correlation_id_unique | UNIQUE | UNIQUE (correlation_id) |
 
@@ -47,7 +47,7 @@ Coverage/TIA testing sessions (MINCRM-609..612) — a logical grouping of one or
 erDiagram
 
 "public.coverage_session_dumps" }o--|| "public.coverage_sessions" : "FOREIGN KEY (session_id) REFERENCES coverage_sessions(id) ON DELETE CASCADE"
-"public.coverage_sessions" }o--|| "public.users" : "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE"
+"public.coverage_sessions" }o--o| "public.users" : "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE SET NULL"
 
 "public.coverage_sessions" {
   uuid id ""

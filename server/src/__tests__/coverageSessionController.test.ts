@@ -270,4 +270,62 @@ describe('coverage session control API — dump attribution', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('COVERAGE_SESSION_NOT_FOUND');
   });
+
+  it('returns 400 COVERAGE_SESSION_CORRELATION_MISMATCH when correlationId belongs to a different session', async () => {
+    const sessionAStart = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('dump-mismatch-a'));
+    const sessionBStart = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('dump-mismatch-b'));
+    const sessionA = sessionAStart.body.session;
+    const sessionB = sessionBStart.body.session;
+
+    // Attribute to session A's id but stamp with session B's correlation ID.
+    const res = await request(app)
+      .post(`/api/v1/admin/coverage/sessions/${sessionA.id}/dumps`)
+      .set('Cookie', adminCookie)
+      .send({
+        dumpId: '77777777-7777-7777-7777-777777777777',
+        correlationId: sessionB.correlationId,
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('COVERAGE_SESSION_CORRELATION_MISMATCH');
+  });
+});
+
+describe('coverage session control API — pagination', () => {
+  beforeEach(async () => {
+    await setSessionFlagEnabled(true);
+  });
+
+  it('returns a paginated envelope for GET /sessions', async () => {
+    await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('pagination-envelope'));
+
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/sessions')
+      .query({ page: 1, limit: 1 })
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeLessThanOrEqual(1);
+    expect(typeof res.body.total).toBe('number');
+    expect(res.body.page).toBe(1);
+    expect(res.body.limit).toBe(1);
+  });
+
+  it('returns 400 VALIDATION_ERROR for an out-of-range limit', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/sessions')
+      .query({ limit: 99999 })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
 });
