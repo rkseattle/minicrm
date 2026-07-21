@@ -37,7 +37,16 @@ import { HealingRegistry } from '@framework/healing/index.js';
 import { createPageFacade } from '@framework/types/page-facade.js';
 import type { PageFacade } from '@framework/types/page-facade.js';
 import { pullAndSubmitBrowserCoverage } from '@framework/coverageAgent/browser-coverage-agent.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
+import {
+  startCoverageSession,
+  endCoverageSession,
+  recordCoverageSessionDump,
+  resolveSessionBuildSha,
+  resolveSessionEnvironment,
+  CORRELATION_ID_HEADER,
+} from '@framework/coverageAgent/coverage-session-control-client.js';
+import { RestClient } from '@framework/clients/rest-client.js';
+import type { APIRequestContext } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
@@ -104,11 +113,44 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // to "Unknown.unknown" because the framework layer has no knowledge of
   // where the app's page objects live.
   page: async (
-    { page: rawPage, restClient }: { page: Page; restClient: RestClient },
+    {
+      page: rawPage,
+      restClient,
+      request,
+    }: { page: Page; restClient: RestClient; request: APIRequestContext },
     use,
     testInfo,
   ) => {
     const facade = createPageFacade(rawPage, testInfo.title, PAGE_OBJECT_PATH_SEGMENTS);
+
+    // Dedicated admin-authenticated client for coverage-session control calls,
+    // deliberately separate from the test's own `restClient` — a test may
+    // authenticate `restClient` as a non-admin ephemeral user, log out, or
+    // never authenticate it at all, and session start/end must work
+    // regardless (MINCRM-609's "no per-test edits" requirement). Best-effort
+    // throughout: absent credentials, a disabled flag, or a down server must
+    // never fail the test itself — coverage-session tracking is observability,
+    // not a test dependency.
+    const sessionClient = new RestClient(request);
+    let session: Awaited<ReturnType<typeof startCoverageSession>> | undefined;
+    if (E2E_COVERAGE_PER_TEST) {
+      session = await loginAsAdmin(sessionClient)
+        .then(() =>
+          startCoverageSession(sessionClient, {
+            label: testInfo.title,
+            source: 'automated-e2e',
+            buildSha: resolveSessionBuildSha(),
+            environment: resolveSessionEnvironment(),
+          }),
+        )
+        .catch(() => undefined);
+      if (session) {
+        await facade
+          .context()
+          .setExtraHTTPHeaders({ [CORRELATION_ID_HEADER]: session.correlationId });
+      }
+    }
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (use as (v: any) => Promise<void>)(facade);
@@ -126,9 +168,31 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
       // window.__coverage__ always starts empty per test — no explicit
       // reset-at-start is needed to prevent cross-test bleed.
       if (E2E_COVERAGE_PER_TEST) {
-        await pullAndSubmitBrowserCoverage(facade, restClient, testInfo.title).catch(() => {
-          // Coverage submission must never fail the test itself.
-        });
+        const dump = await pullAndSubmitBrowserCoverage(facade, restClient, testInfo.title).catch(
+          () => undefined,
+        );
+
+        // MINCRM-609/610/612: attribute the dump to this test's session (if
+        // one started) and close the session out. attempt tracks Playwright
+        // retries — testInfo.retry is 0 on the first run, 1+ on each retry —
+        // so a flaky test's attempts are distinguishable rather than
+        // overwriting one another.
+        if (session) {
+          if (dump) {
+            await recordCoverageSessionDump(sessionClient, session.id, {
+              dumpId: dump.dumpId,
+              correlationId: session.correlationId,
+              testId: testInfo.testId,
+              testName: testInfo.title,
+              attempt: testInfo.retry + 1,
+            }).catch(() => {
+              // Attribution must never fail the test itself.
+            });
+          }
+          await endCoverageSession(sessionClient, session.id, session.version).catch(() => {
+            // Ending the session must never fail the test itself.
+          });
+        }
       }
     }
   },

@@ -180,6 +180,15 @@ export interface RestClientOptions {
    * are added.
    */
   authStrategy?: AuthStrategy;
+  /**
+   * Headers merged into every outgoing request, applied after the auth
+   * strategy but before any per-call `options.headers` (which still win on
+   * conflict). Useful for cross-cutting request-scoped headers a caller
+   * wants applied to every call on this client instance — e.g. a
+   * correlation/trace ID — without threading them through every call site.
+   * Mutable after construction via `setDefaultHeader`/`clearDefaultHeader`.
+   */
+  defaultHeaders?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +207,7 @@ const DEFAULT_BASE_URL = 'http://localhost:3001';
 export class RestClient {
   private readonly baseUrl: string;
   private readonly authStrategy?: AuthStrategy;
+  private readonly defaultHeaders: Record<string, string>;
 
   /**
    * @param request - Playwright APIRequestContext (injected by fixture).
@@ -209,6 +219,20 @@ export class RestClient {
   ) {
     this.baseUrl = options.baseUrl ?? process.env['E2E_API_URL'] ?? DEFAULT_BASE_URL;
     this.authStrategy = options.authStrategy;
+    this.defaultHeaders = { ...options.defaultHeaders };
+  }
+
+  /**
+   * Sets (or overwrites) a header applied to every subsequent request on
+   * this client instance, until cleared.
+   */
+  setDefaultHeader(name: string, value: string): void {
+    this.defaultHeaders[name] = value;
+  }
+
+  /** Removes a previously-set default header. No-op if not set. */
+  clearDefaultHeader(name: string): void {
+    delete this.defaultHeaders[name];
   }
 
   // -------------------------------------------------------------------------
@@ -226,16 +250,17 @@ export class RestClient {
   }
 
   /**
-   * Builds the headers map, applying the auth strategy if present.
+   * Builds the headers map: auth strategy, then this client's default
+   * headers, then per-call `extra` headers — each layer able to override
+   * the previous, extra always winning on conflict.
    *
    * @param extra - Extra headers to merge in.
    * @returns Final headers record.
    */
   private buildHeaders(extra?: Record<string, string>): Record<string, string> {
-    // Apply auth strategy first so that explicitly supplied extra headers win.
     const headers: Record<string, string> = {};
     this.authStrategy?.apply(headers);
-    return { ...headers, ...extra };
+    return { ...headers, ...this.defaultHeaders, ...extra };
   }
 
   /**
