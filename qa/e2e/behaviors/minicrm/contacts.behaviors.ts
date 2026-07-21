@@ -1541,7 +1541,9 @@ export async function navigateToContactsWithOwnerFilter(
 export async function clickMyTeamOwnerFilter(context: ContactsBehaviorContext): Promise<void> {
   await context.page.click(
     [
-      { type: 'testId', value: 'filter-owner-my-team' },
+      // ContactsPage renders OwnerToggle with testIdPrefix="contacts-owner-filter"
+      // (LeadsPage uses a different prefix, "filter-owner" — don't conflate the two).
+      { type: 'testId', value: 'contacts-owner-filter-my-team' },
       { type: 'role', value: 'button', options: { name: /my team/i } },
     ],
     { intent: 'My Team button in the three-way owner filter toggle on contacts list' },
@@ -1558,7 +1560,9 @@ export async function clickMyTeamOwnerFilter(context: ContactsBehaviorContext): 
 export async function clickAllOwnerFilter(context: ContactsBehaviorContext): Promise<void> {
   await context.page.click(
     [
-      { type: 'testId', value: 'filter-owner-all' },
+      // ContactsPage renders OwnerToggle with testIdPrefix="contacts-owner-filter"
+      // (LeadsPage uses a different prefix, "filter-owner" — don't conflate the two).
+      { type: 'testId', value: 'contacts-owner-filter-all' },
       { type: 'role', value: 'button', options: { name: /all/i } },
     ],
     { intent: 'All button in the owner filter toggle to clear owner scoping on contacts list' },

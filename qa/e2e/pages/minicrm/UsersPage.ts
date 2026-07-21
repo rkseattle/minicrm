@@ -179,9 +179,13 @@ export class UsersPage {
    * @param userId - User UUID.
    */
   async clickResetOnboarding(userId: string): Promise<void> {
+    // Desktop renders data-testid="reset-onboarding-{id}"; mobile prefixes
+    // with "mobile-" — same dual-rendering pattern as openActionsMenu above
+    // (UserActionsMenu.tsx's testIdPrefix prop).
     await this.page.click(
       [
         { type: 'testId', value: `reset-onboarding-${userId}` },
+        { type: 'testId', value: `mobile-reset-onboarding-${userId}` },
         // Scoped `within` this user's row for the same reason as
         // openActionsMenu above — the menu renders in-place (no portal), so
         // scoping to the row also correctly excludes any other user's menu
