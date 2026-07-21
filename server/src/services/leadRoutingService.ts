@@ -60,14 +60,42 @@ export interface RoutingWeights {
 }
 
 async function getRoutingWeights(): Promise<RoutingWeights> {
-  const result = await pool.query<RoutingWeights>(
+  // node-pg returns numeric(4,3) columns as strings, not numbers — the
+  // pool.query<RoutingWeights> generic only asserts the type at compile
+  // time, it does not coerce the runtime value. Left unparsed, every
+  // *_weight field stays a string, and scoreCandidates's `sum + p.weight`
+  // silently does string concatenation instead of addition the moment two
+  // or more factors contribute — totalWeight ends up as a non-numeric
+  // string like "00.2000.100", `totalWeight > 0` evaluates false (NaN > 0),
+  // and the whole score collapses to 0 regardless of the real inputs
+  // (MINCRM-475 / F-ROUTE3 CI flake root cause).
+  const result = await pool.query<{
+    territory_weight: string;
+    industry_weight: string;
+    workload_weight: string;
+    win_rate_weight: string;
+    availability_weight: string;
+    low_confidence_threshold: string;
+    medium_confidence_threshold: string;
+    min_closed_deals_for_win_rate: number;
+  }>(
     `SELECT territory_weight, industry_weight, workload_weight, win_rate_weight, availability_weight,
             low_confidence_threshold, medium_confidence_threshold, min_closed_deals_for_win_rate
      FROM lead_routing_scoring_config
      LIMIT 1`,
   );
   // Safe: singleton row seeded by migration 154, id = true is a NOT NULL PK.
-  return result.rows[0]!;
+  const row = result.rows[0]!;
+  return {
+    territory_weight: parseFloat(row.territory_weight),
+    industry_weight: parseFloat(row.industry_weight),
+    workload_weight: parseFloat(row.workload_weight),
+    win_rate_weight: parseFloat(row.win_rate_weight),
+    availability_weight: parseFloat(row.availability_weight),
+    low_confidence_threshold: parseFloat(row.low_confidence_threshold),
+    medium_confidence_threshold: parseFloat(row.medium_confidence_threshold),
+    min_closed_deals_for_win_rate: row.min_closed_deals_for_win_rate,
+  };
 }
 
 /** Exported for direct unit testing of scoreCandidates without a DB round-trip. (MINCRM-475) */
@@ -158,6 +186,8 @@ export interface ScoredCandidate {
   candidate: CandidateRep;
   score: number;
   factors: LeadRoutingFactor[];
+  /** Count of scoring parts that contributed weight to `score`, independent of whether they produced a rendered factor description. See scoreCandidates. */
+  contributingPartCount: number;
 }
 
 /**
@@ -250,7 +280,17 @@ export function scoreCandidates(
     if (avgActiveDeal > 0) {
       const ratio = candidate.activeDealCount / avgActiveDeal;
       const availabilityScore = Math.max(0, Math.min(1, 1 - (ratio - 1)));
-      parts.push({ weight: weights.availability_weight, value: availabilityScore, factor: null });
+      parts.push({
+        weight: weights.availability_weight,
+        value: availabilityScore,
+        factor:
+          candidate.activeDealCount <= avgActiveDeal
+            ? {
+                type: 'availability',
+                description: `Available pipeline capacity (${candidate.activeDealCount} active deals vs. team average of ${avgActiveDeal.toFixed(1)})`,
+              }
+            : null,
+      });
     }
 
     const totalWeight = parts.reduce((sum, p) => sum + p.weight, 0);
@@ -262,7 +302,20 @@ export function scoreCandidates(
       .filter((f): f is LeadRoutingFactor => f !== null)
       .slice(0, 3);
 
-    return { candidate, score, factors };
+    // Distinct from `factors` (rendered UI descriptions, capped at 3, and
+    // gated per-factor on being at-or-above the team average): this counts
+    // every part that actually contributed weight to `score`, regardless of
+    // whether it earned a description. A candidate can be fully differentiated
+    // by score alone — e.g. a zero-load rep when every other active candidate
+    // org-wide is also momentarily at zero, so avgOpenLeads is 0 and the
+    // workload block is skipped entirely — without any part clearing the
+    // "at or below average" bar needed to produce a description. Gating
+    // confidence on rendered descriptions rather than actual contribution
+    // would treat that as "no signal" and suppress a fully-justified
+    // suggestion (see confidenceFor).
+    const contributingPartCount = parts.length;
+
+    return { candidate, score, factors, contributingPartCount };
   });
 }
 
@@ -272,9 +325,19 @@ export function confidenceFor(
   candidateCount: number,
   weights: RoutingWeights,
 ): LeadRoutingConfidence {
-  // Too few candidates or too few contributing factors means the suggestion
-  // isn't meaningfully differentiated — treat as low confidence regardless of score.
-  if (candidateCount < 2 || scored.factors.length === 0) return 'low';
+  // Too few candidates, or a score with nothing behind it at all, means the
+  // suggestion isn't meaningfully differentiated — treat as low confidence
+  // regardless of score. contributingPartCount (not factors.length) is the
+  // right guard here: factors is a capped, per-part-gated list of rendered
+  // UI descriptions, and a part can contribute real weight to the score
+  // without ever earning a description (e.g. workload/availability parts
+  // are only described when the candidate is at-or-below the team average —
+  // see scoreCandidates). Gating on factors.length would falsely report
+  // "no signal" for a fully-differentiated score whenever every part
+  // happened to land on the "above average" side of its own description
+  // threshold, or when every candidate org-wide is momentarily idle and
+  // avgOpenLeads/avgActiveDeal are 0.
+  if (candidateCount < 2 || scored.contributingPartCount === 0) return 'low';
   if (scored.score >= weights.medium_confidence_threshold) return 'high';
   if (scored.score >= weights.low_confidence_threshold) return 'medium';
   return 'low';

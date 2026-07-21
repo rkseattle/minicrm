@@ -13,6 +13,7 @@ export const LEAD_ROUTING_FACTOR_TYPES = [
   'industry_match',
   'workload',
   'win_rate',
+  'availability',
 ] as const;
 export type LeadRoutingFactorType = (typeof LEAD_ROUTING_FACTOR_TYPES)[number];
 
