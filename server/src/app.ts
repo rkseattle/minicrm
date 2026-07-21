@@ -28,6 +28,7 @@ import automationRoutes from './routes/automation.js';
 import webhookRoutes from './routes/webhooks.js';
 import demoRoutes from './routes/demo.js';
 import coverageRoutes from './routes/coverage.js';
+import coverageSessionRoutes from './routes/coverageSessions.js';
 import searchRoutes from './routes/search.js';
 import importRoutes from './routes/import.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -56,6 +57,7 @@ import { registerAuditService } from './grpc/auditConnectService.js';
 import { setupSwagger } from './swagger.js';
 import { captureException } from './sentry.js';
 import { asyncHandler } from './middleware/asyncHandler.js';
+import { correlationId } from './middleware/correlationId.js';
 
 const app = express();
 
@@ -125,6 +127,13 @@ app.use(express.json({ limit: JSON_BODY_SIZE_LIMIT }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// Coverage/TIA correlation-ID propagation (MINCRM-610): reads
+// x-coverage-correlation-id, if present, into req.coverageCorrelationId for
+// every route. A no-op for the overwhelming majority of requests, which
+// carry no such header — only the E2E harness and the manual-testing
+// session recorder ever send it.
+app.use(correlationId());
+
 // ── Routes (v1) ────────────────────────────────────────────────────────────────
 // All resource routes are mounted under /api/v1/. The /api/health endpoint is
 // intentionally unversioned — it is a platform/infra endpoint, not an API resource.
@@ -153,6 +162,8 @@ app.use(`${API_V1}/admin/demo`, demoRoutes);
 app.use(`${API_V1}/admin/import`, importRoutes);
 // Coverage/TIA control API (MINCRM-604, MINCRM-606)
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
+// Coverage/TIA session management (MINCRM-609..612)
+app.use(`${API_V1}/admin/coverage/sessions`, coverageSessionRoutes);
 app.use(`${API_V1}/search`, searchRoutes);
 app.use(`${API_V1}/attachments`, attachmentRoutes);
 app.use(`${API_V1}/audit-log`, auditLogRoutes);

@@ -1,0 +1,266 @@
+/**
+ * Coverage/TIA session management routes — all endpoints require
+ * authentication, admin role, and the coverage_session_management feature
+ * flag. (MINCRM-609..612)
+ */
+
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import {
+  startCoverageSessionHandler,
+  listActiveCoverageSessionsHandler,
+  getCoverageSessionHandler,
+  endCoverageSessionHandler,
+  recordCoverageSessionDumpHandler,
+} from '../controllers/coverageSessionController.js';
+
+const router = Router();
+
+const requireCoverageSessionAccess = [
+  authenticate,
+  requireRole('admin'),
+  requireFeatureEnabled('coverage_session_management'),
+] as const;
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/sessions:
+ *   post:
+ *     tags: [Coverage]
+ *     operationId: startCoverageSession
+ *     summary: Start a new coverage session
+ *     description: >
+ *       Starts a coverage session and mints a correlation ID for the caller to
+ *       propagate via the x-coverage-correlation-id header on subsequent
+ *       requests, so coverage dumps produced during the session can be
+ *       attributed to it. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [label, source, buildSha, environment]
+ *             properties:
+ *               label:
+ *                 type: string
+ *               source:
+ *                 type: string
+ *                 enum: [automated-e2e, manual]
+ *               buildSha:
+ *                 type: string
+ *               environment:
+ *                 type: string
+ *               issueKey:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Coverage session started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 session:
+ *                   $ref: '#/components/schemas/CoverageSession'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.post('/', ...requireCoverageSessionAccess, asyncHandler(startCoverageSessionHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/sessions:
+ *   get:
+ *     tags: [Coverage]
+ *     operationId: listActiveCoverageSessions
+ *     summary: List currently-active coverage sessions
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Active coverage sessions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CoverageSession'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/', ...requireCoverageSessionAccess, asyncHandler(listActiveCoverageSessionsHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/sessions/{sessionId}:
+ *   get:
+ *     tags: [Coverage]
+ *     operationId: getCoverageSession
+ *     summary: Look up a single coverage session
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Coverage session found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 session:
+ *                   $ref: '#/components/schemas/CoverageSession'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.get('/:sessionId', ...requireCoverageSessionAccess, asyncHandler(getCoverageSessionHandler));
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/sessions/{sessionId}/end:
+ *   post:
+ *     tags: [Coverage]
+ *     operationId: endCoverageSession
+ *     summary: End an active coverage session
+ *     description: >
+ *       Optimistic-locked on `version` — a stale version indicates a
+ *       concurrent end-session request already completed. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [version]
+ *             properties:
+ *               version:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Coverage session ended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 session:
+ *                   $ref: '#/components/schemas/CoverageSession'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Session already ended, or version mismatch
+ */
+router.post(
+  '/:sessionId/end',
+  ...requireCoverageSessionAccess,
+  asyncHandler(endCoverageSessionHandler),
+);
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/sessions/{sessionId}/dumps:
+ *   post:
+ *     tags: [Coverage]
+ *     operationId: recordCoverageSessionDump
+ *     summary: Record a coverage dump's attribution to a session
+ *     description: >
+ *       Called after POST /api/v1/admin/coverage/dump to attribute the
+ *       resulting dumpId to this session. attempt distinguishes Playwright
+ *       test retries so a flaky test's attempts are tracked separately
+ *       rather than overwriting one another. Admin only.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [dumpId, correlationId]
+ *             properties:
+ *               dumpId:
+ *                 type: string
+ *                 format: uuid
+ *               correlationId:
+ *                 type: string
+ *                 format: uuid
+ *               testId:
+ *                 type: string
+ *               testName:
+ *                 type: string
+ *               attempt:
+ *                 type: integer
+ *                 default: 1
+ *     responses:
+ *       201:
+ *         description: Dump attribution recorded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessionDump:
+ *                   $ref: '#/components/schemas/CoverageSessionDump'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       409:
+ *         description: dumpId is already attributed to a session
+ */
+router.post(
+  '/:sessionId/dumps',
+  ...requireCoverageSessionAccess,
+  asyncHandler(recordCoverageSessionDumpHandler),
+);
+
+export default router;

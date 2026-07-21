@@ -51,12 +51,12 @@ erDiagram
   varchar_50_ category ""
   boolean enabled ""
   jsonb role_overrides "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
-  uuid updated_by FK ""
-  timestamp_with_time_zone updated_at ""
-  boolean system_flag ""
   timestamp_with_time_zone enable_at "When set and <= now(), the flag is treated as enabled regardless of the enabled column. Evaluated lazily at resolution time — no background job required. (MINCRM-488)"
   smallint rollout_percentage "When non-null, gates users via stableHash(userId+flagKey)%100 < rollout_percentage. null skips rollout gating entirely. 100 means all users are enabled. (MINCRM-490)"
   jsonb rollout_stages "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at <= now(). (MINCRM-490)"
+  uuid updated_by FK ""
+  timestamp_with_time_zone updated_at ""
+  boolean system_flag ""
   varchar_100_ group_key FK ""
 }
 "public.users" {

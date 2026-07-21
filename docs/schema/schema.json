@@ -1,5 +1,5 @@
 {
-  "name": "minicrm",
+  "name": "minicrm_test",
   "tables": [
     {
       "name": "public.users",
@@ -2215,6 +2215,142 @@
       ]
     },
     {
+      "name": "public.email_templates",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "varchar(200)",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "type": "varchar(50)",
+          "nullable": false
+        },
+        {
+          "name": "subject",
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "merge_tags",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "email_templates_pkey",
+          "def": "CREATE UNIQUE INDEX email_templates_pkey ON public.email_templates USING btree (id)",
+          "table": "public.email_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_templates_name_key",
+          "def": "CREATE UNIQUE INDEX email_templates_name_key ON public.email_templates USING btree (name)",
+          "table": "public.email_templates",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "email_templates_category_index",
+          "def": "CREATE INDEX email_templates_category_index ON public.email_templates USING btree (category)",
+          "table": "public.email_templates",
+          "columns": [
+            "category"
+          ]
+        },
+        {
+          "name": "email_templates_enabled_index",
+          "def": "CREATE INDEX email_templates_enabled_index ON public.email_templates USING btree (enabled)",
+          "table": "public.email_templates",
+          "columns": [
+            "enabled"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "email_templates_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.email_templates",
+          "referenced_table": "public.users",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_templates_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.email_templates",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "email_templates_name_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (name)",
+          "table": "public.email_templates",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "email_templates_set_updated_at",
+          "def": "CREATE TRIGGER email_templates_set_updated_at BEFORE UPDATE ON public.email_templates FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
       "name": "public.automation_rule_logs",
       "type": "BASE TABLE",
       "columns": [
@@ -2506,16 +2642,16 @@
           "nullable": true
         },
         {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
           "name": "source",
           "type": "varchar(20)",
           "nullable": true,
           "default": "NULL::character varying"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
         }
       ],
       "indexes": [
@@ -2587,12 +2723,12 @@
       ],
       "triggers": [
         {
-          "name": "audit_log_no_modify",
-          "def": "CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable()"
-        },
-        {
           "name": "audit_log_after_insert",
           "def": "CREATE TRIGGER audit_log_after_insert AFTER INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_notify()"
+        },
+        {
+          "name": "audit_log_no_modify",
+          "def": "CREATE TRIGGER audit_log_no_modify BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION audit_log_immutable()"
         }
       ]
     },
@@ -2944,6 +3080,12 @@
           "default": "0"
         },
         {
+          "name": "pii_excluded",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "nullable": false,
@@ -2954,12 +3096,6 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
-        },
-        {
-          "name": "pii_excluded",
-          "type": "boolean",
-          "nullable": false,
-          "default": "false"
         }
       ],
       "indexes": [
@@ -3896,6 +4032,86 @@
       ]
     },
     {
+      "name": "public.lead_tags",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "lead_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "tag_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "lead_tags_pkey",
+          "def": "CREATE UNIQUE INDEX lead_tags_pkey ON public.lead_tags USING btree (lead_id, tag_id)",
+          "table": "public.lead_tags",
+          "columns": [
+            "lead_id",
+            "tag_id"
+          ]
+        },
+        {
+          "name": "lead_tags_tag_id_index",
+          "def": "CREATE INDEX lead_tags_tag_id_index ON public.lead_tags USING btree (tag_id)",
+          "table": "public.lead_tags",
+          "columns": [
+            "tag_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "lead_tags_tag_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
+          "table": "public.lead_tags",
+          "referenced_table": "public.tags",
+          "columns": [
+            "tag_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_tags_lead_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE",
+          "table": "public.lead_tags",
+          "referenced_table": "public.leads",
+          "columns": [
+            "lead_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "lead_tags_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (lead_id, tag_id)",
+          "table": "public.lead_tags",
+          "referenced_table": "",
+          "columns": [
+            "lead_id",
+            "tag_id"
+          ]
+        }
+      ]
+    },
+    {
       "name": "public.deal_contacts",
       "type": "BASE TABLE",
       "columns": [
@@ -4703,23 +4919,6 @@
           "comment": "Per-role enable/disable overrides. Keys are arbitrary role name strings (built-in or custom); values are booleans. Role name validity enforced at service layer against custom_roles table. (MINCRM-565)"
         },
         {
-          "name": "updated_by",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "system_flag",
-          "type": "boolean",
-          "nullable": false,
-          "default": "true"
-        },
-        {
           "name": "enable_at",
           "type": "timestamp with time zone",
           "nullable": true,
@@ -4736,6 +4935,23 @@
           "type": "jsonb",
           "nullable": true,
           "comment": "Ordered array of {percentage, scheduled_at} objects. Background scheduler advances rollout_percentage when scheduled_at \u003c= now(). (MINCRM-490)"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "system_flag",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
         },
         {
           "name": "group_key",
@@ -4915,6 +5131,270 @@
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (flag_key, user_id)",
           "table": "public.feature_flag_usage",
+          "referenced_table": "",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.feature_flag_beta_users",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "flag_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "added_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_beta_users_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_user_id_unique",
+          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_index",
+          "def": "CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)",
+          "table": "public.feature_flag_beta_users",
+          "columns": [
+            "flag_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_beta_users_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "public.feature_flags",
+          "columns": [
+            "flag_key"
+          ],
+          "referenced_columns": [
+            "flag_key"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_beta_users_flag_key_user_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (flag_key, user_id)",
+          "table": "public.feature_flag_beta_users",
+          "referenced_table": "",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.feature_flag_user_overrides",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "flag_key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "override",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "added_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "feature_flag_user_overrides_pkey",
+          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_pkey ON public.feature_flag_user_overrides USING btree (id)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
+          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_flag_key_user_id_unique ON public.feature_flag_user_overrides USING btree (flag_key, user_id)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "flag_key",
+            "user_id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_index",
+          "def": "CREATE INDEX feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key)",
+          "table": "public.feature_flag_user_overrides",
+          "columns": [
+            "flag_key"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "feature_flag_user_overrides_override_check",
+          "type": "CHECK",
+          "def": "CHECK (((override)::text = ANY ((ARRAY['force_enabled'::character varying, 'force_disabled'::character varying])::text[])))",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "",
+          "columns": [
+            "override"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_added_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.users",
+          "columns": [
+            "added_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "public.feature_flags",
+          "columns": [
+            "flag_key"
+          ],
+          "referenced_columns": [
+            "flag_key"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.feature_flag_user_overrides",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (flag_key, user_id)",
+          "table": "public.feature_flag_user_overrides",
           "referenced_table": "",
           "columns": [
             "flag_key",
@@ -5466,6 +5946,434 @@
         {
           "name": "ai_token_usage_set_updated_at",
           "def": "CREATE TRIGGER ai_token_usage_set_updated_at BEFORE UPDATE ON public.ai_token_usage FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.ai_sessions",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ai_sessions_pkey",
+          "def": "CREATE UNIQUE INDEX ai_sessions_pkey ON public.ai_sessions USING btree (id)",
+          "table": "public.ai_sessions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_sessions_user_id_idx",
+          "def": "CREATE INDEX ai_sessions_user_id_idx ON public.ai_sessions USING btree (user_id)",
+          "table": "public.ai_sessions",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
+          "name": "ai_sessions_user_id_updated_at_idx",
+          "def": "CREATE INDEX ai_sessions_user_id_updated_at_idx ON public.ai_sessions USING btree (user_id, updated_at)",
+          "table": "public.ai_sessions",
+          "columns": [
+            "user_id",
+            "updated_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ai_sessions_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.ai_sessions",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_sessions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.ai_sessions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.ai_messages",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "session_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "tool_results",
+          "type": "jsonb",
+          "nullable": true
+        },
+        {
+          "name": "pending_action",
+          "type": "jsonb",
+          "nullable": true
+        },
+        {
+          "name": "context_proposal",
+          "type": "jsonb",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ai_messages_pkey",
+          "def": "CREATE UNIQUE INDEX ai_messages_pkey ON public.ai_messages USING btree (id)",
+          "table": "public.ai_messages",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_messages_session_id_idx",
+          "def": "CREATE INDEX ai_messages_session_id_idx ON public.ai_messages USING btree (session_id)",
+          "table": "public.ai_messages",
+          "columns": [
+            "session_id"
+          ]
+        },
+        {
+          "name": "ai_messages_session_id_created_at_idx",
+          "def": "CREATE INDEX ai_messages_session_id_created_at_idx ON public.ai_messages USING btree (session_id, created_at)",
+          "table": "public.ai_messages",
+          "columns": [
+            "session_id",
+            "created_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ai_messages_role_check",
+          "type": "CHECK",
+          "def": "CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'assistant'::character varying])::text[])))",
+          "table": "public.ai_messages",
+          "referenced_table": "",
+          "columns": [
+            "role"
+          ]
+        },
+        {
+          "name": "ai_messages_session_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE",
+          "table": "public.ai_messages",
+          "referenced_table": "public.ai_sessions",
+          "columns": [
+            "session_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_messages_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.ai_messages",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.user_ai_context",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "key",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "user_ai_context_pkey",
+          "def": "CREATE UNIQUE INDEX user_ai_context_pkey ON public.user_ai_context USING btree (id)",
+          "table": "public.user_ai_context",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_ai_context_user_id_key_unique",
+          "def": "CREATE UNIQUE INDEX user_ai_context_user_id_key_unique ON public.user_ai_context USING btree (user_id, key)",
+          "table": "public.user_ai_context",
+          "columns": [
+            "user_id",
+            "key"
+          ]
+        },
+        {
+          "name": "user_ai_context_user_id_idx",
+          "def": "CREATE INDEX user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id)",
+          "table": "public.user_ai_context",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "user_ai_context_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.user_ai_context",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_ai_context_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.user_ai_context",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "user_ai_context_user_id_key_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (user_id, key)",
+          "table": "public.user_ai_context",
+          "referenced_table": "",
+          "columns": [
+            "user_id",
+            "key"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "user_ai_context_set_updated_at",
+          "def": "CREATE TRIGGER user_ai_context_set_updated_at BEFORE UPDATE ON public.user_ai_context FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.ai_gdpr_cascade_log",
+      "type": "BASE TABLE",
+      "comment": "Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446)",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "contact_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "triggered_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "triggered_by",
+          "type": "uuid",
+          "nullable": true,
+          "comment": "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
+        },
+        {
+          "name": "messages_redacted",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "context_entries_removed",
+          "type": "integer",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)",
+          "nullable": false,
+          "default": "'completed'::character varying"
+        },
+        {
+          "name": "error_detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "original_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "original_email",
+          "type": "text",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ai_gdpr_cascade_log_pkey",
+          "def": "CREATE UNIQUE INDEX ai_gdpr_cascade_log_pkey ON public.ai_gdpr_cascade_log USING btree (id)",
+          "table": "public.ai_gdpr_cascade_log",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_gdpr_cascade_log_contact_id_idx",
+          "def": "CREATE INDEX ai_gdpr_cascade_log_contact_id_idx ON public.ai_gdpr_cascade_log USING btree (contact_id)",
+          "table": "public.ai_gdpr_cascade_log",
+          "columns": [
+            "contact_id"
+          ]
+        },
+        {
+          "name": "ai_gdpr_cascade_log_triggered_at_idx",
+          "def": "CREATE INDEX ai_gdpr_cascade_log_triggered_at_idx ON public.ai_gdpr_cascade_log USING btree (triggered_at)",
+          "table": "public.ai_gdpr_cascade_log",
+          "columns": [
+            "triggered_at"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "ai_gdpr_cascade_log_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying])::text[])))",
+          "table": "public.ai_gdpr_cascade_log",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "ai_gdpr_cascade_log_triggered_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL",
+          "table": "public.ai_gdpr_cascade_log",
+          "referenced_table": "public.users",
+          "columns": [
+            "triggered_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "ai_gdpr_cascade_log_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.ai_gdpr_cascade_log",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
         }
       ]
     },
@@ -6257,270 +7165,6 @@
       ]
     },
     {
-      "name": "public.feature_flag_beta_users",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "flag_key",
-          "type": "varchar(100)",
-          "nullable": false
-        },
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "added_by",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "added_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "feature_flag_beta_users_pkey",
-          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_pkey ON public.feature_flag_beta_users USING btree (id)",
-          "table": "public.feature_flag_beta_users",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_flag_key_user_id_unique",
-          "def": "CREATE UNIQUE INDEX feature_flag_beta_users_flag_key_user_id_unique ON public.feature_flag_beta_users USING btree (flag_key, user_id)",
-          "table": "public.feature_flag_beta_users",
-          "columns": [
-            "flag_key",
-            "user_id"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_flag_key_index",
-          "def": "CREATE INDEX feature_flag_beta_users_flag_key_index ON public.feature_flag_beta_users USING btree (flag_key)",
-          "table": "public.feature_flag_beta_users",
-          "columns": [
-            "flag_key"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "feature_flag_beta_users_added_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.feature_flag_beta_users",
-          "referenced_table": "public.users",
-          "columns": [
-            "added_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.feature_flag_beta_users",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_flag_key_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
-          "table": "public.feature_flag_beta_users",
-          "referenced_table": "public.feature_flags",
-          "columns": [
-            "flag_key"
-          ],
-          "referenced_columns": [
-            "flag_key"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.feature_flag_beta_users",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_beta_users_flag_key_user_id_unique",
-          "type": "UNIQUE",
-          "def": "UNIQUE (flag_key, user_id)",
-          "table": "public.feature_flag_beta_users",
-          "referenced_table": "",
-          "columns": [
-            "flag_key",
-            "user_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.feature_flag_user_overrides",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "flag_key",
-          "type": "varchar(100)",
-          "nullable": false
-        },
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "override",
-          "type": "varchar(20)",
-          "nullable": false
-        },
-        {
-          "name": "reason",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "added_by",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "added_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "feature_flag_user_overrides_pkey",
-          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_pkey ON public.feature_flag_user_overrides USING btree (id)",
-          "table": "public.feature_flag_user_overrides",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
-          "def": "CREATE UNIQUE INDEX feature_flag_user_overrides_flag_key_user_id_unique ON public.feature_flag_user_overrides USING btree (flag_key, user_id)",
-          "table": "public.feature_flag_user_overrides",
-          "columns": [
-            "flag_key",
-            "user_id"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_flag_key_index",
-          "def": "CREATE INDEX feature_flag_user_overrides_flag_key_index ON public.feature_flag_user_overrides USING btree (flag_key)",
-          "table": "public.feature_flag_user_overrides",
-          "columns": [
-            "flag_key"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "feature_flag_user_overrides_override_check",
-          "type": "CHECK",
-          "def": "CHECK (((override)::text = ANY ((ARRAY['force_enabled'::character varying, 'force_disabled'::character varying])::text[])))",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "",
-          "columns": [
-            "override"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_added_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "public.users",
-          "columns": [
-            "added_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_flag_key_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "public.feature_flags",
-          "columns": [
-            "flag_key"
-          ],
-          "referenced_columns": [
-            "flag_key"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "feature_flag_user_overrides_flag_key_user_id_unique",
-          "type": "UNIQUE",
-          "def": "UNIQUE (flag_key, user_id)",
-          "table": "public.feature_flag_user_overrides",
-          "referenced_table": "",
-          "columns": [
-            "flag_key",
-            "user_id"
-          ]
-        }
-      ]
-    },
-    {
       "name": "public.feature_flag_groups",
       "type": "BASE TABLE",
       "columns": [
@@ -6685,656 +7329,6 @@
           "columns": [
             "group_key",
             "user_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.ai_sessions",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "name",
-          "type": "varchar(255)",
-          "nullable": true
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "ai_sessions_pkey",
-          "def": "CREATE UNIQUE INDEX ai_sessions_pkey ON public.ai_sessions USING btree (id)",
-          "table": "public.ai_sessions",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_sessions_user_id_index",
-          "def": "CREATE INDEX ai_sessions_user_id_index ON public.ai_sessions USING btree (user_id)",
-          "table": "public.ai_sessions",
-          "columns": [
-            "user_id"
-          ]
-        },
-        {
-          "name": "ai_sessions_user_id_updated_at_index",
-          "def": "CREATE INDEX ai_sessions_user_id_updated_at_index ON public.ai_sessions USING btree (user_id, updated_at)",
-          "table": "public.ai_sessions",
-          "columns": [
-            "user_id",
-            "updated_at"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "ai_sessions_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.ai_sessions",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_sessions_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.ai_sessions",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.ai_messages",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "session_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "role",
-          "type": "varchar(20)",
-          "nullable": false
-        },
-        {
-          "name": "content",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "tool_results",
-          "type": "jsonb",
-          "nullable": true,
-          "comment": "Structured tool call results for native CRM result rendering. Array of {toolName, input, output} objects. NULL for user messages and assistant messages that did not invoke tools. (MINCRM-423, MINCRM-431)"
-        },
-        {
-          "name": "pending_action",
-          "type": "jsonb",
-          "nullable": true,
-          "comment": "Pending mutation action awaiting user confirmation. Object with {operation, entityType, entityId?, entityName?, fields, isBulk, bulkCount?, bulkSample?, isBulkDelete?, summary}. NULL when no confirmation is pending. (MINCRM-425, MINCRM-426)"
-        },
-        {
-          "name": "context_proposal",
-          "type": "jsonb",
-          "nullable": true,
-          "comment": "AI-proposed context entry awaiting user accept/dismiss. Object with {key, value, reason}. NULL when no proposal is present. (MINCRM-429, MINCRM-430)"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "ai_messages_pkey",
-          "def": "CREATE UNIQUE INDEX ai_messages_pkey ON public.ai_messages USING btree (id)",
-          "table": "public.ai_messages",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_messages_session_id_index",
-          "def": "CREATE INDEX ai_messages_session_id_index ON public.ai_messages USING btree (session_id)",
-          "table": "public.ai_messages",
-          "columns": [
-            "session_id"
-          ]
-        },
-        {
-          "name": "ai_messages_session_id_created_at_index",
-          "def": "CREATE INDEX ai_messages_session_id_created_at_index ON public.ai_messages USING btree (session_id, created_at)",
-          "table": "public.ai_messages",
-          "columns": [
-            "session_id",
-            "created_at"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "ai_messages_role_check",
-          "type": "CHECK",
-          "def": "CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'assistant'::character varying])::text[])))",
-          "table": "public.ai_messages",
-          "referenced_table": "",
-          "columns": [
-            "role"
-          ]
-        },
-        {
-          "name": "ai_messages_session_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE",
-          "table": "public.ai_messages",
-          "referenced_table": "public.ai_sessions",
-          "columns": [
-            "session_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_messages_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.ai_messages",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.email_templates",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "name",
-          "type": "varchar(200)",
-          "nullable": false
-        },
-        {
-          "name": "category",
-          "type": "varchar(50)",
-          "nullable": false
-        },
-        {
-          "name": "subject",
-          "type": "varchar(500)",
-          "nullable": false
-        },
-        {
-          "name": "body",
-          "type": "text",
-          "nullable": false
-        },
-        {
-          "name": "merge_tags",
-          "type": "jsonb",
-          "nullable": false,
-          "default": "'[]'::jsonb"
-        },
-        {
-          "name": "enabled",
-          "type": "boolean",
-          "nullable": false,
-          "default": "true"
-        },
-        {
-          "name": "created_by",
-          "type": "uuid",
-          "nullable": true
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "email_templates_pkey",
-          "def": "CREATE UNIQUE INDEX email_templates_pkey ON public.email_templates USING btree (id)",
-          "table": "public.email_templates",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "email_templates_name_key",
-          "def": "CREATE UNIQUE INDEX email_templates_name_key ON public.email_templates USING btree (name)",
-          "table": "public.email_templates",
-          "columns": [
-            "name"
-          ]
-        },
-        {
-          "name": "email_templates_category_index",
-          "def": "CREATE INDEX email_templates_category_index ON public.email_templates USING btree (category)",
-          "table": "public.email_templates",
-          "columns": [
-            "category"
-          ]
-        },
-        {
-          "name": "email_templates_enabled_index",
-          "def": "CREATE INDEX email_templates_enabled_index ON public.email_templates USING btree (enabled)",
-          "table": "public.email_templates",
-          "columns": [
-            "enabled"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "email_templates_created_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.email_templates",
-          "referenced_table": "public.users",
-          "columns": [
-            "created_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "email_templates_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.email_templates",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "email_templates_name_key",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name)",
-          "table": "public.email_templates",
-          "referenced_table": "",
-          "columns": [
-            "name"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "email_templates_set_updated_at",
-          "def": "CREATE TRIGGER email_templates_set_updated_at BEFORE UPDATE ON public.email_templates FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.user_ai_context",
-      "type": "BASE TABLE",
-      "comment": "Per-user key/value context entries injected into every Claude system prompt as a personalisation preamble. (MINCRM-427)",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "user_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "key",
-          "type": "varchar(100)",
-          "nullable": false,
-          "comment": "Short label for this preference (e.g. \"a while\", \"high-value\"). Max 100 chars."
-        },
-        {
-          "name": "value",
-          "type": "varchar(500)",
-          "nullable": false,
-          "comment": "Plain-text definition of the preference (e.g. \"30+ days without activity\"). Max 500 chars."
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "user_ai_context_pkey",
-          "def": "CREATE UNIQUE INDEX user_ai_context_pkey ON public.user_ai_context USING btree (id)",
-          "table": "public.user_ai_context",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "user_ai_context_user_id_idx",
-          "def": "CREATE INDEX user_ai_context_user_id_idx ON public.user_ai_context USING btree (user_id)",
-          "table": "public.user_ai_context",
-          "columns": [
-            "user_id"
-          ]
-        },
-        {
-          "name": "user_ai_context_user_id_key_unique",
-          "def": "CREATE UNIQUE INDEX user_ai_context_user_id_key_unique ON public.user_ai_context USING btree (user_id, key)",
-          "table": "public.user_ai_context",
-          "columns": [
-            "user_id",
-            "key"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "user_ai_context_user_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
-          "table": "public.user_ai_context",
-          "referenced_table": "public.users",
-          "columns": [
-            "user_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "user_ai_context_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.user_ai_context",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "user_ai_context_user_id_key_unique",
-          "type": "UNIQUE",
-          "def": "UNIQUE (user_id, key)",
-          "table": "public.user_ai_context",
-          "referenced_table": "",
-          "columns": [
-            "user_id",
-            "key"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "user_ai_context_set_updated_at",
-          "def": "CREATE TRIGGER user_ai_context_set_updated_at BEFORE UPDATE ON public.user_ai_context FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        }
-      ]
-    },
-    {
-      "name": "public.lead_tags",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "lead_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "tag_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "lead_tags_pkey",
-          "def": "CREATE UNIQUE INDEX lead_tags_pkey ON public.lead_tags USING btree (lead_id, tag_id)",
-          "table": "public.lead_tags",
-          "columns": [
-            "lead_id",
-            "tag_id"
-          ]
-        },
-        {
-          "name": "lead_tags_tag_id_index",
-          "def": "CREATE INDEX lead_tags_tag_id_index ON public.lead_tags USING btree (tag_id)",
-          "table": "public.lead_tags",
-          "columns": [
-            "tag_id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "lead_tags_tag_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE",
-          "table": "public.lead_tags",
-          "referenced_table": "public.tags",
-          "columns": [
-            "tag_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "lead_tags_lead_id_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE",
-          "table": "public.lead_tags",
-          "referenced_table": "public.leads",
-          "columns": [
-            "lead_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "lead_tags_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (lead_id, tag_id)",
-          "table": "public.lead_tags",
-          "referenced_table": "",
-          "columns": [
-            "lead_id",
-            "tag_id"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "public.ai_gdpr_cascade_log",
-      "type": "BASE TABLE",
-      "comment": "Audit log for GDPR AI data cascade runs — redaction of PII in ai_messages and removal of matching user_ai_context entries following contact erasure. (MINCRM-446)",
-      "columns": [
-        {
-          "name": "id",
-          "type": "uuid",
-          "nullable": false,
-          "default": "gen_random_uuid()"
-        },
-        {
-          "name": "contact_id",
-          "type": "uuid",
-          "nullable": false
-        },
-        {
-          "name": "triggered_at",
-          "type": "timestamp with time zone",
-          "nullable": false,
-          "default": "now()"
-        },
-        {
-          "name": "triggered_by",
-          "type": "uuid",
-          "nullable": true,
-          "comment": "NULL = system-initiated (auto-cascade after GDPR erasure). Non-null = admin who triggered a manual re-run."
-        },
-        {
-          "name": "messages_redacted",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "context_entries_removed",
-          "type": "integer",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "status",
-          "type": "varchar(20)",
-          "nullable": false,
-          "default": "'completed'::character varying"
-        },
-        {
-          "name": "error_detail",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "original_name",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "original_email",
-          "type": "text",
-          "nullable": true
-        }
-      ],
-      "indexes": [
-        {
-          "name": "ai_gdpr_cascade_log_pkey",
-          "def": "CREATE UNIQUE INDEX ai_gdpr_cascade_log_pkey ON public.ai_gdpr_cascade_log USING btree (id)",
-          "table": "public.ai_gdpr_cascade_log",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_gdpr_cascade_log_contact_id_idx",
-          "def": "CREATE INDEX ai_gdpr_cascade_log_contact_id_idx ON public.ai_gdpr_cascade_log USING btree (contact_id)",
-          "table": "public.ai_gdpr_cascade_log",
-          "columns": [
-            "contact_id"
-          ]
-        },
-        {
-          "name": "ai_gdpr_cascade_log_triggered_at_idx",
-          "def": "CREATE INDEX ai_gdpr_cascade_log_triggered_at_idx ON public.ai_gdpr_cascade_log USING btree (triggered_at)",
-          "table": "public.ai_gdpr_cascade_log",
-          "columns": [
-            "triggered_at"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "ai_gdpr_cascade_log_status_check",
-          "type": "CHECK",
-          "def": "CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying])::text[])))",
-          "table": "public.ai_gdpr_cascade_log",
-          "referenced_table": "",
-          "columns": [
-            "status"
-          ]
-        },
-        {
-          "name": "ai_gdpr_cascade_log_triggered_by_fkey",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL",
-          "table": "public.ai_gdpr_cascade_log",
-          "referenced_table": "public.users",
-          "columns": [
-            "triggered_by"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "ai_gdpr_cascade_log_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.ai_gdpr_cascade_log",
-          "referenced_table": "",
-          "columns": [
-            "id"
           ]
         }
       ]
@@ -10115,6 +10109,307 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.coverage_sessions",
+      "type": "BASE TABLE",
+      "comment": "Coverage/TIA testing sessions (MINCRM-609..612) — a logical grouping of one or more coverage dumps attributed to a single automated test run or manual-exploratory-testing session. correlation_id is the value propagated via the x-coverage-correlation-id header (see correlationId middleware) and stamped onto dumps in coverage_session_dumps; it is NOT a physically isolated V8 counter scope — the backend coverage agent remains a single process-wide counter set (see NodeV8CoverageAgent), so overlapping sessions on the same server instance still share the same underlying counters. version supports optimistic locking against concurrent end-session requests.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "source",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)",
+          "nullable": false,
+          "default": "'active'::character varying"
+        },
+        {
+          "name": "correlation_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "build_sha",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "environment",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "issue_key",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "started_by",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "coverage_sessions_pkey",
+          "def": "CREATE UNIQUE INDEX coverage_sessions_pkey ON public.coverage_sessions USING btree (id)",
+          "table": "public.coverage_sessions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_sessions_correlation_id_unique",
+          "def": "CREATE UNIQUE INDEX coverage_sessions_correlation_id_unique ON public.coverage_sessions USING btree (correlation_id)",
+          "table": "public.coverage_sessions",
+          "columns": [
+            "correlation_id"
+          ]
+        },
+        {
+          "name": "coverage_sessions_status_idx",
+          "def": "CREATE INDEX coverage_sessions_status_idx ON public.coverage_sessions USING btree (status)",
+          "table": "public.coverage_sessions",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "coverage_sessions_started_by_idx",
+          "def": "CREATE INDEX coverage_sessions_started_by_idx ON public.coverage_sessions USING btree (started_by)",
+          "table": "public.coverage_sessions",
+          "columns": [
+            "started_by"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "coverage_sessions_ended_at_check",
+          "type": "CHECK",
+          "def": "CHECK (((((status)::text = 'active'::text) AND (ended_at IS NULL)) OR (((status)::text = 'ended'::text) AND (ended_at IS NOT NULL))))",
+          "table": "public.coverage_sessions",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "ended_at"
+          ]
+        },
+        {
+          "name": "coverage_sessions_source_check",
+          "type": "CHECK",
+          "def": "CHECK (((source)::text = ANY ((ARRAY['automated-e2e'::character varying, 'manual'::character varying])::text[])))",
+          "table": "public.coverage_sessions",
+          "referenced_table": "",
+          "columns": [
+            "source"
+          ]
+        },
+        {
+          "name": "coverage_sessions_status_check",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'ended'::character varying])::text[])))",
+          "table": "public.coverage_sessions",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "coverage_sessions_started_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.coverage_sessions",
+          "referenced_table": "public.users",
+          "columns": [
+            "started_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_sessions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.coverage_sessions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_sessions_correlation_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (correlation_id)",
+          "table": "public.coverage_sessions",
+          "referenced_table": "",
+          "columns": [
+            "correlation_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.coverage_session_dumps",
+      "type": "BASE TABLE",
+      "comment": "Attributes a single coverage dump (dump_id — a crypto.randomUUID() minted by NodeV8CoverageAgent/coverageDumpService, not FK'd since dump metadata itself stays file-based per Phase 1) to the coverage_sessions row that produced it. test_id/test_name/attempt support MINCRM-612's retry-attribution requirement: a Playwright retry re-runs the same test_id with attempt incremented, so retried/flaky tests are distinguishable in the record rather than silently overwriting or double-counting the prior attempt's dump.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "session_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "dump_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "correlation_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "test_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "test_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "attempt",
+          "type": "integer",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "coverage_session_dumps_pkey",
+          "def": "CREATE UNIQUE INDEX coverage_session_dumps_pkey ON public.coverage_session_dumps USING btree (id)",
+          "table": "public.coverage_session_dumps",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_dump_id_unique",
+          "def": "CREATE UNIQUE INDEX coverage_session_dumps_dump_id_unique ON public.coverage_session_dumps USING btree (dump_id)",
+          "table": "public.coverage_session_dumps",
+          "columns": [
+            "dump_id"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_session_id_idx",
+          "def": "CREATE INDEX coverage_session_dumps_session_id_idx ON public.coverage_session_dumps USING btree (session_id)",
+          "table": "public.coverage_session_dumps",
+          "columns": [
+            "session_id"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_correlation_id_idx",
+          "def": "CREATE INDEX coverage_session_dumps_correlation_id_idx ON public.coverage_session_dumps USING btree (correlation_id)",
+          "table": "public.coverage_session_dumps",
+          "columns": [
+            "correlation_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "coverage_session_dumps_attempt_check",
+          "type": "CHECK",
+          "def": "CHECK ((attempt \u003e= 1))",
+          "table": "public.coverage_session_dumps",
+          "referenced_table": "",
+          "columns": [
+            "attempt"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_session_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (session_id) REFERENCES coverage_sessions(id) ON DELETE CASCADE",
+          "table": "public.coverage_session_dumps",
+          "referenced_table": "public.coverage_sessions",
+          "columns": [
+            "session_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.coverage_session_dumps",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "coverage_session_dumps_dump_id_unique",
+          "type": "UNIQUE",
+          "def": "UNIQUE (dump_id)",
+          "table": "public.coverage_session_dumps",
+          "referenced_table": "",
+          "columns": [
+            "dump_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -10418,6 +10713,19 @@
       "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT"
     },
     {
+      "table": "public.email_templates",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
       "table": "public.automation_rule_logs",
       "columns": [
         "rule_id"
@@ -10665,6 +10973,32 @@
       "def": "FOREIGN KEY (deal_id) REFERENCES deals(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.lead_tags",
+      "columns": [
+        "tag_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.tags",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.lead_tags",
+      "columns": [
+        "lead_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.leads",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
+    },
+    {
       "table": "public.deal_contacts",
       "columns": [
         "contact_id"
@@ -10860,6 +11194,84 @@
       "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
     },
     {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_beta_users",
+      "columns": [
+        "flag_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flags",
+      "parent_columns": [
+        "flag_key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "added_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.feature_flag_user_overrides",
+      "columns": [
+        "flag_key"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.feature_flags",
+      "parent_columns": [
+        "flag_key"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
+    },
+    {
       "table": "public.ai_configuration",
       "columns": [
         "dpa_acknowledged_by"
@@ -10910,6 +11322,58 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.ai_sessions",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.ai_messages",
+      "columns": [
+        "session_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.ai_sessions",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.user_ai_context",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.ai_gdpr_cascade_log",
+      "columns": [
+        "triggered_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.teams",
@@ -11042,84 +11506,6 @@
       "def": "FOREIGN KEY (role_id) REFERENCES custom_roles(id) ON DELETE RESTRICT"
     },
     {
-      "table": "public.feature_flag_beta_users",
-      "columns": [
-        "added_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.feature_flag_beta_users",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.feature_flag_beta_users",
-      "columns": [
-        "flag_key"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.feature_flags",
-      "parent_columns": [
-        "flag_key"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.feature_flag_user_overrides",
-      "columns": [
-        "added_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.feature_flag_user_overrides",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.feature_flag_user_overrides",
-      "columns": [
-        "flag_key"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.feature_flags",
-      "parent_columns": [
-        "flag_key"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (flag_key) REFERENCES feature_flags(flag_key) ON DELETE CASCADE"
-    },
-    {
       "table": "public.feature_flag_groups",
       "columns": [
         "updated_by"
@@ -11170,97 +11556,6 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (group_key) REFERENCES feature_flag_groups(group_key) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.ai_sessions",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.ai_messages",
-      "columns": [
-        "session_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.ai_sessions",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (session_id) REFERENCES ai_sessions(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.email_templates",
-      "columns": [
-        "created_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL"
-    },
-    {
-      "table": "public.user_ai_context",
-      "columns": [
-        "user_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.lead_tags",
-      "columns": [
-        "tag_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.tags",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.lead_tags",
-      "columns": [
-        "lead_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.leads",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.ai_gdpr_cascade_log",
-      "columns": [
-        "triggered_by"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.users",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "zero_or_one",
-      "def": "FOREIGN KEY (triggered_by) REFERENCES users(id) ON DELETE SET NULL"
     },
     {
       "table": "public.ai_token_usage_daily",
@@ -11638,6 +11933,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.coverage_sessions",
+      "columns": [
+        "started_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (started_by) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.coverage_session_dumps",
+      "columns": [
+        "session_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.coverage_sessions",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (session_id) REFERENCES coverage_sessions(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
