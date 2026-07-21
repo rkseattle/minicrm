@@ -821,12 +821,31 @@ describe('POST /api/v1/leads/routing-suggestion (MINCRM-475)', () => {
     await request(app).post('/api/v1/leads/routing-suggestion').send({}).expect(401);
   });
 
-  it('returns 204 when no confident suggestion is available (no differentiating profile data)', async () => {
-    await request(app)
+  it('returns either 204 (no confident suggestion) or a well-formed 200 suggestion for a profile with no differentiating data', async () => {
+    // Weak assertion by design, matching leadRoutingService.test.ts's
+    // computeLeadRoutingSuggestion DB-integration tests: gatherCandidates
+    // queries every active rep/manager org-wide (see leadRoutingService.ts's
+    // module doc comment), so under full-suite Vitest concurrency this
+    // candidate pool is populated by whichever other test files' fixture
+    // users happen to be active at request time. A hardcoded expect(204)
+    // here previously only passed because of a since-fixed service bug
+    // (MINCRM-475 / F-ROUTE3) that forced confidence to 'low' whenever the
+    // workload/availability team averages were momentarily zero — masking
+    // this file's lack of control over the org-wide pool rather than
+    // actually asserting "no signal". This test can only correctly assert
+    // the response is contractually valid, not which status code a shared,
+    // uncontrolled candidate pool happens to produce.
+    const response = await request(app)
       .post('/api/v1/leads/routing-suggestion')
       .set('Cookie', repCookie)
-      .send({})
-      .expect(204);
+      .send({});
+    expect([200, 204]).toContain(response.status);
+    if (response.status === 200) {
+      expect(response.body.suggested_rep_id).toEqual(expect.any(String));
+      expect(['medium', 'high']).toContain(response.body.confidence);
+    } else {
+      expect(response.body).toEqual({});
+    }
   });
 
   it('returns 400 for an invalid body', async () => {

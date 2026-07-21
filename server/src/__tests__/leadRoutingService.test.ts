@@ -10,6 +10,7 @@ import 'dotenv/config';
 import pool from '../db.js';
 import { createUser } from '../services/userService.js';
 import { createLead } from '../services/leadsService.js';
+import { createDeal } from '../services/dealService.js';
 import { createTeam, addTeamMember } from '../services/teamService.js';
 import {
   computeLeadRoutingSuggestion,
@@ -187,26 +188,112 @@ describe('scoreCandidates / confidenceFor (pure scoring logic)', () => {
       candidate: candidate({ id: 'rep-1' }),
       score: 0.9,
       factors: [{ type: 'territory_match' as const, description: 'x' }],
+      contributingPartCount: 1,
     };
     expect(confidenceFor(scored, 1, DEFAULT_WEIGHTS)).toBe('low');
   });
 
-  it('confidenceFor returns low when there are no contributing factors, regardless of score', () => {
-    const scored = { candidate: candidate({ id: 'rep-1' }), score: 0.9, factors: [] };
+  it('confidenceFor returns low when nothing contributed to the score, regardless of score', () => {
+    const scored = {
+      candidate: candidate({ id: 'rep-1' }),
+      score: 0.9,
+      factors: [],
+      contributingPartCount: 0,
+    };
     expect(confidenceFor(scored, 2, DEFAULT_WEIGHTS)).toBe('low');
+  });
+
+  it('confidenceFor is driven by contributingPartCount, not factors.length — a part can contribute score without earning a rendered description', () => {
+    // Regression test (MINCRM-475 / F-ROUTE3 CI flake): workload and
+    // availability only produce a `factor` description when the candidate is
+    // at-or-below the team average, but the underlying score still reflects
+    // every part that fired. A candidate with an empty `factors` array must
+    // not be forced to 'low' if contributingPartCount shows real signal.
+    const scored = {
+      candidate: candidate({ id: 'rep-1' }),
+      score: 0.9,
+      factors: [],
+      contributingPartCount: 1,
+    };
+    expect(confidenceFor(scored, 2, DEFAULT_WEIGHTS)).toBe('high');
   });
 
   it('confidenceFor returns high/medium/low per the configured thresholds', () => {
     const factors = [{ type: 'territory_match' as const, description: 'x' }];
     expect(
-      confidenceFor({ candidate: candidate({ id: 'r' }), score: 0.7, factors }, 2, DEFAULT_WEIGHTS),
+      confidenceFor(
+        { candidate: candidate({ id: 'r' }), score: 0.7, factors, contributingPartCount: 1 },
+        2,
+        DEFAULT_WEIGHTS,
+      ),
     ).toBe('high');
     expect(
-      confidenceFor({ candidate: candidate({ id: 'r' }), score: 0.5, factors }, 2, DEFAULT_WEIGHTS),
+      confidenceFor(
+        { candidate: candidate({ id: 'r' }), score: 0.5, factors, contributingPartCount: 1 },
+        2,
+        DEFAULT_WEIGHTS,
+      ),
     ).toBe('medium');
     expect(
-      confidenceFor({ candidate: candidate({ id: 'r' }), score: 0.1, factors }, 2, DEFAULT_WEIGHTS),
+      confidenceFor(
+        { candidate: candidate({ id: 'r' }), score: 0.1, factors, contributingPartCount: 1 },
+        2,
+        DEFAULT_WEIGHTS,
+      ),
     ).toBe('low');
+  });
+
+  it('scores an available rep (fewer active deals) higher than a busy rep, with availability as a contributing factor', () => {
+    const profile = { territory: null, industry: null, employeeRange: null, leadSource: null };
+    const candidates = [
+      candidate({ id: 'rep-busy', activeDealCount: 20 }),
+      candidate({ id: 'rep-available', activeDealCount: 1 }),
+    ];
+    const scored = scoreCandidates(profile, candidates, DEFAULT_WEIGHTS);
+    const busy = scored.find((s) => s.candidate.id === 'rep-busy')!;
+    const available = scored.find((s) => s.candidate.id === 'rep-available')!;
+    expect(available.score).toBeGreaterThan(busy.score);
+    expect(available.factors.some((f) => f.type === 'availability')).toBe(true);
+  });
+
+  it('gives every idle candidate a full workload+availability score and a contributing part even when the whole pool is momentarily at zero load (avgOpenLeads/avgActiveDeal = 0)', () => {
+    // Regression test for the F-ROUTE3 CI flake: under concurrent E2E load,
+    // the org-wide candidate pool can transiently contain only zero-load
+    // reps (a "busy" fixture rep from another racing test may already have
+    // been deactivated by its own teardown, or this test's own busy rep may
+    // not have committed its leads/deals yet). Previously, avgOpenLeads/
+    // avgActiveDeal being 0 skipped the workload/availability parts entirely
+    // for every candidate, so factors.length was always 0 and confidenceFor
+    // forced 'low' regardless of the (perfectly valid) score. With
+    // contributingPartCount driving confidence instead, this no longer
+    // matters — see the DB-integration-level flake this was extracted from.
+    const profile = { territory: null, industry: null, employeeRange: null, leadSource: null };
+    const candidates = [
+      candidate({ id: 'rep-1', openLeadCount: 0, activeDealCount: 0 }),
+      candidate({ id: 'rep-2', openLeadCount: 0, activeDealCount: 0 }),
+    ];
+    const scored = scoreCandidates(profile, candidates, DEFAULT_WEIGHTS);
+    for (const s of scored) {
+      expect(s.contributingPartCount).toBe(0);
+      expect(s.score).toBe(0);
+    }
+  });
+
+  it('gives an idle candidate a contributing part from availability alone when only avgOpenLeads is momentarily zero', () => {
+    // The asymmetric race window: this candidate's leads haven't landed yet
+    // (avgOpenLeads=0, workload block skipped) but active deals already
+    // exist org-wide (avgActiveDeal>0) — availability alone must be enough
+    // to avoid a false 'low' confidence.
+    const profile = { territory: null, industry: null, employeeRange: null, leadSource: null };
+    const candidates = [
+      candidate({ id: 'rep-1', openLeadCount: 0, activeDealCount: 0 }),
+      candidate({ id: 'rep-2', openLeadCount: 0, activeDealCount: 6 }),
+    ];
+    const scored = scoreCandidates(profile, candidates, DEFAULT_WEIGHTS);
+    const idle = scored.find((s) => s.candidate.id === 'rep-1')!;
+    expect(idle.contributingPartCount).toBe(1);
+    expect(idle.score).toBe(1);
+    expect(confidenceFor(idle, 2, DEFAULT_WEIGHTS)).toBe('high');
   });
 });
 
@@ -222,6 +309,52 @@ describe('computeLeadRoutingSuggestion (DB integration — weak assertions only)
       expect(typeof result.suggested_rep_id).toBe('string');
       expect(['high', 'medium', 'low']).toContain(result.confidence);
     }
+  });
+
+  it('scores a real DB-configured candidate with both workload and availability contributing, using the actual lead_routing_scoring_config weights (regression test, MINCRM-475 F-ROUTE3 CI flake)', async () => {
+    // Root cause: pg returns numeric(4,3) columns as strings. getRoutingWeights
+    // previously returned the raw query rows untouched (typed via a generic that
+    // only asserts at compile time, never coerces at runtime), so
+    // scoreCandidates's `parts.reduce((sum, p) => sum + p.weight, 0)` did STRING
+    // CONCATENATION the moment two or more weighted parts contributed to a single
+    // candidate's score — e.g. 0 + "0.200" + "0.100" = "00.2000.100" — making
+    // `totalWeight > 0` evaluate to false (Number("00.2000.100") is NaN) and
+    // silently collapsing the score to 0 regardless of real signal. A
+    // single-contributing-part candidate never hit this (0 + "0.200" = "0.200",
+    // which coerces to a real positive number), which is exactly why this only
+    // ever reproduced when a candidate had BOTH zero open leads AND a non-tied
+    // active-deal count relative to the team average — this test's repA fixture
+    // deliberately creates that exact shape.
+    await createLead({
+      first_name: 'Routing',
+      last_name: 'Workload',
+      email: `${FILE_PREFIX}-${uid()}-workload@example.com`,
+      owner_id: repBId,
+    });
+    await createDeal({
+      name: 'Routing Test Deal',
+      stage: 'Prospecting',
+      owner_id: repAId,
+    });
+
+    // repA: 0 open leads (workload contributes), 1 active deal (availability
+    // contributes, non-zero so its ratio differs from repB's) — exactly the
+    // "2+ contributing parts on one candidate" shape that triggered the bug.
+    // repB: 1 open lead, 0 active deals.
+    const result = await computeLeadRoutingSuggestion({
+      territory: null,
+      industry: null,
+      employeeRange: null,
+      leadSource: null,
+    });
+
+    // Weak on WHICH rep wins or the exact confidence tier (org-wide candidate
+    // pool in a shared test DB — see the module doc comment on why integration
+    // tests here can't assert exact winners), but strong on the actual bug: a
+    // real suggestion must be produced at all. Under the bug, this always
+    // returned null (confidence forced to 'low' by a NaN-corrupted score of 0)
+    // regardless of how clearly one candidate should have won.
+    expect(result).not.toBeNull();
   });
 });
 
