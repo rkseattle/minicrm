@@ -46,7 +46,7 @@ import {
   CORRELATION_ID_HEADER,
 } from '@framework/coverageAgent/coverage-session-control-client.js';
 import { RestClient } from '@framework/clients/rest-client.js';
-import type { APIRequestContext } from '@playwright/test';
+import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
@@ -112,24 +112,31 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // heal event produced by page objects in pages/minicrm/ is attributed
   // to "Unknown.unknown" because the framework layer has no knowledge of
   // where the app's page objects live.
-  page: async (
-    { page: rawPage, request }: { page: Page; request: APIRequestContext },
-    use,
-    testInfo,
-  ) => {
+  page: async ({ page: rawPage }: { page: Page }, use, testInfo) => {
     const facade = createPageFacade(rawPage, testInfo.title, PAGE_OBJECT_PATH_SEGMENTS);
 
-    // Dedicated admin-authenticated client for coverage-session control calls,
-    // deliberately separate from the test's own `restClient` — a test may
+    // Dedicated admin-authenticated client for coverage-session control
+    // calls, on its OWN isolated APIRequestContext (its own cookie jar) —
+    // deliberately separate from both the test's own `restClient` AND the
+    // fixture-provided `request` context restClient wraps. A test may
     // authenticate `restClient` as a non-admin ephemeral user, log out, or
-    // never authenticate it at all, and session start/end must work
+    // re-authenticate at any point during the test body; because RestClient
+    // has no cookie jar of its own (it delegates every call straight to the
+    // underlying APIRequestContext), a sessionClient sharing that same
+    // context would silently inherit whatever auth state the test left it
+    // in by the time this fixture's cleanup runs. A fresh newContext() here
+    // guarantees sessionClient's own login always wins, regardless of what
+    // the test did to its restClient. Session start/end must work
     // regardless (MINCRM-609's "no per-test edits" requirement). Best-effort
     // throughout: absent credentials, a disabled flag, or a down server must
     // never fail the test itself — coverage-session tracking is observability,
     // not a test dependency.
-    const sessionClient = new RestClient(request);
+    const sessionRequestContext = E2E_COVERAGE_PER_TEST
+      ? await playwrightRequest.newContext().catch(() => undefined)
+      : undefined;
+    const sessionClient = sessionRequestContext ? new RestClient(sessionRequestContext) : undefined;
     let session: Awaited<ReturnType<typeof startCoverageSession>> | undefined;
-    if (E2E_COVERAGE_PER_TEST) {
+    if (E2E_COVERAGE_PER_TEST && sessionClient) {
       session = await loginAsAdmin(sessionClient)
         .then(() =>
           startCoverageSession(sessionClient, {
@@ -163,13 +170,14 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
       // default; not overridden anywhere in this framework), so
       // window.__coverage__ always starts empty per test — no explicit
       // reset-at-start is needed to prevent cross-test bleed.
-      if (E2E_COVERAGE_PER_TEST) {
-        // Submitted via sessionClient (admin-authenticated), not the test's
-        // own restClient — a test may authenticate restClient as a
-        // non-admin ephemeral user, log it out, or never authenticate it at
-        // all, and POST /api/v1/admin/coverage/dump requires admin. Using
-        // restClient here would silently swallow an auth failure (the
-        // .catch below) and leave the session with no coverage dump.
+      if (E2E_COVERAGE_PER_TEST && sessionClient) {
+        // Submitted via sessionClient (its own isolated, admin-authenticated
+        // context — see above), not the test's own restClient — a test may
+        // authenticate restClient as a non-admin ephemeral user, log it
+        // out, or never authenticate it at all, and
+        // POST /api/v1/admin/coverage/dump requires admin. Using restClient
+        // here would silently swallow an auth failure (the .catch below)
+        // and leave the session with no coverage dump.
         const dump = await pullAndSubmitBrowserCoverage(
           facade,
           sessionClient,
@@ -198,6 +206,13 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
           });
         }
       }
+
+      // Always dispose the isolated request context, even if session setup
+      // or teardown above failed — otherwise every test leaks one
+      // long-lived connection pool for the lifetime of the worker process.
+      await sessionRequestContext?.dispose().catch(() => {
+        // Disposal failure must never fail the test itself.
+      });
     }
   },
 });

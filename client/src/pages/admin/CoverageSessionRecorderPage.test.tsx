@@ -327,7 +327,7 @@ describe('CoverageSessionRecorderPage', () => {
     });
   });
 
-  it('shows an error when check-out fails to end the session', async () => {
+  it('shows an error when check-out fails to end the session, keeps the recording panel visible, and keeps the correlation header set', async () => {
     server.use(
       http.get('/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
@@ -357,10 +357,30 @@ describe('CoverageSessionRecorderPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
     });
+
+    const { default: apiClient } = await import('@/api/axiosInstance.js');
+    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
+      ACTIVE_SESSION.correlationId,
+    );
+
     await user.click(screen.getByTestId('coverage-session-check-out-button'));
 
     await waitFor(() => {
       expect(screen.getByTestId('coverage-session-recorder-action-error')).toBeInTheDocument();
     });
+
+    // A failed check-out must not silently drop attribution: the recorder
+    // must still show as recording, and the header must still be set, so
+    // the admin can see the failure and retry rather than unknowingly
+    // losing coverage attribution for further exploratory actions.
+    expect(screen.getByTestId('coverage-session-recording-panel')).toBeInTheDocument();
+    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
+      ACTIVE_SESSION.correlationId,
+    );
+
+    // Cleanup: this test deliberately leaves the header set to prove the
+    // fix, unlike every other test in this file — clear it so it can't
+    // leak into any test that happens to run after this one.
+    delete apiClient.defaults.headers.common['x-coverage-correlation-id'];
   });
 });
