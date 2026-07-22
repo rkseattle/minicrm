@@ -109,3 +109,20 @@ export function getSharedDumpIndex(dumpsRoot: string): DumpIndex {
   }
   return index;
 }
+
+/**
+ * Test-only: clears the shared-instance registry so the next
+ * getSharedDumpIndex(dumpsRoot) call constructs a fresh DumpIndex instead
+ * of reusing one whose in-memory cache refers to a dumpsRoot directory a
+ * previous test already deleted. Without this, a test suite that deletes
+ * and recreates the same COVERAGE_DUMPS_ROOT between tests (see
+ * coverageIngestionService.test.ts / coveragePipelineController.test.ts)
+ * would have its second test reuse the first test's now-stale DumpIndex
+ * instance — same failure mode the shared singleton exists to prevent in
+ * production, reintroduced across test boundaries instead of across
+ * agent/service instances. Mirrors featureFlagService.__clearCacheForTest
+ * and brandingService.__clearCacheForTest's naming convention.
+ */
+export function __clearSharedDumpIndexesForTest(): void {
+  sharedIndexesByRoot.clear();
+}
