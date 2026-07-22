@@ -21,7 +21,8 @@ import { dirname, join } from 'path';
 import logger from '../logger.js';
 import type { CoverageAgent, CoverageDump, CoverageDumpFormat } from './CoverageAgent.js';
 import type { CoverageGranularity } from './coverageConfig.js';
-import { DumpIndex } from './dumpIndex.js';
+import type { DumpIndex } from './dumpIndex.js';
+import { getSharedDumpIndex } from './dumpIndex.js';
 
 const V8_SCRIPT_COVERAGE_FORMAT: CoverageDumpFormat = 'v8-script-coverage';
 
@@ -55,7 +56,10 @@ export class NodeV8CoverageAgent implements CoverageAgent {
   private operationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly options: NodeV8CoverageAgentOptions) {
-    this.dumpIndex = new DumpIndex(options.dumpsRoot);
+    // Shared, not a private instance — see getSharedDumpIndex's docblock:
+    // coverageDumpService looks dumps up by ID against this same root and
+    // must observe every dump this agent appends.
+    this.dumpIndex = getSharedDumpIndex(options.dumpsRoot);
   }
 
   /**
