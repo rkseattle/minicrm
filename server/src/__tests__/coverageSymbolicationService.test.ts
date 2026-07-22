@@ -1,0 +1,199 @@
+/**
+ * Unit tests for coverageSymbolicationService. (MINCRM-615)
+ *
+ * The V8 path is exercised against a real temp source file and the real
+ * node:inspector Profiler API (no mocking v8-to-istanbul itself) so the
+ * test proves the actual conversion algorithm resolves offsets back to
+ * real source, mirroring NodeV8CoverageAgent.test.ts's own no-mocking
+ * approach for the same reason.
+ */
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Session } from 'inspector';
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import {
+  symbolicateCoverageDump,
+  UnsupportedCoverageFormatError,
+} from '../coverageAgent/pipeline/coverageSymbolicationService.js';
+
+let sourceRoot: string;
+
+beforeEach(async () => {
+  sourceRoot = await mkdtemp(join(tmpdir(), 'minicrm-symbolication-test-'));
+});
+
+afterEach(async () => {
+  await rm(sourceRoot, { recursive: true, force: true });
+});
+
+describe('coverageSymbolicationService', () => {
+  describe('v8-script-coverage (backend)', () => {
+    it('resolves a real V8 script coverage payload to source-anchored units', async () => {
+      const fixturePath = join(sourceRoot, 'fixture.js');
+      await writeFile(
+        fixturePath,
+        [
+          'function branchy(flag) {',
+          '  if (flag) {',
+          '    return "yes";',
+          '  }',
+          '  return "no";',
+          '}',
+          'module.exports = { branchy };',
+          `require(${JSON.stringify(fixturePath)}).branchy(true);`,
+        ].join('\n'),
+        'utf8',
+      );
+
+      const session = new Session();
+      session.connect();
+      await post(session, 'Profiler.enable');
+      await post(session, 'Profiler.startPreciseCoverage', { callCount: true, detailed: true });
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- exercising real V8 coverage requires a real require() call to instrument
+      require(fixturePath);
+      const { result } = await post<{ result: unknown }>(session, 'Profiler.takePreciseCoverage');
+      await post(session, 'Profiler.stopPreciseCoverage');
+      session.disconnect();
+
+      const scripts = (result as Array<{ url: string }>).filter((script) =>
+        script.url.includes('fixture.js'),
+      );
+
+      const symbolicated = await symbolicateCoverageDump('node-v8', 'v8-script-coverage', scripts, {
+        sourceRoot,
+      });
+
+      expect(symbolicated.agent).toBe('node-v8');
+      expect(symbolicated.units.length).toBeGreaterThan(0);
+      expect(symbolicated.units.every((unit) => unit.filePath === 'fixture.js')).toBe(true);
+      expect(symbolicated.units.every((unit) => unit.resolved)).toBe(true);
+    });
+
+    it('flags a script whose url has no resolvable file as unresolved rather than dropping it', async () => {
+      const symbolicated = await symbolicateCoverageDump(
+        'node-v8',
+        'v8-script-coverage',
+        [{ scriptId: '1', url: 'node:internal/bootstrap', functions: [] }],
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0].resolved).toBe(false);
+      expect(symbolicated.units[0].unresolvedReason).toMatch(/does not resolve to a file/);
+    });
+  });
+
+  describe('istanbul (frontend)', () => {
+    it('resolves an already-sourcemapped Istanbul coverage map into branch-granularity units', async () => {
+      const istanbulPayload = {
+        '/src/Widget.tsx': {
+          path: '/src/Widget.tsx',
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'render',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 10 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 10, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {
+            '0': {
+              loc: { start: { line: 3, column: 0 }, end: { line: 5, column: 1 } },
+              type: 'if',
+              locations: [
+                { start: { line: 3, column: 0 }, end: { line: 4, column: 0 } },
+                { start: { line: 4, column: 0 }, end: { line: 5, column: 1 } },
+              ],
+              line: 3,
+            },
+          },
+          s: {},
+          f: { '0': 5 },
+          b: { '0': [3, 2] },
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.agent).toBe('browser-istanbul');
+      expect(symbolicated.units).toHaveLength(2);
+      expect(symbolicated.units[0]).toMatchObject({
+        filePath: '/src/Widget.tsx',
+        unitKey: 'render@1',
+        branchId: '0:0',
+        granularity: 'branch',
+        hitCount: 3,
+        resolved: true,
+      });
+      expect(symbolicated.units[1]).toMatchObject({
+        branchId: '0:1',
+        hitCount: 2,
+      });
+    });
+
+    it('falls back to function-granularity units when a file has no branches', async () => {
+      const istanbulPayload = {
+        '/src/utils.ts': {
+          path: '/src/utils.ts',
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'add',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 5 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 7 },
+          b: {},
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0]).toMatchObject({
+        filePath: '/src/utils.ts',
+        unitKey: 'add@1',
+        branchId: null,
+        granularity: 'function',
+        hitCount: 7,
+        resolved: true,
+      });
+    });
+  });
+
+  it('throws UnsupportedCoverageFormatError for an unknown agent/format pair', async () => {
+    await expect(
+      symbolicateCoverageDump('node-v8', 'istanbul', {}, { sourceRoot }),
+    ).rejects.toThrow(UnsupportedCoverageFormatError);
+  });
+});
+
+function post<T = unknown>(
+  session: Session,
+  method: string,
+  params?: Record<string, unknown>,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    session.post(method, params, (err, result) => {
+      if (err) reject(err);
+      else resolve(result as T);
+    });
+  });
+}
