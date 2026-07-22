@@ -277,6 +277,16 @@ const SERIAL_FILES = [
   // (MINCRM-475)
   'src/__tests__/leadRoutingService.test.ts',
   'src/__tests__/leadRoutingController.test.ts',
+  // reportService's getLeadsSummaryReport({ ownerId: null }) runs an unscoped
+  // `SELECT status, COUNT(*) FROM leads GROUP BY status` (no owner/FILE_PREFIX
+  // filter) — same class of org-wide-aggregate race as dataHygieneService/
+  // repCoachingService/leadRoutingService above. Its "owner scoping" test reads a
+  // baseline count in a transaction immediately before inserting its own two fixture
+  // rows to protect that specific window, but the gap between that transaction's
+  // COMMIT and the later getLeadsSummaryReport() call is NOT protected — any of the
+  // 16+ other files that insert/delete `leads` rows can land a write in that gap
+  // under parallel file execution, shifting the true total the report computes.
+  'src/__tests__/reportService.test.ts',
 ];
 
 const sharedResolve = {
