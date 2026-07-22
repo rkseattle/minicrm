@@ -166,6 +166,10 @@ Always `void fireAutomationTrigger(...)` — never `await`. It swallows all inte
 
 Run both suites sequentially with `npm run unit_test` — never run the two workspaces in parallel (CPU contention causes random 5s timeouts in jsdom).
 
+### Failing tests — no "known flake" exception
+
+Never label a test failure a "known flake," "flaky," or "pre-existing" as a reason to stop investigating or to rerun past it. Whether a test has failed before is irrelevant — every failure gets root-caused and fixed, every time, no exceptions carved out for tests with a history of intermittent failures. A rerun that happens to pass is not a resolution; if root cause isn't found, say so explicitly and ask how to proceed rather than dismissing it.
+
 ---
 
 ## ⛔ Definition of Done — required before every `git commit`, no exceptions
