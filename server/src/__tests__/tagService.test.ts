@@ -19,6 +19,8 @@ import {
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import type { QueryResult } from 'pg';
+import { waitUntil } from './testUtils.js';
 
 const FILE_PREFIX = 'tag-svc';
 
@@ -347,14 +349,21 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
       TAG_AUDIT_ACTOR,
     );
 
-    await new Promise((r) => setTimeout(r, 50));
+    // writeAuditEntryBestEffort is fire-and-forget; poll for the row rather
+    // than a fixed sleep — a fixed sleep races the real clock and produces a
+    // coin-flip failure whenever the write is delayed under CI scheduling/DB
+    // pool pressure (see waitUntil's doc comment).
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+        [contactId, TAG_AUDIT_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
-      [contactId, TAG_AUDIT_ACTOR.id],
-    );
-    expect(result.rows.length).toBeGreaterThan(0);
-    const entry = result.rows.find((r: { new_value: string }) => r.new_value === tag.name);
+    expect(result!.rows.length).toBeGreaterThan(0);
+    const entry = result!.rows.find((r: { new_value: string }) => r.new_value === tag.name);
     expect(entry).toBeDefined();
     expect(entry.record_type).toBe('contact');
     expect(entry.event_type).toBe('updated');
@@ -365,25 +374,28 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
     const tag = await attachTag('contact', contactId, { name: `${FILE_PREFIX}-audit-detach` });
     const tagName = tag.name;
 
-    await new Promise((r) => setTimeout(r, 50));
-
     await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
     await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TAG_AUDIT_ACTOR.id]);
     await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 
     await detachTag('contact', contactId, tag.id, TAG_AUDIT_ACTOR);
 
-    await new Promise((r) => setTimeout(r, 50));
+    // See attachTag audit test above for why this polls rather than
+    // sleeping a fixed duration.
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+        [contactId, TAG_AUDIT_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
-      [contactId, TAG_AUDIT_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('contact');
-    expect(result.rows[0].event_type).toBe('updated');
-    expect(result.rows[0].field_name).toBe('tags');
-    expect(result.rows[0].old_value).toBe(tagName);
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('contact');
+    expect(result!.rows[0].event_type).toBe('updated');
+    expect(result!.rows[0].field_name).toBe('tags');
+    expect(result!.rows[0].old_value).toBe(tagName);
   });
 
   it('attachTag with no actor writes no audit entry', async () => {
@@ -394,8 +406,12 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
     );
     await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 
+    // No actor passed: attachTag's own source only calls
+    // writeAuditEntryBestEffort inside `if (actor && ...)`, so with no actor
+    // the fire-and-forget call is never made at all — nothing to await or
+    // poll for; the negative assertion below is correct the instant
+    // attachTag's own promise resolves.
     await attachTag('contact', contactId, { name: `${FILE_PREFIX}-no-actor` });
-    await new Promise((r) => setTimeout(r, 50));
 
     await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
     const after = await pool.query(`SELECT COUNT(*) AS count FROM audit_log WHERE record_id = $1`, [

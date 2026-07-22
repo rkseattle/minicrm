@@ -22,6 +22,8 @@ import {
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import type { QueryResult } from 'pg';
+import { waitUntil } from './testUtils.js';
 
 const FILE_PREFIX = 'auto-svc';
 
@@ -697,16 +699,23 @@ describe('audit log entries for automation rules (MINCRM-382)', () => {
       AUDIT_ACTOR,
     );
 
-    await new Promise((r) => setTimeout(r, 50));
+    // writeAuditEntryBestEffort is fire-and-forget; poll for the row rather
+    // than a fixed sleep — a fixed sleep races the real clock and produces a
+    // coin-flip failure whenever the write is delayed under CI scheduling/DB
+    // pool pressure (see waitUntil's doc comment).
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+        [rule.id, AUDIT_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
-      [rule.id, AUDIT_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('system_settings');
-    expect(result.rows[0].event_type).toBe('created');
-    expect(result.rows[0].record_name).toBe('Audit create rule');
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('system_settings');
+    expect(result!.rows[0].event_type).toBe('created');
+    expect(result!.rows[0].record_name).toBe('Audit create rule');
   });
 
   it('updateAutomationRule writes an audit entry with event_type=updated', async () => {
@@ -717,14 +726,19 @@ describe('audit log entries for automation rules (MINCRM-382)', () => {
 
     await updateAutomationRule(rule.id, { enabled: false }, AUDIT_ACTOR);
 
-    await new Promise((r) => setTimeout(r, 50));
+    // See createAutomationRule audit test above for why this polls rather
+    // than sleeping a fixed duration.
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'updated'`,
+        [rule.id, AUDIT_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'updated'`,
-      [rule.id, AUDIT_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('system_settings');
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('system_settings');
   });
 
   it('deleteAutomationRule writes an audit entry with event_type=deleted', async () => {
@@ -736,15 +750,20 @@ describe('audit log entries for automation rules (MINCRM-382)', () => {
 
     await deleteAutomationRule(ruleId, AUDIT_ACTOR);
 
-    await new Promise((r) => setTimeout(r, 50));
+    // See createAutomationRule audit test above for why this polls rather
+    // than sleeping a fixed duration.
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
+        [ruleId, AUDIT_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
-      [ruleId, AUDIT_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('system_settings');
-    expect(result.rows[0].record_name).toBe('Audit delete rule');
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('system_settings');
+    expect(result!.rows[0].record_name).toBe('Audit delete rule');
   });
 });
 

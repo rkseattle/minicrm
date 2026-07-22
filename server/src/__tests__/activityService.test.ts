@@ -24,6 +24,8 @@ import {
   updateActivitySchema,
 } from '@minicrm/shared/schemas/activitySchema.js';
 import pool from '../db.js';
+import type { QueryResult } from 'pg';
+import { waitUntil } from './testUtils.js';
 
 const FILE_PREFIX = 'act-svc';
 
@@ -910,17 +912,23 @@ describe('audit log entries (MINCRM-382)', () => {
       TEST_ACTOR,
     );
 
-    // writeAuditEntryBestEffort is fire-and-forget; give it a tick to resolve
-    await new Promise((r) => setTimeout(r, 50));
+    // writeAuditEntryBestEffort is fire-and-forget; poll for the row rather
+    // than a fixed sleep — a fixed sleep races the real clock and produces a
+    // coin-flip failure whenever the write is delayed under CI scheduling/DB
+    // pool pressure (see waitUntil's doc comment).
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
+        [activity.id, TEST_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2`,
-      [activity.id, TEST_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('activity');
-    expect(result.rows[0].event_type).toBe('created');
-    expect(result.rows[0].record_name).toBe('Audit create test');
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('activity');
+    expect(result!.rows[0].event_type).toBe('created');
+    expect(result!.rows[0].record_name).toBe('Audit create test');
   });
 
   it('updateActivity writes field-level audit entries within the transaction', async () => {
@@ -957,15 +965,20 @@ describe('audit log entries (MINCRM-382)', () => {
 
     await deleteActivity(activityId, TEST_ACTOR);
 
-    await new Promise((r) => setTimeout(r, 50));
+    // writeAuditEntryBestEffort is fire-and-forget; poll for the row rather
+    // than a fixed sleep — see the createActivity audit test above.
+    let result: QueryResult | undefined;
+    await waitUntil(async () => {
+      result = await pool.query(
+        `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
+        [activityId, TEST_ACTOR.id],
+      );
+      return result.rows.length > 0;
+    }, 5_000);
 
-    const result = await pool.query(
-      `SELECT * FROM audit_log WHERE record_id = $1 AND changed_by_id = $2 AND event_type = 'deleted'`,
-      [activityId, TEST_ACTOR.id],
-    );
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0].record_type).toBe('activity');
-    expect(result.rows[0].record_name).toBe('To be deleted audit');
+    expect(result!.rows).toHaveLength(1);
+    expect(result!.rows[0].record_type).toBe('activity');
+    expect(result!.rows[0].record_name).toBe('To be deleted audit');
   });
 });
 
