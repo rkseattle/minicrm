@@ -707,6 +707,19 @@ const componentSchemas = {
       recordedAt: { type: 'string', format: 'date-time' },
     },
   },
+
+  // ── Coverage pipeline (MINCRM-614, MINCRM-615, MINCRM-616) ──────────────
+  IngestCoverageDumpResult: {
+    type: 'object',
+    required: ['dumpId', 'commitSha', 'alreadyIngested', 'unitCount', 'unresolvedCount'],
+    properties: {
+      dumpId: { type: 'string', format: 'uuid' },
+      commitSha: { type: 'string', example: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
+      alreadyIngested: { type: 'boolean' },
+      unitCount: { type: 'integer', example: 42 },
+      unresolvedCount: { type: 'integer', example: 0 },
+    },
+  },
 };
 
 /** swagger-jsdoc options */

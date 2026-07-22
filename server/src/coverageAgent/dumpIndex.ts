@@ -5,6 +5,11 @@
  * GET /dumps/:dumpId endpoint, not a mapping/query engine. One line per
  * dump written to `<dumpsRoot>/index.jsonl`; lookups tail an in-process
  * cache first, falling back to a linear scan of the file for cold starts.
+ *
+ * Use getSharedDumpIndex(dumpsRoot), not `new DumpIndex(dumpsRoot)`, from
+ * any new call site — see that function's docblock for why two independent
+ * instances against the same root is a correctness bug, not just a missed
+ * cache-sharing optimization.
  */
 
 import { appendFile, mkdir, readFile } from 'fs/promises';
@@ -79,4 +84,28 @@ export class DumpIndex {
       this.cache.set(entry.dumpId, entry);
     }
   }
+}
+
+// One DumpIndex instance per dumpsRoot, process-wide. Both NodeV8CoverageAgent
+// (which appends dumps as it writes them) and coverageDumpService (which
+// looks dumps up by ID, e.g. for GET /dumps/:dumpId and, later, ingestion)
+// must observe each other's writes through the SAME in-memory cache — each
+// constructing its own `new DumpIndex(root)` against the same directory
+// would let one instance's warmCache() permanently cache a stale "not
+// found" for entries only ever appended to the other instance's cache
+// (warmCache() cold-reads index.jsonl at most once per instance; an entry
+// appended after that point via a different instance is invisible until
+// process restart). Found via coverageIngestionService.test.ts reproducing
+// a false "dump not found" for a dump written after an earlier lookup had
+// already warmed a separate instance's cache.
+const sharedIndexesByRoot = new Map<string, DumpIndex>();
+
+/** Returns the single shared DumpIndex for a given dumps root, constructing it on first use. */
+export function getSharedDumpIndex(dumpsRoot: string): DumpIndex {
+  let index = sharedIndexesByRoot.get(dumpsRoot);
+  if (!index) {
+    index = new DumpIndex(dumpsRoot);
+    sharedIndexesByRoot.set(dumpsRoot, index);
+  }
+  return index;
 }
