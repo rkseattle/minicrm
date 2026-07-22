@@ -90,6 +90,30 @@ const port = Number(process.env.PORT) || DEFAULT_PORT;
 
 const server = http.createServer(app);
 
+// Root cause of an intermittent CI E2E failure: `apiRequestContext.post:
+// read ECONNRESET` on a POST that had nothing wrong with it. Node's
+// http.Server default keepAliveTimeout is 5000ms, and this server has no
+// reverse proxy in front of it in any deployment (Docker Compose, E2E, or
+// CI) — clients connect directly, so this server's own idle timeout is the
+// only one governing when a pooled keep-alive socket gets torn down.
+// Playwright's `request` fixture is worker-scoped (one APIRequestContext,
+// and its underlying keep-alive socket pool, reused across every test in
+// that worker — see qa/e2e/framework/fixtures/rest-client.fixture.ts), so a
+// multi-second gap between requests on the same socket (test teardown +
+// next test's beforeEach) is routine, not exceptional. Confirmed directly:
+// with the default 5000ms, a server-side socket's 'timeout'/'close' events
+// fire ~6s after the prior response — squarely inside the client's normal
+// idle gap between tests — racing any client attempt to reuse that socket
+// and producing an ECONNRESET with nothing logged server-side, since the
+// server closed the connection cleanly on its own schedule. Raised well
+// above any realistic client idle gap to eliminate the race; headersTimeout
+// must stay greater than keepAliveTimeout per Node's own constraint
+// (violating it throws at listen time).
+const KEEP_ALIVE_TIMEOUT_MS = 65_000;
+const HEADERS_TIMEOUT_MS = 66_000;
+server.keepAliveTimeout = KEEP_ALIVE_TIMEOUT_MS;
+server.headersTimeout = HEADERS_TIMEOUT_MS;
+
 // Coverage/TIA instrumentation (MINCRM-604). Disabled unless
 // COVERAGE_INSTRUMENTATION=true — an unset env var means start()/stop() are
 // never called and this has zero effect on a normal boot.
