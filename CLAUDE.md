@@ -1,5 +1,25 @@
 # MiniCRM — Claude Code Context
 
+## External Project References
+
+- **Jira project:** `MINCRM` (MiniCRM) on `edwardaspendesigns.atlassian.net`. Use this project key for all ticket search/lookup/creation unless a task explicitly names a different project (e.g. `LAR`, `MININT`).
+- **GitHub repository:** `rkseattle/minicrm` (`https://github.com/rkseattle/minicrm`).
+
+### Finding Jira issues by a label you were only given a prefix or partial name for
+
+JQL's `~` operator does fuzzy/contains text matching against a text index — it is
+**not** glob/wildcard matching, so `labels ~ "foo*"` will not match `foo-bar-baz` the
+way a shell glob would. If an exact `labels = "<prefix>"` match returns nothing:
+
+1. Don't assume the label doesn't exist — assume the prefix is incomplete or the
+   real label is a compound slug (e.g. `pr-tia-3` might actually be
+   `pr-tia-3-coverage-pipeline`).
+2. Drop the project/label filter and do a broad, unscoped search instead —
+   `labels ~ "<fragment>"` and/or a plain `project = X ORDER BY created DESC` listing
+   — to see real label strings in use.
+3. Once you find the actual full label string from real results, re-run an exact
+   `labels = "<full-label>"` match and filter/read the subset you need client-side.
+
 ## Stack
 
 - **Client:** React + Vite, TanStack Query v5, React Router, Tailwind CSS, i18next
@@ -314,6 +334,7 @@ When replying to a comment left by Greptile, prefix the reply body with `@grepti
 
 ## Jira Workflow
 
+- Project: `MINCRM` (see External Project References above).
 - Transition to **In Progress** when starting implementation.
 - Transition to **In Review** when opening a PR.
 - Reference ticket number in commit messages.
