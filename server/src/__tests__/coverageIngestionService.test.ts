@@ -17,6 +17,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { NodeV8CoverageAgent } from '../coverageAgent/NodeV8CoverageAgent.js';
 import { registerCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
+import { __clearSharedDumpIndexesForTest } from '../coverageAgent/dumpIndex.js';
 import { COVERAGE_DUMPS_ROOT } from '../coverageAgent/coverageConfig.js';
 import { dumpBackendCoverage } from '../services/coverageDumpService.js';
 import { findCoverageUnitsByCommitSha } from '../services/coverageModelService.js';
@@ -62,6 +63,14 @@ afterEach(async () => {
   await rm(COVERAGE_DUMPS_ROOT, { recursive: true, force: true });
   await rm(sourceRoot, { recursive: true, force: true });
   await pool.query('DELETE FROM coverage_units WHERE commit_sha = $1', [TEST_COMMIT_SHA]);
+  // Deleting COVERAGE_DUMPS_ROOT above invalidates the shared DumpIndex
+  // singleton's in-memory cache for this root — without clearing the
+  // registry, the next test's beforeEach recreates the directory but
+  // getSharedDumpIndex() would hand back the same (now-stale) instance,
+  // reintroducing the exact cross-instance staleness the shared singleton
+  // was built to prevent, just across test boundaries instead of across
+  // agent/service instances. See dumpIndex.ts's __clearSharedDumpIndexesForTest.
+  __clearSharedDumpIndexesForTest();
 });
 
 describe('coverageIngestionService', () => {

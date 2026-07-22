@@ -24,11 +24,21 @@ import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from '../coverageAgent/cov
 import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
 import logger from '../logger.js';
 
-// Shared, not a private instance (see getSharedDumpIndex's docblock) — must
-// match the root the registered agent itself was constructed with, or
-// dumps written by one and looked up by the other would silently miss (see
-// coverageConfig.ts's "single source of truth" note on COVERAGE_DUMPS_ROOT).
-const dumpIndex = getSharedDumpIndex(COVERAGE_DUMPS_ROOT);
+// Resolved lazily on each use, NOT bound to a module-level const — a
+// const captured once at import time would keep referencing whatever
+// DumpIndex instance existed at that moment even after
+// __clearSharedDumpIndexesForTest() (test-only) replaces the registry's
+// entry with a fresh instance, silently reintroducing the exact
+// two-divergent-instances bug getSharedDumpIndex exists to prevent
+// (this module's stale binding vs. a freshly-constructed
+// NodeV8CoverageAgent's fresh lookup in a later test). Shared, not a
+// private instance — must match the root the registered agent itself was
+// constructed with, or dumps written by one and looked up by the other
+// would silently miss (see coverageConfig.ts's "single source of truth"
+// note on COVERAGE_DUMPS_ROOT).
+function dumpIndex() {
+  return getSharedDumpIndex(COVERAGE_DUMPS_ROOT);
+}
 
 /** Thrown when a coverage operation is requested but the backend agent never started. */
 export class CoverageNotEnabledError extends Error {
@@ -93,14 +103,14 @@ export async function ingestBrowserCoverage(
   await mkdir(dirname(payloadPath), { recursive: true });
   await writeFile(payloadPath, JSON.stringify(payload), 'utf8');
   await writeFile(metaPath, JSON.stringify(dump, null, 2), 'utf8');
-  await dumpIndex.append(dump, metaPath);
+  await dumpIndex().append(dump, metaPath);
 
   return dump;
 }
 
 /** Looks up metadata for a previously produced dump. Returns undefined if not found. */
 export async function findCoverageDump(dumpId: string): Promise<CoverageDump | undefined> {
-  const metaPath = await dumpIndex.lookup(dumpId);
+  const metaPath = await dumpIndex().lookup(dumpId);
   if (!metaPath) return undefined;
 
   try {

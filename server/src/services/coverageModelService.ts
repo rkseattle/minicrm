@@ -21,6 +21,17 @@ import type { CoverageDumpSource } from '../coverageAgent/CoverageAgent.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
 import type { CoverageUnit } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
 
+const COVERAGE_UNIT_INSERT_COLUMN_COUNT = 9;
+
+// PostgreSQL's wire protocol caps bind parameters per statement at 65535
+// (a 16-bit index) — a single multi-row INSERT with more rows than this
+// would throw at runtime ("bind message supplies X parameters, but
+// prepared statement requires Y"). Real V8 block-level coverage for a
+// medium-to-large codebase can produce far more than this many units in
+// one dump, so the insert below is chunked rather than assuming it always
+// fits in one statement.
+const MAX_UNITS_PER_INSERT_BATCH = Math.floor(65535 / COVERAGE_UNIT_INSERT_COLUMN_COUNT);
+
 interface CoverageUnitRow {
   id: string;
   commit_sha: string;
@@ -86,6 +97,50 @@ export async function isDumpAlreadyIngested(dumpId: string): Promise<boolean> {
  * rather than inserting a duplicate row, so repeated ingestion of the same
  * commit's coverage compacts instead of growing unboundedly.
  */
+/**
+ * Inserts one batch of units (already sized to fit under the
+ * bind-parameter ceiling by the caller) as a single multi-row
+ * INSERT ... ON CONFLICT DO UPDATE.
+ */
+async function insertCoverageUnitBatch(
+  client: PoolClient,
+  commitSha: string,
+  agent: CoverageDumpSource,
+  units: readonly NormalizedCoverageUnit[],
+): Promise<void> {
+  if (units.length === 0) return;
+
+  const values: unknown[] = [];
+  const rowPlaceholders = units.map((unit, index) => {
+    const base = index * COVERAGE_UNIT_INSERT_COLUMN_COUNT;
+    values.push(
+      commitSha,
+      unit.filePath,
+      unit.unitKey,
+      unit.branchId,
+      unit.granularity,
+      agent,
+      unit.hitCount,
+      unit.resolved,
+      unit.unresolvedReason,
+    );
+    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9})`;
+  });
+
+  await client.query(
+    `INSERT INTO coverage_units
+       (commit_sha, file_path, unit_key, branch_id, granularity, agent, hit_count, resolved, unresolved_reason)
+     VALUES ${rowPlaceholders.join(', ')}
+     ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''))
+     DO UPDATE SET
+       hit_count = coverage_units.hit_count + EXCLUDED.hit_count,
+       resolved = EXCLUDED.resolved,
+       unresolved_reason = EXCLUDED.unresolved_reason,
+       last_seen_at = now()`,
+    values,
+  );
+}
+
 export async function upsertCoverageUnits(
   dumpId: string,
   commitSha: string,
@@ -109,40 +164,16 @@ export async function upsertCoverageUnits(
       return { alreadyIngested: true, unitCount: 0, unresolvedCount: 0 };
     }
 
-    // Batched as one multi-row INSERT rather than one round-trip per unit —
-    // a real dump can carry thousands of units, and looping individual
+    // Batched as multi-row INSERTs rather than one round-trip per unit — a
+    // real dump can carry thousands of units, and looping individual
     // client.query() calls inside a held transaction would serialize that
-    // many network round-trips against a single connection.
-    if (units.length > 0) {
-      const values: unknown[] = [];
-      const rowPlaceholders = units.map((unit, index) => {
-        const base = index * 9;
-        values.push(
-          commitSha,
-          unit.filePath,
-          unit.unitKey,
-          unit.branchId,
-          unit.granularity,
-          agent,
-          unit.hitCount,
-          unit.resolved,
-          unit.unresolvedReason,
-        );
-        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9})`;
-      });
-
-      await client.query(
-        `INSERT INTO coverage_units
-           (commit_sha, file_path, unit_key, branch_id, granularity, agent, hit_count, resolved, unresolved_reason)
-         VALUES ${rowPlaceholders.join(', ')}
-         ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''))
-         DO UPDATE SET
-           hit_count = coverage_units.hit_count + EXCLUDED.hit_count,
-           resolved = EXCLUDED.resolved,
-           unresolved_reason = EXCLUDED.unresolved_reason,
-           last_seen_at = now()`,
-        values,
-      );
+    // many network round-trips against a single connection. Chunked to
+    // MAX_UNITS_PER_INSERT_BATCH rows per statement so no single INSERT
+    // exceeds PostgreSQL's 65535 bind-parameter ceiling (see that
+    // constant's docblock).
+    for (let start = 0; start < units.length; start += MAX_UNITS_PER_INSERT_BATCH) {
+      const batch = units.slice(start, start + MAX_UNITS_PER_INSERT_BATCH);
+      await insertCoverageUnitBatch(client, commitSha, agent, batch);
     }
 
     await client.query('COMMIT');
@@ -178,7 +209,11 @@ export async function findCoverageUnitsByCommitSha(commitSha: string): Promise<C
  */
 export async function pruneCoverageUnits(retentionDays: number): Promise<number> {
   const result = await pool.query(
-    `DELETE FROM coverage_units WHERE last_seen_at < now() - ($1 || ' days')::interval`,
+    // Multiplying an interval literal by the parameter (rather than string
+    // concatenation into an ::interval cast) lets PostgreSQL handle the
+    // numeric coercion directly — no risk of producing an invalid interval
+    // string for an unexpected input.
+    `DELETE FROM coverage_units WHERE last_seen_at < now() - ($1 * interval '1 day')`,
     [retentionDays],
   );
   return result.rowCount ?? 0;

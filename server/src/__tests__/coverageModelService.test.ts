@@ -199,6 +199,26 @@ describe('coverageModelService', () => {
       expect(stored).toHaveLength(1);
       expect(stored[0].hitCount).toBe(5);
     });
+
+    it('inserts a unit count exceeding PostgreSQL bind-parameter limits in one call without throwing', async () => {
+      // 9 columns/unit x 65535 params ceiling => 7281 units fit one INSERT
+      // statement; this exceeds that by design to prove the chunking loop
+      // in upsertCoverageUnits actually spans a batch boundary rather than
+      // constructing one oversized multi-row INSERT that would throw
+      // "bind message supplies X parameters, but prepared statement
+      // requires Y" at the PostgreSQL wire protocol level.
+      const UNIT_COUNT_OVER_ONE_BATCH = 7300;
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const units = Array.from({ length: UNIT_COUNT_OVER_ONE_BATCH }, (_, index) =>
+        makeUnit({ unitKey: `fn${index}@1`, branchId: `0:${index}` }),
+      );
+
+      const { unitCount } = await upsertAndTrack(randomUUID(), commitSha, 'node-v8', units);
+
+      expect(unitCount).toBe(UNIT_COUNT_OVER_ONE_BATCH);
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      expect(stored).toHaveLength(UNIT_COUNT_OVER_ONE_BATCH);
+    }, 30_000);
   });
 
   describe('pruneCoverageUnits', () => {
