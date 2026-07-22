@@ -21,6 +21,7 @@ import { COVERAGE_DUMPS_ROOT } from '../coverageAgent/coverageConfig.js';
 import { dumpBackendCoverage } from '../services/coverageDumpService.js';
 import { findCoverageUnitsByCommitSha } from '../services/coverageModelService.js';
 import {
+  CoverageDumpMalformedError,
   CoverageDumpNotFoundError,
   ingestCoverageDump,
 } from '../coverageAgent/pipeline/coverageIngestionService.js';
@@ -102,6 +103,16 @@ describe('coverageIngestionService', () => {
   it('throws CoverageDumpNotFoundError for an unknown dumpId', async () => {
     await expect(ingestCoverageDump(randomUUID(), { sourceRoot })).rejects.toBeInstanceOf(
       CoverageDumpNotFoundError,
+    );
+  });
+
+  it('throws CoverageDumpMalformedError when the raw dump payload file is corrupt', async () => {
+    const dump = await dumpBackendCoverage('malformed-test');
+    const payloadPath = join(COVERAGE_DUMPS_ROOT, dump.path);
+    await writeFile(payloadPath, '{ not valid json', 'utf8');
+
+    await expect(ingestCoverageDump(dump.dumpId, { sourceRoot })).rejects.toBeInstanceOf(
+      CoverageDumpMalformedError,
     );
   });
 });

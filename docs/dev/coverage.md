@@ -1,6 +1,6 @@
 # Coverage/TIA Instrumentation
 
-Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
+Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). Phase 3 (this document's [Coverage Data Pipeline](#coverage-data-pipeline-mincrm-614615616) section) normalizes, symbolicates, and stores raw dumps in a version-anchored model (MINCRM-614, MINCRM-615, MINCRM-616). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
 
 ## Files
 
@@ -39,6 +39,21 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 | `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)      |
 | `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI   |
 | `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)          |
+
+### Phase 3 — Coverage data pipeline files
+
+| Path                                                                | Purpose                                                                |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `server/src/coverageAgent/pipeline/coverageSymbolicationService.ts` | Resolves raw dumps (both formats) to real source (MINCRM-615)          |
+| `server/src/coverageAgent/pipeline/normalizedCoverageUnit.ts`       | `NormalizedCoverageUnit`/`SymbolicationResult` internal types          |
+| `server/src/coverageAgent/pipeline/coverageIngestionService.ts`     | Ties symbolication + storage together for a single dumpId (MINCRM-614) |
+| `server/src/services/coverageModelService.ts`                       | Owns all DB access for `coverage_units` (MINCRM-616)                   |
+| `server/src/controllers/coveragePipelineController.ts`              | Request/response shaping for the ingestion trigger endpoint            |
+| `server/src/routes/coveragePipeline.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/pipeline`        |
+| `shared/schemas/coveragePipelineSchema.ts`                          | Zod request/response schemas for the pipeline                          |
+| `db/migrations/158_add_coverage_pipeline.js`                        | `coverage_units` + `coverage_ingested_dumps` tables, feature flag      |
+| `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                            |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end           |
 
 ## Mounting
 
@@ -170,6 +185,58 @@ Wired into `qa/e2e/apps/minicrm/fixtures.ts`'s `page` fixture — the same `try/
 
 An in-app admin control panel (`client/src/pages/admin/CoverageSessionRecorderPage.tsx`) to check in (name the session, optionally a MiniCRM issue key), record (sets the correlation-ID header as a default header on the shared client-side axios instance for the duration), and check out (triggers a dump — auto-attributed server-side via the correlation ID — and ends the session). Ties to the current build SHA automatically. The correlation header is cleared on check-out regardless of whether the dump/end calls succeed (`onSettled`, not `onSuccess`), since leaving it set on the shared axios instance would otherwise tag every subsequent request from that browser tab — not just this page's — until a full reload. Check-out treats a failed dump as non-fatal and still ends the session: `coverage_instrumentation` (migration 156) can be off independently of this page's own `coverage_session_management` gate, and a hard failure there must not permanently strand a recording session.
 
+## Coverage Data Pipeline (MINCRM-614/615/616)
+
+Turns a raw coverage dump (still file-based, per Phase 1's storage decision — this phase does not change that) into a normalized, symbolicated, version-anchored, queryable model: `coverage_units`. This is a strictly additive derived layer — no existing raw-dump persistence, control API, or session-attribution behavior from Phase 1/2 changes.
+
+### Ingestion & normalization (MINCRM-614)
+
+`coverageIngestionService.ingestCoverageDump(dumpId)`: looks up the raw dump via the existing `coverageDumpService.findCoverageDump`, reads its payload off disk, symbolicates it (see below), and merges the result into `coverage_units`. Both raw dump formats (`v8-script-coverage`, `istanbul`) are accepted uniformly — the format-specific handling lives entirely in the symbolication step, not here.
+
+**Idempotency and race-safety:** a naive "check `coverage_ingested_dumps`, then separately write" pattern has a TOCTOU gap — two concurrent ingestion calls for the same `dumpId` could both pass the check before either writes, double-counting `hit_count`. Instead, `coverageModelService.upsertCoverageUnits` claims the dumpId FIRST, inside the same transaction that applies the `coverage_units` upserts: `INSERT INTO coverage_ingested_dumps ... ON CONFLICT (dump_id) DO NOTHING RETURNING dump_id`. If the `RETURNING` clause yields no row, a concurrent (or prior) call already claimed this dump, and the `coverage_units` writes are skipped entirely for this call. This makes ingestion safe to call concurrently for the same `dumpId` with no caller-side guard required — the symbolication work itself is not skipped up front (it still runs before the claim), so a losing concurrent call does real but discarded work, not an incorrect double-write.
+
+A dump whose raw payload file is missing, unreadable, or not valid JSON is rejected with `COVERAGE_DUMP_MALFORMED` rather than silently ignored.
+
+### Symbolication (MINCRM-615)
+
+Both raw formats converge on `istanbul-lib-coverage`'s `FileCoverageData` shape before a shared branch/function extraction step produces `NormalizedCoverageUnit` rows:
+
+- **Backend (`v8-script-coverage`):** resolved via `v8-to-istanbul`, which reads the actual source file's text off disk to map V8 byte offsets back to statement/branch/function positions. The script's `file://` URL is resolved to a real path via `fs.realpath`, checked for genuine containment under the dump's `sourceRoot` (not a naive string-prefix check, which would wrongly accept a sibling directory that merely shares the root as a text prefix) — both the candidate path and `sourceRoot` are realpath'd before comparison, since a symlinked source root (e.g. macOS's `/var` → `/private/var`) would otherwise make every script spuriously unresolvable or compute a garbled relative path.
+- **Frontend (`istanbul`):** used directly — `vite-plugin-istanbul` (Phase 1) already instruments against original TS/JSX via Babel + sourcemaps, so `window.__coverage__` dumps arrive pre-resolved to original source positions. No separate sourcemap-resolution step runs here.
+
+**Branch-vs-function fallback is decided per function, not per file.** A single file can freely mix a branching function (has entries in `branchMap`) and a non-branching one (a straight-line function with no `branchMap` entry of its own) — deciding the fallback at the file level would silently drop the non-branching function's `f[fnKey]` hit count entirely whenever any other function in the same file happens to branch. Each function in `fnMap` is checked individually for whether it encloses at least one of the file's own branch mappings; only functions with none fall back to a function-granularity unit.
+
+Unresolvable regions (a script URL with no real file backing it — e.g. a `node:` builtin or `eval()`'d code, or an outright `v8-to-istanbul` conversion failure) are recorded with `resolved: false` + `unresolvedReason`, never silently dropped.
+
+### Version-anchored storage model (MINCRM-616)
+
+`coverage_units` — one row per `(commit_sha, file_path, unit_key, branch_id)` identity:
+
+- `unit_key` is a qualified function/method signature (e.g. `render@42`), not a line number — chosen so the mapping-engine phase (`pr-tia-4`) that eventually consumes this table has a key stable across in-line edits, per MINCRM-619's stable-structural-key requirement. Full body-hash/AST-based key derivation is that later phase's work; this table's shape is simply built to support it.
+- `branch_id` is `null` for function-granularity rows (no PG `''` sentinel — a `CHECK (branch_id IS NULL OR branch_id <> '')` constraint enforces this at the schema level, since the identity index below treats `NULL` and `''` as the same dedup slot and a real empty string would silently collide with a genuinely branch-less row).
+- **Dedup/compaction:** a unique index over `(commit_sha, file_path, unit_key, COALESCE(branch_id, ''))` — `COALESCE` because a plain `UNIQUE` constraint would never treat two `NULL`-`branch_id` rows for the same unit as duplicates (SQL `NULL <> NULL`). Re-ingesting a dump for an already-seen identity accumulates `hit_count` and advances `last_seen_at` rather than duplicating the row.
+- **Retention:** `coverageModelService.pruneCoverageUnits(retentionDays)` deletes rows whose `last_seen_at` is older than the window. Schema + a callable function only — no automatic scheduling is wired here; that's the CI/CD Integration epic's concern (MINCRM-632, `pr-tia-7`), not this storage-model epic's.
+- `coverage_ingested_dumps` — tracks which `dumpId`s have already been normalized, the mechanism behind MINCRM-614's idempotency/race-safety guarantee above. Not FK'd to raw dump metadata (still file-based, per Phase 1).
+
+Not audited (no `AuditActor`/`writeAuditEntry`) — `coverage_units` is derived, system-internal telemetry with no owning user and no user-facing mutation surface, mirroring `coverageSessionService.recordCoverageSessionDump`'s own unaudited high-frequency writes.
+
+### Ingestion trigger endpoint
+
+| Method | Path                                     | Purpose                                                                                                                                                                                                         |
+| ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/v1/admin/coverage/pipeline/ingest` | Normalize + symbolicate one dump by ID into `coverage_units`. `201` on first ingestion, `200` with `alreadyIngested: true` on a repeat call, `404` for an unknown `dumpId`, `400` for a malformed payload file. |
+
+Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_pipeline_ingestion')`, mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions`). The `coverage_pipeline_ingestion` flag is independent of `coverage_instrumentation` and `coverage_session_management` — a server can produce and attribute raw dumps while the normalization pipeline itself stays off.
+
+No scheduled or automatic trigger exists — ingestion is manual/CI-triggered only, matching this phase's scope. Reference client: `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`.
+
+```ts
+import { ingestCoverageDump } from '@framework/coverageAgent/coverage-pipeline-client.js';
+
+const result = await ingestCoverageDump(restClient, dumpId);
+// { dumpId, commitSha, alreadyIngested, unitCount, unresolvedCount }
+```
+
 ## Local / CI / Shared-env setup
 
 **Local — backend only:**
@@ -201,10 +268,11 @@ Then enable the `coverage_instrumentation` feature flag (via the admin UI, or di
 
 Not built here — later `pr-tia-*` phases:
 
-- Test-to-code mapping (which test exercised which line) — mapping engine phase
+- Test-to-code bidirectional mapping index (which test exercised which unit, and vice versa) with stable body-hash keys and confidence/freshness scoring — the mapping engine phase (`pr-tia-4`); Phase 3's `coverage_units.unit_key` is shaped to support this but does not itself derive body-hash identity or build the index
 - Physically isolated per-session V8 counters — sessions group and attribute dumps; the backend agent's counters remain process-wide (see Session Management above)
 - ML-based test selection
-- Historical coverage trend storage or dashboards
+- Historical coverage trend storage or dashboards, and any reporting/query API over `coverage_units` beyond the internal `findCoverageUnitsByCommitSha` lookup
 - Coverage-driven CI gating (failing a build on coverage drop)
 - Cross-shard dump merging/aggregation — CI currently uploads per-shard dump directories as-is
 - An automated overhead-regression CI gate (the measurement above is manual)
+- Automatic/scheduled retention pruning — `pruneCoverageUnits` exists but is only callable on demand; scheduling it is the CI/CD Integration epic's concern (`pr-tia-7`)

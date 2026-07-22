@@ -179,7 +179,9 @@ describe('coverage pipeline API — ingest happy path', () => {
       .post('/api/v1/admin/coverage/pipeline/ingest')
       .set('Cookie', adminCookie)
       .send({ dumpId });
-    expect(again.status).toBe(201);
+    // 200, not 201 — a true no-op reports "not created", matching the
+    // idempotent-PUT convention (see coveragePipelineController.ts).
+    expect(again.status).toBe(200);
     expect(again.body.result.alreadyIngested).toBe(true);
   });
 });

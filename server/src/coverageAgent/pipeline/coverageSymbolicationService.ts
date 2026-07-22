@@ -127,7 +127,7 @@ async function symbolicateV8ScriptCoverage(
       converter.applyCoverage(script.functions);
       const coverageMap = converter.toIstanbul();
       const relativePath = relative(resolvedSourceRoot, filePath);
-      units.push(...unitsFromFileCoverageMap(coverageMap, relativePath, 'node-v8'));
+      units.push(...unitsFromFileCoverageMap(coverageMap, relativePath));
     } catch (err) {
       logger.warn({ err, filePath }, 'coverageSymbolicationService: failed to symbolicate script');
       units.push({
@@ -157,9 +157,7 @@ function symbolicateIstanbulCoverageMap(payload: unknown): NormalizedCoverageUni
   const units: NormalizedCoverageUnit[] = [];
 
   for (const [filePath, fileCoverage] of Object.entries(coverageMap)) {
-    units.push(
-      ...unitsFromFileCoverageMap({ [filePath]: fileCoverage }, filePath, 'browser-istanbul'),
-    );
+    units.push(...unitsFromFileCoverageMap({ [filePath]: fileCoverage }, filePath));
   }
 
   return units;
@@ -169,49 +167,73 @@ function symbolicateIstanbulCoverageMap(payload: unknown): NormalizedCoverageUni
  * Shared conversion from istanbul-lib-coverage's per-file shape into our
  * NormalizedCoverageUnit rows — the point where both the V8 and frontend
  * paths produce an identical output shape for MINCRM-614's ingestion.
+ *
+ * The branch-vs-function fallback is decided PER FUNCTION, not per file: a
+ * file can freely mix branching and non-branching functions (e.g. one
+ * function with an `if`, another that's a straight-line getter with no
+ * entry in branchMap at all). Deciding it per file would silently drop the
+ * non-branching function's own hit count entirely whenever at least one
+ * other function in the same file has branches — MINCRM-615's
+ * "unresolvable regions flagged rather than silently dropped" AC applies
+ * here too: no function's coverage should vanish just because a sibling
+ * function happens to branch.
  */
 function unitsFromFileCoverageMap(
   coverageMap: CoverageMapData,
   overrideFilePath: string,
-  _origin: CoverageDumpSource,
 ): NormalizedCoverageUnit[] {
   const units: NormalizedCoverageUnit[] = [];
 
   for (const fileCoverage of Object.values(coverageMap)) {
     const data = fileCoverage as FileCoverageData;
-    const hasBranches = Object.keys(data.branchMap).length > 0;
 
-    if (hasBranches) {
-      for (const [branchKey, mapping] of Object.entries(data.branchMap)) {
-        const unitKey = qualifiedUnitKeyForLine(data, mapping.line);
-        const hits: number[] = data.b[branchKey] ?? [];
-        hits.forEach((hitCount, branchIndex) => {
-          units.push({
-            filePath: overrideFilePath,
-            unitKey,
-            branchId: `${branchKey}:${branchIndex}`,
-            granularity: 'branch',
-            hitCount,
-            resolved: true,
-            unresolvedReason: null,
-          });
-        });
+    // Branch mappings whose enclosing function has at least one branch —
+    // tracked per fnKey so the function-fallback loop below can skip
+    // exactly the functions already covered at branch granularity.
+    const fnKeysWithBranches = new Set<string>();
+    for (const [fnKey, mapping] of Object.entries(data.fnMap)) {
+      const hasOwnBranch = Object.values(data.branchMap).some(
+        (branchMapping) =>
+          branchMapping.line >= mapping.decl.start.line &&
+          branchMapping.line <= mapping.loc.end.line,
+      );
+      if (hasOwnBranch) {
+        fnKeysWithBranches.add(fnKey);
       }
-    } else {
-      // No branch map at all — either COVERAGE_GRANULARITY=function was in
-      // effect when this dump was captured, or the file genuinely has no
-      // branching constructs. Fall back to per-function hit counts.
-      for (const [fnKey, mapping] of Object.entries(data.fnMap)) {
+    }
+
+    for (const [branchKey, mapping] of Object.entries(data.branchMap)) {
+      const unitKey = qualifiedUnitKeyForLine(data, mapping.line);
+      const hits: number[] = data.b[branchKey] ?? [];
+      hits.forEach((hitCount, branchIndex) => {
         units.push({
           filePath: overrideFilePath,
-          unitKey: qualifiedUnitKey(mapping.name, mapping.decl.start.line),
-          branchId: null,
-          granularity: 'function',
-          hitCount: data.f[fnKey] ?? 0,
+          unitKey,
+          branchId: `${branchKey}:${branchIndex}`,
+          granularity: 'branch',
+          hitCount,
           resolved: true,
           unresolvedReason: null,
         });
-      }
+      });
+    }
+
+    // Every function NOT already represented at branch granularity above —
+    // either COVERAGE_GRANULARITY=function was in effect when this dump was
+    // captured (branchMap is empty for the whole file), or this particular
+    // function genuinely has no branching constructs of its own even though
+    // other functions in the same file do.
+    for (const [fnKey, mapping] of Object.entries(data.fnMap)) {
+      if (fnKeysWithBranches.has(fnKey)) continue;
+      units.push({
+        filePath: overrideFilePath,
+        unitKey: qualifiedUnitKey(mapping.name, mapping.decl.start.line),
+        branchId: null,
+        granularity: 'function',
+        hitCount: data.f[fnKey] ?? 0,
+        resolved: true,
+        unresolvedReason: null,
+      });
     }
   }
 
@@ -266,7 +288,15 @@ async function resolveScriptPath(
 
   try {
     const realResolved = await realpath(candidate);
-    return realResolved.startsWith(resolvedSourceRoot) ? realResolved : undefined;
+    // A plain realResolved.startsWith(resolvedSourceRoot) string check would
+    // wrongly accept a sibling directory that merely shares the root as a
+    // string prefix (e.g. resolvedSourceRoot "/app/repo" would incorrectly
+    // "contain" "/app/repo-internal/x.js"). relative() plus an escape check
+    // is the standard way to test true path containment.
+    const relativePath = relative(resolvedSourceRoot, realResolved);
+    const isContained =
+      relativePath !== '' && !relativePath.startsWith('..') && !isAbsolute(relativePath);
+    return isContained ? realResolved : undefined;
   } catch {
     // realpath fails if the file doesn't actually exist on disk — not a
     // symlink-resolution concern, just "this script has no real source".

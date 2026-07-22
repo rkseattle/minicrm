@@ -89,7 +89,17 @@ exports.up = (pgm) => {
       CONSTRAINT coverage_units_resolved_reason_check CHECK (
         (resolved = true AND unresolved_reason IS NULL) OR
         (resolved = false AND unresolved_reason IS NOT NULL)
-      )
+      ),
+      -- The identity index below dedups on COALESCE(branch_id, ''), treating
+      -- NULL and '' as the same identity slot for a given
+      -- (commit_sha, file_path, unit_key). A real empty-string branch_id
+      -- would therefore silently collide with — and get merged into — a
+      -- genuinely branch-less (NULL) row's hit_count. No code path
+      -- currently produces '' (coverageSymbolicationService always emits
+      -- either a real "branchKey:branchIndex" string or null), but this
+      -- constraint closes the gap at the schema level rather than relying
+      -- on that invariant holding forever in application code.
+      CONSTRAINT coverage_units_branch_id_not_empty_check CHECK (branch_id IS NULL OR branch_id <> '')
     )
   `);
 
