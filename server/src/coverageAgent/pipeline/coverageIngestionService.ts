@@ -8,16 +8,19 @@
  * the version-anchored coverage_units model via coverageModelService
  * (MINCRM-616).
  *
- * Idempotent: re-ingesting a dumpId that's already in coverage_ingested_dumps
- * is a no-op (checked before doing any symbolication work, not just at the
- * DB-write layer) — repeated CI/manual ingestion calls for the same dump
- * never double-count hit_count.
+ * Idempotent AND race-safe: re-ingesting a dumpId that's already in
+ * coverage_ingested_dumps is a no-op. The race-safety itself lives in
+ * coverageModelService.upsertCoverageUnits (an atomic claim-then-write
+ * transaction) — this module still symbolicates before calling it (so a
+ * concurrent duplicate call does real, wasted symbolication work that gets
+ * discarded rather than skipping it up front), but never double-counts
+ * hit_count even if two calls for the same dumpId race, unlike a
+ * check-then-act pattern split across two separate round-trips would.
  */
 
 import { join } from 'path';
 import { findCoverageDump } from '../../services/coverageDumpService.js';
-import { findActiveCoverageSessionByCorrelationId } from '../../services/coverageSessionService.js';
-import { isDumpAlreadyIngested, upsertCoverageUnits } from '../../services/coverageModelService.js';
+import { upsertCoverageUnits } from '../../services/coverageModelService.js';
 import { COVERAGE_DUMPS_ROOT } from '../coverageConfig.js';
 import { readRawDumpPayload, symbolicateCoverageDump } from './coverageSymbolicationService.js';
 import type { IngestCoverageDumpResult } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
@@ -60,17 +63,6 @@ export async function ingestCoverageDump(
   dumpId: string,
   options: IngestCoverageDumpOptions = {},
 ): Promise<IngestCoverageDumpResult> {
-  if (await isDumpAlreadyIngested(dumpId)) {
-    const dump = await findCoverageDump(dumpId);
-    return {
-      dumpId,
-      commitSha: dump?.commitSha ?? 'unknown',
-      alreadyIngested: true,
-      unitCount: 0,
-      unresolvedCount: 0,
-    };
-  }
-
   const dump = await findCoverageDump(dumpId);
   if (!dump) {
     throw new CoverageDumpNotFoundError(dumpId);
@@ -90,7 +82,7 @@ export async function ingestCoverageDump(
   const sourceRoot = options.sourceRoot ?? process.cwd();
   const { units } = await symbolicateCoverageDump(dump.agent, dump.format, payload, { sourceRoot });
 
-  const { unitCount, unresolvedCount } = await upsertCoverageUnits(
+  const { alreadyIngested, unitCount, unresolvedCount } = await upsertCoverageUnits(
     dumpId,
     dump.commitSha,
     dump.agent,
@@ -98,25 +90,15 @@ export async function ingestCoverageDump(
   );
 
   logger.info(
-    { dumpId, commitSha: dump.commitSha, unitCount, unresolvedCount },
+    { dumpId, commitSha: dump.commitSha, alreadyIngested, unitCount, unresolvedCount },
     'coverageIngestionService: ingested coverage dump',
   );
 
   return {
     dumpId,
     commitSha: dump.commitSha,
-    alreadyIngested: false,
+    alreadyIngested,
     unitCount,
     unresolvedCount,
   };
-}
-
-/**
- * Correlates a dumpId to its originating session/test, for callers that
- * want ingestion results attributed the same way coverage_session_dumps
- * already does (MINCRM-610/612) — a thin pass-through, not a new
- * correlation mechanism.
- */
-export async function findIngestionSessionCorrelation(correlationId: string) {
-  return findActiveCoverageSessionByCorrelationId(correlationId);
 }

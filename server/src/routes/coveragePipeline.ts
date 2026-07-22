@@ -39,7 +39,16 @@ const router = Router();
  *                 format: uuid
  *     responses:
  *       201:
- *         description: Dump ingested (or already ingested — see result.alreadyIngested)
+ *         description: Dump ingested and merged into coverage_units for the first time
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 result:
+ *                   $ref: '#/components/schemas/IngestCoverageDumpResult'
+ *       200:
+ *         description: No-op — this dumpId was already ingested by an earlier call (see result.alreadyIngested)
  *         content:
  *           application/json:
  *             schema:

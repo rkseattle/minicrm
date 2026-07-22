@@ -64,10 +64,20 @@ export async function isDumpAlreadyIngested(dumpId: string): Promise<boolean> {
 
 /**
  * Merges a set of normalized units for one dump into coverage_units and
- * records the dump as ingested, in a single transaction. Re-running this
- * for the same dumpId is guarded by the caller (coverageIngestionService
- * checks isDumpAlreadyIngested first) — this function itself does not
- * re-check, so it must only be called once per dumpId.
+ * records the dump as ingested, in a single transaction. Idempotent AND
+ * race-safe on its own — safe to call concurrently for the same dumpId with
+ * no caller-side guard required.
+ *
+ * Race safety: coverage_ingested_dumps is claimed FIRST via
+ * `INSERT ... ON CONFLICT (dump_id) DO NOTHING RETURNING dump_id`, inside
+ * the same transaction that applies the coverage_units upserts below it.
+ * If the RETURNING clause yields no row, a concurrent call already claimed
+ * this dumpId (or a prior call already completed it) — this call skips the
+ * coverage_units writes entirely and returns immediately, rather than
+ * racing another in-flight upsert loop and double-counting hit_count. A
+ * caller-side "check isDumpAlreadyIngested, then separately call this
+ * function" pattern would have a TOCTOU gap between the two round-trips;
+ * doing the claim and the writes in one transaction closes it.
  *
  * Dedup/compaction (MINCRM-616): each unit's identity is
  * (commit_sha, file_path, unit_key, branch_id) — see the
@@ -81,23 +91,33 @@ export async function upsertCoverageUnits(
   commitSha: string,
   agent: CoverageDumpSource,
   units: readonly NormalizedCoverageUnit[],
-): Promise<{ unitCount: number; unresolvedCount: number }> {
+): Promise<{ alreadyIngested: boolean; unitCount: number; unresolvedCount: number }> {
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    for (const unit of units) {
-      await client.query(
-        `INSERT INTO coverage_units
-           (commit_sha, file_path, unit_key, branch_id, granularity, agent, hit_count, resolved, unresolved_reason)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''))
-         DO UPDATE SET
-           hit_count = coverage_units.hit_count + EXCLUDED.hit_count,
-           resolved = EXCLUDED.resolved,
-           unresolved_reason = EXCLUDED.unresolved_reason,
-           last_seen_at = now()`,
-        [
+    const claim = await client.query<{ dump_id: string }>(
+      `INSERT INTO coverage_ingested_dumps (dump_id, commit_sha, unit_count)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (dump_id) DO NOTHING
+       RETURNING dump_id`,
+      [dumpId, commitSha, units.length],
+    );
+
+    if (claim.rowCount === 0) {
+      await client.query('COMMIT');
+      return { alreadyIngested: true, unitCount: 0, unresolvedCount: 0 };
+    }
+
+    // Batched as one multi-row INSERT rather than one round-trip per unit —
+    // a real dump can carry thousands of units, and looping individual
+    // client.query() calls inside a held transaction would serialize that
+    // many network round-trips against a single connection.
+    if (units.length > 0) {
+      const values: unknown[] = [];
+      const rowPlaceholders = units.map((unit, index) => {
+        const base = index * 9;
+        values.push(
           commitSha,
           unit.filePath,
           unit.unitKey,
@@ -107,16 +127,23 @@ export async function upsertCoverageUnits(
           unit.hitCount,
           unit.resolved,
           unit.unresolvedReason,
-        ],
+        );
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9})`;
+      });
+
+      await client.query(
+        `INSERT INTO coverage_units
+           (commit_sha, file_path, unit_key, branch_id, granularity, agent, hit_count, resolved, unresolved_reason)
+         VALUES ${rowPlaceholders.join(', ')}
+         ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''))
+         DO UPDATE SET
+           hit_count = coverage_units.hit_count + EXCLUDED.hit_count,
+           resolved = EXCLUDED.resolved,
+           unresolved_reason = EXCLUDED.unresolved_reason,
+           last_seen_at = now()`,
+        values,
       );
     }
-
-    await client.query(
-      `INSERT INTO coverage_ingested_dumps (dump_id, commit_sha, unit_count)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (dump_id) DO NOTHING`,
-      [dumpId, commitSha, units.length],
-    );
 
     await client.query('COMMIT');
   } catch (error) {
@@ -127,7 +154,7 @@ export async function upsertCoverageUnits(
   }
 
   const unresolvedCount = units.filter((unit) => !unit.resolved).length;
-  return { unitCount: units.length, unresolvedCount };
+  return { alreadyIngested: false, unitCount: units.length, unresolvedCount };
 }
 
 /** Lists coverage_units rows for a given commit SHA, for tests/debugging and future reporting consumers. */

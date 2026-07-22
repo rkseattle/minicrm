@@ -30,7 +30,11 @@ export async function ingestCoverageDumpHandler(req: Request, res: Response): Pr
 
   try {
     const result = await ingestCoverageDump(parsed.data.dumpId);
-    res.status(201).json({ result });
+    // 201 only when this call actually created new coverage_units state;
+    // a true no-op (already ingested by an earlier call) reports 200,
+    // matching the idempotent-PUT convention rather than always claiming
+    // "created" for a request that changed nothing.
+    res.status(result.alreadyIngested ? 200 : 201).json({ result });
   } catch (err) {
     if (err instanceof CoverageDumpNotFoundError) {
       res.status(404).json({ error: { code: err.code, message: err.message } });
