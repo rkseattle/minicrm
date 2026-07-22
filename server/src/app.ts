@@ -29,6 +29,7 @@ import webhookRoutes from './routes/webhooks.js';
 import demoRoutes from './routes/demo.js';
 import coverageRoutes from './routes/coverage.js';
 import coverageSessionRoutes from './routes/coverageSessions.js';
+import coveragePipelineRoutes from './routes/coveragePipeline.js';
 import searchRoutes from './routes/search.js';
 import importRoutes from './routes/import.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -166,6 +167,9 @@ app.use(`${API_V1}/admin/import`, importRoutes);
 // `/:something`) can never shadow this one, mirroring the
 // /reports/custom-before-/reports precedent elsewhere in this file.
 app.use(`${API_V1}/admin/coverage/sessions`, coverageSessionRoutes);
+// Coverage/TIA data pipeline (MINCRM-614, MINCRM-615, MINCRM-616) — same
+// more-specific-before-general mounting precedent as /coverage/sessions above.
+app.use(`${API_V1}/admin/coverage/pipeline`, coveragePipelineRoutes);
 // Coverage/TIA control API (MINCRM-604, MINCRM-606)
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 app.use(`${API_V1}/search`, searchRoutes);

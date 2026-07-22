@@ -19,15 +19,16 @@ import { randomUUID } from 'crypto';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
-import { DumpIndex } from '../coverageAgent/dumpIndex.js';
+import { getSharedDumpIndex } from '../coverageAgent/dumpIndex.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from '../coverageAgent/coverageConfig.js';
 import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
 import logger from '../logger.js';
 
-// Single source of truth (coverageConfig.ts) — must match the root the
-// registered agent itself was constructed with, or dumps written by one
-// and looked up by the other would silently miss (see coverageConfig.ts).
-const dumpIndex = new DumpIndex(COVERAGE_DUMPS_ROOT);
+// Shared, not a private instance (see getSharedDumpIndex's docblock) — must
+// match the root the registered agent itself was constructed with, or
+// dumps written by one and looked up by the other would silently miss (see
+// coverageConfig.ts's "single source of truth" note on COVERAGE_DUMPS_ROOT).
+const dumpIndex = getSharedDumpIndex(COVERAGE_DUMPS_ROOT);
 
 /** Thrown when a coverage operation is requested but the backend agent never started. */
 export class CoverageNotEnabledError extends Error {
