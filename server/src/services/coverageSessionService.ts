@@ -364,3 +364,46 @@ export async function recordCoverageSessionDump(
     recordedAt: row.recorded_at.toISOString(),
   };
 }
+
+/**
+ * Looks up a single dump's session attribution (test_id/test_name), if any.
+ * Used by coverageIngestionService (MINCRM-618) to attribute the units
+ * produced by ingesting this dump to the specific test that generated it.
+ * Returns null for a dump with no coverage_session_dumps row at all — a
+ * normal case (e.g. a manually-triggered dump/ingest outside any session),
+ * not an error.
+ */
+export async function findCoverageSessionDumpByDumpId(
+  dumpId: string,
+): Promise<CoverageSessionDump | null> {
+  const result = await pool.query<{
+    id: string;
+    session_id: string;
+    dump_id: string;
+    correlation_id: string;
+    test_id: string | null;
+    test_name: string | null;
+    attempt: number;
+    recorded_at: Date;
+  }>(
+    `SELECT id, session_id, dump_id, correlation_id, test_id, test_name, attempt, recorded_at
+     FROM coverage_session_dumps WHERE dump_id = $1`,
+    [dumpId],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    dumpId: row.dump_id,
+    correlationId: row.correlation_id,
+    testId: row.test_id,
+    testName: row.test_name,
+    attempt: row.attempt,
+    recordedAt: row.recorded_at.toISOString(),
+  };
+}

@@ -133,6 +133,28 @@ describe('coverageModelService', () => {
       expect(stored).toHaveLength(2);
     });
 
+    it('collapses two rows sharing the same identity WITHIN one call rather than erroring on a same-statement ON CONFLICT collision', async () => {
+      // A single symbolicated dump can legitimately produce more than one
+      // NormalizedCoverageUnit for the same (file_path, unit_key, branch_id)
+      // identity in one call (e.g. the same function reached via more than
+      // one V8 script). Without collapsing duplicates before building the
+      // multi-row INSERT, PostgreSQL rejects the statement outright
+      // ("ON CONFLICT DO UPDATE command cannot affect row a second time")
+      // rather than silently mishandling it — this proves the fix, not just
+      // that no error is thrown.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+
+      const { unresolvedCount } = await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [
+        makeUnit({ branchId: '0:0', hitCount: 3 }),
+        makeUnit({ branchId: '0:0', hitCount: 4 }),
+      ]);
+
+      expect(unresolvedCount).toBe(0);
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      expect(stored).toHaveLength(1);
+      expect(stored[0].hitCount).toBe(7);
+    });
+
     it('persists resolved=false rows with their unresolvedReason rather than dropping them', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
 
