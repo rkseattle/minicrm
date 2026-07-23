@@ -125,7 +125,11 @@ function collapseDuplicateIdentities(
 ): NormalizedCoverageUnit[] {
   const byIdentity = new Map<string, NormalizedCoverageUnit>();
   for (const unit of units) {
-    const identityKey = `${unit.filePath} ${unit.unitKey} ${unit.branchId ?? ''}`;
+    // JSON-encoded array, not a delimited string — see
+    // coverageMappingService's collapseDuplicateIdentities for why a plain
+    // space-joined key lets two distinct tuples collide (found via Greptile
+    // PR review).
+    const identityKey = JSON.stringify([unit.filePath, unit.unitKey, unit.branchId ?? '']);
     const existing = byIdentity.get(identityKey);
     if (existing) {
       existing.hitCount += unit.hitCount;

@@ -143,6 +143,31 @@ describe('structuralKeyService', () => {
       expect(keyA).not.toBe(keyB);
     });
 
+    it('does not collide two functions that differ only in literal whitespace inside a string literal', () => {
+      // Regression test (Greptile PR feedback): normalizeSourceForHash used
+      // to run `.replace(/\s+/g, ' ')` over the FULLY JOINED token string,
+      // which collapsed whitespace runs inside string/template literal
+      // tokens too, not just the separators between tokens — so
+      // "hello   world" and "hello world" normalized identically even
+      // though the scanner correctly tokenized them as distinct literals.
+      // Whitespace is now only normalized between tokens.
+      const withExtraSpaces = 'function f() { const s = "hello   world"; return s; }';
+      const withSingleSpace = 'function f() { const s = "hello world"; return s; }';
+      const rangeA = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withExtraSpaces.length },
+      };
+      const rangeB = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withSingleSpace.length },
+      };
+
+      const keyA = deriveStructuralUnitKey('f', rangeA, withExtraSpaces);
+      const keyB = deriveStructuralUnitKey('f', rangeB, withSingleSpace);
+
+      expect(keyA).not.toBe(keyB);
+    });
+
     it('returns null when the range does not fit the supplied source text', () => {
       const source = 'function add() {}';
       const key = deriveStructuralUnitKey(

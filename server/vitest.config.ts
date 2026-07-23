@@ -106,7 +106,9 @@ const SERIAL_FILES = [
   // teamController and teamService both truncate teams/team_memberships in beforeEach;
   // running them in parallel causes cross-file row-delete races and FK violations.
   // visibilityService creates teams in beforeAll that teamService's beforeEach deletes
-  // globally — must run serial alongside the other team-mutating files.
+  // globally — must run serial alongside the other team-mutating files. Also resets the
+  // entire org_visibility_settings table wholesale and mutates individual object_type
+  // rows directly — same class of race as followUpTimingController et al. below.
   'src/__tests__/teamController.test.ts',
   'src/__tests__/teamService.test.ts',
   'src/__tests__/visibilityService.test.ts',
@@ -209,6 +211,8 @@ const SERIAL_FILES = [
   // (no ai_configuration mutation of its own, hence previously safe in the parallel project),
   // but several MINCRM-465/472 test files now toggle that same flag off/on around
   // createActivity() calls — must run serial to avoid racing those toggles. (MINCRM-466)
+  // Also flips org_visibility_settings.policy for 'contact'/'deal' directly via raw SQL —
+  // same class of race as followUpTimingController et al. above.
   'src/__tests__/championBlockerController.test.ts',
   // churnExpansionService toggles the same ai_configuration singleton row as the other
   // nightly-job test suites above. (MINCRM-469)
@@ -217,6 +221,8 @@ const SERIAL_FILES = [
   // on-demand AI test suites above. (MINCRM-471)
   'src/__tests__/objectionMatchingService.test.ts',
   // objectionMatchingController toggles the same ai_configuration singleton row. (MINCRM-471)
+  // Also flips org_visibility_settings.policy for 'activity' directly via raw SQL — same
+  // class of race as followUpTimingController et al. above.
   'src/__tests__/objectionMatchingController.test.ts',
   // proposalDraftService toggles the same ai_configuration singleton row as the other
   // on-demand AI test suites above. (MINCRM-473)
@@ -287,6 +293,23 @@ const SERIAL_FILES = [
   // 16+ other files that insert/delete `leads` rows can land a write in that gap
   // under parallel file execution, shifting the true total the report computes.
   'src/__tests__/reportService.test.ts',
+  // The following files all flip the same global org_visibility_settings row
+  // (UPDATE ... SET policy = 'private'/'org' WHERE object_type = ...) directly
+  // via raw SQL to exercise their "cross-owner request under a private policy
+  // gets 403" test, then restore it in a finally block — but with no
+  // serialization between files, one file's restore can race another file's
+  // still-in-flight assertion window, silently flipping an expected 403 into a
+  // 200 (reproduced live: followUpTimingController's private-policy 403 test
+  // failed exactly this way under the full parallel suite, passed in
+  // isolation). championBlockerController, objectionMatchingController, and
+  // visibilityService also mutate org_visibility_settings but were already
+  // serial above for other reasons.
+  'src/__tests__/followUpTimingController.test.ts',
+  'src/__tests__/churnExpansionController.test.ts',
+  'src/__tests__/dealHealthController.test.ts',
+  'src/__tests__/relationshipHealthController.test.ts',
+  'src/__tests__/sentimentController.test.ts',
+  'src/__tests__/accountController.test.ts',
 ];
 
 const sharedResolve = {

@@ -154,6 +154,30 @@ describe('coverageMappingService', () => {
       expect(byFile.get(`${FILE_PREFIX}/fileA.ts`)?.hitCount).toBe(3);
       expect(byFile.get(`${FILE_PREFIX}/fileB.ts`)?.hitCount).toBe(5);
     });
+
+    it('keeps two links whose filePath/unitKey pairs share a delimited-string collision as distinct (Greptile PR feedback)', async () => {
+      // Regression test: collapseDuplicateIdentities' in-batch dedup key
+      // used to be a plain `${filePath} ${unitKey} ${branchId}` join, so
+      // filePath "a b" + unitKey "c" and filePath "a" + unitKey "b c" both
+      // serialized to "a b c " and were wrongly merged into one link before
+      // ever reaching the database's own (correctly file_path-aware) unique
+      // index — silently dropping one of the two covered units from
+      // findUnitsForTest. The key is now a JSON-encoded tuple, which cannot
+      // collide this way.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const testId = 'spec:delimiter-collision.spec.ts::test';
+
+      await linkAndCommit(commitSha, testId, null, [
+        makeLink({ filePath: `${FILE_PREFIX}/a b`, unitKey: 'c#0000000000000000', hitCount: 2 }),
+        makeLink({ filePath: `${FILE_PREFIX}/a`, unitKey: 'b c#0000000000000000', hitCount: 7 }),
+      ]);
+
+      const found = await findUnitsForTest(commitSha, testId);
+      expect(found).toHaveLength(2);
+      const byUnitKey = new Map(found.map((link) => [link.unitKey, link]));
+      expect(byUnitKey.get('c#0000000000000000')?.hitCount).toBe(2);
+      expect(byUnitKey.get('b c#0000000000000000')?.hitCount).toBe(7);
+    });
   });
 
   describe('findTestsForUnit', () => {
