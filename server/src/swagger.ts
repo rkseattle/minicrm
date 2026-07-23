@@ -720,6 +720,37 @@ const componentSchemas = {
       unresolvedCount: { type: 'integer', example: 0 },
     },
   },
+
+  // ── Coverage mapping query API (MINCRM-618, MINCRM-621) ──────────────────
+  CoverageMappingResult: {
+    type: 'object',
+    required: [
+      'commitSha',
+      'unitKey',
+      'branchId',
+      'filePath',
+      'testId',
+      'testName',
+      'hitCount',
+      'firstSeenAt',
+      'lastSeenAt',
+      'confidenceScore',
+      'lastReconciledAt',
+    ],
+    properties: {
+      commitSha: { type: 'string', example: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' },
+      unitKey: { type: 'string', example: 'render#a1b2c3d4e5f6a7b8' },
+      branchId: { type: 'string', nullable: true, example: '0:0' },
+      filePath: { type: 'string', example: 'src/components/Widget.tsx' },
+      testId: { type: 'string', example: 'spec:deals/deal-creation.spec.ts::creates a deal' },
+      testName: { type: 'string', nullable: true, example: 'creates a deal' },
+      hitCount: { type: 'integer', example: 12 },
+      firstSeenAt: { type: 'string', format: 'date-time' },
+      lastSeenAt: { type: 'string', format: 'date-time' },
+      confidenceScore: { type: 'number', nullable: true, minimum: 0, maximum: 1, example: 0.95 },
+      lastReconciledAt: { type: 'string', format: 'date-time', nullable: true },
+    },
+  },
 };
 
 /** swagger-jsdoc options */

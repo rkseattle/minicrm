@@ -212,3 +212,85 @@ export async function findUnitsForTest(
   );
   return result.rows.map(toCoverageTestLink);
 }
+
+/**
+ * A mapping result carrying confidence/freshness alongside the link itself
+ * — the shape the mapping QUERY API (MINCRM-621) returns, distinct from
+ * CoverageTestLink (which is purely coverage_test_links' own columns).
+ * confidenceScore/lastReconciledAt come from a JOIN against coverage_units
+ * on the shared (commit_sha, unit_key, branch_id) identity — both tables
+ * live in the SAME coverage database, so this is a normal same-database
+ * join, not a cross-database query.
+ */
+export interface CoverageMappingResult extends CoverageTestLink {
+  confidenceScore: number | null;
+  lastReconciledAt: string | null;
+}
+
+interface CoverageMappingResultRow extends CoverageTestLinkRow {
+  confidence_score: string | null;
+  last_reconciled_at: Date | null;
+}
+
+function toCoverageMappingResult(row: CoverageMappingResultRow): CoverageMappingResult {
+  return {
+    ...toCoverageTestLink(row),
+    // Same string-vs-number NUMERIC coercion coverageModelService.ts does
+    // for coverage_units.confidence_score — pg returns NUMERIC as a string.
+    // Null when the LEFT JOIN below finds no matching coverage_units row
+    // (e.g. reconciliation pruned it, or it was ingested via a path that
+    // never populated coverage_units for some reason) — a mapping RESULT
+    // should still be returned in that case, just without a score, rather
+    // than silently dropped from the response.
+    confidenceScore: row.confidence_score !== null ? Number(row.confidence_score) : null,
+    lastReconciledAt: row.last_reconciled_at ? row.last_reconciled_at.toISOString() : null,
+  };
+}
+
+const MAPPING_RESULT_SELECT = `
+  SELECT
+    l.id, l.commit_sha, l.unit_key, l.branch_id, l.file_path, l.test_id, l.test_name,
+    l.hit_count, l.first_seen_at, l.last_seen_at,
+    u.confidence_score, u.last_reconciled_at
+  FROM coverage_test_links l
+  LEFT JOIN coverage_units u
+    ON u.commit_sha = l.commit_sha
+   AND u.unit_key = l.unit_key
+   AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
+`;
+
+/**
+ * Finds every test known to cover a given code unit, at a given commit,
+ * with confidence/freshness attached — the query API's own read path
+ * (MINCRM-621's "returns confidence/freshness alongside results" AC).
+ */
+export async function findTestsForUnitWithConfidence(
+  commitSha: string,
+  unitKey: string,
+  branchId: string | null,
+): Promise<CoverageMappingResult[]> {
+  const result = await coverageDb.query<CoverageMappingResultRow>(
+    `${MAPPING_RESULT_SELECT}
+     WHERE l.commit_sha = $1 AND l.unit_key = $2 AND COALESCE(l.branch_id, '') = COALESCE($3, '')
+     ORDER BY l.test_id`,
+    [commitSha, unitKey, branchId],
+  );
+  return result.rows.map(toCoverageMappingResult);
+}
+
+/**
+ * Finds every code unit a given test is known to cover, at a given commit,
+ * with confidence/freshness attached.
+ */
+export async function findUnitsForTestWithConfidence(
+  commitSha: string,
+  testId: string,
+): Promise<CoverageMappingResult[]> {
+  const result = await coverageDb.query<CoverageMappingResultRow>(
+    `${MAPPING_RESULT_SELECT}
+     WHERE l.commit_sha = $1 AND l.test_id = $2
+     ORDER BY l.file_path, l.unit_key, l.branch_id`,
+    [commitSha, testId],
+  );
+  return result.rows.map(toCoverageMappingResult);
+}

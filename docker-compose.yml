@@ -10,6 +10,15 @@ services:
     logging: *default-logging
     image: postgres:16
     restart: unless-stopped
+    # Raised from Postgres's default of 100: each parallel vitest worker gets
+    # its own connection pool (server/src/db.ts + coverageDb.ts, up to
+    # DB_POOL_MAX/COVERAGE_DB_POOL_MAX each, default 10), and the server test
+    # suite's CPU-parallel worker count can multiply that past 100 total
+    # connections under full-suite load — observed as sporadic, hard-to-
+    # reproduce transaction failures in individual test files that pass
+    # cleanly in isolation. 200 gives real headroom above what today's
+    # worker count × pool size actually needs.
+    command: postgres -c max_connections=200
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
