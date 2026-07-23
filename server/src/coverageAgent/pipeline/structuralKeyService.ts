@@ -48,17 +48,23 @@ const BODY_HASH_LENGTH = 16;
  * in formatting/comments normalize to the same string before hashing.
  *
  * Deliberately simple (no real tokenizer) — this trades perfect handling of
- * pathological cases (e.g. a `//` inside a template literal) for zero new
- * parser dependencies on the hot ingestion path. A false-different hash
- * (missed dedup) degrades gracefully to "treated as a new unit", the same
- * outcome as today's un-normalized key; it never produces a false-same
- * collision between two functions with genuinely different bodies, which
- * is the failure mode that would actually corrupt the mapping.
+ * pathological cases for zero new parser dependencies on the hot ingestion
+ * path. The line-comment strip requires `//` to be preceded by whitespace
+ * or start-of-line: a bare, unanchored `\/\/[^\n]*` would also match a `//`
+ * inside a string literal (e.g. `"http://example.com/a"` vs
+ * `"http://example.com/b"`) and truncate both lines at that point,
+ * producing a genuine FALSE-SAME collision between two functions whose
+ * bodies actually differ — not just a missed dedup, but silently merging
+ * two different functions' hit counts into one coverage_units row. The
+ * anchor closes that specific case (a `//` can still appear mid-token in
+ * some string content this heuristic won't catch, degrading to a missed
+ * dedup — never a false-same match — same graceful-degradation contract
+ * as the rest of this function).
  */
 function normalizeSourceForHash(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/(^|\s)\/\/[^\n]*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

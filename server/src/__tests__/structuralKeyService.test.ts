@@ -70,6 +70,27 @@ describe('structuralKeyService', () => {
       expect(editedKey).not.toBe(originalKey);
     });
 
+    it('does not collide two functions that differ only in a URL string literal containing "//"', () => {
+      // Regression test: an unanchored line-comment strip (`\/\/[^\n]*`)
+      // would match the "//" inside these URLs and truncate both bodies at
+      // that point, producing a false-SAME hash for two functions whose
+      // bodies genuinely differ — silently merging their coverage_units
+      // rows. The anchored version (requires // preceded by whitespace or
+      // start-of-line) must NOT treat a "//" inside a string as a comment.
+      const withUrlA = 'function f() { const url = "http://example.com/a"; return url; }';
+      const withUrlB = 'function f() { const url = "http://example.com/b"; return url; }';
+      const range = { start: { line: 1, column: 0 }, end: { line: 1, column: withUrlA.length } };
+
+      const keyA = deriveStructuralUnitKey('f', range, withUrlA);
+      const keyB = deriveStructuralUnitKey(
+        'f',
+        { start: { line: 1, column: 0 }, end: { line: 1, column: withUrlB.length } },
+        withUrlB,
+      );
+
+      expect(keyA).not.toBe(keyB);
+    });
+
     it('returns null when the range does not fit the supplied source text', () => {
       const source = 'function add() {}';
       const key = deriveStructuralUnitKey(

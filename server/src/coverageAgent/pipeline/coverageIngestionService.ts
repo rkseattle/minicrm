@@ -111,19 +111,34 @@ export async function ingestCoverageDump(
     units,
     testId
       ? async (client) => {
-          const links: CoverageTestLinkInput[] = units.map((unit) => ({
-            unitKey: unit.unitKey,
-            branchId: unit.branchId,
-            filePath: unit.filePath,
-            hitCount: unit.hitCount,
-          }));
-          await linkCoverageUnitsToTest(
-            client,
-            dump.commitSha,
-            testId,
-            sessionDump?.testName ?? null,
-            links,
-          );
+          // Unresolved units (e.g. a node: builtin or eval()'d code — see
+          // coverageSymbolicationService.ts) all share the literal
+          // unitKey 'unknown' with no real file_path behind them. Linking
+          // them into coverage_test_links would collapse every unrelated
+          // unresolved unit across every file into the SAME
+          // (commit_sha, unitKey, branchId, testId) identity — not a
+          // meaningful "this test covers this code" fact, and it would
+          // corrupt that identity slot for any other test that also
+          // happened to touch an unresolved script. coverage_units itself
+          // still records these rows (with resolved=false), just not the
+          // per-test mapping.
+          const links: CoverageTestLinkInput[] = units
+            .filter((unit) => unit.resolved)
+            .map((unit) => ({
+              unitKey: unit.unitKey,
+              branchId: unit.branchId,
+              filePath: unit.filePath,
+              hitCount: unit.hitCount,
+            }));
+          if (links.length > 0) {
+            await linkCoverageUnitsToTest(
+              client,
+              dump.commitSha,
+              testId,
+              sessionDump?.testName ?? null,
+              links,
+            );
+          }
         }
       : undefined,
   );

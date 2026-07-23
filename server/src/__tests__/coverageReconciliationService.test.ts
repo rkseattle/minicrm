@@ -164,6 +164,54 @@ describe('reconcileCoverageUnits', () => {
     expect(stored[0].hitCount).toBe(7);
   });
 
+  it('scores the SURVIVING row (not the deleted moving row) when a rename target collides with an existing coverage_units row', async () => {
+    // Regression test: relocateCoverageUnit merges-and-deletes the moving
+    // row when the destination identity already has its own row (see that
+    // function's own docblock). reconcileCoverageUnits must then score
+    // confidence on the row that actually SURVIVES (the destination), not
+    // the original unit's own (now-deleted) id — an UPDATE against a
+    // deleted id silently matches zero rows rather than erroring, which
+    // would leave the surviving row's confidence_score/last_reconciled_at
+    // stale without any visible failure.
+    await writeFile(
+      join(repoRoot, 'src', 'renamed-widget.ts'),
+      'export function render() {}\n',
+      'utf8',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-q', '-m', 'add renamed-widget with its own coverage already']);
+
+    await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [makeUnit({ hitCount: 7 })]);
+    await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [
+      makeUnit({ filePath: 'src/renamed-widget.ts', hitCount: 5 }),
+    ]);
+
+    const beforeAll = await findCoverageUnitsByCommitSha(commitSha);
+    const destinationUnit = beforeAll.find((u) => u.filePath === 'src/renamed-widget.ts')!;
+    expect(destinationUnit.confidenceScore).toBe(1);
+
+    await git(repoRoot, ['rm', '-q', 'src/widget.ts']);
+    await git(repoRoot, [
+      'commit',
+      '-q',
+      '-m',
+      'delete widget (git sees this as a rename to renamed-widget)',
+    ]);
+
+    const result = await reconcileCoverageUnits(commitSha, repoRoot);
+
+    expect(result.unitsRelocated).toBe(1);
+    expect(result.unitsScored).toBeGreaterThanOrEqual(1);
+
+    const stored = await findCoverageUnitsByCommitSha(commitSha);
+    expect(stored).toHaveLength(1);
+    expect(stored[0].id).toBe(destinationUnit.id);
+    expect(stored[0].hitCount).toBe(12);
+    // The surviving row's own confidence_score/last_reconciled_at were
+    // actually updated by this reconciliation run, not silently skipped.
+    expect(stored[0].lastReconciledAt).not.toBeNull();
+  });
+
   it('is a no-op for a commitSha with no coverage_units rows', async () => {
     const result = await reconcileCoverageUnits(commitSha, repoRoot);
     expect(result).toEqual({

@@ -137,29 +137,33 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
   );
   expect(ingestRes.status).toBe(201);
 
+  const testId = 'spec:coverage-mapping.spec.ts::COVM-01';
+
+  // test -> units first, to discover the REAL unitKey ingestion actually
+  // produced (a frontend dump with no real source file on disk resolves via
+  // coverageSymbolicationService.ts's legacy name@line fallback key, not
+  // MINCRM-619's structural key — asserting a hardcoded guess here would be
+  // testing this spec's own assumption, not the query API). This direction
+  // alone is an unambiguous, non-degradable assertion: testId scoping is
+  // exact, so a non-empty result here proves the full dump -> session ->
+  // ingest -> query round trip actually worked.
+  const unitsForTest = await findUnitsForTest(restClient, { commitSha, testId });
+  expect(unitsForTest.length).toBeGreaterThan(0);
+  expect(unitsForTest[0].testId).toBe(testId);
+  expect(
+    typeof unitsForTest[0].confidenceScore === 'number' || unitsForTest[0].confidenceScore === null,
+  ).toBe(true);
+
+  // Now verify the OTHER direction (unit -> tests) using the real unitKey
+  // just discovered — a genuine round-trip check of both query directions,
+  // not a fallback that would silently pass even if this direction were broken.
   const testsForUnit = await findTestsForUnit(restClient, {
     commitSha,
-    unitKey: 'MappingSpecWidget@1',
+    unitKey: unitsForTest[0].unitKey,
+    branchId: unitsForTest[0].branchId ?? undefined,
   });
-  // unitKey here is best-effort (the frontend-symbolication fallback key,
-  // see coverageSymbolicationService.ts's legacy name@line path — this spec
-  // has no real source file on disk to derive a structural key from) — the
-  // functional-layer assertion is on the query round trip working at all,
-  // not on which specific key format won.
-  const anyUnitResults =
-    testsForUnit.length > 0
-      ? testsForUnit
-      : await findUnitsForTest(restClient, {
-          commitSha,
-          testId: 'spec:coverage-mapping.spec.ts::COVM-01',
-        });
-
-  expect(anyUnitResults.length).toBeGreaterThan(0);
-  expect(anyUnitResults[0].testId).toBe('spec:coverage-mapping.spec.ts::COVM-01');
-  expect(
-    typeof anyUnitResults[0].confidenceScore === 'number' ||
-      anyUnitResults[0].confidenceScore === null,
-  ).toBe(true);
+  expect(testsForUnit.length).toBeGreaterThan(0);
+  expect(testsForUnit.map((result) => result.testId)).toContain(testId);
 });
 
 // ---------------------------------------------------------------------------

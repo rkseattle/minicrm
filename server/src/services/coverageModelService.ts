@@ -258,22 +258,6 @@ export async function findCoverageUnitsByCommitSha(commitSha: string): Promise<C
 }
 
 /**
- * Lists coverage_units rows for a given file path (across all commits) —
- * used by coverageReconciliationService (MINCRM-620) to find every unit
- * that used to live in a file, when deciding whether the file still exists
- * / whether a unit's key still resolves against current source.
- */
-export async function findCoverageUnitsByFilePath(filePath: string): Promise<CoverageUnit[]> {
-  const result = await coverageDb.query<CoverageUnitRow>(
-    `SELECT ${COVERAGE_UNIT_SELECT_COLUMNS}
-     FROM coverage_units WHERE file_path = $1
-     ORDER BY commit_sha, unit_key, branch_id`,
-    [filePath],
-  );
-  return result.rows.map(toCoverageUnit);
-}
-
-/**
  * Deletes a single coverage_units row by ID — used by
  * coverageReconciliationService to prune units whose code no longer exists
  * in the current source tree (MINCRM-620's "units absent from the source
@@ -294,17 +278,80 @@ export async function deleteCoverageUnitById(id: string): Promise<void> {
  * the row's accumulated hit_count, first_seen_at, and confidence_score
  * history across the rename — exactly the continuity a rename-carry is
  * meant to provide.
+ *
+ * Handles the rare case where the destination identity
+ * (commit_sha, newFilePath, newUnitKey, branch_id) already has its OWN
+ * coverage_units row (e.g. the rename target was already ingested
+ * separately under the same commit, perhaps from a file merge) — a plain
+ * UPDATE would violate coverage_units_identity_idx in that case. Instead:
+ * merge the moving row's hit_count into the existing destination row (same
+ * accumulate-don't-duplicate semantics as insertCoverageUnitBatch's own
+ * ON CONFLICT), then delete the row being relocated, so no history is lost
+ * and no unique-constraint error surfaces to the caller.
+ */
+/**
+ * @returns The id of the row that survives the relocation — the original
+ *   `id` in the common case, or the pre-existing destination row's id when
+ *   a merge occurred. Callers that need to act on the unit again afterward
+ *   (e.g. coverageReconciliationService scoring confidence next) MUST use
+ *   this returned id, not the original `id` parameter — in the merge case
+ *   the original row no longer exists, and continuing to reference it would
+ *   silently no-op (an UPDATE ... WHERE id = <deleted-id> matches zero rows
+ *   without erroring).
  */
 export async function relocateCoverageUnit(
   id: string,
   newFilePath: string,
   newUnitKey: string,
-): Promise<void> {
-  await coverageDb.query('UPDATE coverage_units SET file_path = $2, unit_key = $3 WHERE id = $1', [
-    id,
-    newFilePath,
-    newUnitKey,
-  ]);
+): Promise<string> {
+  const client = await coverageDb.connect();
+  try {
+    await client.query('BEGIN');
+
+    const moving = await client.query<{
+      commit_sha: string;
+      branch_id: string | null;
+      hit_count: number;
+    }>('SELECT commit_sha, branch_id, hit_count FROM coverage_units WHERE id = $1', [id]);
+    if (moving.rowCount === 0) {
+      await client.query('COMMIT');
+      return id;
+    }
+    const { commit_sha: commitSha, branch_id: branchId, hit_count: hitCount } = moving.rows[0];
+
+    const destination = await client.query<{ id: string }>(
+      `SELECT id FROM coverage_units
+       WHERE commit_sha = $1 AND file_path = $2 AND unit_key = $3 AND COALESCE(branch_id, '') = COALESCE($4, '')
+         AND id <> $5`,
+      [commitSha, newFilePath, newUnitKey, branchId, id],
+    );
+
+    let survivingId = id;
+    if (destination.rowCount && destination.rowCount > 0) {
+      survivingId = destination.rows[0].id;
+      await client.query(
+        `UPDATE coverage_units
+         SET hit_count = hit_count + $2, last_seen_at = now()
+         WHERE id = $1`,
+        [survivingId, hitCount],
+      );
+      await client.query('DELETE FROM coverage_units WHERE id = $1', [id]);
+    } else {
+      await client.query('UPDATE coverage_units SET file_path = $2, unit_key = $3 WHERE id = $1', [
+        id,
+        newFilePath,
+        newUnitKey,
+      ]);
+    }
+
+    await client.query('COMMIT');
+    return survivingId;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

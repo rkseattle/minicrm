@@ -188,11 +188,19 @@ export async function reconcileCoverageUnits(
         continue;
       }
 
+      // Defaults to the unit's own id; relocateCoverageUnit below may
+      // return a DIFFERENT id if it merged this unit into a pre-existing
+      // row at the destination identity (see that function's own
+      // docblock) — the confidence update after this block must target
+      // whichever row actually survives, or it silently no-ops against a
+      // since-deleted id.
+      let survivingId = unit.id;
+
       if (relocatedTo) {
         // unit_key itself is unchanged — MINCRM-619's structural key
         // already survives content edits by construction; only file_path
         // needs to move to reflect where git says the file now lives.
-        await relocateCoverageUnit(unit.id, relocatedTo, unit.unitKey);
+        survivingId = await relocateCoverageUnit(unit.id, relocatedTo, unit.unitKey);
         unitsRelocated += 1;
       }
 
@@ -200,7 +208,7 @@ export async function reconcileCoverageUnits(
       // reset staleness, a unit is exactly as fresh/stale as its own
       // last_seen_at says regardless of which file_path it now points to.
       const score = computeConfidenceScore(new Date(unit.lastSeenAt), now);
-      await updateCoverageUnitConfidence(unit.id, score);
+      await updateCoverageUnitConfidence(survivingId, score);
       unitsScored += 1;
     }
   }

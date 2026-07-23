@@ -255,6 +255,7 @@ const MAPPING_RESULT_SELECT = `
   FROM coverage_test_links l
   LEFT JOIN coverage_units u
     ON u.commit_sha = l.commit_sha
+   AND u.file_path = l.file_path
    AND u.unit_key = l.unit_key
    AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
 `;
