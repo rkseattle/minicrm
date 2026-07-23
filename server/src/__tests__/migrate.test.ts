@@ -262,4 +262,84 @@ describe('runCoverageMigrations', () => {
       delete process.env.COVERAGE_DB_NAME;
     }
   });
+
+  it('does not crash when two callers race to create the same not-yet-existing database (Greptile PR feedback)', async () => {
+    // Regression test: ensureCoverageDatabaseExists' existence check and its
+    // CREATE DATABASE were two separate statements, so two server replicas
+    // starting concurrently against a fresh Postgres instance could both
+    // observe "absent" and both attempt CREATE DATABASE — the loser crashed
+    // on startup with a duplicate_database error instead of just treating
+    // the database as now-existing (which is all any caller actually needs).
+    process.env.COVERAGE_DB_NAME = testDbName;
+    try {
+      await expect(
+        Promise.all([runCoverageMigrations(), runCoverageMigrations()]),
+      ).resolves.not.toThrow();
+
+      const adminClient = new pg.Client({ connectionString: adminDatabaseUrl });
+      await adminClient.connect();
+      try {
+        const { rows } = await adminClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+          testDbName,
+        ]);
+        expect(rows).toHaveLength(1);
+      } finally {
+        await adminClient.end();
+      }
+    } finally {
+      delete process.env.COVERAGE_DB_NAME;
+    }
+  });
+
+  it('connects successfully when COVERAGE_DB_PASSWORD contains URL-reserved characters (Greptile PR feedback)', async () => {
+    // Regression test: databaseUrl was built via raw string interpolation of
+    // user/password directly into postgres://user:pass@host/db — a character
+    // like @, :, /, %, ?, or # in the password would change how the URL is
+    // parsed, even though a structured pg.Client({ user, password, ... })
+    // config (as ensureCoverageDatabaseExists uses) accepts the same
+    // credentials verbatim. Creates a throwaway Postgres role whose password
+    // contains '@' and ':' to prove the built connection string round-trips
+    // correctly through encodeURIComponent.
+    const reservedCharPassword = 'p@ss:word/with#reserved%chars?';
+    const throwawayRole = `migrate_test_role_${randomUUID().replace(/-/g, '_')}`;
+
+    const adminClient = new pg.Client({ connectionString: adminDatabaseUrl });
+    await adminClient.connect();
+    try {
+      await adminClient.query(
+        `CREATE ROLE "${throwawayRole}" WITH LOGIN SUPERUSER PASSWORD '${reservedCharPassword.replace(/'/g, "''")}'`,
+      );
+    } finally {
+      await adminClient.end();
+    }
+
+    process.env.COVERAGE_DB_NAME = testDbName;
+    process.env.COVERAGE_DB_USER = throwawayRole;
+    process.env.COVERAGE_DB_PASSWORD = reservedCharPassword;
+    try {
+      await expect(runCoverageMigrations()).resolves.not.toThrow();
+    } finally {
+      delete process.env.COVERAGE_DB_NAME;
+      delete process.env.COVERAGE_DB_USER;
+      delete process.env.COVERAGE_DB_PASSWORD;
+
+      // Drop the database THIS role owns (created via CREATE DATABASE as
+      // throwawayRole above) before dropping the role itself — the outer
+      // describe's own afterEach also drops testDbName, but only after this
+      // finally block runs, and Postgres refuses to drop a role that still
+      // owns a database.
+      const cleanupClient = new pg.Client({ connectionString: adminDatabaseUrl });
+      await cleanupClient.connect();
+      try {
+        await cleanupClient.query(
+          `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+          [testDbName],
+        );
+        await cleanupClient.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
+        await cleanupClient.query(`DROP ROLE IF EXISTS "${throwawayRole}"`);
+      } finally {
+        await cleanupClient.end();
+      }
+    }
+  });
 });
