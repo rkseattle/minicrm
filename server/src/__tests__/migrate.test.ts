@@ -18,6 +18,7 @@ import {
   withMigrationLock,
   assertBaselineCoverageMatches,
   runCoverageMigrations,
+  runMigrations,
 } from '../migrate.js';
 
 const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
@@ -336,6 +337,65 @@ describe('runCoverageMigrations', () => {
           [testDbName],
         );
         await cleanupClient.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
+        await cleanupClient.query(`DROP ROLE IF EXISTS "${throwawayRole}"`);
+      } finally {
+        await cleanupClient.end();
+      }
+    }
+  });
+});
+
+describe('runMigrations', () => {
+  // Regression coverage mirroring the identical fix/test for
+  // runCoverageMigrations() above (MINCRM-664, found via Greptile PR review):
+  // databaseUrl was built via raw string interpolation of user/password
+  // directly into postgres://user:pass@host/db — a character like @, :, /, %,
+  // ?, or # in the password would change how the URL is parsed, even though a
+  // structured pg.Client({ user, password, ... }) config accepts the same
+  // credentials verbatim. Creates a throwaway superuser role granted against
+  // the existing minicrm_test database (runMigrations(), unlike
+  // runCoverageMigrations(), has no "create the database if missing" step —
+  // it always targets the already-provisioned DB_NAME) whose password
+  // contains reserved characters, to prove the built connection string
+  // round-trips correctly through encodeURIComponent. runMigrations() is
+  // idempotent against an already-migrated database (see its own docblock),
+  // so calling it under the throwaway role only proves the connection itself
+  // succeeds — it is not expected to apply any new schema changes.
+  it('connects successfully when DB_PASSWORD contains URL-reserved characters (Greptile PR feedback)', async () => {
+    const reservedCharPassword = 'p@ss:word/with#reserved%chars?';
+    const throwawayRole = `migrate_test_role_${randomUUID().replace(/-/g, '_')}`;
+
+    const adminClient = new pg.Client({ connectionString: databaseUrl });
+    await adminClient.connect();
+    try {
+      await adminClient.query(
+        `CREATE ROLE "${throwawayRole}" WITH LOGIN SUPERUSER PASSWORD '${reservedCharPassword.replace(/'/g, "''")}'`,
+      );
+    } finally {
+      await adminClient.end();
+    }
+
+    const originalDbUser = process.env.DB_USER;
+    const originalDbPassword = process.env.DB_PASSWORD;
+    process.env.DB_USER = throwawayRole;
+    process.env.DB_PASSWORD = reservedCharPassword;
+    try {
+      await expect(runMigrations()).resolves.not.toThrow();
+    } finally {
+      if (originalDbUser === undefined) {
+        delete process.env.DB_USER;
+      } else {
+        process.env.DB_USER = originalDbUser;
+      }
+      if (originalDbPassword === undefined) {
+        delete process.env.DB_PASSWORD;
+      } else {
+        process.env.DB_PASSWORD = originalDbPassword;
+      }
+
+      const cleanupClient = new pg.Client({ connectionString: databaseUrl });
+      await cleanupClient.connect();
+      try {
         await cleanupClient.query(`DROP ROLE IF EXISTS "${throwawayRole}"`);
       } finally {
         await cleanupClient.end();
