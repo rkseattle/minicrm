@@ -160,6 +160,29 @@ describe('coverageModelService', () => {
       expect(stored[0].hitCount).toBe(7);
     });
 
+    it('keeps two units whose filePath/unitKey pairs share a delimited-string collision as distinct (Greptile PR feedback)', async () => {
+      // Regression test: collapseDuplicateIdentities' in-batch dedup key
+      // used to be a plain `${filePath} ${unitKey} ${branchId}` join, so
+      // filePath "a b" + unitKey "c" and filePath "a" + unitKey "b c" both
+      // serialized to the same string and were wrongly merged into one unit
+      // before ever reaching the database's own (correctly file_path-aware)
+      // unique index. The key is now a JSON-encoded tuple, which cannot
+      // collide this way.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+
+      const { unresolvedCount } = await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [
+        makeUnit({ filePath: `${FILE_PREFIX}/a b`, unitKey: 'c@1', branchId: null, hitCount: 2 }),
+        makeUnit({ filePath: `${FILE_PREFIX}/a`, unitKey: 'b c@1', branchId: null, hitCount: 9 }),
+      ]);
+
+      expect(unresolvedCount).toBe(0);
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      expect(stored).toHaveLength(2);
+      const byUnitKey = new Map(stored.map((unit) => [unit.unitKey, unit]));
+      expect(byUnitKey.get('c@1')?.hitCount).toBe(2);
+      expect(byUnitKey.get('b c@1')?.hitCount).toBe(9);
+    });
+
     it('persists resolved=false rows with their unresolvedReason rather than dropping them', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
 

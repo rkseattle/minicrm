@@ -44,10 +44,16 @@ const ANONYMOUS_FUNCTION_NAME = '<anonymous>';
 const BODY_HASH_LENGTH = 16;
 
 /**
- * Strips real comments (never touching string/template literal content)
- * and collapses all whitespace runs to a single space, so two functions
- * differing only in formatting/comments normalize to the same string
- * before hashing.
+ * Strips real comments and inter-token whitespace/newlines (never touching
+ * string/template literal content), so two functions differing only in
+ * formatting/comments normalize to the same string before hashing, while a
+ * genuine difference in literal whitespace (e.g. "hello   world" vs
+ * "hello world") still changes the hash — every kept token's exact text is
+ * preserved byte-for-byte; only the separator BETWEEN tokens is normalized
+ * to a single space. An earlier version ran a blind `.replace(/\s+/g, ' ')`
+ * over the fully-joined string, which also collapsed whitespace runs inside
+ * string/template literal tokens themselves, silently merging two functions
+ * with genuinely different literal content (found via Greptile PR review).
  *
  * Uses TypeScript's own lexical scanner (`ts.createScanner`), not a regex —
  * a regex-based comment strip was tried first and found to have genuine
@@ -75,6 +81,13 @@ function normalizeSourceForHash(source: string): string {
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, /* skipTrivia */ false);
   scanner.setText(source);
 
+  // Joined with a single space BETWEEN tokens, never touching a token's own
+  // text — an earlier version ran `.replace(/\s+/g, ' ')` over the fully
+  // joined string, which also collapsed whitespace INSIDE string/template
+  // literal tokens (e.g. "hello   world" vs "hello world" normalized to the
+  // same text despite the scanner correctly keeping them as distinct atomic
+  // tokens), silently merging two functions with genuinely different
+  // literal content. Found via Greptile PR review.
   const tokens: string[] = [];
   let kind = scanner.scan();
   while (kind !== ts.SyntaxKind.EndOfFileToken) {
@@ -89,7 +102,7 @@ function normalizeSourceForHash(source: string): string {
     kind = scanner.scan();
   }
 
-  return tokens.join(' ').replace(/\s+/g, ' ').trim();
+  return tokens.join(' ');
 }
 
 /** Extracts the source substring for a [start, end) range out of a file's full text. */

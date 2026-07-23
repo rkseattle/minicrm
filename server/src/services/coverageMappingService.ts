@@ -102,7 +102,12 @@ function collapseDuplicateIdentities(
 ): CoverageTestLinkInput[] {
   const byIdentity = new Map<string, CoverageTestLinkInput>();
   for (const link of links) {
-    const identityKey = `${link.filePath} ${link.unitKey} ${link.branchId ?? ''}`;
+    // JSON-encoded array, not a delimited string: a plain
+    // `${filePath} ${unitKey} ${branchId}` join lets two distinct tuples
+    // collide whenever a delimiter character is also a field's own content
+    // (e.g. filePath "a b" + unitKey "c" serializes identically to filePath
+    // "a" + unitKey "b c") — found live via Greptile PR review.
+    const identityKey = JSON.stringify([link.filePath, link.unitKey, link.branchId ?? '']);
     const existing = byIdentity.get(identityKey);
     if (existing) {
       existing.hitCount += link.hitCount;
