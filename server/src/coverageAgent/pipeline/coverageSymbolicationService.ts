@@ -24,17 +24,32 @@
  * discipline for tagging dumps, so a coverage_units row is never
  * accidentally resolved against a different revision's source than the one
  * that actually ran.
+ *
+ * Unit keys (MINCRM-619): each function's qualified key is derived via
+ * structuralKeyService.deriveStructuralUnitKey, keyed on the function's own
+ * normalized body text rather than its declaration line number, so in-line
+ * edits elsewhere in the file don't change a function's identity. Deriving
+ * this requires the function's own source text, which is read directly off
+ * the same resolved file path v8-to-istanbul already reads (backend path)
+ * or istanbul's own FileCoverageData#path (frontend path) — see
+ * readSourceTextForStructuralKey below. When source text can't be read
+ * (file missing/unreadable, or a path istanbul reports that doesn't exist
+ * on THIS machine — e.g. a frontend dump built on a different host), the
+ * legacy name+line key is used as a graceful fallback rather than failing
+ * ingestion outright; coverage counts are still valid, only identity
+ * stability degrades for that one function.
  */
 
 import { readFile, realpath } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { isAbsolute, join, relative } from 'path';
 import v8toIstanbul from 'v8-to-istanbul';
-import type { CoverageMapData, FileCoverageData } from 'istanbul-lib-coverage';
+import type { CoverageMapData, FileCoverageData, FunctionMapping } from 'istanbul-lib-coverage';
 import type { Profiler } from 'inspector';
 import logger from '../../logger.js';
 import type { CoverageDumpSource } from '../CoverageAgent.js';
 import type { NormalizedCoverageUnit, SymbolicationResult } from './normalizedCoverageUnit.js';
+import { deriveStructuralUnitKey } from './structuralKeyService.js';
 
 /** Coverage detail level a resolved unit was captured at. */
 export type CoverageUnitGranularity = 'branch' | 'function';
@@ -72,7 +87,7 @@ export async function symbolicateCoverageDump(
   }
 
   if (agent === 'browser-istanbul' && format === 'istanbul') {
-    const units = symbolicateIstanbulCoverageMap(payload);
+    const units = await symbolicateIstanbulCoverageMap(payload);
     return { agent, units };
   }
 
@@ -127,7 +142,7 @@ async function symbolicateV8ScriptCoverage(
       converter.applyCoverage(script.functions);
       const coverageMap = converter.toIstanbul();
       const relativePath = relative(resolvedSourceRoot, filePath);
-      units.push(...unitsFromFileCoverageMap(coverageMap, relativePath));
+      units.push(...(await unitsFromFileCoverageMap(coverageMap, relativePath, filePath)));
     } catch (err) {
       logger.warn({ err, filePath }, 'coverageSymbolicationService: failed to symbolicate script');
       units.push({
@@ -152,12 +167,21 @@ async function symbolicateV8ScriptCoverage(
  * CoverageMapData shape, already resolved to original TS/JSX by vite-plugin-istanbul's
  * Babel + sourcemap pipeline — see module docblock) into NormalizedCoverageUnit rows.
  */
-function symbolicateIstanbulCoverageMap(payload: unknown): NormalizedCoverageUnit[] {
+async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<NormalizedCoverageUnit[]> {
   const coverageMap = payload as CoverageMapData;
   const units: NormalizedCoverageUnit[] = [];
 
   for (const [filePath, fileCoverage] of Object.entries(coverageMap)) {
-    units.push(...unitsFromFileCoverageMap({ [filePath]: fileCoverage }, filePath));
+    const data = fileCoverage as FileCoverageData;
+    // istanbul's own FileCoverageData#path is the absolute path the
+    // instrumenting build (vite-plugin-istanbul) recorded at build time —
+    // best-effort source for structural-key derivation on this path. It may
+    // not exist on THIS machine (e.g. a dump built in CI, ingested locally);
+    // readSourceTextForStructuralKey below handles that by returning
+    // undefined, which degrades gracefully to the legacy line-based key.
+    units.push(
+      ...(await unitsFromFileCoverageMap({ [filePath]: fileCoverage }, filePath, data.path)),
+    );
   }
 
   return units;
@@ -177,12 +201,24 @@ function symbolicateIstanbulCoverageMap(payload: unknown): NormalizedCoverageUni
  * "unresolvable regions flagged rather than silently dropped" AC applies
  * here too: no function's coverage should vanish just because a sibling
  * function happens to branch.
+ *
+ * sourcePathForKeyDerivation (MINCRM-619) is a best-effort absolute path to
+ * read the file's own source text from, purely to derive each function's
+ * structural (name + normalized-body-hash) key. It is independent of
+ * overrideFilePath, which remains the identity stored on each unit row —
+ * reading source text is allowed to fail (wrong machine, deleted file) and
+ * falls back to the legacy name+line key without affecting overrideFilePath
+ * or any hit-count/branch data.
  */
-function unitsFromFileCoverageMap(
+async function unitsFromFileCoverageMap(
   coverageMap: CoverageMapData,
   overrideFilePath: string,
-): NormalizedCoverageUnit[] {
+  sourcePathForKeyDerivation?: string,
+): Promise<NormalizedCoverageUnit[]> {
   const units: NormalizedCoverageUnit[] = [];
+  const sourceText = sourcePathForKeyDerivation
+    ? await readSourceTextForStructuralKey(sourcePathForKeyDerivation)
+    : undefined;
 
   for (const fileCoverage of Object.values(coverageMap)) {
     const data = fileCoverage as FileCoverageData;
@@ -203,7 +239,7 @@ function unitsFromFileCoverageMap(
     }
 
     for (const [branchKey, mapping] of Object.entries(data.branchMap)) {
-      const unitKey = qualifiedUnitKeyForLine(data, mapping.line);
+      const unitKey = qualifiedUnitKeyForLine(data, mapping.line, sourceText);
       const hits: number[] = data.b[branchKey] ?? [];
       hits.forEach((hitCount, branchIndex) => {
         units.push({
@@ -227,7 +263,7 @@ function unitsFromFileCoverageMap(
       if (fnKeysWithBranches.has(fnKey)) continue;
       units.push({
         filePath: overrideFilePath,
-        unitKey: qualifiedUnitKey(mapping.name, mapping.decl.start.line),
+        unitKey: qualifiedUnitKey(mapping.name, mapping.decl.start.line, mapping.loc, sourceText),
         branchId: null,
         granularity: 'function',
         hitCount: data.f[fnKey] ?? 0,
@@ -240,16 +276,52 @@ function unitsFromFileCoverageMap(
   return units;
 }
 
-/** Builds a stable-ish qualified key from a function's name and declaration line. */
-function qualifiedUnitKey(name: string, declLine: number): string {
+/**
+ * Reads a file's source text for structural-key derivation. Returns
+ * undefined (never throws) on any failure — a missing/unreadable source
+ * file degrades key derivation to the legacy name+line fallback rather than
+ * failing symbolication, since the coverage data itself remains valid even
+ * when structural-identity derivation isn't possible.
+ */
+async function readSourceTextForStructuralKey(sourcePath: string): Promise<string | undefined> {
+  try {
+    return await readFile(sourcePath, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Builds a function's qualified unit key: the structural (name +
+ * normalized-body-hash) key from MINCRM-619 when source text and a body
+ * range are available, falling back to the legacy `name@declLine` key
+ * otherwise (source unreadable, or the range didn't extract cleanly — see
+ * deriveStructuralUnitKey's own null-return contract).
+ */
+function qualifiedUnitKey(
+  name: string,
+  declLine: number,
+  bodyRange: FunctionMapping['loc'] | undefined,
+  sourceText: string | undefined,
+): string {
+  if (sourceText && bodyRange) {
+    const structuralKey = deriveStructuralUnitKey(name, bodyRange, sourceText);
+    if (structuralKey) {
+      return structuralKey;
+    }
+  }
   return `${name || '<anonymous>'}@${declLine}`;
 }
 
 /** Finds the enclosing function for a branch's line and derives its qualified key. */
-function qualifiedUnitKeyForLine(data: FileCoverageData, line: number): string {
+function qualifiedUnitKeyForLine(
+  data: FileCoverageData,
+  line: number,
+  sourceText: string | undefined,
+): string {
   for (const mapping of Object.values(data.fnMap)) {
     if (line >= mapping.decl.start.line && line <= mapping.loc.end.line) {
-      return qualifiedUnitKey(mapping.name, mapping.decl.start.line);
+      return qualifiedUnitKey(mapping.name, mapping.decl.start.line, mapping.loc, sourceText);
     }
   }
   // No enclosing function found (e.g. top-level module code) — the line
