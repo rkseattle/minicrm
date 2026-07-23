@@ -86,7 +86,6 @@
 | [public.lead_routing_scoring_config](public.lead_routing_scoring_config.md) | 11 | Singleton admin-editable weights/thresholds for lead routing suggestion scoring (MINCRM-475). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151; rep_coaching_scoring_config, migration 153). | BASE TABLE |
 | [public.data_hygiene_scoring_config](public.data_hygiene_scoring_config.md) | 9 | Singleton admin-editable thresholds for the data hygiene scan (MINCRM-476). id is a boolean-typed singleton key (id = true) following the single-row-config convention (see account_health_scoring_config, migration 151). | BASE TABLE |
 | [public.data_hygiene_findings](public.data_hygiene_findings.md) | 13 | Current data hygiene queue (MINCRM-476), one row per flagged record per issue type. Upserted nightly by dataHygieneService; mutated in place by update/merge/archive/dismiss actions rather than appended — reflects current state, not a history log. A finding is cleared (deleted) once the nightly scan no longer detects the issue, or the underlying record is deleted/archived. dismissed_until implements the 90-day (admin-configurable) dismiss suppression window. | BASE TABLE |
-| [public.coverage_test_links](public.coverage_test_links.md) | 10 | Coverage/TIA bidirectional code<->test index (MINCRM-618) — attributes coverage_units hits to the specific test(s) that produced them, joined at ingestion time from coverage_session_dumps (migration 157) test_id/test_name attribution. coverage_units itself only carries a commit-wide aggregate hit_count with no per-test breakdown; this table is the derived per-test layer coverageMappingService queries from. Re-ingesting the same dump for the same test merges into the existing row (hit_count accumulated) rather than duplicating, mirroring coverage_units own dedup/compaction behavior. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -1111,18 +1110,6 @@ erDiagram
   text dismissed_reason ""
   timestamp_with_time_zone detected_at ""
   timestamp_with_time_zone updated_at ""
-}
-"public.coverage_test_links" {
-  uuid id ""
-  text commit_sha ""
-  text unit_key ""
-  text branch_id ""
-  text file_path ""
-  text test_id ""
-  text test_name ""
-  bigint hit_count ""
-  timestamp_with_time_zone first_seen_at ""
-  timestamp_with_time_zone last_seen_at ""
 }
 ```
 

@@ -28,32 +28,32 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 
 ### Phase 2 — Session management files
 
-| Path                                                                | Purpose                                                             |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `server/src/middleware/correlationId.ts`                            | Reads `x-coverage-correlation-id` into `req.coverageCorrelationId`  |
-| `server/src/services/coverageSessionService.ts`                     | `CoverageSession` CRUD + dump attribution, transactional + audited  |
-| `server/src/controllers/coverageSessionController.ts`               | Request/response shaping for the session control API                |
-| `server/src/routes/coverageSessions.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/sessions`     |
-| `shared/schemas/coverageSessionSchema.ts`                           | Zod schemas for sessions + the `CORRELATION_ID_HEADER` constant     |
-| `db/migrations/157_add_coverage_sessions.js`                        | `coverage_sessions` + `coverage_session_dumps` tables, feature flag |
-| `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)      |
-| `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI   |
-| `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)          |
+| Path                                                                | Purpose                                                                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/middleware/correlationId.ts`                            | Reads `x-coverage-correlation-id` into `req.coverageCorrelationId`                                                        |
+| `server/src/services/coverageSessionService.ts`                     | `CoverageSession` CRUD + dump attribution — unaudited (see [Coverage Database](#coverage-database))                       |
+| `server/src/controllers/coverageSessionController.ts`               | Request/response shaping for the session control API                                                                      |
+| `server/src/routes/coverageSessions.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/sessions`                                                           |
+| `shared/schemas/coverageSessionSchema.ts`                           | Zod schemas for sessions + the `CORRELATION_ID_HEADER` constant                                                           |
+| `db/migrations/157_add_coverage_sessions.js`                        | Seeds the `coverage_session_management` feature flag (table creation moved — see [Coverage Database](#coverage-database)) |
+| `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)                                                            |
+| `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI                                                         |
+| `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)                                                                |
 
 ### Phase 3 — Coverage data pipeline files
 
-| Path                                                                | Purpose                                                                |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `server/src/coverageAgent/pipeline/coverageSymbolicationService.ts` | Resolves raw dumps (both formats) to real source (MINCRM-615)          |
-| `server/src/coverageAgent/pipeline/normalizedCoverageUnit.ts`       | `NormalizedCoverageUnit`/`SymbolicationResult` internal types          |
-| `server/src/coverageAgent/pipeline/coverageIngestionService.ts`     | Ties symbolication + storage together for a single dumpId (MINCRM-614) |
-| `server/src/services/coverageModelService.ts`                       | Owns all DB access for `coverage_units` (MINCRM-616)                   |
-| `server/src/controllers/coveragePipelineController.ts`              | Request/response shaping for the ingestion trigger endpoint            |
-| `server/src/routes/coveragePipeline.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/pipeline`        |
-| `shared/schemas/coveragePipelineSchema.ts`                          | Zod request/response schemas for the pipeline                          |
-| `db/migrations/158_add_coverage_pipeline.js`                        | `coverage_units` + `coverage_ingested_dumps` tables, feature flag      |
-| `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                            |
-| `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end           |
+| Path                                                                | Purpose                                                                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/pipeline/coverageSymbolicationService.ts` | Resolves raw dumps (both formats) to real source (MINCRM-615)                                                             |
+| `server/src/coverageAgent/pipeline/normalizedCoverageUnit.ts`       | `NormalizedCoverageUnit`/`SymbolicationResult` internal types                                                             |
+| `server/src/coverageAgent/pipeline/coverageIngestionService.ts`     | Ties symbolication + storage together for a single dumpId (MINCRM-614)                                                    |
+| `server/src/services/coverageModelService.ts`                       | Owns all DB access for `coverage_units` (MINCRM-616), via `coverageDb.ts`                                                 |
+| `server/src/controllers/coveragePipelineController.ts`              | Request/response shaping for the ingestion trigger endpoint                                                               |
+| `server/src/routes/coveragePipeline.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/pipeline`                                                           |
+| `shared/schemas/coveragePipelineSchema.ts`                          | Zod request/response schemas for the pipeline                                                                             |
+| `db/migrations/158_add_coverage_pipeline.js`                        | Seeds the `coverage_pipeline_ingestion` feature flag (table creation moved — see [Coverage Database](#coverage-database)) |
+| `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                                                                               |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end                                                              |
 
 ## Mounting
 
@@ -64,6 +64,20 @@ app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 ```
 
 All routes: `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_instrumentation') → asyncHandler(handler)`.
+
+## Coverage Database
+
+Coverage/TIA data (`coverage_units`, `coverage_ingested_dumps`, `coverage_sessions`, `coverage_session_dumps`, `coverage_test_links`) lives in its own database — `minicrm_coverage` (dev), `minicrm_coverage_test` (Vitest), `minicrm_coverage_e2e` (Playwright) — separate from the product database (`minicrm`/`minicrm_test`/`minicrm_e2e`) that everything else in `server/src/services/` reads/writes via `db.ts`'s pool. Both live on the same Postgres instance in every environment this repo targets (one `db` service in `docker-compose.yml`), just under different database names.
+
+**Why a separate database, not just a separate schema/namespace:** coverage/TIA data is disposable, write-heavy, retention-pruned telemetry consumed by CI tooling and developers — a fundamentally different access pattern, growth rate, and backup/retention policy than product data (contacts/deals/users), which needs strict backups and must never be bulk-deleted. None of the coverage tables carry a foreign key into the product schema — `coverage_sessions.started_by` is a plain `uuid` column, not an FK (cross-database foreign keys are impossible in PostgreSQL) — so there is no referential-integrity reason for them to share a connection pool, backup schedule, or migration history with product data.
+
+**What did NOT move:** the `coverage_instrumentation`, `coverage_session_management`, and `coverage_pipeline_ingestion` `feature_flags` rows (still seeded by `db/migrations/156`/`157`/`158`, in the product database). These gate WHO may call the coverage control APIs — checked against `req.user`/role — which is an authorization concern belonging with the product's own `users`/`feature_flags` tables, not with the coverage data itself.
+
+**Consequence — coverage sessions are unaudited:** `coverageSessionService`'s writes used to go through the same transaction + `writeAuditEntry`/`setRlsUserId` pattern as `dealService.ts` (see CLAUDE.md). Both of those require a product-database `PoolClient` (the `audit_log` table and RLS policies live there) and cannot run against a `coverageDb` client. Coverage sessions are therefore unaudited system telemetry, exactly like `coverage_units`/`coverage_test_links` already were — derived, system-internal data with no user-facing mutation surface, not a compliance-relevant change history. `startedBy` is still recorded on `coverage_sessions` as informational attribution (who kicked off a session), just without an `audit_log` entry.
+
+**Schema location:** `qa/migrations/` (a separate `node-pg-migrate` sequence from `db/migrations/`, starting at `001`, run via `npm run migrate:coverage --workspace=minicrm-qa`), not `db/migrations/`. This mirrors the QA workspace's own ownership of E2E-adjacent infrastructure. `qa/scripts/create-coverage-e2e-db.ts` creates + migrates `minicrm_coverage_e2e`, invoked from the root `scripts/e2e-setup.ts` alongside the product DB's own `create:e2e-db` step.
+
+**Connection:** `server/src/coverageDb.ts` — a second `pg.Pool`, read by `coverageModelService.ts`, `coverageSessionService.ts`, and `coverageMappingService.ts` only. Configured via `COVERAGE_DB_*` env vars, each falling back to the product DB's own `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` (same instance, same credentials in every environment today) except `COVERAGE_DB_NAME`, which always needs an explicit value (defaults to `minicrm_coverage`) so a misconfigured environment can never accidentally point this pool at the product database by inheriting `DB_NAME`.
 
 ## Backend Agent (MINCRM-604)
 

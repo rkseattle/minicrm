@@ -26,9 +26,13 @@ import {
 
 const sessionIdParamSchema = z.string().uuid();
 
-function actorFromRequest(req: Request): { id: string; name: string } {
+function actorFromRequest(req: Request): { id: string } {
   // Route middleware guarantees req.user is set (authenticate runs first).
-  return { id: req.user!.id, name: req.user!.name };
+  // Only id is recorded (coverage_sessions.started_by) — coverage sessions
+  // are unaudited system telemetry in their own database, not a
+  // product-DB audit_log entry, so no changedByName is needed here (see
+  // coverageSessionService.ts's module docblock).
+  return { id: req.user!.id };
 }
 
 /**
@@ -121,7 +125,7 @@ export async function endCoverageSessionHandler(req: Request, res: Response): Pr
   }
 
   try {
-    const session = await endCoverageSession(sessionId, parsed.data.version, actorFromRequest(req));
+    const session = await endCoverageSession(sessionId, parsed.data.version);
     res.status(200).json({ session });
   } catch (err) {
     if (err instanceof CoverageSessionNotFoundError) {

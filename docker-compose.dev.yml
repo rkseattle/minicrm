@@ -54,6 +54,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: minicrm_e2e
+      # Coverage/TIA tables live in their own database — see server/src/coverageDb.ts.
+      COVERAGE_DB_NAME: minicrm_coverage_e2e
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}

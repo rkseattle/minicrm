@@ -1,9 +1,13 @@
 /**
  * Integration tests for coverageSessionService.
  *
- * Runs against a real PostgreSQL test database.
- * A single test user is created in beforeAll and reused as actor/started-by.
+ * Runs against the real coverage test database (minicrm_coverage_test —
+ * see server/src/coverageDb.ts), a separate database from the product test
+ * database (minicrm_test) most other *.test.ts files in this directory use.
  * coverage_sessions/coverage_session_dumps are truncated before each test.
+ * No audit_log assertions — coverage sessions are unaudited system
+ * telemetry in their own database (see coverageSessionService.ts's module
+ * docblock for why), so there is no audit trail to assert against.
  *
  * Run: npm test (from /server)
  */
@@ -22,18 +26,8 @@ import {
   CoverageSessionEndedError,
   CoverageSessionCorrelationMismatchError,
 } from '../services/coverageSessionService.js';
-import { createUser } from '../services/userService.js';
-import pool from '../db.js';
-
-const FILE_PREFIX = 'coverage-session-svc';
-
-const OWNER_USER = {
-  email: `${FILE_PREFIX}-owner@example.com`,
-  name: 'Coverage Session Owner',
-  role: 'admin' as const,
-  passwordHash: '$2b$12$placeholder_hash',
-  status: 'active' as const,
-};
+import type { CoverageSessionActor } from '../services/coverageSessionService.js';
+import coverageDb from '../coverageDb.js';
 
 const BASE_SESSION_PARAMS = {
   label: 'deals functional suite',
@@ -42,43 +36,25 @@ const BASE_SESSION_PARAMS = {
   environment: 'ci',
 };
 
-let ownerId: string;
-let actor: { id: string; name: string };
-
-beforeAll(async () => {
-  await pool.query(
-    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1))',
-    [`${FILE_PREFIX}-%`],
-  );
-  await pool.query(
-    'DELETE FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1)',
-    [`${FILE_PREFIX}-%`],
-  );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-
-  const owner = await createUser(OWNER_USER);
-  ownerId = owner.id;
-  actor = { id: ownerId, name: owner.name };
-});
+// Not a real product-DB user — started_by is a plain uuid with no
+// cross-database foreign key (see qa/migrations/001_coverage_baseline.js),
+// so any well-formed UUID is valid attribution for these tests.
+const actor: CoverageSessionActor = { id: randomUUID() };
 
 beforeEach(async () => {
-  await pool.query(
+  await coverageDb.query(
     'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by = $1)',
-    [ownerId],
+    [actor.id],
   );
-  await pool.query('DELETE FROM coverage_sessions WHERE started_by = $1', [ownerId]);
+  await coverageDb.query('DELETE FROM coverage_sessions WHERE started_by = $1', [actor.id]);
 });
 
 afterAll(async () => {
-  await pool.query(
-    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1))',
-    [`${FILE_PREFIX}-%`],
+  await coverageDb.query(
+    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by = $1)',
+    [actor.id],
   );
-  await pool.query(
-    'DELETE FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1)',
-    [`${FILE_PREFIX}-%`],
-  );
-  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  await coverageDb.query('DELETE FROM coverage_sessions WHERE started_by = $1', [actor.id]);
 });
 
 // ── startCoverageSession ────────────────────────────────────────────────────
@@ -90,7 +66,7 @@ describe('startCoverageSession', () => {
     expect(session.status).toBe('active');
     expect(session.label).toBe(BASE_SESSION_PARAMS.label);
     expect(session.source).toBe('automated-e2e');
-    expect(session.startedById).toBe(ownerId);
+    expect(session.startedById).toBe(actor.id);
     expect(session.endedAt).toBeNull();
     expect(session.version).toBe(1);
     expect(session.correlationId).toMatch(/^[0-9a-f-]{36}$/);
@@ -116,19 +92,6 @@ describe('startCoverageSession', () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
     expect(session.issueKey).toBeNull();
   });
-
-  it('writes an audit entry for session start', async () => {
-    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-
-    const auditResult = await pool.query(
-      `SELECT event_type, record_id, changed_by_id FROM audit_log
-       WHERE record_type = 'coverage_session' AND record_id = $1`,
-      [session.id],
-    );
-    expect(auditResult.rows).toHaveLength(1);
-    expect(auditResult.rows[0].event_type).toBe('coverage_session_started');
-    expect(auditResult.rows[0].changed_by_id).toBe(ownerId);
-  });
 });
 
 // ── endCoverageSession ───────────────────────────────────────────────────────
@@ -136,36 +99,24 @@ describe('startCoverageSession', () => {
 describe('endCoverageSession', () => {
   it('ends an active session and stamps endedAt', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    const ended = await endCoverageSession(session.id, session.version, actor);
+    const ended = await endCoverageSession(session.id, session.version);
 
     expect(ended.status).toBe('ended');
     expect(ended.endedAt).not.toBeNull();
     expect(ended.version).toBe(session.version + 1);
   });
 
-  it('writes an audit entry for session end', async () => {
-    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    await endCoverageSession(session.id, session.version, actor);
-
-    const auditResult = await pool.query(
-      `SELECT event_type FROM audit_log
-       WHERE record_type = 'coverage_session' AND record_id = $1 AND event_type = 'coverage_session_ended'`,
-      [session.id],
-    );
-    expect(auditResult.rows).toHaveLength(1);
-  });
-
   it('throws CoverageSessionNotFoundError for an unknown session', async () => {
     await expect(
-      endCoverageSession('00000000-0000-0000-0000-000000000000', 1, actor),
+      endCoverageSession('00000000-0000-0000-0000-000000000000', 1),
     ).rejects.toBeInstanceOf(CoverageSessionNotFoundError);
   });
 
   it('throws CoverageSessionConflictError when ending an already-ended session', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    const ended = await endCoverageSession(session.id, session.version, actor);
+    const ended = await endCoverageSession(session.id, session.version);
 
-    await expect(endCoverageSession(session.id, ended.version, actor)).rejects.toBeInstanceOf(
+    await expect(endCoverageSession(session.id, ended.version)).rejects.toBeInstanceOf(
       CoverageSessionConflictError,
     );
   });
@@ -175,8 +126,8 @@ describe('endCoverageSession', () => {
 
     // Simulate two concurrent end-session requests racing on the same stale version.
     const results = await Promise.allSettled([
-      endCoverageSession(session.id, session.version, actor),
-      endCoverageSession(session.id, session.version, actor),
+      endCoverageSession(session.id, session.version),
+      endCoverageSession(session.id, session.version),
     ]);
 
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
@@ -192,19 +143,12 @@ describe('endCoverageSession', () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
 
     await Promise.allSettled([
-      endCoverageSession(session.id, session.version, actor),
-      endCoverageSession(session.id, session.version, actor),
+      endCoverageSession(session.id, session.version),
+      endCoverageSession(session.id, session.version),
     ]);
 
     const found = await findCoverageSession(session.id);
     expect(found!.status).toBe('ended');
-
-    const auditResult = await pool.query(
-      `SELECT id FROM audit_log
-       WHERE record_type = 'coverage_session' AND record_id = $1 AND event_type = 'coverage_session_ended'`,
-      [session.id],
-    );
-    expect(auditResult.rows).toHaveLength(1);
   });
 });
 
@@ -224,7 +168,7 @@ describe('listActiveCoverageSessions', () => {
       { ...BASE_SESSION_PARAMS, label: 'ended session' },
       actor,
     );
-    await endCoverageSession(toEnd.id, toEnd.version, actor);
+    await endCoverageSession(toEnd.id, toEnd.version);
 
     const result = await listActiveCoverageSessions({ page: 1, limit: 25 });
     const ids = result.data.map((s) => s.id);
@@ -265,7 +209,7 @@ describe('findActiveCoverageSessionByCorrelationId', () => {
 
   it('returns null once the session has ended', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    await endCoverageSession(session.id, session.version, actor);
+    await endCoverageSession(session.id, session.version);
 
     const found = await findActiveCoverageSessionByCorrelationId(session.correlationId);
 
@@ -321,7 +265,7 @@ describe('recordCoverageSessionDump', () => {
     expect(first.attempt).toBe(1);
     expect(retry.attempt).toBe(2);
 
-    const rows = await pool.query(
+    const rows = await coverageDb.query(
       'SELECT dump_id, attempt FROM coverage_session_dumps WHERE session_id = $1 ORDER BY attempt',
       [session.id],
     );
@@ -347,7 +291,7 @@ describe('recordCoverageSessionDump', () => {
 
   it('rejects a dump recorded against an already-ended session', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    await endCoverageSession(session.id, session.version, actor);
+    await endCoverageSession(session.id, session.version);
 
     await expect(
       recordCoverageSessionDump(session.id, randomUUID(), session.correlationId),
@@ -356,16 +300,17 @@ describe('recordCoverageSessionDump', () => {
 
   it('does not insert a row when rejecting a dump for an ended session', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
-    await endCoverageSession(session.id, session.version, actor);
+    await endCoverageSession(session.id, session.version);
     const dumpId = randomUUID();
 
     await expect(
       recordCoverageSessionDump(session.id, dumpId, session.correlationId),
     ).rejects.toBeInstanceOf(CoverageSessionEndedError);
 
-    const rows = await pool.query('SELECT id FROM coverage_session_dumps WHERE dump_id = $1', [
-      dumpId,
-    ]);
+    const rows = await coverageDb.query(
+      'SELECT id FROM coverage_session_dumps WHERE dump_id = $1',
+      [dumpId],
+    );
     expect(rows.rows).toHaveLength(0);
   });
 
@@ -400,9 +345,10 @@ describe('recordCoverageSessionDump', () => {
       recordCoverageSessionDump(sessionA.id, dumpId, sessionB.correlationId),
     ).rejects.toBeInstanceOf(CoverageSessionCorrelationMismatchError);
 
-    const rows = await pool.query('SELECT id FROM coverage_session_dumps WHERE dump_id = $1', [
-      dumpId,
-    ]);
+    const rows = await coverageDb.query(
+      'SELECT id FROM coverage_session_dumps WHERE dump_id = $1',
+      [dumpId],
+    );
     expect(rows.rows).toHaveLength(0);
   });
 
@@ -424,11 +370,11 @@ describe('recordCoverageSessionDump', () => {
       recordCoverageSessionDump(sessionB.id, dumpB, sessionB.correlationId),
     ]);
 
-    const rowsA = await pool.query(
+    const rowsA = await coverageDb.query(
       'SELECT dump_id FROM coverage_session_dumps WHERE session_id = $1',
       [sessionA.id],
     );
-    const rowsB = await pool.query(
+    const rowsB = await coverageDb.query(
       'SELECT dump_id FROM coverage_session_dumps WHERE session_id = $1',
       [sessionB.id],
     );

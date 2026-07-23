@@ -12,6 +12,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
+import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-pipeline-ctrl';
@@ -134,7 +135,7 @@ describe('coverage pipeline API — ingest happy path', () => {
   });
 
   afterEach(async () => {
-    await pool.query('DELETE FROM coverage_units WHERE file_path = $1', ['src/App.tsx']);
+    await coverageDb.query('DELETE FROM coverage_units WHERE file_path = $1', ['src/App.tsx']);
   });
 
   it('ingests a real browser-origin dump into coverage_units', async () => {

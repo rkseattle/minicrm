@@ -11,6 +11,7 @@ import app from '../app.js';
 import { createUser } from '../services/userService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
+import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-session-ctrl';
@@ -37,14 +38,11 @@ function baseSessionBody(label: string) {
 }
 
 beforeAll(async () => {
-  await pool.query(
-    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1))',
-    [`${FILE_PREFIX}-%`],
-  );
-  await pool.query(
-    'DELETE FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email LIKE $1)',
-    [`${FILE_PREFIX}-%`],
-  );
+  // Cannot look up product-DB users by email to scope coverage_sessions
+  // cleanup here (coverage_sessions.started_by is a plain uuid with no
+  // cross-database foreign key into users — see
+  // qa/migrations/001_coverage_baseline.js) — cleanup instead filters
+  // coverage_sessions directly by adminId once it's known, in afterAll.
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
   const admin = await createUser({
@@ -73,11 +71,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query(
+  await coverageDb.query(
     'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by = $1)',
     [adminId],
   );
-  await pool.query('DELETE FROM coverage_sessions WHERE started_by = $1', [adminId]);
+  await coverageDb.query('DELETE FROM coverage_sessions WHERE started_by = $1', [adminId]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   await setSessionFlagEnabled(false);
 });

@@ -10,7 +10,7 @@
  * during development) would otherwise only surface at runtime.
  */
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'crypto';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -26,41 +26,22 @@ import {
   startCoverageSession,
   recordCoverageSessionDump,
 } from '../services/coverageSessionService.js';
-import { createUser } from '../services/userService.js';
+import type { CoverageSessionActor } from '../services/coverageSessionService.js';
 import {
   CoverageDumpMalformedError,
   CoverageDumpNotFoundError,
   ingestCoverageDump,
 } from '../coverageAgent/pipeline/coverageIngestionService.js';
-import pool from '../db.js';
+import coverageDb from '../coverageDb.js';
 
 const TEST_COMMIT_SHA = 'test-ingestion-sha';
-const SESSION_OWNER_EMAIL = 'coverage-ingestion-svc-owner@example.com';
 
 let agent: NodeV8CoverageAgent;
 let sourceRoot: string;
-let sessionActor: { id: string; name: string };
-
-beforeAll(async () => {
-  await pool.query(
-    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email = $1))',
-    [SESSION_OWNER_EMAIL],
-  );
-  await pool.query(
-    'DELETE FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email = $1)',
-    [SESSION_OWNER_EMAIL],
-  );
-  await pool.query('DELETE FROM users WHERE email = $1', [SESSION_OWNER_EMAIL]);
-
-  const owner = await createUser({
-    email: SESSION_OWNER_EMAIL,
-    name: 'Coverage Ingestion Session Owner',
-    role: 'admin',
-    passwordHash: '$2b$12$placeholder_hash',
-    status: 'active',
-  });
-  sessionActor = { id: owner.id, name: owner.name };
-});
+// Not a real product-DB user — coverage_sessions.started_by is a plain uuid
+// with no cross-database foreign key (see qa/migrations/001_coverage_baseline.js),
+// so any well-formed UUID is valid attribution here.
+const sessionActor: CoverageSessionActor = { id: randomUUID() };
 
 beforeEach(async () => {
   sourceRoot = await mkdtemp(join(tmpdir(), 'minicrm-ingestion-test-'));
@@ -91,13 +72,15 @@ afterEach(async () => {
   await agent.stop();
   await rm(COVERAGE_DUMPS_ROOT, { recursive: true, force: true });
   await rm(sourceRoot, { recursive: true, force: true });
-  await pool.query('DELETE FROM coverage_units WHERE commit_sha = $1', [TEST_COMMIT_SHA]);
-  await pool.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [TEST_COMMIT_SHA]);
-  await pool.query(
+  await coverageDb.query('DELETE FROM coverage_units WHERE commit_sha = $1', [TEST_COMMIT_SHA]);
+  await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [
+    TEST_COMMIT_SHA,
+  ]);
+  await coverageDb.query(
     'DELETE FROM coverage_session_dumps WHERE correlation_id IN (SELECT correlation_id FROM coverage_sessions WHERE build_sha = $1)',
     [TEST_COMMIT_SHA],
   );
-  await pool.query('DELETE FROM coverage_sessions WHERE build_sha = $1', [TEST_COMMIT_SHA]);
+  await coverageDb.query('DELETE FROM coverage_sessions WHERE build_sha = $1', [TEST_COMMIT_SHA]);
   // Deleting COVERAGE_DUMPS_ROOT above invalidates the shared DumpIndex
   // singleton's in-memory cache for this root — without clearing the
   // registry, the next test's beforeEach recreates the directory but
@@ -106,18 +89,6 @@ afterEach(async () => {
   // was built to prevent, just across test boundaries instead of across
   // agent/service instances. See dumpIndex.ts's __clearSharedDumpIndexesForTest.
   __clearSharedDumpIndexesForTest();
-});
-
-afterAll(async () => {
-  await pool.query(
-    'DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email = $1))',
-    [SESSION_OWNER_EMAIL],
-  );
-  await pool.query(
-    'DELETE FROM coverage_sessions WHERE started_by IN (SELECT id FROM users WHERE email = $1)',
-    [SESSION_OWNER_EMAIL],
-  );
-  await pool.query('DELETE FROM users WHERE email = $1', [SESSION_OWNER_EMAIL]);
 });
 
 describe('coverageIngestionService', () => {
