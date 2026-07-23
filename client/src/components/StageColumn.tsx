@@ -34,11 +34,6 @@ interface StageColumnProps {
   updatingDealIds: Set<string>;
   /** When true, the column expands to full width (used in mobile single-stage view) */
   fullWidth?: boolean;
-  /**
-   * Optional prefix for data-testid attributes on the column and its deal cards.
-   * Used to disambiguate columns rendered in multiple views (e.g. "mobile-").
-   */
-  testIdPrefix?: string;
   /** Called when the user clicks "Add deal" in the column's empty state */
   onAddDeal?: () => void;
 }
@@ -152,7 +147,6 @@ export default function StageColumn({
   onCloseRequested,
   updatingDealIds,
   fullWidth = false,
-  testIdPrefix = '',
   onAddDeal,
 }: StageColumnProps) {
   const { t, i18n } = useTranslation();
@@ -180,7 +174,7 @@ export default function StageColumn({
 
   return (
     <div
-      data-testid={`${testIdPrefix}stage-column-${slug}`}
+      data-testid={`stage-column-${slug}`}
       className={`${fullWidth ? 'w-full' : 'flex-shrink-0 w-64'} rounded-lg border ${columnWrapperClass(stage)} flex flex-col`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -189,7 +183,7 @@ export default function StageColumn({
           Explicit onDragOver/onDrop so drop events targeting this element are handled directly
           rather than relying on parent bubbling (MINCRM-300). */}
       <div
-        data-testid={`${testIdPrefix}stage-column-header-${slug}`}
+        data-testid={`stage-column-header-${slug}`}
         className={`sticky top-0 z-10 px-3 py-2 rounded-t-lg ${columnHeaderClass(stage)}`}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -199,23 +193,23 @@ export default function StageColumn({
             {getStageDisplayName(stage, t)}
           </h3>
           <span
-            data-testid={`${testIdPrefix}stage-column-count-${slug}`}
+            data-testid={`stage-column-count-${slug}`}
             className="ms-2 shrink-0 text-xs font-medium"
           >
             {deals.length}
           </span>
         </div>
         {hasMixedCurrencies(deals) ? (
-          <p data-testid={`${testIdPrefix}stage-column-total-${slug}`} className="text-xs mt-0.5">
+          <p data-testid={`stage-column-total-${slug}`} className="text-xs mt-0.5">
             {t('pipeline.mixedCurrency')}
           </p>
         ) : (
           <>
-            <p data-testid={`${testIdPrefix}stage-column-total-${slug}`} className="text-xs mt-0.5">
+            <p data-testid={`stage-column-total-${slug}`} className="text-xs mt-0.5">
               {t('pipeline.totalValue', { value: sumValues(deals, i18n.language) })}
             </p>
             <p
-              data-testid={`${testIdPrefix}stage-column-weighted-${slug}`}
+              data-testid={`stage-column-weighted-${slug}`}
               className="text-xs text-gray-600 mt-0.5"
             >
               {t('pipeline.weightedValue', { value: sumWeightedValues(deals, i18n.language) })}
@@ -228,7 +222,7 @@ export default function StageColumn({
       <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-16">
         {deals.length === 0 ? (
           <EmptyState
-            data-testid={`${testIdPrefix}stage-column-empty-${slug}`}
+            data-testid={`stage-column-empty-${slug}`}
             icon={
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -258,7 +252,6 @@ export default function StageColumn({
               onStageChange={onStageChange}
               onCloseRequested={onCloseRequested}
               isUpdating={updatingDealIds.has(deal.id)}
-              testIdPrefix={testIdPrefix}
             />
           ))
         )}

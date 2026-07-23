@@ -36,11 +36,6 @@ export interface UserActionsMenuProps {
   isOpen: boolean;
   /** Called when the menu is toggled open or closed. */
   onToggle: (id: string) => void;
-  /**
-   * Optional prefix for data-testid attributes.
-   * Used to disambiguate menus rendered in multiple views (e.g. "mobile-").
-   */
-  testIdPrefix?: string;
 }
 
 /**
@@ -61,7 +56,6 @@ export function UserActionsMenu({
   currentUserId,
   isOpen,
   onToggle,
-  testIdPrefix = '',
 }: UserActionsMenuProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +86,7 @@ export function UserActionsMenu({
         type="button"
         variant="ghost"
         size="sm"
-        data-testid={`${testIdPrefix}user-actions-${user.id}`}
+        data-testid={`user-actions-${user.id}`}
         disabled={isPending}
         onClick={() => onToggle(user.id)}
         aria-haspopup="menu"
@@ -119,7 +113,7 @@ export function UserActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                data-testid={`${testIdPrefix}issue-token-${user.id}`}
+                data-testid={`issue-token-${user.id}`}
                 className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onIssueToken?.(user.id))}
               >
@@ -129,7 +123,7 @@ export function UserActionsMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  data-testid={`${testIdPrefix}revoke-token-${user.id}`}
+                  data-testid={`revoke-token-${user.id}`}
                   className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-red-50"
                   onClick={() => closeAndRun(() => onRevokeToken?.(user.id))}
                 >
@@ -146,7 +140,7 @@ export function UserActionsMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  data-testid={`${testIdPrefix}set-password-toggle-${user.id}`}
+                  data-testid={`set-password-toggle-${user.id}`}
                   className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                   onClick={() => closeAndRun(() => onSetPassword(user.id))}
                 >
@@ -159,7 +153,7 @@ export function UserActionsMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  data-testid={`${testIdPrefix}reset-onboarding-${user.id}`}
+                  data-testid={`reset-onboarding-${user.id}`}
                   className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                   onClick={() => closeAndRun(() => onResetOnboarding(user.id))}
                 >
@@ -175,7 +169,7 @@ export function UserActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                data-testid={`${testIdPrefix}reactivate-${user.id}`}
+                data-testid={`reactivate-${user.id}`}
                 className="block w-full px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => closeAndRun(() => onReactivate(user.id))}
               >
@@ -185,7 +179,7 @@ export function UserActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                data-testid={`${testIdPrefix}deactivate-${user.id}`}
+                data-testid={`deactivate-${user.id}`}
                 className="block w-full px-4 py-2 text-start text-sm text-red-600 hover:bg-red-50"
                 onClick={() => closeAndRun(() => onDeactivate(user.id))}
               >

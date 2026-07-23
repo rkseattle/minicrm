@@ -827,7 +827,6 @@ export default function UsersPage() {
                               onIssueToken={(id) => issueTokenMutation.mutate(id)}
                               onRevokeToken={(id) => revokeTokenMutation.mutate(id)}
                               currentUserId={currentUser?.id ?? ''}
-                              testIdPrefix="mobile-"
                             />
                           </div>
                         </div>

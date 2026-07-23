@@ -859,7 +859,6 @@ export default function DealsPage() {
                       onCloseRequested={handleCloseRequested}
                       updatingDealIds={updatingDealIds}
                       fullWidth
-                      testIdPrefix="mobile-"
                       onAddDeal={() => setShowForm(true)}
                     />
                   </div>

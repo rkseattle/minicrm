@@ -80,8 +80,6 @@ export class ContactsPage {
 
   /**
    * Returns the number of contact rows visible in the list.
-   * Matches both desktop table links (contact-link-{id}) and mobile card
-   * links (contact-card-link-{id}) so the count is correct at any viewport.
    * Returns 0 when no contacts are listed or during a loading state.
    */
   async rowCount(): Promise<number> {
@@ -90,15 +88,8 @@ export class ContactsPage {
       const resolved = await this.page
         .locate(
           [
-            {
-              type: 'css',
-              value: '[data-testid^="contact-link-"], [data-testid^="contact-card-link-"]',
-            },
-            {
-              type: 'xpath',
-              value:
-                '//*[starts-with(@data-testid,"contact-link-") or starts-with(@data-testid,"contact-card-link-")]',
-            },
+            { type: 'css', value: '[data-testid^="contact-link-"]' },
+            { type: 'xpath', value: '//*[starts-with(@data-testid,"contact-link-")]' },
           ],
           { intent: 'contact row links in the contacts list' },
         )
@@ -135,16 +126,7 @@ export class ContactsPage {
   }
 
   /**
-   * Waits until a specific contact row is visible in the list. Succeeds on
-   * either the desktop table link (contact-link-{id}) or the mobile card link
-   * (contact-card-link-{id}).
-   *
-   * fallbackTimeout is intentionally kept short (default 2 s) so the strategy
-   * for the absent viewport variant fails quickly and the correct one resolves
-   * without burning the full probe window. Both strategies are at testId
-   * priority so the first in insertion order is tried first — on desktop that
-   * is contact-link-{id} (instant), on mobile it falls through to
-   * contact-card-link-{id} after 2 s.
+   * Waits until a specific contact row is visible in the list.
    *
    * @param id - The contact UUID to wait for.
    */
@@ -153,7 +135,7 @@ export class ContactsPage {
       .locate(
         [
           { type: 'testId', value: `contact-link-${id}` },
-          { type: 'testId', value: `contact-card-link-${id}` },
+          { type: 'css', value: `[data-testid="contact-link-${id}"]` },
         ],
         { intent: 'contact row link for specific contact id' },
       )
@@ -828,14 +810,13 @@ export class ContactsPage {
 
   /**
    * Returns a resolved locator for a contact row link by ID.
-   * Checks both the desktop (`contact-link-{id}`) and mobile (`contact-card-link-{id}`) variants.
    */
   async contactLinkLocator(contactId: string) {
     return this.page
       .locate(
         [
           { type: 'testId', value: `contact-link-${contactId}` },
-          { type: 'testId', value: `contact-card-link-${contactId}` },
+          { type: 'css', value: `[data-testid="contact-link-${contactId}"]` },
         ],
         { intent: 'contact row link confirming the contact is visible in the list' },
       )

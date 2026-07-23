@@ -528,7 +528,7 @@ export async function waitForDealCardOnBoard(
 
   // Mobile: rewind to stage 0, then walk forward scanning each column.
   await board.rewindToMobileStage0();
-  const testId = `mobile-deal-card-${dealId}`;
+  const testId = `deal-card-${dealId}`;
   const deadline = Date.now() + timeout;
   const STAGE_COUNT = PipelineBoardPage.STAGE_COUNT;
   for (let i = 0; i < STAGE_COUNT; i++) {

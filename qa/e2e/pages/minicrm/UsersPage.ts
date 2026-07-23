@@ -149,8 +149,6 @@ export class UsersPage {
    * @param userId - User UUID.
    */
   async openActionsMenu(userId: string): Promise<void> {
-    // Desktop renders data-testid="user-actions-{id}"; mobile prefixes with "mobile-".
-    // Both are in the DOM simultaneously but only one is visible at the current viewport.
     // The role fallback is scoped `within` this user's row: on a shared E2E
     // database, other users' rows are visible on the same page, and an
     // unscoped `role: button, name: /actions/i` fallback would resolve to
@@ -160,7 +158,6 @@ export class UsersPage {
     await this.page.click(
       [
         { type: 'testId', value: `user-actions-${userId}` },
-        { type: 'testId', value: `mobile-user-actions-${userId}` },
         {
           type: 'role',
           value: 'button',
@@ -179,13 +176,9 @@ export class UsersPage {
    * @param userId - User UUID.
    */
   async clickResetOnboarding(userId: string): Promise<void> {
-    // Desktop renders data-testid="reset-onboarding-{id}"; mobile prefixes
-    // with "mobile-" — same dual-rendering pattern as openActionsMenu above
-    // (UserActionsMenu.tsx's testIdPrefix prop).
     await this.page.click(
       [
         { type: 'testId', value: `reset-onboarding-${userId}` },
-        { type: 'testId', value: `mobile-reset-onboarding-${userId}` },
         // Scoped `within` this user's row for the same reason as
         // openActionsMenu above — the menu renders in-place (no portal), so
         // scoping to the row also correctly excludes any other user's menu

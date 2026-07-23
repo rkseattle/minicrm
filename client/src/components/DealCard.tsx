@@ -26,11 +26,6 @@ interface DealCardProps {
   onCloseRequested: (dealId: string, stage: string, version: number) => void;
   /** When true, the stage selector is disabled */
   isUpdating: boolean;
-  /**
-   * Optional prefix for data-testid attributes.
-   * Used to disambiguate cards rendered in multiple views (e.g. "mobile-").
-   */
-  testIdPrefix?: string;
 }
 
 /**
@@ -64,13 +59,12 @@ export default function DealCard({
   onStageChange,
   onCloseRequested,
   isUpdating,
-  testIdPrefix = '',
 }: DealCardProps) {
   const { t, i18n } = useTranslation();
   const { stageNames, terminalStageNames } = usePipelineStages();
   return (
     <div
-      data-testid={`${testIdPrefix}deal-card-${deal.id}`}
+      data-testid={`deal-card-${deal.id}`}
       className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
       draggable
       onDragStart={(e) => {
@@ -80,7 +74,7 @@ export default function DealCard({
     >
       <Link
         to={`/deals/${deal.id}`}
-        data-testid={`${testIdPrefix}deal-card-link-${deal.id}`}
+        data-testid={`deal-card-link-${deal.id}`}
         className="font-medium text-sm text-primary-600 hover:underline block mb-1 truncate"
         title={deal.name}
       >
@@ -89,7 +83,7 @@ export default function DealCard({
 
       {accountName !== '—' && (
         <p
-          data-testid={`${testIdPrefix}deal-card-account-${deal.id}`}
+          data-testid={`deal-card-account-${deal.id}`}
           className="text-xs text-gray-500 truncate mb-2"
           title={accountName}
         >
@@ -99,16 +93,10 @@ export default function DealCard({
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
         {/* min-w-0 + break-words: prevents long currency values from overflowing the flex row */}
-        <span
-          className="min-w-0 break-words"
-          data-testid={`${testIdPrefix}deal-card-value-${deal.id}`}
-        >
+        <span className="min-w-0 break-words" data-testid={`deal-card-value-${deal.id}`}>
           {formatValue(deal.value, deal.currency, i18n.language)}
         </span>
-        <span
-          className="shrink-0 ms-2"
-          data-testid={`${testIdPrefix}deal-card-close-date-${deal.id}`}
-        >
+        <span className="shrink-0 ms-2" data-testid={`deal-card-close-date-${deal.id}`}>
           {deal.close_date ?? '—'}
         </span>
       </div>
@@ -116,7 +104,7 @@ export default function DealCard({
       {/* Probability badge — italic when using stage default, plain when overridden (MINCRM-179) */}
       <div className="flex items-center gap-1 mb-2">
         <span
-          data-testid={`${testIdPrefix}deal-card-probability-${deal.id}`}
+          data-testid={`deal-card-probability-${deal.id}`}
           className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 ${
             deal.probability_is_overridden
               ? 'bg-primary-100 text-primary-700 font-medium'
@@ -135,7 +123,7 @@ export default function DealCard({
       <Select
         id={`deal-stage-select-${deal.id}`}
         aria-label={t('deals.stageLabel')}
-        data-testid={`${testIdPrefix}deal-card-stage-select-${deal.id}`}
+        data-testid={`deal-card-stage-select-${deal.id}`}
         value={deal.stage}
         onChange={(e) => {
           const selected = e.target.value;
