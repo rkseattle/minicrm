@@ -75,9 +75,16 @@ function toCoverageTestLink(row: CoverageTestLinkRow): CoverageTestLink {
 }
 
 /**
- * Collapses links sharing the same (unitKey, branchId) identity within a
- * single batch by summing their hit counts, keyed on the SAME
- * COALESCE(branchId, '') identity the DB's own unique index uses.
+ * Collapses links sharing the same (filePath, unitKey, branchId) identity
+ * within a single batch by summing their hit counts, keyed on the SAME
+ * (file_path, unit_key, COALESCE(branch_id, '')) identity the DB's own
+ * unique index uses.
+ *
+ * file_path IS part of this identity, not just unitKey/branchId — omitting
+ * it (a bug found via Greptile PR review) would let two DIFFERENT files
+ * that happen to share the same structural unitKey (e.g. two trivially-
+ * identical one-line functions in different files) collapse into one
+ * link, silently dropping one file's coverage relationship.
  *
  * Required because a single dump's NormalizedCoverageUnit list can
  * legitimately contain more than one row for the same identity (e.g. a
@@ -95,7 +102,7 @@ function collapseDuplicateIdentities(
 ): CoverageTestLinkInput[] {
   const byIdentity = new Map<string, CoverageTestLinkInput>();
   for (const link of links) {
-    const identityKey = `${link.unitKey} ${link.branchId ?? ''}`;
+    const identityKey = `${link.filePath} ${link.unitKey} ${link.branchId ?? ''}`;
     const existing = byIdentity.get(identityKey);
     if (existing) {
       existing.hitCount += link.hitCount;
@@ -110,8 +117,9 @@ function collapseDuplicateIdentities(
  * Inserts one batch of test links (already sized to fit under the
  * bind-parameter ceiling by the caller) as a single multi-row
  * INSERT ... ON CONFLICT DO UPDATE, merging hit_count on repeat ingestion
- * of the same (commit_sha, unit_key, branch_id, test_id) identity —
- * mirrors coverageModelService.insertCoverageUnitBatch's own dedup shape.
+ * of the same (commit_sha, file_path, unit_key, branch_id, test_id)
+ * identity — mirrors coverageModelService.insertCoverageUnitBatch's own
+ * dedup shape (which likewise keys on file_path, not just unit_key/branch_id).
  */
 async function insertTestLinkBatch(
   client: PoolClient,
@@ -133,7 +141,7 @@ async function insertTestLinkBatch(
     `INSERT INTO coverage_test_links
        (commit_sha, unit_key, branch_id, file_path, test_id, hit_count)
      VALUES ${rowPlaceholders.join(', ')}
-     ON CONFLICT (commit_sha, unit_key, COALESCE(branch_id, ''), test_id)
+     ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''), test_id)
      DO UPDATE SET
        hit_count = coverage_test_links.hit_count + EXCLUDED.hit_count,
        last_seen_at = now()`,

@@ -232,9 +232,20 @@ exports.up = (pgm) => {
     )
   `);
 
+  // file_path is part of the identity (not just commit_sha/unit_key/branch_id/
+  // test_id) — omitting it would let two DIFFERENT files that happen to
+  // share the same structural unit_key (e.g. two trivially-identical
+  // one-line functions in different files) at the same commit, covered by
+  // the same test, collapse into ONE row. That silently drops one file's
+  // coverage relationship from units-for-test and makes tests-for-unit's
+  // confidence lookup resolve against whichever file_path happened to win
+  // the ON CONFLICT, not necessarily the one the caller queried by.
+  // (Found via Greptile PR review — see coverageMappingService.ts's
+  // linkCoverageUnitsToTest/insertTestLinkBatch, whose ON CONFLICT target
+  // and ON CONFLICT SET clause changed alongside this index.)
   pgm.sql(`
     CREATE UNIQUE INDEX IF NOT EXISTS coverage_test_links_identity_idx
-      ON public.coverage_test_links (commit_sha, unit_key, COALESCE(branch_id, ''), test_id)
+      ON public.coverage_test_links (commit_sha, file_path, unit_key, COALESCE(branch_id, ''), test_id)
   `);
 
   pgm.sql(`

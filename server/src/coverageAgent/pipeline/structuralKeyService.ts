@@ -32,6 +32,7 @@
  */
 
 import { createHash } from 'crypto';
+import * as ts from 'typescript';
 
 /** A half-open [start, end) source position, 1-based line / 0-based column, matching istanbul's Location shape. */
 export interface StructuralKeyLocation {
@@ -43,30 +44,52 @@ const ANONYMOUS_FUNCTION_NAME = '<anonymous>';
 const BODY_HASH_LENGTH = 16;
 
 /**
- * Strips line comments, block comments, and collapses all whitespace runs
- * (including newlines) to a single space, so two functions differing only
- * in formatting/comments normalize to the same string before hashing.
+ * Strips real comments (never touching string/template literal content)
+ * and collapses all whitespace runs to a single space, so two functions
+ * differing only in formatting/comments normalize to the same string
+ * before hashing.
  *
- * Deliberately simple (no real tokenizer) — this trades perfect handling of
- * pathological cases for zero new parser dependencies on the hot ingestion
- * path. The line-comment strip requires `//` to be preceded by whitespace
- * or start-of-line: a bare, unanchored `\/\/[^\n]*` would also match a `//`
- * inside a string literal (e.g. `"http://example.com/a"` vs
- * `"http://example.com/b"`) and truncate both lines at that point,
- * producing a genuine FALSE-SAME collision between two functions whose
- * bodies actually differ — not just a missed dedup, but silently merging
- * two different functions' hit counts into one coverage_units row. The
- * anchor closes that specific case (a `//` can still appear mid-token in
- * some string content this heuristic won't catch, degrading to a missed
- * dedup — never a false-same match — same graceful-degradation contract
- * as the rest of this function).
+ * Uses TypeScript's own lexical scanner (`ts.createScanner`), not a regex —
+ * a regex-based comment strip was tried first and found to have genuine
+ * FALSE-SAME collision bugs: both an unanchored `\/\/[^\n]*` (matching a
+ * `//` inside a string like `"http://example.com/a"`) and a block-comment
+ * pattern `\/\*[\s\S]*?\*\// `(matching a literal `/* ... *\/` SEQUENCE
+ * inside a string, e.g. two functions differing only in
+ * `"prefix /* A *\/ suffix"` vs `"prefix /* B *\/ suffix"`) silently
+ * truncated or erased string content, causing two functions with
+ * genuinely different bodies to hash identically — not just a missed
+ * dedup, but corrupted coverage_units/coverage_test_links identity. The
+ * scanner tokenizes string/template literals as single atomic tokens
+ * (their contents are never re-interpreted as comment syntax), so this
+ * class of bug cannot recur. Only SingleLineCommentTrivia and
+ * MultiLineCommentTrivia tokens are dropped; every other token's exact
+ * text is kept.
+ *
+ * The scanner tokenizes best-effort even over a source fragment that
+ * isn't a complete, syntactically valid file on its own (a single
+ * function's body slice, as extractRange produces) — the scanner reports
+ * tokens/trivia lexically without requiring a parse, so this works
+ * correctly on a bare fragment.
  */
 function normalizeSourceForHash(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|\s)\/\/[^\n]*/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, /* skipTrivia */ false);
+  scanner.setText(source);
+
+  const tokens: string[] = [];
+  let kind = scanner.scan();
+  while (kind !== ts.SyntaxKind.EndOfFileToken) {
+    if (
+      kind !== ts.SyntaxKind.SingleLineCommentTrivia &&
+      kind !== ts.SyntaxKind.MultiLineCommentTrivia &&
+      kind !== ts.SyntaxKind.WhitespaceTrivia &&
+      kind !== ts.SyntaxKind.NewLineTrivia
+    ) {
+      tokens.push(scanner.getTokenText());
+    }
+    kind = scanner.scan();
+  }
+
+  return tokens.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Extracts the source substring for a [start, end) range out of a file's full text. */

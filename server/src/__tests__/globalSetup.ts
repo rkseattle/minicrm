@@ -1,6 +1,14 @@
 /**
  * Vitest global setup — runs once before all test suites.
- * Creates the test database if it doesn't exist and applies all migrations.
+ * Creates the test database if it doesn't exist and applies all migrations,
+ * for BOTH the product test database and the coverage/TIA test database
+ * (see server/src/coverageDb.ts) — coverage tests (coverageModelService,
+ * coverageSessionService, coverageMappingService, etc.) need
+ * minicrm_coverage_test to exist and be migrated just as much as the
+ * product-DB tests need minicrm_test. Missing this for the coverage
+ * database reproduced as every coverage-suite test file failing with
+ * `database "minicrm_coverage" does not exist` in CI (found via Greptile
+ * PR review) — this file previously only provisioned the product database.
  *
  * DB credentials are read from .env.test via the DOTENV_CONFIG_PATH env var,
  * which must be set by the caller (the npm test scripts handle this for local
@@ -10,34 +18,55 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
-import { MIGRATIONS_DIR, countBaselineCoveredMigrations, withMigrationLock } from '../migrate.js';
+import {
+  MIGRATIONS_DIR,
+  COVERAGE_MIGRATIONS_DIR,
+  countBaselineCoveredMigrations,
+  withMigrationLock,
+} from '../migrate.js';
 
-export default async function globalSetup(): Promise<void> {
-  const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
-
-  // Connect to the default postgres database to create the test DB if needed
+/** Creates `databaseName` (via the ambient 'postgres' maintenance database) if it doesn't already exist. */
+async function ensureDatabaseExists(params: {
+  user: string | undefined;
+  password: string | undefined;
+  host: string;
+  port: number;
+  databaseName: string | undefined;
+}): Promise<void> {
   const adminClient = new pg.Client({
-    user: DB_USER,
-    password: DB_PASSWORD,
-    host: DB_HOST,
-    port: Number(DB_PORT),
+    user: params.user,
+    password: params.password,
+    host: params.host,
+    port: params.port,
     database: 'postgres',
   });
 
   await adminClient.connect();
-
-  const { rows } = await adminClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [
-    DB_NAME,
-  ]);
-
-  if (rows.length === 0) {
-    // datname cannot be parameterized in CREATE DATABASE
-    await adminClient.query(`CREATE DATABASE "${DB_NAME}"`);
+  try {
+    const { rows } = await adminClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+      params.databaseName,
+    ]);
+    if (rows.length === 0) {
+      // datname cannot be parameterized in CREATE DATABASE
+      await adminClient.query(`CREATE DATABASE "${params.databaseName?.replace(/"/g, '""')}"`);
+    }
+  } finally {
+    await adminClient.end();
   }
+}
 
-  await adminClient.end();
+export default async function globalSetup(): Promise<void> {
+  const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
 
-  // Run migrations against the test database
+  await ensureDatabaseExists({
+    user: DB_USER,
+    password: DB_PASSWORD,
+    host: DB_HOST,
+    port: Number(DB_PORT),
+    databaseName: DB_NAME,
+  });
+
+  // Run migrations against the product test database
   const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
   // Use the same three-step fresh-bootstrap approach as runMigrations() in
@@ -67,5 +96,36 @@ export default async function globalSetup(): Promise<void> {
       count: countBaselineCoveredMigrations(),
     });
     await migrationRunner(SHARED_OPTIONS);
+  });
+
+  // Same for the coverage/TIA test database — a separate database (see
+  // coverageDb.ts) with its own migration sequence (qa/migrations/, no
+  // baseline — starts fresh at 001), so no fake-mark bootstrap is needed
+  // here, just a plain sequential run.
+  const coverageDbName = process.env.COVERAGE_DB_NAME ?? 'minicrm_coverage_test';
+  const coverageDbUser = process.env.COVERAGE_DB_USER ?? DB_USER;
+  const coverageDbPassword = process.env.COVERAGE_DB_PASSWORD ?? DB_PASSWORD;
+  const coverageDbHost = process.env.COVERAGE_DB_HOST ?? DB_HOST;
+  const coverageDbPort = Number(process.env.COVERAGE_DB_PORT) || Number(DB_PORT);
+
+  await ensureDatabaseExists({
+    user: coverageDbUser,
+    password: coverageDbPassword,
+    host: coverageDbHost,
+    port: coverageDbPort,
+    databaseName: coverageDbName,
+  });
+
+  const coverageDatabaseUrl = `postgres://${coverageDbUser}:${coverageDbPassword}@${coverageDbHost}:${coverageDbPort}/${coverageDbName}`;
+
+  await withMigrationLock(coverageDatabaseUrl, async () => {
+    await migrationRunner({
+      databaseUrl: coverageDatabaseUrl,
+      dir: COVERAGE_MIGRATIONS_DIR,
+      direction: 'up',
+      migrationsTable: 'pgmigrations',
+      checkOrder: false,
+      log: () => {},
+    });
   });
 }

@@ -130,6 +130,30 @@ describe('coverageMappingService', () => {
       expect(found).toHaveLength(1);
       expect(found[0].branchId).toBeNull();
     });
+
+    it('keeps two DIFFERENT files sharing the same unitKey/branchId as distinct links, not merged into one row (Greptile PR feedback)', async () => {
+      // Regression test: coverage_test_links_identity_idx originally omitted
+      // file_path from its unique index/ON CONFLICT target, so two
+      // different files that happen to share the same structural unitKey
+      // (e.g. two trivially-identical one-line functions) at the same
+      // commit, covered by the same test, would collapse into ONE row —
+      // silently dropping one file's coverage relationship from
+      // findUnitsForTest. file_path is now part of the identity.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const testId = 'spec:cross-file.spec.ts::test';
+      const sharedUnitKey = 'identity#deadbeef00000000';
+
+      await linkAndCommit(commitSha, testId, null, [
+        makeLink({ filePath: `${FILE_PREFIX}/fileA.ts`, unitKey: sharedUnitKey, hitCount: 3 }),
+        makeLink({ filePath: `${FILE_PREFIX}/fileB.ts`, unitKey: sharedUnitKey, hitCount: 5 }),
+      ]);
+
+      const found = await findUnitsForTest(commitSha, testId);
+      expect(found).toHaveLength(2);
+      const byFile = new Map(found.map((link) => [link.filePath, link]));
+      expect(byFile.get(`${FILE_PREFIX}/fileA.ts`)?.hitCount).toBe(3);
+      expect(byFile.get(`${FILE_PREFIX}/fileB.ts`)?.hitCount).toBe(5);
+    });
   });
 
   describe('findTestsForUnit', () => {

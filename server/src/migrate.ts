@@ -232,3 +232,86 @@ export async function runMigrations(): Promise<void> {
 
   logger.info('Migrations complete.');
 }
+
+/** Absolute path to the coverage/TIA migrations directory — a separate node-pg-migrate sequence from db/migrations/, see qa/migrations/001_coverage_baseline.js's own docblock for why. */
+export const COVERAGE_MIGRATIONS_DIR = resolve(__dirname, '../../qa/migrations');
+
+/**
+ * Ensures the coverage/TIA database itself exists before migrating it.
+ * Unlike the product database (created out-of-band — POSTGRES_DB at
+ * container init locally, or an operator-provisioned database in
+ * production), the coverage database has no equivalent creation path: a
+ * fresh deployment that enables any coverage feature would otherwise fail
+ * on the very first session/ingestion/mapping request with "database
+ * ... does not exist" (found via Greptile PR review — this was reproducing
+ * in CI, whose server-tests job creates only the product test database).
+ *
+ * CREATE DATABASE cannot run inside a transaction or migration, so this
+ * connects to the ambient 'postgres' maintenance database directly, the
+ * same pattern qa/scripts/create-coverage-e2e-db.ts and
+ * server/src/scripts/create-e2e-db.ts already use for their own databases.
+ */
+async function ensureCoverageDatabaseExists(): Promise<void> {
+  const dbUser = process.env.COVERAGE_DB_USER ?? process.env.DB_USER;
+  const dbPassword = process.env.COVERAGE_DB_PASSWORD ?? process.env.DB_PASSWORD;
+  const dbHost = process.env.COVERAGE_DB_HOST ?? process.env.DB_HOST ?? 'localhost';
+  const dbPort = Number(process.env.COVERAGE_DB_PORT) || Number(process.env.DB_PORT) || 5432;
+  const coverageDbName = process.env.COVERAGE_DB_NAME ?? 'minicrm_coverage';
+
+  const adminClient = new pg.Client({
+    user: dbUser,
+    password: dbPassword,
+    host: dbHost,
+    port: dbPort,
+    database: 'postgres',
+  });
+
+  await adminClient.connect();
+  try {
+    const { rows } = await adminClient.query<{ exists: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1) AS exists',
+      [coverageDbName],
+    );
+    if (!rows[0].exists) {
+      // datname cannot be parameterized in CREATE DATABASE.
+      await adminClient.query(`CREATE DATABASE "${coverageDbName.replace(/"/g, '""')}"`);
+      logger.info({ coverageDbName }, 'Created coverage database');
+    }
+  } finally {
+    await adminClient.end();
+  }
+}
+
+/**
+ * Runs all pending coverage/TIA migrations (qa/migrations/), creating the
+ * coverage database first if it doesn't exist yet. Safe to call on every
+ * startup, mirroring runMigrations()'s own idempotency — already-applied
+ * migrations are skipped. No baseline/fake-mark bootstrap needed here
+ * (unlike runMigrations above) — the coverage schema has no 000_baseline;
+ * it starts fresh at 001, so a plain sequential migration run suffices.
+ *
+ * Called from server.ts's own startup sequence, alongside runMigrations(),
+ * so a server can never finish booting with an unprovisioned coverage
+ * database — the same fail-fast guarantee the product database already has.
+ */
+export async function runCoverageMigrations(): Promise<void> {
+  await ensureCoverageDatabaseExists();
+
+  const coverageDbName = process.env.COVERAGE_DB_NAME ?? 'minicrm_coverage';
+  const databaseUrl = `postgres://${process.env.COVERAGE_DB_USER ?? process.env.DB_USER}:${process.env.COVERAGE_DB_PASSWORD ?? process.env.DB_PASSWORD}@${process.env.COVERAGE_DB_HOST ?? process.env.DB_HOST ?? 'localhost'}:${process.env.COVERAGE_DB_PORT ?? process.env.DB_PORT ?? 5432}/${coverageDbName}`;
+
+  logger.info('Running coverage database migrations...');
+
+  await withMigrationLock(databaseUrl, async () => {
+    await migrationRunner({
+      databaseUrl,
+      dir: COVERAGE_MIGRATIONS_DIR,
+      direction: 'up',
+      migrationsTable: 'pgmigrations',
+      checkOrder: false,
+      log: (msg: string) => logger.debug(msg),
+    });
+  });
+
+  logger.info('Coverage database migrations complete.');
+}

@@ -11,7 +11,7 @@ import cron from 'node-cron';
 import app from './app.js';
 import logger from './logger.js';
 import { initSentry, captureException } from './sentry.js';
-import { runMigrations } from './migrate.js';
+import { runMigrations, runCoverageMigrations } from './migrate.js';
 import { seedDefaultAdmin } from './services/userService.js';
 import { sendOverdueDigests } from './services/notificationService.js';
 import { advanceDueEnrollments } from './services/sequenceService.js';
@@ -203,6 +203,13 @@ void (async () => {
       await coverageAgent.start();
     }
     await runMigrations();
+    // Coverage/TIA tables live in their own database (see coverageDb.ts) —
+    // migrated separately here so a server can never finish booting with
+    // an unprovisioned coverage database. Runs unconditionally (not gated
+    // on COVERAGE_INSTRUMENTATION) since coverage_session_management/
+    // coverage_mapping_query can be exercised independently of the backend
+    // V8 agent itself (see docs/dev/coverage.md's Coverage Database section).
+    await runCoverageMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);
     // Ensure audit_log partitions exist for the current month + 3 months ahead.
