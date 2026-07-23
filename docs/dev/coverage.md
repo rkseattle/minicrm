@@ -343,7 +343,19 @@ building the `INSERT`, closing the bug in both places, not just the new one.
 
 ### Confidence/freshness scoring & reconciliation (MINCRM-620)
 
-_Not yet implemented — tracked as the next slice of `pr-tia-4`._
+`server/src/coverageAgent/pipeline/coverageReconciliationService.ts`. Re-validates `coverage_units` against the CURRENT source tree and git history for a given `commitSha` — not the state at ingestion time — via `reconcileCoverageUnits(commitSha, sourceRoot)`, callable on demand (mirrors `coverageModelService.pruneCoverageUnits`'s own "callable, not scheduled" precedent; wiring an automatic build-time trigger is the CI/CD Integration epic's concern, `pr-tia-7`).
+
+Three things happen per file a commit's units reference:
+
+- **Still exists:** every unit for that file gets a fresh `confidence_score` (linear decay from `1.0` down to a `0.1` floor over 30 days since `last_seen_at`) and `last_reconciled_at = now()`.
+- **Gone, no rename detected:** pruned outright (`deleteCoverageUnitById`) — a permanently-dead row serves no purpose once its code no longer exists anywhere in the tree.
+- **Gone, but renamed/moved (git's own rename detection, `git diff --find-renames`):** the SAME row is updated in place (`relocateCoverageUnit`) to the new `file_path`, carrying its `unit_key`, `hit_count`, `first_seen_at`, and id forward unchanged. `unit_key` itself never needs re-deriving here — MINCRM-619's structural key (name + normalized-body-hash) already survives content edits by construction; only `file_path` needs to catch up to where the file now lives.
+
+**Why file-granularity rename detection, not per-function:** re-deriving each function's own body hash again during reconciliation would duplicate a guarantee MINCRM-619 already provides. Git's rename detection operates at file granularity, which is exactly the gap structural keys don't close on their own (a key survives its _file's_ content changing, not the file itself moving).
+
+**No new git library dependency:** shells out to `git` via `execFileSync`/`execFile` with array arguments (never a shell string), mirroring the existing precedent in `coverageConfig.ts`'s `resolveCommitSha`.
+
+**A real git pathspec gotcha, found while testing against an actual renamed file (not mocked):** `git diff <sha> HEAD -- old/path.ts` — restricting the diff to the rename's OLD-side path — reports no rename at all, even though the unrestricted `git diff <sha> HEAD` correctly reports `R100 old/path.ts new/path.ts`. `findRenamedPathViaGit` therefore asks for the full unrestricted diff and filters for the matching old-path in application code, rather than trusting git's pathspec restriction to preserve rename-pair association.
 
 ### Mapping query API (MINCRM-621)
 
