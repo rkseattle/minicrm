@@ -71,12 +71,14 @@ describe('structuralKeyService', () => {
     });
 
     it('does not collide two functions that differ only in a URL string literal containing "//"', () => {
-      // Regression test: an unanchored line-comment strip (`\/\/[^\n]*`)
-      // would match the "//" inside these URLs and truncate both bodies at
-      // that point, producing a false-SAME hash for two functions whose
+      // Regression test: an earlier regex-based comment strip
+      // (`\/\/[^\n]*`, later anchored to `(^|\s)\/\/[^\n]*`) matched a "//"
+      // inside a string literal like these URLs, truncating both bodies at
+      // that point and producing a false-SAME hash for two functions whose
       // bodies genuinely differ — silently merging their coverage_units
-      // rows. The anchored version (requires // preceded by whitespace or
-      // start-of-line) must NOT treat a "//" inside a string as a comment.
+      // rows. The current implementation uses TypeScript's own scanner,
+      // which tokenizes the whole string literal atomically and never
+      // re-interprets its contents as comment syntax.
       const withUrlA = 'function f() { const url = "http://example.com/a"; return url; }';
       const withUrlB = 'function f() { const url = "http://example.com/b"; return url; }';
       const range = { start: { line: 1, column: 0 }, end: { line: 1, column: withUrlA.length } };
@@ -87,6 +89,56 @@ describe('structuralKeyService', () => {
         { start: { line: 1, column: 0 }, end: { line: 1, column: withUrlB.length } },
         withUrlB,
       );
+
+      expect(keyA).not.toBe(keyB);
+    });
+
+    it('does not collide two functions that differ only in a block-comment-shaped sequence inside a string literal', () => {
+      // Regression test (Greptile PR feedback): a regex block-comment strip
+      // (`\/\*[\s\S]*?\*\//`) matches a literal `/* ... */` SEQUENCE
+      // wherever it appears, including inside a string literal — so two
+      // functions differing only in the text between `/*` and `*/` inside
+      // a string would hash identically. The scanner tokenizes the string
+      // literal as one atomic token; its contents are never scanned for
+      // comment syntax.
+      const withMarkerA = 'function f() { const s = "prefix /* marker-A */ suffix"; return s; }';
+      const withMarkerB = 'function f() { const s = "prefix /* marker-B */ suffix"; return s; }';
+      const rangeA = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withMarkerA.length },
+      };
+      const rangeB = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withMarkerB.length },
+      };
+
+      const keyA = deriveStructuralUnitKey('f', rangeA, withMarkerA);
+      const keyB = deriveStructuralUnitKey('f', rangeB, withMarkerB);
+
+      expect(keyA).not.toBe(keyB);
+    });
+
+    it('does not collide two functions that differ only after a whitespace-prefixed "//" inside a string literal', () => {
+      // Regression test (Greptile PR feedback): the earlier anchored regex
+      // (`(^|\s)\/\/[^\n]*`) still stripped a "//" preceded by whitespace
+      // even when that whitespace+// sequence occurs INSIDE a string
+      // literal (e.g. "value  // A") — anchoring on the surrounding
+      // character can't distinguish "inside a string" from "inside real
+      // code" without literal-awareness. The scanner's StringLiteral token
+      // covers the whole quoted text, so this can no longer collide.
+      const withSuffixA = 'function f() { const s = "value  // A"; return s; }';
+      const withSuffixB = 'function f() { const s = "value  // B"; return s; }';
+      const rangeA = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withSuffixA.length },
+      };
+      const rangeB = {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: withSuffixB.length },
+      };
+
+      const keyA = deriveStructuralUnitKey('f', rangeA, withSuffixA);
+      const keyB = deriveStructuralUnitKey('f', rangeB, withSuffixB);
 
       expect(keyA).not.toBe(keyB);
     });

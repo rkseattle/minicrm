@@ -194,6 +194,12 @@ jobs:
           DB_NAME: minicrm_test
           DB_HOST: localhost
           DB_PORT: 5432
+          # Coverage/TIA tables live in their own database (server/src/coverageDb.ts).
+          # globalSetup.ts creates + migrates this database automatically (same
+          # pattern as minicrm_test above) — this only needs to name it explicitly
+          # so it doesn't collide with a real minicrm_coverage a developer might
+          # also have running locally against the same Postgres instance.
+          COVERAGE_DB_NAME: minicrm_coverage_test
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20

@@ -10,9 +10,15 @@ import 'dotenv/config';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
+import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import pool from '../db.js';
-import { withMigrationLock, assertBaselineCoverageMatches } from '../migrate.js';
+import {
+  withMigrationLock,
+  assertBaselineCoverageMatches,
+  runCoverageMigrations,
+} from '../migrate.js';
 
 const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
 const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
@@ -183,5 +189,77 @@ describe('assertBaselineCoverageMatches', () => {
     const filenames = Array.from({ length: 5 }, (_, i) => `${String(i + 1).padStart(3, '0')}_x.js`);
 
     expect(() => assertBaselineCoverageMatches(5, 5, filenames)).not.toThrow();
+  });
+});
+
+describe('runCoverageMigrations', () => {
+  // Regression coverage for the "coverage database stays unprovisioned"
+  // finding from Greptile PR review: a fresh environment had no path to
+  // create the coverage database at all, so the first session/ingestion/
+  // mapping request failed with "database ... does not exist" — reproduced
+  // live in CI's server-tests job. Uses a throwaway, uniquely-named
+  // database per test run (never the real minicrm_coverage_test other
+  // suites share) so this test genuinely proves "creates a database that
+  // does not exist yet" rather than exercising an already-provisioned one.
+  const testDbName = `migrate_test_coverage_db_${randomUUID().replace(/-/g, '_')}`;
+  const adminDatabaseUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/postgres`;
+
+  afterEach(async () => {
+    const adminClient = new pg.Client({ connectionString: adminDatabaseUrl });
+    await adminClient.connect();
+    try {
+      // Terminate any lingering connections before dropping — a held
+      // connection from this same test process would otherwise block DROP DATABASE.
+      await adminClient.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+        [testDbName],
+      );
+      await adminClient.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
+    } finally {
+      await adminClient.end();
+    }
+  });
+
+  it('creates the coverage database when it does not exist, then migrates it', async () => {
+    process.env.COVERAGE_DB_NAME = testDbName;
+    try {
+      await runCoverageMigrations();
+
+      const adminClient = new pg.Client({ connectionString: adminDatabaseUrl });
+      await adminClient.connect();
+      try {
+        const { rows } = await adminClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+          testDbName,
+        ]);
+        expect(rows).toHaveLength(1);
+      } finally {
+        await adminClient.end();
+      }
+
+      const coverageClient = new pg.Client({
+        connectionString: `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${testDbName}`,
+      });
+      await coverageClient.connect();
+      try {
+        const { rows } = await coverageClient.query(
+          `SELECT 1 FROM information_schema.tables WHERE table_name = 'coverage_units'`,
+        );
+        expect(rows).toHaveLength(1);
+      } finally {
+        await coverageClient.end();
+      }
+    } finally {
+      delete process.env.COVERAGE_DB_NAME;
+    }
+  });
+
+  it('is idempotent — calling it again against an already-provisioned database is a no-op that does not throw', async () => {
+    process.env.COVERAGE_DB_NAME = testDbName;
+    try {
+      await runCoverageMigrations();
+      await expect(runCoverageMigrations()).resolves.not.toThrow();
+    } finally {
+      delete process.env.COVERAGE_DB_NAME;
+    }
   });
 });

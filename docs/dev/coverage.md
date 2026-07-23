@@ -92,6 +92,8 @@ Coverage/TIA data (`coverage_units`, `coverage_ingested_dumps`, `coverage_sessio
 
 **Schema location:** `qa/migrations/` (a separate `node-pg-migrate` sequence from `db/migrations/`, starting at `001`, run via `npm run migrate:coverage --workspace=minicrm-qa`), not `db/migrations/`. This mirrors the QA workspace's own ownership of E2E-adjacent infrastructure. `qa/scripts/create-coverage-e2e-db.ts` creates + migrates `minicrm_coverage_e2e`, invoked from the root `scripts/e2e-setup.ts` alongside the product DB's own `create:e2e-db` step.
 
+**Provisioning:** `server/src/migrate.ts`'s `runCoverageMigrations()` creates the coverage database (if it doesn't exist — `CREATE DATABASE` can't run inside a migration/transaction, so this connects to the ambient `postgres` maintenance database first, same pattern as `create-e2e-db.ts`/`create-coverage-e2e-db.ts`) and runs `qa/migrations/` against it. Called unconditionally from `server.ts`'s boot sequence right after the product database's own `runMigrations()` — a server can never finish starting up with an unprovisioned or schema-stale coverage database, regardless of whether any coverage feature flag is enabled. `server/src/__tests__/globalSetup.ts` (Vitest) does the equivalent for `minicrm_coverage_test` before any test file runs.
+
 **Connection:** `server/src/coverageDb.ts` — a second `pg.Pool`, read by `coverageModelService.ts`, `coverageSessionService.ts`, and `coverageMappingService.ts` only. Configured via `COVERAGE_DB_*` env vars, each falling back to the product DB's own `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` (same instance, same credentials in every environment today) except `COVERAGE_DB_NAME`, which always needs an explicit value (defaults to `minicrm_coverage`) so a misconfigured environment can never accidentally point this pool at the product database by inheriting `DB_NAME`.
 
 ## Backend Agent (MINCRM-604)
@@ -268,12 +270,9 @@ const result = await ingestCoverageDump(restClient, dumpId);
 
 ## Local / CI / Shared-env setup
 
-**One-time: create the coverage database.** Unlike the product database (auto-created via `POSTGRES_DB` when the `db` container first starts), `minicrm_coverage` has no automatic creation path outside the E2E flow (`create-coverage-e2e-db.ts` creates `minicrm_coverage_e2e`; `.env.test` points server tests at `minicrm_coverage_test`, created the same way `minicrm_test` is). For local dev/backend-only work against the default `minicrm_coverage` database, create it once:
+**The coverage database provisions itself automatically** — no manual step needed. `server.ts`'s own boot sequence calls `runCoverageMigrations()` right after the product database's `runMigrations()`, which creates `minicrm_coverage` (or whatever `COVERAGE_DB_NAME` resolves to) if it doesn't exist yet and runs `qa/migrations/` against it, exactly mirroring how the product database's own `POSTGRES_DB`/`runMigrations()` pairing works. This runs unconditionally on every boot, regardless of whether any coverage feature flag is enabled — a server can never finish starting up with an unprovisioned or schema-stale coverage database, the same fail-fast guarantee the product database already had. (A manual creation step existed briefly in an earlier revision of this doc before automatic provisioning was added — found missing during PR review, since a fresh CI run or deployment had no path to create this database at all before this fix.)
 
-```bash
-docker exec minicrm-db psql -U minicrm -d postgres -c "CREATE DATABASE minicrm_coverage"
-cd qa && DATABASE_URL=postgres://minicrm:password@localhost:5432/minicrm_coverage npm run migrate:coverage
-```
+Server-side unit tests get the same treatment via `server/src/__tests__/globalSetup.ts` (Vitest's `globalSetup`), which now provisions both `minicrm_test` and `minicrm_coverage_test` before any test file runs. E2E provisions `minicrm_coverage_e2e` via `qa/scripts/create-coverage-e2e-db.ts`, invoked from `scripts/e2e-setup.ts` alongside the product E2E database's own `create-e2e-db.ts`.
 
 **Local — backend only:**
 
