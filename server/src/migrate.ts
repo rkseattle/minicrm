@@ -205,7 +205,14 @@ export function countBaselineCoveredMigrations(): number {
 }
 
 export async function runMigrations(): Promise<void> {
-  const databaseUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${process.env.DB_NAME}`;
+  const dbUser = process.env.DB_USER ?? '';
+  const dbPassword = process.env.DB_PASSWORD ?? '';
+  // encodeURIComponent on user/password: a URL-reserved character in either
+  // (e.g. @, :, /, %, ?, #) would otherwise change how postgres:// is parsed
+  // even though a structured pg.Client config accepts the same credentials
+  // verbatim — mirrors the identical fix applied to runCoverageMigrations()
+  // below (MINCRM-664, found via Greptile PR review on PR #356).
+  const databaseUrl = `postgres://${encodeURIComponent(dbUser)}:${encodeURIComponent(dbPassword)}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${process.env.DB_NAME}`;
 
   logger.info('Running database migrations...');
 
