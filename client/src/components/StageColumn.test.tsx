@@ -92,21 +92,6 @@ describe('StageColumn', () => {
     expect(screen.queryByTestId(`deal-card-${DEAL_FIXTURE.id}`)).not.toBeInTheDocument();
   });
 
-  it('uses testIdPrefix on the empty-state element', () => {
-    renderWithProviders(
-      <StageColumn
-        stage="Prospecting"
-        deals={[]}
-        accountNames={accountNames}
-        onStageChange={noop}
-        onCloseRequested={noop}
-        updatingDealIds={new Set()}
-        testIdPrefix="mobile-"
-      />,
-    );
-    expect(screen.getByTestId('mobile-stage-column-empty-prospecting')).toBeInTheDocument();
-  });
-
   it('renders deal count as 0 when deals array is empty', () => {
     renderWithProviders(
       <StageColumn

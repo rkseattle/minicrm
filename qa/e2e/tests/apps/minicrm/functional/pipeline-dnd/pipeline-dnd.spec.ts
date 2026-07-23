@@ -43,9 +43,8 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // DnD Stage Transition tests
 //
 // Drag-and-drop is a desktop-only interaction. The mobile-web project renders a
-// single-stage carousel where cards use the `mobile-deal-card-{id}` testId prefix
-// and there are no adjacent columns to drag between. All three tests skip on
-// mobile-web to avoid false failures.
+// single-stage carousel with no adjacent columns to drag between. All three
+// tests skip on mobile-web to avoid false failures.
 // ---------------------------------------------------------------------------
 
 test.beforeEach(async ({ restClient }) => {

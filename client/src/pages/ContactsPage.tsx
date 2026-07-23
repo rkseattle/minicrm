@@ -954,7 +954,7 @@ export default function ContactsPage() {
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/contacts/${contact.id}`}
-                          data-testid={`contact-card-link-${contact.id}`}
+                          data-testid={`contact-link-${contact.id}`}
                           className="block font-medium text-primary-600 hover:underline mb-1"
                         >
                           {contact.first_name} {contact.last_name}

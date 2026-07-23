@@ -556,8 +556,6 @@ export interface ContactRowIsVisibleResult {
 
 /**
  * Returns whether a contact row is currently visible in the contacts list.
- * Matches both desktop table links (contact-link-{id}) and mobile card links
- * (contact-card-link-{id}).
  *
  * @param id - Contact UUID.
  * @param context - Playwright fixture context.

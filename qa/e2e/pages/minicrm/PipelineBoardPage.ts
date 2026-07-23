@@ -21,12 +21,7 @@ export interface PipelineBoardPageContext {
 
 /** Pipeline stages that can be selected from the stage dropdown. */
 export type PipelineStage =
-  | 'Prospecting'
-  | 'Qualification'
-  | 'Proposal'
-  | 'Negotiation'
-  | 'Closed Won'
-  | 'Closed Lost';
+  'Prospecting' | 'Qualification' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
 
 /**
  * Page Object for the MiniCRM pipeline board.
@@ -224,7 +219,7 @@ export class PipelineBoardPage {
       // without triggering the AI healer for a dynamic UUID testid.
       const cardVisible = await this.page
         .waitForFunction(
-          `!!document.querySelector('[data-testid="mobile-deal-card-${dealId}"]')`,
+          `!!document.querySelector('[data-testid="deal-card-${dealId}"]')`,
           undefined,
           { timeout: 3_000 },
         )
@@ -309,7 +304,7 @@ export class PipelineBoardPage {
       // already confirms the board has transitioned before this probe runs.
       const cardVisible = await this.page
         .waitForFunction(
-          `!!document.querySelector('[data-testid="mobile-deal-card-${dealId}"]')`,
+          `!!document.querySelector('[data-testid="deal-card-${dealId}"]')`,
           undefined,
           { timeout: 3_000 },
         )
@@ -365,8 +360,7 @@ export class PipelineBoardPage {
       await this.mobileNavigateToStageWithDeal(dealId);
     }
 
-    const prefix = mobile ? 'mobile-' : '';
-    const selectTestId = `${prefix}deal-card-stage-select-${dealId}`;
+    const selectTestId = `deal-card-stage-select-${dealId}`;
     const select = await this.page
       .locate(
         [
@@ -488,8 +482,8 @@ export class PipelineBoardPage {
         const card = await this.page
           .locate(
             [
-              { type: 'testId', value: `mobile-deal-card-${dealId}` },
-              { type: 'css', value: `[data-testid="mobile-deal-card-${dealId}"]` },
+              { type: 'testId', value: `deal-card-${dealId}` },
+              { type: 'css', value: `[data-testid="deal-card-${dealId}"]` },
             ],
             { intent: 'deal card in mobile single-column board view' },
           )
@@ -673,12 +667,9 @@ export class PipelineBoardPage {
 
   /**
    * Returns a resolved locator for a specific deal card by ID.
-   * Handles both desktop (`deal-card-{id}`) and mobile (`mobile-deal-card-{id}`)
-   * testId variants based on the current viewport width.
    */
   async dealCardLocator(dealId: string) {
-    const prefix = this.isMobileView() ? 'mobile-' : '';
-    const testId = `${prefix}deal-card-${dealId}`;
+    const testId = `deal-card-${dealId}`;
     return this.page
       .locate(
         [
@@ -692,11 +683,9 @@ export class PipelineBoardPage {
 
   /**
    * Returns a resolved locator for the stage select dropdown on a specific deal card.
-   * Handles both desktop and mobile testId variants.
    */
   async dealStageSelectLocator(dealId: string) {
-    const prefix = this.isMobileView() ? 'mobile-' : '';
-    const testId = `${prefix}deal-card-stage-select-${dealId}`;
+    const testId = `deal-card-stage-select-${dealId}`;
     return this.page
       .locate(
         [
