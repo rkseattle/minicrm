@@ -58,10 +58,7 @@ export function renderWithProviders(
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={initialEntries}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={initialEntries}>
         <BreakpointProvider>
           <BrandingProvider>
             <NavLayoutProvider>{content}</NavLayoutProvider>

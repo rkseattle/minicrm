@@ -32,10 +32,7 @@ function renderNavBar(layout: 'top' | 'left' | 'hamburger') {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={['/']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={['/']}>
         <NavLayoutProvider>
           <NavBar />
         </NavLayoutProvider>
