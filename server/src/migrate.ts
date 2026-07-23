@@ -237,6 +237,19 @@ export async function runMigrations(): Promise<void> {
 export const COVERAGE_MIGRATIONS_DIR = resolve(__dirname, '../../qa/migrations');
 
 /**
+ * Postgres error codes a losing concurrent CREATE DATABASE can surface —
+ * both mean "the database now exists, just not because of this call".
+ * duplicate_database (42P04) is the friendlier, name-level check Postgres
+ * normally raises; under a tight enough race it can instead surface the
+ * lower-level unique_violation (23505) on pg_database's own datname index
+ * before that name-level check runs (reproduced live in a concurrent-caller
+ * regression test — see the "does not crash when two callers race" test in
+ * migrate.test.ts).
+ */
+const PG_DUPLICATE_DATABASE = '42P04';
+const PG_UNIQUE_VIOLATION = '23505';
+
+/**
  * Ensures the coverage/TIA database itself exists before migrating it.
  * Unlike the product database (created out-of-band — POSTGRES_DB at
  * container init locally, or an operator-provisioned database in
@@ -250,6 +263,15 @@ export const COVERAGE_MIGRATIONS_DIR = resolve(__dirname, '../../qa/migrations')
  * connects to the ambient 'postgres' maintenance database directly, the
  * same pattern qa/scripts/create-coverage-e2e-db.ts and
  * server/src/scripts/create-e2e-db.ts already use for their own databases.
+ *
+ * The existence check and the CREATE are two separate statements, so two
+ * server replicas starting concurrently against a fresh Postgres instance
+ * can both observe "absent" and both attempt CREATE DATABASE — the loser
+ * would otherwise crash on startup with a duplicate_database error (found
+ * via Greptile PR review). Catching that specific error code and treating
+ * it as success is the standard way to make CREATE DATABASE idempotent
+ * under concurrent callers: by the time this function returns, the
+ * database exists either way, which is the only guarantee callers need.
  */
 async function ensureCoverageDatabaseExists(): Promise<void> {
   const dbUser = process.env.COVERAGE_DB_USER ?? process.env.DB_USER;
@@ -273,9 +295,24 @@ async function ensureCoverageDatabaseExists(): Promise<void> {
       [coverageDbName],
     );
     if (!rows[0].exists) {
-      // datname cannot be parameterized in CREATE DATABASE.
-      await adminClient.query(`CREATE DATABASE "${coverageDbName.replace(/"/g, '""')}"`);
-      logger.info({ coverageDbName }, 'Created coverage database');
+      try {
+        // datname cannot be parameterized in CREATE DATABASE.
+        await adminClient.query(`CREATE DATABASE "${coverageDbName.replace(/"/g, '""')}"`);
+        logger.info({ coverageDbName }, 'Created coverage database');
+      } catch (err) {
+        const isConcurrentCreation =
+          err instanceof Error &&
+          'code' in err &&
+          (err.code === PG_DUPLICATE_DATABASE || err.code === PG_UNIQUE_VIOLATION);
+        if (isConcurrentCreation) {
+          logger.info(
+            { coverageDbName },
+            'Coverage database was created concurrently by another process',
+          );
+        } else {
+          throw err;
+        }
+      }
     }
   } finally {
     await adminClient.end();
@@ -298,7 +335,15 @@ export async function runCoverageMigrations(): Promise<void> {
   await ensureCoverageDatabaseExists();
 
   const coverageDbName = process.env.COVERAGE_DB_NAME ?? 'minicrm_coverage';
-  const databaseUrl = `postgres://${process.env.COVERAGE_DB_USER ?? process.env.DB_USER}:${process.env.COVERAGE_DB_PASSWORD ?? process.env.DB_PASSWORD}@${process.env.COVERAGE_DB_HOST ?? process.env.DB_HOST ?? 'localhost'}:${process.env.COVERAGE_DB_PORT ?? process.env.DB_PORT ?? 5432}/${coverageDbName}`;
+  const coverageDbUser = process.env.COVERAGE_DB_USER ?? process.env.DB_USER ?? '';
+  const coverageDbPassword = process.env.COVERAGE_DB_PASSWORD ?? process.env.DB_PASSWORD ?? '';
+  const coverageDbHost = process.env.COVERAGE_DB_HOST ?? process.env.DB_HOST ?? 'localhost';
+  const coverageDbPort = process.env.COVERAGE_DB_PORT ?? process.env.DB_PORT ?? '5432';
+  // encodeURIComponent on user/password: a URL-reserved character in either
+  // (e.g. @, :, /, %, ?, #) would otherwise change how postgres:// is parsed
+  // even though the structured pg.Client config in ensureCoverageDatabaseExists
+  // above accepts the same credentials verbatim — found via Greptile PR review.
+  const databaseUrl = `postgres://${encodeURIComponent(coverageDbUser)}:${encodeURIComponent(coverageDbPassword)}@${coverageDbHost}:${coverageDbPort}/${coverageDbName}`;
 
   logger.info('Running coverage database migrations...');
 
