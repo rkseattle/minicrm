@@ -25,10 +25,7 @@ function renderNavHamburger() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={['/']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={['/']}>
         <NavHamburger />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -179,10 +176,7 @@ describe('NavHamburger', () => {
     });
     render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter
-          initialEntries={['/']}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        >
+        <MemoryRouter initialEntries={['/']}>
           <Routes>
             <Route path="/" element={<NavHamburger />} />
             <Route path="/login" element={<div>Login page</div>} />

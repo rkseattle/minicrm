@@ -28,10 +28,7 @@ function renderNavLeft(children: React.ReactNode = <div data-testid="page-conten
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter
-        initialEntries={['/']}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
+      <MemoryRouter initialEntries={['/']}>
         <NavLayoutProvider>
           <NavLeft>{children}</NavLeft>
         </NavLayoutProvider>

@@ -310,6 +310,23 @@ const SERIAL_FILES = [
   'src/__tests__/relationshipHealthController.test.ts',
   'src/__tests__/sentimentController.test.ts',
   'src/__tests__/accountController.test.ts',
+  // migrate.test.ts's runMigrations reserved-char regression test mutates the
+  // real process.env.DB_USER/DB_PASSWORD (not a scoped override like
+  // COVERAGE_DB_USER/COVERAGE_DB_PASSWORD, since runMigrations() reads the
+  // real vars directly) for the duration of the test. Nothing currently
+  // re-reads those vars live during a parallel test run (db.ts/coverageDb.ts
+  // only read them once at import), so this is a latent risk rather than an
+  // observed failure — serializing this file removes the risk entirely rather
+  // than relying on that fact staying true. (MINCRM-664)
+  'src/__tests__/migrate.test.ts',
+  // tagCreationRestriction flips the global tags_restrict_creation
+  // system_settings row to true mid-test (resetting to false in beforeEach);
+  // tagController.test.ts assumes that flag stays false throughout and asserts
+  // 201 on tag creation, so running the two in parallel intermittently turns
+  // tagController's assertions into a spurious 403 (reproduced live: a full
+  // parallel run failed tagController's idempotent-create test with "expected
+  // 403 to be 201"; the same file passed 19/19 in isolation).
+  'src/__tests__/tagCreationRestriction.test.ts',
 ];
 
 const sharedResolve = {
