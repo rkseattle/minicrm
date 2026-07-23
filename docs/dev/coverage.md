@@ -264,15 +264,85 @@ Then enable the `coverage_instrumentation` feature flag (via the admin UI, or di
 
 **Shared test environment:** enabling this is a legitimate use case (the story explicitly calls it out), but there is no per-session isolation — the backend agent is a single process-wide counter set with no multi-tenant separation. Every concurrent request on that server instance contributes to the same counters. This is fine for a dedicated CI/E2E instance; it would produce meaningless aggregate data if naively left on for a real multi-user shared staging environment with concurrent human traffic. Turn it off when not actively collecting.
 
+## Mapping Engine (MINCRM-618/619/620/621, `pr-tia-4`)
+
+Turns Phase 3's version-anchored `coverage_units` into an actual bidirectional
+code⇄test index, with identity stable across edits and a queryable public
+surface. Strictly additive — no existing `coverage_units`, ingestion, session,
+or control-API behavior from earlier phases changes.
+
+### Stable structural keys (MINCRM-619)
+
+`server/src/coverageAgent/pipeline/structuralKeyService.ts`. Replaces the
+placeholder `${name}@${declLine}` unit key (used inline as
+`qualifiedUnitKey`/`qualifiedUnitKeyForLine` inside
+`coverageSymbolicationService.ts` through the Phase 3 era) with
+`${qualifiedName}#${normalizedBodyHash}` — a SHA-256 (truncated to 16 hex
+chars) of the function's own source text, after stripping whitespace-run
+differences and comments. In-line edits elsewhere in a file (which shift a
+function's declaration line but not its own body) now leave the function's
+identity — and therefore its accumulated `coverage_units` history — intact.
+A genuine edit to the function's own logic changes the hash and is treated
+as a new identity, exactly as the AC calls for.
+
+Deriving the hash needs the function's own source text. Both symbolication
+paths attempt to read it (the backend path from the same resolved file path
+`v8-to-istanbul` already reads; the frontend path from istanbul's own
+`FileCoverageData#path`) and gracefully fall back to the legacy `name@line`
+key when the source can't be read (wrong machine, deleted file) — coverage
+counts stay valid even when identity derivation degrades for that function.
+
+### Bidirectional code⇄test index (MINCRM-618)
+
+`coverage_test_links` (migration 159) + `server/src/services/coverageMappingService.ts`
+close a gap Phase 3 left open on purpose: `coverage_units` merges `hit_count`
+across every dump ever ingested for a commit SHA, with no per-test
+breakdown. At ingestion time, `coverageIngestionService` now looks up
+whether the dump being ingested has session attribution (a
+`coverage_session_dumps` row — see Session Management above — with a
+non-null `test_id`, via the new `coverageSessionService.findCoverageSessionDumpByDumpId`)
+and, if so, links the SAME units to that test via
+`coverageMappingService.linkCoverageUnitsToTest`, invoked as
+`coverageModelService.upsertCoverageUnits`'s new `onUnitsUpserted` callback
+so both writes commit in one transaction. A dump with no session
+attribution (or a null `test_id` — e.g. a manual-recorder check-in with no
+single associated test) is ingested into `coverage_units` exactly as
+before, simply producing no `coverage_test_links` rows for it.
+
+`coverage_test_links` identity is `(commit_sha, unit_key, branch_id,
+test_id)`, deduped the same `COALESCE(branch_id, '')` way as
+`coverage_units_identity_idx` (migration 158) and for the identical reason.
+Re-ingesting the same dump/test pair merges `hit_count` rather than
+duplicating.
+
+**Same-batch identity collisions (both `coverage_units` and
+`coverage_test_links`):** a single dump's symbolication can legitimately
+produce more than one row for the same identity in one call (e.g. a
+function reached via more than one V8 script) — PostgreSQL's
+`ON CONFLICT DO UPDATE` rejects a multi-row `INSERT` that would update the
+same conflict-target row twice within one statement
+("ON CONFLICT DO UPDATE command cannot affect row a second time"). Found as
+a real, previously-latent bug in `coverageModelService.insertCoverageUnitBatch`
+while adding the equivalent `coverage_test_links` write — both now
+pre-aggregate (sum `hit_count`) duplicate identities within a batch before
+building the `INSERT`, closing the bug in both places, not just the new one.
+
+### Confidence/freshness scoring & reconciliation (MINCRM-620)
+
+_Not yet implemented — tracked as the next slice of `pr-tia-4`._
+
+### Mapping query API (MINCRM-621)
+
+_Not yet implemented — tracked as the next slice of `pr-tia-4`._
+
 ## Deferred to later phases
 
 Not built here — later `pr-tia-*` phases:
 
-- Test-to-code bidirectional mapping index (which test exercised which unit, and vice versa) with stable body-hash keys and confidence/freshness scoring — the mapping engine phase (`pr-tia-4`); Phase 3's `coverage_units.unit_key` is shaped to support this but does not itself derive body-hash identity or build the index
-- Physically isolated per-session V8 counters — sessions group and attribute dumps; the backend agent's counters remain process-wide (see Session Management above)
 - ML-based test selection
-- Historical coverage trend storage or dashboards, and any reporting/query API over `coverage_units` beyond the internal `findCoverageUnitsByCommitSha` lookup
+- Historical coverage trend storage or dashboards, and any reporting/query API over `coverage_units` beyond the internal `findCoverageUnitsByCommitSha` lookup and the mapping engine's own `findTestsForUnit`/`findUnitsForTest`
 - Coverage-driven CI gating (failing a build on coverage drop)
 - Cross-shard dump merging/aggregation — CI currently uploads per-shard dump directories as-is
 - An automated overhead-regression CI gate (the measurement above is manual)
 - Automatic/scheduled retention pruning — `pruneCoverageUnits` exists but is only callable on demand; scheduling it is the CI/CD Integration epic's concern (`pr-tia-7`)
+- Physically isolated per-session V8 counters — sessions group and attribute dumps; the backend agent's counters remain process-wide (see Session Management above)

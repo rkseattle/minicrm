@@ -16,11 +16,27 @@
  * discarded rather than skipping it up front), but never double-counts
  * hit_count even if two calls for the same dumpId race, unlike a
  * check-then-act pattern split across two separate round-trips would.
+ *
+ * Test attribution (MINCRM-618): after resolving units, this module looks
+ * up whether the dump being ingested has a coverage_session_dumps row (see
+ * coverageSessionService.findCoverageSessionDumpByDumpId) with a non-null
+ * test_id. If so, the SAME set of units is also linked to that test via
+ * coverageMappingService.linkCoverageUnitsToTest, invoked as
+ * upsertCoverageUnits' onUnitsUpserted callback so both writes commit in
+ * the same transaction — a dump can never end up counted in coverage_units
+ * but missing from coverage_test_links (or vice versa) due to a crash
+ * between two separate transactions. A dump with no session attribution
+ * (or a session attribution with a null test_id — e.g. a manual-recorder
+ * check-in with no single associated test) is ingested into coverage_units
+ * exactly as before, simply producing no coverage_test_links rows for it.
  */
 
 import { join } from 'path';
 import { findCoverageDump } from '../../services/coverageDumpService.js';
 import { upsertCoverageUnits } from '../../services/coverageModelService.js';
+import { linkCoverageUnitsToTest } from '../../services/coverageMappingService.js';
+import type { CoverageTestLinkInput } from '../../services/coverageMappingService.js';
+import { findCoverageSessionDumpByDumpId } from '../../services/coverageSessionService.js';
 import { COVERAGE_DUMPS_ROOT } from '../coverageConfig.js';
 import { readRawDumpPayload, symbolicateCoverageDump } from './coverageSymbolicationService.js';
 import type { IngestCoverageDumpResult } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
@@ -82,15 +98,38 @@ export async function ingestCoverageDump(
   const sourceRoot = options.sourceRoot ?? process.cwd();
   const { units } = await symbolicateCoverageDump(dump.agent, dump.format, payload, { sourceRoot });
 
+  // Looked up before the transaction so a session-attribution lookup
+  // failure surfaces as a normal thrown error rather than happening deep
+  // inside upsertCoverageUnits' held transaction.
+  const sessionDump = await findCoverageSessionDumpByDumpId(dumpId);
+  const testId = sessionDump?.testId ?? null;
+
   const { alreadyIngested, unitCount, unresolvedCount } = await upsertCoverageUnits(
     dumpId,
     dump.commitSha,
     dump.agent,
     units,
+    testId
+      ? async (client) => {
+          const links: CoverageTestLinkInput[] = units.map((unit) => ({
+            unitKey: unit.unitKey,
+            branchId: unit.branchId,
+            filePath: unit.filePath,
+            hitCount: unit.hitCount,
+          }));
+          await linkCoverageUnitsToTest(
+            client,
+            dump.commitSha,
+            testId,
+            sessionDump?.testName ?? null,
+            links,
+          );
+        }
+      : undefined,
   );
 
   logger.info(
-    { dumpId, commitSha: dump.commitSha, alreadyIngested, unitCount, unresolvedCount },
+    { dumpId, commitSha: dump.commitSha, alreadyIngested, unitCount, unresolvedCount, testId },
     'coverageIngestionService: ingested coverage dump',
   );
 
