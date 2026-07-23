@@ -176,6 +176,108 @@ describe('coverageSymbolicationService', () => {
         resolved: true,
       });
     });
+
+    it('derives a structural (name#hash) key instead of name@line when the source file is readable, stable across an unrelated line shift', async () => {
+      const sourcePath = join(sourceRoot, 'utils.ts');
+      const originalSource = ['function add(a, b) {', '  return a + b;', '}'].join('\n');
+      await writeFile(sourcePath, originalSource, 'utf8');
+
+      const buildPayload = (declLine: number, endLine: number) => ({
+        [sourcePath]: {
+          path: sourcePath,
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'add',
+              decl: { start: { line: declLine, column: 0 }, end: { line: declLine, column: 5 } },
+              loc: { start: { line: declLine, column: 0 }, end: { line: endLine, column: 1 } },
+              line: declLine,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 4 },
+          b: {},
+        },
+      });
+
+      const original = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        buildPayload(1, 3),
+        { sourceRoot },
+      );
+      expect(original.units[0].unitKey).toMatch(/^add#[0-9a-f]{16}$/);
+
+      // Same function body, but padded with two leading blank lines — as if
+      // an unrelated edit earlier in the file pushed this function down.
+      // decl/loc line numbers shift accordingly (as istanbul's own mapping
+      // would report for the shifted function), but the structural key must
+      // stay identical since the function's own body text did not change.
+      const shiftedSource = ['', '', ...originalSource.split('\n')].join('\n');
+      await writeFile(sourcePath, shiftedSource, 'utf8');
+
+      const shifted = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        buildPayload(3, 5),
+        { sourceRoot },
+      );
+
+      expect(shifted.units[0].unitKey).toBe(original.units[0].unitKey);
+    });
+
+    it('produces a different structural key when the function body actually changes', async () => {
+      const sourcePath = join(sourceRoot, 'utils2.ts');
+      const fnMapForLineCount = (lineCount: number) => ({
+        [sourcePath]: {
+          path: sourcePath,
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'add',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 5 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: lineCount, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 1 },
+          b: {},
+        },
+      });
+
+      await writeFile(
+        sourcePath,
+        ['function add(a, b) {', '  return a + b;', '}'].join('\n'),
+        'utf8',
+      );
+      const before = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        fnMapForLineCount(3),
+        {
+          sourceRoot,
+        },
+      );
+
+      await writeFile(
+        sourcePath,
+        ['function add(a, b) {', '  return a - b;', '}'].join('\n'),
+        'utf8',
+      );
+      const after = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        fnMapForLineCount(3),
+        {
+          sourceRoot,
+        },
+      );
+
+      expect(after.units[0].unitKey).not.toBe(before.units[0].unitKey);
+    });
   });
 
   it('throws UnsupportedCoverageFormatError for an unknown agent/format pair', async () => {
