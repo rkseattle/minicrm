@@ -33,8 +33,14 @@ COPY --from=builder /app/server/node_modules ./server/node_modules
 # directory must exist in the runtime image or the symlink resolves to nothing.
 COPY --from=builder /app/shared ./shared
 
-# Migration files are required at startup
+# Migration files are required at startup — db/ for the product database,
+# qa/migrations/ for the coverage/TIA database (runCoverageMigrations() in
+# migrate.ts resolves COVERAGE_MIGRATIONS_DIR to ../../qa/migrations relative
+# to server/dist, i.e. /app/qa/migrations here). Only the migrations
+# subdirectory is copied, not all of qa/, since the rest of qa/ is E2E
+# framework/test code with no place in a runtime image.
 COPY db/ ./db/
+COPY qa/migrations/ ./qa/migrations/
 
 EXPOSE 3001
 

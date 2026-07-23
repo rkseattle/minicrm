@@ -38,7 +38,6 @@ import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js
 import {
   startCoverageSession,
   recordCoverageSessionDump,
-  CORRELATION_ID_HEADER,
   resolveSessionBuildSha,
   resolveSessionEnvironment,
 } from '@framework/coverageAgent/coverage-session-control-client.js';
@@ -94,6 +93,14 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
     environment: resolveSessionEnvironment(),
   });
 
+  // Deliberately NOT sending CORRELATION_ID_HEADER on this call: the
+  // dumpCoverageHandler auto-attributes any correlated dump to its session
+  // as a side effect (MINCRM-610's "agent partitions by correlation ID"
+  // path), but that auto-attribution carries no testId/testName. This spec
+  // needs the dump attributed WITH test identity, via the explicit
+  // recordCoverageSessionDump call below — sending the header here too would
+  // race two attribution attempts for the same dumpId against
+  // coverage_session_dumps' UNIQUE(dump_id) constraint and 409.
   const dumpRes = await restClient.post<{ dump: Record<string, unknown> }>(
     '/api/v1/admin/coverage/dump',
     {
@@ -118,7 +125,6 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
         },
       },
     },
-    { headers: { [CORRELATION_ID_HEADER]: session.correlationId } },
   );
   expect(dumpRes.status).toBe(201);
   const dumpId = dumpRes.body.dump['dumpId'] as string;
