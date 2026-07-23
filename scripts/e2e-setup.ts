@@ -90,6 +90,34 @@ function ensureE2eDatabase(): void {
   console.log(`[e2e:setup] ${E2E_DB_NAME} is ready.`);
 }
 
+// ── Step 1b: Create minicrm_coverage_e2e database and run coverage migrations ─
+// Coverage/TIA tables live in their own database, separate from minicrm_e2e
+// above — see qa/migrations/001_coverage_baseline.js and server/src/coverageDb.ts.
+
+const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
+
+function ensureCoverageE2eDatabase(): void {
+  console.log(`[e2e:setup] Ensuring ${COVERAGE_E2E_DB_NAME} database exists and is migrated...`);
+
+  const dbUser = process.env.DB_USER ?? 'minicrm';
+  const dbPassword = process.env.DB_PASSWORD ?? 'password';
+  const dbHost = process.env.DB_HOST ?? 'localhost';
+  const dbPort = process.env.DB_PORT ?? '5432';
+
+  execSync('npm run create:coverage-e2e-db --workspace=minicrm-qa', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DB_USER: dbUser,
+      DB_PASSWORD: dbPassword,
+      DB_HOST: dbHost,
+      DB_PORT: dbPort,
+    },
+  });
+
+  console.log(`[e2e:setup] ${COVERAGE_E2E_DB_NAME} is ready.`);
+}
+
 // ── Step 2: Reset accumulated test data ──────────────────────────────────────
 // Without this step, test users accumulate across runs (50k+ users observed),
 // causing user-list pagination to time out and cascade failures across many
@@ -293,6 +321,7 @@ function seedSmtpConfig(): void {
 
 async function main(): Promise<void> {
   ensureE2eDatabase(); // MINCRM-330: create + migrate minicrm_e2e
+  ensureCoverageE2eDatabase(); // create + migrate minicrm_coverage_e2e (separate DB, see coverageDb.ts)
   resetE2eData(); // MINCRM-544: truncate accumulated test data before seeding
   seedE2eAdmin(); // MINCRM-330: re-seed admin after reset
   await waitForMinio();

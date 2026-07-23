@@ -1,5 +1,13 @@
 # Migrations Reference
 
+This file covers `db/migrations/` — the **product database** schema
+(`minicrm`/`minicrm_test`/`minicrm_e2e`). Coverage/TIA data
+(`coverage_units`, `coverage_sessions`, etc.) lives in a **separate**
+database with its own migration sequence under `qa/migrations/`, run via
+`npm run migrate:coverage --workspace=minicrm-qa` — see
+[docs/dev/coverage.md's Coverage Database section](coverage.md#coverage-database)
+for why. The rules below apply identically to both sequences unless noted.
+
 ## Rules
 
 - Never modify an existing migration — write a new corrective migration instead.
@@ -10,6 +18,7 @@
   ```bash
   npm run db:erd --workspace=minicrm-server
   ```
+  (ERD generation only covers the product database today — the coverage database has no equivalent generated ERD.)
 
 ---
 

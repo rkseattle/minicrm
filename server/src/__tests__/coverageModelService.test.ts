@@ -20,7 +20,7 @@ import {
   upsertCoverageUnits,
 } from '../services/coverageModelService.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
-import pool from '../db.js';
+import coverageDb from '../coverageDb.js';
 
 const FILE_PREFIX = 'coverage-model-svc';
 
@@ -51,20 +51,24 @@ async function upsertAndTrack(
 }
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM coverage_units WHERE file_path LIKE $1', [`${FILE_PREFIX}/%`]);
+  await coverageDb.query('DELETE FROM coverage_units WHERE file_path LIKE $1', [
+    `${FILE_PREFIX}/%`,
+  ]);
   ingestedDumpIdsThisTest.length = 0;
 });
 
 afterEach(async () => {
   if (ingestedDumpIdsThisTest.length > 0) {
-    await pool.query('DELETE FROM coverage_ingested_dumps WHERE dump_id = ANY($1)', [
+    await coverageDb.query('DELETE FROM coverage_ingested_dumps WHERE dump_id = ANY($1)', [
       ingestedDumpIdsThisTest,
     ]);
   }
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM coverage_units WHERE file_path LIKE $1', [`${FILE_PREFIX}/%`]);
+  await coverageDb.query('DELETE FROM coverage_units WHERE file_path LIKE $1', [
+    `${FILE_PREFIX}/%`,
+  ]);
 });
 
 describe('coverageModelService', () => {
@@ -248,7 +252,7 @@ describe('coverageModelService', () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [makeUnit()]);
 
-      await pool.query(
+      await coverageDb.query(
         `UPDATE coverage_units SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
         [commitSha],
       );

@@ -10,16 +10,22 @@
  * sessions on the same server instance can still be told apart in the
  * stored data even though the underlying counters are shared.
  *
- * All writes follow the transaction + audit-log pattern used throughout the
- * codebase (see dealService.ts): pool.connect() -> BEGIN -> setRlsUserId ->
- * work -> writeAuditEntry (same client) -> COMMIT, with ROLLBACK on error.
+ * coverage_sessions/coverage_session_dumps live in their own coverage
+ * database (see coverageDb.ts) — a separate database from the product
+ * database dealService.ts's own audit-log/RLS pattern operates against.
+ * Neither writeAuditEntry (needs the product DB's audit_log table) nor
+ * setRlsUserId (needs the product DB's RLS policies) can run against a
+ * coverageDb client, so coverage sessions are unaudited, exactly like the
+ * rest of the coverage schema (coverage_units, coverage_test_links) —
+ * derived, system-internal telemetry with no user-facing mutation surface,
+ * not data that needs a compliance-grade change history. startedBy is
+ * still recorded (a plain uuid, not a product-DB foreign key — see
+ * qa/migrations/001_coverage_baseline.js) purely as informational
+ * attribution, not as an audited action.
  */
 
 import type { PoolClient } from 'pg';
-import pool from '../db.js';
-import { setRlsUserId } from './rlsContextService.js';
-import { writeAuditEntry, SYSTEM_ACTOR } from './auditService.js';
-import type { AuditActor } from './auditService.js';
+import coverageDb from '../coverageDb.js';
 import type {
   CoverageSession,
   CoverageSessionDump,
@@ -29,6 +35,16 @@ import type {
   PaginatedResponse,
   PaginationParams,
 } from '@minicrm/shared/schemas/paginationSchema.js';
+
+/** Who is starting/ending a coverage session — recorded as informational attribution only (not audited, see module docblock). */
+export interface CoverageSessionActor {
+  id: string;
+}
+
+/** Used when no real user initiated the session (e.g. an automated CI-triggered E2E run). */
+const SYSTEM_SESSION_ACTOR: CoverageSessionActor = {
+  id: '00000000-0000-0000-0000-000000000000',
+};
 
 /** Thrown when ending a session that does not exist. */
 export class CoverageSessionNotFoundError extends Error {
@@ -82,8 +98,10 @@ interface CoverageSessionRow {
   build_sha: string;
   environment: string;
   issue_key: string | null;
-  // Nullable — ON DELETE SET NULL when the starting user is later deleted,
-  // so the session's own history survives (see migration 157's comment).
+  // Nullable, plain uuid — NOT a foreign key (coverage_sessions lives in a
+  // separate database from users; cross-database FKs are impossible in
+  // PostgreSQL). See qa/migrations/001_coverage_baseline.js's column
+  // comment for the full rationale.
   started_by: string | null;
   started_at: Date;
   ended_at: Date | null;
@@ -113,46 +131,22 @@ function toCoverageSession(row: CoverageSessionRow): CoverageSession {
  */
 export async function startCoverageSession(
   params: StartCoverageSessionRequest,
-  actor: AuditActor = SYSTEM_ACTOR,
+  actor: CoverageSessionActor = SYSTEM_SESSION_ACTOR,
 ): Promise<CoverageSession> {
-  const client: PoolClient = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await setRlsUserId(client);
-
-    const insertResult = await client.query<CoverageSessionRow>(
-      `INSERT INTO coverage_sessions (label, source, build_sha, environment, issue_key, started_by)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version`,
-      [
-        params.label,
-        params.source,
-        params.buildSha,
-        params.environment,
-        params.issueKey ?? null,
-        actor.id,
-      ],
-    );
-    const row = insertResult.rows[0];
-
-    await writeAuditEntry(client, {
-      recordType: 'coverage_session',
-      recordId: row.id,
-      recordName: row.label,
-      eventType: 'coverage_session_started',
-      changedById: actor.id,
-      changedByName: actor.name,
-      source: actor.source ?? null,
-    });
-
-    await client.query('COMMIT');
-    return toCoverageSession(row);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  const result = await coverageDb.query<CoverageSessionRow>(
+    `INSERT INTO coverage_sessions (label, source, build_sha, environment, issue_key, started_by)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version`,
+    [
+      params.label,
+      params.source,
+      params.buildSha,
+      params.environment,
+      params.issueKey ?? null,
+      actor.id,
+    ],
+  );
+  return toCoverageSession(result.rows[0]);
 }
 
 /**
@@ -164,12 +158,10 @@ export async function startCoverageSession(
 export async function endCoverageSession(
   sessionId: string,
   version: number,
-  actor: AuditActor = SYSTEM_ACTOR,
 ): Promise<CoverageSession> {
-  const client: PoolClient = await pool.connect();
+  const client: PoolClient = await coverageDb.connect();
   try {
     await client.query('BEGIN');
-    await setRlsUserId(client);
 
     const updateResult = await client.query<CoverageSessionRow>(
       `UPDATE coverage_sessions
@@ -197,20 +189,8 @@ export async function endCoverageSession(
       );
     }
 
-    const row = updateResult.rows[0];
-
-    await writeAuditEntry(client, {
-      recordType: 'coverage_session',
-      recordId: row.id,
-      recordName: row.label,
-      eventType: 'coverage_session_ended',
-      changedById: actor.id,
-      changedByName: actor.name,
-      source: actor.source ?? null,
-    });
-
     await client.query('COMMIT');
-    return toCoverageSession(row);
+    return toCoverageSession(updateResult.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -221,7 +201,7 @@ export async function endCoverageSession(
 
 /** Fetches a single coverage session by ID, or null if not found. */
 export async function findCoverageSession(sessionId: string): Promise<CoverageSession | null> {
-  const result = await pool.query<CoverageSessionRow>(
+  const result = await coverageDb.query<CoverageSessionRow>(
     `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
      FROM coverage_sessions WHERE id = $1`,
     [sessionId],
@@ -243,10 +223,10 @@ export async function listActiveCoverageSessions(
   const offset = (page - 1) * limit;
 
   const [countResult, rowsResult] = await Promise.all([
-    pool.query<{ count: string }>(
+    coverageDb.query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM coverage_sessions WHERE status = 'active'`,
     ),
-    pool.query<CoverageSessionRow>(
+    coverageDb.query<CoverageSessionRow>(
       `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
        FROM coverage_sessions WHERE status = 'active' ORDER BY started_at DESC LIMIT $1 OFFSET $2`,
       [limit, offset],
@@ -271,7 +251,7 @@ export async function listActiveCoverageSessions(
 export async function findActiveCoverageSessionByCorrelationId(
   correlationId: string,
 ): Promise<CoverageSession | null> {
-  const result = await pool.query<CoverageSessionRow>(
+  const result = await coverageDb.query<CoverageSessionRow>(
     `SELECT id, label, source, status, correlation_id, build_sha, environment, issue_key, started_by, started_at, ended_at, version
      FROM coverage_sessions WHERE correlation_id = $1 AND status = 'active'`,
     [correlationId],
@@ -305,7 +285,7 @@ export async function recordCoverageSessionDump(
   // lookup keyed on coverage_session_dumps.correlation_id, e.g.
   // findActiveCoverageSessionByCorrelationId). A dump can only ever be
   // attributed to a session while it's still active. (MINCRM-612)
-  const result = await pool.query<{
+  const result = await coverageDb.query<{
     id: string;
     session_id: string;
     dump_id: string;
@@ -333,7 +313,7 @@ export async function recordCoverageSessionDump(
   );
 
   if (result.rowCount === 0) {
-    const sessionCheck = await pool.query<{ status: string; correlation_id: string }>(
+    const sessionCheck = await coverageDb.query<{ status: string; correlation_id: string }>(
       'SELECT status, correlation_id FROM coverage_sessions WHERE id = $1',
       [sessionId],
     );
@@ -376,7 +356,7 @@ export async function recordCoverageSessionDump(
 export async function findCoverageSessionDumpByDumpId(
   dumpId: string,
 ): Promise<CoverageSessionDump | null> {
-  const result = await pool.query<{
+  const result = await coverageDb.query<{
     id: string;
     session_id: string;
     dump_id: string;

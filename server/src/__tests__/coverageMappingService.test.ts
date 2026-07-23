@@ -16,7 +16,7 @@ import {
   linkCoverageUnitsToTest,
 } from '../services/coverageMappingService.js';
 import type { CoverageTestLinkInput } from '../services/coverageMappingService.js';
-import pool from '../db.js';
+import coverageDb from '../coverageDb.js';
 
 const FILE_PREFIX = 'coverage-mapping-svc';
 
@@ -36,7 +36,7 @@ async function linkAndCommit(
   testName: string | null,
   links: CoverageTestLinkInput[],
 ): Promise<void> {
-  const client = await pool.connect();
+  const client = await coverageDb.connect();
   try {
     await client.query('BEGIN');
     await linkCoverageUnitsToTest(client, commitSha, testId, testName, links);
@@ -50,11 +50,15 @@ async function linkAndCommit(
 }
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM coverage_test_links WHERE file_path LIKE $1', [`${FILE_PREFIX}/%`]);
+  await coverageDb.query('DELETE FROM coverage_test_links WHERE file_path LIKE $1', [
+    `${FILE_PREFIX}/%`,
+  ]);
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM coverage_test_links WHERE file_path LIKE $1', [`${FILE_PREFIX}/%`]);
+  await coverageDb.query('DELETE FROM coverage_test_links WHERE file_path LIKE $1', [
+    `${FILE_PREFIX}/%`,
+  ]);
 });
 
 describe('coverageMappingService', () => {
