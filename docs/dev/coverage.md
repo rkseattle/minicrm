@@ -1,6 +1,6 @@
 # Coverage/TIA Instrumentation
 
-Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). Phase 3 (this document's [Coverage Data Pipeline](#coverage-data-pipeline-mincrm-614615616) section) normalizes, symbolicates, and stores raw dumps in a version-anchored model (MINCRM-614, MINCRM-615, MINCRM-616). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
+Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). Phase 3 (this document's [Coverage Data Pipeline](#coverage-data-pipeline-mincrm-614615616) section) normalizes, symbolicates, and stores raw dumps in a version-anchored model (MINCRM-614, MINCRM-615, MINCRM-616). Phase 4 (this document's [Mapping Engine](#mapping-engine-mincrm-618619620621-pr-tia-4) section) builds the bidirectional code⇄test index, stable structural keys, confidence/freshness scoring, and a query API on top (MINCRM-618, MINCRM-619, MINCRM-620, MINCRM-621). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
 
 ## Files
 
@@ -54,6 +54,21 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 | `db/migrations/158_add_coverage_pipeline.js`                        | Seeds the `coverage_pipeline_ingestion` feature flag (table creation moved — see [Coverage Database](#coverage-database)) |
 | `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                                                                               |
 | `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end                                                              |
+
+### Phase 4 — Mapping engine files
+
+| Path                                                                 | Purpose                                                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/pipeline/structuralKeyService.ts`          | Derives `name#normalizedBodyHash` structural unit keys (MINCRM-619)                                              |
+| `server/src/services/coverageMappingService.ts`                      | Owns all DB access for `coverage_test_links`, via `coverageDb.ts` (MINCRM-618)                                   |
+| `server/src/coverageAgent/pipeline/coverageReconciliationService.ts` | Confidence/freshness scoring + build-time reconciliation (MINCRM-620)                                            |
+| `server/src/controllers/coverageMappingController.ts`                | Request/response shaping for the mapping query endpoints (MINCRM-621)                                            |
+| `server/src/routes/coverageMapping.ts`                               | `@openapi` routes, mounted at `/api/v1/admin/coverage/mapping`                                                   |
+| `shared/schemas/coverageMappingSchema.ts`                            | Zod request/response schemas for the mapping query API                                                           |
+| `db/migrations/159_add_coverage_mapping_query_flag.js`               | Seeds the `coverage_mapping_query` feature flag (product database)                                               |
+| `qa/migrations/001_coverage_baseline.js`                             | `coverage_test_links` table + `coverage_units.confidence_score`/`last_reconciled_at` columns (coverage database) |
+| `qa/e2e/framework/coverageAgent/coverage-mapping-client.ts`          | Reference client for the mapping query endpoints                                                                 |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-mapping/`             | Functional spec exercising the mapping query API end to end                                                      |
 
 ## Mounting
 
@@ -359,7 +374,34 @@ Three things happen per file a commit's units reference:
 
 ### Mapping query API (MINCRM-621)
 
-_Not yet implemented — tracked as the next slice of `pr-tia-4`._
+| Method | Path                                            | Purpose                                                                |
+| ------ | ----------------------------------------------- | ---------------------------------------------------------------------- |
+| `GET`  | `/api/v1/admin/coverage/mapping/tests-for-unit` | Code unit → covering tests, scoped by `commitSha`, confidence attached |
+| `GET`  | `/api/v1/admin/coverage/mapping/units-for-test` | Test → covered code units, scoped by `commitSha`, confidence attached  |
+
+Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_mapping_query')`, mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). The `coverage_mapping_query` flag (migration 159, product database — see [Coverage Database](#coverage-database)) is independent of `coverage_pipeline_ingestion`: a server can have ingested `coverage_test_links` data while the query API itself stays off, e.g. during rollout.
+
+Both endpoints read `coverageMappingService.findTestsForUnitWithConfidence`/`findUnitsForTestWithConfidence`, which `LEFT JOIN coverage_test_links` against `coverage_units` on the shared `(commit_sha, unit_key, branch_id)` identity — both tables live in the SAME coverage database, so this is a normal same-database join, not a cross-database query. `confidenceScore`/`lastReconciledAt` are `null` in a result when no matching `coverage_units` row exists (e.g. reconciliation pruned it) — the mapping result itself is still returned, never silently dropped.
+
+The response shape (`CoverageMappingResult`) is a deliberately separate, documented/versioned wire contract from `coverageMappingService`'s own `CoverageTestLink` DB-row type (MINCRM-621's "documented, versioned interface" AC) — `coverage_test_links`' column set is free to change independently as long as this response shape is preserved. See `shared/schemas/coverageMappingSchema.ts`.
+
+Reference client: `qa/e2e/framework/coverageAgent/coverage-mapping-client.ts`.
+
+```ts
+import {
+  findTestsForUnit,
+  findUnitsForTest,
+} from '@framework/coverageAgent/coverage-mapping-client.js';
+
+const testResults = await findTestsForUnit(restClient, {
+  commitSha,
+  unitKey: 'render#a1b2c3d4e5f6a7b8',
+});
+const unitResults = await findUnitsForTest(restClient, {
+  commitSha,
+  testId: 'spec:deals.spec.ts::creates a deal',
+});
+```
 
 ## Deferred to later phases
 
