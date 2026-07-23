@@ -17,6 +17,7 @@ import {
   findCoverageUnitsByCommitSha,
   isDumpAlreadyIngested,
   pruneCoverageUnits,
+  relocateCoverageUnit,
   upsertCoverageUnits,
 } from '../services/coverageModelService.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
@@ -272,6 +273,68 @@ describe('coverageModelService', () => {
 
       const stored = await findCoverageUnitsByCommitSha(commitSha);
       expect(stored).toHaveLength(1);
+    });
+  });
+
+  describe('relocateCoverageUnit', () => {
+    it('moves a unit to a new file_path/unit_key when no row already exists there', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [makeUnit({ hitCount: 4 })]);
+      const [before] = await findCoverageUnitsByCommitSha(commitSha);
+
+      const survivingId = await relocateCoverageUnit(
+        before.id,
+        `${FILE_PREFIX}/renamed.ts`,
+        'render@20',
+      );
+
+      // Non-collision case: the surviving id is the original row's own id.
+      expect(survivingId).toBe(before.id);
+
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      expect(stored).toHaveLength(1);
+      expect(stored[0].id).toBe(before.id);
+      expect(stored[0].filePath).toBe(`${FILE_PREFIX}/renamed.ts`);
+      expect(stored[0].unitKey).toBe('render@20');
+      expect(stored[0].hitCount).toBe(4);
+    });
+
+    it('merges into the existing row rather than violating the unique index when the destination identity already has its own row', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      // The row being relocated...
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [
+        makeUnit({ filePath: `${FILE_PREFIX}/old.ts`, hitCount: 3 }),
+      ]);
+      // ...and a row that ALREADY occupies the destination identity
+      // (commit_sha, new file_path, new unit_key, branch_id) — e.g. the
+      // rename target was already ingested separately under the same commit.
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [
+        makeUnit({ filePath: `${FILE_PREFIX}/new.ts`, unitKey: 'render@99', hitCount: 5 }),
+      ]);
+
+      const beforeAll = await findCoverageUnitsByCommitSha(commitSha);
+      const movingUnit = beforeAll.find((u) => u.filePath === `${FILE_PREFIX}/old.ts`)!;
+      const destinationUnit = beforeAll.find((u) => u.filePath === `${FILE_PREFIX}/new.ts`)!;
+
+      const survivingId = await relocateCoverageUnit(
+        movingUnit.id,
+        `${FILE_PREFIX}/new.ts`,
+        'render@99',
+      );
+
+      // The returned id must be the DESTINATION row's id, not the moving
+      // row's — callers (coverageReconciliationService) rely on this to
+      // know which row to act on next; the moving row's own id no longer
+      // exists after the merge.
+      expect(survivingId).toBe(destinationUnit.id);
+
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      // The moving row was merged away, not left as a duplicate — only the
+      // pre-existing destination row remains, with hit_count summed.
+      expect(stored).toHaveLength(1);
+      expect(stored[0].id).toBe(destinationUnit.id);
+      expect(stored[0].filePath).toBe(`${FILE_PREFIX}/new.ts`);
+      expect(stored[0].hitCount).toBe(8);
     });
   });
 });

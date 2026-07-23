@@ -268,6 +268,13 @@ const result = await ingestCoverageDump(restClient, dumpId);
 
 ## Local / CI / Shared-env setup
 
+**One-time: create the coverage database.** Unlike the product database (auto-created via `POSTGRES_DB` when the `db` container first starts), `minicrm_coverage` has no automatic creation path outside the E2E flow (`create-coverage-e2e-db.ts` creates `minicrm_coverage_e2e`; `.env.test` points server tests at `minicrm_coverage_test`, created the same way `minicrm_test` is). For local dev/backend-only work against the default `minicrm_coverage` database, create it once:
+
+```bash
+docker exec minicrm-db psql -U minicrm -d postgres -c "CREATE DATABASE minicrm_coverage"
+cd qa && DATABASE_URL=postgres://minicrm:password@localhost:5432/minicrm_coverage npm run migrate:coverage
+```
+
 **Local — backend only:**
 
 ```bash
@@ -344,6 +351,17 @@ test_id)`, deduped the same `COALESCE(branch_id, '')` way as
 Re-ingesting the same dump/test pair merges `hit_count` rather than
 duplicating.
 
+**Unresolved units are never linked.** A unit with `resolved: false` (a
+`node:` builtin, `eval()`'d code, or a failed conversion — see
+Symbolication below) all share the literal `unitKey: 'unknown'` with no
+real `file_path` behind them. `coverageIngestionService` filters these out
+before calling `linkCoverageUnitsToTest` — linking them would collapse
+every unrelated unresolved unit across every file into the SAME
+`(commit_sha, unitKey, branchId, testId)` identity, corrupting that slot
+for any other test that also happened to touch an unresolved script.
+`coverage_units` itself still records these rows unchanged (with
+`resolved: false`); only the per-test mapping omits them.
+
 **Same-batch identity collisions (both `coverage_units` and
 `coverage_test_links`):** a single dump's symbolication can legitimately
 produce more than one row for the same identity in one call (e.g. a
@@ -364,7 +382,7 @@ Three things happen per file a commit's units reference:
 
 - **Still exists:** every unit for that file gets a fresh `confidence_score` (linear decay from `1.0` down to a `0.1` floor over 30 days since `last_seen_at`) and `last_reconciled_at = now()`.
 - **Gone, no rename detected:** pruned outright (`deleteCoverageUnitById`) — a permanently-dead row serves no purpose once its code no longer exists anywhere in the tree.
-- **Gone, but renamed/moved (git's own rename detection, `git diff --find-renames`):** the SAME row is updated in place (`relocateCoverageUnit`) to the new `file_path`, carrying its `unit_key`, `hit_count`, `first_seen_at`, and id forward unchanged. `unit_key` itself never needs re-deriving here — MINCRM-619's structural key (name + normalized-body-hash) already survives content edits by construction; only `file_path` needs to catch up to where the file now lives.
+- **Gone, but renamed/moved (git's own rename detection, `git diff --find-renames`):** the SAME row is updated in place (`relocateCoverageUnit`) to the new `file_path`, carrying its `unit_key`, `hit_count`, `first_seen_at`, and id forward unchanged. `unit_key` itself never needs re-deriving here — MINCRM-619's structural key (name + normalized-body-hash) already survives content edits by construction; only `file_path` needs to catch up to where the file now lives. In the rare case the destination identity already has its own row (e.g. the rename target was already ingested separately under the same commit), `relocateCoverageUnit` merges the moving row's `hit_count` into that existing row and deletes the moving row, rather than violating `coverage_units_identity_idx` — it returns the id of whichever row actually survives, which the caller must use for the confidence-scoring step that follows (the original id no longer exists in the merge case).
 
 **Why file-granularity rename detection, not per-function:** re-deriving each function's own body hash again during reconciliation would duplicate a guarantee MINCRM-619 already provides. Git's rename detection operates at file granularity, which is exactly the gap structural keys don't close on their own (a key survives its _file's_ content changing, not the file itself moving).
 
@@ -381,7 +399,7 @@ Three things happen per file a commit's units reference:
 
 Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_mapping_query')`, mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). The `coverage_mapping_query` flag (migration 159, product database — see [Coverage Database](#coverage-database)) is independent of `coverage_pipeline_ingestion`: a server can have ingested `coverage_test_links` data while the query API itself stays off, e.g. during rollout.
 
-Both endpoints read `coverageMappingService.findTestsForUnitWithConfidence`/`findUnitsForTestWithConfidence`, which `LEFT JOIN coverage_test_links` against `coverage_units` on the shared `(commit_sha, unit_key, branch_id)` identity — both tables live in the SAME coverage database, so this is a normal same-database join, not a cross-database query. `confidenceScore`/`lastReconciledAt` are `null` in a result when no matching `coverage_units` row exists (e.g. reconciliation pruned it) — the mapping result itself is still returned, never silently dropped.
+Both endpoints read `coverageMappingService.findTestsForUnitWithConfidence`/`findUnitsForTestWithConfidence`, which `LEFT JOIN coverage_test_links` against `coverage_units` on the shared `(commit_sha, file_path, unit_key, branch_id)` identity — matching `coverage_units_identity_idx`'s own exact shape, so the join can never match more than one row. Both tables live in the SAME coverage database, so this is a normal same-database join, not a cross-database query. `confidenceScore`/`lastReconciledAt` are `null` in a result when no matching `coverage_units` row exists (e.g. reconciliation pruned it) — the mapping result itself is still returned, never silently dropped.
 
 The response shape (`CoverageMappingResult`) is a deliberately separate, documented/versioned wire contract from `coverageMappingService`'s own `CoverageTestLink` DB-row type (MINCRM-621's "documented, versioned interface" AC) — `coverage_test_links`' column set is free to change independently as long as this response shape is preserved. See `shared/schemas/coverageMappingSchema.ts`.
 
