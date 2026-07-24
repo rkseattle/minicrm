@@ -949,6 +949,15 @@ export async function getContactAccountLink(context: ContactsBehaviorContext) {
  * be gone (rather than for element existence/visibility, which the
  * placeholder itself already satisfies) is the correct condition here.
  *
+ * Requires the element to genuinely EXIST before checking its text (`el !==
+ * null`, not `el?.textContent`) — the optional-chaining form used in an
+ * earlier version made the check vacuously pass while the element hadn't
+ * mounted at all yet (`undefined !== '…'` is true), which is BEFORE the
+ * loading placeholder itself appears, not after it resolves to the real
+ * value. That let a caller's subsequent `.textContent()` read still land on
+ * the "…" placeholder once the element mounted moments later (found via
+ * Greptile PR review, MINCRM-623..627).
+ *
  * @param context - Behavior context with page.
  * @param timeout - Maximum ms to wait.
  */
@@ -957,7 +966,10 @@ export async function waitForContactAccountLinkLoaded(
   timeout = 10_000,
 ): Promise<void> {
   await context.page.waitForFunction(
-    `document.querySelector('[data-testid="detail-account"]')?.textContent?.trim() !== '…'`,
+    `(() => {
+      const el = document.querySelector('[data-testid="detail-account"]');
+      return el !== null && el.textContent?.trim() !== '…';
+    })()`,
     undefined,
     { timeout },
   );
