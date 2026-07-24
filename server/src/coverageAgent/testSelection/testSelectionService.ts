@@ -17,6 +17,13 @@
  * changed unit unbounded, since coverageDb's own pool caps at 10 connections
  * (see coverageDb.ts) and an uncapped Promise.all over a large diff's
  * changed units could exhaust it.
+ *
+ * Ranking is delegated to a pluggable TestScorer (MINCRM-627) — this module
+ * owns only mapping-API resolution, inheritance, and cross-unit dedup;
+ * per-unit ranking is entirely the scorer's concern, so a future ML ranker
+ * can replace mapBasedScorer without touching any of this module's own
+ * logic. See scorer.ts's docblock for the safety-net-ordering invariant
+ * this split exists to preserve.
  */
 
 import {
@@ -24,6 +31,7 @@ import {
   type CoverageMappingResult,
 } from '../../services/coverageMappingService.js';
 import type { ChangedUnit } from './changeUnitResolver.js';
+import { mapBasedScorer, type TestScorer } from './scorer.js';
 
 /** How a selected test was determined to be affected by a change. */
 export type SelectionReason = 'direct-hit' | 'inherited';
@@ -92,23 +100,6 @@ function toSelectedTest(
 }
 
 /**
- * Ranks selected tests for output: highest confidence first (nulls last,
- * since a null confidence means "no coverage_units row was found to score
- * against" — treated as least-trustworthy, not zero), then alphabetically
- * by testId for a stable, deterministic tie-break.
- */
-function prioritize(tests: readonly SelectedTest[]): SelectedTest[] {
-  return [...tests].sort((a, b) => {
-    if (a.confidenceScore !== b.confidenceScore) {
-      if (a.confidenceScore === null) return 1;
-      if (b.confidenceScore === null) return -1;
-      return b.confidenceScore - a.confidenceScore;
-    }
-    return a.testId.localeCompare(b.testId);
-  });
-}
-
-/**
  * Deduplicates selected tests by testId, keeping the highest-confidence
  * (and, on a tie, the 'direct-hit' over 'inherited') occurrence — the same
  * test can easily be reached from more than one changed unit in the same
@@ -154,11 +145,17 @@ function dedupeByTestId(tests: readonly SelectedTest[]): SelectedTest[] {
  *   previously-mapped sibling) — this service has no AST access of its own
  *   and treats a unit as having no inheritance candidate when absent from
  *   this map, rather than guessing one.
+ * @param scorer - Ranks each changed unit's own candidate tests (MINCRM-627).
+ *   Defaults to mapBasedScorer (confidence-first, alphabetical tie-break —
+ *   this function's own ranking logic prior to MINCRM-627). Swappable for
+ *   a future ML ranker; never receives the safety-net baseline set (see
+ *   scorer.ts's own docblock).
  */
 export async function selectTestsForChangedUnits(
   commitSha: string,
   changedUnits: readonly ChangedUnit[],
   enclosingUnitKeysByUnitKey: ReadonlyMap<string, string> = new Map(),
+  scorer: TestScorer = mapBasedScorer,
 ): Promise<TestSelectionResult> {
   const perUnitResults = await mapWithConcurrencyLimit(
     changedUnits,
@@ -207,8 +204,16 @@ export async function selectTestsForChangedUnits(
     .filter((r) => r.tests.length === 0)
     .map((r) => ({ filePath: r.unit.filePath, unitKey: r.unit.unitKey }));
 
+  // Ranking (MINCRM-627) is delegated to the scorer, invoked ONCE over the
+  // full deduplicated candidate list — see scorer.ts's own docblock for why
+  // this is a single cross-unit call rather than one call per changed unit.
+  const deduped = dedupeByTestId(allTests);
+  const rankedTests = scorer.score(changedUnits, deduped, {
+    totalChangedUnitCount: changedUnits.length,
+  });
+
   return {
-    selectedTests: prioritize(dedupeByTestId(allTests)),
+    selectedTests: rankedTests,
     unmappedChanges,
   };
 }
