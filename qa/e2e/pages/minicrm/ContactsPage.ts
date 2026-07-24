@@ -213,6 +213,21 @@ export class ContactsPage {
    * to settle. Use this to narrow the visible rows to a known subset before
    * interacting with specific contacts.
    *
+   * The role-based fallback uses the contacts search box's placeholder text
+   * as its accessible name rather than a bare `searchbox` role: the global
+   * nav search (GlobalSearch.tsx, data-testid="global-search-input") is ALSO
+   * an `input[type=search]`, which the browser exposes with the same
+   * `searchbox` ARIA role. `contacts-search` only mounts once the contacts
+   * list has finished its initial load (`!isLoading && !isError` in
+   * ContactsPage.tsx), so if this method is called before that fetch
+   * completes, the primary testId strategy's probe can time out and fall
+   * back to the ambiguous role locator — which can then resolve to the
+   * ALWAYS-present global nav search instead, silently typing into and
+   * waiting on the wrong element (see AutomationPage.headingLocator() for
+   * the identical failure mode, manifesting here as a wrong-element match
+   * rather than a strict-mode crash since `fill()` doesn't require a unique
+   * match the way a strict assertion does).
+   *
    * @param term - The string to type into the search input.
    */
   async search(term: string): Promise<void> {
@@ -229,7 +244,11 @@ export class ContactsPage {
       term,
       [
         { type: 'testId', value: 'contacts-search' },
-        { type: 'role', value: 'searchbox' },
+        {
+          type: 'role',
+          value: 'searchbox',
+          options: { name: t('contacts.searchPlaceholder'), exact: true },
+        },
       ],
       { intent: 'contacts list search input field' },
     );
