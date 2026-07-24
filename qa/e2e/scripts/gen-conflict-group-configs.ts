@@ -60,6 +60,7 @@ import {
   buildConflictGraph,
   partitionIntoConflictFreeGroups,
 } from '../framework/reporting/conflict-graph.js';
+import { findTaggedTestTitles } from '../framework/reporting/timing-utils.js';
 import {
   RESOURCE_REGISTRY,
   collapseRegistryToFileTouches,
@@ -79,10 +80,16 @@ const E2E_DIR = path.resolve(process.cwd(), 'qa/e2e');
  *  rather than consuming capacity-probe's output. */
 const MAX_GROUP_WORKERS = 2;
 
-/** Finds every *.spec.ts file under functional/ whose content contains the
- *  literal string "@serial" — the ground-truth population this script must
- *  fully cover (registry entries plus any not-yet-registered file, which
- *  falls back to its own single-file group for safety). */
+/** Finds every *.spec.ts file under functional/ that has at least one test
+ *  actually tagged @serial (via findTaggedTestTitles — a title-string scan,
+ *  not a raw content.includes() check) — the ground-truth population this
+ *  script must fully cover (registry entries plus any not-yet-registered
+ *  file, which falls back to its own single-file group for safety).
+ *  A plain substring scan over full file content would misfire on files
+ *  where "@serial" appears only in a comment explaining why the file does
+ *  NOT need the tag (e.g. insights/coaching.spec.ts) — such a file has zero
+ *  actual @serial tests, so a generated group for it produces an empty
+ *  testMatch that Playwright rejects with "No tests found". */
 function discoverSerialFiles(dir: string): string[] {
   const results: string[] = [];
   if (!fs.existsSync(dir)) return results;
@@ -91,8 +98,7 @@ function discoverSerialFiles(dir: string): string[] {
     if (entry.isDirectory()) {
       results.push(...discoverSerialFiles(fullPath));
     } else if (entry.isFile() && entry.name.endsWith('.spec.ts')) {
-      const content = fs.readFileSync(fullPath, 'utf-8');
-      if (content.includes('@serial')) {
+      if (findTaggedTestTitles(fullPath, '@serial').length > 0) {
         results.push(path.relative(process.cwd(), fullPath));
       }
     }

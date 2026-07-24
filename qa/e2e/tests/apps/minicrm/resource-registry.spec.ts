@@ -23,6 +23,7 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { RESOURCE_REGISTRY } from '../../../apps/minicrm/resource-registry.js';
+import { findTaggedTestTitles } from '../../../framework/reporting/timing-utils.js';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../..');
 const FUNCTIONAL_TESTS_DIR = path.join(REPO_ROOT, 'qa/e2e/tests/apps/minicrm/functional');
@@ -49,23 +50,8 @@ function discoverSpecFiles(dir: string): string[] {
   return results.sort();
 }
 
-/** Extracts test title strings from a spec file's `test(...)` / `test.only`
- *  calls that carry an inline "@serial" substring in the title. This is a
- *  best-effort regex scan, not a full TS parse — sufficient to validate
- *  registry entries against real title text. */
 function findSerialTestTitles(fileAbsPath: string): string[] {
-  const content = fs.readFileSync(fileAbsPath, 'utf-8');
-  const titles: string[] = [];
-  // Matches test('...') / test.only('...') / test.skip('...') opening title strings.
-  const testCallRegex = /\btest(?:\.(?:only|skip|fixme))?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
-  let match: RegExpExecArray | null;
-  while ((match = testCallRegex.exec(content)) !== null) {
-    const title = match[2] ?? '';
-    if (title.includes('@serial')) {
-      titles.push(title);
-    }
-  }
-  return titles;
+  return findTaggedTestTitles(fileAbsPath, '@serial');
 }
 
 const allSpecFiles = discoverSpecFiles(FUNCTIONAL_TESTS_DIR);

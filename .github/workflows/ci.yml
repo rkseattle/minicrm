@@ -1075,12 +1075,27 @@ jobs:
             # SHARD_INDEX namespaces this invocation's healing-*.json worker files
             # (healing-shard${i}-worker*.json) so they don't collide with the next
             # sequential group's own worker-0/1 files in the shared test-results/ dir.
-            PLAYWRIGHT_JUNIT_OUTPUT_NAME="qa/e2e/test-results/serial-groups/group-${i}.xml" \
+            # PLAYWRIGHT_JUNIT_OUTPUT_FILE (not ...OUTPUT_NAME) is the env var
+            # Playwright's junit reporter actually checks BEFORE the config's own
+            # `outputFile` — see resolveOutputFile() in playwright's runner: an
+            # explicit `outputFile` in playwright.config.ts (as this repo sets)
+            # always wins over ...OUTPUT_NAME, since OUTPUT_NAME is only consulted
+            # when neither the env var nor `options.outputFile` resolved anything.
+            # --output gives each group its OWN artifacts directory: every
+            # `playwright test` invocation unconditionally clears its outputDir at
+            # startup (createRemoveOutputDirsTask in Playwright's runner, no public
+            # flag to disable it) — without per-group --output, group N+1 wipes the
+            # entire shared qa/e2e/test-results/ tree, deleting group N's just-written
+            # serial-groups/group-N.xml before the merge step ever runs. The JUnit
+            # file itself is written as a SIBLING of these scoped artifact dirs (not
+            # nested inside any of them), so no group's own clear-output step touches it.
+            PLAYWRIGHT_JUNIT_OUTPUT_FILE="qa/e2e/test-results/serial-groups/group-${i}.xml" \
             SHARD_INDEX="$i" \
               npx playwright test \
                 --config="$config_path" \
                 --project=desktop \
                 --workers="$workers" \
+                --output="qa/e2e/test-results/serial-groups/group-${i}-artifacts" \
                 --grep "@functional.*@serial|@serial.*@functional" || exit_code=$?
             echo "::endgroup::"
           done < <(jq -r '.[] | [.groupIndex, .configPath, .workers] | @tsv' qa/e2e/playwright.serial-groups.json)
