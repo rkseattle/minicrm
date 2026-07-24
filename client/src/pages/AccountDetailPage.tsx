@@ -488,6 +488,7 @@ export default function AccountDetailPage() {
                       <p
                         className="px-6 py-4 text-sm text-gray-500"
                         data-testid="linked-contacts-empty"
+                        role="status"
                       >
                         {t('accounts.linkedContactsEmpty')}
                       </p>
