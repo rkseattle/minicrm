@@ -142,6 +142,12 @@ function dedupeByTestId(tests: readonly SelectedTest[]): SelectedTest[] {
   return Array.from(byTestId.values());
 }
 
+/** An enclosing/calling unit to inherit candidates from — carries its OWN filePath, since findTestsForUnitAcrossBranches requires (filePath, unitKey) together (see that function's own docblock on why unitKey alone isn't globally unique). */
+export interface EnclosingUnit {
+  filePath: string;
+  unitKey: string;
+}
+
 /**
  * Selects the minimal set of affected tests for a set of changed units.
  *
@@ -149,14 +155,14 @@ function dedupeByTestId(tests: readonly SelectedTest[]): SelectedTest[] {
  *   against — ordinarily the diff's own head commit, since that's the
  *   revision the map was (or will be) built from.
  * @param changedUnits - Output of changeUnitResolver.resolveChangedUnits.
- * @param enclosingUnitKeysByUnitKey - For a changed unit with no direct
+ * @param enclosingUnitsByUnitKey - For a changed unit with no direct
  *   mapping (new code, or a genuinely unmapped unit), the enclosing/calling
- *   unit's key to inherit candidates from, if one is known. Callers resolve
- *   this from the same AST pass that produced changedUnits (e.g. a new
- *   method's enclosing class, or a new top-level function's nearest
- *   previously-mapped sibling) — this service has no AST access of its own
- *   and treats a unit as having no inheritance candidate when absent from
- *   this map, rather than guessing one.
+ *   unit to inherit candidates from, if one is known. Callers resolve this
+ *   from the same AST pass that produced changedUnits (e.g. a new method's
+ *   enclosing class, or a new top-level function's nearest previously-
+ *   mapped sibling) — this service has no AST access of its own and treats
+ *   a unit as having no inheritance candidate when absent from this map,
+ *   rather than guessing one.
  * @param scorer - Ranks each changed unit's own candidate tests (MINCRM-627).
  *   Defaults to mapBasedScorer (confidence-first, alphabetical tie-break —
  *   this function's own ranking logic prior to MINCRM-627). Swappable for
@@ -166,14 +172,18 @@ function dedupeByTestId(tests: readonly SelectedTest[]): SelectedTest[] {
 export async function selectTestsForChangedUnits(
   commitSha: string,
   changedUnits: readonly ChangedUnit[],
-  enclosingUnitKeysByUnitKey: ReadonlyMap<string, string> = new Map(),
+  enclosingUnitsByUnitKey: ReadonlyMap<string, EnclosingUnit> = new Map(),
   scorer: TestScorer = mapBasedScorer,
 ): Promise<TestSelectionResult> {
   const perUnitResults = await mapWithConcurrencyLimit(
     changedUnits,
     MAX_CONCURRENT_MAPPING_LOOKUPS,
     async (unit) => {
-      const directMatches = await findTestsForUnitAcrossBranches(commitSha, unit.unitKey);
+      const directMatches = await findTestsForUnitAcrossBranches(
+        commitSha,
+        unit.filePath,
+        unit.unitKey,
+      );
 
       if (directMatches.length > 0) {
         return {
@@ -188,12 +198,16 @@ export async function selectTestsForChangedUnits(
       // genuinely unmapped unit. Per MINCRM-624's AC, inherit candidates
       // from the enclosing/calling unit rather than treating this as
       // unconditionally unmapped.
-      const enclosingUnitKey = enclosingUnitKeysByUnitKey.get(unit.unitKey);
-      if (!enclosingUnitKey) {
+      const enclosingUnit = enclosingUnitsByUnitKey.get(unit.unitKey);
+      if (!enclosingUnit) {
         return { unit, tests: [] };
       }
 
-      const inheritedMatches = await findTestsForUnitAcrossBranches(commitSha, enclosingUnitKey);
+      const inheritedMatches = await findTestsForUnitAcrossBranches(
+        commitSha,
+        enclosingUnit.filePath,
+        enclosingUnit.unitKey,
+      );
       return {
         unit,
         tests: inheritedMatches.map((match) =>

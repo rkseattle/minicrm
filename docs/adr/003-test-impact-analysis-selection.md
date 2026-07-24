@@ -170,12 +170,46 @@ null-branch row. Looking it up via the mapping query API's own
 `findTestsForUnitWithConfidence`, which requires an **exact** `(unitKey, branchId)` match,
 would therefore always return zero results for exactly the functions most likely to have
 meaningful branch-level test coverage. The fix: a new, additive
-`coverageMappingService.findTestsForUnitAcrossBranches(commitSha, unitKey)` matches on
-`unit_key` alone, ignoring `branch_id` — `testSelectionService` now calls this instead.
-This is deliberately a **new function**, not a change to `findTestsForUnitWithConfidence`'s
-existing exact-match semantics — that function's documented, versioned contract
-(MINCRM-621) is unchanged and still used as-is by any other consumer requiring an exact
-identity match.
+`coverageMappingService.findTestsForUnitAcrossBranches(commitSha, filePath, unitKey)`
+matches on `(file_path, unit_key)`, ignoring `branch_id` — `testSelectionService` now calls
+this instead. This is deliberately a **new function**, not a change to
+`findTestsForUnitWithConfidence`'s existing exact-match semantics — that function's
+documented, versioned contract (MINCRM-621) is unchanged and still used as-is by any other
+consumer requiring an exact identity match.
+
+### 6a. Two follow-up bugs in the section-6 fixes themselves (found via a second Greptile review pass)
+
+Greptile's review of the section-6 fixes above caught two further, more subtle bugs in
+those very fixes:
+
+**A genuinely-deleted (not renamed) function was still unresolved.** The first version of
+`findRenamedAwayUnits` only emitted a `'deleted'` unit for an old boundary whose NAME
+disappeared AND whose BODY HASH survived (unchanged) elsewhere in the new file under a
+different name — i.e., only the rename case. A function removed OUTRIGHT from an
+otherwise-retained file (no rename, name gone, body gone too) fell through both this
+function and `resolveEnclosingUnitsForRanges`'s zero-width-anchor fix from section 6 — the
+anchor is checked only against the NEW file's AST, where a fully-removed function simply
+has no boundary at all to find. The fix: `findRenamedAwayUnits` now emits `'deleted'` for
+**every** old boundary whose name is gone from the new file, whether or not its body
+survives under a different name — a rename's old identity and an outright removal's
+identity both need retiring from the mapping engine's perspective, and both are equally
+invisible from the new side alone.
+
+**`findTestsForUnitAcrossBranches` lost file identity.** The initial version matched on
+`unit_key` alone. But `unit_key` is derived purely from a function's own qualified name +
+normalized body hash (see `structuralKeyService.ts`) — file path is never folded into the
+hash, and `coverage_units_identity_idx`'s own uniqueness is keyed on `(commit_sha,
+file_path, unit_key, branch_id)` for exactly this reason: two different files can
+legitimately produce the same `unit_key` for two unrelated, coincidentally-identical
+functions. Matching on `unit_key` alone would return coverage links from BOTH files,
+letting test selection attribute an unrelated file's tests to the actually-changed one.
+Fixed by adding `filePath` back into the match (`WHERE file_path = $2 AND unit_key = $3`)
+— still dropping only `branch_id`, not `file_path`. This required widening
+`selectTestsForChangedUnits`'s `enclosingUnitsByUnitKey` parameter from
+`Map<string, string>` (unitKey → unitKey) to `Map<string, EnclosingUnit>` (unitKey →
+`{filePath, unitKey}`), since the enclosing/calling unit's own file path is needed for the
+lookup and isn't necessarily identical to the changed unit's file (though it usually is,
+in practice).
 
 ### 7. Explicit git-ref validation before shelling out
 

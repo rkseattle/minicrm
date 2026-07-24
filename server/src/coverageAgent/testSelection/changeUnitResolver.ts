@@ -305,45 +305,45 @@ function classifyChange(
   return 'in-line';
 }
 
-/** The normalized-body-hash suffix of a `${name}#${hash}` structural unit key, or null for a legacy `name@line` key with no `#`. */
-function bodyHashOf(unitKey: string): string | null {
-  const hashIndex = unitKey.indexOf('#');
-  return hashIndex === -1 ? null : unitKey.slice(hashIndex + 1);
-}
-
 /**
  * Detects functions present in the OLD revision's boundaries whose name no
  * longer exists anywhere in the NEW revision — i.e. a function that was
- * renamed (or genuinely removed) rather than merely edited. classifyChange
- * alone only ever looks FORWARD from a new-side boundary to its old-side
- * namesake, so a rename (old name absent from the new file) is otherwise
- * only ever seen from the NEW side and reported as 'new' — the old
- * identity's own disappearance is never surfaced. This closes that gap by
- * walking backward from the old side.
+ * renamed OR genuinely removed outright, in either case within an otherwise-
+ * retained (not whole-file-deleted) file. classifyChange alone only ever
+ * looks FORWARD from a new-side boundary to its old-side namesake, so
+ * neither case is otherwise seen from the new side at all: a rename's old
+ * name is simply absent (its NEW name gets reported 'new', with the old
+ * identity's disappearance never surfaced), and an outright removal has NO
+ * new-side boundary whatsoever for changeUnitResolver's line-based
+ * resolution to ever reach — a pure-deletion hunk's own zero-width anchor
+ * (see resolveEnclosingUnitsForRanges) is checked against the NEW AST only,
+ * where a fully-removed function has no boundary to find at all, so the
+ * anchor silently resolves to nothing or to an unrelated adjacent function
+ * (found via Greptile PR review). This function closes BOTH gaps by walking
+ * backward from the old side, independent of whatever diffParser's hunk
+ * ranges did or didn't cover.
  *
- * A renamed function is identified by BODY match (same normalized-body-hash
- * suffix), not by name — the name is exactly what changed in a rename, so
- * matching on it would find nothing. A body match to a name that still
- * exists unchanged elsewhere in the new file (e.g. a genuine duplicate) is
- * treated as "not actually gone" and excluded, since that function's own
- * identity survives under its original name.
+ * Every old boundary whose name is gone from the new file is emitted as
+ * 'deleted' — whether or not its body survives under a different name
+ * elsewhere (a rename). Surfacing a rename's OLD identity as deleted too is
+ * intentional, not just a fallback for the "no rename detected" case: either
+ * way the old (name, body-hash) identity no longer exists in the new file
+ * and should be retired from the mapping engine's perspective, exactly like
+ * the whole-file-deletion path already does for every unit in a removed
+ * file. A name that still exists unchanged elsewhere in the new file is
+ * excluded — that function's own identity survives under its original name,
+ * so there is nothing to retire.
  */
 function findRenamedAwayUnits(
   oldBoundaries: readonly FunctionBoundary[],
   oldSourceText: string,
   newBoundaries: readonly FunctionBoundary[],
-  newSourceText: string,
 ): ChangedUnit[] {
   const newNames = new Set(newBoundaries.map((b) => b.name));
-  const newBodyHashes = new Set(
-    newBoundaries
-      .map((b) => bodyHashOf(deriveStructuralUnitKey(b.name, b.bodyRange, newSourceText) ?? ''))
-      .filter((hash): hash is string => hash !== null),
-  );
 
-  const renamedAway: ChangedUnit[] = [];
+  const removedOrRenamedAway: ChangedUnit[] = [];
   for (const oldBoundary of oldBoundaries) {
-    if (newNames.has(oldBoundary.name)) continue; // still present under the same name — not a rename.
+    if (newNames.has(oldBoundary.name)) continue; // still present under the same name — nothing to retire.
 
     const oldUnitKey = deriveStructuralUnitKey(
       oldBoundary.name,
@@ -352,22 +352,14 @@ function findRenamedAwayUnits(
     );
     if (!oldUnitKey) continue;
 
-    const oldBodyHash = bodyHashOf(oldUnitKey);
-    if (oldBodyHash !== null && newBodyHashes.has(oldBodyHash)) {
-      // Same body survives under a different name elsewhere in the new
-      // file — this old unit was renamed, not deleted outright. Surfacing
-      // it as 'deleted' retires its stale identity from the mapping
-      // engine's perspective, exactly like the whole-file-deletion path
-      // already does for every unit in a removed file.
-      renamedAway.push({
-        filePath: '', // filled in by the caller, which knows the correct (new) filePath.
-        unitKey: oldUnitKey,
-        branchId: null,
-        changeKind: 'deleted',
-      });
-    }
+    removedOrRenamedAway.push({
+      filePath: '', // filled in by the caller, which knows the correct (new) filePath.
+      unitKey: oldUnitKey,
+      branchId: null,
+      changeKind: 'deleted',
+    });
   }
-  return renamedAway;
+  return removedOrRenamedAway;
 }
 
 /**
@@ -468,18 +460,18 @@ async function resolveFileChange(
         : classifyChange(unitKey, boundary.name, oldBoundaries, oldSourceText),
   }));
 
-  // A function renamed within the diff is otherwise only ever seen from the
-  // NEW side (reported 'new' above) — its old identity's own disappearance
-  // is never surfaced without this pass. See findRenamedAwayUnits' own
-  // docblock for why body-hash matching, not name matching, is required.
+  // A function renamed OR removed outright within the diff is otherwise
+  // only ever seen (if at all) from the NEW side — a rename's new name
+  // reports 'new' above, and an outright removal has no new-side boundary
+  // for the loop above to ever reach at all. See findRenamedAwayUnits' own
+  // docblock for why this closes both gaps.
   if (oldSourceText !== null) {
-    const renamedAway = findRenamedAwayUnits(
+    const removedOrRenamedAway = findRenamedAwayUnits(
       oldBoundaries,
       oldSourceText,
       newBoundaries,
-      newSourceText,
     ).map((unit) => ({ ...unit, filePath: fileDiff.filePath }));
-    units.push(...renamedAway);
+    units.push(...removedOrRenamedAway);
   }
 
   return { units, unresolved: null };
