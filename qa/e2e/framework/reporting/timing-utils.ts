@@ -158,6 +158,15 @@ export function discoverSpecFiles(dir: string): string[] {
  * distinguish an actual test tag from the same substring appearing elsewhere
  * in the file (a comment, a variable name, prose in a JSDoc block, etc.),
  * which a plain `content.includes(tag)` check cannot do.
+ *
+ * Template literal titles (`` test(`... @serial ... ${x}`, ...) ``) ARE
+ * matched: the capture group's delimiter class includes backticks, and any
+ * `${...}` interpolation is captured as literal text alongside the static
+ * portions of the string, so a statically-written tag substring is still
+ * found. The one case this (or any static-analysis approach) cannot detect
+ * is the tag itself arriving only via interpolation, e.g.
+ * `` test(`some test ${tagVar}`, ...) `` where `tagVar` happens to equal
+ * '@serial' at runtime — no spec in this repo does that today.
  */
 export function findTaggedTestTitles(fileAbsPath: string, tag: string): string[] {
   const content = fs.readFileSync(fileAbsPath, 'utf-8');

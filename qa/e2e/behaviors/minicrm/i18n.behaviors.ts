@@ -29,34 +29,64 @@ export interface I18nBehaviorContext {
 // in the Node-targeted qa tsconfig (lib: ["ES2022"]).
 // ---------------------------------------------------------------------------
 
-/**
- * Switches the running app to 'pseudo' locale via the exposed window.i18n handle.
- * Returns a string error message if the switch fails, null on success.
- */
-const SWITCH_TO_PSEUDO = new Function(`
-  const w = window;
-  if (!w.i18n) return 'window.i18n is not defined — check main.tsx exposure';
-  return w.i18n.changeLanguage('pseudo').then(() => null).catch((e) => String(e));
-`) as () => Promise<string | null>;
-
 // ---------------------------------------------------------------------------
 // applyPseudoLocale()
 // ---------------------------------------------------------------------------
 
 /**
+ * Locks window.i18n so any FUTURE changeLanguage() call other than ours is a
+ * no-op — installed immediately before we switch to pseudo, so a delayed
+ * in-flight call from the app's own initial-load language resolution (see
+ * applyPseudoLocale's doc comment) cannot land afterward and overwrite it.
+ * Returns a string error message if window.i18n is not present, null on success.
+ */
+const LOCK_TO_PSEUDO = new Function(`
+  const w = window;
+  if (!w.i18n) return 'window.i18n is not defined — check main.tsx exposure';
+  const original = w.i18n.changeLanguage.bind(w.i18n);
+  w.i18n.changeLanguage = (lng, ...rest) => {
+    // Ignore any further call that isn't switching to pseudo — a no-op
+    // resolved promise is sufficient since no caller in this app awaits or
+    // reads changeLanguage()'s return value (it is always fired with void).
+    if (lng !== 'pseudo') return Promise.resolve();
+    return original(lng, ...rest);
+  };
+  return original('pseudo').then(() => null).catch((e) => String(e));
+`) as () => Promise<string | null>;
+
+/**
  * Switches the running app to pseudo locale via window.i18n and waits for the
  * nav to actually re-render with pseudo strings before returning.
  *
- * The locale switch is a pure client-side React state update — no network
- * request is involved — so `page.evaluate(SWITCH_TO_PSEUDO)` resolving only
- * confirms i18next's internal state changed, not that React has finished
- * re-rendering with the new strings. A `networkidle` wait afterward resolves
- * almost immediately (there is no network activity to wait for) and can
- * return before the re-render completes, letting the caller read stale
- * English text — a real observed race under CI load. Every pseudo.json
- * string is wrapped in `[...]` brackets (see client/src/locales/pseudo.json),
- * so waiting for that marker on a known always-rendered nav element (the
- * Dashboard link) is a reliable, specific DOM-condition wait instead.
+ * Two distinct races are guarded against here:
+ *
+ * 1. The locale switch is a pure client-side React state update — no network
+ *    request is involved — so the switch resolving only confirms i18next's
+ *    internal state changed, not that React has finished re-rendering with
+ *    the new strings. A `networkidle` wait afterward resolves almost
+ *    immediately (there is no network activity to wait for) and can return
+ *    before the re-render completes. Every pseudo.json string is wrapped in
+ *    `[...]` brackets (see client/src/locales/pseudo.json), so waiting for
+ *    that marker on a known always-rendered nav element (the Dashboard link)
+ *    is a reliable, specific DOM-condition wait instead.
+ *
+ * 2. A SEPARATE, easy-to-miss race: `useAuth` (client/src/hooks/useAuth.ts)
+ *    fires a one-time `applyResolvedLanguage()` call after the first
+ *    successful `/api/v1/auth/me` fetch on page load, which itself may fetch
+ *    `/api/v1/settings/default-language` and call `i18n.changeLanguage(...)`
+ *    if the user has no stored `preferred_language` (true for every ephemeral
+ *    test user). By the time this function runs, that HTTP response has
+ *    likely already arrived (the caller already waited for page-load
+ *    networkidle) — but the async chain from "response received" to
+ *    "changeLanguage() promise resolved and React re-rendered" is itself not
+ *    tracked by any network-based wait, and can still be in flight. If it
+ *    resolves AFTER this function's own pseudo switch, it silently overwrites
+ *    the locale back to the system default moments later — exactly the
+ *    failure observed in CI, where every string reverted to English despite
+ *    the DOM wait confirming pseudo strings had rendered moments earlier.
+ *    LOCK_TO_PSEUDO closes this race at its source (rather than polling for a
+ *    late overwrite after the fact) by monkey-patching `changeLanguage` to
+ *    reject any further call that isn't ours before the switch happens.
  *
  * @param context - Behavior context with page.
  */
@@ -75,7 +105,7 @@ export async function applyPseudoLocale(
     'page' in (pageOrContext as I18nBehaviorContext)
       ? (pageOrContext as I18nBehaviorContext).page
       : (pageOrContext as SafePage);
-  const err = await page.evaluate(SWITCH_TO_PSEUDO);
+  const err = await page.evaluate(LOCK_TO_PSEUDO);
   if (err) throw new Error(`applyPseudoLocale: ${err}`);
   await page.waitForFunction(
     `(document.querySelector('[data-testid="nav-top-dashboard"]')?.textContent ?? '').includes('[')`,

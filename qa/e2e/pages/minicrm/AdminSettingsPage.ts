@@ -93,13 +93,24 @@ export class AdminSettingsPage {
 
   /**
    * Returns a resolved locator for the admin settings page heading.
+   *
+   * The role-based fallback uses an EXACT name match on level-1 rather than a
+   * bare `heading` role with no name filter: an active settings tab renders
+   * its own h2/h3 sub-headings (e.g. "Navigation Layout" on the General tab)
+   * in the same DOM tree, so an unscoped heading role matches whichever tab
+   * is active too — see AutomationPage.headingLocator() for the identical
+   * failure mode.
    */
   async settingsHeadingLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'settings-heading' },
-          { type: 'role', value: 'heading' },
+          {
+            type: 'role',
+            value: 'heading',
+            options: { name: 'Admin Settings', exact: true, level: 1 },
+          },
         ],
         { intent: 'admin settings page heading' },
       )

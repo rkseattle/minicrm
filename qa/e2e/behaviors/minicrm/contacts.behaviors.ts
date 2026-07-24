@@ -935,6 +935,34 @@ export async function getContactAccountLink(context: ContactsBehaviorContext) {
   return detailPage.accountLinkLocator();
 }
 
+/**
+ * Waits until the `detail-account` element has finished its loading state.
+ *
+ * The client renders THREE different states under the same
+ * `data-testid="detail-account"` (see ContactDetailPage.tsx): a loading
+ * placeholder ("…"), the final `<a>` account link, or an unlinked "—" span.
+ * Because the testid never changes across states, `locator.waitFor({state:
+ * 'visible'})` on the primary testId strategy is satisfied by the FIRST of
+ * these to mount — almost always the loading placeholder — so a caller that
+ * immediately reads `.textContent()` afterward can read stale "…" text
+ * instead of waiting for the real value. Polling for the placeholder text to
+ * be gone (rather than for element existence/visibility, which the
+ * placeholder itself already satisfies) is the correct condition here.
+ *
+ * @param context - Behavior context with page.
+ * @param timeout - Maximum ms to wait.
+ */
+export async function waitForContactAccountLinkLoaded(
+  context: ContactsBehaviorContext,
+  timeout = 10_000,
+): Promise<void> {
+  await context.page.waitForFunction(
+    `document.querySelector('[data-testid="detail-account"]')?.textContent?.trim() !== '…'`,
+    undefined,
+    { timeout },
+  );
+}
+
 /** Asserts the contact not-found back-to-contacts link is visible. */
 export async function expectContactNotFoundBackLinkVisible(
   context: ContactsBehaviorContext,

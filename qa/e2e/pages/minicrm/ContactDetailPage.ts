@@ -481,13 +481,21 @@ export class ContactDetailPage {
 
   /**
    * Returns a resolved locator for the contact name heading.
+   *
+   * The role-based fallback is scoped to level: 1 rather than a bare
+   * `heading` role: the page renders several h2 sub-section headings in the
+   * same DOM tree, so an unscoped heading role matches all of them too — see
+   * AutomationPage.headingLocator() for the identical failure mode. The
+   * contact name itself is dynamic per-test data, so an exact-text match
+   * (used for the other fixes of this bug class) isn't viable here;
+   * level: 1 alone is sufficient since this page has exactly one h1.
    */
   async contactNameLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'contact-name' },
-          { type: 'role', value: 'heading' },
+          { type: 'role', value: 'heading', options: { level: 1 } },
         ],
         { intent: 'contact name heading on the contact detail page' },
       )

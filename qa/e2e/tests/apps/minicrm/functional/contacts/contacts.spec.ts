@@ -63,6 +63,7 @@ import {
   listContactsViaApi,
   patchContactAccount,
   getContactAccountLink,
+  waitForContactAccountLinkLoaded,
   expectContactsPaginationVisible,
   clickContactExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/contacts.behaviors.js';
@@ -551,6 +552,7 @@ test('@functional F2-A1: link contact to account → contact appears in account 
   await navigateToContact(page, contact.id);
 
   // The detail-account element should show the account name.
+  await waitForContactAccountLinkLoaded({ page });
   const accountLocator = await getContactAccountLink({ page });
   await accountLocator.waitFor({ state: 'visible', timeout: 10_000 });
   const accountText = await accountLocator.textContent();
@@ -610,6 +612,7 @@ test('@functional F2-A3: contact detail view shows associated account name with 
   await navigateToContact(page, contact.id);
 
   // Confirm account name is a link pointing to the account's detail page.
+  await waitForContactAccountLinkLoaded({ page });
   const accountLink = await getContactAccountLink({ page });
   await accountLink.waitFor({ state: 'visible', timeout: 10_000 });
   const href = await accountLink.getAttribute('href');

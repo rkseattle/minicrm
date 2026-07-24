@@ -42,13 +42,20 @@ export class ReportsPage {
 
   /**
    * Returns a resolved locator for the reports page heading.
+   *
+   * The role-based fallback uses an EXACT name match rather than /report/i:
+   * the active sub-report (Win/Loss, Activity Volume, or Stage Trend) renders
+   * its own <h1> containing "Report" in the same DOM tree, so the loose regex
+   * matches both the shell heading and whichever sub-report is active. "Reports"
+   * (the shell heading's fixed text) never varies, so exact match is safe here
+   * — see AutomationPage.headingLocator() for the identical failure mode.
    */
   async headingLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'reports-page-heading' },
-          { type: 'role', value: 'heading', options: { name: /report/i } },
+          { type: 'role', value: 'heading', options: { name: 'Reports', exact: true } },
         ],
         { intent: 'main heading on the reports page' },
       )
@@ -163,13 +170,22 @@ export class ReportsPage {
 
   /**
    * Returns a resolved locator for the Stage Trend report heading.
+   *
+   * The role-based fallback uses an EXACT name match rather than /stage/i:
+   * the table sub-heading "Breakdown by stage and period" also matches that
+   * regex once the report has data — see AutomationPage.headingLocator() for
+   * the identical failure mode.
    */
   async stageTrendHeadingLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'stage-trend-report-heading' },
-          { type: 'role', value: 'heading', options: { name: /stage/i } },
+          {
+            type: 'role',
+            value: 'heading',
+            options: { name: 'Pipeline Stage Trend', exact: true },
+          },
         ],
         { intent: 'Pipeline Stage Trend report section heading' },
       )
