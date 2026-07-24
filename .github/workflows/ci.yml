@@ -181,8 +181,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # MINCRM-666: two high-severity advisories have no non-breaking fix today and
+      # are allowlisted below (with justification); everything else still fails the
+      # build. Revisit and remove entries from ALLOWED_ADVISORIES as upstream patches
+      # ship — see MINCRM-666.
+      #   GHSA-qwww-vcr4-c8h2 (react-router, RSC-mode CSRF bypass) — not exploitable:
+      #     this app is a client-side SPA using plain BrowserRouter (client/src/main.tsx),
+      #     no RouterProvider, no RSC/server-component APIs. The only "fix" available
+      #     (react-router-dom@7.11.0) falls into a different, far worse vulnerable range
+      #     (6.0.0 - 7.17.0, 14 advisories including an RCE) — a strict regression.
+      #   GHSA-pm4m-ph32-ghv5 (js-yaml, DoS via exponential parse time) — transitive
+      #     dependency of promptfoo (qa/-only devDependency, AI eval CLI; already on the
+      #     latest promptfoo release, which still vendors this js-yaml version). Its
+      #     js-yaml usage parses developer-authored eval config files in this repo, not
+      #     untrusted external input.
       - name: Audit dependencies for high/critical vulnerabilities
-        run: npm audit --audit-level=high
+        run: |
+          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5"
+
+          AUDIT_JSON=$(npm audit --audit-level=high --json || true)
+
+          UNALLOWED=$(echo "$AUDIT_JSON" | jq -r --arg allowed "$ALLOWED_ADVISORIES" '
+            (.vulnerabilities // {}) | to_entries[] | .value.via[]
+            | select(type == "object")
+            | .url | split("/")[-1]
+            | select(. as $id | ($allowed | split(" ") | index($id)) | not)
+          ')
+
+          if [ -n "$UNALLOWED" ]; then
+            echo "::error::npm audit found high/critical advisories not on the allowlist:"
+            echo "$UNALLOWED"
+            echo "$AUDIT_JSON" | jq '.vulnerabilities'
+            exit 1
+          fi
+
+          echo "All high/critical advisories are on the documented allowlist (MINCRM-666)."
 
   server-tests:
     name: Phase 2 - Server Unit Tests
