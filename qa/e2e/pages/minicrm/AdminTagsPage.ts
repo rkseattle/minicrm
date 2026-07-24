@@ -185,13 +185,26 @@ export class AdminTagsPage {
   /**
    * Clicks the Save button inside the rename form for a specific tag.
    *
+   * Role fallback scoped to this tag's own row (`within`) — the Pipelines &
+   * Fields settings page renders THREE "Save" buttons under the `tags.save`
+   * label (the new-tag creation form, twice for its pending/idle text
+   * variants, plus this rename-save button), so an unscoped
+   * `role('button', {name: 'Save'})` fallback would ambiguously match more
+   * than one of them in strict mode (same bug class as clickDelete's own
+   * fix — see that method's docblock).
+   *
    * @param tagId - Tag UUID.
    */
   async clickRenameSave(tagId: string): Promise<void> {
     await this.page.click(
       [
         { type: 'testId', value: `rename-save-${tagId}` },
-        { type: 'role', value: 'button', options: { name: t('tags.save'), exact: false } },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('tags.save'), exact: false },
+          within: `admin-tag-row-${tagId}`,
+        },
       ],
       { intent: 'save button in tag rename form' },
     );
@@ -200,13 +213,30 @@ export class AdminTagsPage {
   /**
    * Clicks the Delete button for a specific tag.
    *
+   * Role fallback scoped to this tag's own row (`within: admin-tag-row-
+   * ${tagId}`) — the Pipelines & Fields settings page co-renders
+   * CustomisationSettings' pipeline-stage delete buttons (each also labeled
+   * "Delete") alongside TagManagementSection on the SAME page. An unscoped
+   * `role('button', {name: 'Delete'})` fallback is therefore always
+   * ambiguous whenever any pipeline stages exist (seed data guarantees they
+   * do) — under CI contention, if the primary testId probe is slow enough
+   * to exhaust its fallback window, HealingLocator falls through to this
+   * role strategy and throws a strict-mode violation matching every
+   * pipeline-stage delete button too (found via CI failure investigation,
+   * MINCRM-666 follow-up).
+   *
    * @param tagId - Tag UUID.
    */
   async clickDelete(tagId: string): Promise<void> {
     await this.page.click(
       [
         { type: 'testId', value: `delete-tag-${tagId}` },
-        { type: 'role', value: 'button', options: { name: t('tags.delete'), exact: false } },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: t('tags.delete'), exact: false },
+          within: `admin-tag-row-${tagId}`,
+        },
       ],
       { intent: 'delete button for tag row' },
     );
