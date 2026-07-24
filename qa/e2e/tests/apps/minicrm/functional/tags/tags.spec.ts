@@ -105,9 +105,14 @@ test(
 
     await navigateToAdminTags({ page });
 
-    // 15s tolerates real CI contention from concurrent tests in this file
-    // hitting the same shared tags list/dev server.
-    await expectAdminTagsPaginationVisible({ page }, 15_000);
+    // This page gates on two sequential server round-trips before Pagination
+    // renders: GET /api/v1/feature-flags/me (intercepted by withFlags(), but
+    // still a real fetch — see helpers.ts) then the tags list query. Under CI
+    // contention (this test runs concurrently with F8-TG3/F8-TG4 in the same
+    // file against a 2-worker shard), that combined latency has been observed
+    // at ~14.7s against a prior 15s budget — 25s gives real headroom rather
+    // than chasing the timeout closer each time this flakes.
+    await expectAdminTagsPaginationVisible({ page }, 25_000);
   },
 );
 
