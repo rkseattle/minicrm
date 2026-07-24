@@ -11,12 +11,47 @@ permissions:
   pull-requests: write
   contents: write
 
-# MINCRM-549: Single source of truth for shard count.
-# Update this value (and the matrix.shard list in e2e-functional) when tuning parallelism.
-env:
-  TOTAL_SHARDS: 4
-
 jobs:
+  # MINCRM-662: Single source of truth for shard/worker count, computed from a
+  # capacity probe run on this job's own runner (every shard in the e2e-functional
+  # matrix runs on an identically-sized runner, so this one measurement is
+  # representative). Replaces the old hand-maintained TOTAL_SHARDS env var and
+  # --workers=2 CLI flags — see qa/e2e/framework/reporting/capacity.ts and
+  # docs/dev/e2e-performance.md. Falls back to today's known-good 4 shards / 2
+  # workers if the probe can't determine CPU count, so this is a strict
+  # improvement with no regression risk.
+  capacity-probe:
+    name: Detect runner capacity (MINCRM-662)
+    runs-on: ubuntu-latest
+    outputs:
+      total-shards: ${{ steps.plan.outputs.shards }}
+      workers: ${{ steps.plan.outputs.workers }}
+      shard-matrix: ${{ steps.plan.outputs.shard-matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compute capacity plan
+        id: plan
+        run: |
+          PLAN=$(npm run --silent e2e:capacity-plan)
+          echo "Capacity plan: $PLAN"
+          SHARDS=$(echo "$PLAN" | node -pe 'JSON.parse(require("fs").readFileSync(0, "utf-8")).shards')
+          WORKERS=$(echo "$PLAN" | node -pe 'JSON.parse(require("fs").readFileSync(0, "utf-8")).workers')
+          SHARD_MATRIX=$(node -pe "JSON.stringify(Array.from({length: $SHARDS}, (_, i) => i + 1))")
+          {
+            echo "shards=$SHARDS"
+            echo "workers=$WORKERS"
+            echo "shard-matrix=$SHARD_MATRIX"
+          } >> "$GITHUB_OUTPUT"
+
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
@@ -404,7 +439,7 @@ jobs:
   # branch) this step exits 0 and e2e-functional falls back to Playwright's native --shard.
   e2e-timing-setup:
     name: Phase 3 - E2E Timing Setup (LPT shard config)
-    needs: [server-tests, client-tests, changes]
+    needs: [server-tests, client-tests, changes, capacity-probe]
     if: |
       always() &&
       (needs.server-tests.result == 'success' || needs.server-tests.result == 'skipped') &&
@@ -439,10 +474,10 @@ jobs:
       - name: Generate shard configs (LPT assignment)
         if: steps.check-baseline.outputs.exists == 'true'
         run: |
-          for i in $(seq 0 $(( ${{ env.TOTAL_SHARDS }} - 1 ))); do
+          for i in $(seq 0 $(( ${{ needs.capacity-probe.outputs.total-shards }} - 1 ))); do
             npx tsx qa/e2e/scripts/gen-shard-config.ts \
               --shard-index="$i" \
-              --total-shards=${{ env.TOTAL_SHARDS }}
+              --total-shards=${{ needs.capacity-probe.outputs.total-shards }}
           done
 
       - name: Upload shard configs artifact
@@ -457,13 +492,13 @@ jobs:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
     # suites; they run alongside all functional tests in the same phase.
-    # MINCRM-217: 4 shards × 2 workers = 8 parallel test slots per project;
-    # 2 workers matches GitHub free-tier runner vCPU count (2 vCPUs per ubuntu-latest).
-    # Total jobs: 2 projects × 4 shards = 8 concurrent runners.
+    # MINCRM-217: shard/worker counts are computed by capacity-probe (MINCRM-662);
+    # today's known-good values are 4 shards x 2 workers = 8 parallel test slots per
+    # project (2 projects x 4 shards = 8 concurrent runners) — see capacity-probe job.
     # MINCRM-549: Shard index is 1-based in the matrix (matching --shard=K/N convention)
     # but 0-based in the generated config filename (playwright.shard.0.config.ts).
-    name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
-    needs: [server-tests, client-tests, changes, e2e-timing-setup]
+    name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/${{ needs.capacity-probe.outputs.total-shards }})
+    needs: [server-tests, client-tests, changes, capacity-probe, e2e-timing-setup]
     # MINCRM-271: always() prevents GitHub from auto-skipping this job when server-tests
     # or client-tests were legitimately skipped (qa-only change). The explicit result checks
     # preserve the original Phase 2 gate: e2e still blocks on a unit test failure.
@@ -481,7 +516,7 @@ jobs:
       fail-fast: false
       matrix:
         project: [desktop, mobile-web]
-        shard: [1, 2, 3, 4]
+        shard: ${{ fromJSON(needs.capacity-probe.outputs.shard-matrix) }}
 
     services:
       postgres:
@@ -665,29 +700,31 @@ jobs:
       # playwright.shard.<N>.config.ts (0-indexed) from the e2e-timing-setup job, which
       # assigns spec files via LPT bin-packing. When the baseline is absent (first run on
       # a fresh branch), the fallback native --shard=K/N is used instead.
-      - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217, MINCRM-549)
+      - name: Run functional test suite (MINCRM-137, MINCRM-193, MINCRM-217, MINCRM-549, MINCRM-662)
         # MINCRM-324: Exclude visual-regression spec — it requires an isolated DB to
         # avoid pixel diffs caused by other shards' seeded data appearing on the board.
         # Visual tests run exclusively in the update-visual-snapshots job.
         # MINCRM-549: shard index in the matrix is 1-based; config filename is 0-based.
+        # MINCRM-662: worker count comes from capacity-probe instead of a hardcoded flag.
         run: |
           SHARD_ZERO=$(( ${{ matrix.shard }} - 1 ))
           SHARD_CONFIG="qa/e2e/playwright.shard.${SHARD_ZERO}.config.ts"
+          WORKERS=${{ needs.capacity-probe.outputs.workers }}
           if [ -f "$SHARD_CONFIG" ]; then
             echo "Using LPT shard config: $SHARD_CONFIG"
             npx playwright test \
               --config="$SHARD_CONFIG" \
               --project=${{ matrix.project }} \
-              --workers=2 \
+              --workers="$WORKERS" \
               --grep @functional \
               --grep-invert "visual-regression|serial"
           else
-            echo "::warning::LPT shard config not found — falling back to native --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }}"
+            echo "::warning::LPT shard config not found — falling back to native --shard=${{ matrix.shard }}/${{ needs.capacity-probe.outputs.total-shards }}"
             npx playwright test \
               --config=qa/e2e/playwright.config.ts \
               --project=${{ matrix.project }} \
-              --shard=${{ matrix.shard }}/${{ env.TOTAL_SHARDS }} \
-              --workers=2 \
+              --shard=${{ matrix.shard }}/${{ needs.capacity-probe.outputs.total-shards }} \
+              --workers="$WORKERS" \
               --grep @functional \
               --grep-invert "visual-regression|serial" \
               qa/e2e/tests/apps/minicrm/functional/
@@ -809,10 +846,11 @@ jobs:
           retention-days: 14
 
   # MINCRM-237: Sentinel job — single named status check for branch protection.
-  # GitHub aggregates needs.e2e-functional.result across all 8 matrix permutations:
+  # GitHub aggregates needs.e2e-functional.result across all matrix permutations
+  # (2 projects x however many shards capacity-probe computed, MINCRM-662):
   # if any shard fails or is cancelled, the result is not "success" and this job
   # exits 1. Branch protection requires "E2E all shards passed" by name rather than
-  # enumerating all 8 individual shard check names.
+  # enumerating each individual shard check name.
   e2e-all-shards-passed:
     name: E2E all shards passed
     needs: e2e-functional
@@ -1081,7 +1119,7 @@ jobs:
   #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
   e2e-aggregate:
     name: Aggregate E2E Results (${{ matrix.project }})
-    needs: [e2e-functional, changes]
+    needs: [e2e-functional, changes, capacity-probe]
     # always() is required because e2e-functional itself uses always() to run when its
     # upstream deps (server-tests, client-tests) were skipped. GitHub records e2e-functional's
     # combined matrix result as 'skipped' from the perspective of downstream jobs in that
@@ -1140,6 +1178,9 @@ jobs:
           ./blob-report
 
       - name: Merge JUnit XML results
+        env:
+          # MINCRM-662: sourced from capacity-probe instead of a hardcoded constant.
+          EXPECTED_SHARDS: ${{ needs.capacity-probe.outputs.total-shards }}
         run: |
           node --input-type=module << 'EOF'
           import { readFileSync, writeFileSync } from 'fs';
@@ -1149,7 +1190,7 @@ jobs:
             'find ./shard-artifacts -name "results.xml"'
           ).toString().trim().split('\n').filter(Boolean);
 
-          const EXPECTED_SHARDS = 4;
+          const EXPECTED_SHARDS = parseInt(process.env.EXPECTED_SHARDS, 10);
           if (files.length === 0) {
             console.error('No results.xml files found — all shards failed before Playwright ran.');
             process.exit(1);
