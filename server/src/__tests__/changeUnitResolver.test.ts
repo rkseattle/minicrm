@@ -132,9 +132,16 @@ describe('resolveChangedUnits', () => {
       await import('../coverageAgent/pipeline/structuralKeyService.js');
     const sourceText =
       'export function base() {\n  return 1;\n}\n\nexport function sibling() {\n  return 2;\n}\n';
+    // Body-only range (the `{ ... }` block, matching istanbul's own `loc` —
+    // NOT the full `export function sibling() { ... }` declaration) —
+    // deriveStructuralUnitKey must be hashing only the body, exactly as the
+    // mapping engine's own qualifiedUnitKey does (see
+    // coverageSymbolicationService.ts, which passes `mapping.loc`, never
+    // `mapping.decl`), so a pure rename with no logic change hashes
+    // identically before and after.
     const expectedKey = deriveStructuralUnitKey(
       'sibling',
-      { start: { line: 5, column: 0 }, end: { line: 7, column: 1 } },
+      { start: { line: 5, column: 26 }, end: { line: 7, column: 1 } },
       sourceText,
     );
 
@@ -178,5 +185,69 @@ describe('resolveChangedUnits', () => {
     expect(result.changedUnits).toEqual([]);
     expect(result.unresolvedFileChanges).toHaveLength(1);
     expect(result.unresolvedFileChanges[0].filePath).toBe('a.ts');
+  });
+
+  it('attributes a change inside a same-line nested callback to the INNERMOST function, not the outer one (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function outer() {\n  const result = items.map((x) => x.foo(() => 1));\n  return result;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Only the innermost arrow's own literal changes (1 -> 2); the outer
+    // arrow's and outer()'s own bodies are otherwise byte-identical.
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function outer() {\n  const result = items.map((x) => x.foo(() => 2));\n  return result;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'edit innermost callback']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+    const result = await resolveChangedUnits(diffs, repoRoot, baseSha, headSha);
+
+    // If the resolver mis-attributed this to outer() (or the outer arrow),
+    // it would report changeKind 'refactor' (outer()'s and the outer
+    // arrow's own body hashes are UNCHANGED — only the innermost arrow's
+    // literal differs) instead of 'in-line', since classifyChange returns
+    // 'refactor' precisely when the reported unit's own hash didn't
+    // change. Reporting 'in-line' here is only correct if the INNERMOST
+    // arrow (whose body genuinely changed) was the one actually resolved.
+    expect(result.changedUnits).toHaveLength(1);
+    expect(result.changedUnits[0].changeKind).toBe('in-line');
+    expect(result.changedUnits[0].unitKey).toMatch(/^<anonymous>#/);
+  });
+
+  it('emits both a deleted unit for the OLD name and a new unit for the NEW name when a function is renamed within a file (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(join(repoRoot, 'a.ts'), 'export function oldName() {\n  return 42;\n}\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Same body, different name — a same-file rename with no logic change.
+    await writeFile(join(repoRoot, 'a.ts'), 'export function newName() {\n  return 42;\n}\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'rename oldName to newName']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+    const result = await resolveChangedUnits(diffs, repoRoot, baseSha, headSha);
+
+    const deletedUnits = result.changedUnits.filter((u) => u.changeKind === 'deleted');
+    const newUnits = result.changedUnits.filter((u) => u.changeKind === 'new');
+
+    expect(deletedUnits).toHaveLength(1);
+    expect(deletedUnits[0].unitKey).toMatch(/^oldName#/);
+    expect(newUnits).toHaveLength(1);
+    expect(newUnits[0].unitKey).toMatch(/^newName#/);
+    // Same body in both revisions — the two units' hash suffixes must match,
+    // proving this was recognized as a rename (body match), not treated as
+    // an unrelated add+delete pair.
+    expect(deletedUnits[0].unitKey.split('#')[1]).toBe(newUnits[0].unitKey.split('#')[1]);
   });
 });

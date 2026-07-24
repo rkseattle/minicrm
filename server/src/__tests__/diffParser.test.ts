@@ -13,7 +13,12 @@ import { promisify } from 'util';
 import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { parseGitDiff, GitDiffError } from '../coverageAgent/testSelection/diffParser.js';
+import {
+  parseGitDiff,
+  GitDiffError,
+  assertSafeGitRef,
+  UnsafeGitRefError,
+} from '../coverageAgent/testSelection/diffParser.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -160,5 +165,35 @@ describe('parseGitDiff', () => {
     await git(repoRoot, ['commit', '--allow-empty', '-m', 'base']);
 
     await expect(parseGitDiff('not-a-real-ref', 'HEAD', repoRoot)).rejects.toThrow(GitDiffError);
+  });
+
+  it('refuses a ref beginning with "-" (baseRef) before ever shelling out to git', async () => {
+    repoRoot = await initRepo();
+    await git(repoRoot, ['commit', '--allow-empty', '-m', 'base']);
+
+    await expect(parseGitDiff('--output=/tmp/x', 'HEAD', repoRoot)).rejects.toThrow(
+      UnsafeGitRefError,
+    );
+  });
+
+  it('refuses a ref beginning with "-" (headRef)', async () => {
+    repoRoot = await initRepo();
+    await git(repoRoot, ['commit', '--allow-empty', '-m', 'base']);
+    const sha = await gitRevParseHead(repoRoot);
+
+    await expect(parseGitDiff(sha, '--exec=x', repoRoot)).rejects.toThrow(UnsafeGitRefError);
+  });
+});
+
+describe('assertSafeGitRef', () => {
+  it('accepts ordinary refs (branch names, SHAs, remote-qualified branches)', () => {
+    expect(() => assertSafeGitRef('main')).not.toThrow();
+    expect(() => assertSafeGitRef('origin/main')).not.toThrow();
+    expect(() => assertSafeGitRef('a1b2c3d4e5f6')).not.toThrow();
+  });
+
+  it('rejects a ref beginning with "-"', () => {
+    expect(() => assertSafeGitRef('-x')).toThrow(UnsafeGitRefError);
+    expect(() => assertSafeGitRef('--force')).toThrow(UnsafeGitRefError);
   });
 });

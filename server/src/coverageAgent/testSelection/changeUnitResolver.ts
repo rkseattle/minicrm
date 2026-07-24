@@ -33,7 +33,7 @@ import {
   deriveStructuralUnitKey,
   type StructuralKeyLocation,
 } from '../pipeline/structuralKeyService.js';
-import type { ChangedLineRange, FileDiff } from './diffParser.js';
+import { assertSafeGitRef, type ChangedLineRange, type FileDiff } from './diffParser.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -65,7 +65,10 @@ export interface ChangeDetectionResult {
 
 interface FunctionBoundary {
   name: string;
-  range: StructuralKeyLocation;
+  /** Full node span (signature through closing brace) — used ONLY for line-containment ("which function encloses this changed line"), matching istanbul's own `decl.start` through `loc.end` convention (see coverageSymbolicationService.ts's qualifiedUnitKeyForLine). */
+  containmentRange: StructuralKeyLocation;
+  /** Body-only span (istanbul's `loc`, excluding the `function name(...)` signature) — the ONLY range ever passed to deriveStructuralUnitKey, matching the mapping engine's own hash derivation exactly (coverageSymbolicationService.ts's qualifiedUnitKey passes `mapping.loc`, never `mapping.decl`). Hashing the full node (including the name) would make a function's unit_key change on a pure rename with no logic change, which is NOT how the mapping engine itself derives unit_key. */
+  bodyRange: StructuralKeyLocation;
 }
 
 /** Best-effort qualified name for a function-like node: method/property name when available, else '<anonymous>' (matching structuralKeyService's own fallback convention). */
@@ -96,25 +99,34 @@ function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
   );
 }
 
+/** Converts a TS source position to a 1-based-line/0-based-column point, matching StructuralKeyLocation/istanbul's Location shape. */
+function toLocation(sourceFile: ts.SourceFile, pos: number): { line: number; column: number } {
+  const point = sourceFile.getLineAndCharacterOfPosition(pos);
+  return { line: point.line + 1, column: point.character };
+}
+
 /**
- * Walks a source file's AST and returns every function-like node's own name
- * and {start,end} range (1-based line, 0-based column — matching
- * StructuralKeyLocation/istanbul's Location shape). Ordered innermost-last
- * is NOT guaranteed; callers that need "most specific enclosing function"
- * must pick the smallest range themselves (see findEnclosingFunction).
+ * Walks a source file's AST and returns every function-like node's own name,
+ * containment range (full node span), and body range (see FunctionBoundary's
+ * own docblock for why these must be tracked separately). Ordered
+ * innermost-last is NOT guaranteed; callers that need "most specific
+ * enclosing function" must pick the smallest range themselves (see
+ * findEnclosingFunction).
  */
 function findFunctionBoundaries(sourceFile: ts.SourceFile): FunctionBoundary[] {
   const boundaries: FunctionBoundary[] = [];
 
   function visit(node: ts.Node): void {
     if (isFunctionLike(node) && node.body) {
-      const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-      const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
       boundaries.push({
         name: qualifiedNameOf(node),
-        range: {
-          start: { line: start.line + 1, column: start.character },
-          end: { line: end.line + 1, column: end.character },
+        containmentRange: {
+          start: toLocation(sourceFile, node.getStart(sourceFile)),
+          end: toLocation(sourceFile, node.getEnd()),
+        },
+        bodyRange: {
+          start: toLocation(sourceFile, node.body.getStart(sourceFile)),
+          end: toLocation(sourceFile, node.body.getEnd()),
         },
       });
     }
@@ -125,7 +137,36 @@ function findFunctionBoundaries(sourceFile: ts.SourceFile): FunctionBoundary[] {
   return boundaries;
 }
 
-/** The smallest (most specific) boundary whose range fully contains the given 1-based line, or undefined if the line is outside every function (e.g. top-level module code). */
+/**
+ * True if `inner`'s range is nested inside (or equal to) `outer`'s range —
+ * compares the FULL {line, column} position, not just line, so two
+ * function-like nodes sharing identical start/end LINES (routine for
+ * same-line nested callbacks, e.g. `items.map((x) => x.foo(() => bar()))`)
+ * are still ordered correctly by their column positions rather than tying.
+ */
+function isNestedWithin(inner: StructuralKeyLocation, outer: StructuralKeyLocation): boolean {
+  const startsAfterOrAt =
+    inner.start.line > outer.start.line ||
+    (inner.start.line === outer.start.line && inner.start.column >= outer.start.column);
+  const endsBeforeOrAt =
+    inner.end.line < outer.end.line ||
+    (inner.end.line === outer.end.line && inner.end.column <= outer.end.column);
+  return startsAfterOrAt && endsBeforeOrAt;
+}
+
+/**
+ * The smallest (most specific) boundary whose range fully contains the
+ * given 1-based line, or undefined if the line is outside every function
+ * (e.g. top-level module code).
+ *
+ * Ties on line-span alone (same-line nested functions) are broken by
+ * CONTAINMENT (isNestedWithin), not first-encountered order — a boundary
+ * that is itself nested inside another candidate is always preferred over
+ * its container, regardless of AST traversal order. Line-span remains the
+ * primary key so a large enclosing function isn't mistakenly preferred over
+ * a smaller nested one that happens to be visited first with an
+ * accidentally-equal span.
+ */
 function findEnclosingFunction(
   boundaries: readonly FunctionBoundary[],
   line: number,
@@ -134,11 +175,22 @@ function findEnclosingFunction(
   let bestSpan = Infinity;
 
   for (const boundary of boundaries) {
-    if (line < boundary.range.start.line || line > boundary.range.end.line) continue;
-    const span = boundary.range.end.line - boundary.range.start.line;
+    const { containmentRange } = boundary;
+    if (line < containmentRange.start.line || line > containmentRange.end.line) continue;
+    const span = containmentRange.end.line - containmentRange.start.line;
+
     if (span < bestSpan) {
       best = boundary;
       bestSpan = span;
+    } else if (
+      span === bestSpan &&
+      best &&
+      isNestedWithin(containmentRange, best.containmentRange)
+    ) {
+      // Same line-span as the current best, but this candidate is actually
+      // nested INSIDE it (e.g. an inner one-liner callback) — prefer the
+      // more specific, contained boundary.
+      best = boundary;
     }
   }
 
@@ -161,7 +213,7 @@ function resolveEnclosingUnitsForRanges(
       const boundary = findEnclosingFunction(boundaries, line);
       if (!boundary) continue;
 
-      const unitKey = deriveStructuralUnitKey(boundary.name, boundary.range, sourceText);
+      const unitKey = deriveStructuralUnitKey(boundary.name, boundary.bodyRange, sourceText);
       if (!unitKey) continue;
 
       if (!byUnitKey.has(unitKey)) {
@@ -218,7 +270,11 @@ function classifyChange(
     return 'new';
   }
 
-  const oldUnitKey = deriveStructuralUnitKey(oldBoundary.name, oldBoundary.range, oldSourceText);
+  const oldUnitKey = deriveStructuralUnitKey(
+    oldBoundary.name,
+    oldBoundary.bodyRange,
+    oldSourceText,
+  );
   if (oldUnitKey === newUnitKey) {
     // Same name, same body hash in both revisions — the diff touched this
     // function's range, but its own normalized body is identical, so the
@@ -227,6 +283,71 @@ function classifyChange(
   }
 
   return 'in-line';
+}
+
+/** The normalized-body-hash suffix of a `${name}#${hash}` structural unit key, or null for a legacy `name@line` key with no `#`. */
+function bodyHashOf(unitKey: string): string | null {
+  const hashIndex = unitKey.indexOf('#');
+  return hashIndex === -1 ? null : unitKey.slice(hashIndex + 1);
+}
+
+/**
+ * Detects functions present in the OLD revision's boundaries whose name no
+ * longer exists anywhere in the NEW revision — i.e. a function that was
+ * renamed (or genuinely removed) rather than merely edited. classifyChange
+ * alone only ever looks FORWARD from a new-side boundary to its old-side
+ * namesake, so a rename (old name absent from the new file) is otherwise
+ * only ever seen from the NEW side and reported as 'new' — the old
+ * identity's own disappearance is never surfaced. This closes that gap by
+ * walking backward from the old side.
+ *
+ * A renamed function is identified by BODY match (same normalized-body-hash
+ * suffix), not by name — the name is exactly what changed in a rename, so
+ * matching on it would find nothing. A body match to a name that still
+ * exists unchanged elsewhere in the new file (e.g. a genuine duplicate) is
+ * treated as "not actually gone" and excluded, since that function's own
+ * identity survives under its original name.
+ */
+function findRenamedAwayUnits(
+  oldBoundaries: readonly FunctionBoundary[],
+  oldSourceText: string,
+  newBoundaries: readonly FunctionBoundary[],
+  newSourceText: string,
+): ChangedUnit[] {
+  const newNames = new Set(newBoundaries.map((b) => b.name));
+  const newBodyHashes = new Set(
+    newBoundaries
+      .map((b) => bodyHashOf(deriveStructuralUnitKey(b.name, b.bodyRange, newSourceText) ?? ''))
+      .filter((hash): hash is string => hash !== null),
+  );
+
+  const renamedAway: ChangedUnit[] = [];
+  for (const oldBoundary of oldBoundaries) {
+    if (newNames.has(oldBoundary.name)) continue; // still present under the same name — not a rename.
+
+    const oldUnitKey = deriveStructuralUnitKey(
+      oldBoundary.name,
+      oldBoundary.bodyRange,
+      oldSourceText,
+    );
+    if (!oldUnitKey) continue;
+
+    const oldBodyHash = bodyHashOf(oldUnitKey);
+    if (oldBodyHash !== null && newBodyHashes.has(oldBodyHash)) {
+      // Same body survives under a different name elsewhere in the new
+      // file — this old unit was renamed, not deleted outright. Surfacing
+      // it as 'deleted' retires its stale identity from the mapping
+      // engine's perspective, exactly like the whole-file-deletion path
+      // already does for every unit in a removed file.
+      renamedAway.push({
+        filePath: '', // filled in by the caller, which knows the correct (new) filePath.
+        unitKey: oldUnitKey,
+        branchId: null,
+        changeKind: 'deleted',
+      });
+    }
+  }
+  return renamedAway;
 }
 
 /**
@@ -259,7 +380,7 @@ async function resolveFileChange(
     const oldBoundaries = findFunctionBoundaries(oldSourceFile);
     const units: ChangedUnit[] = [];
     for (const boundary of oldBoundaries) {
-      const unitKey = deriveStructuralUnitKey(boundary.name, boundary.range, oldSourceText);
+      const unitKey = deriveStructuralUnitKey(boundary.name, boundary.bodyRange, oldSourceText);
       if (unitKey) {
         units.push({ filePath: fileDiff.filePath, unitKey, branchId: null, changeKind: 'deleted' });
       }
@@ -327,6 +448,20 @@ async function resolveFileChange(
         : classifyChange(unitKey, boundary.name, oldBoundaries, oldSourceText),
   }));
 
+  // A function renamed within the diff is otherwise only ever seen from the
+  // NEW side (reported 'new' above) — its old identity's own disappearance
+  // is never surfaced without this pass. See findRenamedAwayUnits' own
+  // docblock for why body-hash matching, not name matching, is required.
+  if (oldSourceText !== null) {
+    const renamedAway = findRenamedAwayUnits(
+      oldBoundaries,
+      oldSourceText,
+      newBoundaries,
+      newSourceText,
+    ).map((unit) => ({ ...unit, filePath: fileDiff.filePath }));
+    units.push(...renamedAway);
+  }
+
   return { units, unresolved: null };
 }
 
@@ -345,6 +480,9 @@ export async function resolveChangedUnits(
   baseRef: string,
   headRef: string,
 ): Promise<ChangeDetectionResult> {
+  assertSafeGitRef(baseRef);
+  assertSafeGitRef(headRef);
+
   const changedUnits: ChangedUnit[] = [];
   const nonSourceFileChanges: FileDiff[] = [];
   const unresolvedFileChanges: UnresolvedFileChange[] = [];

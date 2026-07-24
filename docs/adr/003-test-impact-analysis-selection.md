@@ -66,6 +66,31 @@ but would require a second, redundant parser). This guarantees a changed unit's 
 byte-identical to what the mapping engine already stored, with zero translation layer that
 could silently drift out of sync with the mapping engine's own key derivation.
 
+**Body range, not full-node range, is what gets hashed.** `changeUnitResolver.ts` tracks
+TWO ranges per function-like AST node: a `containmentRange` (the full node, signature
+through closing brace — used only to decide "which function encloses this changed line",
+matching istanbul's own `decl.start` through `loc.end` convention for that same decision)
+and a `bodyRange` (istanbul's `loc` — the `{ ... }` block only, excluding the
+`function name(...)` signature). Only `bodyRange` is ever passed to
+`deriveStructuralUnitKey`, exactly matching `coverageSymbolicationService.ts`'s own
+`qualifiedUnitKey`, which passes `mapping.loc`, never `mapping.decl`. This was caught and
+fixed during this phase's own self-review: an earlier draft hashed the full node
+(including the function's name), which would make a function's `unit_key` change on a
+pure rename with no logic change — silently diverging from how the mapping engine itself
+derives `unit_key`, and defeating the rename-detection fix described in the next
+paragraph.
+
+**Same-file renames surface a `'deleted'` unit for the old name, not just a `'new'` unit
+for the new name.** `classifyChange` alone only looks FORWARD from a new-side boundary to
+its old-side namesake by NAME — a rename (where the name is exactly what changed) is
+therefore invisible to it and was, in an earlier draft, only ever reported as `'new'`,
+silently losing the "this unit no longer exists" signal. `findRenamedAwayUnits` closes
+this gap by walking backward from the old side: an old boundary whose name no longer
+exists in the new file, but whose **body hash** (the `bodyRange`-derived hash suffix,
+matched independently of name) survives unchanged under a different name elsewhere in the
+new file, is emitted as a `'deleted'` unit for its old identity — proportionate to how the
+whole-file-deletion path already emits `'deleted'` for every unit in a removed file.
+
 ### 2. Widen-only, never narrow (MINCRM-625)
 
 The dependency graph rule table for config/resource/migration files is explicitly
@@ -115,6 +140,24 @@ endpoint (out of scope for this phase, and `coverageDb`'s own connection pool ca
 see `coverageDb.ts`), `testSelectionService` fans out with a small bounded-concurrency
 helper (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`) rather than an unbounded `Promise.all`, which
 could otherwise exhaust the pool on a large diff.
+
+### 6. Explicit git-ref validation before shelling out
+
+`diffParser.parseGitDiff` and `changeUnitResolver.resolveChangedUnits` both validate every
+caller-supplied `baseRef`/`headRef` via `assertSafeGitRef` before passing them to `git` at
+all, rejecting any ref beginning with `-` (which git could otherwise interpret as a CLI
+flag rather than a revision). Found during this phase's own self-review: refs were
+originally fused into a combined argv string (`${baseRef}..${headRef}`,
+`` `${revision}:${filePath}` ``) without explicit validation — `coverageConfig.ts`'s own
+`resolveCommitSha` validates its commit SHA against `SAFE_PATH_SEGMENT_PATTERN` before use,
+and this phase's git-ref handling should hold itself to the same bar rather than relying on
+git's own argument parsing to incidentally neutralize a malformed ref. `SAFE_PATH_SEGMENT_PATTERN`
+itself is not reused here — it's scoped to a single filesystem path segment (a commit SHA),
+too strict for an arbitrary ref (which legitimately contains `/`, e.g. `origin/main`) — so
+`assertSafeGitRef` validates only the one shape that's actually dangerous to pass to a CLI.
+No production caller of these functions exists yet (CI wiring is `pr-tia-8`'s job), so this
+guard has no live exploit to close today; it exists so the safety isn't deferred to whatever
+wires this into CI later.
 
 ---
 

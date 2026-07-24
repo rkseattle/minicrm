@@ -26,6 +26,31 @@ const execFileAsync = promisify(execFile);
 /** Config/resource file classes handled separately by the dependency-graph step (MINCRM-625), never resolved to code units here. */
 const NON_SOURCE_FILE_PATTERN = /\.(ya?ml|json|env)$|(^|\/)migrations\//i;
 
+/**
+ * Raised when a caller-supplied ref/revision string looks like a git CLI
+ * flag rather than a real ref — e.g. a ref beginning with `-`, which git can
+ * interpret as an option instead of a revision. Refs are ordinary strings,
+ * not filesystem path segments (they legitimately contain `/`, e.g.
+ * `origin/main`), so this validates only the one shape that's actually
+ * dangerous to pass to a CLI, rather than reusing coverageConfig.ts's
+ * SAFE_PATH_SEGMENT_PATTERN (which is deliberately much stricter — built for
+ * a single filesystem path segment, not a ref).
+ */
+export class UnsafeGitRefError extends Error {
+  readonly code = 'UNSAFE_GIT_REF';
+  constructor(ref: string) {
+    super(`Refusing to use "${ref}" as a git ref/revision — refs may not start with "-"`);
+    this.name = 'UnsafeGitRefError';
+  }
+}
+
+/** Throws UnsafeGitRefError if `ref` could be interpreted by git as a CLI flag rather than a revision. */
+export function assertSafeGitRef(ref: string): void {
+  if (ref.startsWith('-')) {
+    throw new UnsafeGitRefError(ref);
+  }
+}
+
 /** A file that appears anywhere in the diff, classified by how it changed. */
 export type FileChangeStatus = 'added' | 'deleted' | 'modified' | 'renamed';
 
@@ -151,6 +176,9 @@ export async function parseGitDiff(
   headRef: string,
   cwd: string,
 ): Promise<FileDiff[]> {
+  assertSafeGitRef(baseRef);
+  assertSafeGitRef(headRef);
+
   let stdout: string;
   try {
     ({ stdout } = await execFileAsync(
