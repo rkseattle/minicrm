@@ -56,10 +56,16 @@ If you are unsure whether a behavior call mutates shared state, search for
 
 ### The two CI jobs
 
-| Job              | Playwright flag                                | What runs                                 |
-| ---------------- | ---------------------------------------------- | ----------------------------------------- |
-| `e2e-functional` | `--workers=2` per shard, 4 shards × 2 projects | `@functional` tests **without** `@serial` |
-| `e2e-serial`     | `--workers=1`                                  | `@functional @serial` tests               |
+| Job              | Playwright flag                                                                         | What runs                                 |
+| ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `e2e-functional` | `--workers=N` per shard, `M` shards × 2 projects (N, M from capacity-probe, MINCRM-662) | `@functional` tests **without** `@serial` |
+| `e2e-serial`     | `--workers=1`                                                                           | `@functional @serial` tests               |
+
+`N` and `M` default to 2 and 4 respectively (today's known-good values on
+GitHub's free-tier 2-vCPU runners) but are computed dynamically by the
+`capacity-probe` CI job — see [e2e-performance.md](e2e-performance.md) and
+the "Shard/worker count" section in
+[qa/e2e/README.md](../../qa/e2e/README.md#shard-worker-count-mincrm-662).
 
 The `e2e-functional` job passes `--grep-invert serial` so `@serial` tests are
 never picked up by parallel workers. The `e2e-serial` job greps for

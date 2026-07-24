@@ -115,6 +115,10 @@ Playwright's built-in `--shard=K/N` splits tests by count, ignoring duration. Th
 5. **CI** (`e2e-timing-setup` job) generates all shard configs before the matrix runs, uploads them as an artifact, and each `e2e-functional` matrix shard downloads and uses its own config. If the baseline is absent (e.g. first run on a fresh branch), CI falls back to native `--shard=K/N`.
 6. **Baseline update** (`.github/workflows/update-timing-baseline.yml`) runs after every push to `main`: downloads all shard JSONL artifacts, merges them, recomputes the baseline, and commits the updated `test-timing-baseline.json` with `[skip ci]`.
 
+### Shard/worker count (MINCRM-662)
+
+Shard count (`N` in `--total-shards=N`) and per-shard worker count are computed by a `capacity-probe` CI job (`qa/e2e/framework/reporting/capacity.ts`, run via `npm run e2e:capacity-plan`) instead of two hand-maintained constants. The probe measures the runner's CPU core count and derives both values — reproducing today's known-good 4 shards x 2 workers exactly on today's 2-vCPU GitHub-hosted runners, and scaling for differently-sized runners (self-hosted, a larger nightly box) without manual retuning. If CPU count can't be determined, it falls back to the same 4 shards / 2 workers. See [docs/dev/e2e-performance.md](../../docs/dev/e2e-performance.md) for the empirical findings behind the formula.
+
 ### Committed vs. gitignored
 
 | File                           | Status         | Purpose                                                            |

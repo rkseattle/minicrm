@@ -31,6 +31,7 @@
     "e2e:timing:shards": "npx tsx qa/e2e/scripts/gen-shards.ts",
     "e2e:timing:gen-config": "npx tsx qa/e2e/scripts/gen-shard-config.ts",
     "e2e:timing:hotspots": "npx tsx qa/e2e/scripts/find-hotspots.ts",
+    "e2e:capacity-plan": "npx tsx qa/e2e/scripts/print-capacity-plan.ts",
     "eval": "bash qa/evals/run-evals.sh"
   },
   "lint-staged": {
