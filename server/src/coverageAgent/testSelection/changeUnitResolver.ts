@@ -206,6 +206,26 @@ function resolveEnclosingUnitsForRanges(
   const byUnitKey = new Map<string, { boundary: FunctionBoundary; unitKey: string }>();
 
   for (const range of ranges) {
+    // A pure-deletion hunk (diffParser's own zero-width range,
+    // startLine === endLine) has no line strictly inside [startLine,
+    // endLine) for the loop below to ever visit — its anchor line itself
+    // must still be checked, or a function changed ONLY by deleting lines
+    // would resolve to no changed unit at all (found via Greptile PR
+    // review). Checked unconditionally alongside the loop rather than
+    // folding into the loop bounds, since a NON-zero-width range must
+    // still visit every line in [startLine, endLine), not just its start.
+    const anchorBoundary = findEnclosingFunction(boundaries, range.startLine);
+    if (anchorBoundary) {
+      const anchorUnitKey = deriveStructuralUnitKey(
+        anchorBoundary.name,
+        anchorBoundary.bodyRange,
+        sourceText,
+      );
+      if (anchorUnitKey && !byUnitKey.has(anchorUnitKey)) {
+        byUnitKey.set(anchorUnitKey, { boundary: anchorBoundary, unitKey: anchorUnitKey });
+      }
+    }
+
     // A hunk can span multiple lines; every line in it may fall in a
     // different (or the same) enclosing function, so each line is resolved
     // independently rather than just checking the hunk's start line.

@@ -6,7 +6,7 @@
  * matching coverageMappingService.test.ts's own precedent) and
  * coverage_units directly (a plain insert; no simpler service call sets
  * confidence_score independent of a full dump-ingestion claim) so
- * findTestsForUnitWithConfidence's LEFT JOIN has something to score against.
+ * findTestsForUnitAcrossBranches' LEFT JOIN has something to score against.
  */
 
 import 'dotenv/config';
@@ -226,6 +226,45 @@ describe('selectTestsForChangedUnits', () => {
   it('returns empty results for an empty change set', async () => {
     const result = await selectTestsForChangedUnits(`${FILE_PREFIX}-${randomUUID()}`, []);
     expect(result.selectedTests).toEqual([]);
+    expect(result.unmappedChanges).toEqual([]);
+  });
+
+  it('finds a test whose coverage is stored under a non-null branch_id, even though the changed unit itself carries branchId: null (regression)', async () => {
+    const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+    // Mirrors how a branching function is actually stored — see
+    // coverageSymbolicationService.ts's branch-granularity path — under a
+    // real branch_id like "0:0", never branchId: null. changeUnitResolver
+    // always resolves a changed FUNCTION with branchId: null (it has no way
+    // to know which specific branch arm changed); before the fix, this
+    // lookup required an EXACT (unitKey, branchId) match and so could never
+    // find this row at all.
+    await linkAndCommit(
+      commitSha,
+      'spec:branching.spec.ts::covers the if-branch',
+      'covers the if-branch',
+      [
+        {
+          unitKey: 'hasIf#branch1',
+          branchId: '0:0',
+          filePath: `${FILE_PREFIX}/branching.ts`,
+          hitCount: 1,
+        },
+      ],
+    );
+
+    const result = await selectTestsForChangedUnits(commitSha, [
+      makeChangedUnit({
+        filePath: `${FILE_PREFIX}/branching.ts`,
+        unitKey: 'hasIf#branch1',
+        branchId: null,
+      }),
+    ]);
+
+    expect(result.selectedTests).toHaveLength(1);
+    expect(result.selectedTests[0]).toMatchObject({
+      testId: 'spec:branching.spec.ts::covers the if-branch',
+      reason: 'direct-hit',
+    });
     expect(result.unmappedChanges).toEqual([]);
   });
 });

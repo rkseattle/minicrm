@@ -54,7 +54,14 @@ export function assertSafeGitRef(ref: string): void {
 /** A file that appears anywhere in the diff, classified by how it changed. */
 export type FileChangeStatus = 'added' | 'deleted' | 'modified' | 'renamed';
 
-/** One contiguous run of changed lines in the NEW version of a file (half-open [startLine, endLine), 1-based). */
+/**
+ * One contiguous run of changed lines in the NEW version of a file
+ * (half-open [startLine, endLine), 1-based). Can be ZERO-WIDTH
+ * (startLine === endLine) for a pure-deletion hunk, where `startLine` is
+ * git's own new-side anchor for where the deleted content used to sit —
+ * consumers must check this single anchor line rather than assuming a
+ * range always has at least one line.
+ */
 export interface ChangedLineRange {
   startLine: number;
   endLine: number;
@@ -86,11 +93,19 @@ const HUNK_HEADER_PATTERN = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 /**
  * Parses one file's `@@ -a,b +c,d @@` hunk headers out of its diff body into
  * changed line ranges on the NEW side. A hunk with no explicit `,d` count
- * means exactly one line (git's own shorthand); a `+c,0` hunk is a pure
- * deletion with nothing added on the new side, so it contributes no range
- * (there is no new-side line to attribute a change to — the deletion's
- * effect on the enclosing function is still detected by changeUnitResolver
- * comparing old/new ASTs, not by a new-side line range).
+ * means exactly one line (git's own shorthand).
+ *
+ * A `+c,0` hunk is a pure deletion — nothing was added on the new side, so
+ * there is no genuine new-side LINE to report a range over. It still emits a
+ * zero-width anchor range at `{startLine: c, endLine: c}` rather than being
+ * dropped entirely: `c` is git's own new-side position for where the
+ * deleted content used to sit, and changeUnitResolver's per-line walk (see
+ * resolveEnclosingUnitsForRanges) special-cases a zero-width range by
+ * checking that single anchor line — otherwise a function changed ONLY by
+ * deleting lines (no hunk anywhere in the diff that survives with a
+ * positive new-side line count) would resolve to NO changed unit at all,
+ * silently omitting its covering tests from selection with no unresolved-
+ * change signal either (found via Greptile PR review).
  */
 function parseHunkRanges(fileDiffBody: string): ChangedLineRange[] {
   const ranges: ChangedLineRange[] = [];
@@ -100,7 +115,6 @@ function parseHunkRanges(fileDiffBody: string): ChangedLineRange[] {
 
     const startLine = Number(match[1]);
     const lineCount = match[2] !== undefined ? Number(match[2]) : 1;
-    if (lineCount === 0) continue;
 
     ranges.push({ startLine, endLine: startLine + lineCount });
   }

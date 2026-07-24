@@ -141,7 +141,43 @@ see `coverageDb.ts`), `testSelectionService` fans out with a small bounded-concu
 helper (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`) rather than an unbounded `Promise.all`, which
 could otherwise exhaust the pool on a large diff.
 
-### 6. Explicit git-ref validation before shelling out
+### 6. Pure-deletion hunks and branch-agnostic mapping lookups (found via Greptile PR review)
+
+Two further correctness bugs surfaced by Greptile's automated PR review, after this
+branch's own self-review round:
+
+**Pure-deletion hunks were silently discarded.** `git diff --unified=0`'s hunk header for
+a hunk that deletes lines with nothing added on the new side takes the shorthand `+c,0`
+(zero new-side lines). `diffParser.parseHunkRanges` originally treated `lineCount === 0`
+as "nothing to report" and skipped the hunk entirely — but a function changed **only** by
+deleting lines (no other hunk in the file survives with a positive new-side line count)
+would then resolve to **no changed unit at all**, with no unresolved-change signal either,
+silently dropping its covering tests from selection. The fix: `+c,0` now emits a
+**zero-width anchor range** `{startLine: c, endLine: c}` — `c` is git's own new-side
+position for where the deleted content used to sit — and
+`changeUnitResolver.resolveEnclosingUnitsForRanges` explicitly checks that anchor line
+even when the range's `[startLine, endLine)` loop body would never execute for a
+zero-width range.
+
+**Changed units could never match branch-level coverage.** `changeUnitResolver` resolves
+a diff to changed **functions**, never individual branch arms within a function — every
+`ChangedUnit.branchId` is always `null`, since there's no way to know which specific
+branch (e.g. an `if` statement's true/false arm) a line-level diff touched without
+deeper branch-aware diffing (out of scope for this ticket). But a branching function's
+own coverage is stored in `coverage_test_links` under one or more **non-null** `branch_id`
+rows (see `coverageSymbolicationService.ts`'s branch-granularity path) — never a
+null-branch row. Looking it up via the mapping query API's own
+`findTestsForUnitWithConfidence`, which requires an **exact** `(unitKey, branchId)` match,
+would therefore always return zero results for exactly the functions most likely to have
+meaningful branch-level test coverage. The fix: a new, additive
+`coverageMappingService.findTestsForUnitAcrossBranches(commitSha, unitKey)` matches on
+`unit_key` alone, ignoring `branch_id` — `testSelectionService` now calls this instead.
+This is deliberately a **new function**, not a change to `findTestsForUnitWithConfidence`'s
+existing exact-match semantics — that function's documented, versioned contract
+(MINCRM-621) is unchanged and still used as-is by any other consumer requiring an exact
+identity match.
+
+### 7. Explicit git-ref validation before shelling out
 
 `diffParser.parseGitDiff` and `changeUnitResolver.resolveChangedUnits` both validate every
 caller-supplied `baseRef`/`headRef` via `assertSafeGitRef` before passing them to `git` at

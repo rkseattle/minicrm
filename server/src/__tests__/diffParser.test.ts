@@ -108,6 +108,38 @@ describe('parseGitDiff', () => {
     expect(diffs[0].changedRanges).toEqual([{ startLine: 6, endLine: 7 }]);
   });
 
+  it('emits a zero-width anchor range for a pure-deletion hunk (+c,0), not an empty range (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function foo() {\n  const a = 1;\n  const b = 2;\n  return a;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Deletes ONLY the middle line — the resulting diff is a single pure
+    // deletion hunk (`@@ -3 +2,0 @@`) with no other surviving hunk anywhere
+    // in the file, so this is the exact case that previously vanished
+    // entirely (see changeUnitResolver.test.ts's own regression test for
+    // the end-to-end assertion).
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function foo() {\n  const a = 1;\n  return a;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'delete middle line only']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].status).toBe('modified');
+    // Zero-width: startLine === endLine === 2 (git's own new-side anchor
+    // for where the deleted line used to sit) — NOT an empty array.
+    expect(diffs[0].changedRanges).toEqual([{ startLine: 2, endLine: 2 }]);
+  });
+
   it('reports a renamed file with its old and new paths', async () => {
     repoRoot = await initRepo();
     await writeFile(

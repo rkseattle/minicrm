@@ -293,6 +293,41 @@ export async function findTestsForUnitWithConfidence(
 }
 
 /**
+ * Finds every test known to cover a given code unit at a given commit,
+ * ACROSS EVERY BRANCH — unlike findTestsForUnitWithConfidence, which
+ * requires an exact (unitKey, branchId) identity match, this ignores
+ * branch_id entirely and matches on unit_key alone.
+ *
+ * For MINCRM-624's test-selection consumer (testSelectionService.ts):
+ * changeUnitResolver resolves a git diff to changed FUNCTIONS, not
+ * individual branch arms within a function — it has no way to know which
+ * specific branch_id (e.g. an `if` statement's true/false arm) a change
+ * touched, only that the enclosing function changed. A branching
+ * function's own coverage is stored under one or more NON-null branch_id
+ * rows (see coverageSymbolicationService.ts's branch-granularity path) —
+ * never under a null-branch_id row — so a lookup requiring branchId: null
+ * to exact-match would always return zero results for exactly the
+ * functions most likely to have meaningful branch-level test coverage
+ * (found via Greptile PR review). This function is test-selection's own
+ * query, additive to the mapping query API's existing documented,
+ * versioned single-identity contract (MINCRM-621) — that contract's exact-
+ * match semantics are unchanged and still used as-is by
+ * findTestsForUnit(WithConfidence).
+ */
+export async function findTestsForUnitAcrossBranches(
+  commitSha: string,
+  unitKey: string,
+): Promise<CoverageMappingResult[]> {
+  const result = await coverageDb.query<CoverageMappingResultRow>(
+    `${MAPPING_RESULT_SELECT}
+     WHERE l.commit_sha = $1 AND l.unit_key = $2
+     ORDER BY l.branch_id, l.test_id`,
+    [commitSha, unitKey],
+  );
+  return result.rows.map(toCoverageMappingResult);
+}
+
+/**
  * Finds every code unit a given test is known to cover, at a given commit,
  * with confidence/freshness attached.
  */
