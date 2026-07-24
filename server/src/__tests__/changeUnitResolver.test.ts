@@ -283,4 +283,35 @@ describe('resolveChangedUnits', () => {
     expect(result.changedUnits[0].changeKind).toBe('in-line');
     expect(result.unresolvedFileChanges).toEqual([]);
   });
+
+  it('emits a deleted unit for a function REMOVED OUTRIGHT (not renamed) from an otherwise-retained file (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function keep() {\n  return 1;\n}\n\nexport function removeMe() {\n  return 2;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // removeMe() is deleted entirely — no function anywhere in the new file
+    // shares its name OR its body hash, so this is a genuine removal, not a
+    // rename. The pure-deletion hunk that results has a zero-width anchor
+    // resolved only against the NEW AST (see resolveEnclosingUnitsForRanges),
+    // where removeMe() has no boundary at all — before the fix, this meant
+    // its removal was NEVER surfaced anywhere (no 'deleted' unit, no
+    // unresolved-change entry), silently dropping its covering tests.
+    await writeFile(join(repoRoot, 'a.ts'), 'export function keep() {\n  return 1;\n}\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'remove removeMe() entirely']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+    const result = await resolveChangedUnits(diffs, repoRoot, baseSha, headSha);
+
+    const deletedUnits = result.changedUnits.filter((u) => u.changeKind === 'deleted');
+    expect(deletedUnits).toHaveLength(1);
+    expect(deletedUnits[0].unitKey).toMatch(/^removeMe#/);
+    expect(deletedUnits[0].filePath).toBe('a.ts');
+  });
 });

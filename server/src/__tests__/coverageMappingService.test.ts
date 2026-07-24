@@ -208,53 +208,84 @@ describe('coverageMappingService', () => {
   });
 
   describe('findTestsForUnitAcrossBranches', () => {
-    it('finds a test whose link is stored under a NON-null branch_id, given only the unitKey', async () => {
+    it('finds a test whose link is stored under a NON-null branch_id, given only the (filePath, unitKey)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/branching.ts`;
       const unitKey = 'branching#branchtest1';
 
       await linkAndCommit(commitSha, 'spec:branching.spec.ts::t', 't', [
-        makeLink({ unitKey, branchId: '0:0' }),
+        makeLink({ unitKey, branchId: '0:0', filePath }),
       ]);
 
-      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      const found = await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
       expect(found).toHaveLength(1);
       expect(found[0]).toMatchObject({ testId: 'spec:branching.spec.ts::t', branchId: '0:0' });
     });
 
-    it('finds tests across MULTIPLE distinct branch_ids for the same unitKey', async () => {
+    it('finds tests across MULTIPLE distinct branch_ids for the same (filePath, unitKey)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/multi-branch.ts`;
       const unitKey = 'multiBranch#branchtest2';
 
       await linkAndCommit(commitSha, 'spec:branch-a.spec.ts::t', 't', [
-        makeLink({ unitKey, branchId: '0:0' }),
+        makeLink({ unitKey, branchId: '0:0', filePath }),
       ]);
       await linkAndCommit(commitSha, 'spec:branch-b.spec.ts::t', 't', [
-        makeLink({ unitKey, branchId: '0:1' }),
+        makeLink({ unitKey, branchId: '0:1', filePath }),
       ]);
 
-      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      const found = await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
       expect(found.map((r) => r.testId).sort()).toEqual([
         'spec:branch-a.spec.ts::t',
         'spec:branch-b.spec.ts::t',
       ]);
     });
 
-    it('also finds a function-granularity (null branch_id) link — matching is unitKey-only, not branch-exclusive', async () => {
+    it('also finds a function-granularity (null branch_id) link — matching drops branch_id, not file_path', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/function-granularity.ts`;
       const unitKey = 'functionGranularity#branchtest3';
 
       await linkAndCommit(commitSha, 'spec:function.spec.ts::t', 't', [
-        makeLink({ unitKey, branchId: null }),
+        makeLink({ unitKey, branchId: null, filePath }),
       ]);
 
-      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      const found = await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
       expect(found).toHaveLength(1);
       expect(found[0]).toMatchObject({ testId: 'spec:function.spec.ts::t', branchId: null });
     });
 
-    it('returns an empty array when no test covers the given unitKey under any branch', async () => {
+    it('does NOT return a link from a DIFFERENT file sharing the same unitKey (regression — file identity must be preserved)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
-      const found = await findTestsForUnitAcrossBranches(commitSha, 'nonexistent#000');
+      // Same unitKey in two DIFFERENT files — a real, if rare, possibility:
+      // unit_key is derived purely from a function's own qualified name +
+      // normalized body hash, with no file path folded in (see
+      // structuralKeyService.ts), so two unrelated files can coincidentally
+      // produce an identical unitKey for two coincidentally-identical
+      // functions.
+      const sharedUnitKey = 'coincidence#samehash';
+      const fileA = `${FILE_PREFIX}/a.ts`;
+      const fileB = `${FILE_PREFIX}/b.ts`;
+
+      await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileA }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:b.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileB }),
+      ]);
+
+      const found = await findTestsForUnitAcrossBranches(commitSha, fileA, sharedUnitKey);
+      expect(found).toHaveLength(1);
+      expect(found[0]).toMatchObject({ testId: 'spec:a.spec.ts::t', filePath: fileA });
+    });
+
+    it('returns an empty array when no test covers the given (filePath, unitKey) under any branch', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const found = await findTestsForUnitAcrossBranches(
+        commitSha,
+        `${FILE_PREFIX}/nonexistent.ts`,
+        'nonexistent#000',
+      );
       expect(found).toHaveLength(0);
     });
   });

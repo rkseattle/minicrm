@@ -296,7 +296,8 @@ export async function findTestsForUnitWithConfidence(
  * Finds every test known to cover a given code unit at a given commit,
  * ACROSS EVERY BRANCH — unlike findTestsForUnitWithConfidence, which
  * requires an exact (unitKey, branchId) identity match, this ignores
- * branch_id entirely and matches on unit_key alone.
+ * branch_id (but NOT file_path — see below) and matches on (file_path,
+ * unit_key) instead.
  *
  * For MINCRM-624's test-selection consumer (testSelectionService.ts):
  * changeUnitResolver resolves a git diff to changed FUNCTIONS, not
@@ -313,16 +314,29 @@ export async function findTestsForUnitWithConfidence(
  * versioned single-identity contract (MINCRM-621) — that contract's exact-
  * match semantics are unchanged and still used as-is by
  * findTestsForUnit(WithConfidence).
+ *
+ * filePath IS still part of the match, even though branch_id is dropped:
+ * unit_key alone is NOT globally unique — it's derived purely from a
+ * function's own qualified name + normalized body hash (see
+ * structuralKeyService.ts), with no file path folded in, so two
+ * DIFFERENT files at the same commit can legitimately produce the exact
+ * same unit_key for two unrelated, coincidentally-identical functions (a
+ * real risk — coverage_units_identity_idx's own uniqueness is keyed on
+ * (commit_sha, file_path, unit_key, branch_id) for exactly this reason).
+ * Matching on unit_key alone here would return coverage links from BOTH
+ * files, causing test selection to attribute an unrelated file's tests to
+ * the actually-changed one (found via Greptile PR review).
  */
 export async function findTestsForUnitAcrossBranches(
   commitSha: string,
+  filePath: string,
   unitKey: string,
 ): Promise<CoverageMappingResult[]> {
   const result = await coverageDb.query<CoverageMappingResultRow>(
     `${MAPPING_RESULT_SELECT}
-     WHERE l.commit_sha = $1 AND l.unit_key = $2
+     WHERE l.commit_sha = $1 AND l.file_path = $2 AND l.unit_key = $3
      ORDER BY l.branch_id, l.test_id`,
-    [commitSha, unitKey],
+    [commitSha, filePath, unitKey],
   );
   return result.rows.map(toCoverageMappingResult);
 }

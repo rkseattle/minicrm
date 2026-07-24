@@ -121,7 +121,12 @@ describe('selectTestsForChangedUnits', () => {
     ]);
 
     const newUnit = makeChangedUnit({ unitKey: 'newMethod#new1', changeKind: 'new' });
-    const enclosingMap = new Map([['newMethod#new1', 'enclosingClass#parent1']]);
+    const enclosingMap = new Map([
+      [
+        'newMethod#new1',
+        { filePath: `${FILE_PREFIX}/widget.ts`, unitKey: 'enclosingClass#parent1' },
+      ],
+    ]);
 
     const result = await selectTestsForChangedUnits(commitSha, [newUnit], enclosingMap);
 
@@ -161,7 +166,9 @@ describe('selectTestsForChangedUnits', () => {
         changeKind: 'new',
       }),
     ];
-    const enclosingMap = new Map([['unitB-new#b1', 'enclosing#e1']]);
+    const enclosingMap = new Map([
+      ['unitB-new#b1', { filePath: `${FILE_PREFIX}/b.ts`, unitKey: 'enclosing#e1' }],
+    ]);
 
     const result = await selectTestsForChangedUnits(commitSha, units, enclosingMap);
 
@@ -266,5 +273,28 @@ describe('selectTestsForChangedUnits', () => {
       reason: 'direct-hit',
     });
     expect(result.unmappedChanges).toEqual([]);
+  });
+
+  it("does not attribute a DIFFERENT file's coverage to a changed unit sharing the same unitKey (regression — file identity)", async () => {
+    const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+    // unit_key is derived purely from name + normalized body hash, with no
+    // file path folded in — two unrelated files can coincidentally produce
+    // the same unitKey. Before the fix, findTestsForUnitAcrossBranches
+    // matched on unitKey alone, so a changed unit in fileA could pick up
+    // fileB's coverage links.
+    const sharedUnitKey = 'coincidence#samehash';
+    await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+      { unitKey: sharedUnitKey, branchId: null, filePath: `${FILE_PREFIX}/a.ts`, hitCount: 1 },
+    ]);
+    await linkAndCommit(commitSha, 'spec:b.spec.ts::t', 't', [
+      { unitKey: sharedUnitKey, branchId: null, filePath: `${FILE_PREFIX}/b.ts`, hitCount: 1 },
+    ]);
+
+    const result = await selectTestsForChangedUnits(commitSha, [
+      makeChangedUnit({ filePath: `${FILE_PREFIX}/a.ts`, unitKey: sharedUnitKey }),
+    ]);
+
+    expect(result.selectedTests).toHaveLength(1);
+    expect(result.selectedTests[0].testId).toBe('spec:a.spec.ts::t');
   });
 });
