@@ -70,6 +70,20 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 | `qa/e2e/framework/coverageAgent/coverage-mapping-client.ts`          | Reference client for the mapping query endpoints                                                                 |
 | `qa/e2e/tests/apps/minicrm/functional/coverage-mapping/`             | Functional spec exercising the mapping query API end to end                                                      |
 
+### Phase 5 — Change impact analysis & test selection files
+
+| Path                                                               | Purpose                                                                                        |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/testSelection/diffParser.ts`             | Parses `base..head` git diff into per-file changed line ranges (MINCRM-623)                    |
+| `server/src/coverageAgent/testSelection/changeUnitResolver.ts`     | Resolves changed line ranges to changed code units via TS-compiler-API boundaries (MINCRM-623) |
+| `server/src/coverageAgent/testSelection/testSelectionService.ts`   | Resolves changed units to affected tests via the mapping query API (MINCRM-624)                |
+| `server/src/coverageAgent/testSelection/dependencyGraphService.ts` | Deterministic config/infra file → widened test scope rule table (MINCRM-625)                   |
+| `server/src/coverageAgent/testSelection/safetyNetPolicy.ts`        | Always-run baseline + full-suite fallback policy (MINCRM-626)                                  |
+| `server/src/coverageAgent/testSelection/scorer.ts`                 | Pluggable `TestScorer` interface + default `mapBasedScorer` (MINCRM-627)                       |
+
+See [ADR-003](../adr/003-test-impact-analysis-selection.md) for the full pipeline design
+and the safety-net/scorer decoupling invariant.
+
 ## Mounting
 
 In `app.ts`, alongside the other admin routers:
@@ -420,11 +434,106 @@ const unitResults = await findUnitsForTest(restClient, {
 });
 ```
 
+## Change Impact Analysis & Test Selection (MINCRM-623/624/625/626/627, `pr-tia-6`)
+
+Turns a git diff into a test selection decision. See
+[ADR-003](../adr/003-test-impact-analysis-selection.md) for the full pipeline design,
+including the safety-net/scorer decoupling invariant this section summarizes.
+
+**Pipeline:** `diffParser.parseGitDiff` (git diff → per-file changed line ranges) →
+`changeUnitResolver.resolveChangedUnits` (line ranges → `(filePath, unitKey, branchId)`
+changed units, via the same TS-compiler-API function-boundary detection and
+`structuralKeyService.deriveStructuralUnitKey` the mapping engine itself uses, so a
+changed unit's key is byte-identical to what's already stored) →
+`testSelectionService.selectTestsForChangedUnits` (changed units → affected tests via the
+mapping query API, MINCRM-621) → `dependencyGraphService.resolveDependencyWideningForFiles`
+(config/resource/migration file changes → widened test scopes) →
+`safetyNetPolicy.applySafetyNetPolicy` (baseline union + full-suite fallback decision).
+
+### Git-diff change detector (MINCRM-623)
+
+`diffParser.ts` shells `git diff --unified=0 --find-renames=50%` (array-args `execFile`,
+never a shell string — same precedent as `coverageReconciliationService.ts`'s rename
+lookup) and parses hunk headers into per-file changed line ranges, classifying each file
+added/deleted/modified/renamed. Config/resource/migration files
+(`.ya?ml`/`.json`/`.env`/`db/migrations/`) are flagged `isNonSourceFile` and routed
+separately — they have no function/unit identity of their own.
+
+`changeUnitResolver.ts` walks the TypeScript AST (`ts.createSourceFile` +
+`ts.forEachChild`) to find function/method boundaries, maps each changed line to its most
+specific enclosing function, and derives that function's `unit_key` the same way the
+mapping engine's own ingestion path does. Each resulting changed unit is classified `new`
+(no corresponding function existed in the base revision), `deleted` (file removed
+entirely), `in-line` (same function, changed body hash — an ordinary edit), or `refactor`
+(same function, UNCHANGED body hash — the diff touched this function's range but its own
+logic didn't change, signaling the real edit is likely a sibling/structural move).
+
+### Test selection algorithm (MINCRM-624)
+
+`testSelectionService.selectTestsForChangedUnits` resolves each changed unit against
+`coverageMappingService.findTestsForUnitWithConfidence`. No batch mapping-query endpoint
+exists, so lookups fan out with bounded concurrency (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`)
+rather than an unbounded `Promise.all` — `coverageDb`'s own pool caps at 10 connections
+(see `coverageDb.ts`). A changed unit with no direct mapping (new code, or a genuinely
+unmapped unit) inherits candidates from a caller-supplied enclosing/calling unit key
+instead of being dropped; a unit with no mapping even after inheritance is surfaced via
+`unmappedChanges` for the safety net to widen around. Output is deduplicated by `testId`
+(a `direct-hit` occurrence is kept over an `inherited` one for the same test) before being
+handed to the scorer for ranking.
+
+### Config/infra dependency graph (MINCRM-625)
+
+`dependencyGraphService.ts` is a deterministic `RegExp`-keyed rule table (explicitly not
+ML, per its own AC) mapping non-source file changes to widened test scopes. DB/QA
+migrations, CI workflow files, docker-compose files, and `.env` files are flagged
+`alwaysWiden: true` — their blast radius can't be safely bounded by any targeted scope, so
+the safety net's full-suite fallback fires regardless of what the mapping-based selection
+otherwise found. Shared Zod schemas and i18n locale files get targeted (non-`alwaysWiden`)
+scope widening instead. Rule results are always unioned into the mapping-based selection,
+never subtracted from it.
+
+### Safety-net selection policy (MINCRM-626)
+
+`safetyNetPolicy.applySafetyNetPolicy` unions an always-run baseline set (smoke/critical
+paths, supplied by the caller) into every selection unconditionally, and forces a
+full-suite fallback — never a partial widening — when any of: a selected test's confidence
+score is below `TIA_MIN_CONFIDENCE_THRESHOLD` (default `0.3`), the fraction of unmapped
+changed units exceeds `TIA_MAX_UNMAPPED_RATIO` (default `0.5`), the dependency graph
+flagged `alwaysWiden`, or the caller explicitly requests `forceFullSuite` (the periodic
+nightly/pre-merge recalibration case). A test that is both baseline and independently
+mapping-selected reports its reason as `'baseline'` — the stronger, unconditional
+guarantee — rather than picking one label arbitrarily.
+
+### Pluggable scoring interface (MINCRM-627)
+
+`scorer.ts` defines `TestScorer`: `score(changedUnits, candidateTests, features) =>
+SelectedTest[]`, invoked exactly ONCE per selection over the full diff and the
+already-deduplicated candidate list (not once per changed unit — ranking is a
+cross-candidate decision that a per-unit call could only approximate). The default
+`mapBasedScorer` implements confidence-first, alphabetical-tie-break ranking.
+`selectTestsForChangedUnits` accepts an optional `scorer` parameter defaulting to
+`mapBasedScorer`, so existing callers are unaffected.
+
+**Critical invariant:** `safetyNetPolicy.ts` never imports or references `scorer.ts`/
+`TestScorer` — the baseline set is `applySafetyNetPolicy`'s own separate parameter, never
+derived from or filtered by a scorer's output. A future ML ranker (`pr-tia-10`,
+MINCRM-638-640) can therefore replace `mapBasedScorer` freely: it can reorder or cap
+non-baseline candidates, but has no code path to suppress a baseline test or bypass the
+full-suite fallback decision. Verified in `scorer.test.ts` both behaviorally (an adversarial
+drop-all scorer still leaves baseline tests present after `applySafetyNetPolicy`) and
+structurally (a source-text scan asserting `safetyNetPolicy.ts` contains no reference to
+"scorer").
+
 ## Deferred to later phases
 
 Not built here — later `pr-tia-*` phases:
 
-- ML-based test selection
+- ML-based test selection (the `TestScorer` interface exists as the extension point;
+  the actual ML ranker is `pr-tia-10`, MINCRM-638-640)
+- Wiring test selection's output into CI (`gen-shards.ts`, the CI plugin/PR gating) —
+  `pr-tia-8`, MINCRM-633/634/660
+- A batch mapping-query endpoint (test selection currently fans out single-unit lookups
+  with bounded concurrency instead — see MINCRM-624 above)
 - Historical coverage trend storage or dashboards, and any reporting/query API over `coverage_units` beyond the internal `findCoverageUnitsByCommitSha` lookup and the mapping engine's own `findTestsForUnit`/`findUnitsForTest`
 - Coverage-driven CI gating (failing a build on coverage drop)
 - Cross-shard dump merging/aggregation — CI currently uploads per-shard dump directories as-is
