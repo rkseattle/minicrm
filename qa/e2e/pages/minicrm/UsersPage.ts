@@ -37,24 +37,33 @@ export class UsersPage {
   }
 
   /**
-   * Returns whether the users page is loaded (invite form toggle visible).
+   * Returns whether the users page is loaded and showing its content
+   * (list, table, or empty state — not the loading placeholder).
    *
-   * Uses the collapse-toggle button, which is always in the DOM regardless of
-   * whether the invite form is open or closed. The submit button lives inside
-   * {isOpen && ...} and is absent in the DOM on mobile where the form starts
-   * collapsed — making it a poor readiness signal. (heal-trends)
+   * Previously checked `invite-form-toggle`, which is WRONG: that button
+   * belongs to the always-mounted InviteUserForm section and has nothing to
+   * do with the users list's own fetch (`useQuery` in UsersPage.tsx) — it's
+   * present the instant the page mounts. Same bug class as
+   * ContactsPage.isLoaded().
+   *
+   * The post-load content has no single stable anchor of its own — it's a
+   * desktop table, a mobile card list, or an untagged empty state, depending
+   * on viewport and result count — so instead of checking for one of those,
+   * this waits for the loading placeholder's `aria-busy="true"` marker
+   * (present only while `isLoading` is true) to be gone from the DOM. Uses
+   * waitForFunction with a direct DOM query, not locate().resolve(), so a
+   * call arriving after the fetch has already settled (the common case)
+   * doesn't pay the healing locator's own probe timeout waiting for an
+   * element that will never appear — see
+   * ContactsPage.confirmBulkReassign() for the same pattern.
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.page
-        .locate(
-          [
-            { type: 'testId', value: 'invite-form-toggle' },
-            { type: 'role', value: 'button', options: { name: /invite/i } },
-          ],
-          { intent: 'invite form toggle button indicating users page is loaded' },
-        )
-        .resolve();
+      await this.page.waitForFunction(
+        `document.querySelector('[aria-busy="true"]') === null`,
+        undefined,
+        { timeout: 8_000 },
+      );
       return true;
     } catch {
       return false;

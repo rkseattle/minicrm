@@ -106,21 +106,35 @@ export class AccountsPage {
 
   /**
    * Returns whether the accounts page is currently loaded and showing the list.
-   * Checks for the presence of the "New Account" button as the stable anchor.
+   *
+   * Checks for `accounts-search`, which only mounts once the accounts list's
+   * initial fetch has settled (`!isLoading && !isError` in AccountsPage.tsx) —
+   * this is the actual "list is showing" signal. Previously checked for the
+   * "New Account" button instead, which is WRONG on two counts: (1) it's
+   * rendered unconditionally on mount, before the list ever loads; (2) it's
+   * additionally gated on `canWrite`, so this would incorrectly report `false`
+   * for any user without account-write permission even once the list had
+   * genuinely finished loading. Same bug class as ContactsPage.isLoaded().
+   *
+   * Uses HealingLocator with 2 strategies to stay consistent with the Page
+   * Object contract.
    */
   async isLoaded(): Promise<boolean> {
     try {
       await this.page
         .locate(
           [
-            { type: 'testId', value: 'new-account-button' },
+            { type: 'testId', value: 'accounts-search' },
             {
               type: 'role',
-              value: 'button',
-              options: { name: t('accounts.newAccount'), exact: false },
+              value: 'searchbox',
+              options: { name: t('accounts.searchPlaceholder'), exact: true },
             },
           ],
-          { intent: 'new account button indicating accounts page is loaded' },
+          {
+            intent: 'accounts search input indicating the accounts list has finished loading',
+            fallbackTimeout: 8_000,
+          },
         )
         .resolve();
       return true;
