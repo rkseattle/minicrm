@@ -22,31 +22,12 @@ import {
   buildConflictGraph,
   partitionIntoConflictFreeGroups,
 } from '../framework/reporting/conflict-graph.js';
-import type { FileResourceTouch } from '../framework/reporting/conflict-graph.js';
 import { discoverSpecFiles } from '../framework/reporting/timing-utils.js';
-import { RESOURCE_REGISTRY } from '../apps/minicrm/resource-registry.js';
+import { collapseRegistryToFileTouches } from '../apps/minicrm/resource-registry.js';
 import path from 'node:path';
 
 const E2E_DIR = path.resolve(process.cwd(), 'qa/e2e');
 const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional');
-
-/** Collapses RESOURCE_REGISTRY entries (possibly multiple per file, at
- *  test-title granularity) down to one FileResourceTouch per file. */
-function collapseRegistryToFileTouches(): FileResourceTouch[] {
-  const byFile = new Map<string, { reads: Set<string>; writes: Set<string> }>();
-
-  for (const entry of RESOURCE_REGISTRY) {
-    const existing = byFile.get(entry.file) ?? {
-      reads: new Set<string>(),
-      writes: new Set<string>(),
-    };
-    for (const r of entry.reads) existing.reads.add(r);
-    for (const w of entry.writes) existing.writes.add(w);
-    byFile.set(entry.file, existing);
-  }
-
-  return [...byFile.entries()].map(([file, { reads, writes }]) => ({ file, reads, writes }));
-}
 
 function main(): void {
   const allSpecFiles = discoverSpecFiles(FUNCTIONAL_TESTS_DIR);
@@ -74,4 +55,9 @@ function main(): void {
   );
 }
 
-main();
+// Guards against running main()'s output/logging side effects when this
+// module is imported rather than executed directly via `tsx`/`node` — see
+// gen-conflict-group-configs.ts for the same pattern.
+if (require.main === module) {
+  main();
+}

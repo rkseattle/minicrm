@@ -21,6 +21,8 @@
  * MINCRM-661
  */
 
+import type { FileResourceTouch } from '../../framework/reporting/conflict-graph.js';
+
 /** A shared resource a test can read from and/or write to. Distinct keys
  *  never conflict with each other even if touched by the same file. */
 export type ResourceKey =
@@ -241,3 +243,24 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['settings.nav_layout'],
   },
 ] as const;
+
+/**
+ * Collapses RESOURCE_REGISTRY entries (possibly multiple per file, at
+ * test-title granularity) down to one FileResourceTouch per file, for
+ * conflict-graph construction — which reasons about whole-file conflicts,
+ * since LPT bin-packing and the conflict-group scheduler assign whole files,
+ * not individual tests.
+ */
+export function collapseRegistryToFileTouches(): FileResourceTouch[] {
+  const byFile = new Map<string, { reads: Set<string>; writes: Set<string> }>();
+  for (const entry of RESOURCE_REGISTRY) {
+    const existing = byFile.get(entry.file) ?? {
+      reads: new Set<string>(),
+      writes: new Set<string>(),
+    };
+    for (const r of entry.reads) existing.reads.add(r);
+    for (const w of entry.writes) existing.writes.add(w);
+    byFile.set(entry.file, existing);
+  }
+  return [...byFile.entries()].map(([file, { reads, writes }]) => ({ file, reads, writes }));
+}

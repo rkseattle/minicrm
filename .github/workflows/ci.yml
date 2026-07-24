@@ -1068,10 +1068,9 @@ jobs:
             exit $?
           fi
           exit_code=0
-          group_count=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8')).length")
-          for i in $(seq 0 $(( group_count - 1 ))); do
-            config_path=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8'))[$i].configPath")
-            workers=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8'))[$i].workers")
+          # Single jq pass over the manifest (index, configPath, workers as TSV)
+          # instead of re-reading/re-parsing the JSON file once per field per group.
+          while IFS=$'\t' read -r i config_path workers; do
             echo "::group::Running serial-group $i ($config_path, $workers worker(s))"
             # SHARD_INDEX namespaces this invocation's healing-*.json worker files
             # (healing-shard${i}-worker*.json) so they don't collide with the next
@@ -1084,7 +1083,7 @@ jobs:
                 --workers="$workers" \
                 --grep "@functional.*@serial|@serial.*@functional" || exit_code=$?
             echo "::endgroup::"
-          done
+          done < <(jq -r '.[] | [.groupIndex, .configPath, .workers] | @tsv' qa/e2e/playwright.serial-groups.json)
           exit "$exit_code"
         env:
           E2E_BASE_URL: http://localhost:5173

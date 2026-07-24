@@ -13,22 +13,10 @@ import {
   buildConflictGraph,
   partitionIntoConflictFreeGroups,
 } from '@framework/reporting/conflict-graph.js';
-import type { FileResourceTouch } from '@framework/reporting/conflict-graph.js';
-import { RESOURCE_REGISTRY } from '@apps/minicrm/resource-registry.js';
-
-function collapseRegistryToFileTouches(): FileResourceTouch[] {
-  const byFile = new Map<string, { reads: Set<string>; writes: Set<string> }>();
-  for (const entry of RESOURCE_REGISTRY) {
-    const existing = byFile.get(entry.file) ?? {
-      reads: new Set<string>(),
-      writes: new Set<string>(),
-    };
-    for (const r of entry.reads) existing.reads.add(r);
-    for (const w of entry.writes) existing.writes.add(w);
-    byFile.set(entry.file, existing);
-  }
-  return [...byFile.entries()].map(([file, { reads, writes }]) => ({ file, reads, writes }));
-}
+import {
+  RESOURCE_REGISTRY,
+  collapseRegistryToFileTouches,
+} from '@apps/minicrm/resource-registry.js';
 
 test.describe('conflict-graph pipeline with real resource-registry data', () => {
   test('every file the registry declares appears in the graph', () => {
