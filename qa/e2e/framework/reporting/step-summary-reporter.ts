@@ -127,12 +127,46 @@ export class StepSummaryReporter implements Reporter {
     return 'Unknown';
   }
 
+  /**
+   * Run identification line (branch, commit, run link, timestamp) so a
+   * failure in this summary can be traced back to the exact CI run/commit
+   * without cross-referencing the workflow run separately. Sourced entirely
+   * from GitHub Actions' own standard env vars (set automatically on every
+   * runner, per this file's own doc comment on GITHUB_STEP_SUMMARY) — no
+   * app-domain knowledge, so this stays framework-pure. Empty string outside
+   * CI (GITHUB_* vars unset locally), since a local run has no remote run to
+   * link back to.
+   */
+  private buildRunMetadataLine(): string {
+    if (!isCI()) return '';
+
+    const branch = process.env['GITHUB_REF_NAME'];
+    const sha = process.env['GITHUB_SHA'];
+    const shortSha = sha ? sha.slice(0, 7) : undefined;
+    const runUrl =
+      process.env['GITHUB_SERVER_URL'] &&
+      process.env['GITHUB_REPOSITORY'] &&
+      process.env['GITHUB_RUN_ID']
+        ? `${process.env['GITHUB_SERVER_URL']}/${process.env['GITHUB_REPOSITORY']}/actions/runs/${process.env['GITHUB_RUN_ID']}`
+        : undefined;
+    const timestamp = new Date().toISOString();
+
+    const parts: string[] = [];
+    if (branch) parts.push(`**Branch**: \`${branch}\``);
+    if (shortSha) parts.push(`**Commit**: \`${shortSha}\``);
+    if (runUrl) parts.push(`**Run**: [${process.env['GITHUB_RUN_ID']}](${runUrl})`);
+    parts.push(`**Started**: ${timestamp}`);
+
+    return parts.length > 0 ? parts.join(' · ') + '\n\n' : '';
+  }
+
   private buildStatsTable(): string {
     const { passed, failed, flaky, skipped, interrupted } = this.stats;
     const total = passed + failed + skipped + flaky + interrupted;
     const duration = this.formatDuration(this.stats.duration);
     return (
       `## ${this.suiteName}\n\n` +
+      this.buildRunMetadataLine() +
       `| Status | Count |\n|--------|-------|\n` +
       `| Passed | ${passed} |\n` +
       `| Failed | ${failed} |\n` +

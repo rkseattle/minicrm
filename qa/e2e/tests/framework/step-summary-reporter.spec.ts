@@ -100,6 +100,78 @@ test.describe('StepSummaryReporter — generateSummary stats table', () => {
     expect(reporter.generateSummary()).toContain('## My Custom Suite');
   });
 
+  test('omits run-metadata line entirely outside CI', () => {
+    const wasCI = process.env['CI'];
+    delete process.env['CI'];
+    const reporter = new StepSummaryReporter();
+    const summary = reporter.generateSummary();
+    if (wasCI !== undefined) process.env['CI'] = wasCI;
+    expect(summary).not.toContain('**Branch**');
+    expect(summary).not.toContain('**Started**');
+  });
+
+  test('includes branch, commit, run link, and timestamp when GITHUB_* env vars are set in CI', () => {
+    const originalEnv = {
+      CI: process.env['CI'],
+      GITHUB_REF_NAME: process.env['GITHUB_REF_NAME'],
+      GITHUB_SHA: process.env['GITHUB_SHA'],
+      GITHUB_RUN_ID: process.env['GITHUB_RUN_ID'],
+      GITHUB_SERVER_URL: process.env['GITHUB_SERVER_URL'],
+      GITHUB_REPOSITORY: process.env['GITHUB_REPOSITORY'],
+    };
+    process.env['CI'] = 'true';
+    process.env['GITHUB_REF_NAME'] = 'feature/my-branch';
+    process.env['GITHUB_SHA'] = 'abc1234def5678900000000000000000000000';
+    process.env['GITHUB_RUN_ID'] = '999888777';
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com';
+    process.env['GITHUB_REPOSITORY'] = 'example-org/example-repo';
+
+    const reporter = new StepSummaryReporter();
+    const summary = reporter.generateSummary();
+
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
+    expect(summary).toContain('**Branch**: `feature/my-branch`');
+    expect(summary).toContain('**Commit**: `abc1234`');
+    expect(summary).toContain(
+      '**Run**: [999888777](https://github.com/example-org/example-repo/actions/runs/999888777)',
+    );
+    expect(summary).toMatch(/\*\*Started\*\*: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+  });
+
+  test('degrades gracefully when only some GITHUB_* env vars are set (e.g. no run link without run id)', () => {
+    const originalEnv = {
+      CI: process.env['CI'],
+      GITHUB_REF_NAME: process.env['GITHUB_REF_NAME'],
+      GITHUB_SHA: process.env['GITHUB_SHA'],
+      GITHUB_RUN_ID: process.env['GITHUB_RUN_ID'],
+      GITHUB_SERVER_URL: process.env['GITHUB_SERVER_URL'],
+      GITHUB_REPOSITORY: process.env['GITHUB_REPOSITORY'],
+    };
+    process.env['CI'] = 'true';
+    process.env['GITHUB_REF_NAME'] = 'main';
+    delete process.env['GITHUB_SHA'];
+    delete process.env['GITHUB_RUN_ID'];
+    delete process.env['GITHUB_SERVER_URL'];
+    delete process.env['GITHUB_REPOSITORY'];
+
+    const reporter = new StepSummaryReporter();
+    const summary = reporter.generateSummary();
+
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
+    expect(summary).toContain('**Branch**: `main`');
+    expect(summary).not.toContain('**Commit**');
+    expect(summary).not.toContain('**Run**:');
+    expect(summary).toMatch(/\*\*Started\*\*: \d{4}/);
+  });
+
   test('shows zero counts before any tests run', () => {
     const reporter = new StepSummaryReporter();
     const summary = reporter.generateSummary();

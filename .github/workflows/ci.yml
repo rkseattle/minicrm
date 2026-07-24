@@ -1524,6 +1524,11 @@ jobs:
 
       - name: Build combined PR comment (MINCRM-135)
         id: comment
+        env:
+          # github.head_ref is attacker-controllable (a PR's branch name) —
+          # passed through an env var per actionlint's own guidance, never
+          # interpolated directly into the shell script via ${{ }}.
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           DESKTOP=$(python3 .github/scripts/parse-junit.py summary artifacts/desktop/merged-results.xml)
           MOBILE=$(python3 .github/scripts/parse-junit.py summary artifacts/mobile-web/merged-results.xml)
@@ -1586,6 +1591,8 @@ jobs:
 
           build_summary() {
             echo "## Functional Test Results"
+            echo ""
+            echo "**Branch**: \`$BRANCH_NAME\` · **Commit**: \`$(echo "${{ github.sha }}" | cut -c1-7)\` · **Run**: [${{ github.run_id }}]($ARTIFACTS_URL) · **Started**: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
             echo "| Project | Status | Tests | Passed | Failed | Skipped |"
             echo "|---------|--------|-------|--------|--------|---------|"
@@ -1718,6 +1725,11 @@ jobs:
 
       - name: Build coverage comment
         id: comment
+        env:
+          # github.head_ref is attacker-controllable (a PR's branch name) —
+          # passed through an env var per actionlint's own guidance, never
+          # interpolated directly into the shell script via ${{ }}.
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           SERVER_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/server-coverage/coverage-summary.json)
           CLIENT_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/client-coverage/coverage-summary.json)
@@ -1737,6 +1749,8 @@ jobs:
           # Write body to a file to avoid ARG_MAX on large outputs.
           {
             echo "## Phase 2 — Unit & Framework Tests"
+            echo ""
+            echo "**Branch**: \`$BRANCH_NAME\` · **Commit**: \`$(echo "${{ github.sha }}" | cut -c1-7)\` · **Run**: [${{ github.run_id }}]($ARTIFACTS_URL) · **Started**: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
             echo "| Suite | Status | Tests | Passed | Failed | Skipped |"
             echo "|-------|--------|-------|--------|--------|---------|"
