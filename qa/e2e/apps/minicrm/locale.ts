@@ -70,6 +70,7 @@ const MINICRM_EN: LocaleMap = {
   'contacts.cancel': 'Cancel',
   'contacts.delete': 'Delete',
   'contacts.empty': 'No contacts yet. Add one to get started.',
+  'contacts.searchPlaceholder': 'Search by name or email…',
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Summarize',
@@ -92,6 +93,7 @@ const MINICRM_EN: LocaleMap = {
   'accounts.newAccount': 'New Account',
   'accounts.empty': 'No accounts yet. Add one to get started.',
   'accounts.linkedContactsEmpty': 'No contacts linked to this account.',
+  'accounts.searchPlaceholder': 'Search by company name…',
 
   // Leads
   'leads.new': 'New Lead',
@@ -177,6 +179,7 @@ const MINICRM_ES: LocaleMap = {
   'contacts.cancel': 'Cancelar',
   'contacts.delete': 'Eliminar',
   'contacts.empty': 'Aún no hay contactos. Agrega uno para empezar.',
+  'contacts.searchPlaceholder': 'Buscar por nombre o correo…',
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Resumir',
@@ -199,6 +202,7 @@ const MINICRM_ES: LocaleMap = {
   'accounts.newAccount': 'Nueva cuenta',
   'accounts.empty': 'Aún no hay cuentas. Agrega una para empezar.',
   'accounts.linkedContactsEmpty': 'No hay contactos vinculados a esta cuenta.',
+  'accounts.searchPlaceholder': 'Buscar por nombre de empresa…',
 
   // Leads
   'leads.new': 'Nuevo lead',
@@ -284,6 +288,7 @@ const MINICRM_FR: LocaleMap = {
   'contacts.cancel': 'Annuler',
   'contacts.delete': 'Supprimer',
   'contacts.empty': "Aucun contact pour l'instant. Ajoutez-en un pour commencer.",
+  'contacts.searchPlaceholder': 'Rechercher par nom ou e-mail…',
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Résumer',
@@ -306,6 +311,7 @@ const MINICRM_FR: LocaleMap = {
   'accounts.newAccount': 'Nouveau compte',
   'accounts.empty': "Aucun compte pour l'instant. Ajoutez-en un pour commencer.",
   'accounts.linkedContactsEmpty': 'Aucun contact associé à ce compte.',
+  'accounts.searchPlaceholder': "Rechercher par nom d'entreprise…",
 
   // Leads
   'leads.new': 'Nouveau prospect',
@@ -391,6 +397,7 @@ const MINICRM_DE: LocaleMap = {
   'contacts.cancel': 'Abbrechen',
   'contacts.delete': 'Löschen',
   'contacts.empty': 'Noch keine Kontakte. Fügen Sie einen hinzu.',
+  'contacts.searchPlaceholder': 'Nach Name oder E-Mail suchen…',
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': 'Zusammenfassen',
@@ -413,6 +420,7 @@ const MINICRM_DE: LocaleMap = {
   'accounts.newAccount': 'Neues Konto',
   'accounts.empty': 'Noch keine Konten. Fügen Sie eines hinzu.',
   'accounts.linkedContactsEmpty': 'Keine Kontakte mit diesem Konto verknüpft.',
+  'accounts.searchPlaceholder': 'Nach Firmenname suchen…',
 
   // Leads
   'leads.new': 'Neuer Lead',
@@ -498,6 +506,7 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'contacts.cancel': '取消',
   'contacts.delete': '删除',
   'contacts.empty': '暂无联系人，请添加。',
+  'contacts.searchPlaceholder': '按姓名或电子邮件搜索…',
 
   // Activities — AI call/note summarizer (MINCRM-436)
   'activities.summarize.action': '生成摘要',
@@ -520,6 +529,7 @@ const MINICRM_ZH_HANS: LocaleMap = {
   'accounts.newAccount': '新建客户',
   'accounts.empty': '暂无客户，请添加。',
   'accounts.linkedContactsEmpty': '此客户暂无关联联系人。',
+  'accounts.searchPlaceholder': '按公司名称搜索…',
 
   // Leads
   'leads.new': '新建潜在客户',

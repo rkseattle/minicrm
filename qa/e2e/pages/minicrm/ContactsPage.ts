@@ -103,7 +103,18 @@ export class ContactsPage {
 
   /**
    * Returns whether the contacts page is currently loaded and showing the list.
-   * Checks for the presence of the "New Contact" button as the stable anchor.
+   *
+   * Checks for `contacts-search`, which only mounts once the contacts list's
+   * initial fetch has settled (`!isLoading && !isError` in ContactsPage.tsx) —
+   * this is the actual "list is showing" signal. Previously checked for the
+   * "New Contact" button instead, which is WRONG on two counts: (1) it's
+   * rendered unconditionally on mount, before the list ever loads, so callers
+   * (e.g. search(), which requires contacts-search to exist) could proceed
+   * before the real content was ready; (2) it's additionally gated on
+   * `canWrite`, so this would incorrectly report `false` for any user without
+   * contact-write permission even once the list had genuinely finished
+   * loading. Confirmed as the root cause of F2-R1's intermittent
+   * search()-hangs-forever failures under CI load.
    *
    * Uses HealingLocator with 2 strategies to stay consistent with the Page
    * Object contract.
@@ -113,10 +124,22 @@ export class ContactsPage {
       await this.page
         .locate(
           [
-            { type: 'testId', value: 'new-contact-button' },
-            { type: 'role', value: 'button', options: { name: t('common.add'), exact: false } },
+            { type: 'testId', value: 'contacts-search' },
+            {
+              type: 'role',
+              value: 'searchbox',
+              options: { name: t('contacts.searchPlaceholder'), exact: true },
+            },
           ],
-          { intent: 'new contact button indicating contacts page is loaded' },
+          // Extended timeout: unlike the old new-contact-button check (present
+          // on first paint), contacts-search only mounts after the contacts
+          // list's own API fetch resolves, which can exceed the 2s default
+          // fallbackTimeout under CI/mobile load — this must NOT be as tight
+          // as the default or every caller starts seeing false negatives.
+          {
+            intent: 'contacts search input indicating the contacts list has finished loading',
+            fallbackTimeout: 8_000,
+          },
         )
         .resolve();
       return true;

@@ -37,19 +37,31 @@ export class MyTasksPage {
   }
 
   /**
-   * Returns whether the My Tasks page is loaded (heading visible).
+   * Returns whether the My Tasks page is loaded and showing its content
+   * (list, table, or empty state — not the loading placeholder).
+   *
+   * Previously checked `my-tasks-heading`, which is WRONG: it's rendered
+   * unconditionally above the `isLoading`/`isError` gate in MyTasksPage.tsx,
+   * so it's present the instant the page mounts, before the task list's own
+   * fetch has settled. Same bug class as ContactsPage.isLoaded().
+   *
+   * The post-load content has no single stable anchor of its own — it's a
+   * desktop table (`my-tasks-table`), a mobile card list, or an empty state,
+   * depending on viewport and result count — so instead of checking for one
+   * of those, this waits for `my-tasks-loading` (present only in the
+   * `isLoading` branch) to be gone from the DOM. Uses waitForFunction with a
+   * direct DOM query, not locate().resolve(), so a call arriving after the
+   * fetch has already settled (the common case) doesn't pay the healing
+   * locator's own probe timeout waiting for an element that will never
+   * appear — see ContactsPage.confirmBulkReassign() for the same pattern.
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.page
-        .locate(
-          [
-            { type: 'testId', value: 'my-tasks-heading' },
-            { type: 'role', value: 'heading', options: { level: 1 } },
-          ],
-          { intent: 'my tasks page heading indicating page is loaded' },
-        )
-        .resolve();
+      await this.page.waitForFunction(
+        `document.querySelector('[data-testid="my-tasks-loading"]') === null`,
+        undefined,
+        { timeout: 8_000 },
+      );
       return true;
     } catch {
       return false;

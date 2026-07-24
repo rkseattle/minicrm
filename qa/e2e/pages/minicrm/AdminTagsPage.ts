@@ -44,23 +44,28 @@ export class AdminTagsPage {
   }
 
   /**
-   * Returns whether the tags section has loaded (section title present).
+   * Returns whether the tags section has finished loading its tag list (not
+   * just the feature flag).
+   *
+   * Previously checked `tags-section-title`, which is WRONG: that heading is
+   * gated only on the `tags` feature flag's own `flagLoading` state
+   * (PipelinesAndFieldsSettings.tsx), so it renders as soon as the flag
+   * resolves — before the tags list's own `useQuery` has settled. Same bug
+   * class as ContactsPage.isLoaded(). Waits for `admin-tags-loading` (present
+   * only while the tags list's `isLoading` is true) to be gone from the DOM.
+   * Uses waitForFunction with a direct DOM query, not locate().resolve(), so
+   * a call arriving after the fetch has already settled (the common case)
+   * doesn't pay the healing locator's own probe timeout waiting for an
+   * element that will never appear — see
+   * ContactsPage.confirmBulkReassign() for the same pattern.
    */
   async isLoaded(): Promise<boolean> {
     try {
-      await this.page
-        .locate(
-          [
-            { type: 'testId', value: 'tags-section-title' },
-            {
-              type: 'role',
-              value: 'heading',
-              options: { name: t('tags.pageTitle'), exact: false },
-            },
-          ],
-          { intent: 'tags section title in Pipelines & Fields tab indicating section is loaded' },
-        )
-        .resolve();
+      await this.page.waitForFunction(
+        `document.querySelector('[data-testid="admin-tags-loading"]') === null`,
+        undefined,
+        { timeout: 8_000 },
+      );
       return true;
     } catch {
       return false;
