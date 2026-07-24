@@ -50,19 +50,35 @@ export class AdminTagsPage {
    * Previously checked `tags-section-title`, which is WRONG: that heading is
    * gated only on the `tags` feature flag's own `flagLoading` state
    * (PipelinesAndFieldsSettings.tsx), so it renders as soon as the flag
-   * resolves — before the tags list's own `useQuery` has settled. Same bug
-   * class as ContactsPage.isLoaded(). Waits for `admin-tags-loading` (present
-   * only while the tags list's `isLoading` is true) to be gone from the DOM.
-   * Uses waitForFunction with a direct DOM query, not locate().resolve(), so
-   * a call arriving after the fetch has already settled (the common case)
-   * doesn't pay the healing locator's own probe timeout waiting for an
-   * element that will never appear — see
-   * ContactsPage.confirmBulkReassign() for the same pattern.
+   * resolves — before the tags list's own `useQuery` has settled.
+   *
+   * A later fix (still wrong, same bug class) waited for `admin-tags-loading`
+   * to be ABSENT from the DOM. That is a false-positive trap: while
+   * `useFeatureFlag('tags')` itself is still resolving (flagLoading === true),
+   * TagManagementSection renders an early-return skeleton
+   * (PipelinesAndFieldsSettings.tsx ~line 155) that contains NEITHER
+   * `admin-tags-loading` NOR `admin-tags-list`/`pagination` — so the
+   * "is admin-tags-loading absent" query is trivially true before the tags
+   * list's own useQuery has even been created, let alone resolved. Under CI
+   * contention, withFlags()'s route.fetch() round-trip for
+   * GET /api/v1/feature-flags/me is slow enough that isLoaded() returns
+   * true during this skeleton phase, and callers (e.g.
+   * expectAdminTagsPaginationVisible) then look for `pagination` before it
+   * has ever mounted — this was the actual root cause of the F8-TG1b
+   * StrategyExhaustedError on testId("pagination"), not locator resolution
+   * speed (MINCRM-666).
+   *
+   * Fixed to wait for a POSITIVE presence signal that only exists once the
+   * real (non-skeleton, non-loading) content has rendered — `admin-tags-list`
+   * (populated case) or `admin-tags-empty-state` (empty case) — matching the
+   * pattern used by ContactsPage.isLoaded() (waits for `contacts-search`,
+   * not for a loading indicator's absence).
    */
   async isLoaded(): Promise<boolean> {
     try {
       await this.page.waitForFunction(
-        `document.querySelector('[data-testid="admin-tags-loading"]') === null`,
+        `document.querySelector('[data-testid="admin-tags-list"]') !== null ||
+         document.querySelector('[data-testid="admin-tags-empty-state"]') !== null`,
         undefined,
         { timeout: 8_000 },
       );
@@ -199,6 +215,10 @@ export class AdminTagsPage {
   /**
    * Returns a resolved locator for the pagination container on the tags page.
    * Throws if not found — the tags list must have more than one page of results.
+   *
+   * Callers must ensure the tags list has actually finished loading (see
+   * isLoaded()) before calling this — Pagination only mounts once the tags
+   * query has resolved (PipelinesAndFieldsSettings.tsx TagManagementSection).
    */
   async paginationLocator() {
     return this.page
