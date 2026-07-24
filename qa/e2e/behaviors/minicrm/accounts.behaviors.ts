@@ -542,21 +542,55 @@ export async function createAccountViaApi(
 // so spec files never import @pages/* directly. (MINCRM-367)
 // ---------------------------------------------------------------------------
 
-/** Asserts a linked contact row by contact ID is visible on the account detail page. */
+/**
+ * Asserts a linked contact row by contact ID is visible on the account
+ * detail page.
+ *
+ * Waits for the linked-contacts section's own loading placeholder to clear
+ * first — same independent-query race as
+ * expectAccountLinkedContactsEmptyVisible's own docblock describes.
+ */
 export async function expectAccountLinkedContactVisible(
   contactId: string,
   context: AccountsBehaviorContext,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
+  await context.page.waitForFunction(
+    `document.querySelector('[aria-labelledby="linked-contacts-heading"] [aria-busy="true"]') === null`,
+    undefined,
+    { timeout: 10_000 },
+  );
   const locator = await new AccountDetailPage(context).linkedContactLocator(contactId);
   await expect(locator).toBeVisible();
 }
 
-/** Asserts the empty-state message is visible when no contacts are linked to the account. */
+/**
+ * Asserts the empty-state message is visible when no contacts are linked to
+ * the account.
+ *
+ * The account record and its linked-contacts list are TWO INDEPENDENT
+ * queries (AccountDetailPage.tsx's own linkedContactsData useQuery is
+ * separate from the account's own data fetch) — the page can finish loading
+ * (edit button visible) while the linked-contacts section is still on its
+ * own loading placeholder (`aria-busy="true"`, no `linked-contacts-empty`
+ * testid yet). navigateToAccount's `waitUntil: 'networkidle'` is not a
+ * reliable substitute for waiting on this specific query, since
+ * `networkidle` can settle before or after any individual fetch depending
+ * on other in-flight network activity. Waits for the section's own loading
+ * placeholder to be gone before resolving the locator, rather than relying
+ * on HealingLocator's own retry budget to paper over the race (same
+ * decoupling this repo already applies elsewhere — see
+ * waitForContactAccountLinkLoaded's own docblock).
+ */
 export async function expectAccountLinkedContactsEmptyVisible(
   context: AccountsBehaviorContext,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
+  await context.page.waitForFunction(
+    `document.querySelector('[aria-labelledby="linked-contacts-heading"] [aria-busy="true"]') === null`,
+    undefined,
+    { timeout: 10_000 },
+  );
   const locator = await new AccountDetailPage(context).linkedContactsEmptyLocator();
   await expect(locator).toBeVisible();
 }
