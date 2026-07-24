@@ -250,4 +250,37 @@ describe('resolveChangedUnits', () => {
     // an unrelated add+delete pair.
     expect(deletedUnits[0].unitKey.split('#')[1]).toBe(newUnits[0].unitKey.split('#')[1]);
   });
+
+  it('resolves a function changed ONLY by deleting lines to a changed unit, not silently omitted (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function foo() {\n  const a = 1;\n  const b = 2;\n  return a;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Deletes the middle line only — the entire diff is one pure-deletion
+    // hunk with no surviving positive-line-count hunk anywhere in the file.
+    // Before the fix, diffParser discarded this hunk entirely, so
+    // resolveChangedUnits reported NEITHER a changed unit NOR an
+    // unresolved-change entry for foo() — its covering tests would have
+    // silently dropped out of selection with no safety-net signal at all.
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function foo() {\n  const a = 1;\n  return a;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'delete middle line only']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+    const result = await resolveChangedUnits(diffs, repoRoot, baseSha, headSha);
+
+    expect(result.changedUnits).toHaveLength(1);
+    expect(result.changedUnits[0].unitKey).toMatch(/^foo#/);
+    expect(result.changedUnits[0].changeKind).toBe('in-line');
+    expect(result.unresolvedFileChanges).toEqual([]);
+  });
 });

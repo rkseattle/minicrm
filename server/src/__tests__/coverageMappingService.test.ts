@@ -13,6 +13,7 @@ import { randomUUID } from 'crypto';
 import {
   findTestsForUnit,
   findUnitsForTest,
+  findTestsForUnitAcrossBranches,
   linkCoverageUnitsToTest,
 } from '../services/coverageMappingService.js';
 import type { CoverageTestLinkInput } from '../services/coverageMappingService.js';
@@ -202,6 +203,58 @@ describe('coverageMappingService', () => {
     it('returns an empty array when no test covers the given unit', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const found = await findTestsForUnit(commitSha, 'nonexistent#000', null);
+      expect(found).toHaveLength(0);
+    });
+  });
+
+  describe('findTestsForUnitAcrossBranches', () => {
+    it('finds a test whose link is stored under a NON-null branch_id, given only the unitKey', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unitKey = 'branching#branchtest1';
+
+      await linkAndCommit(commitSha, 'spec:branching.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0' }),
+      ]);
+
+      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      expect(found).toHaveLength(1);
+      expect(found[0]).toMatchObject({ testId: 'spec:branching.spec.ts::t', branchId: '0:0' });
+    });
+
+    it('finds tests across MULTIPLE distinct branch_ids for the same unitKey', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unitKey = 'multiBranch#branchtest2';
+
+      await linkAndCommit(commitSha, 'spec:branch-a.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0' }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:branch-b.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:1' }),
+      ]);
+
+      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      expect(found.map((r) => r.testId).sort()).toEqual([
+        'spec:branch-a.spec.ts::t',
+        'spec:branch-b.spec.ts::t',
+      ]);
+    });
+
+    it('also finds a function-granularity (null branch_id) link — matching is unitKey-only, not branch-exclusive', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unitKey = 'functionGranularity#branchtest3';
+
+      await linkAndCommit(commitSha, 'spec:function.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: null }),
+      ]);
+
+      const found = await findTestsForUnitAcrossBranches(commitSha, unitKey);
+      expect(found).toHaveLength(1);
+      expect(found[0]).toMatchObject({ testId: 'spec:function.spec.ts::t', branchId: null });
+    });
+
+    it('returns an empty array when no test covers the given unitKey under any branch', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const found = await findTestsForUnitAcrossBranches(commitSha, 'nonexistent#000');
       expect(found).toHaveLength(0);
     });
   });

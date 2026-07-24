@@ -3,7 +3,7 @@
  *
  * Resolves changeUnitResolver.ts's changed units into the minimal set of
  * affected tests via the mapping query API (coverageMappingService's
- * findTestsForUnitWithConfidence, MINCRM-621), producing a prioritized,
+ * findTestsForUnitAcrossBranches, MINCRM-621), producing a prioritized,
  * deduplicated list with a per-test rationale. Changed units the mapping
  * API has no record of (new code, or code the map hasn't caught up with
  * yet) inherit candidates from their enclosing/calling unit instead of
@@ -11,8 +11,20 @@
  * surfaced separately for the safety-net policy (MINCRM-626) to widen
  * around.
  *
+ * Looks up by unitKey ACROSS EVERY BRANCH (findTestsForUnitAcrossBranches),
+ * not the mapping query API's own exact-(unitKey, branchId) lookup
+ * (findTestsForUnitWithConfidence) — changeUnitResolver resolves a diff to
+ * changed FUNCTIONS, never individual branch arms within a function (every
+ * ChangedUnit.branchId is always null), while a branching function's own
+ * coverage is stored under one or more NON-null branch_id rows. An exact
+ * lookup with branchId: null would therefore always return zero results
+ * for exactly the functions most likely to have meaningful branch-level
+ * test coverage (found via Greptile PR review) — see
+ * coverageMappingService.ts's own docblock on findTestsForUnitAcrossBranches
+ * for the full rationale.
+ *
  * No batch lookup endpoint exists on the mapping query API (single
- * commitSha+unitKey+branchId per call) — this service fans out with bounded
+ * commitSha+unitKey per call) — this service fans out with bounded
  * concurrency (MAX_CONCURRENT_MAPPING_LOOKUPS) rather than one call per
  * changed unit unbounded, since coverageDb's own pool caps at 10 connections
  * (see coverageDb.ts) and an uncapped Promise.all over a large diff's
@@ -27,7 +39,7 @@
  */
 
 import {
-  findTestsForUnitWithConfidence,
+  findTestsForUnitAcrossBranches,
   type CoverageMappingResult,
 } from '../../services/coverageMappingService.js';
 import type { ChangedUnit } from './changeUnitResolver.js';
@@ -161,11 +173,7 @@ export async function selectTestsForChangedUnits(
     changedUnits,
     MAX_CONCURRENT_MAPPING_LOOKUPS,
     async (unit) => {
-      const directMatches = await findTestsForUnitWithConfidence(
-        commitSha,
-        unit.unitKey,
-        unit.branchId,
-      );
+      const directMatches = await findTestsForUnitAcrossBranches(commitSha, unit.unitKey);
 
       if (directMatches.length > 0) {
         return {
@@ -185,11 +193,7 @@ export async function selectTestsForChangedUnits(
         return { unit, tests: [] };
       }
 
-      const inheritedMatches = await findTestsForUnitWithConfidence(
-        commitSha,
-        enclosingUnitKey,
-        unit.branchId,
-      );
+      const inheritedMatches = await findTestsForUnitAcrossBranches(commitSha, enclosingUnitKey);
       return {
         unit,
         tests: inheritedMatches.map((match) =>
