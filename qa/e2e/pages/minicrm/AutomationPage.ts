@@ -39,13 +39,23 @@ export class AutomationPage {
 
   /**
    * Returns a resolved locator for the automation rules page heading.
+   *
+   * The role-based fallback uses an EXACT name match rather than a
+   * case-insensitive substring regex: the page's empty state renders its own
+   * heading with the text "No automation rules" (automation.emptyTitle),
+   * which also matches /automation/i. Under a strict-mode assertion (e.g.
+   * expect(locator).toBeVisible()), a fallback that ambiguously matches both
+   * the real page heading ("Automation Rules") and the empty-state heading
+   * throws instead of healing, if the primary testId strategy ever times out
+   * (e.g. under CI load) and this fallback gets returned as the resolved
+   * locator. Exact match keeps the fallback unambiguous in that scenario.
    */
   async headingLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'automation-rules-heading' },
-          { type: 'role', value: 'heading', options: { name: /automation/i } },
+          { type: 'role', value: 'heading', options: { name: 'Automation Rules', exact: true } },
         ],
         { intent: 'automation rules page heading' },
       )

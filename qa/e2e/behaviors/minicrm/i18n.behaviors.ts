@@ -44,8 +44,19 @@ const SWITCH_TO_PSEUDO = new Function(`
 // ---------------------------------------------------------------------------
 
 /**
- * Switches the running app to pseudo locale via window.i18n and waits for
- * network idle to let React re-render with the new locale strings.
+ * Switches the running app to pseudo locale via window.i18n and waits for the
+ * nav to actually re-render with pseudo strings before returning.
+ *
+ * The locale switch is a pure client-side React state update — no network
+ * request is involved — so `page.evaluate(SWITCH_TO_PSEUDO)` resolving only
+ * confirms i18next's internal state changed, not that React has finished
+ * re-rendering with the new strings. A `networkidle` wait afterward resolves
+ * almost immediately (there is no network activity to wait for) and can
+ * return before the re-render completes, letting the caller read stale
+ * English text — a real observed race under CI load. Every pseudo.json
+ * string is wrapped in `[...]` brackets (see client/src/locales/pseudo.json),
+ * so waiting for that marker on a known always-rendered nav element (the
+ * Dashboard link) is a reliable, specific DOM-condition wait instead.
  *
  * @param context - Behavior context with page.
  */
@@ -66,7 +77,11 @@ export async function applyPseudoLocale(
       : (pageOrContext as SafePage);
   const err = await page.evaluate(SWITCH_TO_PSEUDO);
   if (err) throw new Error(`applyPseudoLocale: ${err}`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(
+    `(document.querySelector('[data-testid="nav-top-dashboard"]')?.textContent ?? '').includes('[')`,
+    undefined,
+    { timeout: 10_000 },
+  );
 }
 
 // ---------------------------------------------------------------------------

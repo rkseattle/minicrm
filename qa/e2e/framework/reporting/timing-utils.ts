@@ -151,6 +151,29 @@ export function discoverSpecFiles(dir: string): string[] {
 }
 
 /**
+ * Extracts test title strings from a spec file's `test(...)` / `test.only(...)`
+ * / `test.skip(...)` / `test.fixme(...)` calls whose title contains the given
+ * tag substring (e.g. "@serial"). This is a best-effort regex scan over the
+ * opening title-string argument, not a full TS parse — sufficient to
+ * distinguish an actual test tag from the same substring appearing elsewhere
+ * in the file (a comment, a variable name, prose in a JSDoc block, etc.),
+ * which a plain `content.includes(tag)` check cannot do.
+ */
+export function findTaggedTestTitles(fileAbsPath: string, tag: string): string[] {
+  const content = fs.readFileSync(fileAbsPath, 'utf-8');
+  const titles: string[] = [];
+  const testCallRegex = /\btest(?:\.(?:only|skip|fixme))?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g;
+  let match: RegExpExecArray | null;
+  while ((match = testCallRegex.exec(content)) !== null) {
+    const title = match[2] ?? '';
+    if (title.includes(tag)) {
+      titles.push(title);
+    }
+  }
+  return titles;
+}
+
+/**
  * LPT (Longest Processing Time) greedy bin-packing.
  * Returns workerCount buckets of file paths, balanced by estimated wall time.
  */
