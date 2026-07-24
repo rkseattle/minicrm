@@ -34,13 +34,28 @@ export class ChurnExpansionInsightsPage {
     await this.page.goto(ChurnExpansionInsightsPage.PATH);
   }
 
-  /** Returns a resolved locator for the page heading. */
+  /**
+   * Returns a resolved locator for the page heading.
+   *
+   * The role-based fallback uses an EXACT name match rather than a
+   * case-insensitive /at-risk|expansion/ regex: the page also renders two
+   * section headings ("At-Risk Accounts", "Expansion Opportunities") that
+   * both match that pattern, so a strict-mode assertion (e.g.
+   * expect(locator).toBeVisible()) throws instead of healing if the primary
+   * testId strategy ever times out (e.g. under CI load) and this fallback is
+   * returned as the resolved locator — see AutomationPage.headingLocator()
+   * for the identical failure mode and fix.
+   */
   async headingLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'churn-expansion-insights-heading' },
-          { type: 'role', value: 'heading', options: { name: /at-risk|expansion/i } },
+          {
+            type: 'role',
+            value: 'heading',
+            options: { name: 'At-Risk & Expansion Accounts', exact: true },
+          },
         ],
         { intent: 'churn/expansion insights page heading' },
       )

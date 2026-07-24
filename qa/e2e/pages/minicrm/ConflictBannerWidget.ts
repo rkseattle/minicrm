@@ -47,13 +47,25 @@ export class ConflictBannerWidget {
   /**
    * Returns a resolved locator for the modal title heading.
    * Throws StrategyExhaustedError if the modal is not open.
+   *
+   * The role-based fallback is scoped `within: 'field-merge-modal'` rather
+   * than searching the whole page: without that scope, it also matches any
+   * h2 on the background detail page that opened this modal — see
+   * AutomationPage.headingLocator() for the identical failure mode (this one
+   * doesn't currently crash since its only caller uses non-strict
+   * isVisible(), but an unscoped match can silently check the wrong element).
    */
   async titleLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'field-merge-modal-title' },
-          { type: 'role', value: 'heading', options: { level: 2 } },
+          {
+            type: 'role',
+            value: 'heading',
+            options: { level: 2 },
+            within: 'field-merge-modal',
+          },
         ],
         { intent: 'title heading inside the conflict resolution modal' },
       )

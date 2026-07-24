@@ -1053,13 +1053,20 @@ jobs:
       # to guarantee two conflicting files never overlap; see conflict-graph.ts
       # and gen-conflict-group-configs.ts module docs), but each group internally
       # uses up to 2 workers since no two files within a conflict-free group touch
-      # the same resource. Each group writes its own results.xml (via
-      # PLAYWRIGHT_JUNIT_OUTPUT_NAME); merged into the final results.xml below.
+      # the same resource. Each group writes its own JUnit XML (via
+      # PLAYWRIGHT_JUNIT_OUTPUT_FILE); merged into the final results.xml below.
       - name: Run serial functional tests (MINCRM-549, MINCRM-661)
         run: |
-          mkdir -p qa/e2e/test-results/serial-groups
           if [ ! -f qa/e2e/playwright.serial-groups.json ]; then
             echo "::warning::No conflict-group manifest generated — falling back to the single blanket invocation."
+            # NOT creating serial-groups/ here is deliberate: the merge step below
+            # uses that directory's existence to distinguish "groups ran" (merge
+            # their per-group XML files) from "fallback ran" (results.xml was
+            # already written directly by this invocation, nothing to merge).
+            # Creating it unconditionally previously broke that check — the merge
+            # step saw an always-existing-but-empty directory on the fallback path
+            # and failed with "no group XML files found" even though the fallback
+            # had already succeeded.
             npx playwright test \
               --config=qa/e2e/playwright.config.ts \
               --project=desktop \
@@ -1067,6 +1074,7 @@ jobs:
               --grep "@functional.*@serial|@serial.*@functional"
             exit $?
           fi
+          mkdir -p qa/e2e/test-results/serial-groups
           exit_code=0
           # Single jq pass over the manifest (index, configPath, workers as TSV)
           # instead of re-reading/re-parsing the JSON file once per field per group.

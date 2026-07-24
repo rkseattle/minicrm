@@ -200,13 +200,22 @@ export class DealDetailPage {
 
   /**
    * Returns a resolved locator for the deal name heading on the detail page.
+   *
+   * The role-based fallback is scoped to level: 1 rather than a bare
+   * `heading` role: the page renders several h2 sub-section headings (Deal
+   * Health, Proposal Draft, Stakeholder Map, etc.) in the same DOM tree, so
+   * an unscoped heading role matches all of them too — see
+   * AutomationPage.headingLocator() for the identical failure mode. The deal
+   * name itself is dynamic per-test data, so an exact-text match (used for
+   * the other fixes of this bug class) isn't viable here; level: 1 alone is
+   * sufficient since this page has exactly one h1.
    */
   async dealNameLocator() {
     return this.page
       .locate(
         [
           { type: 'testId', value: 'deal-name' },
-          { type: 'role', value: 'heading' },
+          { type: 'role', value: 'heading', options: { level: 1 } },
         ],
         // Extended timeout: the deal API response arrives near networkidle, and
         // the React render cycle that replaces the loading paragraph with the h1
