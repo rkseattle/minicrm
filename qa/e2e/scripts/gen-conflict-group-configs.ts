@@ -60,30 +60,24 @@ import {
   buildConflictGraph,
   partitionIntoConflictFreeGroups,
 } from '../framework/reporting/conflict-graph.js';
-import type { FileResourceTouch } from '../framework/reporting/conflict-graph.js';
-import { RESOURCE_REGISTRY } from '../apps/minicrm/resource-registry.js';
+import {
+  RESOURCE_REGISTRY,
+  collapseRegistryToFileTouches,
+} from '../apps/minicrm/resource-registry.js';
 
 const E2E_DIR = path.resolve(process.cwd(), 'qa/e2e');
 
 /** Conservative cap on workers within a single conflict-free group — keeps
  *  co-scheduling within the MINCRM-658 lesson's spirit (avoid reintroducing
  *  shared-service contention against Postgres/MinIO/Mailhog) even though a
- *  conflict-free group has no data-race risk by construction. */
+ *  conflict-free group has no data-race risk by construction.
+ *  Deliberately independent of the capacity-probe's computed worker count
+ *  (MINCRM-662) — the capacity-probe's empirical findings (see
+ *  docs/dev/e2e-performance.md's "Scope of these findings") only cover the
+ *  non-serial functional suite; the @serial population's parallelism ceiling
+ *  has not been separately measured, so this stays a conservative constant
+ *  rather than consuming capacity-probe's output. */
 const MAX_GROUP_WORKERS = 2;
-
-function collapseRegistryToFileTouches(): FileResourceTouch[] {
-  const byFile = new Map<string, { reads: Set<string>; writes: Set<string> }>();
-  for (const entry of RESOURCE_REGISTRY) {
-    const existing = byFile.get(entry.file) ?? {
-      reads: new Set<string>(),
-      writes: new Set<string>(),
-    };
-    for (const r of entry.reads) existing.reads.add(r);
-    for (const w of entry.writes) existing.writes.add(w);
-    byFile.set(entry.file, existing);
-  }
-  return [...byFile.entries()].map(([file, { reads, writes }]) => ({ file, reads, writes }));
-}
 
 /** Finds every *.spec.ts file under functional/ whose content contains the
  *  literal string "@serial" — the ground-truth population this script must
