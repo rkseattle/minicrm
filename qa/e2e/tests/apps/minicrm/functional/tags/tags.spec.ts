@@ -103,16 +103,17 @@ test(
     // this test has no guarantee the list isn't momentarily empty mid-race.
     await createTestTag(testData, restClient, { name: `tg1b-pagination-${Date.now()}` });
 
-    await navigateToAdminTags({ page });
+    const navResult = await navigateToAdminTags({ page });
+    // Root cause of the prior "testId(pagination) exhausted" flake (MINCRM-666):
+    // AdminTagsPage.isLoaded() used to return a false positive while the page
+    // was still on the feature-flag-loading skeleton (no admin-tags-loading,
+    // no admin-tags-list, no pagination in the DOM yet) — this assertion is
+    // the guard that catches that class of bug; F8-TG1/F8-TG2 already had it,
+    // F8-TG1b did not. isLoaded() now waits for a positive presence signal
+    // (admin-tags-list or admin-tags-empty-state) instead of an absence check.
+    expect(navResult.loaded).toBe(true);
 
-    // This page gates on two sequential server round-trips before Pagination
-    // renders: GET /api/v1/feature-flags/me (intercepted by withFlags(), but
-    // still a real fetch — see helpers.ts) then the tags list query. Under CI
-    // contention (this test runs concurrently with F8-TG3/F8-TG4 in the same
-    // file against a 2-worker shard), that combined latency has been observed
-    // at ~14.7s against a prior 15s budget — 25s gives real headroom rather
-    // than chasing the timeout closer each time this flakes.
-    await expectAdminTagsPaginationVisible({ page }, 25_000);
+    await expectAdminTagsPaginationVisible({ page });
   },
 );
 
