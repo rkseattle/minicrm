@@ -45,6 +45,7 @@ verify **every item** on this checklist:
 | `activities/activities.spec.ts`                   | 35.0 s            | MINCRM-550     |
 | `error-states/error-states.spec.ts`               | 30.5 s            | MINCRM-550     |
 | `reports/stage-trend.spec.ts`                     | 27.2 s            | MINCRM-550     |
+| `tags/tags.spec.ts`                               | 46.7 s            | MINCRM-662     |
 
 **Isolation notes per file:**
 
@@ -87,6 +88,19 @@ verify **every item** on this checklist:
 - **`reports/stage-trend.spec.ts`** — `beforeEach` creates a fresh admin per test.
   The stage-trend report is read-only; tests only change the date-range selector
   and assert on empty/populated rendering state.
+
+- **`tags/tags.spec.ts`** — `beforeEach` creates a fresh admin. This file was
+  running under the global `fullyParallel: true` default without ever being
+  audited; F8-TG1b ("pagination controls always visible") was the one
+  checklist violation — it asserted a condition on the shared global admin
+  tags list without owning any data, so it raced F8-TG3 (delete) and F8-TG4
+  (attach) under concurrent CI load and intermittently timed out waiting for
+  the tags query to resolve (MINCRM-662, observed as
+  `StrategyExhaustedError` on the `pagination` testId). Fixed by having
+  F8-TG1b create its own UUID-suffixed tag via `createTestTag` like every
+  other test in the file, removing the dependency on ambient/racing state.
+  Every other test already creates UUID-suffixed tags/contacts/deals and
+  makes no table-wide count assertions.
 
 ---
 

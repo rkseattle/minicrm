@@ -93,14 +93,21 @@ test(
   'F8-TG1b: admin tags page — pagination controls always visible',
   { tag: ['@functional'] },
   async ({ page, testData, restClient }) => {
-    void testData;
-
     const admin = await createTestAdmin(testData, restClient);
     await loginViaBrowser(admin.email, admin.password, { page });
 
+    // Own at least one tag rather than relying on ambient tags created by
+    // concurrent tests in this file (F8-TG3/F8-TG4 etc. mutate the same
+    // global tags list under fullyParallel). Pagination renders as soon as
+    // the tags query resolves regardless of count, but without an owned tag
+    // this test has no guarantee the list isn't momentarily empty mid-race.
+    await createTestTag(testData, restClient, { name: `tg1b-pagination-${Date.now()}` });
+
     await navigateToAdminTags({ page });
 
-    await expectAdminTagsPaginationVisible({ page }, 10_000);
+    // 15s tolerates real CI contention from concurrent tests in this file
+    // hitting the same shared tags list/dev server.
+    await expectAdminTagsPaginationVisible({ page }, 15_000);
   },
 );
 
