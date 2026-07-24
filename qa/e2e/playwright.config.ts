@@ -80,6 +80,11 @@ export default defineConfig({
     // test-timing.jsonl (gitignored). Always-on so local runs accumulate history
     // used by the LPT shard assignment pipeline.
     ['./framework/reporting/timing-reporter.ts'],
+    // MINCRM-661: Resource-touch reporter — appends per-test shared-resource
+    // read/write records to resource-touch.jsonl (gitignored), looked up from
+    // the app-layer resource registry. Always-on so local runs accumulate
+    // history used by the conflict-graph builder.
+    ['./apps/minicrm/resource-touch-reporter.ts'],
     // MINCRM-605/607: Coverage reporter — dumps final backend coverage when
     // E2E_COVERAGE_GRANULARITY=per-run. Unconditional (not IS_CI-gated) so
     // local COVERAGE=true runs also produce dumps for manual exploratory use.
