@@ -868,9 +868,13 @@ jobs:
 
   # MINCRM-549: Serial E2E job for tests that mutate shared global state and cannot
   # safely run concurrently with the sharded matrix. Tests tagged @serial are excluded
-  # from e2e-functional (--grep-invert serial) and run here with --workers=1 so no
-  # two @serial tests ever touch the database at the same time.
-  # Currently: visibility.spec.ts (org-level visibility policy).
+  # from e2e-functional (--grep-invert serial) and run here.
+  # MINCRM-661: within this job, @serial files are partitioned into conflict-free
+  # groups (qa/e2e/scripts/gen-conflict-group-configs.ts, driven by
+  # qa/e2e/apps/minicrm/resource-registry.ts) and run as sequential invocations —
+  # groups never overlap in wall-clock time, so two files that touch the same
+  # resource never touch the database concurrently, but unrelated files can share
+  # up to 2 workers within their own group. See docs/dev/e2e-authoring.md.
   e2e-serial:
     name: Phase 3 - E2E Serial (global-state tests)
     # MINCRM-658: runs after e2e-functional's 8 shard jobs finish rather than
@@ -1040,13 +1044,48 @@ jobs:
             sleep 2
           done
 
-      - name: Run serial functional tests (MINCRM-549)
+      - name: Generate conflict-free group configs (MINCRM-661)
+        run: npx tsx qa/e2e/scripts/gen-conflict-group-configs.ts
+
+      # MINCRM-661: Replaces the single --workers=1 invocation over every @serial
+      # file with N sequential invocations, one per conflict-free group. Groups
+      # run one after another (process-level separation — the only reliable way
+      # to guarantee two conflicting files never overlap; see conflict-graph.ts
+      # and gen-conflict-group-configs.ts module docs), but each group internally
+      # uses up to 2 workers since no two files within a conflict-free group touch
+      # the same resource. Each group writes its own results.xml (via
+      # PLAYWRIGHT_JUNIT_OUTPUT_NAME); merged into the final results.xml below.
+      - name: Run serial functional tests (MINCRM-549, MINCRM-661)
         run: |
-          npx playwright test \
-            --config=qa/e2e/playwright.config.ts \
-            --project=desktop \
-            --workers=1 \
-            --grep "@functional.*@serial|@serial.*@functional"
+          mkdir -p qa/e2e/test-results/serial-groups
+          if [ ! -f qa/e2e/playwright.serial-groups.json ]; then
+            echo "::warning::No conflict-group manifest generated — falling back to the single blanket invocation."
+            npx playwright test \
+              --config=qa/e2e/playwright.config.ts \
+              --project=desktop \
+              --workers=1 \
+              --grep "@functional.*@serial|@serial.*@functional"
+            exit $?
+          fi
+          exit_code=0
+          group_count=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8')).length")
+          for i in $(seq 0 $(( group_count - 1 ))); do
+            config_path=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8'))[$i].configPath")
+            workers=$(node -pe "JSON.parse(require('fs').readFileSync('qa/e2e/playwright.serial-groups.json','utf-8'))[$i].workers")
+            echo "::group::Running serial-group $i ($config_path, $workers worker(s))"
+            # SHARD_INDEX namespaces this invocation's healing-*.json worker files
+            # (healing-shard${i}-worker*.json) so they don't collide with the next
+            # sequential group's own worker-0/1 files in the shared test-results/ dir.
+            PLAYWRIGHT_JUNIT_OUTPUT_NAME="qa/e2e/test-results/serial-groups/group-${i}.xml" \
+            SHARD_INDEX="$i" \
+              npx playwright test \
+                --config="$config_path" \
+                --project=desktop \
+                --workers="$workers" \
+                --grep "@functional.*@serial|@serial.*@functional" || exit_code=$?
+            echo "::endgroup::"
+          done
+          exit "$exit_code"
         env:
           E2E_BASE_URL: http://localhost:5173
           E2E_API_URL: http://localhost:3001
@@ -1057,6 +1096,45 @@ jobs:
           AI_HEALING: true
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AI_HEAL_COST_WARNING_THRESHOLD: '20'
+
+      - name: Merge conflict-group JUnit XML results (MINCRM-661)
+        if: always()
+        run: |
+          node --input-type=module << 'EOF'
+          import { readFileSync, writeFileSync, existsSync } from 'fs';
+          import { execSync } from 'child_process';
+
+          const outputPath = 'qa/e2e/test-results/results.xml';
+          if (!existsSync('qa/e2e/test-results/serial-groups')) {
+            console.log('No serial-groups directory — single blanket invocation already wrote results.xml directly.');
+            process.exit(0);
+          }
+
+          const files = execSync(
+            'find qa/e2e/test-results/serial-groups -name "*.xml"'
+          ).toString().trim().split('\n').filter(Boolean);
+
+          if (files.length === 0) {
+            console.error('No group results.xml files found — all groups failed before Playwright ran.');
+            process.exit(1);
+          }
+
+          const testcases = files.flatMap(f => {
+            const xml = readFileSync(f, 'utf8');
+            const matches = xml.match(/<testsuite(?!s)[\s\S]*?<\/testsuite>/g) ?? [];
+            return matches;
+          });
+
+          const merged = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<testsuites>',
+            ...testcases,
+            '</testsuites>',
+          ].join('\n');
+
+          writeFileSync(outputPath, merged);
+          console.log(`Merged ${files.length} group JUnit XML files, ${testcases.length} testsuites, into ${outputPath}`);
+          EOF
 
       - name: Publish serial results to GitHub Checks
         uses: dorny/test-reporter@v3

@@ -41,12 +41,17 @@ data** and affects the UI for all concurrent workers. In MiniCRM this includes:
 ### Decision tree
 
 ```
-Does my test mutate any system_settings row or pipeline stage sort order?
+Does my test mutate any system_settings row, feature_flags row, or pipeline
+stage sort order?
 │
 ├─ Yes
 │   ├─ Add @serial to every affected test's tag string.
-│   ├─ Add ensureSystemDefaults() to beforeEach AND afterEach.
-│   └─ Done — the e2e-serial CI job runs these with --workers=1.
+│   ├─ Add ensureSystemDefaults() (or a domain-specific reset) to beforeEach AND afterEach.
+│   ├─ Add an entry to qa/e2e/apps/minicrm/resource-registry.ts naming the
+│   │   exact resource key(s) touched, so the conflict-graph scheduler
+│   │   (MINCRM-661) can co-schedule your file with unrelated @serial files
+│   │   instead of defaulting to a slow, isolated single-file group.
+│   └─ Done — the e2e-serial CI job schedules these by resource conflict.
 │
 └─ No — no @serial needed; test is safe to run in the parallel shard job.
 ```
@@ -54,22 +59,50 @@ Does my test mutate any system_settings row or pipeline stage sort order?
 If you are unsure whether a behavior call mutates shared state, search for
 `restClient.patch` or `restClient.put` inside the behavior implementation.
 
+**Registering a new `@serial` file (MINCRM-661):** add an entry to
+`RESOURCE_REGISTRY` in `qa/e2e/apps/minicrm/resource-registry.ts` naming the
+resource key(s) your test reads/writes. Reuse an existing key
+(`settings.nav_layout`, `feature_flags.ai_features`, etc.) if your test
+touches the same underlying row as an existing entry — this is what lets the
+scheduler detect the conflict and keep the two files apart. Introduce a new
+key only for a genuinely new shared resource. If ALL tests in the file share
+the resource, omit `testTitleContains` (a "file-wide" entry); if only some
+tests do, set `testTitleContains` to a substring unique to those tests'
+title — **file-wide entries are always scheduled at `workers=1`** (a
+file-wide entry can't prove the rest of the file is safe from
+`fullyParallel: true` racing itself), while `testTitleContains`-scoped
+entries can share a group at higher worker counts. An unregistered `@serial`
+file still works — it falls back to its own isolated single-file,
+`workers=1` group — but registering it lets the scheduler co-locate it with
+unrelated files for a faster run.
+
 ### The two CI jobs
 
-| Job              | Playwright flag                                                                         | What runs                                 |
-| ---------------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `e2e-functional` | `--workers=N` per shard, `M` shards × 2 projects (N, M from capacity-probe, MINCRM-662) | `@functional` tests **without** `@serial` |
-| `e2e-serial`     | `--workers=1`                                                                           | `@functional @serial` tests               |
+| Job              | Playwright flag                                                               | What runs                                 |
+| ---------------- | ----------------------------------------------------------------------------- | ----------------------------------------- |
+| `e2e-functional` | `--workers=N` per shard, `M` shards × 2 projects (N, M from capacity-probe)   | `@functional` tests **without** `@serial` |
+| `e2e-serial`     | Sequential per-group invocations, `--workers=1` or `2` per group (MINCRM-661) | `@functional @serial` tests               |
 
 `N` and `M` default to 2 and 4 respectively (today's known-good values on
 GitHub's free-tier 2-vCPU runners) but are computed dynamically by the
 `capacity-probe` CI job — see [e2e-performance.md](e2e-performance.md) and
 the "Shard/worker count" section in
-[qa/e2e/README.md](../../qa/e2e/README.md#shard-worker-count-mincrm-662).
+[qa/e2e/README.md](../../qa/e2e/README.md#shardworker-count-mincrm-662).
 
 The `e2e-functional` job passes `--grep-invert serial` so `@serial` tests are
-never picked up by parallel workers. The `e2e-serial` job greps for
-`"@functional.*@serial|@serial.*@functional"`.
+never picked up by parallel workers. The `e2e-serial` job's grep filter
+(`"@functional.*@serial|@serial.*@functional"`) is unchanged, but instead of
+one blanket `--workers=1` invocation over every `@serial` file, it now runs
+`qa/e2e/scripts/gen-conflict-group-configs.ts` to partition files into
+conflict-free groups (via `qa/e2e/framework/reporting/conflict-graph.ts` and
+`RESOURCE_REGISTRY`), then runs each group as its own sequential
+`playwright test` invocation. Groups never overlap in wall-clock time —
+process-level separation is the only reliable way to guarantee that (see
+`gen-conflict-group-configs.ts`'s module doc) — but files WITHIN a
+conflict-free group may share up to 2 workers, since by construction no two
+files in the group touch the same resource. See
+[e2e-performance.md](e2e-performance.md) for why Playwright's own scheduler
+can't express this natively.
 
 A test tagged only `@functional` (without `@serial`) that mutates shared state
 will cause non-deterministic failures in the parallel job depending on shard
@@ -94,17 +127,26 @@ array is what Playwright's filter API uses. Always include both.
 
 ### Currently known `@serial` domains
 
-| Domain                    | File                                  | Setting mutated               |
-| ------------------------- | ------------------------------------- | ----------------------------- |
-| Navigation layouts        | `navigation/navigation.spec.ts`       | `nav_layout`                  |
-| i18n language switching   | `i18n/i18n.spec.ts`                   | `default_language`            |
-| Currency settings         | `settings/settings.spec.ts`           | `home_currency`, `currencies` |
-| Branding                  | `branding/branding.spec.ts`           | `branding.*`                  |
-| SSO configuration         | `sso/sso.spec.ts`                     | `sso.*`                       |
-| Reports left-nav          | `reports/reports-nav.spec.ts`         | `nav_layout`                  |
-| Accessibility (A11Y-N1)   | `accessibility/accessibility.spec.ts` | `nav_layout`                  |
-| Admin email notifications | `notifications/notifications.spec.ts` | `email_notifications_enabled` |
-| Visibility policy         | `visibility/visibility.spec.ts`       | `visibility_policy`           |
+The authoritative list is `RESOURCE_REGISTRY` in
+`qa/e2e/apps/minicrm/resource-registry.ts` — this doc previously
+hand-maintained a table here that went stale (it listed 9 files; the actual
+`@serial` population was 27+). Do not hand-maintain a duplicate list; read
+the registry directly, or run
+`npx tsx qa/e2e/scripts/build-conflict-graph.ts` for a full report of every
+tracked file, its resource(s), and its computed conflict groups. A
+representative sample of resource keys in use, as of MINCRM-661:
+
+| Resource key                             | Example file                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `settings.nav_layout`                    | `navigation/navigation.spec.ts`                                                             |
+| `settings.default_language`              | `i18n/i18n.spec.ts`                                                                         |
+| `settings.currencies`                    | `settings/settings.spec.ts`                                                                 |
+| `settings.branding`                      | `branding/branding.spec.ts`                                                                 |
+| `settings.sso`                           | `sso/sso.spec.ts`                                                                           |
+| `settings.visibility_policy`             | `visibility/visibility.spec.ts`                                                             |
+| `settings.ai_configuration_enabled`      | `ai/ai.spec.ts` (and 8 other `ai/*.spec.ts` files)                                          |
+| `settings.ai_cost_rates`                 | `ai/ai-usage-dashboard.spec.ts` (F-AI-UD-6 only — distinct from `ai_configuration_enabled`) |
+| `feature_flags.coverage_instrumentation` | `coverage-instrumentation/coverage-instrumentation.spec.ts`                                 |
 
 **Note on `test.describe.serial` vs `@serial` tag:** `onboarding.spec.ts` uses
 `test.describe.serial(...)` at the describe level to serialize tests within the
