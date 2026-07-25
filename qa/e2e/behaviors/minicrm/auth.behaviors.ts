@@ -443,6 +443,29 @@ export async function navigateToProtectedPage(
 }
 
 // ---------------------------------------------------------------------------
+// navigateToPathAndGetFinalPathname()
+// ---------------------------------------------------------------------------
+
+/**
+ * Navigates directly to an arbitrary application path and returns the
+ * pathname the browser settles on — for asserting a route no longer exists
+ * (e.g. the client's own catch-all redirects an unknown path elsewhere),
+ * distinct from navigateToProtectedPage's narrower "did it redirect to
+ * /login" check.
+ *
+ * @param path - Path to navigate to directly.
+ * @param context - Playwright fixture context.
+ * @returns The pathname the browser settled on.
+ */
+export async function navigateToPathAndGetFinalPathname(
+  path: string,
+  context: AuthBehaviorContext,
+): Promise<string> {
+  await context.page.goto(path, { waitUntil: 'networkidle' });
+  return new URL(context.page.url()).pathname;
+}
+
+// ---------------------------------------------------------------------------
 // requestPasswordReset()
 // ---------------------------------------------------------------------------
 

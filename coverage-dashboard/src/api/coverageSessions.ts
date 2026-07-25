@@ -1,7 +1,13 @@
 /**
- * Coverage/TIA session API module. (MINCRM-609..612)
- * Wraps the session control endpoints. All endpoints require authentication,
- * admin role, and the coverage_session_management feature flag.
+ * Coverage/TIA session API module. (MINCRM-609..612, MINCRM-663)
+ * Wraps the session control endpoints — the manual-testing session recorder
+ * moved here from minicrm-client's CoverageSessionRecorderPage.tsx, which is
+ * deleted entirely as part of MINCRM-663 (internal CI/dev tooling has no
+ * business being reachable through the product's own admin UI). Reimplemented
+ * rather than imported: this app shares no code with minicrm-client beyond
+ * @shared/schemas types. Endpoints require authentication, admin role, and
+ * the COVERAGE_SESSION_MANAGEMENT env var being set at server boot (no
+ * longer a product feature_flags row — see server/src/routes/coverageSessions.ts).
  */
 
 import apiClient from './axiosInstance.js';

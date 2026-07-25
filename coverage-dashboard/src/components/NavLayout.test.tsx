@@ -23,6 +23,7 @@ describe('NavLayout', () => {
     expect(screen.getByTestId('nav-link-overview')).toBeInTheDocument();
     expect(screen.getByTestId('nav-link-gaps')).toBeInTheDocument();
     expect(screen.getByTestId('nav-link-traceability')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-link-sessions')).toBeInTheDocument();
     expect(screen.getByText('Page content')).toBeInTheDocument();
   });
 

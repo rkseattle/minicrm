@@ -56,6 +56,12 @@ services:
       DB_NAME: minicrm_e2e
       # Coverage/TIA tables live in their own database — see server/src/coverageDb.ts.
       COVERAGE_DB_NAME: minicrm_coverage_e2e
+      # Coverage/TIA control API and session management routes are registered
+      # only when these are 'true' at process boot (MINCRM-663) — set here so
+      # coverage-instrumentation.spec.ts/coverage-sessions.spec.ts can reach
+      # them; production deployments must never set these.
+      COVERAGE_INSTRUMENTATION: "true"
+      COVERAGE_SESSION_MANAGEMENT: "true"
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
