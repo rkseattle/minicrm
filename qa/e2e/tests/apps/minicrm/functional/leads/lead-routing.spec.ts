@@ -64,7 +64,7 @@ async function makeRepBusy(
   for (let i = 0; i < 6; i++) {
     const leadResponse = await restClient.post<{ lead: { id: string } }>('/api/v1/leads', {
       first_name: `F-ROUTE Busy Lead ${i}`,
-      email: `f-route-busy-lead-${Date.now()}-${i}@example.com`,
+      email: `f-route-busy-lead-${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${i}@example.com`,
       owner_id: ownerId,
     });
     testData.register(
