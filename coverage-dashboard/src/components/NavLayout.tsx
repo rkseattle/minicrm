@@ -27,6 +27,13 @@ export default function NavLayout() {
             <NavLink to="/gaps" className={NAV_LINK_CLASS} data-testid="nav-link-gaps">
               Gaps
             </NavLink>
+            <NavLink
+              to="/traceability"
+              className={NAV_LINK_CLASS}
+              data-testid="nav-link-traceability"
+            >
+              Traceability
+            </NavLink>
           </div>
           <button
             type="button"
