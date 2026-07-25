@@ -34,10 +34,19 @@
  * "CRM checkout orphans server sessions"): the CRM only ever learns a
  * correlation ID, never the session's own id/version, so checkOutCoverageSession
  * looks the session up by correlation ID first (GET .../by-correlation/:id)
- * to get both before calling the optimistic-locked /end endpoint. A 404
- * there (already ended — e.g. from the dashboard's own check-out; see
- * "Dashboard checkout leaves stale CRM state") is treated as success: the
- * goal state (no active session for this correlation ID) is already true.
+ * to get both before calling the optimistic-locked /end endpoint. A
+ * confirmed 404 there (already ended — e.g. from the dashboard's own
+ * check-out; see "Dashboard checkout leaves stale CRM state") is treated as
+ * success: the goal state (no active session for this correlation ID) is
+ * already true.
+ *
+ * A FAILED lookup or end request (found via Greptile PR review — "Failed
+ * checkout discards session reference") is NOT the same as a confirmed-gone
+ * session: a transient network/500 error tells us nothing about whether the
+ * server session is still active, so checkOutCoverageSession throws in that
+ * case instead of clearing the correlation ID — the admin can retry check-out
+ * once the transient failure passes, rather than losing the only reference
+ * needed to ever end that session, orphaning it.
  */
 
 import apiClient from './api/axiosInstance.js';
@@ -124,6 +133,15 @@ export function clearPersistedCoverageCorrelationId(): void {
   }
 }
 
+/** Thrown by checkOutCoverageSession when the session's current state could
+ *  not be determined — the correlation ID is deliberately left persisted so
+ *  the admin can retry rather than losing the only reference able to end it. */
+export class CoverageSessionCheckoutFailedError extends Error {
+  constructor() {
+    super('Could not confirm the coverage session state — check-out was not completed.');
+  }
+}
+
 /**
  * Submits this tab's accumulated window.__coverage__ (if any) as a
  * browser-source dump, then clears the persisted correlation ID —
@@ -134,6 +152,11 @@ export function clearPersistedCoverageCorrelationId(): void {
  * deliberately decoupled — see migration 157's own docblock), and the
  * served bundle may not even be an instrumented build, so a failed/absent
  * dump must never block clearing the correlation ID.
+ *
+ * Throws CoverageSessionCheckoutFailedError (and leaves the correlation ID
+ * persisted) if the by-correlation lookup fails for a reason OTHER than a
+ * confirmed 404 — see this module's own docblock on why that distinction
+ * matters.
  */
 export async function checkOutCoverageSession(): Promise<void> {
   const correlationId = getPersistedCoverageCorrelationId();
@@ -150,15 +173,20 @@ export async function checkOutCoverageSession(): Promise<void> {
   }
 
   if (correlationId) {
-    const session = await findActiveCoverageSessionByCorrelationId(correlationId);
-    if (session) {
-      // Already-ended (404 inside findActiveCoverageSessionByCorrelationId,
-      // or a 409 version conflict here — e.g. the dashboard ended it in the
-      // gap between the lookup above and this call) is the goal state, not
-      // a failure — swallow it the same way a failed dump submission above
-      // must never block clearing the correlation ID below.
-      await endCoverageSessionOnServer(session.id, session.version).catch(() => undefined);
+    const lookup = await findActiveCoverageSessionByCorrelationId(correlationId);
+    if (lookup.status === 'lookup-failed') {
+      throw new CoverageSessionCheckoutFailedError();
     }
+    if (lookup.status === 'found') {
+      // A 409 version conflict here (e.g. the dashboard ended it in the gap
+      // between the lookup above and this call) is the goal state, not a
+      // failure — swallow it the same way a failed dump submission above
+      // must never block clearing the correlation ID below.
+      await endCoverageSessionOnServer(lookup.session.id, lookup.session.version).catch(
+        () => undefined,
+      );
+    }
+    // status === 'not-found': already ended elsewhere — nothing to end.
   }
 
   clearPersistedCoverageCorrelationId();

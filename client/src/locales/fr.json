@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "Session de couverture manuelle terminée.",
     "checkOutButton": "Terminer",
+    "checkOutFailed": "Impossible de terminer — veuillez réessayer.",
     "checkingOut": "Fin en cours…",
     "label": "Enregistrement de la session de couverture manuelle"
   },

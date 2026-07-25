@@ -16,6 +16,7 @@ import type {
   StartCoverageSessionRequest,
 } from '@shared/schemas/coverageSessionSchema.js';
 import type { PaginatedResponse } from '@shared/schemas/paginationSchema.js';
+import { PAGINATION_MAX_LIMIT } from '@shared/schemas/paginationSchema.js';
 
 export const COVERAGE_SESSIONS_QUERY_KEY = ['coverage_sessions'] as const;
 
@@ -50,6 +51,29 @@ export async function listActiveCoverageSessions(
     { params: queryParams },
   );
   return response.data;
+}
+
+/**
+ * Fetches every active session across all pages — not just the first
+ * PAGINATION_DEFAULT_LIMIT (found via Greptile PR review — "Pagination
+ * hides active sessions"). SessionRecorderPage's entire purpose is to be
+ * the one place an admin can find and check out ANY active session,
+ * including one abandoned long enough that newer sessions pushed it past
+ * page 1 — silently dropping it there would leave it active indefinitely
+ * with no UI path to end it. Fetches PAGINATION_MAX_LIMIT (100) per page,
+ * which comfortably covers the realistic scale of concurrent manual-testing
+ * sessions (an internal admin tool, not a customer-facing high-volume list).
+ */
+export async function listAllActiveCoverageSessions(): Promise<CoverageSession[]> {
+  const sessions: CoverageSession[] = [];
+  let page = 1;
+  for (;;) {
+    const response = await listActiveCoverageSessions({ page, limit: PAGINATION_MAX_LIMIT });
+    sessions.push(...response.data);
+    if (sessions.length >= response.total || response.data.length === 0) break;
+    page += 1;
+  }
+  return sessions;
 }
 
 export async function endCoverageSession(

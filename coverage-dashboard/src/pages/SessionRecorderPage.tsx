@@ -37,7 +37,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   startCoverageSession,
   endCoverageSession,
-  listActiveCoverageSessions,
+  listAllActiveCoverageSessions,
   COVERAGE_SESSIONS_QUERY_KEY,
 } from '@/api/coverageSessions.js';
 import type { CoverageSession } from '@shared/schemas/coverageSessionSchema.js';
@@ -65,14 +65,14 @@ export default function SessionRecorderPage() {
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
 
   const {
-    data: activeSessionsResponse,
+    data: activeSessions,
     isLoading,
     isError,
   } = useQuery({
     queryKey: COVERAGE_SESSIONS_QUERY_KEY,
-    queryFn: () => listActiveCoverageSessions(),
+    queryFn: () => listAllActiveCoverageSessions(),
   });
-  const activeSessions = activeSessionsResponse?.data ?? [];
+  const sessions = activeSessions ?? [];
 
   const checkInMutation = useMutation({
     mutationFn: () =>
@@ -200,18 +200,18 @@ export default function SessionRecorderPage() {
         </p>
       )}
 
-      {!isLoading && !isError && activeSessions.length === 0 && (
+      {!isLoading && !isError && sessions.length === 0 && (
         <p className="text-sm text-gray-500" data-testid="coverage-session-recorder-empty">
           No active sessions.
         </p>
       )}
 
-      {!isLoading && !isError && activeSessions.length > 0 && (
+      {!isLoading && !isError && sessions.length > 0 && (
         <ul
           className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white"
           data-testid="coverage-session-list"
         >
-          {activeSessions.map((session) => (
+          {sessions.map((session) => (
             <li
               key={session.id}
               className="flex items-center justify-between gap-2 px-4 py-3"

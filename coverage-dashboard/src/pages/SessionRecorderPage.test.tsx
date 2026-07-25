@@ -124,6 +124,40 @@ describe('SessionRecorderPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('fetches every page of active sessions, not just the first', async () => {
+    // 101 sessions — one more than a single PAGINATION_MAX_LIMIT (100) page —
+    // so listAllActiveCoverageSessions must fetch page 2 to see the last one.
+    const manySessions = Array.from({ length: 101 }, (_, i) => ({
+      ...ACTIVE_SESSION,
+      id: `session-${i}`,
+      label: `Session ${i}`,
+      correlationId: `corr-${i}`,
+    }));
+    server.use(
+      http.get('*/api/v1/admin/coverage/sessions', ({ request }) => {
+        const url = new URL(request.url);
+        const page = Number(url.searchParams.get('page') ?? '1');
+        const limit = Number(url.searchParams.get('limit') ?? '25');
+        const start = (page - 1) * limit;
+        return HttpResponse.json({
+          data: manySessions.slice(start, start + limit),
+          total: manySessions.length,
+          page,
+          limit,
+        });
+      }),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-session-0')).toBeInTheDocument();
+    });
+    // The 101st session only exists on page 2 — asserting it's present
+    // proves the second page was actually fetched, not just the first.
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-session-100')).toBeInTheDocument();
+    });
+  });
+
   it('disables the check-in button until a label is entered', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
