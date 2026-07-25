@@ -145,6 +145,7 @@ export async function ingestCoverageDump(
             dump.commitSha,
             testId,
             sessionDump?.testName ?? null,
+            sessionDump?.testFile ?? null,
             links,
           );
         }

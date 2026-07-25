@@ -65,6 +65,7 @@ export interface CoverageSessionDumpMetadata {
   correlationId: string;
   testId: string | null;
   testName: string | null;
+  testFile: string | null;
   attempt: number;
   recordedAt: string;
 }
@@ -136,6 +137,7 @@ export interface RecordCoverageSessionDumpParams {
   correlationId: string;
   testId?: string;
   testName?: string;
+  testFile?: string;
   attempt?: number;
 }
 

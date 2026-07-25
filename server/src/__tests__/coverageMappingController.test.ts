@@ -31,12 +31,13 @@ async function linkAndCommit(
   commitSha: string,
   testId: string,
   testName: string | null,
-  links: Parameters<typeof linkCoverageUnitsToTest>[4],
+  links: Parameters<typeof linkCoverageUnitsToTest>[5],
+  testFile: string | null = null,
 ): Promise<void> {
   const client = await coverageDb.connect();
   try {
     await client.query('BEGIN');
-    await linkCoverageUnitsToTest(client, commitSha, testId, testName, links);
+    await linkCoverageUnitsToTest(client, commitSha, testId, testName, testFile, links);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -136,6 +137,7 @@ describe('coverage mapping API — validation', () => {
 describe('coverage mapping API — query happy path', () => {
   const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
   const testId = 'spec:deals.spec.ts::creates a deal';
+  const testFile = 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts';
   const unitKey = 'render#abc123';
 
   beforeAll(async () => {
@@ -151,9 +153,13 @@ describe('coverage mapping API — query happy path', () => {
         unresolvedReason: null,
       },
     ]);
-    await linkAndCommit(commitSha, testId, 'creates a deal', [
-      { unitKey, branchId: '0:0', filePath: 'src/widget.ts', hitCount: 3 },
-    ]);
+    await linkAndCommit(
+      commitSha,
+      testId,
+      'creates a deal',
+      [{ unitKey, branchId: '0:0', filePath: 'src/widget.ts', hitCount: 3 }],
+      testFile,
+    );
   });
 
   afterAll(async () => {
@@ -175,6 +181,7 @@ describe('coverage mapping API — query happy path', () => {
       branchId: '0:0',
       testId,
       testName: 'creates a deal',
+      testFile,
       hitCount: 3,
     });
     expect(typeof res.body.results[0].confidenceScore).toBe('number');

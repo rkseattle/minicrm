@@ -236,9 +236,10 @@ describe('recordCoverageSessionDump', () => {
     expect(sessionDump.correlationId).toBe(session.correlationId);
     expect(sessionDump.attempt).toBe(1);
     expect(sessionDump.testId).toBeNull();
+    expect(sessionDump.testFile).toBeNull();
   });
 
-  it('records testId/testName/attempt for retry attribution', async () => {
+  it('records testId/testName/testFile/attempt for retry attribution', async () => {
     const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
     const firstAttemptDump = randomUUID();
     const retryDump = randomUUID();
@@ -250,12 +251,14 @@ describe('recordCoverageSessionDump', () => {
       {
         testId: 'deals.spec.ts:42',
         testName: 'creates and deletes a deal',
+        testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
         attempt: 1,
       },
     );
     const retry = await recordCoverageSessionDump(session.id, retryDump, session.correlationId, {
       testId: 'deals.spec.ts:42',
       testName: 'creates and deletes a deal',
+      testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
       attempt: 2,
     });
 
@@ -264,6 +267,8 @@ describe('recordCoverageSessionDump', () => {
     expect(first.dumpId).not.toBe(retry.dumpId);
     expect(first.attempt).toBe(1);
     expect(retry.attempt).toBe(2);
+    expect(first.testFile).toBe('tests/apps/minicrm/functional/deals/deal-creation.spec.ts');
+    expect(retry.testFile).toBe('tests/apps/minicrm/functional/deals/deal-creation.spec.ts');
 
     const rows = await coverageDb.query(
       'SELECT dump_id, attempt FROM coverage_session_dumps WHERE session_id = $1 ORDER BY attempt',

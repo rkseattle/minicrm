@@ -41,6 +41,7 @@ export interface CoverageTestLink {
   filePath: string;
   testId: string;
   testName: string | null;
+  testFile: string | null;
   hitCount: number;
   firstSeenAt: string;
   lastSeenAt: string;
@@ -54,6 +55,7 @@ interface CoverageTestLinkRow {
   file_path: string;
   test_id: string;
   test_name: string | null;
+  test_file: string | null;
   hit_count: number;
   first_seen_at: Date;
   last_seen_at: Date;
@@ -68,6 +70,7 @@ function toCoverageTestLink(row: CoverageTestLinkRow): CoverageTestLink {
     filePath: row.file_path,
     testId: row.test_id,
     testName: row.test_name,
+    testFile: row.test_file,
     hitCount: row.hit_count,
     firstSeenAt: row.first_seen_at.toISOString(),
     lastSeenAt: row.last_seen_at.toISOString(),
@@ -131,6 +134,7 @@ async function insertTestLinkBatch(
   commitSha: string,
   testId: string,
   testName: string | null,
+  testFile: string | null,
   links: readonly CoverageTestLinkInput[],
 ): Promise<void> {
   if (links.length === 0) return;
@@ -153,18 +157,26 @@ async function insertTestLinkBatch(
     values,
   );
 
-  // test_name isn't part of the identity/conflict target (a test's display
-  // name is metadata, not identity — test_id is the stable key), but should
-  // still be kept current on repeat ingestion in case a test was renamed.
-  // A second statement (rather than folding into the DO UPDATE above) keeps
-  // the hot path's conflict clause simple; this only runs when test_name is
-  // actually known.
+  // Neither test_name nor test_file is part of the identity/conflict target
+  // (a test's display name and spec file are metadata, not identity —
+  // test_id is the stable key), but both should stay current on repeat
+  // ingestion in case a test was renamed or moved. Separate statements
+  // (rather than folding into the DO UPDATE above) keep the hot path's
+  // conflict clause simple; each only runs when its value is actually known.
   if (testName !== null) {
     await client.query(
       `UPDATE coverage_test_links
        SET test_name = $1
        WHERE commit_sha = $2 AND test_id = $3 AND (test_name IS DISTINCT FROM $1)`,
       [testName, commitSha, testId],
+    );
+  }
+  if (testFile !== null) {
+    await client.query(
+      `UPDATE coverage_test_links
+       SET test_file = $1
+       WHERE commit_sha = $2 AND test_id = $3 AND (test_file IS DISTINCT FROM $1)`,
+      [testFile, commitSha, testId],
     );
   }
 }
@@ -180,6 +192,7 @@ export async function linkCoverageUnitsToTest(
   commitSha: string,
   testId: string,
   testName: string | null,
+  testFile: string | null,
   linksInput: readonly CoverageTestLinkInput[],
 ): Promise<void> {
   // Collapsed ONCE, globally, before chunking — a duplicate identity split
@@ -191,7 +204,7 @@ export async function linkCoverageUnitsToTest(
   const links = collapseDuplicateIdentities(linksInput);
   for (let start = 0; start < links.length; start += MAX_LINKS_PER_INSERT_BATCH) {
     const batch = links.slice(start, start + MAX_LINKS_PER_INSERT_BATCH);
-    await insertTestLinkBatch(client, commitSha, testId, testName, batch);
+    await insertTestLinkBatch(client, commitSha, testId, testName, testFile, batch);
   }
 }
 
@@ -202,7 +215,7 @@ export async function findTestsForUnit(
   branchId: string | null,
 ): Promise<CoverageTestLink[]> {
   const result = await coverageDb.query<CoverageTestLinkRow>(
-    `SELECT id, commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, first_seen_at, last_seen_at
+    `SELECT id, commit_sha, unit_key, branch_id, file_path, test_id, test_name, test_file, hit_count, first_seen_at, last_seen_at
      FROM coverage_test_links
      WHERE commit_sha = $1 AND unit_key = $2 AND COALESCE(branch_id, '') = COALESCE($3, '')
      ORDER BY test_id`,
@@ -217,7 +230,7 @@ export async function findUnitsForTest(
   testId: string,
 ): Promise<CoverageTestLink[]> {
   const result = await coverageDb.query<CoverageTestLinkRow>(
-    `SELECT id, commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, first_seen_at, last_seen_at
+    `SELECT id, commit_sha, unit_key, branch_id, file_path, test_id, test_name, test_file, hit_count, first_seen_at, last_seen_at
      FROM coverage_test_links
      WHERE commit_sha = $1 AND test_id = $2
      ORDER BY file_path, unit_key, branch_id`,
@@ -262,7 +275,7 @@ function toCoverageMappingResult(row: CoverageMappingResultRow): CoverageMapping
 
 const MAPPING_RESULT_SELECT = `
   SELECT
-    l.id, l.commit_sha, l.unit_key, l.branch_id, l.file_path, l.test_id, l.test_name,
+    l.id, l.commit_sha, l.unit_key, l.branch_id, l.file_path, l.test_id, l.test_name, l.test_file,
     l.hit_count, l.first_seen_at, l.last_seen_at,
     u.confidence_score, u.last_reconciled_at
   FROM coverage_test_links l

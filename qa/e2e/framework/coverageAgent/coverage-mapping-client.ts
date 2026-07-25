@@ -22,6 +22,7 @@ export interface CoverageMappingResult {
   filePath: string;
   testId: string;
   testName: string | null;
+  testFile: string | null;
   hitCount: number;
   firstSeenAt: string;
   lastSeenAt: string;

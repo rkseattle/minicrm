@@ -38,6 +38,12 @@ export const recordCoverageSessionDumpRequestSchema = z.object({
   correlationId: z.string().uuid(),
   testId: z.string().min(1).optional(),
   testName: z.string().min(1).optional(),
+  // Relative-to-repo-root spec file path (e.g.
+  // tests/apps/minicrm/functional/deals/deal-creation.spec.ts) — same
+  // convention as test-timing-baseline.json's own keys, so downstream
+  // consumers (gen-shards.ts) can use it with no path translation.
+  // (MINCRM-660 groundwork)
+  testFile: z.string().min(1).optional(),
   attempt: z.number().int().positive().default(1),
 });
 
@@ -73,6 +79,7 @@ export const coverageSessionDumpSchema = z.object({
   correlationId: z.string().uuid(),
   testId: z.string().nullable(),
   testName: z.string().nullable(),
+  testFile: z.string().nullable(),
   attempt: z.number().int(),
   recordedAt: z.string(),
 });

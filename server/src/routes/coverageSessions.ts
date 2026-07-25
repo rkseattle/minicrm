@@ -313,6 +313,9 @@ function registerCoverageSessionRoutes(): void {
    *                 type: string
    *               testName:
    *                 type: string
+   *               testFile:
+   *                 type: string
+   *                 description: Spec file path relative to repo root (e.g. tests/apps/minicrm/functional/deals/deal-creation.spec.ts), same convention as test-timing-baseline.json's own keys.
    *               attempt:
    *                 type: integer
    *                 default: 1
