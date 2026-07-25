@@ -140,6 +140,34 @@ describe('parseGitDiff', () => {
     expect(diffs[0].changedRanges).toEqual([{ startLine: 2, endLine: 2 }]);
   });
 
+  it('clamps a +0,0 pure-deletion hunk (deletion at the very start of the file) to line 1, not line 0 (regression)', async () => {
+    repoRoot = await initRepo();
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'export function removed() {\n  return 0;\n}\n\nexport function kept() {\n  return 1;\n}\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Deletes the FIRST function in the file entirely — git reports this as
+    // `@@ -1,4 +0,0 @@`: the new-side anchor is 0, since there is no new-side
+    // line 0 (1-based) for "the deletion happened before the file's own
+    // first surviving line" to point at. Left un-clamped, line 0 can never
+    // resolve to any enclosing function (every real line is >= 1), so this
+    // would incorrectly fall into changeUnitResolver's "no enclosing
+    // function found" unresolved bucket instead of anchoring to kept().
+    await writeFile(join(repoRoot, 'a.ts'), 'export function kept() {\n  return 1;\n}\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'delete first function entirely']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].changedRanges).toEqual([{ startLine: 1, endLine: 1 }]);
+  });
+
   it('reports a renamed file with its old and new paths', async () => {
     repoRoot = await initRepo();
     await writeFile(

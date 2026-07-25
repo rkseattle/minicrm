@@ -149,6 +149,21 @@ export interface EnclosingUnit {
 }
 
 /**
+ * Composite key for enclosingUnitsByUnitKey's map, combining a changed
+ * unit's OWN (filePath, unitKey) — not unitKey alone. unit_key has no file
+ * path folded into its hash (see coverageMappingService.ts's own docblock
+ * on findTestsForUnitAcrossBranches), so two changed units from DIFFERENT
+ * files sharing a coincidentally-identical unitKey would otherwise collide
+ * on the same map entry: whichever caller last wrote to that key would
+ * silently supply BOTH units' inheritance candidates, the same cross-file
+ * collision already fixed at the mapping-query layer, reappearing one layer
+ * up in this map's own key (found via Greptile PR review).
+ */
+export function enclosingUnitMapKey(filePath: string, unitKey: string): string {
+  return JSON.stringify([filePath, unitKey]);
+}
+
+/**
  * Selects the minimal set of affected tests for a set of changed units.
  *
  * @param commitSha - The commit the mapping query API should resolve
@@ -157,12 +172,15 @@ export interface EnclosingUnit {
  * @param changedUnits - Output of changeUnitResolver.resolveChangedUnits.
  * @param enclosingUnitsByUnitKey - For a changed unit with no direct
  *   mapping (new code, or a genuinely unmapped unit), the enclosing/calling
- *   unit to inherit candidates from, if one is known. Callers resolve this
- *   from the same AST pass that produced changedUnits (e.g. a new method's
- *   enclosing class, or a new top-level function's nearest previously-
- *   mapped sibling) — this service has no AST access of its own and treats
- *   a unit as having no inheritance candidate when absent from this map,
- *   rather than guessing one.
+ *   unit to inherit candidates from, if one is known. Keyed by
+ *   enclosingUnitMapKey(filePath, unitKey) — the changed unit's OWN
+ *   (filePath, unitKey), not unitKey alone (see enclosingUnitMapKey's own
+ *   docblock for why unitKey alone would collide across files). Callers
+ *   resolve this from the same AST pass that produced changedUnits (e.g. a
+ *   new method's enclosing class, or a new top-level function's nearest
+ *   previously-mapped sibling) — this service has no AST access of its own
+ *   and treats a unit as having no inheritance candidate when absent from
+ *   this map, rather than guessing one.
  * @param scorer - Ranks each changed unit's own candidate tests (MINCRM-627).
  *   Defaults to mapBasedScorer (confidence-first, alphabetical tie-break —
  *   this function's own ranking logic prior to MINCRM-627). Swappable for
@@ -198,7 +216,9 @@ export async function selectTestsForChangedUnits(
       // genuinely unmapped unit. Per MINCRM-624's AC, inherit candidates
       // from the enclosing/calling unit rather than treating this as
       // unconditionally unmapped.
-      const enclosingUnit = enclosingUnitsByUnitKey.get(unit.unitKey);
+      const enclosingUnit = enclosingUnitsByUnitKey.get(
+        enclosingUnitMapKey(unit.filePath, unit.unitKey),
+      );
       if (!enclosingUnit) {
         return { unit, tests: [] };
       }
