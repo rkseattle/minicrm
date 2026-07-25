@@ -308,6 +308,16 @@ const SERIAL_FILES = [
   'src/__tests__/churnExpansionController.test.ts',
   'src/__tests__/dealHealthController.test.ts',
   'src/__tests__/relationshipHealthController.test.ts',
+  // relationshipHealthService mutates the same global account_health_scoring_config
+  // singleton row as relationshipHealthController above (min_logged_activities et al.),
+  // and its computeAccountHealthScores() scans ALL accounts org-wide (no owner filter)
+  // — same class of race as dataHygieneService/repCoachingService above, compounded by
+  // the config-row race: a concurrent min_logged_activities write can change which
+  // accounts clear the threshold mid-run, flipping a "below threshold" assertion to a
+  // real, non-null score (observed on CI: 0 failures across 4 prior runs on the same
+  // branch, then failed once under full-suite load with no code change to this file or
+  // its service — a timing-dependent race, not a deterministic bug).
+  'src/__tests__/relationshipHealthService.test.ts',
   'src/__tests__/sentimentController.test.ts',
   'src/__tests__/accountController.test.ts',
   // migrate.test.ts's runMigrations reserved-char regression test mutates the
