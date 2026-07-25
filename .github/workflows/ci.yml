@@ -803,6 +803,14 @@ jobs:
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           # MINCRM-306: Used to construct invite and reset-password URLs in emails.
           APP_URL: http://localhost:5173
+          # Coverage/TIA control API and session management routes are
+          # registered only when these are 'true' at process boot
+          # (MINCRM-663) — coverage-instrumentation.spec.ts/
+          # coverage-sessions.spec.ts are NOT @serial (they no longer mutate
+          # any shared feature-flag row), so they run in THIS sharded
+          # functional job, not e2e-serial.
+          COVERAGE_INSTRUMENTATION: "true"
+          COVERAGE_SESSION_MANAGEMENT: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
@@ -1154,13 +1162,6 @@ jobs:
           E2E: true
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           APP_URL: http://localhost:5173
-          # Coverage/TIA control API and session management routes are
-          # registered only when these are 'true' at process boot
-          # (MINCRM-663) — coverage-instrumentation.spec.ts/
-          # coverage-sessions.spec.ts are @serial-tagged, so they run in
-          # THIS job, not e2e-functional.
-          COVERAGE_INSTRUMENTATION: "true"
-          COVERAGE_SESSION_MANAGEMENT: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
