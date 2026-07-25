@@ -236,11 +236,18 @@ test('@functional F14-EN2: duplicate enrollment returns 409', async ({ restClien
   });
   testData.register('sequence', sequence.id, `/api/v1/sequences/${sequence.id}`);
 
+  // delay_days: 1 — this test relies on the FIRST enrollment still being
+  // 'active' when the SECOND enrollContact call runs a moment later (the
+  // partial unique index only blocks a duplicate while status = 'active';
+  // see sequenceService.ts's own comment on the cron's TOCTOU handling). A
+  // zero-delay step risks the cron completing the first enrollment in that
+  // gap, which would silently turn this into a false pass instead of the
+  // 409 this test actually means to verify.
   await createSequenceStep(restClient, sequence.id, {
     sort_order: 1,
     action_type: 'create_task',
     action_config: { subject: 'Task' },
-    delay_days: 0,
+    delay_days: 1,
   });
 
   const enrollment = await enrollContact(restClient, contact.id, sequence.id);
@@ -282,11 +289,16 @@ test('@functional F14-EN3: unenroll a contact — status becomes unenrolled', as
   });
   testData.register('sequence', sequence.id, `/api/v1/sequences/${sequence.id}`);
 
+  // delay_days: 1 — unenrollContact requires status = 'active' (throws
+  // ENROLLMENT_NOT_ACTIVE otherwise; see sequenceService.ts). A zero-delay
+  // step risks the cron completing this enrollment in the gap between
+  // enrollContact and unenrollContact, which would fail this test with that
+  // error instead of the 'unenrolled' transition it means to verify.
   await createSequenceStep(restClient, sequence.id, {
     sort_order: 1,
     action_type: 'create_task',
     action_config: { subject: 'Task' },
-    delay_days: 0,
+    delay_days: 1,
   });
 
   const enrollment = await enrollContact(restClient, contact.id, sequence.id);
@@ -319,11 +331,19 @@ test('@functional F14-EN4: listContactEnrollments returns the active enrollment'
   });
   testData.register('sequence', sequence.id, `/api/v1/sequences/${sequence.id}`);
 
+  // delay_days: 1 (not 0) — this test asserts 'active' via a SEPARATE
+  // getContactEnrollments call after enrollContact returns, unlike F14-EN1's
+  // same-response-cycle read. A zero-delay first step sets next_action_at to
+  // the moment of enrollment, which the sequence-advancement cron (runs
+  // unconditionally on the wall-clock schedule */15 * * * *, not relative to
+  // server start — see server.ts) can sweep up and mark 'completed' in the
+  // gap between the two calls if its tick lands there. A 1-day delay keeps
+  // next_action_at safely in the future regardless of cron timing.
   await createSequenceStep(restClient, sequence.id, {
     sort_order: 1,
     action_type: 'create_task',
     action_config: { subject: 'Task' },
-    delay_days: 0,
+    delay_days: 1,
   });
 
   const enrollment = await enrollContact(restClient, contact.id, sequence.id);
