@@ -1,0 +1,40 @@
+{
+  "name": "minicrm-coverage-dashboard",
+  "version": "0.1.0",
+  "description": "Standalone Coverage/TIA reporting dashboard — external client of minicrm-server's coverage reporting query API. No shared route table, DB access, or codebase with minicrm-client/minicrm-server. (MINCRM-628/629)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.51.1",
+    "axios": "^1.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^4.1.1",
+    "autoprefixer": "^10.4.27",
+    "jsdom": "^29.0.1",
+    "msw": "^2.12.14",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.1"
+  }
+}

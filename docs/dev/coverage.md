@@ -86,15 +86,16 @@ and the safety-net/scorer decoupling invariant.
 
 ### Phase 6 — Reporting & gap analysis files
 
-| Path                                                     | Purpose                                                                                          |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `qa/migrations/002_coverage_build_summary.js`            | `coverage_build_summary` table — one row per commit, incrementally rolled up (coverage database) |
-| `server/src/services/coverageBuildSummaryService.ts`     | Owns all DB access for `coverage_build_summary`, via `coverageDb.ts`                             |
-| `server/src/services/coverageReportingService.ts`        | Read-only aggregate queries: summary, trend, gaps, per-issue coverage, TIA value metrics         |
-| `server/src/controllers/coverageReportingController.ts`  | Request/response shaping for the reporting query endpoints                                       |
-| `server/src/routes/coverageReporting.ts`                 | `@openapi` routes, mounted at `/api/v1/admin/coverage/reporting`                                 |
-| `shared/schemas/coverageReportingSchema.ts`              | Zod request/response schemas for the reporting query API                                         |
-| `db/migrations/160_add_coverage_reporting_query_flag.js` | Seeds the `coverage_reporting_query` feature flag (product database)                             |
+| Path                                                     | Purpose                                                                                                                                      |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `qa/migrations/002_coverage_build_summary.js`            | `coverage_build_summary` table — one row per commit, incrementally rolled up (coverage database)                                             |
+| `server/src/services/coverageBuildSummaryService.ts`     | Owns all DB access for `coverage_build_summary`, via `coverageDb.ts`                                                                         |
+| `server/src/services/coverageReportingService.ts`        | Read-only aggregate queries: summary, trend, gaps, per-issue coverage, TIA value metrics                                                     |
+| `server/src/controllers/coverageReportingController.ts`  | Request/response shaping for the reporting query endpoints                                                                                   |
+| `server/src/routes/coverageReporting.ts`                 | `@openapi` routes, mounted at `/api/v1/admin/coverage/reporting`                                                                             |
+| `shared/schemas/coverageReportingSchema.ts`              | Zod request/response schemas for the reporting query API                                                                                     |
+| `db/migrations/160_add_coverage_reporting_query_flag.js` | Seeds the `coverage_reporting_query` feature flag (product database)                                                                         |
+| `coverage-dashboard/`                                    | Standalone React/Vite app — new npm workspace, see [Standalone Dashboard App](#standalone-dashboard-app-coverage-dashboard-mincrm-629) below |
 
 ## Reporting & Gap Analysis (MINCRM-629/630/631, `pr-tia-7`)
 
@@ -162,6 +163,45 @@ as an honest proxy for selection quality over time — it does NOT report "tests
 nothing persists yet (wiring selection output into CI is `pr-tia-8`, MINCRM-633/634/660 —
 see [Deferred to later phases](#deferred-to-later-phases)). A follow-up story that
 persists CI's own selection decisions can extend this endpoint once that data exists.
+
+## Standalone Dashboard App (`coverage-dashboard/`, MINCRM-629)
+
+A new top-level npm workspace (`minicrm-coverage-dashboard`), added alongside
+`shared`/`server`/`client`/`qa` in the root `package.json`'s `workspaces` array — its own
+`package.json`, Vite dev server (port **5174**, not 5173 — `client/`'s dev server keeps
+that port; both can run simultaneously), build, and test suite. Per MINCRM-628's
+architecture AC ("standalone app/service ... no shared route table with
+`minicrm-client`/`minicrm-server`"), this workspace:
+
+- Imports zero code from `client/` or `server/` — only `@shared/schemas/*` types
+  (Zod schemas, the same versioned wire-contract convention `client/` itself uses via
+  its own `@shared` alias), never `@shared` runtime code beyond schemas.
+- Has no direct database access of any kind — every read goes through
+  `server`'s reporting query API (`coverageReporting.ts`, above) or mapping query API
+  (`coverageMapping.ts`) over plain HTTP.
+- Reuses `minicrm-server`'s existing session-cookie auth (`POST /auth/login`) rather
+  than inventing a separate credential store — its `ProtectedRoute` additionally checks
+  `user.role === 'admin'` client-side (a UX nicety only; every reporting endpoint is
+  independently `requireRole('admin')`-gated server-side regardless).
+- Is English-only, with no i18n system of its own — an internal developer/QA tool, not
+  a customer-facing product surface.
+
+**CORS:** since this app's dev server (5174) and the API (3001, or 5173's own dev
+proxy target) are different origins, and auth relies on an httpOnly cookie
+(`withCredentials: true`), the server's `CORS_ORIGIN` allowlist must include this app's
+origin explicitly — see `.env.example`'s `CORS_ORIGIN` comment. The dev proxy
+(`vite.config.ts`'s own `server.proxy['/api']`) makes same-origin requests work
+out of the box when running via `npm run dev --workspace=minicrm-coverage-dashboard`
+without any CORS configuration at all; the allowlist entry only matters for a
+real cross-origin deployment or when hitting the API directly rather than through the
+proxy.
+
+**Pages (MINCRM-629's dashboard AC):** `OverviewPage` — commit-SHA lookup, overall +
+per-tier (API/frontend) coverage stat tiles, automated-vs-manual test-type filter, and a
+30-build trend line chart (`CoverageTrendChart`, two-series SVG chart following the
+`dataviz` skill's mark specs and validated default categorical palette — blue for API,
+orange for frontend, both direct-labeled with collision-avoidance when their trailing
+values are equal).
 
 ## Mounting
 
