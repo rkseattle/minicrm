@@ -4,9 +4,10 @@
  * canonical, tested example referenced from docs/dev/coverage.md's
  * "reference client" section.
  *
- * Requires an authenticated RestClient (admin session) and the
- * coverage_instrumentation feature flag enabled, since the control API
- * is admin-only and flag-gated.
+ * Requires an authenticated RestClient (admin session); the control API is
+ * admin-only and gated by an env var at server process boot (routes are
+ * unregistered entirely — a plain 404 — when it's unset), not a
+ * feature_flags row.
  */
 
 import type { RestClient } from '../clients/rest-client.js';
