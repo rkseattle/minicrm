@@ -19,6 +19,7 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   startCoverageSessionHandler,
   listActiveCoverageSessionsHandler,
+  getCoverageSessionByCorrelationIdHandler,
   getCoverageSessionHandler,
   endCoverageSessionHandler,
   recordCoverageSessionDumpHandler,
@@ -131,6 +132,51 @@ function registerCoverageSessionRoutes(): void {
    *         $ref: '#/components/responses/Forbidden'
    */
   router.get('/', ...requireCoverageSessionAccess, asyncHandler(listActiveCoverageSessionsHandler));
+
+  /**
+   * @openapi
+   * /api/v1/admin/coverage/sessions/by-correlation/{correlationId}:
+   *   get:
+   *     tags: [Coverage]
+   *     operationId: getCoverageSessionByCorrelationId
+   *     summary: Look up the active session for a correlation ID
+   *     description: >
+   *       For a caller that only holds a correlation ID, not a session ID
+   *       (e.g. the CRM client, which learns a session's correlation ID via a
+   *       URL/localStorage relay from the coverage-dashboard app — see
+   *       client/src/coverageCorrelation.ts). 404 if the correlation ID is
+   *       unknown or its session has already ended.
+   *     security:
+   *       - cookieAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: correlationId
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *     responses:
+   *       200:
+   *         description: Active coverage session found
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 session:
+   *                   $ref: '#/components/schemas/CoverageSession'
+   *       401:
+   *         $ref: '#/components/responses/Unauthorized'
+   *       403:
+   *         $ref: '#/components/responses/Forbidden'
+   *       404:
+   *         $ref: '#/components/responses/NotFound'
+   */
+  router.get(
+    '/by-correlation/:correlationId',
+    ...requireCoverageSessionAccess,
+    asyncHandler(getCoverageSessionByCorrelationIdHandler),
+  );
 
   /**
    * @openapi

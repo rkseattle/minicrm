@@ -16,6 +16,7 @@ import {
   startCoverageSession,
   endCoverageSession,
   findCoverageSession,
+  findActiveCoverageSessionByCorrelationId,
   listActiveCoverageSessions,
   recordCoverageSessionDump,
   CoverageSessionNotFoundError,
@@ -25,6 +26,7 @@ import {
 } from '../services/coverageSessionService.js';
 
 const sessionIdParamSchema = z.string().uuid();
+const correlationIdParamSchema = z.string().uuid();
 
 function actorFromRequest(req: Request): { id: string } {
   // Route middleware guarantees req.user is set (authenticate runs first).
@@ -88,6 +90,43 @@ export async function listActiveCoverageSessionsHandler(
 
   const result = await listActiveCoverageSessions(paginationParsed.data);
   res.status(200).json(result);
+}
+
+/**
+ * GET /api/v1/admin/coverage/sessions/by-correlation/:correlationId
+ * Looks up the active session tagged with a correlation ID, or 404 if none
+ * is active for it (unknown ID, or its session already ended). Admin only.
+ *
+ * Lets a caller that only holds a correlation ID (the CRM client — see
+ * coverageCorrelation.ts's own docblock — never learns the session's actual
+ * id/version, only its correlation ID relayed via URL/localStorage)
+ * reconcile against the session's real, current server-side state: to end
+ * it (needs id + version for the optimistic-locked /end endpoint) or to
+ * detect it was already ended from elsewhere (the dashboard's own
+ * check-out) and stop attaching a dead correlation ID to every request.
+ */
+export async function getCoverageSessionByCorrelationIdHandler(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const parsed = correlationIdParamSchema.safeParse(req.params['correlationId']);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: 'Invalid correlation ID' },
+    });
+    return;
+  }
+
+  const session = await findActiveCoverageSessionByCorrelationId(parsed.data);
+
+  if (!session) {
+    res.status(404).json({
+      error: { code: 'COVERAGE_SESSION_NOT_FOUND', message: 'Coverage session not found' },
+    });
+    return;
+  }
+
+  res.status(200).json({ session });
 }
 
 /**

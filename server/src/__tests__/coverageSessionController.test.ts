@@ -182,6 +182,71 @@ describe('coverage session control API — lifecycle', () => {
   });
 });
 
+describe('coverage session control API — lookup by correlation ID', () => {
+  it('finds the active session for its own correlation ID', async () => {
+    const startRes = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('by-correlation-active'));
+    const session = startRes.body.session;
+
+    const res = await request(app)
+      .get(`/api/v1/admin/coverage/sessions/by-correlation/${session.correlationId}`)
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.session.id).toBe(session.id);
+  });
+
+  it('returns 404 COVERAGE_SESSION_NOT_FOUND once the session has ended', async () => {
+    const startRes = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('by-correlation-ended'));
+    const session = startRes.body.session;
+
+    await request(app)
+      .post(`/api/v1/admin/coverage/sessions/${session.id}/end`)
+      .set('Cookie', adminCookie)
+      .send({ version: session.version });
+
+    const res = await request(app)
+      .get(`/api/v1/admin/coverage/sessions/by-correlation/${session.correlationId}`)
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_SESSION_NOT_FOUND');
+  });
+
+  it('returns 404 COVERAGE_SESSION_NOT_FOUND for an unknown correlation ID', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/sessions/by-correlation/00000000-0000-0000-0000-000000000000')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_SESSION_NOT_FOUND');
+  });
+
+  it('returns 400 VALIDATION_ERROR for a non-UUID correlation ID', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/sessions/by-correlation/not-a-uuid')
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const res = await request(app).get(
+      '/api/v1/admin/coverage/sessions/by-correlation/00000000-0000-0000-0000-000000000000',
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 when a rep (non-admin) calls the API', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/sessions/by-correlation/00000000-0000-0000-0000-000000000000')
+      .set('Cookie', repCookie);
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage session control API — dump attribution', () => {
   it('records a dump attribution and rejects a duplicate dumpId with 409', async () => {
     const startRes = await request(app)
