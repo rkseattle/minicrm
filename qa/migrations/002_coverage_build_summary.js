@@ -87,6 +87,16 @@ exports.up = (pgm) => {
     CREATE INDEX IF NOT EXISTS coverage_build_summary_last_updated_at_idx
       ON public.coverage_build_summary USING btree (last_updated_at)
   `);
+
+  // findRecentBuildSummaries orders by first_ingested_at, and
+  // getTiaValueMetrics filters by a first_ingested_at range — both are the
+  // trend view's primary query path, so this index (not last_updated_at
+  // above, which nothing currently queries by) is the one that matters for
+  // read performance as this table grows.
+  pgm.sql(`
+    CREATE INDEX IF NOT EXISTS coverage_build_summary_first_ingested_at_idx
+      ON public.coverage_build_summary USING btree (first_ingested_at)
+  `);
 };
 
 /** @param {import('node-pg-migrate').MigrationBuilder} pgm */

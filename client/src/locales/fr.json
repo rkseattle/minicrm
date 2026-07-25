@@ -2572,23 +2572,6 @@
       "opportunity_zero_value": "Valeur de l'affaire égale à 0 $"
     }
   },
-  "coverageSessionRecorder": {
-    "heading": "Enregistreur de session de couverture",
-    "description": "Enregistrez une session de test manuel afin que vos tests exploratoires soient capturés et attribués comme les tests automatisés.",
-    "notAvailable": "Cette fonctionnalité n'est pas disponible.",
-    "labelInputLabel": "Libellé de la session",
-    "issueKeyInputLabel": "Clé du ticket (facultatif)",
-    "checkInButton": "Enregistrer l'entrée",
-    "checkOutButton": "Enregistrer la sortie",
-    "checkingOut": "Enregistrement de la sortie…",
-    "checkInError": "Échec du démarrage de la session de couverture. Veuillez réessayer.",
-    "checkOutError": "Échec de la fin de la session de couverture. Veuillez réessayer.",
-    "recordingLabel": "Enregistrement : {{label}}",
-    "recordingSince": "Démarrée {{date}}",
-    "activeSessionsHeading": "Sessions actives",
-    "loadError": "Échec du chargement des sessions de couverture actives.",
-    "noActiveSessions": "Aucune session de couverture n'est actuellement active."
-  },
   "notifications": {
     "bellLabel": "Notifications ({{count}} non lues)",
     "heading": "Notifications",

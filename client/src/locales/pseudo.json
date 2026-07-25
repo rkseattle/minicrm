@@ -2572,23 +2572,6 @@
       "opportunity_zero_value": "[Dëäl välüë ïŝ $0~~~~~]"
     }
   },
-  "coverageSessionRecorder": {
-    "heading": "[Ĉövërägë Ŝëŝŝïöñ Rëĉördër~~~~~~~~]",
-    "description": "[Rëĉörd ä mäñüäl-tëŝtïñg ŝëŝŝïöñ ŝö yöür ëxplörätöry tëŝtïñg ïŝ ĉäptürëd äñd ättrïbütëd jüŝt lïkë äütömätëd tëŝtŝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
-    "notAvailable": "[Thïŝ fëätürë ïŝ ñöt äväïläblë.~~~~~~~~~]",
-    "labelInputLabel": "[Ŝëŝŝïöñ läbël~~~~]",
-    "issueKeyInputLabel": "[Ïŝŝüë këy (öptïöñäl)~~~~~~]",
-    "checkInButton": "[Ĉhëĉk ïñ~~~]",
-    "checkOutButton": "[Ĉhëĉk öüt~~~]",
-    "checkingOut": "[Ĉhëĉkïñg öüt…~~~~]",
-    "checkInError": "[Fäïlëd tö ŝtärt thë ĉövërägë ŝëŝŝïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~~]",
-    "checkOutError": "[Fäïlëd tö ëñd thë ĉövërägë ŝëŝŝïöñ. Plëäŝë try ägäïñ.~~~~~~~~~~~~~~~~]",
-    "recordingLabel": "[Rëĉördïñg: {{label}}~~~~~~]",
-    "recordingSince": "[Ŝtärtëd {{date}}~~~~~]",
-    "activeSessionsHeading": "[Äĉtïvë ŝëŝŝïöñŝ~~~~~]",
-    "loadError": "[Fäïlëd tö löäd äĉtïvë ĉövërägë ŝëŝŝïöñŝ.~~~~~~~~~~~~]",
-    "noActiveSessions": "[Ñö ĉövërägë ŝëŝŝïöñŝ ärë ĉürrëñtly äĉtïvë.~~~~~~~~~~~~~]"
-  },
   "notifications": {
     "bellLabel": "[Ñötïfïĉätïöñŝ ({{count}} üñrëäd)~~~~~~~~~~]",
     "heading": "[Ñötïfïĉätïöñŝ~~~~]",

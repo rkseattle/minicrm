@@ -82,7 +82,9 @@ export async function getGapsHandler(req: Request, res: Response): Promise<void>
   const [deadZoneUnits, neverTakenBranches, changedUntestedUnits] = await Promise.all([
     findDeadZoneUnits(commitSha, limit),
     findNeverTakenBranches(commitSha, limit),
-    baseSha ? findChangedUntestedUnits(baseSha, commitSha) : Promise.resolve(null),
+    baseSha
+      ? findChangedUntestedUnits(baseSha, commitSha, undefined, limit)
+      : Promise.resolve(null),
   ]);
 
   res.status(200).json({ deadZoneUnits, neverTakenBranches, changedUntestedUnits });
