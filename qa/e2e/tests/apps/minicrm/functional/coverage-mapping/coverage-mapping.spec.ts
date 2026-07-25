@@ -130,11 +130,13 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
   const dumpId = dumpRes.body.dump['dumpId'] as string;
   const commitSha = dumpRes.body.dump['commitSha'] as string;
 
+  const testFile = 'tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts';
   await recordCoverageSessionDump(restClient, session.id, {
     dumpId,
     correlationId: session.correlationId,
     testId: 'spec:coverage-mapping.spec.ts::COVM-01',
     testName: 'COVM-01 mapping round trip',
+    testFile,
   });
 
   const ingestRes = await restClient.post<{ result: Record<string, unknown> }>(
@@ -159,6 +161,10 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
   expect(
     typeof unitsForTest[0].confidenceScore === 'number' || unitsForTest[0].confidenceScore === null,
   ).toBe(true);
+  // MINCRM-660 groundwork: testFile must survive the full dump -> session ->
+  // ingest -> query round trip so a selected testId can be resolved back to
+  // the spec file that produced it.
+  expect(unitsForTest[0].testFile).toBe(testFile);
 
   // Now verify the OTHER direction (unit -> tests) using the real unitKey
   // just discovered — a genuine round-trip check of both query directions,

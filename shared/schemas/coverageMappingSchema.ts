@@ -36,6 +36,8 @@ export const coverageMappingResultSchema = z.object({
   filePath: z.string(),
   testId: z.string(),
   testName: z.string().nullable(),
+  /** Spec file path (relative to repo root) that produced this test_id, or null if the attributing session never captured one. (MINCRM-660 groundwork) */
+  testFile: z.string().nullable(),
   hitCount: z.number().int(),
   firstSeenAt: z.string(),
   lastSeenAt: z.string(),

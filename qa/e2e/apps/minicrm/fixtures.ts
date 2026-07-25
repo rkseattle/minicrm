@@ -31,6 +31,7 @@
  * MINCRM-129, MINCRM-415
  */
 
+import path from 'node:path';
 import { test as baseTest, expect } from '@framework/fixtures/index.js';
 import type { Page } from '@playwright/test';
 import { HealingRegistry } from '@framework/healing/index.js';
@@ -60,6 +61,13 @@ import './locale.js';
  * single end-of-run dump.
  */
 const E2E_COVERAGE_PER_TEST = process.env['E2E_COVERAGE_GRANULARITY'] !== 'per-run';
+
+// Repo root for normalizing testInfo.file to the same repo-root-relative
+// convention timing-reporter.ts uses for test-timing-baseline.json's keys
+// (path.relative(REPO_ROOT, ...)) — so a selected testId's testFile can feed
+// gen-shards.ts with no further path translation. __dirname is this file:
+// qa/e2e/apps/minicrm/. (MINCRM-660 groundwork)
+const REPO_ROOT = path.resolve(__dirname, '../../../..');
 
 // File path substrings used to identify page-object frames in the V8 stack
 // when inferring heal-event attribution automatically.
@@ -196,6 +204,7 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
               correlationId: session.correlationId,
               testId: testInfo.testId,
               testName: testInfo.title,
+              testFile: path.relative(REPO_ROOT, testInfo.file),
               attempt: testInfo.retry + 1,
             }).catch(() => {
               // Attribution must never fail the test itself.

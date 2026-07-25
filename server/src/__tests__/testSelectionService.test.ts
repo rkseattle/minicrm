@@ -43,7 +43,7 @@ async function linkAndCommit(
   const client = await coverageDb.connect();
   try {
     await client.query('BEGIN');
-    await linkCoverageUnitsToTest(client, commitSha, testId, testName, links);
+    await linkCoverageUnitsToTest(client, commitSha, testId, testName, null, links);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

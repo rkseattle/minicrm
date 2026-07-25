@@ -165,6 +165,7 @@ describe('coverageIngestionService', () => {
       await recordCoverageSessionDump(session.id, dump.dumpId, session.correlationId, {
         testId: 'spec:deals/deal-creation.spec.ts::creates a deal',
         testName: 'creates a deal',
+        testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
       });
 
       const result = await ingestCoverageDump(dump.dumpId, { sourceRoot });
@@ -177,6 +178,13 @@ describe('coverageIngestionService', () => {
       expect(links.length).toBeGreaterThan(0);
       expect(links.every((link) => link.testName === 'creates a deal')).toBe(true);
       expect(links.every((link) => link.commitSha === TEST_COMMIT_SHA)).toBe(true);
+      // MINCRM-660 groundwork: testFile must reach coverage_test_links so a
+      // selected testId can be resolved back to the spec file that produced it.
+      expect(
+        links.every(
+          (link) => link.testFile === 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
+        ),
+      ).toBe(true);
     });
 
     it('produces no coverage_test_links rows for a dump with no session attribution', async () => {

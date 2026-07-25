@@ -166,6 +166,7 @@ test.describe('recordCoverageSessionDump', () => {
       correlationId: 'corr-1',
       testId: 'spec.ts:1',
       testName: 'my test',
+      testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
       attempt: 1,
       recordedAt: '2026-07-21T00:00:00.000Z',
     };
@@ -177,6 +178,7 @@ test.describe('recordCoverageSessionDump', () => {
       correlationId: 'corr-1',
       testId: 'spec.ts:1',
       testName: 'my test',
+      testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
       attempt: 1,
     });
 

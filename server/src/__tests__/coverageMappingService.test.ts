@@ -36,11 +36,12 @@ async function linkAndCommit(
   testId: string,
   testName: string | null,
   links: CoverageTestLinkInput[],
+  testFile: string | null = null,
 ): Promise<void> {
   const client = await coverageDb.connect();
   try {
     await client.query('BEGIN');
-    await linkCoverageUnitsToTest(client, commitSha, testId, testName, links);
+    await linkCoverageUnitsToTest(client, commitSha, testId, testName, testFile, links);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -117,6 +118,29 @@ describe('coverageMappingService', () => {
 
       const found = await findUnitsForTest(commitSha, testId);
       expect(found[0].testName).toBe('now named');
+    });
+
+    it('persists test_file alongside a link (MINCRM-660 groundwork)', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const testId = 'spec:with-file.spec.ts::test';
+      const testFile = 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts';
+
+      await linkAndCommit(commitSha, testId, 'creates a deal', [makeLink()], testFile);
+
+      const found = await findUnitsForTest(commitSha, testId);
+      expect(found[0].testFile).toBe(testFile);
+    });
+
+    it('updates test_file on a later call when a prior call had none (MINCRM-660 groundwork)', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const testId = 'spec:moved.spec.ts::test';
+      const testFile = 'tests/apps/minicrm/functional/deals/deal-moved.spec.ts';
+
+      await linkAndCommit(commitSha, testId, null, [makeLink()]);
+      await linkAndCommit(commitSha, testId, null, [makeLink()], testFile);
+
+      const found = await findUnitsForTest(commitSha, testId);
+      expect(found[0].testFile).toBe(testFile);
     });
 
     it('treats a null branch_id and an unrelated function-granularity unit as distinct identities', async () => {

@@ -274,7 +274,7 @@ export async function recordCoverageSessionDump(
   sessionId: string,
   dumpId: string,
   correlationId: string,
-  options: { testId?: string; testName?: string; attempt?: number } = {},
+  options: { testId?: string; testName?: string; testFile?: string; attempt?: number } = {},
 ): Promise<CoverageSessionDump> {
   // INSERT ... SELECT rather than a plain VALUES INSERT so "the session must
   // be active" AND "correlationId must be this session's own correlation_id"
@@ -292,22 +292,24 @@ export async function recordCoverageSessionDump(
     correlation_id: string;
     test_id: string | null;
     test_name: string | null;
+    test_file: string | null;
     attempt: number;
     recorded_at: Date;
   }>(
-    `INSERT INTO coverage_session_dumps (session_id, dump_id, correlation_id, test_id, test_name, attempt)
-     SELECT $1, $2, $3, $4, $5, $6
+    `INSERT INTO coverage_session_dumps (session_id, dump_id, correlation_id, test_id, test_name, test_file, attempt)
+     SELECT $1, $2, $3, $4, $5, $6, $7
      WHERE EXISTS (
        SELECT 1 FROM coverage_sessions
        WHERE id = $1 AND status = 'active' AND correlation_id = $3
      )
-     RETURNING id, session_id, dump_id, correlation_id, test_id, test_name, attempt, recorded_at`,
+     RETURNING id, session_id, dump_id, correlation_id, test_id, test_name, test_file, attempt, recorded_at`,
     [
       sessionId,
       dumpId,
       correlationId,
       options.testId ?? null,
       options.testName ?? null,
+      options.testFile ?? null,
       options.attempt ?? 1,
     ],
   );
@@ -340,16 +342,17 @@ export async function recordCoverageSessionDump(
     correlationId: row.correlation_id,
     testId: row.test_id,
     testName: row.test_name,
+    testFile: row.test_file,
     attempt: row.attempt,
     recordedAt: row.recorded_at.toISOString(),
   };
 }
 
 /**
- * Looks up a single dump's session attribution (test_id/test_name), if any.
- * Used by coverageIngestionService (MINCRM-618) to attribute the units
- * produced by ingesting this dump to the specific test that generated it.
- * Returns null for a dump with no coverage_session_dumps row at all — a
+ * Looks up a single dump's session attribution (test_id/test_name/test_file),
+ * if any. Used by coverageIngestionService (MINCRM-618) to attribute the
+ * units produced by ingesting this dump to the specific test that generated
+ * it. Returns null for a dump with no coverage_session_dumps row at all — a
  * normal case (e.g. a manually-triggered dump/ingest outside any session),
  * not an error.
  */
@@ -363,10 +366,11 @@ export async function findCoverageSessionDumpByDumpId(
     correlation_id: string;
     test_id: string | null;
     test_name: string | null;
+    test_file: string | null;
     attempt: number;
     recorded_at: Date;
   }>(
-    `SELECT id, session_id, dump_id, correlation_id, test_id, test_name, attempt, recorded_at
+    `SELECT id, session_id, dump_id, correlation_id, test_id, test_name, test_file, attempt, recorded_at
      FROM coverage_session_dumps WHERE dump_id = $1`,
     [dumpId],
   );
@@ -383,6 +387,7 @@ export async function findCoverageSessionDumpByDumpId(
     correlationId: row.correlation_id,
     testId: row.test_id,
     testName: row.test_name,
+    testFile: row.test_file,
     attempt: row.attempt,
     recordedAt: row.recorded_at.toISOString(),
   };

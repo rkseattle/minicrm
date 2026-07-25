@@ -67,6 +67,7 @@ export const MOCK_MAPPING_RESULT: CoverageMappingResult = {
   filePath: 'src/services/dealService.ts',
   testId: 'spec:deals.spec.ts::creates a deal',
   testName: 'creates a deal',
+  testFile: 'tests/apps/minicrm/functional/deals/deal-creation.spec.ts',
   hitCount: 3,
   firstSeenAt: '2026-01-01T00:00:00.000Z',
   lastSeenAt: '2026-01-01T00:00:00.000Z',

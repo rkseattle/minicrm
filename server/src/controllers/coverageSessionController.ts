@@ -194,11 +194,12 @@ export async function recordCoverageSessionDumpHandler(req: Request, res: Respon
     return;
   }
 
-  const { dumpId, correlationId, testId, testName, attempt } = parsed.data;
+  const { dumpId, correlationId, testId, testName, testFile, attempt } = parsed.data;
   try {
     const sessionDump = await recordCoverageSessionDump(sessionId, dumpId, correlationId, {
       testId,
       testName,
+      testFile,
       attempt,
     });
     res.status(201).json({ sessionDump });
