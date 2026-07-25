@@ -1162,6 +1162,20 @@ jobs:
           E2E: true
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           APP_URL: http://localhost:5173
+          # Coverage/TIA control API and session management routes are
+          # registered only when these are 'true' at process boot
+          # (MINCRM-663). coverage-instrumentation.spec.ts/coverage-sessions.spec.ts
+          # were moved OFF @serial (they run in e2e-functional now), but
+          # coverage-mapping.spec.ts/coverage-pipeline.spec.ts are still
+          # @serial and independently call /admin/coverage/dump and
+          # /admin/coverage/pipeline/ingest (both mounted on the same
+          # gated router) — this job needs the vars too, not just
+          # e2e-functional. Found via a real CI failure (404s on COVM-01/
+          # COVP-01) after a prior fix removed these assuming no @serial
+          # spec still depended on them; it did not check every @serial
+          # spec, only the two being actively edited.
+          COVERAGE_INSTRUMENTATION: "true"
+          COVERAGE_SESSION_MANAGEMENT: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
