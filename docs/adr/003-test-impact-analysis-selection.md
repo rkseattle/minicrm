@@ -211,6 +211,62 @@ Fixed by adding `filePath` back into the match (`WHERE file_path = $2 AND unit_k
 lookup and isn't necessarily identical to the changed unit's file (though it usually is,
 in practice).
 
+### 6b. A third Greptile pass, plus two self-found bugs while fixing it
+
+Greptile's THIRD review pass on this branch caught one more real bug, and verifying the
+fix surfaced two more of this phase's own making:
+
+**Anonymous-function deletions weren't detected when multiple anonymous callbacks
+coexist.** `findRenamedAwayUnits`'s "still present" check (section 6a) compared by NAME for
+non-anonymous boundaries, which is correct (`classifyChange` already handles the
+edited-in-place case for named functions from the forward direction) — but for
+`'<anonymous>'`, every anonymous function in a file shares that exact same fallback name
+(see `qualifiedNameOf`), so a file with two or more anonymous callbacks would always find
+SOME `'<anonymous>'` survivor and wrongly conclude nothing was removed, even when a
+DIFFERENT anonymous callback was genuinely deleted.
+
+The fix required real care, verified by writing regression tests first and watching them
+fail in different ways as each naive fix attempt was tried:
+
+- **Body-hash equality alone** (first attempt) is unsound for NESTED anonymous functions:
+  an outer anonymous function's own hash covers its full source text, nested functions
+  included, so editing only an inner callback's literal changes the OUTER callback's hash
+  too — even though the outer callback's own logic never changed. This was caught by the
+  existing same-line-nested-callback test from section 6, which started failing again.
+- **Structural-path equality alone** (second attempt — `FunctionBoundary.path`, each
+  function's own index among its parent's function-like children, tracked via a counter
+  stack during the AST walk) is unsound when an EARLIER anonymous sibling is added or
+  removed: every LATER sibling's own path index shifts, so an untouched later callback's
+  new path can coincidentally collide with a REMOVED earlier callback's old path, again
+  producing a false "still present."
+- **The final fix** performs actual one-to-one PAIRING between old and new anonymous
+  boundaries (not two independent "does X exist anywhere in Y" membership checks, which
+  can each match a different survivor than the one being tested): pass 1 matches by exact
+  body hash (unambiguous — an unchanged function's hash is stable regardless of new
+  position); pass 2 matches by exact path among whatever pass 1 left unmatched (recovers
+  an in-place body edit at the same nesting slot, whose hash changed but whose position
+  didn't). An old anonymous boundary left unmatched after both passes is genuinely gone.
+
+**A related, distinct bug surfaced while writing the anonymous-deletion regression test: a
+pure-deletion hunk at the very start of a file anchored to line 0, not line 1.** Git's own
+`+c,0` hunk-header convention (section 6) reports `c = 0` specifically when the deleted
+content was the file's own first lines — there is no new-side line 0 (line numbers are
+1-based) for "before the file's first surviving line" to point at. Left un-clamped, this
+anchor could never resolve to any enclosing function (every real line is `>= 1`), so a
+file's first function being deleted entirely fell into `resolveEnclosingUnitsForRanges`'s
+"no enclosing function found" unresolved bucket instead of anchoring to whatever function
+now starts the file — silently skipping the change-detection and rename/removal-detection
+passes entirely for that file. Fixed by clamping `parseHunkRanges`' own computed
+`startLine` to a minimum of 1.
+
+**Accepted, documented residual gap:** `resolveFileChange` only calls
+`findRenamedAwayUnits` when the OLD revision's content is actually readable at `baseRef`
+(`git show` can fail — e.g. a shallow clone, or a base ref that's been garbage-collected).
+When unreadable, rename/removal detection for that file is silently skipped, and every
+changed unit in the file is instead classified `'new'` — consistent with `classifyChange`'s
+own existing fallback for the same condition, so this is not a new regression, just an
+explicitly accepted limitation of relying on `git show` for historical content.
+
 ### 7. Explicit git-ref validation before shelling out
 
 `diffParser.parseGitDiff` and `changeUnitResolver.resolveChangedUnits` both validate every

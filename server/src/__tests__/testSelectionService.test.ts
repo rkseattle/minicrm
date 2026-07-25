@@ -16,7 +16,10 @@ import {
   linkCoverageUnitsToTest,
   type CoverageTestLinkInput,
 } from '../services/coverageMappingService.js';
-import { selectTestsForChangedUnits } from '../coverageAgent/testSelection/testSelectionService.js';
+import {
+  selectTestsForChangedUnits,
+  enclosingUnitMapKey,
+} from '../coverageAgent/testSelection/testSelectionService.js';
 import type { ChangedUnit } from '../coverageAgent/testSelection/changeUnitResolver.js';
 
 const FILE_PREFIX = 'test-selection-svc';
@@ -123,7 +126,7 @@ describe('selectTestsForChangedUnits', () => {
     const newUnit = makeChangedUnit({ unitKey: 'newMethod#new1', changeKind: 'new' });
     const enclosingMap = new Map([
       [
-        'newMethod#new1',
+        enclosingUnitMapKey(`${FILE_PREFIX}/widget.ts`, 'newMethod#new1'),
         { filePath: `${FILE_PREFIX}/widget.ts`, unitKey: 'enclosingClass#parent1' },
       ],
     ]);
@@ -167,7 +170,10 @@ describe('selectTestsForChangedUnits', () => {
       }),
     ];
     const enclosingMap = new Map([
-      ['unitB-new#b1', { filePath: `${FILE_PREFIX}/b.ts`, unitKey: 'enclosing#e1' }],
+      [
+        enclosingUnitMapKey(`${FILE_PREFIX}/b.ts`, 'unitB-new#b1'),
+        { filePath: `${FILE_PREFIX}/b.ts`, unitKey: 'enclosing#e1' },
+      ],
     ]);
 
     const result = await selectTestsForChangedUnits(commitSha, units, enclosingMap);
@@ -296,5 +302,51 @@ describe('selectTestsForChangedUnits', () => {
 
     expect(result.selectedTests).toHaveLength(1);
     expect(result.selectedTests[0].testId).toBe('spec:a.spec.ts::t');
+  });
+
+  it('inherits from the CORRECT enclosing unit when two changed units in different files share the same unitKey (regression — map key collision)', async () => {
+    const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+    // Two changed units — same unitKey, but in DIFFERENT files — each with
+    // its own, DIFFERENT enclosing unit. Before the fix, enclosingUnitsByUnitKey
+    // was keyed on unitKey alone, so whichever entry was written last for
+    // this shared key would silently supply BOTH changed units' inheritance
+    // candidates instead of each unit's own correct enclosing unit.
+    const sharedUnitKey = 'newHelper#collide';
+
+    await linkAndCommit(commitSha, 'spec:enclosing-a.spec.ts::t', 't', [
+      { unitKey: 'enclosingA#a1', branchId: null, filePath: `${FILE_PREFIX}/a.ts`, hitCount: 1 },
+    ]);
+    await linkAndCommit(commitSha, 'spec:enclosing-b.spec.ts::t', 't', [
+      { unitKey: 'enclosingB#b1', branchId: null, filePath: `${FILE_PREFIX}/b.ts`, hitCount: 1 },
+    ]);
+
+    const unitInA = makeChangedUnit({
+      filePath: `${FILE_PREFIX}/a.ts`,
+      unitKey: sharedUnitKey,
+      changeKind: 'new',
+    });
+    const unitInB = makeChangedUnit({
+      filePath: `${FILE_PREFIX}/b.ts`,
+      unitKey: sharedUnitKey,
+      changeKind: 'new',
+    });
+
+    const enclosingMap = new Map([
+      [
+        enclosingUnitMapKey(`${FILE_PREFIX}/a.ts`, sharedUnitKey),
+        { filePath: `${FILE_PREFIX}/a.ts`, unitKey: 'enclosingA#a1' },
+      ],
+      [
+        enclosingUnitMapKey(`${FILE_PREFIX}/b.ts`, sharedUnitKey),
+        { filePath: `${FILE_PREFIX}/b.ts`, unitKey: 'enclosingB#b1' },
+      ],
+    ]);
+
+    const result = await selectTestsForChangedUnits(commitSha, [unitInA, unitInB], enclosingMap);
+
+    expect(result.selectedTests.map((t) => t.testId).sort()).toEqual([
+      'spec:enclosing-a.spec.ts::t',
+      'spec:enclosing-b.spec.ts::t',
+    ]);
   });
 });

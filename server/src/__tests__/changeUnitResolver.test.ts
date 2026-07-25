@@ -314,4 +314,40 @@ describe('resolveChangedUnits', () => {
     expect(deletedUnits[0].unitKey).toMatch(/^removeMe#/);
     expect(deletedUnits[0].filePath).toBe('a.ts');
   });
+
+  it('emits a deleted unit for ONE anonymous callback removed while ANOTHER anonymous callback survives (regression)', async () => {
+    repoRoot = await initRepo();
+    // Two distinct GENUINELY anonymous callbacks — passed directly as call
+    // arguments (no name-bearing const/let binding, so qualifiedNameOf's
+    // fallback '<anonymous>' applies to both — a `const foo = () => {}`
+    // arrow instead resolves to 'foo' via the VariableDeclaration branch,
+    // which would defeat this test's own premise). Genuinely different
+    // bodies (and therefore different unitKeys) under the same name. A
+    // name-only presence check ("does '<anonymous>' still exist in the new
+    // file?") would find the survivor and wrongly conclude NOTHING was
+    // removed.
+    await writeFile(
+      join(repoRoot, 'a.ts'),
+      'register(function () {\n  return 1;\n});\n\nregister(function () {\n  return 2;\n});\n',
+    );
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'base']);
+    const baseSha = await gitRevParseHead(repoRoot);
+
+    // Removes ONLY the first anonymous callback's own register() call
+    // entirely — the second (also anonymous) callback survives untouched,
+    // so newBoundaries still contains a '<anonymous>' entry.
+    await writeFile(join(repoRoot, 'a.ts'), 'register(function () {\n  return 2;\n});\n');
+    await git(repoRoot, ['add', '.']);
+    await git(repoRoot, ['commit', '-m', 'remove first callback entirely']);
+    const headSha = await gitRevParseHead(repoRoot);
+
+    const diffs = await parseGitDiff(baseSha, headSha, repoRoot);
+    const result = await resolveChangedUnits(diffs, repoRoot, baseSha, headSha);
+
+    const deletedUnits = result.changedUnits.filter((u) => u.changeKind === 'deleted');
+    expect(deletedUnits).toHaveLength(1);
+    expect(deletedUnits[0].unitKey).toMatch(/^<anonymous>#/);
+    expect(deletedUnits[0].filePath).toBe('a.ts');
+  });
 });

@@ -106,6 +106,14 @@ const HUNK_HEADER_PATTERN = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
  * positive new-side line count) would resolve to NO changed unit at all,
  * silently omitting its covering tests from selection with no unresolved-
  * change signal either (found via Greptile PR review).
+ *
+ * `+0,0` is git's own convention for "the deletion happened at the very
+ * start of the file" (there is no new-side line 0 — line numbers are
+ * 1-based) — clamped to line 1 (the new file's own first surviving line,
+ * 1-based) instead of left as 0, which would never resolve to any enclosing
+ * function at all (every real line is >= 1) and would incorrectly fall into
+ * changeUnitResolver's "no enclosing function found" unresolved bucket
+ * instead of anchoring to whatever function now starts the file.
  */
 function parseHunkRanges(fileDiffBody: string): ChangedLineRange[] {
   const ranges: ChangedLineRange[] = [];
@@ -113,7 +121,7 @@ function parseHunkRanges(fileDiffBody: string): ChangedLineRange[] {
     const match = HUNK_HEADER_PATTERN.exec(line);
     if (!match) continue;
 
-    const startLine = Number(match[1]);
+    const startLine = Math.max(1, Number(match[1]));
     const lineCount = match[2] !== undefined ? Number(match[2]) : 1;
 
     ranges.push({ startLine, endLine: startLine + lineCount });
