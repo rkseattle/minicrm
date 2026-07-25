@@ -1,6 +1,6 @@
 # Coverage/TIA Instrumentation
 
-Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). Phase 3 (this document's [Coverage Data Pipeline](#coverage-data-pipeline-mincrm-614615616) section) normalizes, symbolicates, and stores raw dumps in a version-anchored model (MINCRM-614, MINCRM-615, MINCRM-616). Phase 4 (this document's [Mapping Engine](#mapping-engine-mincrm-618619620621-pr-tia-4) section) builds the bidirectional code⇄test index, stable structural keys, confidence/freshness scoring, and a query API on top (MINCRM-618, MINCRM-619, MINCRM-620, MINCRM-621). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
+Runtime code coverage collection from the live MiniCRM stack — backend and frontend — for functional/E2E and manual-exploratory testing. Foundation for the broader Coverage/TIA (Test Impact Analysis) initiative (MINCRM-603). Phase 1 covers instrumentation and collection (MINCRM-604, MINCRM-605, MINCRM-606, MINCRM-607). Phase 2 (this document's [Session Management](#session-management-mincrm-609612) section) adds session grouping, correlation-ID attribution, and a manual-testing recorder (MINCRM-609, MINCRM-610, MINCRM-611, MINCRM-612). Phase 3 (this document's [Coverage Data Pipeline](#coverage-data-pipeline-mincrm-614615616) section) normalizes, symbolicates, and stores raw dumps in a version-anchored model (MINCRM-614, MINCRM-615, MINCRM-616). Phase 4 (this document's [Mapping Engine](#mapping-engine-mincrm-618619620621-pr-tia-4) section) builds the bidirectional code⇄test index, stable structural keys, confidence/freshness scoring, and a query API on top (MINCRM-618, MINCRM-619, MINCRM-620, MINCRM-621). Phase 5 (this document's [Change Impact Analysis & Test Selection](#change-impact-analysis--test-selection-mincrm-623624625626627-pr-tia-6) section) turns a git diff into a test selection decision (MINCRM-623, MINCRM-624, MINCRM-625, MINCRM-626, MINCRM-627). Phase 6 (this document's [Reporting & Gap Analysis](#reporting--gap-analysis-mincrm-629630631-pr-tia-7) section) adds a per-build coverage rollup and read-only reporting/gap-analysis query API for the standalone coverage-dashboard tool (MINCRM-629, MINCRM-630, MINCRM-631). See [Deferred to later phases](#deferred-to-later-phases) for what remains intentionally out of scope.
 
 ## Files
 
@@ -83,6 +83,85 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 
 See [ADR-003](../adr/003-test-impact-analysis-selection.md) for the full pipeline design
 and the safety-net/scorer decoupling invariant.
+
+### Phase 6 — Reporting & gap analysis files
+
+| Path                                                     | Purpose                                                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `qa/migrations/002_coverage_build_summary.js`            | `coverage_build_summary` table — one row per commit, incrementally rolled up (coverage database) |
+| `server/src/services/coverageBuildSummaryService.ts`     | Owns all DB access for `coverage_build_summary`, via `coverageDb.ts`                             |
+| `server/src/services/coverageReportingService.ts`        | Read-only aggregate queries: summary, trend, gaps, per-issue coverage, TIA value metrics         |
+| `server/src/controllers/coverageReportingController.ts`  | Request/response shaping for the reporting query endpoints                                       |
+| `server/src/routes/coverageReporting.ts`                 | `@openapi` routes, mounted at `/api/v1/admin/coverage/reporting`                                 |
+| `shared/schemas/coverageReportingSchema.ts`              | Zod request/response schemas for the reporting query API                                         |
+| `db/migrations/160_add_coverage_reporting_query_flag.js` | Seeds the `coverage_reporting_query` feature flag (product database)                             |
+
+## Reporting & Gap Analysis (MINCRM-629/630/631, `pr-tia-7`)
+
+Read-only reporting/gap-analysis query API over `coverage_build_summary` and the
+existing `coverage_units`/`coverage_test_links` tables, mounted at
+`/api/v1/admin/coverage/reporting/*` — the intended (and only) caller is the
+standalone coverage-dashboard app scaffolded alongside this API (a new
+`coverage-dashboard` npm workspace; see that workspace's own README). Gated by
+`authenticate → requireRole('admin') → requireFeatureEnabled('coverage_reporting_query')`,
+mounted before the general `/admin/coverage` router — same more-specific-before-general
+precedent as `/coverage/sessions`, `/coverage/pipeline`, and `/coverage/mapping`.
+
+### Per-build rollup (`coverage_build_summary`)
+
+`coverage_units` only carries the LATEST state per `commit_sha` — there was no
+time-series storage anywhere in the coverage database before this phase, and
+`coverage_units` rows are also subject to `pruneCoverageUnits`' retention deletion. A
+dashboard trend view re-scanning `coverage_units` for every commit at read time would be
+both expensive and lossy (older builds silently drop off a trend chart as soon as their
+unit-level detail is pruned). `coverage_build_summary` (one row per `commit_sha`) solves
+both problems: `coverageBuildSummaryService.upsertBuildSummaryForCommit` re-derives the
+full row from `coverage_units`/`coverage_test_links` and upserts it, invoked as
+`coverageIngestionService`'s `onUnitsUpserted` callback — in the SAME transaction as the
+`coverage_units` writes it summarizes, so the summary can never drift out of sync, and it
+survives past the underlying units' own retention window. Unlike test-link attribution
+(which only runs when a dump has session/test attribution), the summary rollup runs on
+**every** ingestion — the reporting dashboard needs a summary for any commit with
+coverage at all, not just test-attributed ones.
+
+Per-tier (API/frontend) counts come from `coverage_units.agent` (`node-v8` = API,
+`browser-istanbul` = frontend — the same two literal values `coverage_units`' own CHECK
+constraint enforces). Automated-vs-manual covered-unit counts come from a separate join
+through `coverage_test_links` → `coverage_session_dumps` → `coverage_sessions.source`,
+since `coverage_units` itself carries no test/session attribution of its own — a unit hit
+by both an automated and a manual session counts toward BOTH counters (a
+coverage-BY-test-type breakdown per MINCRM-629's "filter by test type" AC, not a
+mutually-exclusive partition of units).
+
+### Query endpoints
+
+| Method | Path                                                         | Purpose                                                                       |
+| ------ | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/admin/coverage/reporting/summary`                   | Overall + per-tier coverage % for one build (MINCRM-629)                      |
+| `GET`  | `/api/v1/admin/coverage/reporting/trend`                     | Coverage summaries for the most recent builds, most recent first (MINCRM-629) |
+| `GET`  | `/api/v1/admin/coverage/reporting/gaps`                      | Dead zones, never-taken branches, changed-but-untested units (MINCRM-630)     |
+| `GET`  | `/api/v1/admin/coverage/reporting/issues/:issueKey/coverage` | Coverage rollup for one MiniCRM issue key, scoped to one build (MINCRM-631)   |
+| `GET`  | `/api/v1/admin/coverage/reporting/tia-metrics`               | TIA selection value metrics over a commit range (MINCRM-631)                  |
+
+`/gaps` reports three things: `deadZoneUnits` (any `coverage_units` row with
+`hit_count = 0` at the requested commit — code no test of any kind has ever exercised),
+`neverTakenBranches` (the `granularity = 'branch'` subset of the same — MINCRM-630's AC
+to distinguish "nothing calls this function" from "this function IS called, but one of
+its branches never is"), and `changedUntestedUnits` (only populated when `baseSha` is
+supplied — re-runs the same `diffParser.parseGitDiff` → `changeUnitResolver.resolveChangedUnits`
+pipeline test selection uses (MINCRM-623), then reports which changed units have no
+`coverage_test_links` row at `commitSha`; `deleted` units are excluded since there is no
+code left to test).
+
+`/issues/:issueKey/coverage` joins `coverage_sessions.issue_key` (stamped at session
+check-in time — the only place an issue key exists in the coverage database today) →
+`coverage_session_dumps` → `coverage_test_links`, scoped to one `commitSha` like every
+other endpoint here. `/tia-metrics` reports per-tier coverage trend across a commit range
+as an honest proxy for selection quality over time — it does NOT report "tests skipped" /
+"CI time saved" figures, since that requires CI's own test-selection run log, which
+nothing persists yet (wiring selection output into CI is `pr-tia-8`, MINCRM-633/634/660 —
+see [Deferred to later phases](#deferred-to-later-phases)). A follow-up story that
+persists CI's own selection decisions can extend this endpoint once that data exists.
 
 ## Mounting
 
@@ -534,7 +613,11 @@ Not built here — later `pr-tia-*` phases:
   `pr-tia-8`, MINCRM-633/634/660
 - A batch mapping-query endpoint (test selection currently fans out single-unit lookups
   with bounded concurrency instead — see MINCRM-624 above)
-- Historical coverage trend storage or dashboards, and any reporting/query API over `coverage_units` beyond the internal `findCoverageUnitsByCommitSha` lookup and the mapping engine's own `findTestsForUnit`/`findUnitsForTest`
+- "Tests skipped" / "CI time saved" TIA value metrics — `/tia-metrics` (MINCRM-631,
+  see [Reporting & Gap Analysis](#reporting--gap-analysis-mincrm-629630631-pr-tia-7))
+  reports coverage trend as a proxy today; the real figures need CI's own
+  test-selection run log, which nothing persists until `pr-tia-8` wires selection
+  output into CI (MINCRM-633/634/660)
 - Coverage-driven CI gating (failing a build on coverage drop)
 - Cross-shard dump merging/aggregation — CI currently uploads per-shard dump directories as-is
 - An automated overhead-regression CI gate (the measurement above is manual)

@@ -29,6 +29,14 @@
  * (or a session attribution with a null test_id — e.g. a manual-recorder
  * check-in with no single associated test) is ingested into coverage_units
  * exactly as before, simply producing no coverage_test_links rows for it.
+ *
+ * Build summary rollup (MINCRM-629/630/631): unlike test-link attribution,
+ * coverageBuildSummaryService.upsertBuildSummaryForCommit runs on EVERY
+ * ingestion regardless of session/test attribution — the reporting
+ * dashboard's per-build/trend views need a summary row for any commit that
+ * has coverage_units at all, not just test-attributed ones. Invoked in the
+ * same onUnitsUpserted callback, after test-link attribution, so both
+ * remain part of the single atomic transaction upsertCoverageUnits holds.
  */
 
 import { join } from 'path';
@@ -37,6 +45,7 @@ import { upsertCoverageUnits } from '../../services/coverageModelService.js';
 import { linkCoverageUnitsToTest } from '../../services/coverageMappingService.js';
 import type { CoverageTestLinkInput } from '../../services/coverageMappingService.js';
 import { findCoverageSessionDumpByDumpId } from '../../services/coverageSessionService.js';
+import { upsertBuildSummaryForCommit } from '../../services/coverageBuildSummaryService.js';
 import { COVERAGE_DUMPS_ROOT } from '../coverageConfig.js';
 import { readRawDumpPayload, symbolicateCoverageDump } from './coverageSymbolicationService.js';
 import type { IngestCoverageDumpResult } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
@@ -109,38 +118,46 @@ export async function ingestCoverageDump(
     dump.commitSha,
     dump.agent,
     units,
-    testId
-      ? async (client) => {
-          // Unresolved units (e.g. a node: builtin or eval()'d code — see
-          // coverageSymbolicationService.ts) all share the literal
-          // unitKey 'unknown' with no real file_path behind them. Linking
-          // them into coverage_test_links would collapse every unrelated
-          // unresolved unit across every file into the SAME
-          // (commit_sha, unitKey, branchId, testId) identity — not a
-          // meaningful "this test covers this code" fact, and it would
-          // corrupt that identity slot for any other test that also
-          // happened to touch an unresolved script. coverage_units itself
-          // still records these rows (with resolved=false), just not the
-          // per-test mapping.
-          const links: CoverageTestLinkInput[] = units
-            .filter((unit) => unit.resolved)
-            .map((unit) => ({
-              unitKey: unit.unitKey,
-              branchId: unit.branchId,
-              filePath: unit.filePath,
-              hitCount: unit.hitCount,
-            }));
-          if (links.length > 0) {
-            await linkCoverageUnitsToTest(
-              client,
-              dump.commitSha,
-              testId,
-              sessionDump?.testName ?? null,
-              links,
-            );
-          }
+    async (client) => {
+      if (testId) {
+        // Unresolved units (e.g. a node: builtin or eval()'d code — see
+        // coverageSymbolicationService.ts) all share the literal
+        // unitKey 'unknown' with no real file_path behind them. Linking
+        // them into coverage_test_links would collapse every unrelated
+        // unresolved unit across every file into the SAME
+        // (commit_sha, unitKey, branchId, testId) identity — not a
+        // meaningful "this test covers this code" fact, and it would
+        // corrupt that identity slot for any other test that also
+        // happened to touch an unresolved script. coverage_units itself
+        // still records these rows (with resolved=false), just not the
+        // per-test mapping.
+        const links: CoverageTestLinkInput[] = units
+          .filter((unit) => unit.resolved)
+          .map((unit) => ({
+            unitKey: unit.unitKey,
+            branchId: unit.branchId,
+            filePath: unit.filePath,
+            hitCount: unit.hitCount,
+          }));
+        if (links.length > 0) {
+          await linkCoverageUnitsToTest(
+            client,
+            dump.commitSha,
+            testId,
+            sessionDump?.testName ?? null,
+            links,
+          );
         }
-      : undefined,
+      }
+
+      // Runs regardless of test attribution — see this module's own
+      // docblock ("Build summary rollup"). Recomputes from the
+      // just-committed-within-this-transaction coverage_units/
+      // coverage_test_links state for this commit, so it reflects this
+      // dump's contribution alongside every prior dump already ingested
+      // for the same commit_sha.
+      await upsertBuildSummaryForCommit(client, dump.commitSha);
+    },
   );
 
   logger.info(
