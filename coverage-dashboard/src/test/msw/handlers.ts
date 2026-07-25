@@ -12,6 +12,7 @@ import type {
   DeadZoneUnit,
   ChangedUntestedUnit,
 } from '@shared/schemas/coverageReportingSchema.js';
+import type { CoverageMappingResult } from '@shared/schemas/coverageMappingSchema.js';
 
 export const MOCK_ADMIN_USER: AuthUser = {
   id: 'user-admin-1',
@@ -59,6 +60,20 @@ export const MOCK_CHANGED_UNTESTED_UNIT: ChangedUntestedUnit = {
   changeKind: 'in-line',
 };
 
+export const MOCK_MAPPING_RESULT: CoverageMappingResult = {
+  commitSha: 'abc123',
+  unitKey: 'render#abc123',
+  branchId: null,
+  filePath: 'src/services/dealService.ts',
+  testId: 'spec:deals.spec.ts::creates a deal',
+  testName: 'creates a deal',
+  hitCount: 3,
+  firstSeenAt: '2026-01-01T00:00:00.000Z',
+  lastSeenAt: '2026-01-01T00:00:00.000Z',
+  confidenceScore: 0.95,
+  lastReconciledAt: '2026-01-01T00:00:00.000Z',
+};
+
 export const handlers = [
   http.get('*/api/v1/auth/me', () => HttpResponse.json({ user: MOCK_ADMIN_USER })),
   http.post('*/api/v1/auth/login', () =>
@@ -89,5 +104,11 @@ export const handlers = [
         averageFrontendCoveragePercent: 0,
       },
     }),
+  ),
+  http.get('*/api/v1/admin/coverage/mapping/tests-for-unit', () =>
+    HttpResponse.json({ results: [] }),
+  ),
+  http.get('*/api/v1/admin/coverage/mapping/units-for-test', () =>
+    HttpResponse.json({ results: [] }),
   ),
 ];
