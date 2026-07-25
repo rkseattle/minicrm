@@ -42,8 +42,16 @@ const SOURCE_EXTENSION_PATTERN = /\.(ts|tsx|js|jsx)$/i;
 /** Fallback qualified name for a function-like node with no resolvable name (matching structuralKeyService's own fallback convention) — shared as a constant since it's a sentinel, not a real identifier, and multiple functions in the same file legitimately share it. */
 const ANONYMOUS_NAME = '<anonymous>';
 
-/** How a changed unit's presence differs between the old and new revision. */
-export type ChangeKind = 'new' | 'deleted' | 'in-line' | 'refactor';
+/**
+ * How a changed unit's presence differs between the old and new revision.
+ * 'ambiguous' means: this name has 2+ same-named boundaries in the old
+ * revision and the new boundary's own body hash doesn't exactly match any
+ * of them — there is no sound way to know WHICH old same-named sibling (if
+ * any) this new boundary actually corresponds to, so no specific claim
+ * ('new'/'in-line'/'refactor') is made. See classifyChange's own docblock
+ * for why this is preferred over guessing via structural position.
+ */
+export type ChangeKind = 'new' | 'deleted' | 'in-line' | 'refactor' | 'ambiguous';
 
 /** One changed code unit, ready to look up against the mapping query API. */
 export interface ChangedUnit {
@@ -72,30 +80,6 @@ interface FunctionBoundary {
   containmentRange: StructuralKeyLocation;
   /** Body-only span (istanbul's `loc`, excluding the `function name(...)` signature) — the ONLY range ever passed to deriveStructuralUnitKey, matching the mapping engine's own hash derivation exactly (coverageSymbolicationService.ts's qualifiedUnitKey passes `mapping.loc`, never `mapping.decl`). Hashing the full node (including the name) would make a function's unit_key change on a pure rename with no logic change, which is NOT how the mapping engine itself derives unit_key. */
   bodyRange: StructuralKeyLocation;
-  /**
-   * Structural address: this function's own index among its DIRECT parent
-   * function's immediate function-like children (in document/traversal
-   * order), preceded by the parent's own path — e.g. `[2, 0, 1]` means "the
-   * 2nd top-level function's own 0th child function's own 1st child
-   * function". Top-level functions have a single-element path (their own
-   * top-level index).
-   *
-   * Exists ONLY to disambiguate '<anonymous>' boundaries across revisions
-   * without relying on body-hash equality — see findRenamedAwayUnits' own
-   * docblock for why hash equality is unsound for nested anonymous
-   * functions (an outer function's hash cascades whenever ANY nested
-   * content changes, even if the outer function's own logic is untouched).
-   * A path is stable across an in-place body edit at the SAME nesting slot
-   * (the edit doesn't change how many sibling functions came before it),
-   * making "same path" a reliable "same anonymous function, wherever its
-   * body changed" signal — though NOT reliable across a change that adds/
-   * removes an earlier SIBLING anonymous function at the same nesting
-   * level, which shifts every later sibling's own index. That residual gap
-   * is accepted as a known limitation (documented in ADR-003) rather than
-   * over-engineered away — MINCRM-623's own AC only calls for "detectable
-   * where possible", not exhaustive AST-diffing.
-   */
-  path: readonly number[];
 }
 
 /** Best-effort qualified name for a function-like node: method/property name when available, else '<anonymous>' (matching structuralKeyService's own fallback convention). */
@@ -134,30 +118,17 @@ function toLocation(sourceFile: ts.SourceFile, pos: number): { line: number; col
 
 /**
  * Walks a source file's AST and returns every function-like node's own name,
- * containment range (full node span), body range, and structural path (see
- * FunctionBoundary's own docblock for why these must be tracked separately).
- * Ordered innermost-last is NOT guaranteed; callers that need "most specific
+ * containment range (full node span), and body range (see FunctionBoundary's
+ * own docblock for why the two ranges must be tracked separately). Ordered
+ * innermost-last is NOT guaranteed; callers that need "most specific
  * enclosing function" must pick the smallest range themselves (see
  * findEnclosingFunction).
- *
- * Path is tracked via a counter stack — one counter per nesting level,
- * incremented each time a function-like child is found at that level,
- * pushed/popped as the walk enters/leaves a function body. This gives every
- * function a document-order structural address independent of its own body
- * content, which is what makes it useful for matching anonymous functions
- * across revisions (see FunctionBoundary.path's own docblock).
  */
 function findFunctionBoundaries(sourceFile: ts.SourceFile): FunctionBoundary[] {
   const boundaries: FunctionBoundary[] = [];
-  const pathStack: number[] = [];
-  const siblingCounters: number[] = [0];
 
   function visit(node: ts.Node): void {
     if (isFunctionLike(node) && node.body) {
-      const ownIndex = siblingCounters[siblingCounters.length - 1];
-      siblingCounters[siblingCounters.length - 1] = ownIndex + 1;
-      const path = [...pathStack, ownIndex];
-
       boundaries.push({
         name: qualifiedNameOf(node),
         containmentRange: {
@@ -168,14 +139,9 @@ function findFunctionBoundaries(sourceFile: ts.SourceFile): FunctionBoundary[] {
           start: toLocation(sourceFile, node.body.getStart(sourceFile)),
           end: toLocation(sourceFile, node.body.getEnd()),
         },
-        path,
       });
 
-      pathStack.push(ownIndex);
-      siblingCounters.push(0);
       ts.forEachChild(node, visit);
-      siblingCounters.pop();
-      pathStack.pop();
       return;
     }
     ts.forEachChild(node, visit);
@@ -314,43 +280,113 @@ async function readFileAtRevision(
 /**
  * Classifies a changed unit by comparing its presence/identity across the
  * old and new revisions:
- *  - 'new': the unit's own name has no corresponding function in the old
- *    revision at all (a brand-new function, not just an edited one).
- *  - 'in-line': the unit exists in both revisions under the same name, and
- *    its structural key (name + normalized body hash) actually changed —
- *    an ordinary edit to the function's own logic.
- *  - 'refactor': the unit's name exists in the old revision, but git's own
- *    diff still attributed a change here — used when the enclosing
- *    function's OWN body hash is unchanged (e.g. a change to a sibling
+ *  - 'new': no old boundary shares the new boundary's name at all (a
+ *    brand-new function, not just an edited one).
+ *  - 'in-line': exactly one old boundary AND exactly one new boundary
+ *    share the name, and the structural key (name + normalized body hash)
+ *    actually changed — an ordinary edit to the function's own logic.
+ *  - 'refactor': exactly one old boundary AND exactly one new boundary
+ *    share the name, and the body hash is UNCHANGED — used when git's own
+ *    diff still attributed a change here even though the enclosing
+ *    function's own body is identical (e.g. a change to a sibling
  *    statement inside a shared block was misattributed to this function's
  *    range boundary), signaling the change is likely structural movement
  *    rather than a logic edit. Detectable-only, per the AC — a best-effort
  *    signal, not a guarantee.
+ *  - 'ambiguous': 2+ boundaries share the name on EITHER side (old, new,
+ *    or both) — see below for why 'refactor'/'in-line' can never be a
+ *    sound claim in this case, regardless of whether some sibling's hash
+ *    happens to match.
+ *
+ * ONLY exact body-hash matching disambiguates which old same-named
+ * boundary (if any) a new boundary corresponds to — NOT structural
+ * position. Position (a function's index among same-named siblings,
+ * tracked in an earlier version of this module as `FunctionBoundary.path`)
+ * was tried first and found unsound in this exact spot too (found via a
+ * second, independent adversarial review — path-based disambiguation had
+ * already been rejected for findRenamedAwayUnits for the identical reason,
+ * see that function's own docblock, but was initially believed "safe as a
+ * preference, falling back to first-match" here specifically): whenever a
+ * same-named sibling is deleted, added, or both in the same diff, every
+ * LATER same-named sibling's own path index shifts, so "same path" stops
+ * meaning "same function" the moment membership changes at all — verified
+ * with a live repro where an earlier same-named class was deleted and a
+ * later one was independently added, netting an unchanged name-group
+ * size; path-preferring classification still classified the genuinely-new
+ * boundary as `'in-line'` (comparing it against an unrelated old boundary
+ * that merely happened to share its shifted path) instead of `'new'`. The
+ * `path` field itself has since been removed from FunctionBoundary —
+ * nothing in this module reads structural position anymore.
+ *
+ * Crucially, 'refactor' requires comparing a boundary against ITS OWN old
+ * self — that's what makes "hash unchanged" mean "this specific function's
+ * logic didn't change". With 2+ same-named old candidates there is no
+ * sound way to know which one (if any) is "its own old self", so even
+ * finding an EXACT hash match against ONE of several candidates proves
+ * nothing about whether the reported boundary's own logic changed: the
+ * match may simply be a coincidence between two unrelated, differently-
+ * edited siblings that happen to produce identical bodies (found via a
+ * third independent adversarial review, live-repro'd — editing ClassB's
+ * render() to a body byte-identical to ClassA's own always-untouched
+ * render() previously reported ClassB's genuine edit as 'refactor', i.e.
+ * "no real logic change", which is exactly backwards: ClassB's logic DID
+ * change, from ClassA's perspective nothing changed at all, and the two
+ * cannot be told apart from hash alone). An earlier version of this
+ * function returned 'refactor' whenever ANY of the 2+ candidates' hashes
+ * matched — that version is what produced the backwards result above.
+ * 2+ candidates can therefore only ever yield 'ambiguous', never
+ * 'refactor', regardless of whether some candidate's hash happens to
+ * match.
+ *
+ * `newSameNameCount` (how many NEW boundaries — including this one —
+ * share `newBoundaryName`) exists because old-side count alone is not
+ * enough: a version of this function that only ever looked at
+ * `oldBoundaries.length` would see exactly one old candidate and
+ * confidently report 'in-line'/'refactor' even when a BRAND-NEW same-named
+ * sibling was added alongside an untouched old namesake in the same diff —
+ * this specific new boundary might be the brand-new one, not the old
+ * namesake's own successor, and there is no way to tell which from the old
+ * side's count alone (found via a fifth independent adversarial review,
+ * live-repro'd: old file has only `ClassA.render()`; new file adds an
+ * untouched-old-`ClassA` PLUS a brand-new `ClassB.render()` — resolving
+ * ClassB's own insertion previously reported `'in-line'`, or `'refactor'`
+ * if ClassB's body coincidentally matched ClassA's, for a function that
+ * never existed before at all). Requiring BOTH sides' same-name count to
+ * be exactly 1 closes this gap symmetrically with `findRenamedAwayUnits`,
+ * which has always operated on both sides' boundaries together.
  */
 function classifyChange(
   newUnitKey: string,
   newBoundaryName: string,
   oldBoundaries: readonly FunctionBoundary[],
   oldSourceText: string,
+  newSameNameCount: number,
 ): ChangeKind {
-  const oldBoundary = oldBoundaries.find((b) => b.name === newBoundaryName);
-  if (!oldBoundary) {
+  const sameNameCandidates = oldBoundaries.filter((b) => b.name === newBoundaryName);
+  if (sameNameCandidates.length === 0) {
     return 'new';
   }
 
-  const oldUnitKey = deriveStructuralUnitKey(
-    oldBoundary.name,
-    oldBoundary.bodyRange,
-    oldSourceText,
-  );
-  if (oldUnitKey === newUnitKey) {
-    // Same name, same body hash in both revisions — the diff touched this
-    // function's range, but its own normalized body is identical, so the
-    // effective change is elsewhere (e.g. a sibling function moved a brace).
-    return 'refactor';
+  if (sameNameCandidates.length === 1 && newSameNameCount === 1) {
+    // Unambiguous — exactly one same-named boundary on EACH side, no risk
+    // of comparing against the wrong sibling in either direction.
+    const oldHash = deriveStructuralUnitKey(
+      sameNameCandidates[0].name,
+      sameNameCandidates[0].bodyRange,
+      oldSourceText,
+    );
+    return oldHash === newUnitKey ? 'refactor' : 'in-line';
   }
 
-  return 'in-line';
+  // 2+ boundaries share this name on at least one side — see this
+  // function's own docblock for why 'refactor'/'in-line' are never sound
+  // claims here, even when one of the candidates' hashes matches: this
+  // NEW boundary isn't necessarily the one old candidate's own successor
+  // when 2+ new boundaries share the name too (a brand-new same-named
+  // sibling added alongside an untouched old namesake would otherwise be
+  // misclassified as an edit to that old namesake, since old-side count
+  // alone can't see the new-side collision).
+  return 'ambiguous';
 }
 
 /**
@@ -370,41 +406,84 @@ function classifyChange(
  * backward from the old side, independent of whatever diffParser's hunk
  * ranges did or didn't cover.
  *
- * "Still present" is decided PER NAME, matching classifyChange's own
- * forward-pass convention (an edited-in-place NAMED function is correctly
- * NOT reported here — classifyChange already reports it 'in-line' from the
- * new side) — EXCEPT for the '<anonymous>' sentinel name, where name-based
- * presence is meaningless: every anonymous function shares that exact same
- * fallback name (see qualifiedNameOf), so a file with two or more anonymous
- * callbacks would always find SOME '<anonymous>' survivor and wrongly
- * conclude nothing was removed, even when a DIFFERENT anonymous callback was
- * genuinely deleted (found via Greptile PR review).
+ * "Still present" requires a genuine one-to-one PAIRING between old and new
+ * boundaries of the SAME NAME, not a "does this name exist anywhere in the
+ * new file" set-membership check — a plain name check is unsound whenever
+ * TWO OR MORE boundaries share a name, which is exactly the situation for
+ * EVERY '<anonymous>' function (they all share that one fallback name — see
+ * qualifiedNameOf) but is not exclusive to anonymous functions: two
+ * DIFFERENTLY-BODIED named functions sharing a real qualified name (e.g. two
+ * unrelated `render` methods on different classes) hit the identical false-
+ * survivor bug (found via Greptile PR review, after an earlier version of
+ * this fix wrongly special-cased '<anonymous>' as the only name capable of
+ * colliding). Every name — anonymous or real — is therefore grouped and
+ * paired the same way, with no special case for the sentinel name.
  *
- * For anonymous boundaries specifically, this compares by BOTH structural
- * PATH (FunctionBoundary.path — see that field's own docblock) AND body
- * hash — "still present" if EITHER matches a new anonymous boundary. Each
- * signal alone is unsound in a different case, so both are checked:
- *  - Path alone fails when an EARLIER anonymous sibling is added/removed:
- *    every later sibling's own path index shifts, so an untouched later
- *    callback's OLD path no longer matches its own NEW path even though its
- *    body never changed — hash correctly catches this case instead (an
- *    unchanged function's hash is stable regardless of its new position).
- *  - Hash alone fails when an OUTER anonymous function's NESTED content
- *    changes: the hash covers the full source text of the function
- *    (nested functions included), so editing only an inner callback's
- *    literal makes the outer callback's own hash look "removed" too, even
- *    though the outer callback's own logic never changed (found during
- *    this fix's own verification — the existing same-line-nested-callback
- *    regression test caught it) — path correctly catches this case
- *    instead (a body edit at the same nesting slot doesn't change how many
- *    sibling functions came before it).
+ * Pairing strategy per name group, for EVERY group size (including 1-old/
+ * 1-new): EXACT BODY-HASH MATCH ONLY, full stop — no special case for any
+ * particular count. An earlier version of this function special-cased
+ * "exactly one old and exactly one new boundary share this name" as an
+ * unconditional pairing, reasoned as unambiguous "by construction, no
+ * sibling to confuse either one with". That reasoning only rules out
+ * confusion with another candidate present in the SAME diff's SAME name
+ * group at pairing time — it does not rule out the group's own counts
+ * merely coincidentally collapsing to 1-and-1 because an unrelated
+ * same-named old boundary was independently deleted while an unrelated
+ * same-named new boundary was independently added elsewhere in the same
+ * group, netting an unchanged count of 1 on each side (found via a fourth
+ * independent adversarial review, live-repro'd: old `foo` (body A)
+ * deleted, an unrelated new `foo` (body B) added elsewhere in the same
+ * file, in the same diff — the 1:1 shortcut paired them unconditionally,
+ * and old `foo`'s real deletion silently never appeared as a 'deleted'
+ * entry at all — a genuine silent MISS, not just over-reporting, and
+ * exactly the failure mode this whole function exists to prevent). An
+ * even earlier version added a structural-position pass (each boundary's
+ * index among same-named siblings, previously tracked as
+ * `FunctionBoundary.path`) for 2+ groups whose old/new counts happened to
+ * match, which a THIRD independent adversarial review separately found
+ * unsound for the identical reason (sibling rotation defeats any count
+ * guard). There is no group size — not even 1-and-1 — for which "same
+ * name" alone, or any positional/count-based signal derived from it, is a
+ * sound stand-in for "same function"; only an exact body-hash match is,
+ * and the `path` field has been removed from FunctionBoundary entirely —
+ * nothing in this module reads structural position anymore.
  *
- * A NAMED old boundary whose name is gone is emitted as 'deleted' whether
- * or not its body survives under a different name elsewhere (a rename) —
- * intentional, not just a fallback for the "no rename detected" case:
- * either way the old identity no longer exists in the new file and should
- * be retired from the mapping engine's perspective, exactly like the
- * whole-file-deletion path already does for every unit in a removed file.
+ * Any old boundary left unpaired is emitted as 'deleted' — whether or not
+ * its body survives under a different name elsewhere (a rename), and
+ * whether or not it was actually just shifted in position by an unrelated
+ * sibling change: there is no sound positional signal to say otherwise,
+ * and over-reporting a spurious 'deleted' is the intentionally safe
+ * direction here (a stale mapping-engine entry gets retired a build early
+ * and reconciliation repopulates it on next ingest; a missed 'deleted'
+ * would silently drop real test coverage from selection).
+ *
+ * KNOWN, ACCEPTED LIMITATION (found via a fifth independent adversarial
+ * review, live-repro'd): hash-only matching cannot distinguish "old
+ * boundary X1 was renamed/moved to become new boundary X3" from "X1 was
+ * deleted outright, and X3 is an entirely unrelated new boundary that
+ * happens to have a byte-identical body" — e.g. old `X1.render()`
+ * (body "A") is deleted while `X2.render()` (body "B") survives
+ * untouched, and an unrelated brand-new `X3.render()` (body "A",
+ * coincidentally identical to X1's OLD body) is added in the same diff:
+ * hash-matching pairs X1↔X3 and X2↔X2, reporting ZERO deletions, even
+ * though X1 is genuinely gone. This is NOT fixable by adding a positional/
+ * containment tie-breaker (e.g. "which class each `render` belongs to")
+ * — that is structurally the same move as the sibling-index/path-matching
+ * approaches already tried and rejected above, and is defeated the same
+ * way (e.g. if X1's own enclosing class is *also* renamed in the same
+ * commit). It is the exact same fundamental ceiling `git diff
+ * --find-renames` itself has when pairing deleted/added FILES by content
+ * similarity (see diffParser.ts's own use of `--find-renames=50%`) — a
+ * purely content-addressed signal cannot, even in principle, distinguish
+ * "same content because same entity" from "same content, coincidentally,
+ * for a different entity" without consulting information this module
+ * doesn't have access to (authorial intent, cross-file usage/call-site
+ * graphs). Accepted as an unavoidable false-negative in the identical
+ * spirit as the module's own over-reporting tradeoff: rare in practice
+ * (requires a genuinely byte-identical body collision across unrelated
+ * same-named siblings in one diff), and bounded in blast radius by the
+ * same reconciliation safety net that already handles every other
+ * under/over-reporting edge case here.
  */
 function findRenamedAwayUnits(
   oldBoundaries: readonly FunctionBoundary[],
@@ -413,80 +492,80 @@ function findRenamedAwayUnits(
   newSourceText: string,
   filePath: string,
 ): ChangedUnit[] {
-  const newNamedNames = new Set(
-    newBoundaries.filter((b) => b.name !== ANONYMOUS_NAME).map((b) => b.name),
+  const oldHashes = new Map(
+    oldBoundaries.map((b) => [b, deriveStructuralUnitKey(b.name, b.bodyRange, oldSourceText)]),
+  );
+  const newHashes = new Map(
+    newBoundaries.map((b) => [b, deriveStructuralUnitKey(b.name, b.bodyRange, newSourceText)]),
   );
 
-  // Anonymous boundaries need a genuine one-to-one PAIRING between old and
-  // new, not two independent "does X exist anywhere in Y" set-membership
-  // checks — an OR of independent path/hash membership checks can each
-  // individually match a DIFFERENT survivor than the one actually being
-  // tested, producing a false "still present" (found during this fix's own
-  // verification: removing an EARLIER anonymous sibling shifts a later
-  // untouched sibling into the removed one's own old path slot, so the
-  // removed one's old path spuriously matches the untouched survivor's new
-  // path even though hash correctly shows they're different functions).
-  //
-  // Pairing strategy, in priority order (each pass consumes the new
-  // boundaries it matches, so a later pass never re-matches an already-
-  // paired one):
-  //   1. Exact body-hash match — unambiguous: an unchanged function's hash
-  //      is stable regardless of its new position (recovers a later
-  //      sibling shifted by an earlier sibling's own removal/addition).
-  //   2. Exact path match among what's LEFT after (1) — recovers an
-  //      in-place body edit at the same nesting slot, whose hash therefore
-  //      changed but whose position didn't (see this function's own
-  //      docblock for why hash alone is unsound for nested edits).
-  // Any old anonymous boundary left unmatched after both passes is
-  // genuinely gone.
-  const oldAnonymous = oldBoundaries.filter((b) => b.name === ANONYMOUS_NAME);
-  const newAnonymous = newBoundaries.filter((b) => b.name === ANONYMOUS_NAME);
-  const oldAnonymousHashes = new Map(
-    oldAnonymous.map((b) => [b, deriveStructuralUnitKey(b.name, b.bodyRange, oldSourceText)]),
-  );
-  const newAnonymousHashes = new Map(
-    newAnonymous.map((b) => [b, deriveStructuralUnitKey(b.name, b.bodyRange, newSourceText)]),
-  );
-
-  const matchedOldAnonymous = new Set<FunctionBoundary>();
-  const unmatchedNewAnonymous = new Set(newAnonymous);
-
-  // Pass 1: exact hash match.
-  for (const oldBoundary of oldAnonymous) {
-    const oldHash = oldAnonymousHashes.get(oldBoundary);
-    if (!oldHash) continue;
-    const match = [...unmatchedNewAnonymous].find((nb) => newAnonymousHashes.get(nb) === oldHash);
-    if (match) {
-      matchedOldAnonymous.add(oldBoundary);
-      unmatchedNewAnonymous.delete(match);
+  const newBoundariesByName = new Map<string, FunctionBoundary[]>();
+  for (const nb of newBoundaries) {
+    const group = newBoundariesByName.get(nb.name);
+    if (group) {
+      group.push(nb);
+    } else {
+      newBoundariesByName.set(nb.name, [nb]);
     }
   }
 
-  // Pass 2: exact path match, among new boundaries pass 1 didn't already claim.
-  for (const oldBoundary of oldAnonymous) {
-    if (matchedOldAnonymous.has(oldBoundary)) continue;
-    const oldPath = oldBoundary.path.join(',');
-    const match = [...unmatchedNewAnonymous].find((nb) => nb.path.join(',') === oldPath);
-    if (match) {
-      matchedOldAnonymous.add(oldBoundary);
-      unmatchedNewAnonymous.delete(match);
+  const matchedOld = new Set<FunctionBoundary>();
+  const unmatchedNewByName = new Map<string, Set<FunctionBoundary>>();
+  for (const [name, group] of newBoundariesByName) {
+    unmatchedNewByName.set(name, new Set(group));
+  }
+
+  const oldBoundariesByName = new Map<string, FunctionBoundary[]>();
+  for (const ob of oldBoundaries) {
+    const group = oldBoundariesByName.get(ob.name);
+    if (group) {
+      group.push(ob);
+    } else {
+      oldBoundariesByName.set(ob.name, [ob]);
+    }
+  }
+
+  for (const [name, oldGroup] of oldBoundariesByName) {
+    const unmatchedNew = unmatchedNewByName.get(name);
+    if (!unmatchedNew) continue; // name doesn't exist at all in the new file — every boundary in this group is gone.
+
+    // Exact hash match only, regardless of this name group's old/new
+    // counts — including the 1-old/1-new case. An earlier version of this
+    // pass special-cased "exactly one old and exactly one new boundary
+    // share this name" as an unconditional pairing (reasoned as
+    // unambiguous "by construction, no sibling to confuse it with"). That
+    // reasoning only rules out confusion with another SAME-DIFF candidate
+    // — it does not rule out the group's counts merely coincidentally
+    // collapsing to 1-and-1 because an unrelated same-named old boundary
+    // was independently deleted elsewhere in the SAME name group while an
+    // unrelated same-named new boundary was independently added elsewhere
+    // in it, netting an unchanged count of 1 on each side (found via a
+    // fourth independent adversarial review, live-repro'd: old `foo`
+    // (body A) deleted, an unrelated new `foo` (body B) added elsewhere in
+    // the same file, in the same diff — the 1:1 shortcut paired them
+    // unconditionally, and old `foo`'s real deletion silently never
+    // appeared as a 'deleted' entry at all — a genuine silent MISS, not
+    // just over-reporting, and exactly the failure mode this whole
+    // function exists to prevent). There is no group size — not even
+    // 1-and-1 — for which "same name" alone is a sound stand-in for "same
+    // function"; only an exact body-hash match is.
+    for (const oldBoundary of oldGroup) {
+      const oldHash = oldHashes.get(oldBoundary);
+      if (!oldHash) continue;
+      const match = [...unmatchedNew].find((nb) => newHashes.get(nb) === oldHash);
+      if (match) {
+        matchedOld.add(oldBoundary);
+        unmatchedNew.delete(match);
+      }
     }
   }
 
   const removedOrRenamedAway: ChangedUnit[] = [];
   for (const oldBoundary of oldBoundaries) {
-    const oldUnitKey = deriveStructuralUnitKey(
-      oldBoundary.name,
-      oldBoundary.bodyRange,
-      oldSourceText,
-    );
-    if (!oldUnitKey) continue;
+    if (matchedOld.has(oldBoundary)) continue;
 
-    const stillPresent =
-      oldBoundary.name === ANONYMOUS_NAME
-        ? matchedOldAnonymous.has(oldBoundary)
-        : newNamedNames.has(oldBoundary.name);
-    if (stillPresent) continue;
+    const oldUnitKey = oldHashes.get(oldBoundary);
+    if (!oldUnitKey) continue;
 
     removedOrRenamedAway.push({
       filePath,
@@ -557,17 +636,17 @@ async function resolveFileChange(
     fileDiff.changedRanges,
   );
 
-  if (resolved.size === 0 && fileDiff.changedRanges.length > 0) {
-    return {
-      units: [],
-      unresolved: {
-        filePath: fileDiff.filePath,
-        reason: 'No enclosing function found for any changed line (top-level/module-scope change)',
-      },
-    };
-  }
-
   if (fileDiff.status === 'added') {
+    if (resolved.size === 0 && fileDiff.changedRanges.length > 0) {
+      return {
+        units: [],
+        unresolved: {
+          filePath: fileDiff.filePath,
+          reason:
+            'No enclosing function found for any changed line (top-level/module-scope change)',
+        },
+      };
+    }
     const units = Array.from(resolved.values()).map(({ unitKey }) => ({
       filePath: fileDiff.filePath,
       unitKey,
@@ -586,6 +665,14 @@ async function resolveFileChange(
       )
     : [];
 
+  // Same-name counts on the NEW side — classifyChange needs this
+  // alongside the old side's own count (see its own docblock for why
+  // old-side count alone isn't enough).
+  const newSameNameCounts = new Map<string, number>();
+  for (const nb of newBoundaries) {
+    newSameNameCounts.set(nb.name, (newSameNameCounts.get(nb.name) ?? 0) + 1);
+  }
+
   const units: ChangedUnit[] = Array.from(resolved.values()).map(({ boundary, unitKey }) => ({
     filePath: fileDiff.filePath,
     unitKey,
@@ -593,7 +680,13 @@ async function resolveFileChange(
     changeKind:
       oldSourceText === null
         ? 'new'
-        : classifyChange(unitKey, boundary.name, oldBoundaries, oldSourceText),
+        : classifyChange(
+            unitKey,
+            boundary.name,
+            oldBoundaries,
+            oldSourceText,
+            newSameNameCounts.get(boundary.name) ?? 0,
+          ),
   }));
 
   // A function renamed OR removed outright within the diff is otherwise
@@ -601,15 +694,41 @@ async function resolveFileChange(
   // reports 'new' above, and an outright removal has no new-side boundary
   // for the loop above to ever reach at all. See findRenamedAwayUnits' own
   // docblock for why this closes both gaps.
-  if (oldSourceText !== null) {
-    const removedOrRenamedAway = findRenamedAwayUnits(
-      oldBoundaries,
-      oldSourceText,
-      newBoundaries,
-      newSourceText,
-      fileDiff.filePath,
-    );
-    units.push(...removedOrRenamedAway);
+  //
+  // Run BEFORE deciding whether the forward pass's own "no enclosing
+  // function found" result is truly unresolved — a zero-width deletion
+  // anchor (see resolveEnclosingUnitsForRanges) can legitimately land
+  // outside every function's containment range in the NEW file (e.g. the
+  // deleted content was an entire top-level declaration sitting between two
+  // others, so the anchor now points at unrelated sibling code, not
+  // anything nested), even when the actual removed content WAS itself a
+  // function this backward pass correctly detects. Gating this pass behind
+  // "the forward pass found something" would silently skip rename/removal
+  // detection for exactly the case it exists to catch (found via Greptile
+  // PR review + this fix's own verification: a class sitting at the very
+  // top of a file, removed entirely, anchors its zero-width deletion hunk
+  // at the surviving file's own line 1 — inside the NEXT class's opening
+  // brace, not inside any method's own containment range).
+  const removedOrRenamedAway =
+    oldSourceText !== null
+      ? findRenamedAwayUnits(
+          oldBoundaries,
+          oldSourceText,
+          newBoundaries,
+          newSourceText,
+          fileDiff.filePath,
+        )
+      : [];
+  units.push(...removedOrRenamedAway);
+
+  if (units.length === 0 && fileDiff.changedRanges.length > 0) {
+    return {
+      units: [],
+      unresolved: {
+        filePath: fileDiff.filePath,
+        reason: 'No enclosing function found for any changed line (top-level/module-scope change)',
+      },
+    };
   }
 
   return { units, unresolved: null };

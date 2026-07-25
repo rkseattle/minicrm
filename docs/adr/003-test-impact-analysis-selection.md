@@ -267,6 +267,140 @@ changed unit in the file is instead classified `'new'` — consistent with `clas
 own existing fallback for the same condition, so this is not a new regression, just an
 explicitly accepted limitation of relying on `git show` for historical content.
 
+### 6c. A fourth Greptile pass: the anonymous-only fix generalized incorrectly
+
+Greptile's FOURTH review pass caught that section 6b's fix special-cased `'<anonymous>'`
+as the only name capable of colliding — but any two boundaries sharing the same qualified
+name have the identical false-survivor problem (e.g. two unrelated `render()` methods on
+different classes): `newNamedNames.has(oldBoundary.name)` finds the surviving `render()`
+and wrongly concludes the deleted one was never removed.
+
+This was a real gap in how the anonymous fix was scoped, not a new edge case appearing
+from nowhere: the fix in 6b treated "is this the anonymous sentinel" as the dividing line
+between "needs pairing" and "safe with a plain name check," when the actual invariant is
+"any name shared by 2+ boundaries needs pairing" — anonymous names are simply the common
+case of that, not a special case distinct from it. The fix: `findRenamedAwayUnits` no
+longer branches on `ANONYMOUS_NAME` at all — every boundary (named or anonymous) is
+grouped by its own name, and the SAME hash-then-path pairing runs within each name group,
+including groups of size one (a truly-unique name), where pairing trivially degenerates
+to the original simple check.
+
+**Fixing the regression test for this surfaced a second, distinct bug — the same class of
+issue as section 6b's `+0,0` fix, one level deeper.** The test scenario (two classes, each
+with their own `render()`, the first class removed entirely) reproduced a case where
+`parseHunkRanges`' `+0,0`-clamped-to-line-1 anchor (section 6b's own fix) pointed at a
+real, valid new-side line — but that line (the surviving class's own opening line) still
+fell OUTSIDE every function's own containment range, since it's a class declaration line,
+not a method body line. `resolveFileChange`'s existing "no enclosing function found"
+early-return fired before `findRenamedAwayUnits` was ever reached, exactly as if the
+anchor had failed to resolve at all — even though the backward-looking pass would
+correctly have found the removed `render()` if it had run. Fixed by reordering
+`resolveFileChange`: `findRenamedAwayUnits` now runs BEFORE the "no enclosing function
+found" determination is finalized, and that determination is now based on whether the
+COMBINED forward-plus-backward result is empty, not on the forward pass alone.
+
+**Retrospective — why three fix cycles were needed for what looks, in hindsight, like one
+bug:** each fix addressed the literal case being reported rather than the general
+invariant the case was an instance of, and each time, the verification step trusted "the
+reported repro now passes" as proof of correctness rather than asking "what property was I
+actually claiming, and did I try to break that property specifically." The fix that
+finally generalized correctly (this section) only did so because the process changed: name
+uniqueness was treated as the actual invariant across ALL boundaries from the start, not
+inferred backward from what different specific inputs required. The `+0,0`→line-1 clamp
+had the identical shape of miss — fixing the immediate symptom (a literal `0`) without
+tracing whether the fixed value was actually guaranteed to resolve downstream, which it
+was not.
+
+### 6d. Path-matching abandoned entirely: hash-only pairing plus an explicit `'ambiguous'` classification (fifth, sixth, and seventh independent adversarial review passes)
+
+Section 6c's fix paired same-named survivors with a two-pass strategy: exact body-hash
+match first, then — among what pass 1 left unmatched — exact match on `FunctionBoundary
+.path`, a structural address tracking each function's own index among same-named siblings.
+A `path`-preferring variant was also added to `classifyChange` on the belief that
+preferring a path match, and falling back to first-match otherwise, was safe specifically
+in that function (even though path-matching had already been rejected as a _pairing_
+strategy for `findRenamedAwayUnits`).
+
+Two independent adversarial review passes each found a live, repro'd case where
+`path`-based disambiguation was unsound in a NEW way section 6c's fix hadn't covered:
+
+- `classifyChange`'s path-preferring branch could still select the wrong sibling: deleting
+  an earlier same-named sibling shifts a later one into that path slot, and if the shifted
+  sibling's body hash happens to coincide with the new boundary's own hash, the function
+  reports `'refactor'` for what is actually a brand-new, unrelated function.
+- `findRenamedAwayUnits`'s `originalGroupSizesEqual` guard (added in 6c to gate path-
+  matching pass 2) was necessary but not sufficient: a same-named sibling ROTATION — one
+  deleted, a different one independently added, net group size unchanged — passes the
+  equal-counts guard yet has no genuine positional correspondence between any old and new
+  boundary, so path-matching could still misclassify the rotation.
+
+Given path-matching had now failed adversarial review in three separate, independently-
+found forms across two functions, the fix abandons structural position as a signal
+entirely rather than attempting a fourth guard. **The `path` field has been removed from
+`FunctionBoundary`** — nothing in `changeUnitResolver.ts` reads structural position
+anymore. Both functions are now hash-only:
+
+- **`classifyChange`** returns `'refactor'`/`'in-line'` only when EXACTLY ONE old boundary
+  AND exactly one new boundary share a name (an unambiguous 1:1 comparison against the
+  boundary's own old self). Any other count on either side returns a new `ChangeKind`
+  value, **`'ambiguous'`** — an explicit "detectable but not classifiable" signal, rather
+  than guessing. (Old-side-only counting was tried first and found by a further adversarial
+  pass to still under-guard: a brand-new same-named sibling added alongside an untouched
+  old namesake has an old-side count of 1, so the check must also require the new-side
+  count to be 1 — `resolveFileChange` now computes and passes both.)
+- **`findRenamedAwayUnits`** pairs old and new boundaries within each same-name group by
+  exact body-hash match ONLY, for every group size — including 1-old/1-new. An
+  unconditional 1:1 shortcut was tried and rejected by a fourth adversarial pass: a
+  same-named group's own counts can coincidentally collapse to 1-and-1 when an unrelated
+  old boundary is deleted while an unrelated new boundary is independently added in the
+  same group, and the shortcut would pair them regardless of hash, silently swallowing the
+  real deletion. Any old boundary left unpaired is reported `'deleted'` — over-reporting a
+  spurious deletion remains the accepted, intentionally safe direction (a stale
+  mapping-engine entry retires a build early; reconciliation repopulates it on next
+  ingest).
+
+**A fifth adversarial pass** found one further gap in the same shape: `classifyChange`
+returned `'refactor'` whenever ANY of 2+ old candidates' hashes matched the new boundary's
+hash, even though — with 2+ candidates — a hash match proves nothing about whether the
+resolved boundary changed from _its own_ old self (the match may be a coincidence between
+two unrelated, differently-edited siblings that happen to produce identical bodies). Fixed:
+2+ candidates on either side now always return `'ambiguous'`, never `'refactor'`, no matter
+whether some candidate's hash happens to match.
+
+**One residual limitation was analyzed and deliberately left as documented, not fixed:**
+hash-only matching cannot distinguish "old boundary X1 was renamed/moved to become new
+boundary X3" from "X1 was deleted outright, and X3 is an unrelated new boundary that
+happens to have a byte-identical body" — e.g. `X1.render()` (body A) deleted, `X2.render()`
+(body B) survives untouched, and an unrelated new `X3.render()` (body A, coincidentally
+matching X1's OLD body) is added: hash-matching pairs X1↔X3 and X2↔X2, reporting zero
+deletions even though X1 is genuinely gone. This is not an oversight — it is the same
+fundamental ceiling `git diff --find-renames` itself has when pairing deleted/added FILES
+by content similarity (see `diffParser.ts`'s own use of `--find-renames=50%`): a purely
+content-addressed signal cannot, even in principle, distinguish "same content because same
+entity" from "same content, coincidentally, for a different entity" without information
+this module doesn't have (authorial intent, cross-file call-site graphs). Any attempt to
+add a positional/containment tie-breaker (e.g. "which enclosing class each `render`
+belongs to") is structurally the same move as the sibling-index/path-matching approaches
+already tried and rejected above, and fails the same way (e.g. if X1's own enclosing class
+is _also_ renamed in the same commit). Documented directly in `findRenamedAwayUnits`'s own
+docblock as a "KNOWN, ACCEPTED LIMITATION," with a test
+(`changeUnitResolver.test.ts`) that locks in the current, accepted behavior rather than
+asserting it as correct.
+
+**Retrospective — six adversarial review passes across sections 6–6d, all found by asking
+"can I construct an input that breaks the stated invariant" rather than "does the reported
+repro now pass":** every one of the six additional findings was a variation on the same
+underlying trap — using SOME signal (anonymous-sentinel special-casing, group-size-equality
+guards, structural position, single-sided counting, "any hash match implies refactor") as a
+stand-in for genuine identity, and each stand-in broke under an adversarial input the
+previous fix's own verification hadn't tried to construct. The fix that finally held (this
+section) is the one that stopped looking for a better proxy signal and instead asked "what
+is the ONLY signal that can never be wrong, and what must the function honestly report when
+that signal doesn't resolve the question" — exact hash equality is that signal, and
+`'ambiguous'`/accepted-over-reporting is the honest answer when it doesn't resolve. See
+`changeUnitResolver.ts`'s own docblocks for `classifyChange` and `findRenamedAwayUnits` for
+the full, live-repro'd history of each rejected approach.
+
 ### 7. Explicit git-ref validation before shelling out
 
 `diffParser.parseGitDiff` and `changeUnitResolver.resolveChangedUnits` both validate every
