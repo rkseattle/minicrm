@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "Manuelle Coverage-Sitzung ausgecheckt.",
     "checkOutButton": "Auschecken",
+    "checkOutFailed": "Auschecken fehlgeschlagen — bitte erneut versuchen.",
     "checkingOut": "Wird ausgecheckt…",
     "label": "Manuelle Coverage-Sitzung wird aufgezeichnet"
   },

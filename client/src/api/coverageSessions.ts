@@ -10,6 +10,7 @@
  * dead correlation ID to every request.
  */
 
+import axios from 'axios';
 import apiClient from './axiosInstance.js';
 import type { CoverageSession } from '@shared/schemas/coverageSessionSchema.js';
 
@@ -18,23 +19,39 @@ interface CoverageSessionResponse {
 }
 
 /**
- * Looks up the active session for a correlation ID, or null if none is
- * active for it (unknown ID, or already ended elsewhere).
+ * Result of a by-correlation-ID lookup, distinguishing a confirmed "no
+ * active session" from "the lookup itself failed and tells us nothing" —
+ * collapsing both into the same null value (found via Greptile PR review —
+ * "Lookup failures erase active sessions") let a transient network/500/403
+ * error masquerade as a real 404, causing callers to discard a correlation
+ * ID whose session might still be perfectly active.
+ */
+export type CoverageSessionLookupResult =
+  | { status: 'found'; session: CoverageSession }
+  | { status: 'not-found' }
+  | { status: 'lookup-failed' };
+
+/**
+ * Looks up the active session for a correlation ID. Returns 'not-found'
+ * ONLY on a confirmed 404 from the server (unknown correlation ID, or its
+ * session already ended) — any other failure (network error, 500, 403 from
+ * the session-management routes being unregistered, etc.) returns
+ * 'lookup-failed' instead, so callers can tell "confirmed gone" apart from
+ * "we don't actually know" and avoid treating the latter as the former.
  */
 export async function findActiveCoverageSessionByCorrelationId(
   correlationId: string,
-): Promise<CoverageSession | null> {
+): Promise<CoverageSessionLookupResult> {
   try {
     const response = await apiClient.get<CoverageSessionResponse>(
       `/admin/coverage/sessions/by-correlation/${correlationId}`,
     );
-    return response.data.session;
-  } catch {
-    // 404 (unknown/ended), 403 (coverage_session_management routes
-    // unregistered), or any other transient failure — all treated the same
-    // way by callers: nothing currently reconciles, so behave as if there is
-    // no active session for this correlation ID.
-    return null;
+    return { status: 'found', session: response.data.session };
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return { status: 'not-found' };
+    }
+    return { status: 'lookup-failed' };
   }
 }
 

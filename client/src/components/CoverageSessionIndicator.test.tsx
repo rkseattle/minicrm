@@ -9,8 +9,12 @@
  * - Check-out still clears the indicator when the dump submission fails
  * - Check-out still clears the indicator when the session was already ended
  *   server-side (e.g. from the dashboard)
+ * - Check-out does NOT clear the indicator and shows an error when the
+ *   by-correlation lookup fails for a reason other than a confirmed 404
  * - Server reconciliation: hides itself and clears the correlation ID once a
  *   background poll confirms the session is no longer active
+ * - Server reconciliation does NOT clear the indicator when the background
+ *   poll merely fails (transient error), as opposed to confirming not-found
  */
 
 import { screen, waitFor } from '@testing-library/react';
@@ -179,6 +183,64 @@ describe('CoverageSessionIndicator', () => {
       expect(screen.queryByTestId('coverage-session-indicator')).not.toBeInTheDocument();
     });
     expect(localStorageMock.removeItem).toHaveBeenCalledWith(CORRELATION_ID_STORAGE_KEY);
+  });
+
+  it('checks out: does not clear the indicator and shows an error when the lookup fails (not a confirmed 404)', async () => {
+    localStorageMock.setItem(CORRELATION_ID_STORAGE_KEY, 'corr-1');
+    server.use(
+      http.get(
+        '*/api/v1/admin/coverage/sessions/by-correlation/:correlationId',
+        () => new HttpResponse(null, { status: 500 }),
+      ),
+    );
+    renderWithProviders(<CoverageSessionIndicator />);
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-indicator-checkout-button')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('coverage-session-indicator-checkout-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-indicator-checkout-error')).toBeInTheDocument();
+    });
+    // The indicator itself must still be visible — the correlation ID was
+    // NOT discarded, since a 500 tells us nothing about whether the session
+    // is still active (see coverageCorrelation.ts's own docblock).
+    expect(screen.getByTestId('coverage-session-indicator')).toBeInTheDocument();
+    expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(CORRELATION_ID_STORAGE_KEY);
+  });
+
+  it('reconciliation: does NOT clear the indicator when the background poll merely fails', async () => {
+    localStorageMock.setItem(CORRELATION_ID_STORAGE_KEY, 'corr-1');
+    let callCount = 0;
+    server.use(
+      http.get('*/api/v1/admin/coverage/sessions/by-correlation/:correlationId', () => {
+        callCount += 1;
+        if (callCount === 1) {
+          return HttpResponse.json({ session: ACTIVE_SESSION });
+        }
+        // A transient failure on the SECOND poll — must NOT be treated the
+        // same as a confirmed 404.
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+    const queryClient = new (await import('@tanstack/react-query')).QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    renderWithProviders(<CoverageSessionIndicator />, { queryClient });
+    await waitFor(() => {
+      expect(screen.getByTestId('coverage-session-indicator')).toBeInTheDocument();
+    });
+
+    await queryClient.refetchQueries({ queryKey: ['coverage-session-reconcile'] });
+
+    // Give any (incorrect) clear-on-failure logic a chance to run, then
+    // assert the indicator is still there and localStorage was untouched.
+    await waitFor(() => {
+      expect(callCount).toBeGreaterThanOrEqual(2);
+    });
+    expect(screen.getByTestId('coverage-session-indicator')).toBeInTheDocument();
+    expect(localStorageMock.removeItem).not.toHaveBeenCalledWith(CORRELATION_ID_STORAGE_KEY);
   });
 
   it('reconciliation: clears the indicator once the background poll finds the session is no longer active', async () => {

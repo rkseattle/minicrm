@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "Manual coverage session checked out.",
     "checkOutButton": "Check out",
+    "checkOutFailed": "Could not check out — please try again.",
     "checkingOut": "Checking out…",
     "label": "Recording manual coverage session"
   },

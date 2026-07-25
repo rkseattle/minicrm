@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "手动覆盖率会话已签出。",
     "checkOutButton": "签出",
+    "checkOutFailed": "签出失败，请重试。",
     "checkingOut": "正在签出…",
     "label": "正在录制手动覆盖率会话"
   },

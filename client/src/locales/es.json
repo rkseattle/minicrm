@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "Sesión de cobertura manual finalizada.",
     "checkOutButton": "Finalizar",
+    "checkOutFailed": "No se pudo finalizar — inténtalo de nuevo.",
     "checkingOut": "Finalizando…",
     "label": "Grabando sesión de cobertura manual"
   },

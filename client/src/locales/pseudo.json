@@ -1738,6 +1738,7 @@
   "coverageSession": {
     "checkedOutMessage": "[Mäñüäl ĉövërägë ŝëŝŝïöñ ĉhëĉkëd öüt.~~~~~~~~~~~]",
     "checkOutButton": "[Ĉhëĉk öüt~~~]",
+    "checkOutFailed": "[Ĉöüld ñöt ĉhëĉk öüt — plëäŝë try ägäïñ.~~~~~~~~~~~~]",
     "checkingOut": "[Ĉhëĉkïñg öüt…~~~~]",
     "label": "[Rëĉördïñg mäñüäl ĉövërägë ŝëŝŝïöñ~~~~~~~~~~]"
   },
