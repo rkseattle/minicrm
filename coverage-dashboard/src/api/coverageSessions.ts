@@ -63,17 +63,31 @@ export async function listActiveCoverageSessions(
  * with no UI path to end it. Fetches PAGINATION_MAX_LIMIT (100) per page,
  * which comfortably covers the realistic scale of concurrent manual-testing
  * sessions (an internal admin tool, not a customer-facing high-volume list).
+ *
+ * Terminates on a short page (data.length < limit), NEVER on comparing the
+ * running count against `total` (found via Greptile PR review — "Concurrent
+ * pagination omits sessions"): the underlying query is `WHERE status =
+ * 'active' OFFSET ... LIMIT ...`, re-evaluated fresh on every request, so a
+ * session ended (removed from the active set) between two page fetches
+ * shifts every later row backward by one offset AND shrinks `total` — a
+ * total-based check can true-positive on a stale, now-too-low total and
+ * stop before the last (shifted) page is ever fetched. A short page is the
+ * only signal that can't be fooled by concurrent deletes. The same shift
+ * can also cause a row straddling two fetches to appear on both pages, so
+ * results are deduplicated by id before returning.
  */
 export async function listAllActiveCoverageSessions(): Promise<CoverageSession[]> {
-  const sessions: CoverageSession[] = [];
+  const seen = new Map<string, CoverageSession>();
   let page = 1;
   for (;;) {
     const response = await listActiveCoverageSessions({ page, limit: PAGINATION_MAX_LIMIT });
-    sessions.push(...response.data);
-    if (sessions.length >= response.total || response.data.length === 0) break;
+    for (const session of response.data) {
+      seen.set(session.id, session);
+    }
+    if (response.data.length < PAGINATION_MAX_LIMIT) break;
     page += 1;
   }
-  return sessions;
+  return Array.from(seen.values());
 }
 
 export async function endCoverageSession(
