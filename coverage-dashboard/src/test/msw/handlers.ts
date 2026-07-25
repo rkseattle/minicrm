@@ -7,7 +7,11 @@
 
 import { http, HttpResponse } from 'msw';
 import type { AuthUser } from '@/api/auth.js';
-import type { CoverageSummary } from '@shared/schemas/coverageReportingSchema.js';
+import type {
+  CoverageSummary,
+  DeadZoneUnit,
+  ChangedUntestedUnit,
+} from '@shared/schemas/coverageReportingSchema.js';
 
 export const MOCK_ADMIN_USER: AuthUser = {
   id: 'user-admin-1',
@@ -31,6 +35,28 @@ export const MOCK_COVERAGE_SUMMARY: CoverageSummary = {
   automatedCoveredUnitCount: 70,
   manualCoveredUnitCount: 10,
   lastUpdatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+export const MOCK_DEAD_ZONE_UNIT: DeadZoneUnit = {
+  filePath: 'src/services/widgetService.ts',
+  unitKey: 'unusedFunction#deadbeef00000000',
+  branchId: null,
+  granularity: 'function',
+  resolved: true,
+};
+
+export const MOCK_NEVER_TAKEN_BRANCH: DeadZoneUnit = {
+  filePath: 'src/services/widgetService.ts',
+  unitKey: 'branchyFunction#abcdef0000000000',
+  branchId: '0:1',
+  granularity: 'branch',
+  resolved: true,
+};
+
+export const MOCK_CHANGED_UNTESTED_UNIT: ChangedUntestedUnit = {
+  filePath: 'src/services/dealService.ts',
+  unitKey: 'createDeal#1234567800000000',
+  changeKind: 'in-line',
 };
 
 export const handlers = [

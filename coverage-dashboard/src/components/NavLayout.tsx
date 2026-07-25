@@ -24,6 +24,9 @@ export default function NavLayout() {
             <NavLink to="/" end className={NAV_LINK_CLASS} data-testid="nav-link-overview">
               Overview
             </NavLink>
+            <NavLink to="/gaps" className={NAV_LINK_CLASS} data-testid="nav-link-gaps">
+              Gaps
+            </NavLink>
           </div>
           <button
             type="button"

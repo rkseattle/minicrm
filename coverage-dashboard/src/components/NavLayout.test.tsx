@@ -21,6 +21,7 @@ describe('NavLayout', () => {
   it('renders the nav bar and child route content', () => {
     renderWithProviders(<TestApp />);
     expect(screen.getByTestId('nav-link-overview')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-link-gaps')).toBeInTheDocument();
     expect(screen.getByText('Page content')).toBeInTheDocument();
   });
 
