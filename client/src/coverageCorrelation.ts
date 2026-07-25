@@ -29,9 +29,22 @@
  * correlation ID — see CoverageSessionIndicator.tsx for where this is
  * actually triggered from (a small floating "check out" affordance shown
  * only while a correlation ID is active).
+ *
+ * Ending the server-side session from here (found via Greptile PR review —
+ * "CRM checkout orphans server sessions"): the CRM only ever learns a
+ * correlation ID, never the session's own id/version, so checkOutCoverageSession
+ * looks the session up by correlation ID first (GET .../by-correlation/:id)
+ * to get both before calling the optimistic-locked /end endpoint. A 404
+ * there (already ended — e.g. from the dashboard's own check-out; see
+ * "Dashboard checkout leaves stale CRM state") is treated as success: the
+ * goal state (no active session for this correlation ID) is already true.
  */
 
 import apiClient from './api/axiosInstance.js';
+import {
+  findActiveCoverageSessionByCorrelationId,
+  endCoverageSession as endCoverageSessionOnServer,
+} from './api/coverageSessions.js';
 
 const CORRELATION_ID_STORAGE_KEY = 'coverageCorrelationId';
 const CORRELATION_ID_QUERY_PARAM = 'coverageCorrelationId';
@@ -95,6 +108,23 @@ function pullBrowserCoverage(): Record<string, unknown> | undefined {
 }
 
 /**
+ * Clears the persisted correlation ID without touching the server-side
+ * session or submitting a coverage dump — for when CoverageSessionIndicator's
+ * own server-reconciliation useQuery discovers the session was already
+ * ended from elsewhere (the dashboard's own check-out) and there is nothing
+ * left to end or attribute a dump to. checkOutCoverageSession (the explicit
+ * "Check out" button path) calls this too, after its own end-session and
+ * dump-submission steps.
+ */
+export function clearPersistedCoverageCorrelationId(): void {
+  try {
+    window.localStorage.removeItem(CORRELATION_ID_STORAGE_KEY);
+  } catch {
+    // Nothing further to do — see getPersistedCoverageCorrelationId's docblock.
+  }
+}
+
+/**
  * Submits this tab's accumulated window.__coverage__ (if any) as a
  * browser-source dump, then clears the persisted correlation ID —
  * mirroring the old in-CRM recorder's own checkOutMutation, just triggered
@@ -106,6 +136,8 @@ function pullBrowserCoverage(): Record<string, unknown> | undefined {
  * dump must never block clearing the correlation ID.
  */
 export async function checkOutCoverageSession(): Promise<void> {
+  const correlationId = getPersistedCoverageCorrelationId();
+
   const coverageMap = pullBrowserCoverage();
   if (coverageMap && Object.keys(coverageMap).length > 0) {
     await apiClient
@@ -116,9 +148,18 @@ export async function checkOutCoverageSession(): Promise<void> {
       })
       .catch(() => undefined);
   }
-  try {
-    window.localStorage.removeItem(CORRELATION_ID_STORAGE_KEY);
-  } catch {
-    // Nothing further to do — see getPersistedCoverageCorrelationId's docblock.
+
+  if (correlationId) {
+    const session = await findActiveCoverageSessionByCorrelationId(correlationId);
+    if (session) {
+      // Already-ended (404 inside findActiveCoverageSessionByCorrelationId,
+      // or a 409 version conflict here — e.g. the dashboard ended it in the
+      // gap between the lookup above and this call) is the goal state, not
+      // a failure — swallow it the same way a failed dump submission above
+      // must never block clearing the correlation ID below.
+      await endCoverageSessionOnServer(session.id, session.version).catch(() => undefined);
+    }
   }
+
+  clearPersistedCoverageCorrelationId();
 }

@@ -15,16 +15,32 @@
  * at a moment before this component has mounted (very first page load),
  * so a poll is simpler and more robust than wiring a dedicated pub/sub
  * channel for what is inherently rare, low-frequency state.
+ *
+ * Server reconciliation (found via Greptile PR review — "Dashboard checkout
+ * leaves stale CRM state"): a session can be ended from the OTHER side (the
+ * dashboard's own Check out) while this tab still has the correlation ID
+ * persisted — nothing local would ever tell this component that happened.
+ * A background useQuery polls the session's own current state by
+ * correlation ID; the moment it comes back "not active" (ended remotely, or
+ * any other reason it's no longer found), the effect below clears the
+ * persisted correlation ID (a side effect on an external system —
+ * localStorage — not a setState call) so the next localStorage poll tick
+ * picks up the clear and hides this component, rather than continuing to
+ * show a live indicator and attach a dead correlation ID to every request.
  */
 
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   getPersistedCoverageCorrelationId,
   checkOutCoverageSession,
+  clearPersistedCoverageCorrelationId,
 } from '@/coverageCorrelation.js';
+import { findActiveCoverageSessionByCorrelationId } from '@/api/coverageSessions.js';
 
-const POLL_INTERVAL_MS = 2000;
+const LOCALSTORAGE_POLL_INTERVAL_MS = 2000;
+const SERVER_RECONCILE_INTERVAL_MS = 10_000;
 
 export default function CoverageSessionIndicator() {
   const { t } = useTranslation();
@@ -36,11 +52,31 @@ export default function CoverageSessionIndicator() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setCorrelationId(getPersistedCoverageCorrelationId());
-    }, POLL_INTERVAL_MS);
+    }, LOCALSTORAGE_POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, []);
 
-  if (!correlationId) {
+  const { data: activeSession, isFetched } = useQuery({
+    queryKey: ['coverage-session-reconcile', correlationId],
+    queryFn: () => findActiveCoverageSessionByCorrelationId(correlationId!),
+    enabled: correlationId !== null,
+    refetchInterval: SERVER_RECONCILE_INTERVAL_MS,
+    // A brand-new session (just started in the dashboard, link not yet
+    // followed here) is expected to briefly return null before the admin
+    // even opens this CRM tab — retries would just delay noticing a
+    // genuinely-ended session by the same amount.
+    retry: false,
+  });
+
+  const confirmedEnded = correlationId !== null && isFetched && activeSession === null;
+
+  useEffect(() => {
+    if (confirmedEnded) {
+      clearPersistedCoverageCorrelationId();
+    }
+  }, [confirmedEnded]);
+
+  if (!correlationId || confirmedEnded) {
     return null;
   }
 
