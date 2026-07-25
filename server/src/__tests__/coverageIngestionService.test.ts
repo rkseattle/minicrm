@@ -22,6 +22,7 @@ import { COVERAGE_DUMPS_ROOT } from '../coverageAgent/coverageConfig.js';
 import { dumpBackendCoverage } from '../services/coverageDumpService.js';
 import { findCoverageUnitsByCommitSha } from '../services/coverageModelService.js';
 import { findUnitsForTest } from '../services/coverageMappingService.js';
+import { findBuildSummaryByCommitSha } from '../services/coverageBuildSummaryService.js';
 import {
   startCoverageSession,
   recordCoverageSessionDump,
@@ -81,6 +82,9 @@ afterEach(async () => {
     [TEST_COMMIT_SHA],
   );
   await coverageDb.query('DELETE FROM coverage_sessions WHERE build_sha = $1', [TEST_COMMIT_SHA]);
+  await coverageDb.query('DELETE FROM coverage_build_summary WHERE commit_sha = $1', [
+    TEST_COMMIT_SHA,
+  ]);
   // Deleting COVERAGE_DUMPS_ROOT above invalidates the shared DumpIndex
   // singleton's in-memory cache for this root — without clearing the
   // registry, the next test's beforeEach recreates the directory but
@@ -219,6 +223,52 @@ describe('coverageIngestionService', () => {
       expect(linksAfterSecond.reduce((sum, l) => sum + l.hitCount, 0)).toBe(
         linksAfterFirst.reduce((sum, l) => sum + l.hitCount, 0),
       );
+    });
+  });
+
+  describe('build summary rollup (MINCRM-629/630/631)', () => {
+    it('upserts a coverage_build_summary row on ingestion, even with no session/test attribution', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(join(sourceRoot, 'fixture.js')).branchy(true);
+      const dump = await dumpBackendCoverage('summary-no-attribution-test');
+
+      await ingestCoverageDump(dump.dumpId, { sourceRoot });
+
+      const summary = await findBuildSummaryByCommitSha(TEST_COMMIT_SHA);
+      expect(summary).not.toBeNull();
+      expect(summary!.apiUnitCount).toBeGreaterThan(0);
+    });
+
+    it('recomputes the build summary to reflect a second dump ingested for the same commit', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(join(sourceRoot, 'fixture.js')).branchy(true);
+      const firstDump = await dumpBackendCoverage('summary-first-dump');
+      await ingestCoverageDump(firstDump.dumpId, { sourceRoot });
+      const summaryAfterFirst = await findBuildSummaryByCommitSha(TEST_COMMIT_SHA);
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(join(sourceRoot, 'fixture.js')).branchy(false);
+      const secondDump = await dumpBackendCoverage('summary-second-dump');
+      await ingestCoverageDump(secondDump.dumpId, { sourceRoot });
+      const summaryAfterSecond = await findBuildSummaryByCommitSha(TEST_COMMIT_SHA);
+
+      expect(summaryAfterSecond!.apiCoveredUnitCount).toBeGreaterThanOrEqual(
+        summaryAfterFirst!.apiCoveredUnitCount,
+      );
+    });
+
+    it('does not create a second summary row when re-ingesting an already-ingested dumpId', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(join(sourceRoot, 'fixture.js')).branchy(true);
+      const dump = await dumpBackendCoverage('summary-idempotency-test');
+
+      await ingestCoverageDump(dump.dumpId, { sourceRoot });
+      const summaryAfterFirst = await findBuildSummaryByCommitSha(TEST_COMMIT_SHA);
+
+      await ingestCoverageDump(dump.dumpId, { sourceRoot });
+      const summaryAfterSecond = await findBuildSummaryByCommitSha(TEST_COMMIT_SHA);
+
+      expect(summaryAfterSecond).toEqual(summaryAfterFirst);
     });
   });
 });
