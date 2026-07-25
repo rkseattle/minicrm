@@ -36,8 +36,6 @@ export type ResourceKey =
   | 'settings.ai_session_retention'
   | 'settings.default_language'
   | 'settings.email_notifications_enabled'
-  | 'feature_flags.coverage_instrumentation'
-  | 'feature_flags.coverage_session_management'
   | 'feature_flags.coverage_pipeline_ingestion'
   | 'feature_flags.coverage_mapping_query'
   | 'feature_flags.notes'
@@ -84,11 +82,6 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['settings.visibility_policy'],
   },
   {
-    file: 'qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/coverage-instrumentation.spec.ts',
-    reads: ['feature_flags.coverage_instrumentation'],
-    writes: ['feature_flags.coverage_instrumentation'],
-  },
-  {
     file: 'qa/e2e/tests/apps/minicrm/functional/feature-flags/feature-flags.spec.ts',
     reads: [
       'feature_flags.notes',
@@ -111,8 +104,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts',
-    reads: ['feature_flags.coverage_instrumentation', 'feature_flags.coverage_pipeline_ingestion'],
-    writes: ['feature_flags.coverage_instrumentation', 'feature_flags.coverage_pipeline_ingestion'],
+    reads: ['feature_flags.coverage_pipeline_ingestion'],
+    writes: ['feature_flags.coverage_pipeline_ingestion'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts',
@@ -137,18 +130,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts',
-    reads: [
-      'feature_flags.coverage_instrumentation',
-      'feature_flags.coverage_session_management',
-      'feature_flags.coverage_pipeline_ingestion',
-      'feature_flags.coverage_mapping_query',
-    ],
-    writes: [
-      'feature_flags.coverage_instrumentation',
-      'feature_flags.coverage_session_management',
-      'feature_flags.coverage_pipeline_ingestion',
-      'feature_flags.coverage_mapping_query',
-    ],
+    reads: ['feature_flags.coverage_pipeline_ingestion', 'feature_flags.coverage_mapping_query'],
+    writes: ['feature_flags.coverage_pipeline_ingestion', 'feature_flags.coverage_mapping_query'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts',
@@ -230,11 +213,6 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     testTitleContains: 'reports nav: clicking Reports nav link',
     reads: ['settings.nav_layout'],
     writes: ['settings.nav_layout'],
-  },
-  {
-    file: 'qa/e2e/tests/apps/minicrm/functional/coverage-sessions/coverage-sessions.spec.ts',
-    reads: ['feature_flags.coverage_session_management'],
-    writes: ['feature_flags.coverage_session_management'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/accessibility/accessibility.spec.ts',

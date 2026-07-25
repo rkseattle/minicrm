@@ -17,14 +17,21 @@
  *            coverage_mapping_query flag is off
  *   COVM-03  Querying a unit no test covers returns an empty results array
  *
- * Mutates the coverage_instrumentation, coverage_session_management,
- * coverage_pipeline_ingestion, and coverage_mapping_query feature flags
- * directly via the REST API (not withFlags(), which only intercepts the
- * browser's client-side flag fetch and would not affect server-side
+ * Mutates the coverage_pipeline_ingestion and coverage_mapping_query feature
+ * flags directly via the REST API (not withFlags(), which only intercepts
+ * the browser's client-side flag fetch and would not affect server-side
  * requireFeatureEnabled enforcement for restClient calls) — tagged @serial
  * per the E2E authoring rules for real feature-flag mutations, restored in
  * afterEach. Every test in this file mutates the SAME flag keys, so the
  * file also opts into test.describe.serial.
+ *
+ * The coverage_instrumentation/coverage_session_management routes this spec
+ * depends on (POST /admin/coverage/dump, session control) are no longer
+ * gated by a feature_flags row at all (MINCRM-663 moved them to a
+ * COVERAGE_INSTRUMENTATION/COVERAGE_SESSION_MANAGEMENT env var at process
+ * boot — see migration 161_remove_coverage_control_flags.js, which deleted
+ * those two rows outright); CI sets both env vars 'true' for every job that
+ * runs this spec, so nothing here needs to toggle them anymore.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -46,16 +53,9 @@ import {
   findUnitsForTest,
 } from '@framework/coverageAgent/coverage-mapping-client.js';
 
-const INSTRUMENTATION_FLAG_KEY = 'coverage_instrumentation';
-const SESSION_MANAGEMENT_FLAG_KEY = 'coverage_session_management';
 const PIPELINE_FLAG_KEY = 'coverage_pipeline_ingestion';
 const MAPPING_FLAG_KEY = 'coverage_mapping_query';
-const ALL_FLAG_KEYS = [
-  INSTRUMENTATION_FLAG_KEY,
-  SESSION_MANAGEMENT_FLAG_KEY,
-  PIPELINE_FLAG_KEY,
-  MAPPING_FLAG_KEY,
-] as const;
+const ALL_FLAG_KEYS = [PIPELINE_FLAG_KEY, MAPPING_FLAG_KEY] as const;
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ mode: 'serial' });

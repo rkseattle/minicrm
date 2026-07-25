@@ -16,13 +16,20 @@
  *            coverage_pipeline_ingestion flag is off
  *   COVP-03  Ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND
  *
- * Mutates the coverage_instrumentation and coverage_pipeline_ingestion
- * feature flags directly via the REST API (not withFlags(), which only
- * intercepts the browser's client-side flag fetch and would not affect
- * server-side requireFeatureEnabled enforcement for restClient calls) —
- * tagged @serial per the E2E authoring rules for real feature-flag
- * mutations, restored in afterEach. Every test in this file mutates the
- * SAME flag keys, so the file also opts into test.describe.serial.
+ * Mutates the coverage_pipeline_ingestion feature flag directly via the REST
+ * API (not withFlags(), which only intercepts the browser's client-side
+ * flag fetch and would not affect server-side requireFeatureEnabled
+ * enforcement for restClient calls) — tagged @serial per the E2E authoring
+ * rules for real feature-flag mutations, restored in afterEach. Every test
+ * in this file mutates the SAME flag key, so the file also opts into
+ * test.describe.serial.
+ *
+ * The coverage_instrumentation route this spec's dump setup depends on
+ * (POST /admin/coverage/dump) is no longer gated by a feature_flags row at
+ * all (MINCRM-663 moved it to a COVERAGE_INSTRUMENTATION env var at process
+ * boot — see migration 161_remove_coverage_control_flags.js, which deleted
+ * that row outright); CI sets the env var 'true' for every job that runs
+ * this spec, so nothing here needs to toggle it anymore.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -34,7 +41,6 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 
-const INSTRUMENTATION_FLAG_KEY = 'coverage_instrumentation';
 const PIPELINE_FLAG_KEY = 'coverage_pipeline_ingestion';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -46,9 +52,8 @@ test.beforeEach(async ({ restClient }) => {
 
 test.afterEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-  // Restore the true defaults — both flags are seeded disabled (migrations
-  // 156/158) with no role_overrides, so `enabled` is the sole kill-switch.
-  await updateFeatureFlag(restClient, INSTRUMENTATION_FLAG_KEY, { enabled: false }).catch(() => {});
+  // Restore the true default — the flag is seeded disabled (migration 158)
+  // with no role_overrides, so `enabled` is the sole kill-switch.
   await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: false }).catch(() => {});
 });
 
@@ -59,7 +64,6 @@ test.afterEach(async ({ restClient }) => {
 test('@functional @serial COVP-01: ingesting a browser-origin dump succeeds, then retry is idempotent', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, INSTRUMENTATION_FLAG_KEY, { enabled: true });
   await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: true });
 
   const dumpRes = await restClient.post<{ dump: Record<string, unknown> }>(
