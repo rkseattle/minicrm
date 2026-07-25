@@ -453,6 +453,15 @@ export async function navigateToProtectedPage(
  * distinct from navigateToProtectedPage's narrower "did it redirect to
  * /login" check.
  *
+ * Waits for the URL to stop changing rather than for the network to go
+ * idle (a networkidle-style wait is banned in spec files by
+ * check-networkidle.sh and, per this repo's own project memory, is just as
+ * flake-prone when used in a behavior file, since the static check only
+ * scans qa/e2e/tests/ specs) — the SPA's client-side redirect is a
+ * synchronous React Router navigation with no network round-trip of its
+ * own, so waiting on the URL itself is both the more targeted condition
+ * and the one actually being asserted on by the caller.
+ *
  * @param path - Path to navigate to directly.
  * @param context - Playwright fixture context.
  * @returns The pathname the browser settled on.
@@ -461,7 +470,11 @@ export async function navigateToPathAndGetFinalPathname(
   path: string,
   context: AuthBehaviorContext,
 ): Promise<string> {
-  await context.page.goto(path, { waitUntil: 'networkidle' });
+  const NAVIGATE_TIMEOUT_MS = 15_000;
+  await context.page.goto(path);
+  await context.page
+    .waitForURL((url) => new URL(url).pathname !== path, { timeout: NAVIGATE_TIMEOUT_MS })
+    .catch(() => null);
   return new URL(context.page.url()).pathname;
 }
 

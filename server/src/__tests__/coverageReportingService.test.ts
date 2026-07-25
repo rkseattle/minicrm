@@ -92,12 +92,19 @@ async function insertSessionAndDump(params: {
   issueKey: string | null;
   source: 'automated-e2e' | 'manual';
   testId: string;
+  buildSha?: string;
 }): Promise<void> {
   const sessionResult = await coverageDb.query<{ id: string }>(
     `INSERT INTO coverage_sessions (label, source, build_sha, environment, issue_key)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id`,
-    [`${FILE_PREFIX} session`, params.source, `${FILE_PREFIX}-sha`, 'test', params.issueKey],
+    [
+      `${FILE_PREFIX} session`,
+      params.source,
+      params.buildSha ?? `${FILE_PREFIX}-sha`,
+      'test',
+      params.issueKey,
+    ],
   );
   const sessionId = sessionResult.rows[0].id;
 
@@ -366,6 +373,35 @@ describe('coverageReportingService', () => {
       const untested = await findChangedUntestedUnits(baseSha, headSha, repoRoot);
       expect(untested).toEqual([]);
     });
+
+    it('clamps the number of returned units to the requested limit', async () => {
+      // Regression test: findChangedUntestedUnits previously had no limit
+      // parameter at all, contradicting /gaps' own documented "max units
+      // per list" contract that findDeadZoneUnits/findNeverTakenBranches
+      // already honor.
+      repoRoot = await initRepo();
+      await writeFile(
+        join(repoRoot, 'a.ts'),
+        'export function fnOne() {\n  return 1;\n}\nexport function fnTwo() {\n  return 1;\n}\nexport function fnThree() {\n  return 1;\n}\n',
+      );
+      await git(repoRoot, ['add', '.']);
+      await git(repoRoot, ['commit', '-m', 'base']);
+      const baseSha = await gitRevParseHead(repoRoot);
+
+      await writeFile(
+        join(repoRoot, 'a.ts'),
+        'export function fnOne() {\n  return 2;\n}\nexport function fnTwo() {\n  return 2;\n}\nexport function fnThree() {\n  return 2;\n}\n',
+      );
+      await git(repoRoot, ['add', '.']);
+      await git(repoRoot, ['commit', '-m', 'edit all three']);
+      const headSha = await gitRevParseHead(repoRoot);
+
+      const unbounded = await findChangedUntestedUnits(baseSha, headSha, repoRoot);
+      expect(unbounded.length).toBeGreaterThanOrEqual(3);
+
+      const clamped = await findChangedUntestedUnits(baseSha, headSha, repoRoot, 1);
+      expect(clamped.length).toBeLessThanOrEqual(1);
+    });
   });
 
   describe('getIssueCoverage', () => {
@@ -380,7 +416,12 @@ describe('coverageReportingService', () => {
         hitCount: 1,
       };
 
-      await insertSessionAndDump({ issueKey, source: 'automated-e2e', testId });
+      await insertSessionAndDump({
+        issueKey,
+        source: 'automated-e2e',
+        testId,
+        buildSha: commitSha,
+      });
       await insertTestLink(commitSha, testId, unit);
 
       const coverage = await getIssueCoverage(issueKey, commitSha);
@@ -397,6 +438,37 @@ describe('coverageReportingService', () => {
       expect(coverage.sessionCount).toBe(0);
       expect(coverage.coveredUnitCount).toBe(0);
       expect(coverage.testIds).toEqual([]);
+    });
+
+    it('scopes sessionCount to the requested build, excluding sessions from a different build on the same issue', async () => {
+      // Regression test: sessionCount used to have no build_sha filter at
+      // all, so it silently reflected an issue's ENTIRE history across
+      // every build it was ever touched on, while coveredUnitCount/testIds
+      // (queried right after) were correctly scoped to just the requested
+      // commitSha — a materially misleading mismatch surfaced directly on
+      // TraceabilityPage's "Sessions" stat tile.
+      const issueKey = `MINCRM-${randomUUID().slice(0, 8)}`;
+      const commitShaA = `${FILE_PREFIX}-${randomUUID()}`;
+      const commitShaB = `${FILE_PREFIX}-${randomUUID()}`;
+
+      await insertSessionAndDump({
+        issueKey,
+        source: 'automated-e2e',
+        testId: `${FILE_PREFIX}::build-a-test`,
+        buildSha: commitShaA,
+      });
+      await insertSessionAndDump({
+        issueKey,
+        source: 'automated-e2e',
+        testId: `${FILE_PREFIX}::build-b-test`,
+        buildSha: commitShaB,
+      });
+
+      const coverageForA = await getIssueCoverage(issueKey, commitShaA);
+      expect(coverageForA.sessionCount).toBe(1);
+
+      const coverageForB = await getIssueCoverage(issueKey, commitShaB);
+      expect(coverageForB.sessionCount).toBe(1);
     });
   });
 

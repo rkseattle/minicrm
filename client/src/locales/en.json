@@ -2572,23 +2572,6 @@
       "opportunity_zero_value": "Deal value is $0"
     }
   },
-  "coverageSessionRecorder": {
-    "heading": "Coverage Session Recorder",
-    "description": "Record a manual-testing session so your exploratory testing is captured and attributed just like automated tests.",
-    "notAvailable": "This feature is not available.",
-    "labelInputLabel": "Session label",
-    "issueKeyInputLabel": "Issue key (optional)",
-    "checkInButton": "Check in",
-    "checkOutButton": "Check out",
-    "checkingOut": "Checking out…",
-    "checkInError": "Failed to start the coverage session. Please try again.",
-    "checkOutError": "Failed to end the coverage session. Please try again.",
-    "recordingLabel": "Recording: {{label}}",
-    "recordingSince": "Started {{date}}",
-    "activeSessionsHeading": "Active sessions",
-    "loadError": "Failed to load active coverage sessions.",
-    "noActiveSessions": "No coverage sessions are currently active."
-  },
   "notifications": {
     "bellLabel": "Notifications ({{count}} unread)",
     "heading": "Notifications",

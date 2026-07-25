@@ -188,16 +188,40 @@ export interface ChangedUntestedUnit {
  * cwd defaults to process.cwd(), matching testSelectionService's own
  * assumption that the running process's checked-out working tree is
  * headRef's content.
+ *
+ * baseSha/headSha reach parseGitDiff's assertSafeGitRef guard (rejects any
+ * ref starting with '-', preventing git-flag injection) via execFile
+ * (array-args, never shell-interpolated, so command injection is not
+ * possible regardless). That guard was originally written for CI's own
+ * trusted test-selection pipeline; this endpoint is the first path exposing
+ * it to live, authenticated-admin-supplied HTTP input rather than a CI
+ * runner's own git refs — worth keeping in mind if this endpoint's trust
+ * boundary ever changes (e.g. a future non-admin caller).
+ *
+
+ * limit is clamped the same way findDeadZoneUnits/findNeverTakenBranches
+ * are — the /gaps endpoint's own documented contract ("max units per list")
+ * applies to all three lists it returns, and a large base..head range (e.g.
+ * a big refactor) can otherwise return an unbounded number of changed units.
  */
 export async function findChangedUntestedUnits(
   baseSha: string,
   headSha: string,
   cwd: string = process.cwd(),
+  limit: number = DEAD_ZONE_RESULT_LIMIT_MAX,
 ): Promise<ChangedUntestedUnit[]> {
+  const clampedLimit = Math.min(Math.max(limit, 1), DEAD_ZONE_RESULT_LIMIT_MAX);
   const fileDiffs = await parseGitDiff(baseSha, headSha, cwd);
   const { changedUnits } = await resolveChangedUnits(fileDiffs, cwd, baseSha, headSha);
 
-  const testableUnits = changedUnits.filter((unit) => unit.changeKind !== 'deleted');
+  // Clamped BEFORE building the identity query, not just on the final
+  // return — an unbounded diff (e.g. a large refactor) could otherwise
+  // generate a bind-parameter list large enough to approach PostgreSQL's
+  // 65535 bind-parameter ceiling (same class of concern as
+  // coverageModelService's own MAX_UNITS_PER_INSERT_BATCH).
+  const testableUnits = changedUnits
+    .filter((unit) => unit.changeKind !== 'deleted')
+    .slice(0, clampedLimit);
   if (testableUnits.length === 0) return [];
 
   const identityValues: unknown[] = [headSha];
@@ -249,9 +273,14 @@ export async function getIssueCoverage(
   issueKey: string,
   commitSha: string,
 ): Promise<IssueCoverage> {
+  // Scoped by build_sha (coverage_sessions' own name for this identity —
+  // NOT commit_sha, that column only exists on coverage_units/
+  // coverage_test_links) so this count matches the same single build every
+  // other field on this response is scoped to, rather than an issue's
+  // entire history across every build it was ever touched on.
   const sessionRows = await coverageDb.query<{ session_count: string }>(
-    `SELECT COUNT(*) AS session_count FROM coverage_sessions WHERE issue_key = $1`,
-    [issueKey],
+    `SELECT COUNT(*) AS session_count FROM coverage_sessions WHERE issue_key = $1 AND build_sha = $2`,
+    [issueKey, commitSha],
   );
 
   const linkRows = await coverageDb.query<{ test_id: string; unit_key: string; file_path: string }>(
@@ -296,6 +325,15 @@ export interface TiaValueMetrics {
  * the range) as the value-metrics view's initial, honest scope; a
  * follow-up story in pr-tia-8 that persists CI's own selection decisions
  * can extend this once that data exists.
+ *
+ * Deliberately does not distinguish "fromSha/toSha unknown" from
+ * "a valid range with zero ingested builds" — both return the same
+ * zeroed TiaValueMetrics shape (totalBuilds: 0), since the correlated
+ * subqueries below resolve to NULL for either case and NULL comparisons
+ * short-circuit the range filter to no rows. A caller debugging a typo'd
+ * sha sees the same result as a genuinely-empty range; this endpoint
+ * favors a simple, always-200 contract over a 404 that would need extra
+ * validation queries to distinguish the two cases correctly.
  */
 export async function getTiaValueMetrics(fromSha: string, toSha: string): Promise<TiaValueMetrics> {
   const result = await coverageDb.query<{

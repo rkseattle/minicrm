@@ -56,14 +56,15 @@ jobs:
     name: Detect changed paths
     runs-on: ubuntu-latest
     outputs:
-      docs:       ${{ steps.filter.outputs.docs }}
-      client:     ${{ steps.filter.outputs.client }}
-      server:     ${{ steps.filter.outputs.server }}
-      qa:         ${{ steps.filter.outputs.qa }}
-      config:     ${{ steps.filter.outputs.config }}
-      visual:     ${{ steps.filter.outputs.visual }}
-      migrations: ${{ steps.filter.outputs.migrations }}
-      ai:         ${{ steps.filter.outputs.ai }}
+      docs:              ${{ steps.filter.outputs.docs }}
+      client:            ${{ steps.filter.outputs.client }}
+      server:            ${{ steps.filter.outputs.server }}
+      qa:                ${{ steps.filter.outputs.qa }}
+      config:            ${{ steps.filter.outputs.config }}
+      visual:            ${{ steps.filter.outputs.visual }}
+      migrations:        ${{ steps.filter.outputs.migrations }}
+      ai:                ${{ steps.filter.outputs.ai }}
+      coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,6 +109,13 @@ jobs:
               - 'server/src/ai/**'
               - 'qa/evals/**'
               - '.github/workflows/ci.yml'
+            coverage-dashboard:
+              - 'coverage-dashboard/src/**'
+              - 'coverage-dashboard/package.json'
+              - 'coverage-dashboard/*.json'
+              - 'coverage-dashboard/*.ts'
+              - 'coverage-dashboard/*.cjs'
+              - 'shared/schemas/**'
 
       - name: Clear stale functional test comment
         if: github.event_name == 'pull_request'
@@ -132,7 +140,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -157,6 +165,9 @@ jobs:
       - name: Typecheck qa
         run: npm run typecheck --workspace=minicrm-qa
 
+      - name: Typecheck coverage-dashboard
+        run: npm run typecheck --workspace=minicrm-coverage-dashboard
+
       - name: Validate OpenAPI spec
         run: npm run lint:api --workspace=minicrm-server
         env:
@@ -168,7 +179,7 @@ jobs:
   security-audit:
     name: Phase 1 - Security Audit
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -407,6 +418,74 @@ jobs:
           path: |
             client/coverage/lcov.info
             client/coverage/coverage-summary.json
+          retention-days: 14
+
+  coverage-dashboard-tests:
+    name: Phase 2 - Coverage Dashboard Unit Tests
+    needs: [lint-and-typecheck, changes]
+    if: needs.changes.outputs.coverage-dashboard == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache coverage-dashboard node_modules
+        # Same platform-specific-optional-deps rationale as client-tests' own cache step.
+        uses: actions/cache@v4
+        with:
+          path: coverage-dashboard/node_modules
+          key: coverage-dashboard-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci && npm install --prefix coverage-dashboard
+
+      - name: Run coverage-dashboard tests with coverage
+        run: npm run test:coverage --workspace=minicrm-coverage-dashboard
+
+      - name: Guard against empty coverage-dashboard test results
+        if: always()
+        run: |
+          COUNT=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          try:
+              print(ET.parse('coverage-dashboard/test-results/junit.xml').getroot().get('tests', '0'))
+          except Exception:
+              print('0')
+          ")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::coverage-dashboard test results contain 0 tests — likely a setup crash. Check the 'Run coverage-dashboard tests with coverage' step above."
+            exit 1
+          fi
+
+      - name: Publish coverage-dashboard test results to GitHub Checks
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: Vitest – coverage-dashboard
+          path: coverage-dashboard/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload coverage-dashboard test results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-dashboard-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage-dashboard/test-results/junit.xml
+          retention-days: 14
+
+      - name: Upload coverage-dashboard coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-dashboard-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage-dashboard/coverage/lcov.info
+            coverage-dashboard/coverage/coverage-summary.json
           retention-days: 14
 
   e2e-framework-purity:
@@ -1697,12 +1776,12 @@ jobs:
 
   unit-test-report:
     name: Phase 2 - Unit Tests — Coverage Report
-    needs: [server-tests, client-tests, e2e-framework-specs]
+    needs: [server-tests, client-tests, coverage-dashboard-tests, e2e-framework-specs]
     runs-on: ubuntu-latest
     # MINCRM-293: run whenever any test suite ran, regardless of which paths changed.
     # always() is required: without it GitHub skips this job when e2e-framework-specs is
     # skipped (qa paths unchanged), before the if condition is even evaluated.
-    if: always() && (contains(fromJson('["success","failure"]'), needs.server-tests.result) || contains(fromJson('["success","failure"]'), needs.client-tests.result) || contains(fromJson('["success","failure"]'), needs.e2e-framework-specs.result)) && github.event_name == 'pull_request'
+    if: always() && (contains(fromJson('["success","failure"]'), needs.server-tests.result) || contains(fromJson('["success","failure"]'), needs.client-tests.result) || contains(fromJson('["success","failure"]'), needs.coverage-dashboard-tests.result) || contains(fromJson('["success","failure"]'), needs.e2e-framework-specs.result)) && github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -1723,6 +1802,13 @@ jobs:
           name: client-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-coverage
 
+      - name: Download coverage-dashboard coverage artifact
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: coverage-dashboard-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/coverage-dashboard-coverage
+
       - name: Download server test results artifact
         uses: actions/download-artifact@v8
         continue-on-error: true
@@ -1736,6 +1822,13 @@ jobs:
         with:
           name: client-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/client-test-results
+
+      - name: Download coverage-dashboard test results artifact
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: coverage-dashboard-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/coverage-dashboard-test-results
 
       - name: Download framework test results artifact
         uses: actions/download-artifact@v8
@@ -1761,17 +1854,21 @@ jobs:
         run: |
           SERVER_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/server-coverage/coverage-summary.json)
           CLIENT_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/client-coverage/coverage-summary.json)
+          COVERAGE_DASHBOARD_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/coverage-dashboard-coverage/coverage-summary.json)
           FRAMEWORK_COV=$(python3 .github/scripts/parse-junit.py coverage-summary artifacts/framework-coverage/coverage-summary.json)
           SERVER_TESTS=$(python3 .github/scripts/parse-junit.py summary-unit artifacts/server-test-results/junit.xml)
           CLIENT_TESTS=$(python3 .github/scripts/parse-junit.py summary-unit artifacts/client-test-results/junit.xml)
+          COVERAGE_DASHBOARD_TESTS=$(python3 .github/scripts/parse-junit.py summary-unit artifacts/coverage-dashboard-test-results/junit.xml)
           FRAMEWORK_TESTS=$(python3 .github/scripts/parse-junit.py summary-unit artifacts/framework-test-results/results.xml)
           ARTIFACTS_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           IFS='|' read -r s_lines s_funcs s_branch s_stmts <<< "$SERVER_COV"
           IFS='|' read -r c_lines c_funcs c_branch c_stmts <<< "$CLIENT_COV"
+          IFS='|' read -r cd_lines cd_funcs cd_branch cd_stmts <<< "$COVERAGE_DASHBOARD_COV"
           IFS='|' read -r f_lines f_funcs f_branch f_stmts <<< "$FRAMEWORK_COV"
           IFS='|' read -r s_status s_tests s_passed s_failed s_skipped <<< "$SERVER_TESTS"
           IFS='|' read -r c_status c_tests c_passed c_failed c_skipped <<< "$CLIENT_TESTS"
+          IFS='|' read -r cd_status cd_tests cd_passed cd_failed cd_skipped <<< "$COVERAGE_DASHBOARD_TESTS"
           IFS='|' read -r fw_status fw_tests fw_passed fw_failed fw_skipped <<< "$FRAMEWORK_TESTS"
 
           # Write body to a file to avoid ARG_MAX on large outputs.
@@ -1784,6 +1881,7 @@ jobs:
             echo "|-------|--------|-------|--------|--------|---------|"
             echo "| server | $s_status | $s_tests | $s_passed | $s_failed | $s_skipped |"
             echo "| client | $c_status | $c_tests | $c_passed | $c_failed | $c_skipped |"
+            echo "| coverage-dashboard | $cd_status | $cd_tests | $cd_passed | $cd_failed | $cd_skipped |"
             echo "| e2e framework | $fw_status | $fw_tests | $fw_passed | $fw_failed | $fw_skipped |"
             echo ""
             echo "## Unit Test Coverage"
@@ -1792,9 +1890,10 @@ jobs:
             echo "|---------|-------|-----------|----------|------------|"
             echo "| server  | ${s_lines}% | ${s_funcs}% | ${s_branch}% | ${s_stmts}% |"
             echo "| client  | ${c_lines}% | ${c_funcs}% | ${c_branch}% | ${c_stmts}% |"
+            echo "| coverage-dashboard | ${cd_lines}% | ${cd_funcs}% | ${cd_branch}% | ${cd_stmts}% |"
             echo "| e2e framework | ${f_lines}% | ${f_funcs}% | ${f_branch}% | ${f_stmts}% |"
             echo ""
-            echo "> Thresholds: server services ≥ 80% · client components/pages ≥ 70%"
+            echo "> Thresholds: server services ≥ 80% · client/coverage-dashboard components/pages ≥ 70%"
             echo ""
             echo "[Download coverage artifacts]($ARTIFACTS_URL)"
           } > /tmp/coverage-comment-body.md
@@ -2134,6 +2233,7 @@ jobs:
       - security-audit
       - server-tests
       - client-tests
+      - coverage-dashboard-tests
       - e2e-framework-purity
       - lint-docs
       - e2e-aggregate
@@ -2150,6 +2250,7 @@ jobs:
             "${{ needs.security-audit.result }}" \
             "${{ needs.server-tests.result }}" \
             "${{ needs.client-tests.result }}" \
+            "${{ needs.coverage-dashboard-tests.result }}" \
             "${{ needs.e2e-framework-purity.result }}" \
             "${{ needs.lint-docs.result }}" \
             "${{ needs.e2e-aggregate.result }}" \
