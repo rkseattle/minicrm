@@ -127,6 +127,39 @@ const clientTestConfig = {
   },
 };
 
+// ── Coverage dashboard (React + JSX accessibility, no i18n — English-only) ────
+// Standalone app (MINCRM-628/629) — same React/a11y/data-testid conventions as
+// client/, but i18next/no-literal-string is intentionally omitted: this is an
+// internal developer/QA tool with no i18n system of its own (see coverage-
+// dashboard's own README).
+const coverageDashboardConfig = {
+  files: ['coverage-dashboard/src/**/*.ts', 'coverage-dashboard/src/**/*.tsx'],
+  plugins: {
+    react: reactPlugin,
+    'react-hooks': reactHooksPlugin,
+    'jsx-a11y': jsxA11yPlugin,
+    'local': { rules: { 'require-data-testid': requireDataTestid } },
+  },
+  settings: {
+    react: { version: 'detect' },
+  },
+  rules: {
+    ...reactPlugin.configs.recommended.rules,
+    ...reactHooksPlugin.configs.recommended.rules,
+    ...jsxA11yPlugin.configs.recommended.rules,
+    'react/react-in-jsx-scope': 'off',
+    'react/prop-types': 'off',
+    'local/require-data-testid': 'error',
+  },
+};
+
+const coverageDashboardTestConfig = {
+  files: ['coverage-dashboard/src/**/*.test.tsx', 'coverage-dashboard/src/**/*.test.ts'],
+  rules: {
+    'local/require-data-testid': 'off',
+  },
+};
+
 // ── Server (Node.js) ───────────────────────────────────────────────────────────
 const serverConfig = {
   files: ['server/src/**/*.ts'],
@@ -293,6 +326,8 @@ export default [
   baseConfig,
   clientConfig,
   clientTestConfig,
+  coverageDashboardConfig,
+  coverageDashboardTestConfig,
   serverConfig,
   swaggerDevConfig,
   routeJsdocConfig,

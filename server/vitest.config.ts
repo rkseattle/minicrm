@@ -46,6 +46,19 @@ const SERIAL_FILES = [
   // ALL enabled rules for the trigger type — parallel runs cause cross-file log
   // entries that break the toHaveLength(1) assertions.
   'src/__tests__/automationService.test.ts',
+  // automationController itself must ALSO be serial, not just
+  // automationService above: automationController creates its OWN enabled
+  // rules and asserts an EMPTY automation_rule_logs list for a rule it just
+  // created — any OTHER parallel file that deletes a contact/deal/account
+  // (fireAutomationTrigger runs globally against ALL enabled rules, not
+  // scoped to the calling test file) can write a log row against
+  // automationController's rule in the gap between its rule creation and its
+  // "expect(logs).toHaveLength(0)" assertion (reproduced live: a full
+  // parallel run failed automationController's logs test with "expected 0
+  // to be 1"; the same file passed 23/23 in isolation) — same root cause as
+  // automationService/auth-boundaries above, just a different trigger file.
+  // (MINCRM-629/630/631)
+  'src/__tests__/automationController.test.ts',
   // auth-boundaries deletes deals/contacts/accounts which fires fireAutomationTrigger
   // globally. When automationService runs in parallel it leaves enabled rules alive
   // mid-test; the trigger finds them, tries to write automation_rule_logs, then the
@@ -337,6 +350,28 @@ const SERIAL_FILES = [
   // parallel run failed tagController's idempotent-create test with "expected
   // 403 to be 201"; the same file passed 19/19 in isolation).
   'src/__tests__/tagCreationRestriction.test.ts',
+  // tagController.test.ts itself must ALSO be serial, not just
+  // tagCreationRestriction above: featureFlagService's isFlagEnabledForUser
+  // cache is process-wide, not per-file (see featureFlagService.test.ts's own
+  // comment on this), so ANY parallel file that clears that cache via
+  // __clearCacheForTest() — not just tagCreationRestriction — can race
+  // tagController's read of the 'tags' flag's cached enabled state and turn an
+  // expected 201 into a spurious 403 (reproduced live: coverageMappingController.test.ts/
+  // coverageReportingController.test.ts, which call __clearCacheForTest() while
+  // toggling their own unrelated coverage_* flags, triggered this exact failure
+  // in tagController — same root cause as tagCreationRestriction, just a
+  // different trigger file). (MINCRM-629/630/631)
+  'src/__tests__/tagController.test.ts',
+  // coverageMappingController.test.ts and coverageReportingController.test.ts
+  // both call featureFlagService.__clearCacheForTest() — a process-wide,
+  // not per-file, cache clear — while toggling their own coverage_* flags on
+  // and off across multiple tests. Running either in parallel with any other
+  // file that reads a DIFFERENT flag's cached value (e.g. tagController's
+  // 'tags' flag, see above) can race that file's read against this cache
+  // invalidation. Serializing both removes the risk at the source rather than
+  // only serializing every file each one happens to have raced so far.
+  'src/__tests__/coverageMappingController.test.ts',
+  'src/__tests__/coverageReportingController.test.ts',
 ];
 
 const sharedResolve = {

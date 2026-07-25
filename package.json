@@ -6,12 +6,13 @@
     "shared",
     "server",
     "client",
-    "qa"
+    "qa",
+    "coverage-dashboard"
   ],
   "scripts": {
     "prepare": "husky || true",
-    "unit_test": "npm test --workspace=minicrm-server && npm test --workspace=minicrm-client",
-    "typecheck": "npm run typecheck --workspace=minicrm-server && npm run typecheck --workspace=minicrm-client && npm run typecheck --workspace=minicrm-qa",
+    "unit_test": "npm test --workspace=minicrm-server && npm test --workspace=minicrm-client && npm test --workspace=minicrm-coverage-dashboard",
+    "typecheck": "npm run typecheck --workspace=minicrm-server && npm run typecheck --workspace=minicrm-client && npm run typecheck --workspace=minicrm-qa && npm run typecheck --workspace=minicrm-coverage-dashboard",
     "lint": "eslint . --cache --cache-location .eslintcache --cache-strategy content",
     "format": "prettier --write .",
     "seed:demo": "tsx scripts/seed-demo.ts",
