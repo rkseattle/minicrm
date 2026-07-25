@@ -1735,6 +1735,12 @@
       }
     }
   },
+  "coverageSession": {
+    "checkedOutMessage": "Manuelle Coverage-Sitzung ausgecheckt.",
+    "checkOutButton": "Auschecken",
+    "checkingOut": "Wird ausgecheckt…",
+    "label": "Manuelle Coverage-Sitzung wird aufgezeichnet"
+  },
   "customFields": {
     "sectionTitle": "Benutzerdefinierte Felder",
     "noValues": "Keine benutzerdefinierten Feldwerte gesetzt."
