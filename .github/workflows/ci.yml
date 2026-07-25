@@ -181,7 +181,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # MINCRM-666: two high-severity advisories have no non-breaking fix today and
+      # MINCRM-666: three high-severity advisories have no non-breaking fix today and
       # are allowlisted below (with justification); everything else still fails the
       # build. Revisit and remove entries from ALLOWED_ADVISORIES as upstream patches
       # ship — see MINCRM-666.
@@ -195,9 +195,24 @@ jobs:
       #     latest promptfoo release, which still vendors this js-yaml version). Its
       #     js-yaml usage parses developer-authored eval config files in this repo, not
       #     untrusted external input.
+      #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS via unbounded expansion length) —
+      #     dev-tooling-only: every vulnerable instance is nested under ESLint's own
+      #     transitive minimatch@3.1.5 (eslint, eslint-plugin-react, eslint-plugin-jsx-a11y,
+      #     rimraf), never shipped to production and never exposed to untrusted input
+      #     (glob patterns here are developer-authored lint config, not external data).
+      #     `npm audit fix` already applied and bumped the one instance it could
+      #     (@typescript-eslint/parser's own minimatch@10.x chain, brace-expansion
+      #     5.0.7 -> 5.0.8) — the remaining instances require a major downgrade
+      #     (eslint-plugin-jsx-a11y@6.4.1 / eslint-plugin-react@7.22.0, both years-old
+      #     releases) that would itself reintroduce older, unrelated CVEs and break
+      #     current lint rule coverage. A package.json `overrides` pin was evaluated and
+      #     rejected: brace-expansion 5.x changed its export shape (1.x exports a
+      #     callable function directly; 5.x exports an object with an `.expand()`
+      #     method) — forcing 5.0.8 under minimatch@3.1.5's `require('brace-expansion')(...)`
+      #     call site throws at runtime, breaking ESLint's own glob matching entirely.
       - name: Audit dependencies for high/critical vulnerabilities
         run: |
-          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5"
+          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5 GHSA-mh99-v99m-4gvg"
 
           AUDIT_JSON=$(npm audit --audit-level=high --json || true)
 
