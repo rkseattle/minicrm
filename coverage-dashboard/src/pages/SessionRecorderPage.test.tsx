@@ -1,12 +1,14 @@
 /**
  * Tests for SessionRecorderPage. (MINCRM-609..612, MINCRM-663)
- * Adapted from minicrm-client's deleted CoverageSessionRecorderPage.test.tsx
- * — the feature-flag-disabled test is dropped (this app has no client-side
- * feature-flag gate; access control is ProtectedRoute's admin-role check,
- * already covered by ProtectedRoute.test.tsx), everything else is preserved.
+ *
+ * Rewritten for the server-as-source-of-truth redesign (found via Greptile PR
+ * review — "Navigation orphans active sessions"): there is no local
+ * "recording session" component state anymore, so these tests exercise the
+ * active-sessions list returned by GET /admin/coverage/sessions directly,
+ * each with its own copy-link/check-out actions.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -32,6 +34,24 @@ const ACTIVE_SESSION = {
   endedAt: null,
   version: 1,
 };
+
+const OTHER_ACTIVE_SESSION = {
+  ...ACTIVE_SESSION,
+  id: 'session-2',
+  label: 'Checking the reports tab',
+  correlationId: 'corr-2',
+  issueKey: null,
+};
+
+afterEach(() => {
+  Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+});
+
+function mockClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+  return writeText;
+}
 
 describe('SessionRecorderPage', () => {
   it('shows a loading state while the sessions query is in flight, then the empty state', async () => {
@@ -72,17 +92,36 @@ describe('SessionRecorderPage', () => {
     });
   });
 
-  it('renders active sessions from the control API', async () => {
+  it('lists every active session from the control API, each with its own actions', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
+        HttpResponse.json({
+          data: [ACTIVE_SESSION, OTHER_ACTIVE_SESSION],
+          total: 2,
+          page: 1,
+          limit: 25,
+        }),
       ),
     );
     renderPage();
     await waitFor(() => {
       expect(screen.getByTestId(`coverage-session-${ACTIVE_SESSION.id}`)).toBeInTheDocument();
     });
+    expect(screen.getByTestId(`coverage-session-${OTHER_ACTIVE_SESSION.id}`)).toBeInTheDocument();
     expect(screen.getByText('Exploring the deals pipeline')).toBeInTheDocument();
+    expect(screen.getByText('Checking the reports tab')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`coverage-session-copy-link-${ACTIVE_SESSION.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`coverage-session-copy-link-${OTHER_ACTIVE_SESSION.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`coverage-session-check-out-${ACTIVE_SESSION.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`coverage-session-check-out-${OTHER_ACTIVE_SESSION.id}`),
+    ).toBeInTheDocument();
   });
 
   it('disables the check-in button until a label is entered', async () => {
@@ -101,7 +140,7 @@ describe('SessionRecorderPage', () => {
     expect(screen.getByTestId('coverage-session-check-in-button')).toBeEnabled();
   });
 
-  it('checks in and shows the recording panel', async () => {
+  it('checks in and adds the new session to the active-sessions list', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
         HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
@@ -115,12 +154,20 @@ describe('SessionRecorderPage', () => {
       expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
     });
 
+    server.use(
+      http.get('*/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
+      ),
+    );
+
     await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
     await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-recording-panel')).toBeInTheDocument();
+      expect(screen.getByTestId(`coverage-session-${ACTIVE_SESSION.id}`)).toBeInTheDocument();
     });
+    // the form clears after a successful check-in
+    expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
   });
 
   it('shows an error when check-in fails', async () => {
@@ -143,158 +190,77 @@ describe('SessionRecorderPage', () => {
     });
   });
 
-  it('checks out: no window.__coverage__ present, so no dump is submitted, but the session still ends', async () => {
+  it('copies the CRM correlation link for a specific session to the clipboard', async () => {
+    const writeText = mockClipboard();
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
-      ),
-      http.post('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
-      ),
-      http.post('*/api/v1/admin/coverage/dump', () => {
-        throw new Error('dump must not be submitted when window.__coverage__ is absent');
-      }),
-      http.post('*/api/v1/admin/coverage/sessions/:sessionId/end', () =>
-        HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
+        HttpResponse.json({ data: [ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
       ),
     );
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`coverage-session-copy-link-${ACTIVE_SESSION.id}`),
+      ).toBeInTheDocument();
     });
 
-    await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
-    await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
-    });
-    await userEvent.click(screen.getByTestId('coverage-session-check-out-button'));
+    await userEvent.click(screen.getByTestId(`coverage-session-copy-link-${ACTIVE_SESSION.id}`));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('coverage-session-recording-panel')).not.toBeInTheDocument();
+      expect(writeText).toHaveBeenCalledWith(
+        expect.stringContaining(`coverageCorrelationId=${ACTIVE_SESSION.correlationId}`),
+      );
     });
-    expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`coverage-session-copy-link-${ACTIVE_SESSION.id}`),
+      ).toHaveTextContent('Copied!');
+    });
   });
 
-  it('checks out: submits window.__coverage__ as a browser-source dump when present', async () => {
-    const coverageMap = { 'src/App.tsx': { path: 'src/App.tsx', s: { '0': 1 } } };
-    (window as unknown as { __coverage__?: unknown }).__coverage__ = coverageMap;
-
-    let capturedBody: unknown;
+  it('ends a specific session on check-out and removes it from the active-sessions list', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        HttpResponse.json({
+          data: [ACTIVE_SESSION, OTHER_ACTIVE_SESSION],
+          total: 2,
+          page: 1,
+          limit: 25,
+        }),
       ),
-      http.post('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
-      ),
-      http.post('*/api/v1/admin/coverage/dump', async ({ request }) => {
-        capturedBody = await request.json();
-        return HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 });
-      }),
-      http.post('*/api/v1/admin/coverage/sessions/:sessionId/end', () =>
-        HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
-      ),
-    );
-
-    try {
-      renderPage();
-      await waitFor(() => {
-        expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
-      });
-
-      await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
-      await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
-      });
-      await userEvent.click(screen.getByTestId('coverage-session-check-out-button'));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('coverage-session-recording-panel')).not.toBeInTheDocument();
-      });
-
-      expect(capturedBody).toMatchObject({ source: 'browser', payload: coverageMap });
-    } finally {
-      delete (window as unknown as { __coverage__?: unknown }).__coverage__;
-    }
-  });
-
-  it('clears the correlation header on unmount even without an explicit check-out', async () => {
-    server.use(
-      http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
-      ),
-      http.post('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
-      ),
-    );
-
-    const { unmount } = renderPage();
-    await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
-    });
-
-    await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
-    await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-recording-panel')).toBeInTheDocument();
-    });
-
-    const { default: apiClient } = await import('@/api/axiosInstance.js');
-    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
-      ACTIVE_SESSION.correlationId,
-    );
-
-    unmount();
-
-    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBeUndefined();
-  });
-
-  it('still ends the session on check-out even when the dump request fails', async () => {
-    server.use(
-      http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
-      ),
-      http.post('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
-      ),
-      http.post('*/api/v1/admin/coverage/dump', () => new HttpResponse(null, { status: 409 })),
-      http.post('*/api/v1/admin/coverage/sessions/:sessionId/end', () =>
-        HttpResponse.json({ session: { ...ACTIVE_SESSION, status: 'ended', version: 2 } }),
+      http.post('*/api/v1/admin/coverage/sessions/:sessionId/end', ({ params }) =>
+        HttpResponse.json({
+          session: {
+            ...(params['sessionId'] === ACTIVE_SESSION.id ? ACTIVE_SESSION : OTHER_ACTIVE_SESSION),
+            status: 'ended',
+            version: 2,
+          },
+        }),
       ),
     );
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+      expect(screen.getByTestId(`coverage-session-${ACTIVE_SESSION.id}`)).toBeInTheDocument();
     });
 
-    await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
-    await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
-    });
-    await userEvent.click(screen.getByTestId('coverage-session-check-out-button'));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('coverage-session-recording-panel')).not.toBeInTheDocument();
-    });
-  });
-
-  it('shows an error when check-out fails to end the session, keeps the recording panel visible, and keeps the correlation header set', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        HttpResponse.json({ data: [OTHER_ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
       ),
-      http.post('*/api/v1/admin/coverage/sessions', () =>
-        HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 }),
-      ),
-      http.post('*/api/v1/admin/coverage/dump', () =>
-        HttpResponse.json({ dump: { dumpId: 'dump-1' } }, { status: 201 }),
+    );
+
+    await userEvent.click(screen.getByTestId(`coverage-session-check-out-${ACTIVE_SESSION.id}`));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(`coverage-session-${ACTIVE_SESSION.id}`)).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId(`coverage-session-${OTHER_ACTIVE_SESSION.id}`)).toBeInTheDocument();
+  });
+
+  it('shows an error when check-out fails, and the session stays in the active-sessions list', async () => {
+    server.use(
+      http.get('*/api/v1/admin/coverage/sessions', () =>
+        HttpResponse.json({ data: [ACTIVE_SESSION], total: 1, page: 1, limit: 25 }),
       ),
       http.post(
         '*/api/v1/admin/coverage/sessions/:sessionId/end',
@@ -303,32 +269,16 @@ describe('SessionRecorderPage', () => {
     );
     renderPage();
     await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`coverage-session-check-out-${ACTIVE_SESSION.id}`),
+      ).toBeInTheDocument();
     });
 
-    await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
-    await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('coverage-session-check-out-button')).toBeInTheDocument();
-    });
-
-    const { default: apiClient } = await import('@/api/axiosInstance.js');
-    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
-      ACTIVE_SESSION.correlationId,
-    );
-
-    await userEvent.click(screen.getByTestId('coverage-session-check-out-button'));
+    await userEvent.click(screen.getByTestId(`coverage-session-check-out-${ACTIVE_SESSION.id}`));
 
     await waitFor(() => {
       expect(screen.getByTestId('coverage-session-recorder-action-error')).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId('coverage-session-recording-panel')).toBeInTheDocument();
-    expect(apiClient.defaults.headers.common['x-coverage-correlation-id']).toBe(
-      ACTIVE_SESSION.correlationId,
-    );
-
-    delete apiClient.defaults.headers.common['x-coverage-correlation-id'];
+    expect(screen.getByTestId(`coverage-session-${ACTIVE_SESSION.id}`)).toBeInTheDocument();
   });
 });

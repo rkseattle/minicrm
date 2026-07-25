@@ -1735,6 +1735,12 @@
       }
     }
   },
+  "coverageSession": {
+    "checkedOutMessage": "手动覆盖率会话已签出。",
+    "checkOutButton": "签出",
+    "checkingOut": "正在签出…",
+    "label": "正在录制手动覆盖率会话"
+  },
   "customFields": {
     "sectionTitle": "自定义字段",
     "noValues": "尚未设置自定义字段值。"

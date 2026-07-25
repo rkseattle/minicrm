@@ -17,6 +17,7 @@ import AdminRoute from '@/components/AdminRoute.js';
 import { NavLayoutProvider, useNavLayout } from '@/components/NavLayoutContext.js';
 import NavLeft from '@/components/NavLeft.js';
 import SetupChecklistWidget from '@/components/SetupChecklistWidget.js';
+import CoverageSessionIndicator from '@/components/CoverageSessionIndicator.js';
 import { useIsMobile } from '@/hooks/useIsMobile.js';
 
 // Page-level lazy imports — each becomes its own Vite chunk (MINCRM-281)
@@ -67,6 +68,7 @@ function LayoutShell() {
     return (
       <NavLeft>
         <SetupChecklistWidget />
+        <CoverageSessionIndicator />
         <Outlet />
       </NavLeft>
     );
@@ -74,6 +76,7 @@ function LayoutShell() {
   return (
     <>
       <SetupChecklistWidget />
+      <CoverageSessionIndicator />
       <Outlet />
     </>
   );

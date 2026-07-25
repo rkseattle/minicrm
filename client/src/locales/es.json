@@ -1735,6 +1735,12 @@
       }
     }
   },
+  "coverageSession": {
+    "checkedOutMessage": "Sesión de cobertura manual finalizada.",
+    "checkOutButton": "Finalizar",
+    "checkingOut": "Finalizando…",
+    "label": "Grabando sesión de cobertura manual"
+  },
   "customFields": {
     "sectionTitle": "Campos personalizados",
     "noValues": "No hay valores de campos personalizados definidos."

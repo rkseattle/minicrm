@@ -1735,6 +1735,12 @@
       }
     }
   },
+  "coverageSession": {
+    "checkedOutMessage": "Manual coverage session checked out.",
+    "checkOutButton": "Check out",
+    "checkingOut": "Checking out…",
+    "label": "Recording manual coverage session"
+  },
   "customFields": {
     "sectionTitle": "Custom Fields",
     "noValues": "No custom field values set."

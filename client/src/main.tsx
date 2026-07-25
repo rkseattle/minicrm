@@ -16,8 +16,16 @@ import { BreakpointProvider } from './context/BreakpointContext.js';
 import { BrandingProvider } from './context/BrandingContext.js';
 import { initSentry } from './sentry.js';
 import { setupInterceptors } from './api/axiosInstance.js';
+import { relayCoverageCorrelationIdFromUrl } from './coverageCorrelation.js';
 
 initSentry();
+
+// MINCRM-663: picks up a manual-testing coverage session's correlation ID
+// from the URL (if the admin arrived via a check-in link from the
+// standalone coverage-dashboard app) and persists it for axiosInstance.ts
+// to forward on every request. A no-op for every normal page load. Must
+// run before any API request may fire, so this happens first.
+relayCoverageCorrelationIdFromUrl();
 
 /**
  * Shared React Query client instance.

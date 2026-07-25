@@ -1735,6 +1735,12 @@
       }
     }
   },
+  "coverageSession": {
+    "checkedOutMessage": "[Mäñüäl ĉövërägë ŝëŝŝïöñ ĉhëĉkëd öüt.~~~~~~~~~~~]",
+    "checkOutButton": "[Ĉhëĉk öüt~~~]",
+    "checkingOut": "[Ĉhëĉkïñg öüt…~~~~]",
+    "label": "[Rëĉördïñg mäñüäl ĉövërägë ŝëŝŝïöñ~~~~~~~~~~]"
+  },
   "customFields": {
     "sectionTitle": "[Ĉüŝtöm Fïëldŝ~~~~]",
     "noValues": "[Ñö ĉüŝtöm fïëld välüëŝ ŝët.~~~~~~~~~]"

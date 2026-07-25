@@ -11,6 +11,8 @@
 
 import axios from 'axios';
 import type { QueryClient } from '@tanstack/react-query';
+import { CORRELATION_ID_HEADER } from '@shared/schemas/coverageSessionSchema.js';
+import { getPersistedCoverageCorrelationId } from '../coverageCorrelation.js';
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -18,6 +20,21 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// MINCRM-663: forwards a manual-testing coverage session's correlation ID
+// (see coverageCorrelation.ts) on every outgoing request, so requests made
+// in this CRM tab are attributed to the session started in the separate
+// coverage-dashboard app. Reads localStorage on every request rather than
+// caching the value once, since a check-out (or a fresh check-in) can
+// change it mid-session without a page reload. A no-op — no header set —
+// for the overwhelming majority of requests, where no session is active.
+apiClient.interceptors.request.use((config) => {
+  const correlationId = getPersistedCoverageCorrelationId();
+  if (correlationId) {
+    config.headers.set(CORRELATION_ID_HEADER, correlationId);
+  }
+  return config;
 });
 
 /**
