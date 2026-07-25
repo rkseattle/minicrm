@@ -51,9 +51,6 @@ const ChurnExpansionInsightsPage = lazy(() => import('@/pages/ChurnExpansionInsi
 const CoachingInsightsPage = lazy(() => import('@/pages/CoachingInsightsPage.js'));
 const DataHygienePage = lazy(() => import('@/pages/DataHygienePage.js'));
 const AiUsageDashboardPage = lazy(() => import('@/pages/admin/AiUsageDashboardPage.js'));
-const CoverageSessionRecorderPage = lazy(
-  () => import('@/pages/admin/CoverageSessionRecorderPage.js'),
-);
 
 /**
  * Wraps the outlet in NavLeft when the left layout is active on desktop.
@@ -161,8 +158,6 @@ function AppRoutes() {
             <Route path="/admin/sequences/:id" element={<SequenceDetailPage />} />
             {/* MINCRM-476: org-wide data hygiene queue */}
             <Route path="/admin/hygiene" element={<DataHygienePage scope="all" />} />
-            {/* MINCRM-611: manual-testing coverage session recorder */}
-            <Route path="/admin/coverage-sessions" element={<CoverageSessionRecorderPage />} />
           </Route>
         </Route>
 

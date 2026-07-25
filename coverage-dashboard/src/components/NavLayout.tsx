@@ -34,6 +34,9 @@ export default function NavLayout() {
             >
               Traceability
             </NavLink>
+            <NavLink to="/sessions" className={NAV_LINK_CLASS} data-testid="nav-link-sessions">
+              Sessions
+            </NavLink>
           </div>
           <button
             type="button"

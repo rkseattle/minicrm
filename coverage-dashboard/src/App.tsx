@@ -6,6 +6,7 @@ import AccessDeniedPage from '@/pages/AccessDeniedPage.js';
 import OverviewPage from '@/pages/OverviewPage.js';
 import GapsPage from '@/pages/GapsPage.js';
 import TraceabilityPage from '@/pages/TraceabilityPage.js';
+import SessionRecorderPage from '@/pages/SessionRecorderPage.js';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/" element={<OverviewPage />} />
           <Route path="/gaps" element={<GapsPage />} />
           <Route path="/traceability" element={<TraceabilityPage />} />
+          <Route path="/sessions" element={<SessionRecorderPage />} />
         </Route>
       </Route>
     </Routes>

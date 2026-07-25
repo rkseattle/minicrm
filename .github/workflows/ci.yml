@@ -283,6 +283,12 @@ jobs:
           # so it doesn't collide with a real minicrm_coverage a developer might
           # also have running locally against the same Postgres instance.
           COVERAGE_DB_NAME: minicrm_coverage_test
+          # Coverage/TIA control API and session management routes are
+          # registered only when these are 'true' at process boot
+          # (MINCRM-663) — needed so coverageController.test.ts/
+          # coverageSessionController.test.ts can reach those routes.
+          COVERAGE_INSTRUMENTATION: "true"
+          COVERAGE_SESSION_MANAGEMENT: "true"
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
@@ -1069,6 +1075,13 @@ jobs:
           E2E: true
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
           APP_URL: http://localhost:5173
+          # Coverage/TIA control API and session management routes are
+          # registered only when these are 'true' at process boot
+          # (MINCRM-663) — coverage-instrumentation.spec.ts/
+          # coverage-sessions.spec.ts are @serial-tagged, so they run in
+          # THIS job, not e2e-functional.
+          COVERAGE_INSTRUMENTATION: "true"
+          COVERAGE_SESSION_MANAGEMENT: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &

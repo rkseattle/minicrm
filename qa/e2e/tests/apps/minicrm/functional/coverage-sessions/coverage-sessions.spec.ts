@@ -1,6 +1,6 @@
 /**
  * Coverage/TIA session management functional tests. (MINCRM-609, MINCRM-610,
- * MINCRM-611, MINCRM-612)
+ * MINCRM-611, MINCRM-612, MINCRM-663)
  *
  * Verifies the session control API end to end against a real running
  * server — session lifecycle (start/end/list/get), dump attribution, and
@@ -11,18 +11,26 @@
  * Tests:
  *   CVS-01  Start/end succeed and return well-formed session metadata; ended
  *           session no longer appears in the active list
- *   CVS-02  Guarded route returns 403 FEATURE_DISABLED when the flag is off
  *   CVS-03  Ending an already-ended session returns 409 COVERAGE_SESSION_CONFLICT
  *   CVS-04  Recording a dump attributes it to the session; a duplicate dumpId
  *           is rejected with 409
  *
- * Mutates the coverage_session_management feature flag directly via the REST
- * API (not withFlags(), which only intercepts the browser's client-side
- * flag fetch and would not affect server-side requireFeatureEnabled
- * enforcement for restClient calls) — tagged @serial per the E2E authoring
- * rules for real feature-flag mutations, restored in afterEach, and the file
- * opts into test.describe.serial so two tests toggling the same flag can't
- * interleave under fullyParallel:true.
+ * MINCRM-663: this router's routes are now registered only when
+ * COVERAGE_SESSION_MANAGEMENT='true' at process boot (no longer gated by a
+ * coverage_session_management feature_flags row) — the CI/local E2E server
+ * has this set (see docker-compose.dev.yml / ci.yml's e2e-serial job), so
+ * these tests no longer need to toggle a flag before each run. CVS-02 (the
+ * old "flag off returns 403" test) is removed — there is no runtime flag
+ * left to toggle off within a single test run, since the gate is now a
+ * boot-time env var. See docs/dev/coverage.md's own note on this: a genuine
+ * "routes absent when the env var is unset" regression check lives in
+ * coverageRouteGating.test.ts (server-side, spawns a subprocess with the
+ * env var unset) — that property can't be exercised by mutating anything
+ * through this already-running E2E server's REST API. The "coverage tooling
+ * not reachable through the product UI" regression this story also
+ * requires is instead a CRM-client-side check: CVS-05 below, asserting
+ * /admin/coverage-sessions no longer exists as a route at all now that
+ * CoverageSessionRecorderPage.tsx is deleted from minicrm-client.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -32,10 +40,13 @@
 
 import { randomUUID } from 'crypto';
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
+import {
+  loginAsAdmin,
+  loginViaBrowser,
+  navigateToPathAndGetFinalPathname,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import { createTestAdmin } from '@apps/minicrm/helpers.js';
 
-const SESSION_FLAG_KEY = 'coverage_session_management';
 const SESSIONS_ENDPOINT = '/api/v1/admin/coverage/sessions';
 
 interface SessionBody {
@@ -55,28 +66,18 @@ function baseSessionParams(label: string) {
 }
 
 test.use({ storageState: { cookies: [], origins: [] } });
-test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-  // Restore the true default — migration 157 seeds no role_overrides so
-  // `enabled` is the sole, real kill-switch (mirrors coverage-instrumentation.spec.ts).
-  await updateFeatureFlag(restClient, SESSION_FLAG_KEY, { enabled: false }).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------
 // CVS-01 — start/end succeed; ended session drops out of the active list
 // ---------------------------------------------------------------------------
 
-test('@functional @serial CVS-01: start and end succeed and return well-formed session metadata', async ({
+test('@functional CVS-01: start and end succeed and return well-formed session metadata', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, SESSION_FLAG_KEY, { enabled: true });
-
   const startRes = await restClient.post<{ session: SessionBody }>(
     SESSIONS_ENDPOINT,
     baseSessionParams('CVS-01 session'),
@@ -103,35 +104,12 @@ test('@functional @serial CVS-01: start and end succeed and return well-formed s
 });
 
 // ---------------------------------------------------------------------------
-// CVS-02 — flag off blocks the guarded route, even for an admin
-// ---------------------------------------------------------------------------
-
-test('@functional @serial CVS-02: guarded route returns 403 FEATURE_DISABLED when the flag is off', async ({
-  restClient,
-}) => {
-  await updateFeatureFlag(restClient, SESSION_FLAG_KEY, { enabled: false });
-
-  try {
-    await restClient.post(SESSIONS_ENDPOINT, baseSessionParams('CVS-02 session'));
-    // Should not reach here — the request must be rejected while the flag is off.
-    expect(true).toBe(false);
-  } catch (err: unknown) {
-    const status = (err as { status?: number }).status;
-    const body = (err as { body?: { error?: { code?: string } } }).body;
-    expect(status).toBe(403);
-    expect(body?.error?.code).toBe('FEATURE_DISABLED');
-  }
-});
-
-// ---------------------------------------------------------------------------
 // CVS-03 — ending an already-ended session returns 409
 // ---------------------------------------------------------------------------
 
-test('@functional @serial CVS-03: ending an already-ended session returns 409 COVERAGE_SESSION_CONFLICT', async ({
+test('@functional CVS-03: ending an already-ended session returns 409 COVERAGE_SESSION_CONFLICT', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, SESSION_FLAG_KEY, { enabled: true });
-
   const startRes = await restClient.post<{ session: SessionBody }>(
     SESSIONS_ENDPOINT,
     baseSessionParams('CVS-03 session'),
@@ -161,11 +139,9 @@ test('@functional @serial CVS-03: ending an already-ended session returns 409 CO
 // CVS-04 — dump attribution round-trips; duplicate dumpId is rejected
 // ---------------------------------------------------------------------------
 
-test('@functional @serial CVS-04: recording a dump attributes it to the session; a duplicate dumpId is rejected', async ({
+test('@functional CVS-04: recording a dump attributes it to the session; a duplicate dumpId is rejected', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, SESSION_FLAG_KEY, { enabled: true });
-
   const startRes = await restClient.post<{ session: SessionBody }>(
     SESSIONS_ENDPOINT,
     baseSessionParams('CVS-04 session'),
@@ -193,4 +169,27 @@ test('@functional @serial CVS-04: recording a dump attributes it to the session;
     expect(status).toBe(409);
     expect(body?.error?.code).toBe('DUMP_ALREADY_RECORDED');
   }
+});
+
+// ---------------------------------------------------------------------------
+// CVS-05 — the manual-testing session recorder no longer exists in the CRM
+// client itself (MINCRM-663 regression check)
+// ---------------------------------------------------------------------------
+
+test('@functional CVS-05: /admin/coverage-sessions no longer exists as a route in the CRM client', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+
+  const finalPathname = await navigateToPathAndGetFinalPathname('/admin/coverage-sessions', {
+    page,
+  });
+  // The route was deleted from client/src/App.tsx entirely — the client's
+  // own catch-all route redirects any unknown path to the dashboard ("/"),
+  // so an admin navigating to this exact URL directly now lands on the
+  // dashboard rather than any coverage-session-recorder UI.
+  expect(finalPathname).toBe('/');
 });

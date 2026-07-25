@@ -1,15 +1,22 @@
 /**
- * Integration tests for the coverage session control API. (MINCRM-609..612)
- * Covers: auth boundaries (401/403-role/403-flag), Zod validation, invalid
+ * Integration tests for the coverage session control API. (MINCRM-609..612, MINCRM-663)
+ * Covers: auth boundaries (401/403-role), Zod validation, invalid
  * sessionId path params, the ended-session conflict paths (double-end,
  * dump attribution after end), and duplicate-dumpId rejection.
+ *
+ * MINCRM-663: this router's routes are now registered only when
+ * COVERAGE_SESSION_MANAGEMENT='true' at process boot (see
+ * routes/coverageSessions.ts's own docblock) — no longer gated by a
+ * coverage_session_management feature_flags row. .env.test sets
+ * COVERAGE_SESSION_MANAGEMENT=true so these routes exist for this file's own
+ * assertions; the "route doesn't exist at all when the env var is unset"
+ * case is covered by coverageRouteGating.test.ts.
  */
 
 import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
@@ -19,14 +26,6 @@ const FILE_PREFIX = 'coverage-session-ctrl';
 let adminCookie: string;
 let repCookie: string;
 let adminId: string;
-
-async function setSessionFlagEnabled(enabled: boolean): Promise<void> {
-  await pool.query(
-    `UPDATE feature_flags SET enabled = $1 WHERE flag_key = 'coverage_session_management'`,
-    [enabled],
-  );
-  __clearCacheForTest();
-}
 
 function baseSessionBody(label: string) {
   return {
@@ -77,14 +76,9 @@ afterAll(async () => {
   );
   await coverageDb.query('DELETE FROM coverage_sessions WHERE started_by = $1', [adminId]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  await setSessionFlagEnabled(false);
 });
 
 describe('coverage session control API — auth boundaries', () => {
-  beforeEach(async () => {
-    await setSessionFlagEnabled(true);
-  });
-
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
       .post('/api/v1/admin/coverage/sessions')
@@ -99,23 +93,9 @@ describe('coverage session control API — auth boundaries', () => {
       .send(baseSessionBody('auth-403-role'));
     expect(res.status).toBe(403);
   });
-
-  it('returns 403 FEATURE_DISABLED when the flag is off, even for an admin', async () => {
-    await setSessionFlagEnabled(false);
-    const res = await request(app)
-      .post('/api/v1/admin/coverage/sessions')
-      .set('Cookie', adminCookie)
-      .send(baseSessionBody('auth-403-flag'));
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
 });
 
 describe('coverage session control API — validation', () => {
-  beforeEach(async () => {
-    await setSessionFlagEnabled(true);
-  });
-
   it('returns 400 VALIDATION_ERROR when label is missing on start', async () => {
     const res = await request(app)
       .post('/api/v1/admin/coverage/sessions')
@@ -156,10 +136,6 @@ describe('coverage session control API — validation', () => {
 });
 
 describe('coverage session control API — lifecycle', () => {
-  beforeEach(async () => {
-    await setSessionFlagEnabled(true);
-  });
-
   it('starts and ends a session end to end', async () => {
     const startRes = await request(app)
       .post('/api/v1/admin/coverage/sessions')
@@ -207,10 +183,6 @@ describe('coverage session control API — lifecycle', () => {
 });
 
 describe('coverage session control API — dump attribution', () => {
-  beforeEach(async () => {
-    await setSessionFlagEnabled(true);
-  });
-
   it('records a dump attribution and rejects a duplicate dumpId with 409', async () => {
     const startRes = await request(app)
       .post('/api/v1/admin/coverage/sessions')
@@ -295,10 +267,6 @@ describe('coverage session control API — dump attribution', () => {
 });
 
 describe('coverage session control API — pagination', () => {
-  beforeEach(async () => {
-    await setSessionFlagEnabled(true);
-  });
-
   it('returns a paginated envelope for GET /sessions', async () => {
     await request(app)
       .post('/api/v1/admin/coverage/sessions')
