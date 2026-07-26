@@ -14,6 +14,7 @@ import {
   findTestsForUnit,
   findUnitsForTest,
   findTestsForUnitAcrossBranches,
+  findTestsForUnitsAcrossBranches,
   linkCoverageUnitsToTest,
   exportAllCoverageTestLinks,
   loadCoverageTestLinksForCommit,
@@ -316,6 +317,159 @@ describe('coverageMappingService', () => {
         'nonexistent#000',
       );
       expect(found).toHaveLength(0);
+    });
+  });
+
+  describe('findTestsForUnitsAcrossBranches (batched, MINCRM-637)', () => {
+    it('resolves multiple units in one call, each attributed back to its own (filePath, unitKey) pair', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const fileA = `${FILE_PREFIX}/a.ts`;
+      const fileB = `${FILE_PREFIX}/b.ts`;
+      const unitKeyA = 'render#batcha';
+      const unitKeyB = 'render#batchb';
+
+      await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+        makeLink({ unitKey: unitKeyA, branchId: '0:0', filePath: fileA }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:b.spec.ts::t', 't', [
+        makeLink({ unitKey: unitKeyB, branchId: '0:0', filePath: fileB }),
+      ]);
+
+      const results = await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath: fileA, unitKey: unitKeyA },
+        { filePath: fileB, unitKey: unitKeyB },
+      ]);
+
+      expect(results).toHaveLength(2);
+      const byPair = new Map(results.map((r) => [`${r.filePath}::${r.unitKey}`, r]));
+      expect(byPair.get(`${fileA}::${unitKeyA}`)?.matches).toMatchObject([
+        { testId: 'spec:a.spec.ts::t' },
+      ]);
+      expect(byPair.get(`${fileB}::${unitKeyB}`)?.matches).toMatchObject([
+        { testId: 'spec:b.spec.ts::t' },
+      ]);
+    });
+
+    it('includes a pair with zero matches in the result, with an empty matches array', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const fileA = `${FILE_PREFIX}/a.ts`;
+      const unitKeyA = 'render#batchc';
+
+      await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+        makeLink({ unitKey: unitKeyA, branchId: '0:0', filePath: fileA }),
+      ]);
+
+      const results = await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath: fileA, unitKey: unitKeyA },
+        { filePath: `${FILE_PREFIX}/nonexistent.ts`, unitKey: 'nonexistent#000' },
+      ]);
+
+      expect(results).toHaveLength(2);
+      const nonexistentResult = results.find((r) => r.unitKey === 'nonexistent#000');
+      expect(nonexistentResult?.matches).toEqual([]);
+    });
+
+    it('does not cross-attribute a match to a pair sharing the same unitKey but a DIFFERENT filePath (regression — file identity must be preserved across the batch, same as the singular function)', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const sharedUnitKey = 'coincidence#batchsamehash';
+      const fileA = `${FILE_PREFIX}/a.ts`;
+      const fileB = `${FILE_PREFIX}/b.ts`;
+
+      await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileA }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:b.spec.ts::t', 't', [
+        makeLink({ unitKey: sharedUnitKey, branchId: '0:0', filePath: fileB }),
+      ]);
+
+      // Only request fileA's pair — fileB's link for the same unitKey must
+      // never leak into fileA's result.
+      const results = await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath: fileA, unitKey: sharedUnitKey },
+      ]);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].matches).toHaveLength(1);
+      expect(results[0].matches[0]).toMatchObject({ testId: 'spec:a.spec.ts::t', filePath: fileA });
+    });
+
+    it('deduplicates a (filePath, unitKey) pair appearing more than once in the input, returning it once', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const fileA = `${FILE_PREFIX}/a.ts`;
+      const unitKeyA = 'render#batchdedup';
+
+      await linkAndCommit(commitSha, 'spec:a.spec.ts::t', 't', [
+        makeLink({ unitKey: unitKeyA, branchId: '0:0', filePath: fileA }),
+      ]);
+
+      const results = await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath: fileA, unitKey: unitKeyA },
+        { filePath: fileA, unitKey: unitKeyA },
+      ]);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].matches).toHaveLength(1);
+    });
+
+    it('returns an empty array for an empty input', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const results = await findTestsForUnitsAcrossBranches(commitSha, []);
+      expect(results).toEqual([]);
+    });
+
+    it('resolves correctly across multiple internal chunks — exercises the chunking loop for an input larger than MAX_UNITS_PER_MAPPING_LOOKUP_BATCH (200)', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const realFilePath = `${FILE_PREFIX}/chunked-real.ts`;
+      const realUnitKey = 'render#chunked1';
+
+      await linkAndCommit(commitSha, 'spec:chunked.spec.ts::t', 't', [
+        makeLink({ unitKey: realUnitKey, branchId: '0:0', filePath: realFilePath }),
+      ]);
+
+      // 250 pairs spans two internal chunks (batch size 200) — 249 of them
+      // resolve to nothing, one (placed deliberately in the SECOND chunk,
+      // at index 210) is real, proving both chunks actually execute and
+      // attribute their own results correctly, not just the first.
+      const padding = Array.from({ length: 249 }, (_, i) => ({
+        filePath: `${FILE_PREFIX}/chunked-padding-${i}.ts`,
+        unitKey: `padding#${i}`,
+      }));
+      const units = [
+        ...padding.slice(0, 210),
+        { filePath: realFilePath, unitKey: realUnitKey },
+        ...padding.slice(210),
+      ];
+      expect(units).toHaveLength(250);
+
+      const results = await findTestsForUnitsAcrossBranches(commitSha, units);
+
+      expect(results).toHaveLength(250);
+      const realResult = results.find(
+        (r) => r.filePath === realFilePath && r.unitKey === realUnitKey,
+      );
+      expect(realResult?.matches).toMatchObject([{ testId: 'spec:chunked.spec.ts::t' }]);
+      const emptyResults = results.filter((r) => r !== realResult);
+      expect(emptyResults.every((r) => r.matches.length === 0)).toBe(true);
+    });
+
+    it('produces the same matches (branch coverage and function-granularity) as the singular findTestsForUnitAcrossBranches for the same pair', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/multi-branch-batch.ts`;
+      const unitKey = 'multiBranch#batchtest';
+
+      await linkAndCommit(commitSha, 'spec:branch-a.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0', filePath }),
+      ]);
+      await linkAndCommit(commitSha, 'spec:branch-b.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:1', filePath }),
+      ]);
+
+      const singular = await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
+      const batched = await findTestsForUnitsAcrossBranches(commitSha, [{ filePath, unitKey }]);
+
+      expect(batched[0].matches.map((m) => m.testId).sort()).toEqual(
+        singular.map((m) => m.testId).sort(),
+      );
     });
   });
 

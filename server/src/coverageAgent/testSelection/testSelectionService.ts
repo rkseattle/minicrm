@@ -23,12 +23,22 @@
  * coverageMappingService.ts's own docblock on findTestsForUnitAcrossBranches
  * for the full rationale.
  *
- * No batch lookup endpoint exists on the mapping query API (single
- * commitSha+unitKey per call) — this service fans out with bounded
- * concurrency (MAX_CONCURRENT_MAPPING_LOOKUPS) rather than one call per
- * changed unit unbounded, since coverageDb's own pool caps at 10 connections
- * (see coverageDb.ts) and an uncapped Promise.all over a large diff's
- * changed units could exhaust it.
+ * The direct-lookup step resolves every changed unit's mapping in ONE
+ * batched call (coverageMappingService.findTestsForUnitsAcrossBranches,
+ * MINCRM-637) rather than fanning out one query per changed unit — this
+ * collapsed what was up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
+ * sequential round trips into as many queries as
+ * findTestsForUnitsAcrossBranches' own chunking needs (typically one, for
+ * any diff under its per-batch chunk size). The inheritance-lookup step
+ * (changed units with zero direct matches, consulting a caller-supplied
+ * enclosing/calling unit) stays per-unit via the singular
+ * findTestsForUnitAcrossBranches and MAX_CONCURRENT_MAPPING_LOOKUPS —
+ * coverageDb's own pool caps at 10 connections (see coverageDb.ts), and an
+ * uncapped Promise.all over that fan-out could exhaust it. That path is
+ * unreachable from this module's only production caller today
+ * (select-tests.ts never supplies enclosingUnitsByUnitKey), so batching it
+ * is deliberately out of scope — see docs/plans/MINCRM-636.md's Rejected
+ * alternatives.
  *
  * Ranking is delegated to a pluggable TestScorer (MINCRM-627) — this module
  * owns only mapping-API resolution, inheritance, and cross-unit dedup;
@@ -40,6 +50,8 @@
 
 import {
   findTestsForUnitAcrossBranches,
+  findTestsForUnitsAcrossBranches,
+  unitPairKey,
   type CoverageMappingResult,
 } from '../../services/coverageMappingService.js';
 import type { ChangedUnit } from './changeUnitResolver.js';
@@ -158,9 +170,17 @@ export interface EnclosingUnit {
  * silently supply BOTH units' inheritance candidates, the same cross-file
  * collision already fixed at the mapping-query layer, reappearing one layer
  * up in this map's own key (found via Greptile PR review).
+ *
+ * Delegates to coverageMappingService.unitPairKey — the identical
+ * (filePath, unitKey) -> string shape this module used to duplicate
+ * independently (found during MINCRM-637 commit review). Kept as its own
+ * named export here since this module's own callers/tests already import
+ * it under this name for this specific semantic purpose (an
+ * enclosing-unit map key, not a mapping-result attribution key) — same
+ * underlying key shape, distinct meanings at each call site.
  */
 export function enclosingUnitMapKey(filePath: string, unitKey: string): string {
-  return JSON.stringify([filePath, unitKey]);
+  return unitPairKey(filePath, unitKey);
 }
 
 /**
@@ -193,25 +213,35 @@ export async function selectTestsForChangedUnits(
   enclosingUnitsByUnitKey: ReadonlyMap<string, EnclosingUnit> = new Map(),
   scorer: TestScorer = mapBasedScorer,
 ): Promise<TestSelectionResult> {
-  const perUnitResults = await mapWithConcurrencyLimit(
-    changedUnits,
+  // Direct-lookup step: one batched call for every changed unit (MINCRM-637)
+  // instead of a per-unit fan-out. batchedDirectMatches always has exactly
+  // one entry per (deduplicated) input pair, including pairs with zero
+  // matches — see findTestsForUnitsAcrossBranches' own docblock.
+  const batchedDirectMatches = await findTestsForUnitsAcrossBranches(
+    commitSha,
+    changedUnits.map((unit) => ({ filePath: unit.filePath, unitKey: unit.unitKey })),
+  );
+  const directMatchesByUnitKey = new Map(
+    batchedDirectMatches.map((result) => [
+      enclosingUnitMapKey(result.filePath, result.unitKey),
+      result.matches,
+    ]),
+  );
+
+  // Units with zero direct matches fall through to the inheritance step —
+  // still per-unit (see module docblock for why batching this path is out
+  // of scope).
+  const unitsNeedingInheritance = changedUnits.filter((unit) => {
+    const directMatches = directMatchesByUnitKey.get(
+      enclosingUnitMapKey(unit.filePath, unit.unitKey),
+    );
+    return !directMatches || directMatches.length === 0;
+  });
+
+  const inheritedResults = await mapWithConcurrencyLimit(
+    unitsNeedingInheritance,
     MAX_CONCURRENT_MAPPING_LOOKUPS,
     async (unit) => {
-      const directMatches = await findTestsForUnitAcrossBranches(
-        commitSha,
-        unit.filePath,
-        unit.unitKey,
-      );
-
-      if (directMatches.length > 0) {
-        return {
-          unit,
-          tests: directMatches.map((match) =>
-            toSelectedTest(match, 'direct-hit', unit.unitKey, unit.filePath),
-          ),
-        };
-      }
-
       // No direct mapping — new code with nothing to look up yet, or a
       // genuinely unmapped unit. Per MINCRM-624's AC, inherit candidates
       // from the enclosing/calling unit rather than treating this as
@@ -236,6 +266,23 @@ export async function selectTestsForChangedUnits(
       };
     },
   );
+  const inheritedTestsByUnitKey = new Map(
+    inheritedResults.map((r) => [enclosingUnitMapKey(r.unit.filePath, r.unit.unitKey), r.tests]),
+  );
+
+  const perUnitResults = changedUnits.map((unit) => {
+    const key = enclosingUnitMapKey(unit.filePath, unit.unitKey);
+    const directMatches = directMatchesByUnitKey.get(key) ?? [];
+    if (directMatches.length > 0) {
+      return {
+        unit,
+        tests: directMatches.map((match) =>
+          toSelectedTest(match, 'direct-hit', unit.unitKey, unit.filePath),
+        ),
+      };
+    }
+    return { unit, tests: inheritedTestsByUnitKey.get(key) ?? [] };
+  });
 
   const allTests = perUnitResults.flatMap((r) => r.tests);
   const unmappedChanges = perUnitResults

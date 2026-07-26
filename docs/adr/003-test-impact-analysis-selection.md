@@ -141,6 +141,18 @@ see `coverageDb.ts`), `testSelectionService` fans out with a small bounded-concu
 helper (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`) rather than an unbounded `Promise.all`, which
 could otherwise exhaust the pool on a large diff.
 
+> **Amendment (MINCRM-637, `pr-tia-9`):** this section's own closing line ("a batch
+> endpoint is a natural follow-up if CI latency on large diffs becomes a problem") was
+> acted on once `pr-tia-8`'s CI integration made that latency concern real rather than
+> hypothetical. `testSelectionService`'s **direct-lookup step** now calls a batched
+> **service-layer function**, `coverageMappingService.findTestsForUnitsAcrossBranches`
+> — not an HTTP endpoint, since the only real caller (`select-tests.ts`) invokes the
+> selection pipeline in-process and never makes an HTTP request to this server at all.
+> The bounded-concurrency fan-out described above is retained for the **inheritance**
+> step only (units with zero direct matches), which remains unreachable from
+> `select-tests.ts` today. See `docs/dev/coverage.md`'s "Test selection algorithm"
+> section for the current design.
+
 ### 6. Pure-deletion hunks and branch-agnostic mapping lookups (found via Greptile PR review)
 
 Two further correctness bugs surfaced by Greptile's automated PR review, after this
@@ -436,11 +448,12 @@ wires this into CI later.
 
 ### What this forecloses / accepted tradeoffs
 
-- No batch mapping-query endpoint exists yet. A very large diff (hundreds of changed
-  units) makes hundreds of sequential-in-groups-of-5 round trips to the coverage DB. This
-  is an accepted tradeoff for this phase; a batch endpoint is a natural follow-up if CI
-  latency on large diffs becomes a problem (tracked informally, no ticket yet — this ADR
-  should be revisited if one is filed).
+- ~~No batch mapping-query endpoint exists yet. A very large diff (hundreds of changed
+  units) makes hundreds of sequential-in-groups-of-5 round trips to the coverage DB.~~
+  **Resolved by MINCRM-637 (`pr-tia-9`)** — see the amendment on §5 above. The
+  direct-lookup step is now one batched service-layer call; the inheritance step (still
+  unreachable from the sole production caller) retains the original bounded-concurrency
+  fan-out.
 - The dependency-graph rule table (MINCRM-625) is a hand-maintained `RegExp` list. Adding
   a new config/resource file class requires a code change to `dependencyGraphService.ts`,
   not a data-driven config file. This mirrors the AC's own "explicitly a deterministic
