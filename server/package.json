@@ -23,7 +23,10 @@
     "seed:e2e-smtp": "tsx src/scripts/seed-e2e-smtp.ts",
     "create:e2e-db": "tsx src/scripts/create-e2e-db.ts",
     "reset:e2e-data": "tsx src/scripts/reset-e2e-data.ts",
-    "select:tests": "LOG_DESTINATION=stderr tsx src/scripts/select-tests.ts"
+    "select:tests": "LOG_DESTINATION=stderr tsx src/scripts/select-tests.ts",
+    "load:coverage-map": "LOG_DESTINATION=stderr tsx src/scripts/load-coverage-map.ts",
+    "dump:coverage-map": "LOG_DESTINATION=stderr tsx src/scripts/dump-coverage-map.ts",
+    "verify:test-attestation": "LOG_DESTINATION=stderr tsx src/scripts/verify-test-attestation.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.55.0",

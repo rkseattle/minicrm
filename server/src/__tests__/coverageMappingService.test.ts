@@ -15,8 +15,13 @@ import {
   findUnitsForTest,
   findTestsForUnitAcrossBranches,
   linkCoverageUnitsToTest,
+  exportAllCoverageTestLinks,
+  loadCoverageTestLinksForCommit,
 } from '../services/coverageMappingService.js';
-import type { CoverageTestLinkInput } from '../services/coverageMappingService.js';
+import type {
+  CoverageTestLinkInput,
+  CoverageTestLinkExportEntry,
+} from '../services/coverageMappingService.js';
 import coverageDb from '../coverageDb.js';
 
 const FILE_PREFIX = 'coverage-mapping-svc';
@@ -310,6 +315,99 @@ describe('coverageMappingService', () => {
         `${FILE_PREFIX}/nonexistent.ts`,
         'nonexistent#000',
       );
+      expect(found).toHaveLength(0);
+    });
+  });
+
+  // ── exportAllCoverageTestLinks / loadCoverageTestLinksForCommit (pr-tia-8) ──
+
+  describe('exportAllCoverageTestLinks + loadCoverageTestLinksForCommit', () => {
+    it('round-trips a link through export then load at a DIFFERENT commit_sha', async () => {
+      const sourceSha = `${FILE_PREFIX}-source-${randomUUID()}`;
+      const targetSha = `${FILE_PREFIX}-target-${randomUUID()}`;
+
+      await linkAndCommit(
+        sourceSha,
+        'spec:roundtrip.spec.ts::t',
+        'round trip test',
+        [makeLink({ hitCount: 3 })],
+        'tests/roundtrip.spec.ts',
+      );
+
+      const exported = await exportAllCoverageTestLinks();
+      const relevant = exported.filter((e) => e.filePath === `${FILE_PREFIX}/widget.ts`);
+      expect(relevant).toHaveLength(1);
+      expect(relevant[0]).toMatchObject({
+        unitKey: 'render#abc123',
+        testId: 'spec:roundtrip.spec.ts::t',
+        testName: 'round trip test',
+        testFile: 'tests/roundtrip.spec.ts',
+        hitCount: 3,
+      });
+
+      await loadCoverageTestLinksForCommit(targetSha, relevant);
+
+      const foundAtTarget = await findUnitsForTest(targetSha, 'spec:roundtrip.spec.ts::t');
+      expect(foundAtTarget).toHaveLength(1);
+      expect(foundAtTarget[0]).toMatchObject({
+        commitSha: targetSha,
+        testFile: 'tests/roundtrip.spec.ts',
+        hitCount: 3,
+      });
+
+      // Loading into targetSha must not touch the original sourceSha rows.
+      const stillAtSource = await findUnitsForTest(sourceSha, 'spec:roundtrip.spec.ts::t');
+      expect(stillAtSource).toHaveLength(1);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [targetSha]);
+    });
+
+    it('REPLACES (not merges) existing rows at the target commit_sha on a second load', async () => {
+      const targetSha = `${FILE_PREFIX}-replace-${randomUUID()}`;
+      const entryA: CoverageTestLinkExportEntry = {
+        unitKey: 'render#abc123',
+        branchId: '0:0',
+        filePath: `${FILE_PREFIX}/widget.ts`,
+        testId: 'spec:a.spec.ts::a',
+        testName: null,
+        testFile: null,
+        hitCount: 1,
+      };
+      const entryB: CoverageTestLinkExportEntry = {
+        ...entryA,
+        testId: 'spec:b.spec.ts::b',
+      };
+
+      await loadCoverageTestLinksForCommit(targetSha, [entryA]);
+      const afterFirstLoad = await findTestsForUnit(targetSha, 'render#abc123', '0:0');
+      expect(afterFirstLoad.map((l) => l.testId)).toEqual(['spec:a.spec.ts::a']);
+
+      // Second load with a DIFFERENT entry set for the same commit_sha —
+      // entryA's row must be gone, not merged alongside entryB's.
+      await loadCoverageTestLinksForCommit(targetSha, [entryB]);
+      const afterSecondLoad = await findTestsForUnit(targetSha, 'render#abc123', '0:0');
+      expect(afterSecondLoad.map((l) => l.testId)).toEqual(['spec:b.spec.ts::b']);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [targetSha]);
+    });
+
+    it('loading an empty entry list clears any existing rows at that commit_sha', async () => {
+      const targetSha = `${FILE_PREFIX}-empty-${randomUUID()}`;
+      await loadCoverageTestLinksForCommit(targetSha, [
+        {
+          unitKey: 'render#abc123',
+          branchId: null,
+          filePath: `${FILE_PREFIX}/widget.ts`,
+          testId: 'spec:a.spec.ts::a',
+          testName: null,
+          testFile: null,
+          hitCount: 1,
+        },
+      ]);
+
+      await loadCoverageTestLinksForCommit(targetSha, []);
+
+      const found = await findTestsForUnit(targetSha, 'render#abc123', null);
       expect(found).toHaveLength(0);
     });
   });

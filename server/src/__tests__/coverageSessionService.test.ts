@@ -21,6 +21,7 @@ import {
   listActiveCoverageSessions,
   findActiveCoverageSessionByCorrelationId,
   recordCoverageSessionDump,
+  findCoverageSessionDumpsByBuildSha,
   CoverageSessionNotFoundError,
   CoverageSessionConflictError,
   CoverageSessionEndedError,
@@ -386,5 +387,59 @@ describe('recordCoverageSessionDump', () => {
 
     expect(rowsA.rows.map((r) => r.dump_id)).toEqual([dumpA]);
     expect(rowsB.rows.map((r) => r.dump_id)).toEqual([dumpB]);
+  });
+});
+
+// ── findCoverageSessionDumpsByBuildSha ──────────────────────────────────────
+
+describe('findCoverageSessionDumpsByBuildSha', () => {
+  it('finds attributed dumps across BOTH active and ended sessions for the given SHA', async () => {
+    const sha = `attestation-${randomUUID()}`;
+    const active = await startCoverageSession({ ...BASE_SESSION_PARAMS, buildSha: sha }, actor);
+    const ended = await startCoverageSession({ ...BASE_SESSION_PARAMS, buildSha: sha }, actor);
+
+    await recordCoverageSessionDump(active.id, randomUUID(), active.correlationId, {
+      testId: 'spec:a.spec.ts::a',
+      testFile: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts',
+    });
+    await recordCoverageSessionDump(ended.id, randomUUID(), ended.correlationId, {
+      testId: 'spec:b.spec.ts::b',
+      testFile: 'qa/e2e/tests/apps/minicrm/functional/b.spec.ts',
+    });
+    await endCoverageSession(ended.id, ended.version);
+
+    const found = await findCoverageSessionDumpsByBuildSha(sha);
+
+    expect(found.map((d) => d.testId).sort()).toEqual(['spec:a.spec.ts::a', 'spec:b.spec.ts::b']);
+  });
+
+  it('excludes dumps with no test_id (session-level-only attribution)', async () => {
+    const sha = `attestation-${randomUUID()}`;
+    const session = await startCoverageSession({ ...BASE_SESSION_PARAMS, buildSha: sha }, actor);
+
+    await recordCoverageSessionDump(session.id, randomUUID(), session.correlationId);
+
+    const found = await findCoverageSessionDumpsByBuildSha(sha);
+
+    expect(found).toHaveLength(0);
+  });
+
+  it('does not return dumps attributed to a DIFFERENT build SHA', async () => {
+    const shaA = `attestation-a-${randomUUID()}`;
+    const shaB = `attestation-b-${randomUUID()}`;
+    const sessionA = await startCoverageSession({ ...BASE_SESSION_PARAMS, buildSha: shaA }, actor);
+
+    await recordCoverageSessionDump(sessionA.id, randomUUID(), sessionA.correlationId, {
+      testId: 'spec:a.spec.ts::a',
+    });
+
+    const found = await findCoverageSessionDumpsByBuildSha(shaB);
+
+    expect(found).toHaveLength(0);
+  });
+
+  it('returns an empty array when no session exists for the given SHA at all', async () => {
+    const found = await findCoverageSessionDumpsByBuildSha(`nonexistent-${randomUUID()}`);
+    expect(found).toEqual([]);
   });
 });

@@ -392,3 +392,52 @@ export async function findCoverageSessionDumpByDumpId(
     recordedAt: row.recorded_at.toISOString(),
   };
 }
+
+/**
+ * Finds every test-attributed dump recorded against a given build SHA,
+ * across every session (active or ended) tagged with that SHA — the
+ * "which tests ran, against which SHA" query MINCRM-642's attestation
+ * gate reconciles selection output against. Rows with a null test_id
+ * (session-level dumps with no single associated test, e.g. a manual
+ * check-in) are excluded — they carry no test identity to reconcile.
+ *
+ * Unlike findCoverageSessionDumpByDumpId (one dump) or
+ * listActiveCoverageSessions (active sessions only, paginated), this
+ * intentionally returns every attributed dump for the SHA regardless of
+ * session status — an ended session's dumps are exactly what the
+ * attestation gate needs to see once a run has finished.
+ */
+export async function findCoverageSessionDumpsByBuildSha(
+  buildSha: string,
+): Promise<CoverageSessionDump[]> {
+  const result = await coverageDb.query<{
+    id: string;
+    session_id: string;
+    dump_id: string;
+    correlation_id: string;
+    test_id: string | null;
+    test_name: string | null;
+    test_file: string | null;
+    attempt: number;
+    recorded_at: Date;
+  }>(
+    `SELECT d.id, d.session_id, d.dump_id, d.correlation_id, d.test_id, d.test_name, d.test_file, d.attempt, d.recorded_at
+     FROM coverage_session_dumps d
+     JOIN coverage_sessions s ON s.id = d.session_id
+     WHERE s.build_sha = $1 AND d.test_id IS NOT NULL
+     ORDER BY d.recorded_at`,
+    [buildSha],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    dumpId: row.dump_id,
+    correlationId: row.correlation_id,
+    testId: row.test_id,
+    testName: row.test_name,
+    testFile: row.test_file,
+    attempt: row.attempt,
+    recordedAt: row.recorded_at.toISOString(),
+  }));
+}
