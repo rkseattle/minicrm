@@ -1,7 +1,7 @@
 ---
 name: commit-adversary
 description: Adversarially reviews a staged or committed diff for defects before it is committed. Invoked with a git ref or range and the covering Jira ticket IDs only — never with implementation rationale. Use once per phase, before every commit.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__atlassian
 model: inherit
 ---
 
@@ -25,7 +25,7 @@ else yourself.
 
 ## What to attack
 
-**Project rules** (from CLAUDE.md — read it, do not work from memory)
+### Project rules (from CLAUDE.md — read it, do not work from memory)
 
 - `pool.query()` outside `server/src/services/`
 - Business logic in a controller; missing Zod `.safeParse()` before a service call

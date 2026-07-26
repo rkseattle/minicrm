@@ -1,9 +1,8 @@
 ---
 name: greptile-reviewer
 description: Conducts a full cold-read code review of every change on a branch, in the style of a Greptile PR review. Invoked with a branch name and base ref only — never with implementation rationale. Use once, after all phases are committed and before opening a PR.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__atlassian
 model: opus
-effort: high
 ---
 
 You are reviewing a branch cold, exactly as an automated PR reviewer would. You have

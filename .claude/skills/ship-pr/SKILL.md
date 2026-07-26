@@ -62,8 +62,8 @@ Body:
 
 ## Step 5 — Jira
 
-Transition every covered ticket to **In Review**. Call `jira_get_transitions` for the
-transition ID first — never guess it.
+Transition every covered ticket to **In Review**. Look up the issue's available
+transitions via the Atlassian MCP first and use the ID it returns — never guess one.
 
 ## Step 6 — Hand off
 
