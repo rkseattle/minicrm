@@ -98,7 +98,10 @@ export interface JUnitTestCase {
   /** classname attribute — the spec file path (relative to qa/e2e/tests/), Playwright's own convention. */
   classname: string;
   name: string;
+  /** True only when the testcase has NEITHER a <failure>/<error> child NOR a <skipped> child — a skipped test is not a pass, it never ran an assertion at all. */
   passed: boolean;
+  /** True for a <skipped> child element specifically (test.skip()/conditional skip) — distinct from passed=false-via-failure, since "this test never ran" and "this test ran and failed" are different, differently-actionable signals. */
+  skipped: boolean;
   /** True for a <failure> or <error> child element specifically (not <skipped>). */
   failureMessage: string | null;
 }
@@ -108,6 +111,8 @@ export interface JUnitParseResult {
   totalTests: number;
   totalFailures: number;
   totalErrors: number;
+  /** From <testsuites skipped="N">, cross-checked against the per-testcase <skipped> scan below — Playwright emits both. */
+  totalSkipped: number;
 }
 
 /** Decodes the small set of XML entities Playwright's own JUnit reporter emits (numeric character refs for control characters like newline/tab, plus the standard named entities) — not a general XML-entity decoder. */
@@ -127,7 +132,20 @@ function extractAttr(tagText: string, attrName: string): string | null {
   return match ? decodeXmlEntities(match[1]) : null;
 }
 
-/** Parses a Playwright JUnit XML file into a flat list of test cases with pass/fail status. */
+/**
+ * Parses a Playwright JUnit XML file into a flat list of test cases with
+ * pass/fail/skip status.
+ *
+ * A skipped testcase (test.skip(), a conditional skip, or a project-level
+ * skip) emits a <skipped/> child element directly inside <testcase> —
+ * confirmed against this repo's own Playwright JUnit reporter output
+ * (qa/e2e/playwright.config.ts's ['junit', ...] reporter), NOT documented
+ * precisely anywhere else. It carries no failure/error child and was
+ * previously (wrongly) treated as passed=true by this parser, since the
+ * only check was for <failure|error> — found via Greptile PR review. A
+ * skipped test proves nothing (no assertion ran), so it must not count as
+ * a pass for an ALL-PASS attestation gate.
+ */
 export function parseJUnitResults(xml: string): JUnitParseResult {
   const suitesMatch = /<testsuites\b([^>]*)>/.exec(xml);
   const totalTests = suitesMatch ? parseInt(extractAttr(suitesMatch[1], 'tests') ?? '0', 10) : 0;
@@ -135,6 +153,9 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
     ? parseInt(extractAttr(suitesMatch[1], 'failures') ?? '0', 10)
     : 0;
   const totalErrors = suitesMatch ? parseInt(extractAttr(suitesMatch[1], 'errors') ?? '0', 10) : 0;
+  const totalSkipped = suitesMatch
+    ? parseInt(extractAttr(suitesMatch[1], 'skipped') ?? '0', 10)
+    : 0;
 
   const testCases: JUnitTestCase[] = [];
   // Matches both self-closing <testcase .../> and <testcase ...>...</testcase>.
@@ -145,18 +166,32 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
     const body = match[2] ?? '';
     const name = extractAttr(attrs, 'name') ?? '';
     const classname = extractAttr(attrs, 'classname') ?? '';
-    const hasFailureOrError = /<(failure|error)\b/.test(body);
+    // Playwright's JUnit reporter embeds a testcase's own stdout/stderr and
+    // attachment references inside <system-out>/<system-err> CDATA blocks
+    // in the SAME <testcase> body being scanned here — a passing or failing
+    // test whose captured console output happens to contain the literal
+    // text "<skipped" or "<failure" (e.g. a log line describing a
+    // conditional skip in application code under test) would otherwise
+    // false-positive against the regexes below. Strip those blocks first so
+    // only the reporter's own structural child elements are considered.
+    const bodyWithoutCapturedOutput = body.replace(
+      /<system-(?:out|err)\b[^>]*>[\s\S]*?<\/system-(?:out|err)>/g,
+      '',
+    );
+    const hasFailureOrError = /<(failure|error)\b/.test(bodyWithoutCapturedOutput);
+    const hasSkipped = /<skipped\b/.test(bodyWithoutCapturedOutput);
     const failureMatch = /<(?:failure|error)\b[^>]*\smessage="((?:[^"\\]|\\.)*)"/.exec(body);
     const failureMessage = failureMatch ? decodeXmlEntities(failureMatch[1]) : null;
     testCases.push({
       classname,
       name,
-      passed: !hasFailureOrError,
+      passed: !hasFailureOrError && !hasSkipped,
+      skipped: hasSkipped,
       failureMessage: hasFailureOrError ? (failureMessage ?? '(no message)') : null,
     });
   }
 
-  return { testCases, totalTests, totalFailures, totalErrors };
+  return { testCases, totalTests, totalFailures, totalErrors, totalSkipped };
 }
 
 // ── Attestation result ───────────────────────────────────────────────────────
@@ -165,6 +200,7 @@ export type AttestationFailureReason =
   | 'results-file-missing'
   | 'results-file-stale'
   | 'test-failures'
+  | 'skipped-tests'
   | 'no-session-attribution'
   | 'missing-required-tests';
 
@@ -173,6 +209,8 @@ export interface AttestationResult {
   reasons: AttestationFailureReason[];
   totalTests: number;
   failedTests: Array<{ classname: string; name: string; message: string | null }>;
+  /** Testcases with a <skipped> child — never ran an assertion, so they cannot satisfy an ALL-PASS gate even though they carry no failure/error of their own. */
+  skippedTests: Array<{ classname: string; name: string }>;
   /** Populated only when a --selection file was given: required-but-not-run tests, by testFile. */
   missingRequiredFiles: string[];
   ranFileCount: number;
@@ -208,6 +246,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
       reasons: ['results-file-missing'],
       totalTests: 0,
       failedTests: [],
+      skippedTests: [],
       missingRequiredFiles: [],
       ranFileCount: 0,
     };
@@ -222,11 +261,23 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   const xml = readFileSync(args.resultsPath, 'utf-8');
   const parsed = parseJUnitResults(xml);
   const failedTests = parsed.testCases
-    .filter((t) => !t.passed)
+    .filter((t) => !t.passed && !t.skipped)
     .map((t) => ({ classname: t.classname, name: t.name, message: t.failureMessage }));
+  const skippedTests = parsed.testCases
+    .filter((t) => t.skipped)
+    .map((t) => ({ classname: t.classname, name: t.name }));
 
   if (failedTests.length > 0 || parsed.totalFailures > 0 || parsed.totalErrors > 0) {
     reasons.push('test-failures');
+  }
+  // A skipped test never ran an assertion — it is not a failure, but it
+  // also cannot satisfy an ALL-PASS attestation gate (Greptile PR review:
+  // the parser previously treated <skipped> testcases as passed=true,
+  // silently letting record mode export/commit a coverage map derived
+  // from an incomplete run). Reported as a reason distinct from
+  // 'test-failures' so callers can tell "broke" from "never ran" apart.
+  if (skippedTests.length > 0 || parsed.totalSkipped > 0) {
+    reasons.push('skipped-tests');
   }
 
   // Session attribution (MINCRM-612) is the SHA-binding mechanism — the
@@ -253,6 +304,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     reasons,
     totalTests: parsed.totalTests,
     failedTests,
+    skippedTests,
     missingRequiredFiles,
     ranFileCount: ranFiles.size,
   };
@@ -272,6 +324,12 @@ function formatFailureOutput(result: AttestationResult): string {
     lines.push(`${result.failedTests.length} test(s) failed:`);
     for (const t of result.failedTests) {
       lines.push(`  - ${t.classname} :: ${t.name}${t.message ? ` — ${t.message}` : ''}`);
+    }
+  }
+  if (result.reasons.includes('skipped-tests')) {
+    lines.push(`${result.skippedTests.length} test(s) skipped (never ran an assertion):`);
+    for (const t of result.skippedTests) {
+      lines.push(`  - ${t.classname} :: ${t.name}`);
     }
   }
   if (result.reasons.includes('no-session-attribution')) {
