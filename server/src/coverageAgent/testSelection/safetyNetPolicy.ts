@@ -11,10 +11,12 @@
  *    widening in these cases, since MINCRM-626's own framing ("a missed
  *    test never becomes a missed regression") calls for the safe default,
  *    not a narrower one.
- *  - Configurable thresholds (as named constants, overridable via env var)
- *    for the periodic-full-run recalibration case (nightly/pre-merge),
- *    where a caller wants the safety net to always fire regardless of
- *    what a specific diff looks like.
+ *  - Configurable thresholds, resolved by the caller from
+ *    coveragePolicyConfig.ts (MINCRM-637) and passed in explicitly — this
+ *    module itself no longer reads process.env, matching the repo's
+ *    "resolve once at boot/script-start, pass the result down" convention
+ *    (coverageConfig.ts's resolveCoverageConfig) rather than reading env
+ *    vars ad hoc mid-selection.
  *
  * This module has NO knowledge of the mapping query API, git diffs, or the
  * dependency rule table — it only combines their already-computed outputs,
@@ -46,12 +48,6 @@ export interface FinalSelectionResult {
   fallbackReasons: FullSuiteFallbackReason[];
 }
 
-/** A confidence score below this floor is treated as untrustworthy — the unit "matched" but the match itself is stale enough to not be relied on alone. */
-const DEFAULT_MIN_CONFIDENCE_THRESHOLD = Number(process.env.TIA_MIN_CONFIDENCE_THRESHOLD ?? '0.3');
-
-/** Fraction of a diff's changed units allowed to be unmapped before the whole selection is considered too unreliable to trust in targeted mode. */
-const DEFAULT_MAX_UNMAPPED_RATIO = Number(process.env.TIA_MAX_UNMAPPED_RATIO ?? '0.5');
-
 export interface SafetyNetPolicyOptions {
   /** Always-run baseline tests (smoke/critical paths) — unioned in unconditionally regardless of mode. */
   baselineTests: readonly FinalSelectedTest[];
@@ -61,8 +57,10 @@ export interface SafetyNetPolicyOptions {
   dependencyWideningResults: readonly DependencyWideningResult[];
   /** Forces full-suite mode unconditionally — the periodic/nightly recalibration case, independent of this specific diff's own signals. */
   forceFullSuite?: boolean;
-  minConfidenceThreshold?: number;
-  maxUnmappedRatio?: number;
+  /** A confidence score below this floor is treated as untrustworthy — the unit "matched" but the match itself is stale enough to not be relied on alone. Resolve via coveragePolicyConfig.ts; no module-level default. */
+  minConfidenceThreshold: number;
+  /** Fraction of a diff's changed units allowed to be unmapped before the whole selection is considered too unreliable to trust in targeted mode. Resolve via coveragePolicyConfig.ts; no module-level default. */
+  maxUnmappedRatio: number;
 }
 
 function toFinalSelectedTest(test: SelectedTest): FinalSelectedTest {
@@ -92,8 +90,7 @@ export function applySafetyNetPolicy(
   selectedTests: readonly SelectedTest[],
   options: SafetyNetPolicyOptions,
 ): FinalSelectionResult {
-  const minConfidenceThreshold = options.minConfidenceThreshold ?? DEFAULT_MIN_CONFIDENCE_THRESHOLD;
-  const maxUnmappedRatio = options.maxUnmappedRatio ?? DEFAULT_MAX_UNMAPPED_RATIO;
+  const { minConfidenceThreshold, maxUnmappedRatio } = options;
 
   const fallbackReasons: FullSuiteFallbackReason[] = [];
 

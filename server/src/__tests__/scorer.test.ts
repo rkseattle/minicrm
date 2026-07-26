@@ -108,6 +108,10 @@ describe('TestScorer safety-net invariant', () => {
       totalChangedUnitCount: 1,
       unmappedChanges: [],
       dependencyWideningResults: [],
+      // Matches coveragePolicyConfig.ts's own defaults — safetyNetPolicy.ts
+      // no longer has module-level defaults of its own (MINCRM-637).
+      minConfidenceThreshold: 0.3,
+      maxUnmappedRatio: 0.5,
     });
 
     expect(finalResult.mode).toBe('targeted');

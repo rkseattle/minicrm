@@ -375,22 +375,71 @@ export async function updateCoverageUnitConfidence(
   );
 }
 
+/** Result of a retention prune: rows removed from each table. */
+export interface PruneCoverageUnitsResult {
+  /** coverage_units rows deleted for being older than the retention window. */
+  prunedUnitCount: number;
+  /**
+   * coverage_test_links rows deleted because they no longer had a matching
+   * coverage_units row after the prune above. coverage_test_links has no
+   * FK to coverage_units (cross-database FKs are impossible in PostgreSQL,
+   * and both tables live in the same coverage database but were never
+   * given one) — pruning coverage_units alone would leave these orphaned,
+   * which silently weakens the safety net: MAPPING_RESULT_SELECT's LEFT
+   * JOIN would then return confidence_score: null for an orphaned link,
+   * and safetyNetPolicy.hasLowConfidenceMatch treats null as "no signal to
+   * check" (`confidenceScore !== null && confidenceScore < threshold`)
+   * rather than "below threshold" — the exact full-suite fallback
+   * retention pruning must not weaken (MINCRM-637).
+   */
+  prunedLinkCount: number;
+}
+
 /**
  * Prunes coverage_units rows not touched in more than `retentionDays` days
- * (MINCRM-616's configurable retention policy). Not scheduled by this
- * module — callable on demand (e.g. from a future CI/CD job, pr-tia-7) or
- * directly by an operator; wiring an automatic schedule is out of this
- * epic's scope (Coverage Data Pipeline & Storage) and belongs to the CI/CD
- * Integration epic (MINCRM-632).
+ * (MINCRM-616's configurable retention policy), then deletes any
+ * coverage_test_links rows left orphaned by that prune, in the same
+ * transaction. Scheduled daily via coverageRetentionScheduler.ts
+ * (MINCRM-637); also callable on demand by an operator.
  */
-export async function pruneCoverageUnits(retentionDays: number): Promise<number> {
-  const result = await coverageDb.query(
-    // Multiplying an interval literal by the parameter (rather than string
-    // concatenation into an ::interval cast) lets PostgreSQL handle the
-    // numeric coercion directly — no risk of producing an invalid interval
-    // string for an unexpected input.
-    `DELETE FROM coverage_units WHERE last_seen_at < now() - ($1 * interval '1 day')`,
-    [retentionDays],
-  );
-  return result.rowCount ?? 0;
+export async function pruneCoverageUnits(retentionDays: number): Promise<PruneCoverageUnitsResult> {
+  const client: PoolClient = await coverageDb.connect();
+  try {
+    await client.query('BEGIN');
+
+    const prunedUnits = await client.query(
+      // Multiplying an interval literal by the parameter (rather than
+      // string concatenation into an ::interval cast) lets PostgreSQL
+      // handle the numeric coercion directly — no risk of producing an
+      // invalid interval string for an unexpected input.
+      `DELETE FROM coverage_units WHERE last_seen_at < now() - ($1 * interval '1 day')`,
+      [retentionDays],
+    );
+
+    // COALESCE(branch_id, '') matches coverage_units_identity_idx and
+    // coverage_test_links_identity_idx's own dedup convention — NULL <>
+    // NULL in SQL, so a plain equality would never match two NULL
+    // branch_id rows for the same otherwise-identical identity.
+    const prunedLinks = await client.query(
+      `DELETE FROM coverage_test_links l
+       WHERE NOT EXISTS (
+         SELECT 1 FROM coverage_units u
+         WHERE u.commit_sha = l.commit_sha
+           AND u.file_path = l.file_path
+           AND u.unit_key = l.unit_key
+           AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
+       )`,
+    );
+
+    await client.query('COMMIT');
+    return {
+      prunedUnitCount: prunedUnits.rowCount ?? 0,
+      prunedLinkCount: prunedLinks.rowCount ?? 0,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }

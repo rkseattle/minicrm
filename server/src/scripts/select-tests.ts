@@ -60,6 +60,7 @@ import {
 } from '../coverageAgent/testSelection/safetyNetPolicy.js';
 import { findUnitsForTest } from '../services/coverageMappingService.js';
 import coverageDb from '../coverageDb.js';
+import { resolveCoveragePolicy } from '../coverageAgent/coveragePolicyConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -300,6 +301,11 @@ export async function selectTests(
     reason: 'baseline',
   }));
 
+  // Resolved once per script run, not per call — matches
+  // resolveCoverageConfig's own "resolve once, pass down" convention
+  // (coveragePolicyConfig.ts).
+  const policy = resolveCoveragePolicy();
+
   let selectionResult: FinalSelectionResult;
   if (args.forceFullSuite) {
     selectionResult = applySafetyNetPolicy([], {
@@ -308,6 +314,8 @@ export async function selectTests(
       unmappedChanges: [],
       dependencyWideningResults: [],
       forceFullSuite: true,
+      minConfidenceThreshold: policy.minConfidenceThreshold,
+      maxUnmappedRatio: policy.maxUnmappedRatio,
     });
   } else {
     const { selectedTests, unmappedChanges } = await selectTestsForChangedUnits(
@@ -319,6 +327,8 @@ export async function selectTests(
       totalChangedUnitCount: changedUnits.length,
       unmappedChanges,
       dependencyWideningResults,
+      minConfidenceThreshold: policy.minConfidenceThreshold,
+      maxUnmappedRatio: policy.maxUnmappedRatio,
     });
   }
 

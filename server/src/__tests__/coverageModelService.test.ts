@@ -55,6 +55,9 @@ beforeEach(async () => {
   await coverageDb.query('DELETE FROM coverage_units WHERE file_path LIKE $1', [
     `${FILE_PREFIX}/%`,
   ]);
+  await coverageDb.query('DELETE FROM coverage_test_links WHERE file_path LIKE $1', [
+    `${FILE_PREFIX}/%`,
+  ]);
   ingestedDumpIdsThisTest.length = 0;
 });
 
@@ -281,8 +284,8 @@ describe('coverageModelService', () => {
         [commitSha],
       );
 
-      const deletedCount = await pruneCoverageUnits(30);
-      expect(deletedCount).toBeGreaterThanOrEqual(1);
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedUnitCount).toBeGreaterThanOrEqual(1);
 
       const stored = await findCoverageUnitsByCommitSha(commitSha);
       expect(stored).toHaveLength(0);
@@ -296,6 +299,73 @@ describe('coverageModelService', () => {
 
       const stored = await findCoverageUnitsByCommitSha(commitSha);
       expect(stored).toHaveLength(1);
+    });
+
+    it('deletes coverage_test_links rows orphaned by the coverage_units prune, in the same transaction (MINCRM-637)', async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unit = makeUnit();
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
+      await coverageDb.query(
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
+         VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+        [
+          commitSha,
+          unit.unitKey,
+          unit.branchId,
+          unit.filePath,
+          'spec:widget.spec.ts::renders',
+          'renders',
+        ],
+      );
+      await coverageDb.query(
+        `UPDATE coverage_units SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
+        [commitSha],
+      );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedUnitCount).toBeGreaterThanOrEqual(1);
+      expect(result.prunedLinkCount).toBeGreaterThanOrEqual(1);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(0);
+    });
+
+    it("does not touch a still-linked (non-pruned) unit's coverage_units or coverage_test_links row", async () => {
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unit = makeUnit();
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
+      await coverageDb.query(
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
+         VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+        [
+          commitSha,
+          unit.unitKey,
+          unit.branchId,
+          unit.filePath,
+          'spec:widget.spec.ts::renders',
+          'renders',
+        ],
+      );
+      // last_seen_at deliberately left recent — this unit is NOT within the
+      // retention window and must survive the prune untouched, so its
+      // coverage_test_links row is never a NOT EXISTS orphan in the first
+      // place (see coverageMappingService.test.ts for the LEFT JOIN /
+      // confidenceScore: null behavior this orphan-cleanup exists to
+      // prevent for units that DO get pruned).
+
+      await pruneCoverageUnits(30);
+
+      const stored = await findCoverageUnitsByCommitSha(commitSha);
+      expect(stored).toHaveLength(1);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(1);
     });
   });
 

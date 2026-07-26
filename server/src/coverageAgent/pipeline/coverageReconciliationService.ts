@@ -27,10 +27,16 @@
  * with array arguments (never a shell string), mirroring the existing
  * precedent in coverageConfig.ts's resolveCommitSha.
  *
- * Callable on demand only, not scheduled — mirrors
- * coverageModelService.pruneCoverageUnits' own "retention is a callable
- * function, not a cron job" precedent. Wiring an automatic build-time
- * trigger is the CI/CD Integration epic's concern (MINCRM-632, `pr-tia-7`).
+ * Callable on demand only, not scheduled. Note this is no longer the same
+ * precedent coverageModelService.pruneCoverageUnits sets — that function is
+ * now cron-scheduled (coverageRetentionScheduler.ts, MINCRM-637), since
+ * retention pruning genuinely has no meaningful judgment call to make on a
+ * fixed daily cadence. Reconciliation is different: it re-validates against
+ * the CURRENT source tree and git history for a caller-supplied commit,
+ * which only makes sense at a meaningful build-time boundary (e.g. a CI job
+ * for a specific commit), not on a wall-clock schedule with no commit
+ * context of its own — wiring it into such a trigger remains the CI/CD
+ * Integration epic's concern (MINCRM-632, `pr-tia-7`).
  */
 
 import { access } from 'fs/promises';
