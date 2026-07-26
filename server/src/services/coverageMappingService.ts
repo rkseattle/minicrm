@@ -25,6 +25,17 @@ const TEST_LINK_INSERT_COLUMN_COUNT = 6;
 // parameters per statement at 65535.
 const MAX_LINKS_PER_INSERT_BATCH = Math.floor(65535 / TEST_LINK_INSERT_COLUMN_COUNT);
 
+// findTestsForUnitsAcrossBranches' own chunk size (MINCRM-637) — NOT a
+// bind-parameter-ceiling concern like MAX_LINKS_PER_INSERT_BATCH above
+// (a `unit_key = ANY($2)` array is one bind parameter regardless of the
+// array's own length). The actual constraint is result-set size: a single
+// unit_key can fan out to many coverage_test_links rows (every test that
+// ever covered it, across every branch), so the row count returned is not
+// proportional to the number of input units alone. Chunking bounds one
+// query's result set and round-trip cost for an arbitrarily large diff,
+// rather than issuing a single unbounded query for hundreds of changed units.
+const MAX_UNITS_PER_MAPPING_LOOKUP_BATCH = 200;
+
 /** One unit's hit attributed to a specific test, for linking at ingestion time. */
 export interface CoverageTestLinkInput {
   unitKey: string;
@@ -352,6 +363,123 @@ export async function findTestsForUnitAcrossBranches(
     [commitSha, filePath, unitKey],
   );
   return result.rows.map(toCoverageMappingResult);
+}
+
+/** One `(filePath, unitKey)` pair's batched lookup result, always present in the returned array even when no matches exist for that pair. */
+export interface BatchedCoverageMappingResult {
+  filePath: string;
+  unitKey: string;
+  matches: CoverageMappingResult[];
+}
+
+/**
+ * `JSON.stringify` key for a (filePath, unitKey) pair — same non-delimiter-
+ * collision rationale as collapseDuplicateIdentities' own identityKey above
+ * (a plain string join lets two distinct pairs collide when a delimiter
+ * character is also a field's own content). Exported as the single shared
+ * implementation of this key shape: testSelectionService.ts's own
+ * enclosingUnitMapKey used to be a byte-identical, independently-maintained
+ * copy of this same function (found during MINCRM-637 commit review) —
+ * that module already imports from this one, so this is the correct
+ * direction to share it in, not the reverse.
+ */
+export function unitPairKey(filePath: string, unitKey: string): string {
+  return JSON.stringify([filePath, unitKey]);
+}
+
+/**
+ * Batched form of findTestsForUnitAcrossBranches (MINCRM-637) — resolves
+ * every (filePath, unitKey) pair in one call instead of testSelectionService's
+ * former per-unit fan-out (up to `ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)`
+ * sequential round trips for N changed units). Written for
+ * testSelectionService's direct-lookup step, the only production caller —
+ * select-tests.ts (the CI/local test-selection CLI) invokes it in-process,
+ * never over HTTP, so this is a service-layer batch function, not a new
+ * route (see docs/plans/MINCRM-636.md's Rejected alternatives for why an
+ * earlier draft proposing an HTTP endpoint here was wrong).
+ *
+ * Drives off coverage_test_links_unit_idx (commit_sha, unit_key) — the
+ * only existing index that can serve a multi-unit lookup on this table.
+ * No index covers file_path for coverage_test_links, so a query filtering
+ * on file_path too could not use a better index than this one regardless;
+ * `file_path` is therefore filtered in application code, exactly mirroring
+ * the singular findTestsForUnitAcrossBranches' own reliance on
+ * (commit_sha, unit_key) selectivity ahead of its file_path equality
+ * check — this is the same tradeoff, just applied across a set of
+ * unit_keys in one query instead of one unit_key per query.
+ *
+ * Chunked at MAX_UNITS_PER_MAPPING_LOOKUP_BATCH — see that constant's own
+ * docblock for why (result-set size, not the bind-parameter ceiling).
+ *
+ * Deduplicates input pairs before querying (two changed units can resolve
+ * to the same (filePath, unitKey) — e.g. an anonymous callback appearing
+ * more than once in a diff) so the same pair is never queried twice within
+ * one batch. Every result group is ordered `ORDER BY unit_key, branch_id,
+ * test_id` — deterministic, and matching the singular function's own
+ * `ORDER BY l.branch_id, l.test_id` once grouped back down to a single
+ * unit_key. This matters because testSelectionService's dedupeByTestId
+ * primarily tie-breaks by `reason` (direct-hit over inherited) and then by
+ * `confidenceScore`, but on a genuine tie (same reason, same confidence —
+ * e.g. two links to the same test at the same score) it keeps whichever
+ * occurrence it saw FIRST, silently falling through to array order. A
+ * non-deterministic result order for a genuine tie would make selection
+ * output non-deterministic in exactly that (rare, but real) case; this
+ * function's stable `ORDER BY` closes that gap rather than leaving it to
+ * whatever order PostgreSQL happens to return unordered rows in.
+ */
+export async function findTestsForUnitsAcrossBranches(
+  commitSha: string,
+  units: readonly { filePath: string; unitKey: string }[],
+): Promise<BatchedCoverageMappingResult[]> {
+  const uniquePairsByKey = new Map<string, { filePath: string; unitKey: string }>();
+  for (const unit of units) {
+    uniquePairsByKey.set(unitPairKey(unit.filePath, unit.unitKey), unit);
+  }
+  const uniquePairs = Array.from(uniquePairsByKey.values());
+
+  const matchesByPairKey = new Map<string, CoverageMappingResult[]>();
+  for (const pair of uniquePairs) {
+    matchesByPairKey.set(unitPairKey(pair.filePath, pair.unitKey), []);
+  }
+
+  for (let start = 0; start < uniquePairs.length; start += MAX_UNITS_PER_MAPPING_LOOKUP_BATCH) {
+    const chunk = uniquePairs.slice(start, start + MAX_UNITS_PER_MAPPING_LOOKUP_BATCH);
+    const unitKeys = chunk.map((pair) => pair.unitKey);
+
+    const result = await coverageDb.query<CoverageMappingResultRow>(
+      `${MAPPING_RESULT_SELECT}
+       WHERE l.commit_sha = $1 AND l.unit_key = ANY($2)
+       ORDER BY l.unit_key, l.branch_id, l.test_id`,
+      [commitSha, unitKeys],
+    );
+
+    // unit_key alone is not globally unique across files (see
+    // findTestsForUnitAcrossBranches' own docblock) — a row is only a real
+    // match for a requested pair when its file_path ALSO matches that
+    // pair's file_path, not merely its unit_key. Rows for a coincidentally-
+    // identical unit_key in an unrequested file are discarded here, not
+    // misattributed to the requested pair.
+    const chunkPairKeysByUnitKey = new Map<string, Set<string>>();
+    for (const pair of chunk) {
+      const existing = chunkPairKeysByUnitKey.get(pair.unitKey);
+      const filePathSet = existing ?? new Set<string>();
+      filePathSet.add(pair.filePath);
+      chunkPairKeysByUnitKey.set(pair.unitKey, filePathSet);
+    }
+
+    for (const row of result.rows) {
+      const requestedFilePaths = chunkPairKeysByUnitKey.get(row.unit_key);
+      if (!requestedFilePaths?.has(row.file_path)) continue;
+      const key = unitPairKey(row.file_path, row.unit_key);
+      matchesByPairKey.get(key)?.push(toCoverageMappingResult(row));
+    }
+  }
+
+  return uniquePairs.map((pair) => ({
+    filePath: pair.filePath,
+    unitKey: pair.unitKey,
+    matches: matchesByPairKey.get(unitPairKey(pair.filePath, pair.unitKey)) ?? [],
+  }));
 }
 
 /**

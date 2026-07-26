@@ -154,6 +154,62 @@ describe('selectTestsForChangedUnits', () => {
     ]);
   });
 
+  it('correctly routes a mix of direct-hit, inherited, and unmapped units within the SAME call (MINCRM-637 — the batched direct-lookup step and the still-per-unit inheritance step must each see only the units that actually need them)', async () => {
+    const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+    const directFile = `${FILE_PREFIX}/direct.ts`;
+    const enclosingFile = `${FILE_PREFIX}/enclosing.ts`;
+
+    await linkAndCommit(commitSha, 'spec:direct.spec.ts::t', 't', [
+      { unitKey: 'direct#d1', branchId: null, filePath: directFile, hitCount: 1 },
+    ]);
+    await linkAndCommit(commitSha, 'spec:enclosing.spec.ts::t', 't', [
+      { unitKey: 'enclosingParent#p1', branchId: null, filePath: enclosingFile, hitCount: 1 },
+    ]);
+
+    const directUnit = makeChangedUnit({ filePath: directFile, unitKey: 'direct#d1' });
+    const inheritedUnit = makeChangedUnit({
+      filePath: enclosingFile,
+      unitKey: 'newChild#c1',
+      changeKind: 'new',
+    });
+    const unmappedUnit = makeChangedUnit({
+      filePath: `${FILE_PREFIX}/orphan.ts`,
+      unitKey: 'orphan#o1',
+      changeKind: 'new',
+    });
+    const enclosingMap = new Map([
+      [
+        enclosingUnitMapKey(enclosingFile, 'newChild#c1'),
+        { filePath: enclosingFile, unitKey: 'enclosingParent#p1' },
+      ],
+    ]);
+
+    const result = await selectTestsForChangedUnits(
+      commitSha,
+      [directUnit, inheritedUnit, unmappedUnit],
+      enclosingMap,
+    );
+
+    expect(result.selectedTests).toHaveLength(2);
+    expect(result.selectedTests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          testId: 'spec:direct.spec.ts::t',
+          reason: 'direct-hit',
+          sourceUnitKey: 'direct#d1',
+        }),
+        expect.objectContaining({
+          testId: 'spec:enclosing.spec.ts::t',
+          reason: 'inherited',
+          sourceUnitKey: 'newChild#c1',
+        }),
+      ]),
+    );
+    expect(result.unmappedChanges).toEqual([
+      { filePath: `${FILE_PREFIX}/orphan.ts`, unitKey: 'orphan#o1' },
+    ]);
+  });
+
   it('deduplicates a test reached from two different changed units, keeping direct-hit over inherited', async () => {
     const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
     await linkAndCommit(commitSha, 'spec:shared.spec.ts::covers both', 'covers both', [

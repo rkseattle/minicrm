@@ -45,6 +45,11 @@ describe('resolveCoveragePolicy', () => {
     expect(resolveCoveragePolicy().retentionDays).toBe(30);
   });
 
+  it('falls back to the default for a non-integer COVERAGE_RETENTION_DAYS — "days a row survives" implies a whole number, and a fraction would silently flow into a fractional-day SQL interval', () => {
+    process.env.COVERAGE_RETENTION_DAYS = '30.7';
+    expect(resolveCoveragePolicy().retentionDays).toBe(30);
+  });
+
   it('defaults minConfidenceThreshold to 0.3 when TIA_MIN_CONFIDENCE_THRESHOLD is unset', () => {
     expect(resolveCoveragePolicy().minConfidenceThreshold).toBe(0.3);
   });

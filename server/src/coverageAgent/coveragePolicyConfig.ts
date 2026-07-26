@@ -53,7 +53,10 @@ function resolveRetentionDays(): number {
   const raw = process.env.COVERAGE_RETENTION_DAYS;
   if (!raw) return DEFAULT_RETENTION_DAYS;
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_RETENTION_DAYS;
+  // Integer only — "days a row survives" implies a whole number, and a
+  // fractional value would silently flow into pruneCoverageUnits' own
+  // `$1 * interval '1 day'` SQL expression as a fractional-day interval.
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_RETENTION_DAYS;
 }
 
 /**

@@ -715,18 +715,26 @@ entirely), `in-line` (same function, changed body hash — an ordinary edit), or
 (same function, UNCHANGED body hash — the diff touched this function's range but its own
 logic didn't change, signaling the real edit is likely a sibling/structural move).
 
-### Test selection algorithm (MINCRM-624)
+### Test selection algorithm (MINCRM-624, batched lookups MINCRM-637)
 
-`testSelectionService.selectTestsForChangedUnits` resolves each changed unit against
-`coverageMappingService.findTestsForUnitWithConfidence`. No batch mapping-query endpoint
-exists, so lookups fan out with bounded concurrency (`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`)
-rather than an unbounded `Promise.all` — `coverageDb`'s own pool caps at 10 connections
-(see `coverageDb.ts`). A changed unit with no direct mapping (new code, or a genuinely
-unmapped unit) inherits candidates from a caller-supplied enclosing/calling unit key
-instead of being dropped; a unit with no mapping even after inheritance is surfaced via
-`unmappedChanges` for the safety net to widen around. Output is deduplicated by `testId`
-(a `direct-hit` occurrence is kept over an `inherited` one for the same test) before being
-handed to the scorer for ranking.
+`testSelectionService.selectTestsForChangedUnits` resolves every changed unit's direct
+mapping in ONE batched call —
+`coverageMappingService.findTestsForUnitsAcrossBranches` (MINCRM-637) — instead of the
+per-unit fan-out this originally shipped with. This collapsed what was up to
+`ceil(N/MAX_CONCURRENT_MAPPING_LOOKUPS)` sequential round trips into as many queries as
+the batch function's own chunking needs (typically one, for any diff under its
+per-batch chunk size — see `findTestsForUnitsAcrossBranches`' own docblock). A changed
+unit with no direct mapping (new code, or a genuinely unmapped unit) falls through to a
+SEPARATE, still-per-unit inheritance step — bounded concurrency
+(`MAX_CONCURRENT_MAPPING_LOOKUPS = 5`) against `coverageDb`'s 10-connection pool cap
+(see `coverageDb.ts`) — inheriting candidates from a caller-supplied enclosing/calling
+unit key instead of being dropped; a unit with no mapping even after inheritance is
+surfaced via `unmappedChanges` for the safety net to widen around. Batching the
+inheritance step too was considered and rejected: `select-tests.ts`, the only
+production caller, never supplies `enclosingUnitsByUnitKey`, so that path is
+unreachable in production today. Output is deduplicated by `testId` (a `direct-hit`
+occurrence is kept over an `inherited` one for the same test) before being handed to
+the scorer for ranking.
 
 ### Config/infra dependency graph (MINCRM-625)
 
@@ -779,8 +787,6 @@ Not built here — later `pr-tia-*` phases:
   the actual ML ranker is `pr-tia-10`, MINCRM-638-640)
 - Wiring test selection's output into CI (`gen-shards.ts`, the CI plugin/PR gating) —
   `pr-tia-8`, MINCRM-633/634/660
-- A batch mapping-query endpoint (test selection currently fans out single-unit lookups
-  with bounded concurrency instead — see MINCRM-624 above)
 - "Tests skipped" / "CI time saved" TIA value metrics — `/tia-metrics` (MINCRM-631,
   see [Reporting & Gap Analysis](#reporting--gap-analysis-mincrm-629630631-pr-tia-7))
   reports coverage trend as a proxy today; the real figures need CI's own
