@@ -364,7 +364,14 @@ export async function findTestsForUnitAcrossBranches(
      ORDER BY l.branch_id, l.test_id`,
     [commitSha, filePath, unitKey],
   );
-  logger.info(
+  // debug, not info — this is testSelectionService's per-unit inheritance
+  // fan-out (mapWithConcurrencyLimit calls this once per changed unit
+  // needing inheritance lookup), unlike the batched
+  // findTestsForUnitsAcrossBranches below which runs once per selection
+  // run. Logging every call at info would put one line per changed unit on
+  // this hot path, making the log itself a measurable share of the latency
+  // it's meant to report (found via Greptile branch review).
+  logger.debug(
     {
       commitSha,
       filePath,
