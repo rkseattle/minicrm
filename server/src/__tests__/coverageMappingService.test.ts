@@ -9,6 +9,7 @@
  */
 
 import 'dotenv/config';
+import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import {
   findTestsForUnit,
@@ -24,6 +25,7 @@ import type {
   CoverageTestLinkExportEntry,
 } from '../services/coverageMappingService.js';
 import coverageDb from '../coverageDb.js';
+import logger from '../logger.js';
 
 const FILE_PREFIX = 'coverage-mapping-svc';
 
@@ -318,6 +320,27 @@ describe('coverageMappingService', () => {
       );
       expect(found).toHaveLength(0);
     });
+
+    it('logs commitSha, resultCount, and durationMs (MINCRM-637)', async () => {
+      const infoSpy = vi.spyOn(logger, 'info');
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/logging.ts`;
+      const unitKey = 'render#logtest1';
+      await linkAndCommit(commitSha, 'spec:logging.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0', filePath }),
+      ]);
+
+      await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
+
+      const call = infoSpy.mock.calls.find(
+        ([, message]) => message === 'coverageMappingService: findTestsForUnitAcrossBranches',
+      );
+      expect(call).toBeDefined();
+      const [fields] = call ?? [];
+      expect(fields).toMatchObject({ commitSha, filePath, unitKey, resultCount: 1 });
+      expect(typeof (fields as { durationMs?: unknown })?.durationMs).toBe('number');
+      infoSpy.mockRestore();
+    });
   });
 
   describe('findTestsForUnitsAcrossBranches (batched, MINCRM-637)', () => {
@@ -470,6 +493,36 @@ describe('coverageMappingService', () => {
       expect(batched[0].matches.map((m) => m.testId).sort()).toEqual(
         singular.map((m) => m.testId).sort(),
       );
+    });
+
+    it('logs commitSha, input/unique counts, chunkCount, totalMatchCount, and durationMs (MINCRM-637)', async () => {
+      const infoSpy = vi.spyOn(logger, 'info');
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const filePath = `${FILE_PREFIX}/batch-logging.ts`;
+      const unitKey = 'render#batchlogtest1';
+      await linkAndCommit(commitSha, 'spec:batch-logging.spec.ts::t', 't', [
+        makeLink({ unitKey, branchId: '0:0', filePath }),
+      ]);
+
+      await findTestsForUnitsAcrossBranches(commitSha, [
+        { filePath, unitKey },
+        { filePath, unitKey }, // deliberate duplicate — inputUnitCount 2, uniqueUnitCount 1
+      ]);
+
+      const call = infoSpy.mock.calls.find(
+        ([, message]) => message === 'coverageMappingService: findTestsForUnitsAcrossBranches',
+      );
+      expect(call).toBeDefined();
+      const [fields] = call ?? [];
+      expect(fields).toMatchObject({
+        commitSha,
+        inputUnitCount: 2,
+        uniqueUnitCount: 1,
+        chunkCount: 1,
+        totalMatchCount: 1,
+      });
+      expect(typeof (fields as { durationMs?: unknown })?.durationMs).toBe('number');
+      infoSpy.mockRestore();
     });
   });
 

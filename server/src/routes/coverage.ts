@@ -37,8 +37,50 @@ import {
   dumpCoverageHandler,
   getCoverageDumpHandler,
 } from '../controllers/coverageController.js';
+import { getCoverageHealthHandler } from '../controllers/coverageHealthController.js';
 
 const router = Router();
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/health:
+ *   get:
+ *     tags: [Coverage]
+ *     operationId: getCoverageHealth
+ *     summary: Operational health of the Coverage/TIA framework's own services
+ *     description: >
+ *       Reports whether the backend V8 agent is running, whether the coverage
+ *       database is reachable, and each live coverage feature flag's current
+ *       state. Admin only — this reveals feature-flag state and DB reachability,
+ *       operational detail, not a public liveness probe (unlike /api/health).
+ *       Registered unconditionally, unlike this router's other routes: the
+ *       mapping/reporting/pipeline routers and the coverage database itself are
+ *       live independent of COVERAGE_INSTRUMENTATION, so a health check nested
+ *       inside registerCoverageControlRoutes below would 404 in exactly the
+ *       deployments where those other routers are actually running. Always-on,
+ *       no feature-flag gate — it must stay reachable regardless of which
+ *       coverage subsystem flags are toggled.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: All checked subsystems healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoverageHealthReport'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       503:
+ *         description: Coverage database unreachable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoverageHealthReport'
+ */
+router.get('/health', authenticate, coverageAccessGate, asyncHandler(getCoverageHealthHandler));
 
 /** Registers every coverage control route — only called when COVERAGE_INSTRUMENTATION is 'true' at boot. */
 function registerCoverageControlRoutes(): void {

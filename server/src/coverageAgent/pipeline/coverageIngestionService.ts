@@ -88,6 +88,11 @@ export async function ingestCoverageDump(
   dumpId: string,
   options: IngestCoverageDumpOptions = {},
 ): Promise<IngestCoverageDumpResult> {
+  // Wall-clock duration for operator alerting (MINCRM-637) — measured from
+  // the very start of this call (including the raw-payload read and
+  // symbolication, not just the DB transaction) since that's the latency an
+  // operator or CI job actually experiences per ingestion call.
+  const startedAt = Date.now();
   const dump = await findCoverageDump(dumpId);
   if (!dump) {
     throw new CoverageDumpNotFoundError(dumpId);
@@ -162,7 +167,15 @@ export async function ingestCoverageDump(
   );
 
   logger.info(
-    { dumpId, commitSha: dump.commitSha, alreadyIngested, unitCount, unresolvedCount, testId },
+    {
+      dumpId,
+      commitSha: dump.commitSha,
+      alreadyIngested,
+      unitCount,
+      unresolvedCount,
+      testId,
+      durationMs: Date.now() - startedAt,
+    },
     'coverageIngestionService: ingested coverage dump',
   );
 

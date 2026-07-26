@@ -323,6 +323,59 @@ pruning must not undermine. Runs regardless of `COVERAGE_INSTRUMENTATION`, since
 coverage database is populated by the pipeline/mapping ingestion path independent of
 the backend V8 agent.
 
+## Health & Observability (MINCRM-637)
+
+### `GET /api/v1/admin/coverage/health`
+
+Reports the operational health of the framework's own services —
+`coverageHealthService.getCoverageHealth()`
+(`server/src/services/coverageHealthService.ts`):
+
+- `agentRunning` — whether the backend V8 agent is registered
+  (`coverageAgentRegistry.getCoverageAgent()`).
+- `db` — `'ok'` or `'error'`, from a `SELECT 1` against `coverageDb` with a 2-second
+  statement timeout. Reuses `app.ts`'s own `/api/health` implementation pattern
+  verbatim.
+- `featureFlags` — the current org-wide state of the three live coverage feature flags
+  (see [Policy Configuration](#policy-configuration-mincrm-637) above).
+
+Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` (DB unreachable). A
+disabled feature flag is a normal operational state, not degraded — only DB
+unreachability affects overall `status`.
+
+**Gated by `authenticate → coverageAccessGate`, same as every other coverage route —
+not a public liveness probe** like the unauthenticated `/api/health`. This endpoint
+reveals feature-flag state and DB reachability, which is operational detail worth
+protecting the same way the rest of the coverage control surface is. Registered
+**unconditionally** in `routes/coverage.ts`, outside the
+`if (COVERAGE_INSTRUMENTATION === 'true')`-gated `registerCoverageControlRoutes()`
+block that gates this router's other routes — the mapping/reporting/pipeline routers
+and the coverage database itself are live independent of that env var, so nesting the
+health check inside that block would 404 in exactly the deployments where those other
+routers are actually running. No `requireFeatureEnabled` gate either — documented as
+always-on, since it must stay reachable regardless of which coverage subsystem flags
+are toggled.
+
+### Operational logging
+
+Two high-volume/latency-risk call sites log structured fields on every call via the
+shared app `logger` — no new logging infrastructure or dependency:
+
+| Call site                                                          | Log message                                               | Fields                                                                                           |
+| ------------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `coverageIngestionService.ingestCoverageDump`                      | `coverageIngestionService: ingested coverage dump`        | `dumpId`, `commitSha`, `alreadyIngested`, `unitCount`, `unresolvedCount`, `testId`, `durationMs` |
+| `coverageMappingService.findTestsForUnitAcrossBranches` (singular) | `coverageMappingService: findTestsForUnitAcrossBranches`  | `commitSha`, `filePath`, `unitKey`, `resultCount`, `durationMs`                                  |
+| `coverageMappingService.findTestsForUnitsAcrossBranches` (batched) | `coverageMappingService: findTestsForUnitsAcrossBranches` | `commitSha`, `inputUnitCount`, `uniqueUnitCount`, `chunkCount`, `totalMatchCount`, `durationMs`  |
+
+**How to alert on this:** these are plain structured `logger.info` calls (JSON to
+stdout in every environment — see `logger.ts`), so they flow into whatever
+log-aggregation tooling an operator already runs for this deployment (e.g. `docker
+compose logs`, a hosted log pipeline). No new tooling is prescribed here — a
+`durationMs` threshold alert on either mapping-query log line, or a dashboard tracking
+`findTestsForUnitsAcrossBranches`'s `chunkCount`/`uniqueUnitCount` over time, are
+reasonable starting points once a real log pipeline is in place, but wiring one up is
+outside this ticket's scope.
+
 ## Coverage Database
 
 Coverage/TIA data (`coverage_units`, `coverage_ingested_dumps`, `coverage_sessions`, `coverage_session_dumps`, `coverage_test_links`) lives in its own database — `minicrm_coverage` (dev), `minicrm_coverage_test` (Vitest), `minicrm_coverage_e2e` (Playwright) — separate from the product database (`minicrm`/`minicrm_test`/`minicrm_e2e`) that everything else in `server/src/services/` reads/writes via `db.ts`'s pool. Both live on the same Postgres instance in every environment this repo targets (one `db` service in `docker-compose.yml`), just under different database names.

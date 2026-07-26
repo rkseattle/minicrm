@@ -17,6 +17,7 @@
 
 import type { PoolClient } from 'pg';
 import coverageDb from '../coverageDb.js';
+import logger from '../logger.js';
 
 const TEST_LINK_INSERT_COLUMN_COUNT = 6;
 
@@ -356,11 +357,22 @@ export async function findTestsForUnitAcrossBranches(
   filePath: string,
   unitKey: string,
 ): Promise<CoverageMappingResult[]> {
+  const startedAt = Date.now();
   const result = await coverageDb.query<CoverageMappingResultRow>(
     `${MAPPING_RESULT_SELECT}
      WHERE l.commit_sha = $1 AND l.file_path = $2 AND l.unit_key = $3
      ORDER BY l.branch_id, l.test_id`,
     [commitSha, filePath, unitKey],
+  );
+  logger.info(
+    {
+      commitSha,
+      filePath,
+      unitKey,
+      resultCount: result.rows.length,
+      durationMs: Date.now() - startedAt,
+    },
+    'coverageMappingService: findTestsForUnitAcrossBranches',
   );
   return result.rows.map(toCoverageMappingResult);
 }
@@ -431,6 +443,7 @@ export async function findTestsForUnitsAcrossBranches(
   commitSha: string,
   units: readonly { filePath: string; unitKey: string }[],
 ): Promise<BatchedCoverageMappingResult[]> {
+  const startedAt = Date.now();
   const uniquePairsByKey = new Map<string, { filePath: string; unitKey: string }>();
   for (const unit of units) {
     uniquePairsByKey.set(unitPairKey(unit.filePath, unit.unitKey), unit);
@@ -475,11 +488,27 @@ export async function findTestsForUnitsAcrossBranches(
     }
   }
 
-  return uniquePairs.map((pair) => ({
+  const results = uniquePairs.map((pair) => ({
     filePath: pair.filePath,
     unitKey: pair.unitKey,
     matches: matchesByPairKey.get(unitPairKey(pair.filePath, pair.unitKey)) ?? [],
   }));
+
+  const totalMatchCount = results.reduce((sum, r) => sum + r.matches.length, 0);
+  const chunkCount = Math.ceil(uniquePairs.length / MAX_UNITS_PER_MAPPING_LOOKUP_BATCH) || 0;
+  logger.info(
+    {
+      commitSha,
+      inputUnitCount: units.length,
+      uniqueUnitCount: uniquePairs.length,
+      chunkCount,
+      totalMatchCount,
+      durationMs: Date.now() - startedAt,
+    },
+    'coverageMappingService: findTestsForUnitsAcrossBranches',
+  );
+
+  return results;
 }
 
 /**
