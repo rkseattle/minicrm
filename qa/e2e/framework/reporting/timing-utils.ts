@@ -151,6 +151,49 @@ export function discoverSpecFiles(dir: string): string[] {
 }
 
 /**
+ * Reads a selected file list — a JSON file containing either a bare
+ * `string[]` of repo-root-relative spec file paths, or an object with a
+ * `specFiles: string[]` property (a shape a selection CLI's own JSON
+ * result can already produce, so its stdout can be redirected straight to
+ * this file with no reshaping). Returns null if the path is unset, the
+ * file doesn't exist, or its content doesn't parse as either accepted
+ * shape — callers treat null identically to "no selection provided" and
+ * fall back to discoverSpecFiles(), never a hard failure, since a
+ * malformed/missing selection file must degrade to the safe full-suite
+ * behavior, not block shard generation entirely.
+ */
+export function readSelectedFiles(filePath: string | undefined): string[] | null {
+  if (!filePath) return null;
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === 'string')) {
+    return parsed;
+  }
+  if (
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    'specFiles' in parsed &&
+    Array.isArray((parsed as { specFiles: unknown }).specFiles) &&
+    (parsed as { specFiles: unknown[] }).specFiles.every((entry) => typeof entry === 'string')
+  ) {
+    return (parsed as { specFiles: string[] }).specFiles;
+  }
+  return null;
+}
+
+/**
  * Extracts test title strings from a spec file's `test(...)` / `test.only(...)`
  * / `test.skip(...)` / `test.fixme(...)` calls whose title contains the given
  * tag substring (e.g. "@serial"). This is a best-effort regex scan over the
