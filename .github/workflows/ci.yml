@@ -346,7 +346,11 @@ jobs:
             echo ""
             if [ -s /tmp/tia-selection.json ] && jq -e . /tmp/tia-selection.json >/dev/null 2>&1; then
               MODE=$(jq -r '.mode' /tmp/tia-selection.json)
+              BASE_SHA=$(jq -r '.baseSha' /tmp/tia-selection.json)
+              HEAD_SHA=$(jq -r '.headSha' /tmp/tia-selection.json)
               echo "**Mode:** \`$MODE\`"
+              echo ""
+              echo "_Evaluated \`$BASE_SHA\` → \`$HEAD_SHA\`. Provenance: this run's selection JSON is uploaded as the \`tia-selection-${{ github.run_id }}\` artifact._"
               echo ""
               jq -r '.rationale[] | "- " + .' /tmp/tia-selection.json
               echo ""
@@ -368,6 +372,8 @@ jobs:
             fi
             echo ""
             echo "_Advisory only — a green result here is not a promise the full suite passed. The authoritative gate is the post-merge/nightly full-suite run (MINCRM-633 record mode)._"
+            echo ""
+            echo "_Coverage delta not shown: PR-time runs don't collect coverage instrumentation or ingest it, so no comparable data exists yet at select time (MINCRM-634 scoped gap — coverage data only becomes available post-merge via record mode)._"
           } > /tmp/tia-comment-body.md
           cat /tmp/tia-comment-body.md >> "$GITHUB_STEP_SUMMARY"
 
