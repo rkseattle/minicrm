@@ -9,9 +9,15 @@
  *
  * - Emits a warning if any baseline file no longer exists on disk.
  * - The generated file is gitignored; it is produced fresh on each CI run.
+ * - --selected-files=<path>, when given and readable, LPT-assigns only that
+ *   subset (pr-tia-8) instead of the full discoverSpecFiles() suite — MUST
+ *   be passed identically to every --shard-index invocation in a CI loop,
+ *   since the LPT bin-packing must be reproduced identically across calls
+ *   for shard assignments to be non-overlapping.
  *
  * Usage (from repo root):
  *   npm run e2e:timing:gen-config -- --shard-index=0 --total-shards=4
+ *   npm run e2e:timing:gen-config -- --shard-index=0 --total-shards=2 --selected-files=/tmp/tia-selection.json
  *
  * MINCRM-549
  */
@@ -20,6 +26,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {
   readTimingBaseline,
+  readSelectedFiles,
   discoverSpecFiles,
   lptAssign,
   TIMING_BASELINE_FILENAME,
@@ -36,6 +43,7 @@ const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional')
 interface CliArgs {
   shardIndex: number;
   totalShards: number;
+  selectedFilesPath: string | undefined;
 }
 
 function parseArgs(): CliArgs {
@@ -65,7 +73,10 @@ function parseArgs(): CliArgs {
     process.exit(1);
   }
 
-  return { shardIndex, totalShards };
+  const selectedFilesArg = process.argv.find((a) => a.startsWith('--selected-files='));
+  const selectedFilesPath = selectedFilesArg?.split('=')[1];
+
+  return { shardIndex, totalShards, selectedFilesPath };
 }
 
 // ── Config file generation ────────────────────────────────────────────────────
@@ -103,7 +114,7 @@ function generateShardConfig(
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main(): void {
-  const { shardIndex, totalShards } = parseArgs();
+  const { shardIndex, totalShards, selectedFilesPath } = parseArgs();
 
   const baseline = readTimingBaseline(BASELINE_PATH);
   const fallbackMs = baseline?.fallbackMs ?? DEFAULT_FALLBACK_MS;
@@ -115,7 +126,18 @@ function main(): void {
     );
   }
 
-  const specFiles = discoverSpecFiles(FUNCTIONAL_TESTS_DIR);
+  const selectedFiles = readSelectedFiles(selectedFilesPath);
+  if (selectedFilesPath && !selectedFiles) {
+    process.stderr.write(
+      `[gen-shard-config] WARN: --selected-files="${selectedFilesPath}" was given but could not be read/parsed — falling back to the full discoverSpecFiles() suite.\n`,
+    );
+  }
+  const specFiles = selectedFiles ?? discoverSpecFiles(FUNCTIONAL_TESTS_DIR);
+  if (selectedFiles) {
+    process.stderr.write(
+      `[gen-shard-config] Using TIA-selected subset: ${specFiles.length} file(s) from ${selectedFilesPath}.\n`,
+    );
+  }
 
   if (specFiles.length === 0) {
     process.stderr.write(`[gen-shard-config] No spec files found under ${FUNCTIONAL_TESTS_DIR}.\n`);

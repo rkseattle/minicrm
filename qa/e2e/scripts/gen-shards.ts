@@ -2,12 +2,16 @@
 /**
  * gen-shards.ts
  *
- * Implements LPT (Longest Processing Time) bin-packing over the functional
- * spec file list to produce a timing-aware shard assignment.
+ * Implements LPT (Longest Processing Time) bin-packing over a spec file
+ * list to produce a timing-aware shard assignment.
  *
  * Algorithm:
  *   1. Read test-timing-baseline.json for per-file median durations.
- *   2. Glob all functional spec files under qa/e2e/tests/apps/minicrm/functional/.
+ *   2. Determine the file list: --selected-files=<path> (a TIA-selected
+ *      subset, pr-tia-8) when provided and readable, else glob all
+ *      functional spec files under qa/e2e/tests/apps/minicrm/functional/
+ *      (nightly/post-merge full run, workflow_dispatch — unchanged from
+ *      before pr-tia-8).
  *   3. Files absent from the baseline receive the baseline's fallbackMs and a
  *      stderr warning.
  *   4. Sort files descending by estimated duration (LPT order).
@@ -18,6 +22,7 @@
  *
  * Usage (from repo root):
  *   npm run e2e:timing:shards -- --workers=4
+ *   npm run e2e:timing:shards -- --workers=2 --selected-files=/tmp/tia-selection.json
  *
  * MINCRM-549
  */
@@ -25,6 +30,7 @@
 import path from 'node:path';
 import {
   readTimingBaseline,
+  readSelectedFiles,
   discoverSpecFiles,
   lptAssign,
   TIMING_BASELINE_FILENAME,
@@ -38,20 +44,22 @@ const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional')
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { workers: number } {
+function parseArgs(): { workers: number; selectedFilesPath: string | undefined } {
   const workersArg = process.argv.find((a) => a.startsWith('--workers='));
   const workers = workersArg ? parseInt(workersArg.split('=')[1] ?? '4', 10) : 4;
   if (isNaN(workers) || workers < 1) {
     process.stderr.write(`[gen-shards] Invalid --workers value; must be a positive integer.\n`);
     process.exit(1);
   }
-  return { workers };
+  const selectedFilesArg = process.argv.find((a) => a.startsWith('--selected-files='));
+  const selectedFilesPath = selectedFilesArg?.split('=')[1];
+  return { workers, selectedFilesPath };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main(): void {
-  const { workers } = parseArgs();
+  const { workers, selectedFilesPath } = parseArgs();
 
   const baseline = readTimingBaseline(BASELINE_PATH);
   const fallbackMs = baseline?.fallbackMs ?? DEFAULT_FALLBACK_MS;
@@ -63,7 +71,18 @@ function main(): void {
     );
   }
 
-  const specFiles = discoverSpecFiles(FUNCTIONAL_TESTS_DIR);
+  const selectedFiles = readSelectedFiles(selectedFilesPath);
+  if (selectedFilesPath && !selectedFiles) {
+    process.stderr.write(
+      `[gen-shards] WARN: --selected-files="${selectedFilesPath}" was given but could not be read/parsed — falling back to the full discoverSpecFiles() suite.\n`,
+    );
+  }
+  const specFiles = selectedFiles ?? discoverSpecFiles(FUNCTIONAL_TESTS_DIR);
+  if (selectedFiles) {
+    process.stderr.write(
+      `[gen-shards] Using TIA-selected subset: ${specFiles.length} file(s) from ${selectedFilesPath}.\n`,
+    );
+  }
 
   if (specFiles.length === 0) {
     process.stderr.write(`[gen-shards] No spec files found under ${FUNCTIONAL_TESTS_DIR}.\n`);
