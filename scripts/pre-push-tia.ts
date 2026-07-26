@@ -51,10 +51,10 @@ const BYPASS_LOG_PATH = resolve(REPO_ROOT, '.git', 'tia-prepush-bypass.log');
 // Same "never overwrite an already-set var" pattern as scripts/e2e-setup.ts —
 // so a caller's own explicit env (e.g. CI, or a developer's shell export)
 // always wins over the .env file's defaults.
-function loadRootEnv(): void {
+function loadEnvFile(path: string): void {
   try {
-    const rootEnv = readFileSync(resolve(REPO_ROOT, '.env'), 'utf8');
-    for (const line of rootEnv.split('\n')) {
+    const contents = readFileSync(path, 'utf8');
+    for (const line of contents.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) continue;
       const eqIdx = trimmed.indexOf('=');
@@ -64,8 +64,28 @@ function loadRootEnv(): void {
       if (!(key in process.env)) process.env[key] = value;
     }
   } catch {
-    // Root .env is optional — CI supplies vars via the environment directly.
+    // Optional — CI supplies vars via the environment directly.
   }
+}
+
+/**
+ * Loads root .env AND qa/e2e/.env — this hook's own runPlaywright() below
+ * shells out to `npm run test` in qa/, the exact same E2E entrypoint
+ * CLAUDE.md's own documented command always runs with
+ * `env $(cat qa/e2e/.env ...)` sourced first (E2E_ADMIN_EMAIL/PASSWORD,
+ * E2E_DATABASE_URL, etc. all live only in qa/e2e/.env, never root .env —
+ * confirmed by grepping both files). Without this, a full-suite fallback
+ * run from this hook silently no-ops (globalSetup skips the admin login
+ * and writes an empty storageState, then Playwright reports zero tests
+ * collected) instead of actually gating the push — found while verifying
+ * this push's own attestation fix actually ran real tests, not by
+ * inspection alone. Root loaded first so an identically-named var in
+ * qa/e2e/.env (there are none today, but the ordering is the safe
+ * default) can't silently shadow it.
+ */
+function loadRootEnv(): void {
+  loadEnvFile(resolve(REPO_ROOT, '.env'));
+  loadEnvFile(resolve(REPO_ROOT, 'qa', 'e2e', '.env'));
 }
 
 function currentBranchName(): string {
