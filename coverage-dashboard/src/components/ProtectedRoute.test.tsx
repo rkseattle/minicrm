@@ -42,7 +42,7 @@ describe('ProtectedRoute', () => {
     await waitFor(() => expect(screen.getByText('Login page')).toBeInTheDocument());
   });
 
-  it('redirects to /access-denied for a non-admin user', async () => {
+  it('redirects to /access-denied for a non-admin user — including the documented KNOWN GAP case where a real deployment could grant this user coverage:admin via a custom role (MINCRM-637): this component still redirects them, since /auth/me returns role only, never a resolved capability set, so it cannot tell that case apart from ordinary non-admin denial', async () => {
     server.use(
       http.get('*/api/v1/auth/me', () =>
         HttpResponse.json({ user: { ...MOCK_ADMIN_USER, role: 'rep' } }),

@@ -1,12 +1,12 @@
 /**
  * Coverage/TIA mapping query routes — all endpoints require
- * authentication, admin role, and the coverage_mapping_query feature flag.
- * (MINCRM-621)
+ * authentication, coverage:admin access, and the coverage_mapping_query
+ * feature flag. (MINCRM-621, MINCRM-637)
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -18,7 +18,7 @@ const router = Router();
 
 const requireCoverageMappingAccess = [
   authenticate,
-  requireRole('admin'),
+  coverageAccessGate,
   requireFeatureEnabled('coverage_mapping_query'),
 ] as const;
 

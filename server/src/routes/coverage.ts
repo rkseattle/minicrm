@@ -1,11 +1,11 @@
 /**
  * Coverage/TIA control API routes — internal-only tooling, gated entirely
  * by the COVERAGE_INSTRUMENTATION env var at boot, not a product feature_flags
- * row. (MINCRM-606, MINCRM-663)
+ * row. (MINCRM-606, MINCRM-663, MINCRM-637)
  *
  * MINCRM-663: this router used to also require the coverage_instrumentation
  * feature_flags row (requireFeatureEnabled) alongside authenticate/
- * requireRole('admin') on every route. That flag rendered in the CRM's own
+ * coverageAccessGate on every route. That flag rendered in the CRM's own
  * admin Settings page (FeatureFlagsSettings.tsx has no category/system_flag
  * filtering) — internal CI/dev test infrastructure had no business being
  * discoverable or toggleable through the product's own customer-facing admin
@@ -15,13 +15,21 @@
  * with full CRM access and no special env/build context now gets a plain 404
  * on every path under this router, not a 403 — there is nothing here to
  * discover via the product UI at all, not merely a gate that reports "off."
- * authenticate/requireRole('admin') remain on every route: an internal-only
+ * authenticate/coverageAccessGate remain on every route: an internal-only
  * env var is not a substitute for auth, only for the product-facing flag.
+ *
+ * MINCRM-637: coverageAccessGate (server/src/middleware/coverageAccessGate.ts)
+ * replaces a bare requireRole('admin') — capability-based when
+ * COVERAGE_CAPABILITY_GATING=true, otherwise identical to today's role check.
+ * Note this router's own registration gate (above) means the capability swap
+ * has no observable effect unless COVERAGE_INSTRUMENTATION is also set —
+ * this router registers zero routes, and returns a plain 404, whenever that
+ * env var is unset, regardless of gating mode.
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   resetCoverageHandler,
@@ -56,7 +64,7 @@ function registerCoverageControlRoutes(): void {
    *       409:
    *         description: Coverage instrumentation is not running on this server
    */
-  router.post('/reset', authenticate, requireRole('admin'), asyncHandler(resetCoverageHandler));
+  router.post('/reset', authenticate, coverageAccessGate, asyncHandler(resetCoverageHandler));
 
   /**
    * @openapi
@@ -99,12 +107,7 @@ function registerCoverageControlRoutes(): void {
    *       409:
    *         description: Coverage instrumentation is not running on this server
    */
-  router.post(
-    '/snapshot',
-    authenticate,
-    requireRole('admin'),
-    asyncHandler(snapshotCoverageHandler),
-  );
+  router.post('/snapshot', authenticate, coverageAccessGate, asyncHandler(snapshotCoverageHandler));
 
   /**
    * @openapi
@@ -155,7 +158,7 @@ function registerCoverageControlRoutes(): void {
    *       409:
    *         description: Coverage instrumentation is not running on this server
    */
-  router.post('/dump', authenticate, requireRole('admin'), asyncHandler(dumpCoverageHandler));
+  router.post('/dump', authenticate, coverageAccessGate, asyncHandler(dumpCoverageHandler));
 
   /**
    * @openapi
@@ -193,7 +196,7 @@ function registerCoverageControlRoutes(): void {
   router.get(
     '/dumps/:dumpId',
     authenticate,
-    requireRole('admin'),
+    coverageAccessGate,
     asyncHandler(getCoverageDumpHandler),
   );
 }

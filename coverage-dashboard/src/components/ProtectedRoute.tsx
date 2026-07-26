@@ -1,8 +1,19 @@
 /**
  * Redirects unauthenticated users to /login, and non-admin users to an
- * access-denied page — every reporting endpoint this app calls is admin-only
- * (requireRole('admin') on the server), so a non-admin session can never
- * successfully use this dashboard regardless of what UI it renders.
+ * access-denied page. This is a UX nicety, not the real security boundary —
+ * every reporting endpoint this app calls independently enforces its own
+ * server-side gate (coverageAccessGate: coverage:admin capability when
+ * COVERAGE_CAPABILITY_GATING=true, requireRole('admin') otherwise — see
+ * docs/dev/coverage.md's Access Control section, MINCRM-637).
+ *
+ * KNOWN GAP (accepted, not fixed here): this check stays role-based
+ * (`user?.role !== 'admin'`) even under capability mode. A non-admin-role
+ * user granted coverage:admin via a custom role would pass every server-side
+ * gate but still be redirected here, since no endpoint exposes a user's
+ * resolved capability set to this client today. Making this check
+ * capability-aware is unscoped follow-up work, not a security regression —
+ * every reporting endpoint's own server-side gate is unaffected by what this
+ * component does.
  */
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';

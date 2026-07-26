@@ -89,6 +89,43 @@ describe('coverage pipeline API — auth boundaries', () => {
   });
 });
 
+describe('coverage pipeline API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+  const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
+
+  beforeEach(async () => {
+    await setFlagEnabled('coverage_pipeline_ingestion', true);
+    process.env.COVERAGE_CAPABILITY_GATING = 'true';
+  });
+
+  afterEach(() => {
+    if (originalGating !== undefined) {
+      process.env.COVERAGE_CAPABILITY_GATING = originalGating;
+    } else {
+      delete process.env.COVERAGE_CAPABILITY_GATING;
+    }
+  });
+
+  it('still grants the built-in admin role access via coverage:admin (migration 162), routed through coverageAccessGate', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/pipeline/ingest')
+      .set('Cookie', adminCookie)
+      .send({ dumpId: '00000000-0000-0000-0000-000000000000' });
+    // 404 COVERAGE_DUMP_NOT_FOUND — the same status the "validation" describe
+    // block below asserts for this exact request under default gating —
+    // proves the request passed coverageAccessGate and reached the handler.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_DUMP_NOT_FOUND');
+  });
+
+  it('still 403s a non-admin, non-coverage:admin rep under capability mode', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/pipeline/ingest')
+      .set('Cookie', repCookie)
+      .send({ dumpId: '00000000-0000-0000-0000-000000000000' });
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage pipeline API — validation', () => {
   beforeEach(async () => {
     await setFlagEnabled('coverage_pipeline_ingestion', true);

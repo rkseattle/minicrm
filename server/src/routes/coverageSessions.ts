@@ -1,20 +1,26 @@
 /**
  * Coverage/TIA session management routes — internal-only tooling, gated
  * entirely by the COVERAGE_SESSION_MANAGEMENT env var at boot, not a product
- * feature_flags row. (MINCRM-609..612, MINCRM-663)
+ * feature_flags row. (MINCRM-609..612, MINCRM-663, MINCRM-637)
  *
  * MINCRM-663: this router used to also require the coverage_session_management
  * feature_flags row (requireFeatureEnabled) alongside authenticate/
- * requireRole('admin') on every route — see coverage.ts's own docblock for
+ * coverageAccessGate on every route — see coverage.ts's own docblock for
  * the full rationale (same fix, same shape, applied to this router). Routes
  * are now registered ONLY when COVERAGE_SESSION_MANAGEMENT is 'true' at
  * process boot; an admin with no special env/build context gets a plain 404
  * on every path under this router, not a 403.
+ *
+ * MINCRM-637: coverageAccessGate replaces a bare requireRole('admin') —
+ * capability-based when COVERAGE_CAPABILITY_GATING=true, otherwise
+ * identical to today's role check. As with coverage.ts, this router's own
+ * registration gate means the swap has no observable effect unless
+ * COVERAGE_SESSION_MANAGEMENT is also set.
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   startCoverageSessionHandler,
@@ -27,7 +33,7 @@ import {
 
 const router = Router();
 
-const requireCoverageSessionAccess = [authenticate, requireRole('admin')] as const;
+const requireCoverageSessionAccess = [authenticate, coverageAccessGate] as const;
 
 /** Registers every coverage session route — only called when COVERAGE_SESSION_MANAGEMENT is 'true' at boot. */
 function registerCoverageSessionRoutes(): void {

@@ -1,11 +1,12 @@
 /**
  * Coverage/TIA pipeline routes — all endpoints require authentication,
- * admin role, and the coverage_pipeline_ingestion feature flag. (MINCRM-614)
+ * coverage:admin access, and the coverage_pipeline_ingestion feature flag.
+ * (MINCRM-614, MINCRM-637)
  */
 
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import { ingestCoverageDumpHandler } from '../controllers/coveragePipelineController.js';
@@ -68,7 +69,7 @@ const router = Router();
 router.post(
   '/ingest',
   authenticate,
-  requireRole('admin'),
+  coverageAccessGate,
   requireFeatureEnabled('coverage_pipeline_ingestion'),
   asyncHandler(ingestCoverageDumpHandler),
 );

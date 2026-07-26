@@ -98,6 +98,13 @@ export enum Capability {
 
   // API access — required for service account bearer token requests
   ApiAccess = 'api:access',
+
+  // Coverage/TIA framework — internal CI/dev tooling admin access
+  // (MINCRM-637). Deliberately NOT exposed in RolesSettings.tsx's
+  // CAPABILITY_GROUPS picker — assignable only via direct API/migration,
+  // matching MINCRM-663's precedent of keeping internal coverage tooling
+  // out of the customer-facing admin UI. See docs/dev/coverage.md.
+  CoverageAdmin = 'coverage:admin',
 }
 
 /** All valid capability string values derived from the enum. */
