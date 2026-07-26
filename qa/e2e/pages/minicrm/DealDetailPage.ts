@@ -71,12 +71,25 @@ export class DealDetailPage {
 
   /**
    * Clicks the Delete button to open the confirmation modal.
+   *
+   * The role fallback is scoped to the detail page's own action bar
+   * (data-testid="deal-detail-actions") — an unscoped `getByRole('button',
+   * { name: /delete/i })` also matches a linked activity's own per-row
+   * delete-activity-<uuid> button (same accessible name "Delete"), causing
+   * a Playwright strict-mode violation whenever the deal has a linked
+   * activity (e.g. F7-D3). Scoping to the action bar makes the fallback
+   * unambiguous regardless of what else is on the page.
    */
   async clickDelete(): Promise<void> {
     await this.page.click(
       [
         { type: 'testId', value: 'delete-deal-button' },
-        { type: 'role', value: 'button', options: { name: /delete/i } },
+        {
+          type: 'role',
+          value: 'button',
+          options: { name: /delete/i },
+          within: 'deal-detail-actions',
+        },
       ],
       { intent: 'button to initiate deal deletion' },
     );
