@@ -10,7 +10,7 @@
  * during development) would otherwise only surface at runtime.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -34,6 +34,7 @@ import {
   ingestCoverageDump,
 } from '../coverageAgent/pipeline/coverageIngestionService.js';
 import coverageDb from '../coverageDb.js';
+import logger from '../logger.js';
 
 const TEST_COMMIT_SHA = 'test-ingestion-sha';
 
@@ -110,6 +111,26 @@ describe('coverageIngestionService', () => {
     const stored = await findCoverageUnitsByCommitSha(TEST_COMMIT_SHA);
     expect(stored.length).toBeGreaterThan(0);
     expect(stored.every((unit) => unit.commitSha === TEST_COMMIT_SHA)).toBe(true);
+  });
+
+  it('logs completion with dumpId, durationMs, and unitCount (MINCRM-637)', async () => {
+    const infoSpy = vi.spyOn(logger, 'info');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require(join(sourceRoot, 'fixture.js')).branchy(true);
+    const dump = await dumpBackendCoverage('logging-test');
+
+    await ingestCoverageDump(dump.dumpId, { sourceRoot });
+
+    const call = infoSpy.mock.calls.find(
+      ([, message]) => message === 'coverageIngestionService: ingested coverage dump',
+    );
+    expect(call).toBeDefined();
+    const [fields] = call ?? [];
+    expect(fields).toMatchObject({ dumpId: dump.dumpId });
+    expect(typeof (fields as { durationMs?: unknown })?.durationMs).toBe('number');
+    expect((fields as { durationMs: number }).durationMs).toBeGreaterThanOrEqual(0);
+    expect(typeof (fields as { unitCount?: unknown })?.unitCount).toBe('number');
+    infoSpy.mockRestore();
   });
 
   it('is idempotent — re-ingesting the same dumpId is a no-op that reports alreadyIngested', async () => {

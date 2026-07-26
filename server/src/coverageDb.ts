@@ -14,11 +14,16 @@
  * connection pool with product data. Schema for this database lives under
  * qa/migrations/, not db/migrations/ — see that migration file's docblock.
  *
- * Only coverageSessionService, coverageModelService, and
- * coverageMappingService should import this pool. Everything else in
+ * Only services whose own data actually lives in the coverage database
+ * should import this pool: coverageSessionService, coverageModelService,
+ * coverageMappingService, coverageBuildSummaryService,
+ * coverageReportingService (reads coverage_units/coverage_test_links/
+ * coverage_build_summary for the reporting query API), and
+ * coverageHealthService (a SELECT 1 reachability check, MINCRM-637 — no
+ * coverage-domain table reads/writes of its own). Everything else in
  * server/src/services/ continues to use db.ts's product-database pool —
- * the coverage_instrumentation/coverage_session_management/
- * coverage_pipeline_ingestion feature_flags rows that gate these services'
+ * the coverage_pipeline_ingestion/coverage_mapping_query/
+ * coverage_reporting_query feature_flags rows that gate these services'
  * HTTP endpoints stay in the product database (they're an authorization
  * concern tied to req.user/role, not coverage data), so featureFlagService
  * and everything else keeps using db.ts unchanged.

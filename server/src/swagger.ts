@@ -763,6 +763,34 @@ const componentSchemas = {
       lastReconciledAt: { type: 'string', format: 'date-time', nullable: true },
     },
   },
+
+  // ── Coverage health (MINCRM-637) ──────────────────────────────────────────
+  CoverageHealthReport: {
+    type: 'object',
+    required: ['status', 'agentRunning', 'db', 'featureFlags'],
+    properties: {
+      status: { type: 'string', enum: ['ok', 'degraded'] },
+      agentRunning: {
+        type: 'boolean',
+        description: 'Whether the backend V8 coverage agent is registered/running.',
+      },
+      db: { type: 'string', enum: ['ok', 'error'] },
+      dbError: { type: 'string', description: 'Present only when db is "error".' },
+      featureFlags: {
+        type: 'object',
+        required: [
+          'coverage_pipeline_ingestion',
+          'coverage_mapping_query',
+          'coverage_reporting_query',
+        ],
+        properties: {
+          coverage_pipeline_ingestion: { type: 'boolean' },
+          coverage_mapping_query: { type: 'boolean' },
+          coverage_reporting_query: { type: 'boolean' },
+        },
+      },
+    },
+  },
 };
 
 /** swagger-jsdoc options */
