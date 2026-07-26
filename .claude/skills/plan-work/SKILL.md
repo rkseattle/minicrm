@@ -1,20 +1,56 @@
 ---
 name: plan-work
 description: Research Jira work items and the codebase, produce a phased implementation plan, have it adversarially reviewed, and present it for approval. Produces no code.
-argument-hint: <MINCRM-N> [MINCRM-N ...]
+argument-hint: <MINCRM-N ...> or <pr-group-label>
 disable-model-invocation: true
-allowed-tools: Read, Grep, Glob, Bash, Task, WebSearch, WebFetch
+allowed-tools: Read, Write, Grep, Glob, Bash, Task, WebSearch, WebFetch
 ---
 
 Plan the work for: $ARGUMENTS
 
 This skill produces a plan and stops. **No file in the repo is created, edited, or
-staged during this skill.** No branch, no Jira transition, no commit. The approval gate
-at the end is real.
+staged during this skill**, other than the plan document itself. No branch, no Jira
+transition, no commit. The approval gate at the end is real.
 
-## Step 1 — Fetch the tickets first, sequentially
+## Step 1 — Resolve the arguments to a ticket set
 
-Fetch each ticket in $ARGUMENTS and read the full description and acceptance criteria
+$ARGUMENTS may be ticket IDs, a PR-group label, or a mix. Resolve before fetching.
+
+**Matches `MINCRM-\d+`** → a ticket ID. Use directly.
+
+**Anything else** → treat as a PR-group label (`iam-pr-03`, `ai-pr-14`,
+`pr-tia-9-platform-governance`). Resolve it:
+
+```
+project = MINCRM AND labels = "<label>" ORDER BY created ASC
+```
+
+**If that returns nothing, do not conclude the label is unused.** In this Jira, `~` is
+fuzzy text matching against a text index, not glob — `labels ~ "iam-pr*"` will not
+match `iam-pr-03`. An empty exact match almost always means the slug you were given is
+a prefix or fragment of the real label. Recover by widening, not by giving up:
+
+1. `project = MINCRM AND labels ~ "<distinctive-fragment>"` — a single word from the
+   middle of the slug works better than the leading token
+2. If still empty, list broadly — `project = MINCRM ORDER BY created DESC` — and read
+   the actual label strings off recent issues
+3. Re-run the exact `labels = "<full-slug>"` match once you have the real string
+
+Report the resolved label if it differed from what you were given.
+
+**Then, before going further:**
+
+- Report the resolved ticket set — IDs and summaries — so the scope is visible.
+- **If a label resolves to more than 3 items, stop and flag it.** The working limit for
+  a single handoff is 3; a larger group should be split into separate PR groups before
+  planning, not planned as one unit. Propose a split and wait.
+- Order the set by the label's implied sequence. PR-group labels in this project are
+  numbered to match expected implementation order, so `iam-pr-02` precedes `iam-pr-03`
+  and that ordering is meaningful for phase sequencing.
+
+## Step 2 — Fetch the tickets, sequentially
+
+Fetch each resolved ticket and read the full description and acceptance criteria
 **before launching anything else**. Do not parallelize the fetch with exploration. The
 session context contains recent git commits, and launching an exploration agent before
 the ticket content is known anchors it on the wrong domain — this has happened.
@@ -23,7 +59,7 @@ Read linked and blocking tickets too. Cross-story dependencies in this project a
 documented in prose inside issue descriptions rather than via Jira issue links, so read
 the descriptions for sequencing constraints rather than relying on link metadata.
 
-## Step 2 — Explore the codebase
+## Step 3 — Explore the codebase
 
 Now, and only now, survey the code. Delegate breadth to `Explore` subagents so the
 survey does not consume the main context; run several in parallel across distinct
@@ -42,7 +78,7 @@ Establish:
 
 Read the actual code. Do not plan from file names.
 
-## Step 3 — Write the plan
+## Step 4 — Write the plan
 
 Write it to `docs/plans/<primary-ticket>.md`. This is the one file this skill creates,
 and it is not source code. (Kept out of `.claude/plans/`, which Claude Code uses for
@@ -56,6 +92,7 @@ Structure:
 ## Scope
 
 What ships. What explicitly does not.
+Covering tickets, and the PR-group label if the work was resolved from one.
 
 ## Acceptance criteria coverage
 
@@ -95,7 +132,7 @@ Never the simplest, quickest, or easiest solution. If you catch yourself writing
 "actually", or "let me look at this differently" more than once, stop and think it
 through rather than iterating in the open.
 
-## Step 4 — Adversarial design review
+## Step 5 — Adversarial design review
 
 Launch the `design-adversary` subagent.
 
@@ -108,10 +145,11 @@ Repeat until it returns no BLOCKERs, to a maximum of three rounds. If it still r
 BLOCKERs after the third round, stop and bring the disagreement to Rob rather than
 continuing to iterate.
 
-## Step 5 — Present for approval
+## Step 6 — Present for approval
 
 Present in chat, concisely:
 
+- The resolved ticket set, and the label it came from if applicable
 - The phase list with one line each
 - The approach and its justification, with the in-repo precedent cited
 - What the adversarial review found and what changed as a result

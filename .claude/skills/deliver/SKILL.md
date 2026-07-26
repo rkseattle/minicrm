@@ -7,31 +7,47 @@ disable-model-invocation: true
 
 Deliver: $ARGUMENTS
 
-You are the orchestrator. Each stage below is its own skill; invoke it via the Skill
-tool **at the moment you reach that stage**, not up front. Loading them lazily keeps
-each stage's instructions out of context until they are needed.
+You are the orchestrator. Each stage is defined in its own file under
+`.claude/skills/`. Those files carry `disable-model-invocation: true` because they
+create branches, transition Jira, push, and open PRs — they must not fire on their own.
+So **do not call them with the Skill tool; it will be blocked.**
+
+Instead, at the moment you reach each stage, **read that stage's `SKILL.md` with the
+Read tool and follow it in full as written.** Read it when you get there, not up front —
+that keeps each stage's instructions out of context until they are needed.
+
+Ignore the `argument-hint`, `allowed-tools`, and `disable-model-invocation` fields in
+those files when read this way; they apply only to direct slash-command invocation. The
+body is the procedure.
 
 ## Stages
 
-1. **`/plan-work $ARGUMENTS`** — tickets, codebase survey, phased plan, adversarial
-   design review, then present for approval.
+1. **`.claude/skills/plan-work/SKILL.md`** — substitute $ARGUMENTS for the ticket IDs.
+   Tickets, codebase survey, phased plan, adversarial design review, then present for
+   approval.
    → **Hard stop.** Wait for explicit approval. A clarifying question is not approval.
 
-2. **`/implement-phases <plan-path>`** — branch, Jira to In Progress, then every phase
-   implemented, adversarially reviewed, and committed, straight through with no pause
-   between phases.
+2. **`.claude/skills/implement-phases/SKILL.md`** — substitute the path of the plan file
+   written in stage 1. Branch, Jira to In Progress, then every phase implemented,
+   adversarially reviewed, and committed, straight through with no pause between phases.
 
-3. **`/branch-review`** — cold Greptile-style review of the whole branch in an isolated
-   subagent; fix by root cause and propagate each fix pattern across the codebase.
+3. **`.claude/skills/branch-review/SKILL.md`** — base ref `main`. Cold Greptile-style
+   review of the whole branch in an isolated subagent; fix by root cause and propagate
+   each fix pattern across the codebase.
 
-4. **`/ship-pr $ARGUMENTS`** — pre-push gate, E2E, clean tree, push, PR, Jira to
-   In Review.
+4. **`.claude/skills/ship-pr/SKILL.md`** — substitute $ARGUMENTS for the ticket IDs.
+   Pre-push gate, E2E, clean tree, push, PR, Jira to In Review.
 
-5. **`/ci-green`** — monitor CI and PR feedback; root-cause every failure in an
-   isolated subagent; loop until fully green with no unaddressed comments.
+5. **`.claude/skills/ci-green/SKILL.md`** — the PR opened in stage 4. Monitor CI and PR
+   feedback; root-cause every failure in an isolated subagent; loop until fully green
+   with no unaddressed comments.
 
 Stages 2 through 5 run without further approval gates. Surface real decisions as they
 arise; do not ask permission to continue.
+
+Rob can also run any stage on its own as a slash command — `/ci-green` in particular
+gets re-run far more often than the full chain. If he has already run a stage manually
+in this session, pick up from the next one rather than repeating it.
 
 ## Invariants across every stage
 
@@ -59,7 +75,13 @@ ask.
 exit codes or console output.
 
 **Jira transitions are real steps.** In Progress before the first line of code, In
-Review after the PR opens. `jira_get_transitions` for the ID — never guess.
+Review after the PR opens. Look up the issue's available transitions via the
+Atlassian MCP first — never guess a transition ID.
 
 **Stay quiet while monitors run.** No filler turns, no polling loops, no narrating the
 wait.
+
+## If a stage file is missing or unreadable
+
+Stop and say which one. Do not reconstruct the procedure from memory — the gates and
+review protocols are the point of the workflow.

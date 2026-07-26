@@ -19,7 +19,8 @@ git checkout -b <ticket-slug>
 ```
 
 Branch from `main` unless instructed otherwise. Then transition every covered ticket to
-**In Progress** — call `jira_get_transitions` for the transition ID first, never guess it.
+**In Progress**. Look up the issue's available transitions via the Atlassian MCP
+first and use the ID it returns — never guess one.
 
 Read `.claude/gates/definition-of-done.md` now. It applies to every commit in this
 skill and does not need re-reading between phases.
