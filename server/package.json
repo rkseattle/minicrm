@@ -22,7 +22,8 @@
     "seed:e2e-storage": "tsx src/scripts/seed-e2e-storage.ts",
     "seed:e2e-smtp": "tsx src/scripts/seed-e2e-smtp.ts",
     "create:e2e-db": "tsx src/scripts/create-e2e-db.ts",
-    "reset:e2e-data": "tsx src/scripts/reset-e2e-data.ts"
+    "reset:e2e-data": "tsx src/scripts/reset-e2e-data.ts",
+    "select:tests": "LOG_DESTINATION=stderr tsx src/scripts/select-tests.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.55.0",
