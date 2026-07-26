@@ -28,6 +28,7 @@ import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 import { NodeV8CoverageAgent } from './coverageAgent/NodeV8CoverageAgent.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
+import { SDK_VERSION } from './coverageAgent/sdk/CoverageAgentPlugin.js';
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
 
 /** Default port for the API server */
@@ -129,6 +130,7 @@ if (coverageAgent) {
   // Makes the agent reachable from coverageDumpService without a
   // server.ts -> service -> server.ts import cycle.
   registerCoverageAgent(coverageAgent);
+  logger.info({ ...coverageAgent.metadata, sdkVersion: SDK_VERSION }, 'Coverage agent registered');
 }
 
 // Disable Nagle's algorithm for all connections so that small streaming frames

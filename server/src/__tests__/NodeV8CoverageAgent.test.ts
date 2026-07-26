@@ -113,6 +113,14 @@ describe('NodeV8CoverageAgent', () => {
     await expect(readFile(join(dumpsRoot, dumpResultB.path), 'utf8')).resolves.toBeTruthy();
   });
 
+  it('reports its own AgentMetadata (MINCRM-636)', () => {
+    expect(agent.metadata).toEqual({
+      id: 'node-v8',
+      language: 'Node.js (V8)',
+      displayName: 'Node V8 Inspector Coverage Agent',
+    });
+  });
+
   it('passes detailed:true for block granularity and detailed:false for function granularity', async () => {
     await agent.stop();
 
