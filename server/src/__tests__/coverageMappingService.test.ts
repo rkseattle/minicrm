@@ -321,8 +321,13 @@ describe('coverageMappingService', () => {
       expect(found).toHaveLength(0);
     });
 
-    it('logs commitSha, resultCount, and durationMs (MINCRM-637)', async () => {
+    it('logs commitSha, resultCount, and durationMs at debug level, not info (MINCRM-637)', async () => {
+      // debug, not info — this is the per-unit inheritance fan-out inside
+      // testSelectionService's mapWithConcurrencyLimit call, invoked once
+      // per changed unit; logging it at info would put one line per unit
+      // on test selection's hot path (found via Greptile branch review).
       const infoSpy = vi.spyOn(logger, 'info');
+      const debugSpy = vi.spyOn(logger, 'debug');
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const filePath = `${FILE_PREFIX}/logging.ts`;
       const unitKey = 'render#logtest1';
@@ -332,7 +337,12 @@ describe('coverageMappingService', () => {
 
       await findTestsForUnitAcrossBranches(commitSha, filePath, unitKey);
 
-      const call = infoSpy.mock.calls.find(
+      expect(
+        infoSpy.mock.calls.find(
+          ([, message]) => message === 'coverageMappingService: findTestsForUnitAcrossBranches',
+        ),
+      ).toBeUndefined();
+      const call = debugSpy.mock.calls.find(
         ([, message]) => message === 'coverageMappingService: findTestsForUnitAcrossBranches',
       );
       expect(call).toBeDefined();
@@ -340,6 +350,7 @@ describe('coverageMappingService', () => {
       expect(fields).toMatchObject({ commitSha, filePath, unitKey, resultCount: 1 });
       expect(typeof (fields as { durationMs?: unknown })?.durationMs).toBe('number');
       infoSpy.mockRestore();
+      debugSpy.mockRestore();
     });
   });
 

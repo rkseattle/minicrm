@@ -301,13 +301,13 @@ describe('coverageModelService', () => {
       expect(stored).toHaveLength(1);
     });
 
-    it('deletes coverage_test_links rows orphaned by the coverage_units prune, in the same transaction (MINCRM-637)', async () => {
+    it('deletes coverage_test_links rows orphaned by the coverage_units prune, when the link is also stale (MINCRM-637)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
       await coverageDb.query(
-        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
-         VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 1, now() - interval '100 days')`,
         [
           commitSha,
           unit.unitKey,
@@ -331,6 +331,40 @@ describe('coverageModelService', () => {
         [commitSha],
       );
       expect(remainingLinks.rowCount).toBe(0);
+    });
+
+    it('does not delete a recently-loaded coverage_test_links row that has no coverage_units row at all (MINCRM-637)', async () => {
+      // Mirrors loadCoverageTestLinksForCommit's real shape: a committed
+      // qa/coverage-map.json load writes coverage_test_links rows with NO
+      // corresponding coverage_units rows, ever — that's the normal, only
+      // way select-tests.ts gets a coverage index in CI and via
+      // pre-push-tia.ts locally. A prune that used NOT EXISTS alone (with
+      // no last_seen_at bound) would delete this row on its very next run,
+      // silently degrading TIA to full-suite-forever. Found via Greptile
+      // branch review of MINCRM-637.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unit = makeUnit();
+      await coverageDb.query(
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
+         VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+        [
+          commitSha,
+          unit.unitKey,
+          unit.branchId,
+          unit.filePath,
+          'spec:widget.spec.ts::renders',
+          'renders',
+        ],
+      );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedLinkCount).toBe(0);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(1);
     });
 
     it("does not touch a still-linked (non-pruned) unit's coverage_units or coverage_test_links row", async () => {

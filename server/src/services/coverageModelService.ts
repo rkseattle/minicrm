@@ -380,27 +380,39 @@ export interface PruneCoverageUnitsResult {
   /** coverage_units rows deleted for being older than the retention window. */
   prunedUnitCount: number;
   /**
-   * coverage_test_links rows deleted because they no longer had a matching
-   * coverage_units row after the prune above. coverage_test_links has no
-   * FK to coverage_units (cross-database FKs are impossible in PostgreSQL,
-   * and both tables live in the same coverage database but were never
-   * given one) — pruning coverage_units alone would leave these orphaned,
-   * which silently weakens the safety net: MAPPING_RESULT_SELECT's LEFT
-   * JOIN would then return confidence_score: null for an orphaned link,
-   * and safetyNetPolicy.hasLowConfidenceMatch treats null as "no signal to
-   * check" (`confidenceScore !== null && confidenceScore < threshold`)
-   * rather than "below threshold" — the exact full-suite fallback
-   * retention pruning must not weaken (MINCRM-637).
+   * coverage_test_links rows deleted because they were both outside the
+   * SAME retention window as the coverage_units prune above AND had no
+   * matching coverage_units row at the time. coverage_test_links has no FK
+   * to coverage_units (cross-database FKs are impossible in PostgreSQL, and
+   * both tables live in the same coverage database but were never given
+   * one) — pruning coverage_units alone would eventually leave these
+   * orphaned, which silently weakens the safety net: MAPPING_RESULT_SELECT's
+   * LEFT JOIN would then return confidence_score: null for an orphaned
+   * link, and safetyNetPolicy.hasLowConfidenceMatch treats null as "no
+   * signal to check" (`confidenceScore !== null && confidenceScore <
+   * threshold`) rather than "below threshold" — the exact full-suite
+   * fallback retention pruning must not weaken (MINCRM-637).
+   *
+   * The retention-window predicate on l.last_seen_at is required, not just
+   * defensive: loadCoverageTestLinksForCommit (coverageMappingService.ts)
+   * writes coverage_test_links rows from a committed qa/coverage-map.json
+   * with NO corresponding coverage_units rows at all — that map load is the
+   * normal way select-tests.ts gets a coverage index in CI and via
+   * pre-push-tia.ts locally. Without the time bound, a plain NOT EXISTS
+   * would delete that entire freshly-loaded map on the very next scheduled
+   * prune tick, degrading TIA to full-suite-forever with no error (found
+   * via Greptile branch review).
    */
   prunedLinkCount: number;
 }
 
 /**
  * Prunes coverage_units rows not touched in more than `retentionDays` days
- * (MINCRM-616's configurable retention policy), then deletes any
- * coverage_test_links rows left orphaned by that prune, in the same
- * transaction. Scheduled daily via coverageRetentionScheduler.ts
- * (MINCRM-637); also callable on demand by an operator.
+ * (MINCRM-616's configurable retention policy), then deletes
+ * coverage_test_links rows that are BOTH outside that same retention
+ * window AND left orphaned by that prune, in the same transaction.
+ * Scheduled daily via coverageRetentionScheduler.ts (MINCRM-637); also
+ * callable on demand by an operator.
  */
 export async function pruneCoverageUnits(retentionDays: number): Promise<PruneCoverageUnitsResult> {
   const client: PoolClient = await coverageDb.connect();
@@ -420,15 +432,24 @@ export async function pruneCoverageUnits(retentionDays: number): Promise<PruneCo
     // coverage_test_links_identity_idx's own dedup convention — NULL <>
     // NULL in SQL, so a plain equality would never match two NULL
     // branch_id rows for the same otherwise-identical identity.
+    //
+    // l.last_seen_at < the SAME retention cutoff as the coverage_units
+    // delete above is required so a link row loaded moments ago by
+    // loadCoverageTestLinksForCommit — which intentionally writes no
+    // coverage_units row at all — is never in scope just because its unit
+    // row doesn't exist. Only a link that is itself stale AND unmatched is
+    // a genuine orphan of this prune.
     const prunedLinks = await client.query(
       `DELETE FROM coverage_test_links l
-       WHERE NOT EXISTS (
-         SELECT 1 FROM coverage_units u
-         WHERE u.commit_sha = l.commit_sha
-           AND u.file_path = l.file_path
-           AND u.unit_key = l.unit_key
-           AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
-       )`,
+       WHERE l.last_seen_at < now() - ($1 * interval '1 day')
+         AND NOT EXISTS (
+           SELECT 1 FROM coverage_units u
+           WHERE u.commit_sha = l.commit_sha
+             AND u.file_path = l.file_path
+             AND u.unit_key = l.unit_key
+             AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
+         )`,
+      [retentionDays],
     );
 
     await client.query('COMMIT');

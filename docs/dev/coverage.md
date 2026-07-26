@@ -106,8 +106,9 @@ existing `coverage_units`/`coverage_test_links` tables, mounted at
 `/api/v1/admin/coverage/reporting/*` — the intended (and only) caller is the
 standalone coverage-dashboard app scaffolded alongside this API (a new
 `coverage-dashboard` npm workspace; see that workspace's own README). Gated by
-`authenticate → requireRole('admin') → requireFeatureEnabled('coverage_reporting_query')`,
-mounted before the general `/admin/coverage` router — same more-specific-before-general
+`authenticate → coverageAccessGate → requireFeatureEnabled('coverage_reporting_query')`
+([Access Control](#access-control-mincrm-637)), mounted before the general `/admin/coverage`
+router — same more-specific-before-general
 precedent as `/coverage/sessions`, `/coverage/pipeline`, and `/coverage/mapping`.
 
 ### Per-build rollup (`coverage_build_summary`)
@@ -184,7 +185,8 @@ architecture AC ("standalone app/service ... no shared route table with
 - Reuses `minicrm-server`'s existing session-cookie auth (`POST /auth/login`) rather
   than inventing a separate credential store — its `ProtectedRoute` additionally checks
   `user.role === 'admin'` client-side (a UX nicety only; every reporting endpoint is
-  independently `requireRole('admin')`-gated server-side regardless).
+  independently `coverageAccessGate`-gated server-side regardless — see
+  [Access Control](#access-control-mincrm-637)).
 - Is English-only, with no i18n system of its own — an internal developer/QA tool, not
   a customer-facing product surface.
 
@@ -516,7 +518,7 @@ A `CoverageSession` is a logical grouping of one or more coverage dumps attribut
 | `POST` | `/api/v1/admin/coverage/sessions/:sessionId/end`   | End a session (optimistic-locked on `version`). `409` on conflict (already ended or stale version).                                                                                                                                                                                                                                                                                 |
 | `POST` | `/api/v1/admin/coverage/sessions/:sessionId/dumps` | Record a `dumpId`'s attribution to a session (after `POST /coverage/dump`). `409` if the session has already ended, or if `dumpId` was already recorded (anywhere — including via auto-attribution above). `400` if `correlationId` doesn't match this session's own — a caller cannot attribute a dump to `sessionId` while stamping it with a different session's correlation ID. |
 
-Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_session_management')`, mirroring `coverage.ts`. The `coverage_session_management` flag is independent of `coverage_instrumentation` (migration 156) — a session can exist even when the backend V8 agent itself never started, e.g. a browser-only manual session. Mounted in `app.ts` **before** the general `coverage.ts` router, so a future top-level route added there can never shadow `/admin/coverage/sessions`.
+Gated by `authenticate → coverageAccessGate` ([Access Control](#access-control-mincrm-637)). Unlike `coverage.ts`'s reporting/pipeline/mapping routers, these routes carry no `requireFeatureEnabled` check at all — the entire router is registered only when `COVERAGE_SESSION_MANAGEMENT` is `'true'` at boot (migration 161 removed the `coverage_session_management` product-database feature flag in favor of this boot-time env var; see [Env vars (boot-time, resolved once)](#env-vars-boot-time-resolved-once) below). `COVERAGE_SESSION_MANAGEMENT` is independent of `COVERAGE_INSTRUMENTATION` (migration 156) — a session can exist even when the backend V8 agent itself never started, e.g. a browser-only manual session. Mounted in `app.ts` **before** the general `coverage.ts` router, so a future top-level route added there can never shadow `/admin/coverage/sessions`.
 
 A dump can only ever attribute to an **active** session whose `correlation_id` matches the caller-supplied value — `recordCoverageSessionDump`'s INSERT is scoped to `WHERE EXISTS (... status = 'active' AND correlation_id = ...)` atomically in a single statement, so there's no check-then-insert race and no way to attribute a dump to one session while stamping it with another's correlation ID.
 
@@ -571,7 +573,7 @@ Not audited (no `AuditActor`/`writeAuditEntry`) — `coverage_units` is derived,
 | ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/api/v1/admin/coverage/pipeline/ingest` | Normalize + symbolicate one dump by ID into `coverage_units`. `201` on first ingestion, `200` with `alreadyIngested: true` on a repeat call, `404` for an unknown `dumpId`, `400` for a malformed payload file. |
 
-Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_pipeline_ingestion')`, mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions`). The `coverage_pipeline_ingestion` flag is independent of `coverage_instrumentation` and `coverage_session_management` — a server can produce and attribute raw dumps while the normalization pipeline itself stays off.
+Gated by `authenticate → coverageAccessGate → requireFeatureEnabled('coverage_pipeline_ingestion')` ([Access Control](#access-control-mincrm-637)), mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions`). The `coverage_pipeline_ingestion` flag is independent of `COVERAGE_INSTRUMENTATION` and `COVERAGE_SESSION_MANAGEMENT` — a server can produce and attribute raw dumps while the normalization pipeline itself stays off.
 
 No scheduled or automatic trigger exists — ingestion is manual/CI-triggered only, matching this phase's scope. Reference client: `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`.
 
@@ -710,7 +712,7 @@ Three things happen per file a commit's units reference:
 | `GET`  | `/api/v1/admin/coverage/mapping/tests-for-unit` | Code unit → covering tests, scoped by `commitSha`, confidence attached |
 | `GET`  | `/api/v1/admin/coverage/mapping/units-for-test` | Test → covered code units, scoped by `commitSha`, confidence attached  |
 
-Gated by `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_mapping_query')`, mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). The `coverage_mapping_query` flag (migration 159, product database — see [Coverage Database](#coverage-database)) is independent of `coverage_pipeline_ingestion`: a server can have ingested `coverage_test_links` data while the query API itself stays off, e.g. during rollout.
+Gated by `authenticate → coverageAccessGate → requireFeatureEnabled('coverage_mapping_query')` ([Access Control](#access-control-mincrm-637)), mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). The `coverage_mapping_query` flag (migration 159, product database — see [Coverage Database](#coverage-database)) is independent of `coverage_pipeline_ingestion`: a server can have ingested `coverage_test_links` data while the query API itself stays off, e.g. during rollout.
 
 Both endpoints read `coverageMappingService.findTestsForUnitWithConfidence`/`findUnitsForTestWithConfidence`, which `LEFT JOIN coverage_test_links` against `coverage_units` on the shared `(commit_sha, file_path, unit_key, branch_id)` identity — matching `coverage_units_identity_idx`'s own exact shape, so the join can never match more than one row. Both tables live in the SAME coverage database, so this is a normal same-database join, not a cross-database query. `confidenceScore`/`lastReconciledAt` are `null` in a result when no matching `coverage_units` row exists (e.g. reconciliation pruned it) — the mapping result itself is still returned, never silently dropped.
 
