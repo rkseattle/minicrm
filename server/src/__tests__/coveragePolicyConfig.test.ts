@@ -117,4 +117,17 @@ describe('resolveCoveragePolicy', () => {
     expect(typeof policy.commitSha).toBe('string');
     expect(policy.commitSha.length).toBeGreaterThan(0);
   });
+
+  it('uses a caller-supplied CoverageConfig instead of resolving its own, when given one', () => {
+    // server.ts passes its own already-resolved coverageConfig so boot
+    // never shells out to `git rev-parse HEAD` twice for the same
+    // commitSha (found via Greptile branch review, MINCRM-637).
+    const policy = resolveCoveragePolicy({
+      enabled: true,
+      granularity: 'function',
+      commitSha: 'caller-supplied-sha',
+    });
+    expect(policy.granularity).toBe('function');
+    expect(policy.commitSha).toBe('caller-supplied-sha');
+  });
 });

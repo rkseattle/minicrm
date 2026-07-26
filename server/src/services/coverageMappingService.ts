@@ -414,8 +414,9 @@ export function unitPairKey(filePath: string, unitKey: string): string {
  * testSelectionService's direct-lookup step, the only production caller —
  * select-tests.ts (the CI/local test-selection CLI) invokes it in-process,
  * never over HTTP, so this is a service-layer batch function, not a new
- * route (see docs/plans/MINCRM-636.md's Rejected alternatives for why an
- * earlier draft proposing an HTTP endpoint here was wrong).
+ * route: an HTTP endpoint would add request/response marshaling and an
+ * auth/gating surface for a call that only ever crosses an in-process
+ * function boundary within the same CLI invocation.
  *
  * Drives off coverage_test_links_unit_idx (commit_sha, unit_key) — the
  * only existing index that can serve a multi-unit lookup on this table.
