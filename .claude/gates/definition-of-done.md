@@ -1,0 +1,70 @@
+# Definition of Done — required before every `git commit`, no exceptions
+
+Run in order. All must be green. Read this file before the first commit of a session;
+it does not need re-reading between commits.
+
+```bash
+# 1. Typecheck (repo root — covers server, client, and qa)
+npm run typecheck
+
+# 2. Lint (all workspaces)
+npm run lint
+
+# 3. Audit
+npm audit
+
+# 4. Unit tests — sequential; never run the two workspaces in parallel
+npm run unit_test
+
+# 5. QA static checks
+bash qa/scripts/check-framework-purity.sh
+bash qa/scripts/check-behavior-layer.sh
+bash qa/scripts/check-settings-mutations.sh
+bash qa/scripts/check-networkidle.sh
+```
+
+Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
+`.claude/gates/e2e-run.md` for the pre-push E2E gate.
+
+## Conditional gates
+
+**Any file under `qa/e2e/` in the diff** — all four QA static checks above are
+mandatory for that commit, not deferred to push time.
+
+**Files under `qa/e2e/framework/` in the diff** — additionally:
+
+```bash
+npm run test:framework:coverage --workspace=minicrm-qa
+```
+
+c8 enforces 80% on lines, functions, branches, and statements. Known false positives
+in `check-framework-purity.sh`: `MINCRM-*` ticket refs match the `mini?crm` pattern,
+and the word `pipeline` matches the CRM i18n namespace check — including inside JSDoc
+`@example` and `@param` blocks. Rephrase rather than suppress.
+
+**Changed `.md` files** — run `markdownlint-cli2` on them. CI `lint-docs` catches what
+the pre-commit hook misses.
+
+**Staged `.github/workflows/*.yml`** — the pre-commit hook runs `actionlint` and hard-
+fails if it isn't installed (`brew install actionlint`, once per machine).
+
+**Changes touching `server/src/services/` or `server/src/ai/`** — review
+`server/src/ai/tools/` and verify tool schemas still match service signatures: input
+field names, enums, required arrays. Update affected tool files in the same commit.
+
+**Changes adding or modifying NLI behavior in `server/src/ai/`** — add or update eval
+cases in `qa/evals/` in the same commit. Intent → `nli-intent.yaml`, semantic →
+`nli-semantic.yaml`, RBAC → `nli-rbac.yaml`, PII → `nli-pii.yaml`. Never route PII
+assertions through an LLM judge.
+
+## Before `git add`
+
+Read the diff and ask: does any block of logic appear more than once — within a file,
+across files in this diff, or once here and once already in the repo? If yes, extract
+the helper first, then stage. This applies to private methods, shared utilities, and
+framework helpers alike.
+
+## Reading results
+
+Never rely on exit codes or console summaries for test outcomes. Delete stale result
+files before a run, then read the generated results file.
