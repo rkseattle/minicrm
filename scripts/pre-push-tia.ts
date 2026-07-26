@@ -147,8 +147,13 @@ function runSelectTests(baseRef: string, headRef: string): SelectTestsResult {
 }
 
 function runPlaywright(specFiles: readonly string[]): void {
-  const args = specFiles.length > 0 ? specFiles.map((f) => `"${f}"`).join(' ') : '';
-  execSync(`npm run test -- ${args} --grep-invert serial`, {
+  // Array args via execFileSync — never a shell string — same precedent
+  // as every other subprocess call in this file (runLoadCoverageMap,
+  // runSelectTests, runAttestation). A spec file path containing a shell
+  // metacharacter (quote, backtick, $(), ;) must not be able to break out
+  // of the intended single-argument boundary.
+  const args = ['run', 'test', '--', ...specFiles, '--grep-invert', 'serial'];
+  execFileSync('npm', args, {
     cwd: resolve(REPO_ROOT, 'qa'),
     stdio: 'inherit',
     env: process.env,
