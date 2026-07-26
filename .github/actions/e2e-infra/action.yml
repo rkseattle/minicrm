@@ -25,6 +25,14 @@ inputs:
   node-encryption-key:
     description: 64-char hex NODE_ENCRYPTION_KEY for the app server
     required: true
+  coverage-instrumentation:
+    description: >
+      Set to 'true' to start the app server with COVERAGE_INSTRUMENTATION
+      and COVERAGE_SESSION_MANAGEMENT enabled (MINCRM-633 record mode).
+      Every other caller needs the backend V8 agent OFF for a clean,
+      zero-overhead baseline run, so this defaults to unset.
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -119,6 +127,8 @@ runs:
         PORT: 3001
         E2E: true
         NODE_ENCRYPTION_KEY: ${{ inputs.node-encryption-key }}
+        COVERAGE_INSTRUMENTATION: ${{ inputs.coverage-instrumentation }}
+        COVERAGE_SESSION_MANAGEMENT: ${{ inputs.coverage-instrumentation }}
 
     - name: Start frontend dev server
       shell: bash

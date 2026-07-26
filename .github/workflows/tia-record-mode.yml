@@ -1,0 +1,157 @@
+name: TIA Record Mode
+
+# MINCRM-633: record mode — the FULL functional + serial suite runs
+# post-merge (after CI succeeds on main) and nightly, with coverage
+# instrumentation enabled, then ingests every dump produced into
+# coverage_units/coverage_test_links so the mapping engine's map stays
+# fresh. This run's result is the AUTHORITATIVE signal MINCRM-634's PR
+# gating defers to — unlike ci.yml's own PR-time select mode (tia-selection
+# job), which is fast, advisory feedback only.
+#
+# Why workflow_run instead of push (same rationale as
+# update-timing-baseline.yml): download-artifact defaults to the CURRENT
+# run's own artifacts, so workflow_run is needed to reach the triggering
+# CI run's own dorny/test-reporter results if a future revision needs them.
+# This workflow doesn't consume CI's artifacts today, but workflow_run
+# still correctly gates on "CI actually passed on main" without a second,
+# independent implementation of ci.yml's own path-filtering/test-running
+# logic — the run this workflow triggers off of already proved the app
+# builds and passes its own unit/lint gates.
+#
+# Why a separate workflow file, not a job inside ci.yml: ci.yml is
+# pull_request-only (see its own `on:` block) — a full nightly/scheduled
+# run has no PR to attach a status check to, and mixing a `schedule:`
+# trigger into ci.yml would make every job's `if:` conditions (many of
+# which already assume `github.event_name == 'pull_request'`, e.g. sticky
+# PR comments) need a second branch of special-casing throughout an
+# already very large file.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # 03:00 UTC nightly — recalibrates the map even on a quiet day with no
+    # merges, so a long-idle branch's PR select mode never resolves against
+    # a stale map older than this window.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+# Serialize record-mode runs so two overlapping runs never write
+# coverage_test_links for the same commit concurrently in a way that could
+# race with pruneCoverageUnits' retention deletion.
+concurrency:
+  group: tia-record-mode
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  record-mode:
+    name: Full-suite record mode
+    runs-on: ubuntu-latest
+    # Only run when the triggering CI run actually succeeded — a broken
+    # main build must not spend a full record-mode run (or worse, record a
+    # map update) against code that doesn't even pass unit tests.
+    # workflow_dispatch and schedule both run unconditionally
+    # (github.event.workflow_run is null for both).
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: minicrm
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: minicrm_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        ports:
+          - 9000:9000
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        command: server /data --console-address :9001
+
+      mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # record mode always runs against main's own tip, regardless of
+          # which ref triggered it (workflow_run's default checkout ref is
+          # the WORKFLOW FILE's ref at trigger time, not necessarily main's
+          # latest commit — explicit ref removes any ambiguity).
+          ref: main
+
+      # e2e-infra's own "Run migrations on E2E database" step handles this —
+      # no separate migration step needed here.
+      - uses: ./.github/actions/e2e-infra
+        with:
+          e2e-admin-email: ${{ secrets.E2E_ADMIN_EMAIL }}
+          e2e-admin-password: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          node-encryption-key: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+          # Record mode's whole purpose is producing coverage dumps to
+          # ingest below — every other e2e-infra caller needs this OFF for
+          # a clean, zero-overhead baseline run (see the action's own input
+          # docs).
+          coverage-instrumentation: 'true'
+
+      # Single worker, not the config's own IS_CI default (4): this run
+      # mixes @functional and @serial tests in ONE invocation (unlike
+      # ci.yml's split e2e-functional/e2e-serial jobs), and per CLAUDE.md's
+      # own rule, @serial tests mutate a shared system_settings row and
+      # race under concurrent workers. Slower than ci.yml's sharded run, but
+      # record mode isn't latency-sensitive — it runs post-merge/nightly,
+      # off the PR's own critical path.
+      - name: Run full functional + serial suite (record mode)
+        run: |
+          npx playwright test \
+            --config=qa/e2e/playwright.config.ts \
+            --project=desktop \
+            --workers=1 \
+            --grep @functional
+        env:
+          E2E_COVERAGE_GRANULARITY: per-run
+          PW_WORKERS: '1'
+
+      - name: Ingest coverage dumps into the mapping engine
+        if: always()
+        run: npm run ingest:coverage-dumps --workspace=minicrm-qa
+        env:
+          E2E_API_URL: http://localhost:3001
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          COVERAGE_DUMPS_ROOT: ${{ github.workspace }}/server/coverage-dumps
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tia-record-mode-report-${{ github.run_id }}
+          path: |
+            qa/e2e/test-results/
+            qa/e2e/playwright-report/
+          retention-days: 14

@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "migrate:coverage": "node-pg-migrate -m migrations up --no-check-order",
     "migrate:coverage:down": "node-pg-migrate -m migrations down --no-check-order",
-    "create:coverage-e2e-db": "tsx scripts/create-coverage-e2e-db.ts"
+    "create:coverage-e2e-db": "tsx scripts/create-coverage-e2e-db.ts",
+    "ingest:coverage-dumps": "tsx e2e/scripts/ingest-coverage-dumps.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.94.0",
