@@ -37,8 +37,7 @@
  * uncapped Promise.all over that fan-out could exhaust it. That path is
  * unreachable from this module's only production caller today
  * (select-tests.ts never supplies enclosingUnitsByUnitKey), so batching it
- * is deliberately out of scope — see docs/plans/MINCRM-636.md's Rejected
- * alternatives.
+ * is deliberately out of scope for MINCRM-637.
  *
  * Ranking is delegated to a pluggable TestScorer (MINCRM-627) — this module
  * owns only mapping-API resolution, inheritance, and cross-unit dedup;

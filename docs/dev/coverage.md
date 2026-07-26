@@ -86,6 +86,18 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 See [ADR-003](../adr/003-test-impact-analysis-selection.md) for the full pipeline design
 and the safety-net/scorer decoupling invariant.
 
+### Phase 7 — Platform governance files (MINCRM-637)
+
+| Path                                                        | Purpose                                                                                                                                                          |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/middleware/coverageAccessGate.ts`               | Access-control gate — `requireRole('admin')` or `coverage:admin` capability, per `COVERAGE_CAPABILITY_GATING` (see [Access Control](#access-control-mincrm-637)) |
+| `db/migrations/162_add_coverage_admin_capability.js`        | Seeds `coverage:admin` to the built-in `admin` role (product database)                                                                                           |
+| `server/src/coverageAgent/coveragePolicyConfig.ts`          | Centralizes granularity/retention/safety-threshold config behind `resolveCoveragePolicy()` (see [Policy Configuration](#policy-configuration-mincrm-637))        |
+| `server/src/coverageAgent/coverageRetentionScheduler.ts`    | Daily cron entry point for `pruneCoverageUnits` (see [Scheduled retention pruning](#scheduled-retention-pruning))                                                |
+| `qa/migrations/005_coverage_test_links_last_seen_at_idx.js` | Index supporting the retention prune's `coverage_test_links` query (coverage database)                                                                           |
+| `server/src/services/coverageHealthService.ts`              | `getCoverageHealth()` — agent/DB/feature-flag status (see [`GET /api/v1/admin/coverage/health`](#get-apiv1admincoveragehealth))                                  |
+| `server/src/controllers/coverageHealthController.ts`        | Maps health status to `200`/`503`                                                                                                                                |
+
 ### Phase 6 — Reporting & gap analysis files
 
 | Path                                                     | Purpose                                                                                                                                      |
@@ -259,6 +271,16 @@ assignments — an admin user WITH an explicit custom-role assignment lacking
 `requireRole('admin')` (a pure JWT-claims check) currently passes them. The flag
 lets this be verified against real production role-assignment data before a
 follow-up ticket removes the `requireRole` fallback.
+
+The flag's effect is not purely a narrowing, though — flipping
+`COVERAGE_CAPABILITY_GATING=true` also **widens** access in one specific case: a
+bearer-authenticated `service_account` user holding `coverage:admin` via a custom
+role gains access under capability mode, which is impossible under
+`requireRole('admin')` (`service_account` can never satisfy `role === 'admin'`).
+An operator enabling the flag should verify no `service_account` unexpectedly holds
+`coverage:admin` before flipping it in a security-sensitive environment. See
+`server/src/__tests__/coverageAccessGate.test.ts`'s "accepted intentional widening"
+cases for the exact behavior on both the cookie- and bearer-authenticated paths.
 
 ## Policy Configuration (MINCRM-637)
 

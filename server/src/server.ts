@@ -123,13 +123,15 @@ server.headersTimeout = HEADERS_TIMEOUT_MS;
 const coverageConfig = resolveCoverageConfig();
 
 // Coverage/TIA policy (MINCRM-637) — resolved once here at boot, not inside
-// the retention cron's closure. resolveCoveragePolicy() internally shells
-// out to `git rev-parse HEAD` (coverageConfig.ts) to resolve a commitSha
-// this specific use doesn't even need; re-resolving it on every daily tick
-// forever (rather than once at boot) would violate coveragePolicyConfig.ts's
-// own "resolve once, pass the result down" contract — see
-// coverageRetentionScheduler.ts's own docblock for the full rationale.
-const { retentionDays: coverageRetentionDays } = resolveCoveragePolicy();
+// the retention cron's closure; re-resolving it on every daily tick forever
+// would violate coveragePolicyConfig.ts's own "resolve once, pass the
+// result down" contract — see coverageRetentionScheduler.ts's own docblock
+// for the full rationale. Passed the coverageConfig already resolved above
+// rather than letting resolveCoveragePolicy() resolve its own — that
+// resolution shells out to `git rev-parse HEAD` (coverageConfig.ts), and
+// doing so a second time on every boot for a commitSha this call doesn't
+// even use was a redundant subprocess (found via Greptile branch review).
+const { retentionDays: coverageRetentionDays } = resolveCoveragePolicy(coverageConfig);
 const coverageAgent = coverageConfig.enabled
   ? new NodeV8CoverageAgent({
       dumpsRoot: COVERAGE_DUMPS_ROOT,

@@ -9,8 +9,7 @@
  * not a dynamic query against current user_custom_roles assignments (that
  * approach was considered and rejected: the insert set it would compute is
  * not recoverable for `down`, since assignments can change between `up`
- * and any later `down` — see docs/plans/MINCRM-636.md's Rejected
- * alternatives).
+ * and any later `down`).
  *
  * This grants coverage:admin identical access to today's
  * requireRole('admin') check for any user resolved via

@@ -15,7 +15,7 @@
  */
 
 import { resolveCoverageConfig } from './coverageConfig.js';
-import type { CoverageGranularity } from './coverageConfig.js';
+import type { CoverageConfig, CoverageGranularity } from './coverageConfig.js';
 
 /**
  * Retention window default, in days. No prior default existed to inherit —
@@ -93,9 +93,20 @@ function resolveMaxUnmappedRatio(): number {
  * Resolves the full Coverage/TIA policy from the current environment. Call
  * once at boot (server.ts) or once at script start (select-tests.ts) and
  * pass the result down — do not re-read process.env per request/call.
+ *
+ * Accepts an already-resolved CoverageConfig rather than always calling
+ * resolveCoverageConfig() itself — that call shells out to `git rev-parse
+ * HEAD` (coverageConfig.ts's resolveCommitSha), and server.ts already
+ * resolves a CoverageConfig of its own a few lines above this call; without
+ * the parameter, boot would shell out to git twice for the same commitSha
+ * (found via Greptile branch review). select-tests.ts has no CoverageConfig
+ * of its own to pass, so the default keeps that call site a single
+ * resolution, same as before.
  */
-export function resolveCoveragePolicy(): CoveragePolicy {
-  const { granularity, commitSha } = resolveCoverageConfig();
+export function resolveCoveragePolicy(
+  config: CoverageConfig = resolveCoverageConfig(),
+): CoveragePolicy {
+  const { granularity, commitSha } = config;
   return {
     granularity,
     commitSha,

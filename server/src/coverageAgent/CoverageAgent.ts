@@ -13,6 +13,4 @@ export type {
   CoverageDump,
   CoverageDumpFormat,
   CoverageDumpSource,
-  AgentMetadata,
 } from './sdk/CoverageAgentPlugin.js';
-export { SDK_VERSION } from './sdk/CoverageAgentPlugin.js';
