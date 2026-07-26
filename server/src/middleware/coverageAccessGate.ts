@@ -29,10 +29,22 @@ const requireCoverageAdminCapability = requireCapability(Capability.CoverageAdmi
 /**
  * Gates a coverage route on either `coverage:admin` (capability mode) or
  * `role === 'admin'` (today's default), selected by
- * `COVERAGE_CAPABILITY_GATING` at request time — not resolved once at
- * import time, so a test or an operator toggling the env var takes effect
- * without a process restart in test environments that mutate
- * `process.env` between requests.
+ * `COVERAGE_CAPABILITY_GATING` at request time — deliberately NOT resolved
+ * once at import time like every other coverage/TIA env var on this branch
+ * (coveragePolicyConfig.ts, COVERAGE_INSTRUMENTATION/COVERAGE_SESSION_MANAGEMENT
+ * in routes/coverage.ts and routes/coverageSessions.ts). Those all gate
+ * static, deploy-time facts (route registration, retention policy) that
+ * only change on a restart anyway. This flag exists specifically to let
+ * this rollout be flipped and observed against real production
+ * role-assignment data before the `requireRole('admin')` fallback is
+ * removed in a follow-up ticket (see this file's own top docblock) — a
+ * process-restart requirement to try `true` and, if the admin-with-custom-
+ * role gap below bites, flip back to `false` would defeat that purpose
+ * during the exact verification window this flag exists for. Once that
+ * follow-up ticket removes the `requireRole` fallback, this per-request
+ * read stops mattering (there will be nothing left to toggle back to).
+ * Secondarily, this also lets a test control the flag per-case without a
+ * full app re-import — see coverageAccessGate.test.ts's own docblock.
  *
  * `requireCapability`'s own handler is async (it resolves the user's
  * capability set from the DB); this wrapper must itself return that

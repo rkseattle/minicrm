@@ -36,6 +36,8 @@ export interface CoverageHealthReport {
     coverage_mapping_query: boolean;
     coverage_reporting_query: boolean;
   };
+  /** Present only when one or more feature-flag reads failed (e.g. the product DB was unreachable) — the corresponding featureFlags field falls back to false rather than the report itself failing. */
+  featureFlagsError?: string;
 }
 
 async function checkCoverageDb(): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -62,29 +64,56 @@ async function checkCoverageDb(): Promise<{ ok: true } | { ok: false; error: str
   }
 }
 
+/**
+ * Resolves a single feature flag's state, never rejecting — isFeatureEnabled
+ * (featureFlagService.ts) issues an unguarded pool.query() against the
+ * PRODUCT database (this report's flags are product-DB rows, unlike
+ * checkCoverageDb's coverage-DB check above) and propagates any rejection.
+ * Without this wrapper, a cold flag cache plus a product-DB outage would
+ * reject the whole getCoverageHealth() Promise.all and this endpoint would
+ * 500 instead of reporting the exact degraded state it exists to surface
+ * (found via Greptile branch review). Falls back to `false` on failure,
+ * same fail-safe direction isFeatureEnabled itself already takes for an
+ * unknown flag key.
+ */
+async function checkFeatureFlag(
+  key: string,
+): Promise<{ ok: true; enabled: boolean } | { ok: false; error: string }> {
+  try {
+    return { ok: true, enabled: await isFeatureEnabled(key) };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+}
+
 /** Resolves the current operational health of the Coverage/TIA framework's own services. */
 export async function getCoverageHealth(): Promise<CoverageHealthReport> {
-  const [dbResult, pipelineFlag, mappingFlag, reportingFlag] = await Promise.all([
+  const [dbResult, pipelineResult, mappingResult, reportingResult] = await Promise.all([
     checkCoverageDb(),
-    isFeatureEnabled('coverage_pipeline_ingestion'),
-    isFeatureEnabled('coverage_mapping_query'),
-    isFeatureEnabled('coverage_reporting_query'),
+    checkFeatureFlag('coverage_pipeline_ingestion'),
+    checkFeatureFlag('coverage_mapping_query'),
+    checkFeatureFlag('coverage_reporting_query'),
   ]);
 
   const agentRunning = getCoverageAgent() !== undefined;
   const featureFlags = {
-    coverage_pipeline_ingestion: pipelineFlag,
-    coverage_mapping_query: mappingFlag,
-    coverage_reporting_query: reportingFlag,
+    coverage_pipeline_ingestion: pipelineResult.ok ? pipelineResult.enabled : false,
+    coverage_mapping_query: mappingResult.ok ? mappingResult.enabled : false,
+    coverage_reporting_query: reportingResult.ok ? reportingResult.enabled : false,
   };
+  const featureFlagsError = [pipelineResult, mappingResult, reportingResult].find(
+    (r) => !r.ok,
+  )?.error;
 
-  if (!dbResult.ok) {
+  if (!dbResult.ok || featureFlagsError !== undefined) {
     return {
       status: 'degraded',
       agentRunning,
-      db: 'error',
-      dbError: dbResult.error,
+      db: dbResult.ok ? 'ok' : 'error',
+      ...(!dbResult.ok && { dbError: dbResult.error }),
       featureFlags,
+      ...(featureFlagsError !== undefined && { featureFlagsError }),
     };
   }
 

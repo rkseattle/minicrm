@@ -18,6 +18,7 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
+import { __clearCacheForTest } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'coverage-health-ctrl';
 
@@ -88,5 +89,37 @@ describe('GET /api/v1/admin/coverage/health', () => {
     expect(res.body.db).toBe('error');
     expect(res.body.dbError).toBe('statement timeout');
     expect(mockClient.release).toHaveBeenCalledOnce();
+  });
+
+  it('returns 503, not 500, when a feature-flag read against the product database fails', async () => {
+    // Regression test: a rejected isFeatureEnabled() call used to reject
+    // getCoverageHealth()'s whole Promise.all, which asyncHandler forwarded
+    // to the global error handler as a 500 — defeating the endpoint's own
+    // purpose of reporting a structured degraded state (found via Greptile
+    // branch review). Only the feature_flags query is rejected, not every
+    // pool.query call — this same request's own `authenticate` middleware
+    // calls findUserById (userService.ts), which also queries `pool`; an
+    // unscoped mock would 500 the request for an unrelated reason (auth
+    // itself failing) before ever reaching coverageHealthService.
+    __clearCacheForTest();
+    const realQuery = pool.query.bind(pool);
+    vi.spyOn(pool, 'query').mockImplementation(((...args: Parameters<typeof pool.query>) => {
+      const sql = typeof args[0] === 'string' ? args[0] : (args[0] as { text: string }).text;
+      if (sql.includes('FROM feature_flags')) {
+        return Promise.reject(new Error('product db unreachable'));
+      }
+      return realQuery(...args);
+    }) as typeof pool.query);
+
+    const res = await request(app).get('/api/v1/admin/coverage/health').set('Cookie', adminCookie);
+
+    expect(res.status).toBe(503);
+    expect(res.body.status).toBe('degraded');
+    expect(res.body.featureFlags).toEqual({
+      coverage_pipeline_ingestion: false,
+      coverage_mapping_query: false,
+      coverage_reporting_query: false,
+    });
+    expect(res.body.featureFlagsError).toBe('product db unreachable');
   });
 });

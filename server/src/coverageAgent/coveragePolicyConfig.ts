@@ -49,8 +49,22 @@ export interface CoveragePolicy {
   maxUnmappedRatio: number;
 }
 
+// Trimmed before the blank check, not just checked with a bare `!raw` —
+// Number(' ')/Number('\t')/Number('\n') all coerce to 0, which is a
+// "valid" (in-range) input to every resolver below. An untrimmed check
+// would let a whitespace-only env value (a trailing space after `=` in a
+// .env file, or a blank-resolving CI secret) silently coerce to 0 instead
+// of falling back to the default — for the two threshold resolvers below,
+// 0 is inside their valid [0, 1] range and would pass straight through,
+// silently neutering the safety net this module exists to protect (found
+// via Greptile branch review).
+function readTrimmedEnv(key: string): string | undefined {
+  const raw = process.env[key]?.trim();
+  return raw ? raw : undefined;
+}
+
 function resolveRetentionDays(): number {
-  const raw = process.env.COVERAGE_RETENTION_DAYS;
+  const raw = readTrimmedEnv('COVERAGE_RETENTION_DAYS');
   if (!raw) return DEFAULT_RETENTION_DAYS;
   const parsed = Number(raw);
   // Integer only — "days a row survives" implies a whole number, and a
@@ -76,14 +90,14 @@ function isValidUnitInterval(value: number): boolean {
 }
 
 function resolveMinConfidenceThreshold(): number {
-  const raw = process.env.TIA_MIN_CONFIDENCE_THRESHOLD;
+  const raw = readTrimmedEnv('TIA_MIN_CONFIDENCE_THRESHOLD');
   if (!raw) return DEFAULT_MIN_CONFIDENCE_THRESHOLD;
   const parsed = Number(raw);
   return isValidUnitInterval(parsed) ? parsed : DEFAULT_MIN_CONFIDENCE_THRESHOLD;
 }
 
 function resolveMaxUnmappedRatio(): number {
-  const raw = process.env.TIA_MAX_UNMAPPED_RATIO;
+  const raw = readTrimmedEnv('TIA_MAX_UNMAPPED_RATIO');
   if (!raw) return DEFAULT_MAX_UNMAPPED_RATIO;
   const parsed = Number(raw);
   return isValidUnitInterval(parsed) ? parsed : DEFAULT_MAX_UNMAPPED_RATIO;
