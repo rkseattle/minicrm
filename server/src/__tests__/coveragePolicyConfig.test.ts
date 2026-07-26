@@ -50,6 +50,11 @@ describe('resolveCoveragePolicy', () => {
     expect(resolveCoveragePolicy().retentionDays).toBe(30);
   });
 
+  it('falls back to the default for a whitespace-only COVERAGE_RETENTION_DAYS, not Number(" ") === 0', () => {
+    process.env.COVERAGE_RETENTION_DAYS = '   ';
+    expect(resolveCoveragePolicy().retentionDays).toBe(30);
+  });
+
   it('defaults minConfidenceThreshold to 0.3 when TIA_MIN_CONFIDENCE_THRESHOLD is unset', () => {
     expect(resolveCoveragePolicy().minConfidenceThreshold).toBe(0.3);
   });
@@ -80,6 +85,11 @@ describe('resolveCoveragePolicy', () => {
     expect(resolveCoveragePolicy().minConfidenceThreshold).toBe(1);
   });
 
+  it('falls back to the default for a whitespace-only TIA_MIN_CONFIDENCE_THRESHOLD, not Number(" ") === 0 silently disabling the safety net', () => {
+    process.env.TIA_MIN_CONFIDENCE_THRESHOLD = '  ';
+    expect(resolveCoveragePolicy().minConfidenceThreshold).toBe(0.3);
+  });
+
   it('defaults maxUnmappedRatio to 0.5 when TIA_MAX_UNMAPPED_RATIO is unset', () => {
     expect(resolveCoveragePolicy().maxUnmappedRatio).toBe(0.5);
   });
@@ -108,6 +118,11 @@ describe('resolveCoveragePolicy', () => {
 
     process.env.TIA_MAX_UNMAPPED_RATIO = '1';
     expect(resolveCoveragePolicy().maxUnmappedRatio).toBe(1);
+  });
+
+  it('falls back to the default for a whitespace-only TIA_MAX_UNMAPPED_RATIO, not Number(" ") === 0 silently disabling the safety net', () => {
+    process.env.TIA_MAX_UNMAPPED_RATIO = '\t';
+    expect(resolveCoveragePolicy().maxUnmappedRatio).toBe(0.5);
   });
 
   it('re-exports granularity/commitSha from coverageConfig.ts rather than re-deriving them', () => {

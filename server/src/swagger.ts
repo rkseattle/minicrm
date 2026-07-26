@@ -776,6 +776,11 @@ const componentSchemas = {
       },
       db: { type: 'string', enum: ['ok', 'error'] },
       dbError: { type: 'string', description: 'Present only when db is "error".' },
+      featureFlagsError: {
+        type: 'string',
+        description:
+          'Present only when one or more feature-flag reads failed (e.g. the product database was unreachable). The corresponding featureFlags field falls back to false rather than the whole report failing.',
+      },
       featureFlags: {
         type: 'object',
         required: [

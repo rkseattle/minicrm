@@ -114,4 +114,38 @@ describe('getCoverageHealth', () => {
     expect(health.dbError).toBe('statement timeout');
     expect(mockClient.release).toHaveBeenCalledOnce();
   });
+
+  it('reports status degraded (not a rejected promise) when a feature-flag read fails, falling back to false for every flag', async () => {
+    // isFeatureEnabled (featureFlagService.ts) reads the PRODUCT database via
+    // an unguarded pool.query() — a cold cache plus a product-DB outage
+    // would previously reject getCoverageHealth()'s whole Promise.all,
+    // making the health endpoint 500 instead of reporting the exact
+    // degraded state it exists to surface (found via Greptile branch
+    // review). __clearCacheForTest() forces getCachedRows() to re-query
+    // rather than serve the cache set by the beforeEach/afterEach fixtures
+    // above. Only the feature_flags query is rejected, not every pool.query
+    // call — the afterEach below restores flags to enabled via pool.query
+    // too, and scoping this consistently with coverageHealthController.test.ts's
+    // equivalent case avoids any dependency on vi.restoreAllMocks() running
+    // before that restore loop.
+    __clearCacheForTest();
+    const realQuery = pool.query.bind(pool);
+    vi.spyOn(pool, 'query').mockImplementation(((...args: Parameters<typeof pool.query>) => {
+      const sql = typeof args[0] === 'string' ? args[0] : (args[0] as { text: string }).text;
+      if (sql.includes('FROM feature_flags')) {
+        return Promise.reject(new Error('product db unreachable'));
+      }
+      return realQuery(...args);
+    }) as typeof pool.query);
+
+    const health = await getCoverageHealth();
+
+    expect(health.status).toBe('degraded');
+    expect(health.featureFlags).toEqual({
+      coverage_pipeline_ingestion: false,
+      coverage_mapping_query: false,
+      coverage_reporting_query: false,
+    });
+    expect(health.featureFlagsError).toBe('product db unreachable');
+  });
 });
