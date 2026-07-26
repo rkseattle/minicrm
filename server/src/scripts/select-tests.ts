@@ -118,24 +118,41 @@ function resolveShaForRef(ref: string, cwd: string): string {
   return execFileSync('git', ['rev-parse', ref], { cwd, encoding: 'utf8' }).trim();
 }
 
+/** Escapes every regex metacharacter EXCEPT `*` (glob's own wildcard, handled separately by the caller) — used on already-split literal segments only, never on text that itself contains regex syntax this function's caller has already generated (see globToRegExp's own docblock for why that distinction matters). */
+function escapeRegExpLiteral(text: string): string {
+  return text.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Minimal glob-to-RegExp for this module's own ALWAYS_RUN_BASELINE_GLOBS
  * only (not a general-purpose glob engine). A double-star segment matches
  * ZERO or more directory levels — not one-or-more — so a pattern like
  * "auth" + double-star + "/*.spec.ts" matches both a direct child
- * (auth/auth.spec.ts) and a nested one (auth/sub/x.spec.ts). A naive
- * double-star-to-".*" substitution before escaping the adjacent literal
- * slash would require at least one directory segment, silently excluding
- * every spec file living directly inside the globbed directory (found
- * while smoke-testing this module — auth/auth.spec.ts itself was
- * excluded by the very glob meant to include it).
+ * (auth/auth.spec.ts) and a nested one (auth/sub/x.spec.ts) AND a
+ * multiply-nested one (auth/a/b/c.spec.ts).
+ *
+ * Splits on the double-star-slash separator FIRST and transforms each
+ * literal segment independently, rather than doing sequential whole-
+ * string .replace() calls. An earlier revision instead chained two
+ * whole-string replace calls in sequence: substitute the double-star-
+ * slash separator for a directory-matching group, then separately
+ * substitute any remaining single-star wildcard for a segment-matching
+ * group. That second substitution's own wildcard pattern also matched
+ * the literal star characters the FIRST substitution had just injected
+ * as part of its own replacement text, silently corrupting the
+ * zero-or-more directory match into a group that only matches EXACTLY
+ * one directory level — found via a real regression test asserting a
+ * spec file nested two-plus directories deep, after an earlier, narrower
+ * fix (for the direct-child case alone) had already shipped once.
+ * Splitting first and transforming segments independently means no later
+ * step ever re-scans a prior step's own generated regex syntax.
  */
-function globToRegExp(glob: string): RegExp {
-  const escaped = glob
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*\//g, '(?:.*/)?')
-    .replace(/\*/g, '[^/]*');
-  return new RegExp(`^${escaped}$`);
+export function globToRegExp(glob: string): RegExp {
+  const segments = glob.split('**/');
+  const pattern = segments
+    .map((segment) => escapeRegExpLiteral(segment).replace(/\*/g, '[^/]*'))
+    .join('(?:.*/)?');
+  return new RegExp(`^${pattern}$`);
 }
 
 /**
@@ -159,7 +176,7 @@ function globToRegExp(glob: string): RegExp {
  * second, small directory walk here is the more honest trade-off than
  * adding a cross-workspace dependency for ~15 lines.
  */
-function resolveBaselineFiles(cwd: string): string[] {
+export function resolveBaselineFiles(cwd: string): string[] {
   const functionalDir = resolvePath(cwd, 'qa/e2e/tests/apps/minicrm/functional');
   const matchers = ALWAYS_RUN_BASELINE_GLOBS.map(globToRegExp);
   const results: string[] = [];

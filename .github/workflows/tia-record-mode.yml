@@ -1,22 +1,30 @@
 name: TIA Record Mode
 
 # MINCRM-633: record mode — the FULL functional + serial suite runs
-# post-merge (after CI succeeds on main) and nightly, with coverage
+# post-merge (on every push to main) and nightly, with coverage
 # instrumentation enabled, then ingests every dump produced into
 # coverage_units/coverage_test_links so the mapping engine's map stays
 # fresh. This run's result is the AUTHORITATIVE signal MINCRM-634's PR
 # gating defers to — unlike ci.yml's own PR-time select mode (tia-selection
 # job), which is fast, advisory feedback only.
 #
-# Why workflow_run instead of push (same rationale as
-# update-timing-baseline.yml): download-artifact defaults to the CURRENT
-# run's own artifacts, so workflow_run is needed to reach the triggering
-# CI run's own dorny/test-reporter results if a future revision needs them.
-# This workflow doesn't consume CI's artifacts today, but workflow_run
-# still correctly gates on "CI actually passed on main" without a second,
-# independent implementation of ci.yml's own path-filtering/test-running
-# logic — the run this workflow triggers off of already proved the app
-# builds and passes its own unit/lint gates.
+# Triggered by `push: branches: [main]`, NOT workflow_run off ci.yml —
+# workflow_run's `branches` filter matches the branch the TRIGGERING
+# workflow itself executed on, which for a pull_request-only workflow
+# (ci.yml has no push trigger — see its own `on:` block) is the PR's own
+# head branch, never literally "main". `workflow_run: {branches: [main]}`
+# chained off a pull_request-only workflow therefore never fires at all
+# (confirmed against GitHub's own docs and community reports — this was a
+# real bug in an earlier revision of this file, caught in review). A
+# direct `push: branches: [main]` trigger reacts to the actual merge
+# commit landing on main, which is what this workflow needs.
+#
+# This intentionally does NOT gate on "did ci.yml pass for this PR" first
+# (unlike the discarded workflow_run design) — this repo's main branch has
+# no branch-protection rule requiring CI to pass before merge, so a push
+# to main is not guaranteed to have already passed ci.yml. Record mode is
+# the authoritative check; it must run unconditionally on every push to
+# main rather than trust an unenforced precondition.
 #
 # Why a separate workflow file, not a job inside ci.yml: ci.yml is
 # pull_request-only (see its own `on:` block) — a full nightly/scheduled
@@ -27,9 +35,7 @@ name: TIA Record Mode
 # already very large file.
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [main]
   schedule:
     # 03:00 UTC nightly — recalibrates the map even on a quiet day with no
@@ -52,15 +58,6 @@ jobs:
   record-mode:
     name: Full-suite record mode
     runs-on: ubuntu-latest
-    # Only run when the triggering CI run actually succeeded — a broken
-    # main build must not spend a full record-mode run (or worse, record a
-    # map update) against code that doesn't even pass unit tests.
-    # workflow_dispatch and schedule both run unconditionally
-    # (github.event.workflow_run is null for both).
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      github.event.workflow_run.conclusion == 'success'
 
     services:
       postgres:
@@ -100,10 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # record mode always runs against main's own tip, regardless of
-          # which ref triggered it (workflow_run's default checkout ref is
-          # the WORKFLOW FILE's ref at trigger time, not necessarily main's
-          # latest commit — explicit ref removes any ambiguity).
+          # Explicit ref removes any ambiguity for the schedule/
+          # workflow_dispatch triggers, which have no natural "ref" of
+          # their own — record mode always runs against main's own tip.
           ref: main
 
       # e2e-infra's own "Run migrations on E2E database" step handles this —
@@ -146,6 +142,29 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           COVERAGE_DUMPS_ROOT: ${{ github.workspace }}/server/coverage-dumps
+
+      # MINCRM-642: the shared attestation gate, run here because this is
+      # the ONE place in the whole hybrid model where a genuine, freshly-
+      # ingested full-suite results.xml AND its session attribution
+      # (COVERAGE_SESSION_MANAGEMENT, enabled above) exist together in the
+      # SAME job — ci.yml's own tia-selection job never executes Playwright
+      # at all, so there is nothing there to attest to. No --selection
+      # argument: this run IS the full suite, not a targeted subset, so
+      # there is no required-file list to reconcile against — only the
+      # all-pass + SHA-binding/freshness mechanism applies here.
+      - name: Verify test attestation
+        id: attest
+        if: always()
+        run: |
+          npm run --workspace=minicrm-server --silent verify:test-attestation -- \
+            --results=${{ github.workspace }}/qa/e2e/test-results/results.xml \
+            --sha=${{ github.sha }}
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
 
       # pr-tia-8: CI has no persistent database (see
       # coverageMappingService.ts's own "Committed-map load/export"
@@ -208,10 +227,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const sha =
-              context.eventName === 'workflow_run'
-                ? context.payload.workflow_run.head_sha
-                : context.sha;
+            // context.sha is the pushed commit for `push`, and main's tip
+            // (the ref this job explicitly checked out) for `schedule`/
+            // `workflow_dispatch` — correct for every trigger this
+            // workflow has.
+            const sha = context.sha;
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,
