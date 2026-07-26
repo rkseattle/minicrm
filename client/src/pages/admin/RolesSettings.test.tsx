@@ -270,6 +270,19 @@ describe('RolesSettings — create form', () => {
       expect(screen.getByTestId('role-form-error')).toBeInTheDocument();
     });
   });
+
+  it('never offers coverage:admin in the capability picker — internal coverage-tia tooling stays out of the self-service custom-role editor (MINCRM-637)', async () => {
+    renderWithProviders(<RolesSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roles-settings-new-button')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('roles-settings-new-button'));
+
+    expect(screen.getByTestId('capability-picker')).toBeInTheDocument();
+    expect(screen.queryByTestId('capability-checkbox-coverage:admin')).not.toBeInTheDocument();
+  });
 });
 
 describe('RolesSettings — edit form', () => {

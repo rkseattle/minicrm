@@ -213,7 +213,50 @@ In `app.ts`, alongside the other admin routers:
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 ```
 
-All routes: `authenticate → requireRole('admin') → requireFeatureEnabled('coverage_instrumentation') → asyncHandler(handler)`.
+All routes: `authenticate → coverageAccessGate → asyncHandler(handler)` (`coverage.ts`/`coverageSessions.ts`), or with an additional `requireFeatureEnabled(<flag>)` step for `coveragePipeline.ts`/`coverageMapping.ts`/`coverageReporting.ts`. See [Access Control](#access-control-mincrm-637) below for what `coverageAccessGate` does.
+
+## Access Control (MINCRM-637)
+
+Every coverage route is gated by `coverageAccessGate`
+(`server/src/middleware/coverageAccessGate.ts`), replacing a bare
+`requireRole('admin')` check. By default (`COVERAGE_CAPABILITY_GATING` unset), this
+behaves identically to `requireRole('admin')`. When
+`COVERAGE_CAPABILITY_GATING=true`, it instead requires the `coverage:admin`
+capability (`Capability.CoverageAdmin`, `shared/schemas/capabilitySchema.ts`),
+seeded to the built-in `admin` role only (`db/migrations/162_add_coverage_admin_capability.js`).
+
+**Two distinct gates on `coverage.ts`/`coverageSessions.ts`:** those two routers
+additionally register zero routes at all unless `COVERAGE_INSTRUMENTATION`/
+`COVERAGE_SESSION_MANAGEMENT` is `true` at process boot (see Mounting above) — the
+capability-gating flag has no observable effect on those two routers in a deployment
+where the underlying env var is unset, since there is nothing registered for it to
+gate. `coveragePipeline.ts`/`coverageMapping.ts`/`coverageReporting.ts` are always
+registered, so `coverageAccessGate` is the sole access-control mechanism on those
+three routers.
+
+**`coverage:admin` is deliberately excluded from `RolesSettings.tsx`'s
+`CAPABILITY_GROUPS` picker** — assignable only via direct API call or migration,
+never through the self-service custom-role editor, matching MINCRM-663's precedent
+of keeping internal coverage tooling out of the customer-facing admin UI.
+
+**Known gap, accepted deliberately:** the coverage-dashboard's own
+`ProtectedRoute.tsx` stays role-based (`user?.role !== 'admin'`) — no endpoint
+returns a user's resolved capability set today, and building one is unscoped work
+neither MINCRM-636 nor MINCRM-637 calls for. A non-`admin`-role user granted
+`coverage:admin` via a custom role would pass every server-side gate but still be
+redirected by the dashboard's client-side check — a UX gap, not a security gap,
+since every reporting endpoint the dashboard calls independently enforces its own
+real check regardless of the client-side redirect.
+
+**Rollout:** `COVERAGE_CAPABILITY_GATING` exists because `requireCapability`
+resolves via `role_capabilities`/`user_custom_roles`
+(`server/src/services/roleService.ts`'s `userCapabilities`), which only falls back
+to a user's built-in `users.role` when they hold zero explicit custom-role
+assignments — an admin user WITH an explicit custom-role assignment lacking
+`coverage:admin` would be silently 403'd by an unconditional swap, where
+`requireRole('admin')` (a pure JWT-claims check) currently passes them. The flag
+lets this be verified against real production role-assignment data before a
+follow-up ticket removes the `requireRole` fallback.
 
 ## Coverage Database
 

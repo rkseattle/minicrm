@@ -95,6 +95,43 @@ describe('coverage session control API — auth boundaries', () => {
   });
 });
 
+describe('coverage session control API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+  const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
+
+  beforeEach(() => {
+    process.env.COVERAGE_CAPABILITY_GATING = 'true';
+  });
+
+  afterEach(() => {
+    if (originalGating !== undefined) {
+      process.env.COVERAGE_CAPABILITY_GATING = originalGating;
+    } else {
+      delete process.env.COVERAGE_CAPABILITY_GATING;
+    }
+  });
+
+  it('still grants the built-in admin role access via coverage:admin (migration 162), routed through coverageAccessGate', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', adminCookie)
+      .send(baseSessionBody('capability-gating-admin'));
+    // 201 with a minted session — proves the request passed
+    // coverageAccessGate and reached the handler, not just that it avoided
+    // a 403. Cleaned up by this file's own afterAll, which deletes every
+    // coverage_sessions row started_by adminId.
+    expect(res.status).toBe(201);
+    expect(res.body.session).toMatchObject({ label: 'capability-gating-admin', status: 'active' });
+  });
+
+  it('still 403s a non-admin, non-coverage:admin rep under capability mode', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .set('Cookie', repCookie)
+      .send(baseSessionBody('capability-gating-rep'));
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage session control API — validation', () => {
   it('returns 400 VALIDATION_ERROR when label is missing on start', async () => {
     const res = await request(app)

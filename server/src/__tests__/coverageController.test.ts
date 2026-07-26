@@ -77,6 +77,43 @@ describe('coverage control API — auth boundaries', () => {
   });
 });
 
+describe('coverage control API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+  const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
+
+  beforeEach(() => {
+    process.env.COVERAGE_CAPABILITY_GATING = 'true';
+  });
+
+  afterEach(() => {
+    if (originalGating !== undefined) {
+      process.env.COVERAGE_CAPABILITY_GATING = originalGating;
+    } else {
+      delete process.env.COVERAGE_CAPABILITY_GATING;
+    }
+  });
+
+  it('still grants the built-in admin role access via coverage:admin (migration 162), routed through coverageAccessGate', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/reset')
+      .set('Cookie', adminCookie)
+      .send({});
+    // 409 COVERAGE_NOT_ENABLED (agent never started in this test process) —
+    // the exact status the "agent not started" describe block above
+    // asserts for this same request under default gating — proves the
+    // request passed coverageAccessGate and reached the handler.
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('COVERAGE_NOT_ENABLED');
+  });
+
+  it('still 403s a non-admin, non-coverage:admin rep under capability mode', async () => {
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/reset')
+      .set('Cookie', repCookie)
+      .send({});
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage control API — agent not started', () => {
   it('returns 409 COVERAGE_NOT_ENABLED on reset when the backend agent never started', async () => {
     // The test server process boots without COVERAGE_INSTRUMENTATION=true,

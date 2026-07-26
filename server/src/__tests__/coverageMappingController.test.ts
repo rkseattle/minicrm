@@ -110,6 +110,43 @@ describe('coverage mapping API — auth boundaries', () => {
   });
 });
 
+describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+  const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
+
+  beforeEach(async () => {
+    await setFlagEnabled('coverage_mapping_query', true);
+    process.env.COVERAGE_CAPABILITY_GATING = 'true';
+  });
+
+  afterEach(() => {
+    if (originalGating !== undefined) {
+      process.env.COVERAGE_CAPABILITY_GATING = originalGating;
+    } else {
+      delete process.env.COVERAGE_CAPABILITY_GATING;
+    }
+  });
+
+  it('still grants the built-in admin role access via coverage:admin (migration 162), routed through coverageAccessGate', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
+      .set('Cookie', adminCookie)
+      .query({ commitSha: 'abc', unitKey: 'render#123' });
+    // 200 with an empty results array (no coverage data for this commitSha)
+    // — proves the request passed coverageAccessGate and reached the
+    // handler, not just that it avoided a 403.
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([]);
+  });
+
+  it('still 403s a non-admin, non-coverage:admin rep under capability mode', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
+      .set('Cookie', repCookie)
+      .query({ commitSha: 'abc', unitKey: 'render#123' });
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage mapping API — validation', () => {
   beforeEach(async () => {
     await setFlagEnabled('coverage_mapping_query', true);

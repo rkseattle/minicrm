@@ -103,6 +103,44 @@ describe('coverage reporting API — auth boundaries', () => {
   });
 });
 
+describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
+  const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
+
+  beforeEach(async () => {
+    await setFlagEnabled('coverage_reporting_query', true);
+    process.env.COVERAGE_CAPABILITY_GATING = 'true';
+  });
+
+  afterEach(() => {
+    if (originalGating !== undefined) {
+      process.env.COVERAGE_CAPABILITY_GATING = originalGating;
+    } else {
+      delete process.env.COVERAGE_CAPABILITY_GATING;
+    }
+  });
+
+  it('still grants the built-in admin role access via coverage:admin (migration 162), routed through coverageAccessGate', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .set('Cookie', adminCookie)
+      .query({ commitSha: 'abc' });
+    // 404 COVERAGE_BUILD_NOT_FOUND — the same status the "returns 404 for a
+    // commit with no build summary" test above asserts for an unseen
+    // commitSha under default gating — proves the request passed
+    // coverageAccessGate and reached the handler.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
+  });
+
+  it('still 403s a non-admin, non-coverage:admin rep under capability mode', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .set('Cookie', repCookie)
+      .query({ commitSha: 'abc' });
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('coverage reporting API — validation', () => {
   beforeEach(async () => {
     await setFlagEnabled('coverage_reporting_query', true);
