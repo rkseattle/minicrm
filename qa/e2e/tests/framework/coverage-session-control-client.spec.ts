@@ -19,6 +19,26 @@ import {
 import type { CoverageSessionMetadata } from '@framework/coverageAgent/coverage-session-control-client';
 import { RestClient } from '@framework/clients';
 import type { APIRequestContext, APIResponse } from '@playwright/test';
+import type { HarnessAdapterShape } from '@minicrm/shared/schemas/coverageHarnessAdapterSchema';
+
+// Compile-time-only checkpoint (MINCRM-636): asserts
+// coverage-session-control-client.ts's real exports satisfy the documented
+// HarnessAdapterShape<RestClient> contract (shared/schemas/
+// coverageHarnessAdapterSchema.ts). This file is outside
+// qa/e2e/framework/'s zero-app-domain-refs boundary, so it — not the
+// framework file itself — is where a @minicrm/shared/schemas import is
+// permitted; the client under test stays framework-pure. Never called at
+// runtime; its only job is to fail `tsc --noEmit` if either side's
+// signature drifts from the other.
+const _playwrightHarnessAdapterCheck: HarnessAdapterShape<RestClient> = {
+  startSession: (client, params) => startCoverageSession(client, params),
+  endSession: (client, sessionId, version) => endCoverageSession(client, sessionId, version),
+  recordDump: (client, sessionId, params) => recordCoverageSessionDump(client, sessionId, params),
+  injectCorrelationHeader: (headers, correlationId) => {
+    headers[CORRELATION_ID_HEADER] = correlationId;
+  },
+};
+void _playwrightHarnessAdapterCheck;
 
 // ---------------------------------------------------------------------------
 // Mock helpers — same shape as rest-client.spec.ts's mockContext/mockApiResponse

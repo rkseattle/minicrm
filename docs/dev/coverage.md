@@ -4,25 +4,27 @@ Runtime code coverage collection from the live MiniCRM stack — backend and fro
 
 ## Files
 
-| Path                                                             | Purpose                                                                    |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `server/src/coverageAgent/CoverageAgent.ts`                      | `CoverageAgent` interface + `CoverageDump` type                            |
-| `server/src/coverageAgent/NodeV8CoverageAgent.ts`                | Backend agent — Node inspector API, `reset`/`snapshot`/`dump`              |
-| `server/src/coverageAgent/coverageConfig.ts`                     | Env-var resolution: enabled, granularity, commit SHA, dumps root           |
-| `server/src/coverageAgent/coverageAgentRegistry.ts`              | Module-level singleton holding the process's agent instance                |
-| `server/src/coverageAgent/dumpIndex.ts`                          | Append-only `dumpId` → metadata-path lookup index                          |
-| `server/src/services/coverageDumpService.ts`                     | Wraps the agent + dumpIndex; handles browser-dump ingestion                |
-| `server/src/controllers/coverageController.ts`                   | Request/response shaping for the control API                               |
-| `server/src/routes/coverage.ts`                                  | `@openapi` routes, mounted at `/api/v1/admin/coverage`                     |
-| `shared/schemas/coverageSchema.ts`                               | Zod request/response schemas, shared server+client+qa                      |
-| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeds the `coverage_instrumentation` feature flag, off by default          |
-| `client/vite.config.ts`                                          | `vite-plugin-istanbul`, added to `plugins` only when `COVERAGE=true`       |
-| `qa/e2e/framework/coverageAgent/browser-coverage-agent.ts`       | Client-side: pulls `window.__coverage__`, submits to the dump endpoint     |
-| `qa/e2e/framework/coverageAgent/coverage-control-client.ts`      | Reference client for the backend verbs (reset/snapshot/dump)               |
-| `qa/e2e/framework/reporting/coverage-reporter.ts`                | Triggers one final dump at run end when `E2E_COVERAGE_GRANULARITY=per-run` |
-| `qa/e2e/globalTeardown.ts`                                       | Reset safety-net after each E2E run                                        |
-| `qa/e2e/apps/minicrm/fixtures.ts`                                | Per-test coverage pull+submit wired into the `page` fixture                |
-| `qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/` | Functional spec exercising the control API end to end                      |
+| Path                                                             | Purpose                                                                                                             |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`            | `CoverageAgentPlugin` SDK contract + `CoverageDump`/`AgentMetadata` types (MINCRM-636)                              |
+| `server/src/coverageAgent/CoverageAgent.ts`                      | Re-exports the SDK contract under its original names, for import-path stability                                     |
+| `server/src/coverageAgent/NodeV8CoverageAgent.ts`                | Backend agent — Node inspector API, `reset`/`snapshot`/`dump`; reference implementation of `CoverageAgentPlugin`    |
+| `shared/schemas/coverageHarnessAdapterSchema.ts`                 | `HarnessAdapterShape` — documents the harness-adapter contract against the Playwright reference client (MINCRM-636) |
+| `server/src/coverageAgent/coverageConfig.ts`                     | Env-var resolution: enabled, granularity, commit SHA, dumps root                                                    |
+| `server/src/coverageAgent/coverageAgentRegistry.ts`              | Module-level singleton holding the process's agent instance                                                         |
+| `server/src/coverageAgent/dumpIndex.ts`                          | Append-only `dumpId` → metadata-path lookup index                                                                   |
+| `server/src/services/coverageDumpService.ts`                     | Wraps the agent + dumpIndex; handles browser-dump ingestion                                                         |
+| `server/src/controllers/coverageController.ts`                   | Request/response shaping for the control API                                                                        |
+| `server/src/routes/coverage.ts`                                  | `@openapi` routes, mounted at `/api/v1/admin/coverage`                                                              |
+| `shared/schemas/coverageSchema.ts`                               | Zod request/response schemas, shared server+client+qa                                                               |
+| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeds the `coverage_instrumentation` feature flag, off by default                                                   |
+| `client/vite.config.ts`                                          | `vite-plugin-istanbul`, added to `plugins` only when `COVERAGE=true`                                                |
+| `qa/e2e/framework/coverageAgent/browser-coverage-agent.ts`       | Client-side: pulls `window.__coverage__`, submits to the dump endpoint                                              |
+| `qa/e2e/framework/coverageAgent/coverage-control-client.ts`      | Reference client for the backend verbs (reset/snapshot/dump)                                                        |
+| `qa/e2e/framework/reporting/coverage-reporter.ts`                | Triggers one final dump at run end when `E2E_COVERAGE_GRANULARITY=per-run`                                          |
+| `qa/e2e/globalTeardown.ts`                                       | Reset safety-net after each E2E run                                                                                 |
+| `qa/e2e/apps/minicrm/fixtures.ts`                                | Per-test coverage pull+submit wired into the `page` fixture                                                         |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/` | Functional spec exercising the control API end to end                                                               |
 
 Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/` — the repo's `.gitignore` has an unanchored `coverage/` pattern (for Vitest's test-coverage output) that would otherwise silently ignore a literal `coverage/` directory anywhere in the tree, including this one.
 
@@ -236,6 +238,24 @@ Uses the stable `node:inspector` module's `Profiler.startPreciseCoverage` / `Pro
 **V8 constraint — reset-on-read:** `Profiler.takePreciseCoverage()` resets accumulated call counts as a side effect of reading them. There is no CDP-level non-destructive read. This means `snapshot()` is **not** a true non-destructive read despite the name — calling it clears counters just like `dump()` does, it just doesn't persist an artifact to disk. A `snapshot()` call between two `dump()` calls will make the second dump's coverage look artificially low. Treat `snapshot()` as "peek and clear," not "peek."
 
 Enabled only when `COVERAGE_INSTRUMENTATION=true` at boot — checked once, not per-request. Coverage is at branch/block granularity by default (`COVERAGE_GRANULARITY=block`), function-level only with `COVERAGE_GRANULARITY=function`.
+
+## Agent & Harness Adapter SDK (MINCRM-636)
+
+`NodeV8CoverageAgent` above is the reference implementation of a formal, versioned
+plugin contract — `CoverageAgentPlugin` (`server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`),
+re-exported under its original `CoverageAgent` name from `CoverageAgent.ts` for
+import-path stability. `coverageAgentRegistry.ts` is typed to the interface, not the
+concrete class, so a second language's agent can register without a type error. The
+harness side of the contract (`HarnessAdapterShape`,
+`shared/schemas/coverageHarnessAdapterSchema.ts`) documents, against the actual
+existing shape of the Playwright reference client
+(`qa/e2e/framework/coverageAgent/coverage-session-control-client.ts`), what a new
+test-framework integration needs to provide: start/end a session, attribute a dump,
+and propagate `CORRELATION_ID_HEADER`.
+
+This is a versioned interface plus one real implementation, not a dynamic plugin
+loader — see [docs/dev/coverage-tia-sdk.md](coverage-tia-sdk.md) for the full
+contribution guide, versioning policy, and the reasoning for that choice.
 
 ## Frontend Agent (MINCRM-605)
 

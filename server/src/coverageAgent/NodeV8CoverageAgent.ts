@@ -19,12 +19,23 @@ import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import logger from '../logger.js';
-import type { CoverageAgent, CoverageDump, CoverageDumpFormat } from './CoverageAgent.js';
+import type {
+  AgentMetadata,
+  CoverageAgentPlugin,
+  CoverageDump,
+  CoverageDumpFormat,
+} from './sdk/CoverageAgentPlugin.js';
 import type { CoverageGranularity } from './coverageConfig.js';
 import type { DumpIndex } from './dumpIndex.js';
 import { getSharedDumpIndex } from './dumpIndex.js';
 
 const V8_SCRIPT_COVERAGE_FORMAT: CoverageDumpFormat = 'v8-script-coverage';
+
+const NODE_V8_AGENT_METADATA: AgentMetadata = {
+  id: 'node-v8',
+  language: 'Node.js (V8)',
+  displayName: 'Node V8 Inspector Coverage Agent',
+};
 
 interface ScriptCoverageResult {
   result: unknown;
@@ -43,7 +54,9 @@ export interface NodeV8CoverageAgentOptions {
  * CoverageAgent backed by the current process's own V8 inspector session.
  * One instance should be constructed per server process.
  */
-export class NodeV8CoverageAgent implements CoverageAgent {
+export class NodeV8CoverageAgent implements CoverageAgentPlugin {
+  readonly metadata = NODE_V8_AGENT_METADATA;
+
   private readonly session = new Session();
   private readonly dumpIndex: DumpIndex;
   private started = false;

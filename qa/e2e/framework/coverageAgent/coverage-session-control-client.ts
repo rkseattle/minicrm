@@ -51,7 +51,11 @@ export interface CoverageSessionMetadata {
   buildSha: string;
   environment: string;
   issueKey: string | null;
-  startedById: string;
+  // Nullable — the starting user may have been deleted since (ON DELETE SET
+  // NULL on coverage_sessions.started_by; see db migration 157 and
+  // shared/schemas/coverageSessionSchema.ts's own CoverageSession type,
+  // which this interface otherwise mirrors).
+  startedById: string | null;
   startedAt: string;
   endedAt: string | null;
   version: number;
