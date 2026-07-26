@@ -370,3 +370,140 @@ export async function findUnitsForTestWithConfidence(
   );
   return result.rows.map(toCoverageMappingResult);
 }
+
+// ── Committed-map load/export (pr-tia-8) ────────────────────────────────────
+//
+// CI has no persistent database — every job's coverageDb is a fresh,
+// ephemeral Postgres service container with no memory of any prior run
+// (see docs/dev/coverage.md's "Coverage Database" section: the ONE
+// long-lived instance is a developer's own local docker-compose db
+// service, never present in GitHub Actions). The map therefore has to
+// round-trip through a committed file (qa/coverage-map.json), the same
+// pattern test-timing-baseline.json already establishes for LPT shard
+// timing data. exportCoverageTestLinks reads the live table (called once,
+// at the end of tia-record-mode.yml, which has real freshly-ingested
+// data); loadCoverageTestLinksForCommit re-populates an otherwise-empty
+// table from that file before any selection-time query runs (called by
+// load-coverage-map.ts, itself invoked by both the pre-push hook and
+// ci.yml's tia-selection job) — every existing query function above
+// (findTestsForUnitAcrossBranches, findUnitsForTest, etc.) then works
+// completely unchanged against the loaded rows.
+
+const TEST_LINK_EXPORT_COLUMN_COUNT = 7;
+const MAX_EXPORT_ROWS_PER_INSERT_BATCH = Math.floor(65535 / TEST_LINK_EXPORT_COLUMN_COUNT);
+
+/** One row of the committed map file — deliberately NOT CoverageTestLink (no id/commitSha/timestamps): those are per-database identity/audit fields that mean nothing once exported to a file rewritten against a different commit_sha on load (see loadCoverageTestLinksForCommit). */
+export interface CoverageTestLinkExportEntry {
+  unitKey: string;
+  branchId: string | null;
+  filePath: string;
+  testId: string;
+  testName: string | null;
+  testFile: string | null;
+  hitCount: number;
+}
+
+/** Reads every coverage_test_links row, for exporting to qa/coverage-map.json. Not scoped to a single commit_sha — the export always represents "every mapping this database currently knows," matching test-timing-baseline.json's own "latest known" (not per-commit) semantics. */
+export async function exportAllCoverageTestLinks(): Promise<CoverageTestLinkExportEntry[]> {
+  const result = await coverageDb.query<{
+    unit_key: string;
+    branch_id: string | null;
+    file_path: string;
+    test_id: string;
+    test_name: string | null;
+    test_file: string | null;
+    hit_count: number;
+  }>(
+    `SELECT unit_key, branch_id, file_path, test_id, test_name, test_file, hit_count
+     FROM coverage_test_links
+     ORDER BY unit_key, file_path, test_id`,
+  );
+  return result.rows.map((row) => ({
+    unitKey: row.unit_key,
+    branchId: row.branch_id,
+    filePath: row.file_path,
+    testId: row.test_id,
+    testName: row.test_name,
+    testFile: row.test_file,
+    hitCount: row.hit_count,
+  }));
+}
+
+/**
+ * Replaces every coverage_test_links row for a given commit_sha with the
+ * given entries, in a single transaction — a genuine replace (delete then
+ * insert), not an upsert: unlike linkCoverageUnitsToTest's per-test
+ * accumulation (real ingestion, where hit_count should grow across
+ * repeated dumps for the SAME test), a map load represents "this is now
+ * the complete, authoritative mapping for this commit," so a stale row
+ * from a PRIOR load at the same commitSha (e.g. a test that no longer
+ * covers a unit in the freshly-committed map) must not survive.
+ *
+ * commitSha is caller-supplied, not read from the export file — the
+ * committed map carries no commit_sha of its own (see
+ * CoverageTestLinkExportEntry's own docblock); the caller (load-coverage-map.ts)
+ * decides which commit the loaded rows should answer queries for,
+ * ordinarily the SHA select-tests.ts is about to query against.
+ */
+export async function loadCoverageTestLinksForCommit(
+  commitSha: string,
+  entries: readonly CoverageTestLinkExportEntry[],
+): Promise<void> {
+  const client = await coverageDb.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [commitSha]);
+
+    for (let start = 0; start < entries.length; start += MAX_EXPORT_ROWS_PER_INSERT_BATCH) {
+      const batch = entries.slice(start, start + MAX_EXPORT_ROWS_PER_INSERT_BATCH);
+      if (batch.length === 0) continue;
+
+      const values: unknown[] = [];
+      const rowPlaceholders = batch.map((entry, index) => {
+        const base = index * TEST_LINK_EXPORT_COLUMN_COUNT;
+        values.push(
+          commitSha,
+          entry.unitKey,
+          entry.branchId,
+          entry.filePath,
+          entry.testId,
+          entry.testName,
+          entry.hitCount,
+        );
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`;
+      });
+
+      await client.query(
+        `INSERT INTO coverage_test_links
+           (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
+         VALUES ${rowPlaceholders.join(', ')}
+         ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''), test_id)
+         DO UPDATE SET
+           test_name = EXCLUDED.test_name,
+           hit_count = EXCLUDED.hit_count,
+           last_seen_at = now()`,
+        values,
+      );
+
+      // test_file, like test_name in insertTestLinkBatch, sits outside the
+      // conflict target — a second pass per batch, only for entries that
+      // actually carry one.
+      const withTestFile = batch.filter((entry) => entry.testFile !== null);
+      for (const entry of withTestFile) {
+        await client.query(
+          `UPDATE coverage_test_links
+           SET test_file = $1
+           WHERE commit_sha = $2 AND file_path = $3 AND unit_key = $4 AND COALESCE(branch_id, '') = COALESCE($5, '') AND test_id = $6`,
+          [entry.testFile, commitSha, entry.filePath, entry.unitKey, entry.branchId, entry.testId],
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}

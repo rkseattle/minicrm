@@ -46,7 +46,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   record-mode:
@@ -138,6 +138,7 @@ jobs:
           PW_WORKERS: '1'
 
       - name: Ingest coverage dumps into the mapping engine
+        id: ingest
         if: always()
         run: npm run ingest:coverage-dumps --workspace=minicrm-qa
         env:
@@ -145,6 +146,38 @@ jobs:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
           COVERAGE_DUMPS_ROOT: ${{ github.workspace }}/server/coverage-dumps
+
+      # pr-tia-8: CI has no persistent database (see
+      # coverageMappingService.ts's own "Committed-map load/export"
+      # docblock) — this is the ONE place coverage_test_links reflects a
+      # genuine, freshly-ingested full-suite run. Exports it to
+      # qa/coverage-map.json and commits back to main, the same pattern
+      # update-timing-baseline.yml already establishes for
+      # test-timing-baseline.json. Every other job (ci.yml's tia-selection,
+      # the local pre-push hook) re-loads FROM this committed file — see
+      # load-coverage-map.ts.
+      - name: Export coverage map
+        if: always() && steps.ingest.outcome != 'failure'
+        run: npm run dump:coverage-map --workspace=minicrm-server
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+
+      - name: Commit updated coverage map
+        if: always() && steps.ingest.outcome != 'failure'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add qa/coverage-map.json
+          if git diff --cached --quiet; then
+            echo "Coverage map unchanged — nothing to commit."
+          else
+            git commit -m "chore(coverage-tia): update coverage map [skip ci]"
+            git push
+          fi
 
       - name: Upload Playwright report
         if: always()
