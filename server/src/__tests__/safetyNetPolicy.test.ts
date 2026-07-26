@@ -26,6 +26,14 @@ const BASELINE = [
   { testId: 'spec:smoke.spec.ts::loads', testName: 'loads', reason: 'baseline' as const },
 ];
 
+// Match coveragePolicyConfig.ts's own defaults — these thresholds are no
+// longer module-level defaults inside safetyNetPolicy.ts itself (MINCRM-637;
+// every caller, including the real one in select-tests.ts, must now resolve
+// and pass them explicitly), so this test file supplies its own local
+// constants for the common case rather than relying on any implicit value.
+const DEFAULT_MIN_CONFIDENCE_THRESHOLD = 0.3;
+const DEFAULT_MAX_UNMAPPED_RATIO = 0.5;
+
 describe('applySafetyNetPolicy', () => {
   it('returns targeted mode with baseline unioned in when everything is confident and mapped', () => {
     const result = applySafetyNetPolicy([makeSelectedTest()], {
@@ -33,6 +41,8 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 1,
       unmappedChanges: [],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('targeted');
@@ -49,6 +59,8 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 0,
       unmappedChanges: [],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('targeted');
@@ -61,6 +73,8 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 1,
       unmappedChanges: [],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('full-suite');
@@ -74,6 +88,8 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 1,
       unmappedChanges: [],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('targeted');
@@ -88,6 +104,7 @@ describe('applySafetyNetPolicy', () => {
         { filePath: 'b.ts', unitKey: 'b#1' },
       ],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
       maxUnmappedRatio: 0.5,
     });
 
@@ -101,6 +118,7 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 4,
       unmappedChanges: [{ filePath: 'a.ts', unitKey: 'a#1' }],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
       maxUnmappedRatio: 0.5,
     });
 
@@ -120,6 +138,8 @@ describe('applySafetyNetPolicy', () => {
           matchedRuleIds: ['db-migration'],
         },
       ],
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('full-suite');
@@ -133,6 +153,8 @@ describe('applySafetyNetPolicy', () => {
       unmappedChanges: [],
       dependencyWideningResults: NO_WIDENING,
       forceFullSuite: true,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('full-suite');
@@ -145,6 +167,7 @@ describe('applySafetyNetPolicy', () => {
       totalChangedUnitCount: 1,
       unmappedChanges: [{ filePath: 'a.ts', unitKey: 'a#1' }],
       dependencyWideningResults: NO_WIDENING,
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
       maxUnmappedRatio: 0.5,
     });
 
@@ -166,6 +189,8 @@ describe('applySafetyNetPolicy', () => {
           matchedRuleIds: ['shared-schema'],
         },
       ],
+      minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+      maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
     });
 
     expect(result.mode).toBe('targeted');
@@ -181,6 +206,8 @@ describe('applySafetyNetPolicy', () => {
         totalChangedUnitCount: 1,
         unmappedChanges: [],
         dependencyWideningResults: NO_WIDENING,
+        minConfidenceThreshold: DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+        maxUnmappedRatio: DEFAULT_MAX_UNMAPPED_RATIO,
       },
     );
 

@@ -258,13 +258,78 @@ assignments — an admin user WITH an explicit custom-role assignment lacking
 lets this be verified against real production role-assignment data before a
 follow-up ticket removes the `requireRole` fallback.
 
+## Policy Configuration (MINCRM-637)
+
+The framework's config surface — three live `feature_flags` rows plus a set of
+boot-time env vars — is centralized behind `resolveCoveragePolicy()`
+(`server/src/coverageAgent/coveragePolicyConfig.ts`), resolved once at boot
+(`server.ts`) or once at script start (`select-tests.ts`), never re-read
+per-request. `.env.example`'s "Coverage/TIA Policy Configuration" section
+documents the same surface for local setup.
+
+### Feature flags (product database, per-request DB read via `requireFeatureEnabled`)
+
+| Flag key                      | Gates                            | Migration |
+| ----------------------------- | -------------------------------- | --------- |
+| `coverage_pipeline_ingestion` | `POST /coverage/pipeline/ingest` | 158       |
+| `coverage_mapping_query`      | `GET /coverage/mapping/*`        | 159       |
+| `coverage_reporting_query`    | `GET /coverage/reporting/*`      | 160       |
+
+Two prior flags — `coverage_instrumentation` and `coverage_session_management` —
+were removed by migration 161 (MINCRM-663); those two routers now gate their
+entire route _registration_ on a boot-time env var instead (see Env vars below),
+not a per-request flag check.
+
+### Env vars (boot-time, resolved once)
+
+| Env var                        | Effect                                                                                                                         | Default                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| `COVERAGE_INSTRUMENTATION`     | Whether the backend V8 agent starts, and whether `coverage.ts`'s routes register at all                                        | unset (off)                    |
+| `COVERAGE_SESSION_MANAGEMENT`  | Whether `coverageSessions.ts`'s routes register at all                                                                         | unset (off)                    |
+| `COVERAGE_GRANULARITY`         | V8 coverage detail: `block` or `function`                                                                                      | `block`                        |
+| `COVERAGE_CAPABILITY_GATING`   | Switches every coverage route's access check to the `coverage:admin` capability ([Access Control](#access-control-mincrm-637)) | unset (`requireRole('admin')`) |
+| `COVERAGE_RETENTION_DAYS`      | Days a `coverage_units`/`coverage_test_links` row survives before the daily pruning cron removes it                            | `30`                           |
+| `TIA_MIN_CONFIDENCE_THRESHOLD` | Safety-net confidence floor for test selection ([Safety-net selection policy](#safety-net-selection-policy-mincrm-626))        | `0.3`                          |
+| `TIA_MAX_UNMAPPED_RATIO`       | Safety-net unmapped-ratio ceiling before full-suite fallback                                                                   | `0.5`                          |
+
+`COVERAGE_RETENTION_DAYS`'s default (30 days) matches `webhook_delivery_logs`' own
+retention window (`docs/dev/retention.md`) — the shortest existing precedent in this
+repo, and the closest match in kind to coverage/TIA data: disposable, write-heavy,
+CI-tooling-consumed telemetry with no compliance/audit retention requirement (see
+Coverage Database below).
+
+`TIA_MIN_CONFIDENCE_THRESHOLD`/`TIA_MAX_UNMAPPED_RATIO` are validated to `[0, 1]` —
+an out-of-range value (e.g. a negative confidence threshold, or a ratio above 1)
+falls back to the default the same way an unparseable value does, rather than being
+accepted silently. An out-of-range value in either direction would otherwise disable
+that half of the safety net entirely: a negative confidence threshold makes the
+low-confidence check never trigger, and a ratio above 1 makes the unmapped-ratio
+check never trigger (the computed ratio can never itself exceed 1).
+
+### Scheduled retention pruning
+
+`coverageRetentionScheduler.runCoverageRetentionPruning()` runs daily at 07:00 server
+time (`server.ts`'s cron block), calling `coverageModelService.pruneCoverageUnits`
+with the resolved `retentionDays`. This was previously callable on demand only, with
+zero production callers — `pruneCoverageUnits` now also deletes any
+`coverage_test_links` rows left orphaned by the `coverage_units` prune, in the same
+transaction: `coverage_test_links` has no FK to `coverage_units` (cross-database FKs
+are impossible in PostgreSQL, and neither table was ever given one despite living in
+the same coverage database), so pruning `coverage_units` alone would leave orphaned
+links whose `MAPPING_RESULT_SELECT` LEFT JOIN then returns `confidence_score: null` —
+which `safetyNetPolicy.hasLowConfidenceMatch` treats as "no signal to check" rather
+than "below threshold," silently weakening the exact full-suite fallback retention
+pruning must not undermine. Runs regardless of `COVERAGE_INSTRUMENTATION`, since the
+coverage database is populated by the pipeline/mapping ingestion path independent of
+the backend V8 agent.
+
 ## Coverage Database
 
 Coverage/TIA data (`coverage_units`, `coverage_ingested_dumps`, `coverage_sessions`, `coverage_session_dumps`, `coverage_test_links`) lives in its own database — `minicrm_coverage` (dev), `minicrm_coverage_test` (Vitest), `minicrm_coverage_e2e` (Playwright) — separate from the product database (`minicrm`/`minicrm_test`/`minicrm_e2e`) that everything else in `server/src/services/` reads/writes via `db.ts`'s pool. Both live on the same Postgres instance in every environment this repo targets (one `db` service in `docker-compose.yml`), just under different database names.
 
 **Why a separate database, not just a separate schema/namespace:** coverage/TIA data is disposable, write-heavy, retention-pruned telemetry consumed by CI tooling and developers — a fundamentally different access pattern, growth rate, and backup/retention policy than product data (contacts/deals/users), which needs strict backups and must never be bulk-deleted. None of the coverage tables carry a foreign key into the product schema — `coverage_sessions.started_by` is a plain `uuid` column, not an FK (cross-database foreign keys are impossible in PostgreSQL) — so there is no referential-integrity reason for them to share a connection pool, backup schedule, or migration history with product data.
 
-**What did NOT move:** the `coverage_instrumentation`, `coverage_session_management`, and `coverage_pipeline_ingestion` `feature_flags` rows (still seeded by `db/migrations/156`/`157`/`158`, in the product database). These gate WHO may call the coverage control APIs — checked against `req.user`/role — which is an authorization concern belonging with the product's own `users`/`feature_flags` tables, not with the coverage data itself.
+**What did NOT move:** the `coverage_pipeline_ingestion`, `coverage_mapping_query`, and `coverage_reporting_query` `feature_flags` rows (seeded by `db/migrations/158`/`159`/`160`, in the product database — see [Policy Configuration](#policy-configuration-mincrm-637) below for the full current set; `coverage_instrumentation`/`coverage_session_management` were later removed by migration 161/MINCRM-663 in favor of boot-time env vars). These gate WHO may call the coverage control APIs — checked against `req.user`/role — which is an authorization concern belonging with the product's own `users`/`feature_flags` tables, not with the coverage data itself.
 
 **Consequence — coverage sessions are unaudited:** `coverageSessionService`'s writes used to go through the same transaction + `writeAuditEntry`/`setRlsUserId` pattern as `dealService.ts` (see CLAUDE.md). Both of those require a product-database `PoolClient` (the `audit_log` table and RLS policies live there) and cannot run against a `coverageDb` client. Coverage sessions are therefore unaudited system telemetry, exactly like `coverage_units`/`coverage_test_links` already were — derived, system-internal data with no user-facing mutation surface, not a compliance-relevant change history. `startedBy` is still recorded on `coverage_sessions` as informational attribution (who kicked off a session), just without an `audit_log` entry.
 
@@ -442,7 +507,7 @@ Unresolvable regions (a script URL with no real file backing it — e.g. a `node
 - `unit_key` is a qualified function/method signature (e.g. `render@42`), not a line number — chosen so the mapping-engine phase (`pr-tia-4`) that eventually consumes this table has a key stable across in-line edits, per MINCRM-619's stable-structural-key requirement. Full body-hash/AST-based key derivation is that later phase's work; this table's shape is simply built to support it.
 - `branch_id` is `null` for function-granularity rows (no PG `''` sentinel — a `CHECK (branch_id IS NULL OR branch_id <> '')` constraint enforces this at the schema level, since the identity index below treats `NULL` and `''` as the same dedup slot and a real empty string would silently collide with a genuinely branch-less row).
 - **Dedup/compaction:** a unique index over `(commit_sha, file_path, unit_key, COALESCE(branch_id, ''))` — `COALESCE` because a plain `UNIQUE` constraint would never treat two `NULL`-`branch_id` rows for the same unit as duplicates (SQL `NULL <> NULL`). Re-ingesting a dump for an already-seen identity accumulates `hit_count` and advances `last_seen_at` rather than duplicating the row.
-- **Retention:** `coverageModelService.pruneCoverageUnits(retentionDays)` deletes rows whose `last_seen_at` is older than the window. Schema + a callable function only — no automatic scheduling is wired here; that's the CI/CD Integration epic's concern (MINCRM-632, `pr-tia-7`), not this storage-model epic's.
+- **Retention:** `coverageModelService.pruneCoverageUnits(retentionDays)` deletes rows whose `last_seen_at` is older than the window, along with any `coverage_test_links` rows left orphaned by that deletion (same transaction). Scheduled daily via `coverageRetentionScheduler.ts` (MINCRM-637) — see [Policy Configuration](#policy-configuration-mincrm-637) above for the full scheduling and retention-window details.
 - `coverage_ingested_dumps` — tracks which `dumpId`s have already been normalized, the mechanism behind MINCRM-614's idempotency/race-safety guarantee above. Not FK'd to raw dump metadata (still file-based, per Phase 1).
 
 Not audited (no `AuditActor`/`writeAuditEntry`) — `coverage_units` is derived, system-internal telemetry with no owning user and no user-facing mutation surface, mirroring `coverageSessionService.recordCoverageSessionDump`'s own unaudited high-frequency writes.
@@ -724,5 +789,4 @@ Not built here — later `pr-tia-*` phases:
 - Coverage-driven CI gating (failing a build on coverage drop)
 - Cross-shard dump merging/aggregation — CI currently uploads per-shard dump directories as-is
 - An automated overhead-regression CI gate (the measurement above is manual)
-- Automatic/scheduled retention pruning — `pruneCoverageUnits` exists but is only callable on demand; scheduling it is the CI/CD Integration epic's concern (`pr-tia-7`)
 - Physically isolated per-session V8 counters — sessions group and attribute dumps; the backend agent's counters remain process-wide (see Session Management above)

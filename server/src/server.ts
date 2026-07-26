@@ -28,7 +28,9 @@ import pool from './db.js';
 import { auditEventBus } from './services/auditEventBus.js';
 import { NodeV8CoverageAgent } from './coverageAgent/NodeV8CoverageAgent.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from './coverageAgent/coverageConfig.js';
+import { resolveCoveragePolicy } from './coverageAgent/coveragePolicyConfig.js';
 import { SDK_VERSION } from './coverageAgent/sdk/CoverageAgentPlugin.js';
+import { runCoverageRetentionPruning } from './coverageAgent/coverageRetentionScheduler.js';
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
 
 /** Default port for the API server */
@@ -119,6 +121,15 @@ server.headersTimeout = HEADERS_TIMEOUT_MS;
 // COVERAGE_INSTRUMENTATION=true — an unset env var means start()/stop() are
 // never called and this has zero effect on a normal boot.
 const coverageConfig = resolveCoverageConfig();
+
+// Coverage/TIA policy (MINCRM-637) — resolved once here at boot, not inside
+// the retention cron's closure. resolveCoveragePolicy() internally shells
+// out to `git rev-parse HEAD` (coverageConfig.ts) to resolve a commitSha
+// this specific use doesn't even need; re-resolving it on every daily tick
+// forever (rather than once at boot) would violate coveragePolicyConfig.ts's
+// own "resolve once, pass the result down" contract — see
+// coverageRetentionScheduler.ts's own docblock for the full rationale.
+const { retentionDays: coverageRetentionDays } = resolveCoveragePolicy();
 const coverageAgent = coverageConfig.enabled
   ? new NodeV8CoverageAgent({
       dumpsRoot: COVERAGE_DUMPS_ROOT,
@@ -381,4 +392,21 @@ if (process.env.NODE_ENV !== 'test') {
   startRolloutScheduler();
   process.once('SIGTERM', () => stopRolloutScheduler());
   process.once('SIGINT', () => stopRolloutScheduler());
+
+  // Coverage/TIA retention pruning — runs daily at 07:00 server time (MINCRM-637).
+  // Deletes coverage_units/coverage_test_links rows older than the resolved
+  // policy's retention window. Runs regardless of COVERAGE_INSTRUMENTATION —
+  // the coverage database is populated by the pipeline/mapping ingestion
+  // path, which can run with the backend V8 agent off. coverageRetentionDays
+  // is resolved once above, at boot — not re-resolved inside this closure.
+  const coverageRetentionCron = cron.schedule('0 7 * * *', () => {
+    logger.info('cron: running coverage retention pruning');
+    runCoverageRetentionPruning(coverageRetentionDays).catch((err: unknown) => {
+      logger.error({ err }, 'cron: coverage retention pruning failed');
+    });
+  });
+  logger.info('Coverage retention pruning cron scheduled (daily at 07:00)');
+
+  process.once('SIGTERM', () => coverageRetentionCron.stop());
+  process.once('SIGINT', () => coverageRetentionCron.stop());
 }
