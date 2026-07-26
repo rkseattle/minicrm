@@ -107,6 +107,32 @@ interface SelectTestsResult {
 }
 
 /**
+ * Runs server/src/scripts/create-coverage-db.ts — ensures the coverage
+ * database exists before anything below queries it. Normally a no-op: the
+ * local docker-compose app server already auto-provisions this on every
+ * boot (server.ts's own startup sequence), which is an implicit
+ * prerequisite for local E2E work anyway. Only matters for a fresh
+ * checkout that has never started that server — found as a real gap in
+ * CI's tia-selection job (no server ever boots there either), fixed there
+ * and mirrored here for the same reason. Best-effort, same as
+ * runLoadCoverageMap below: a failed provisioning attempt must not block
+ * the push.
+ */
+function runCreateCoverageDb(): void {
+  try {
+    execFileSync('npx', ['tsx', 'src/scripts/create-coverage-db.ts'], {
+      cwd: resolve(REPO_ROOT, 'server'),
+      env: { ...process.env, LOG_DESTINATION: 'stderr' },
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
+  } catch (err) {
+    console.error(
+      `[pre-push-tia] WARN: provisioning the coverage database failed (${err instanceof Error ? err.message : String(err)}) — continuing.`,
+    );
+  }
+}
+
+/**
  * Runs server/src/scripts/load-coverage-map.ts (pr-tia-8) — re-populates
  * coverage_test_links from the committed qa/coverage-map.json before
  * selection queries it. A fresh checkout's local coverageDb has nothing in
@@ -241,6 +267,7 @@ function main(): void {
 
   const headSha = resolveHeadSha();
 
+  runCreateCoverageDb();
   runLoadCoverageMap(resolveMainSha());
 
   console.log('[pre-push-tia] Resolving TIA-selected test subset for this push...');

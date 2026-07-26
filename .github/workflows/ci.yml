@@ -302,6 +302,25 @@ jobs:
           git fetch origin ${{ github.base_ref }} --depth=1
           echo "sha=$(git rev-parse origin/${{ github.base_ref }})" >> "$GITHUB_OUTPUT"
 
+      # Neither this job nor select-tests.ts ever starts the app server
+      # (whose own boot sequence auto-provisions the coverage database) or
+      # runs through Vitest's globalSetup.ts (which does the same for
+      # minicrm_coverage_test) — so nothing else in this job creates
+      # minicrm_coverage_test before the steps below query it. Found in CI:
+      # "database minicrm_coverage_test does not exist" — Load committed
+      # coverage map's own file-not-found fallback masked this, since it
+      # short-circuits before ever touching the database when
+      # qa/coverage-map.json is absent, but Run TIA selection's direct query
+      # has no such fallback.
+      - name: Provision coverage database
+        run: npm run --workspace=minicrm-server --silent create:coverage-db
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_HOST: localhost
+          DB_PORT: 5432
+          COVERAGE_DB_NAME: minicrm_coverage_test
+
       # pr-tia-8: CI has no persistent database — this job's coverageDb is a
       # fresh, empty Postgres service container every run (see
       # coverageMappingService.ts's own "Committed-map load/export" docblock).
