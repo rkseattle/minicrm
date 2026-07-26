@@ -243,6 +243,127 @@ jobs:
 
           echo "All high/critical advisories are on the documented allowlist (MINCRM-666)."
 
+  # MINCRM-633: PR select mode — runs the existing change-to-test selection
+  # pipeline (server/src/scripts/select-tests.ts, pr-tia-6/MINCRM-623-627)
+  # against this PR's diff and posts the result as fast, ADVISORY feedback.
+  # This job's outcome never gates ci-gate and never narrows what
+  # e2e-functional/e2e-serial actually run below — those remain the full
+  # suite (or their own existing subset logic) exactly as before this job
+  # existed. Only MINCRM-660's shard-feed (a later change) will make
+  # e2e-functional's OWN behavior selection-aware; until then this job is
+  # observational: it reports what select mode WOULD have run, so the
+  # selection engine gets real-world PR exposure before anything is wired
+  # to actually skip tests based on it.
+  tia-selection:
+    name: Phase 1 - TIA Selection (advisory)
+    needs: [changes]
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.qa == 'true'
+    runs-on: ubuntu-latest
+    # Never blocks the PR — a selection-engine failure (e.g. coverage DB
+    # briefly unreachable) must not fail CI for something this job only
+    # advises on. continue-on-error surfaces the failure as a yellow
+    # warning in the Actions UI rather than a red X, while still letting
+    # later steps in THIS job run (each step below has its own `if: always()`
+    # so a failed selection step doesn't also skip the PR-comment step —
+    # readers should see "selection failed" rather than no comment at all).
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:16
+        env:
+          POSTGRES_USER: minicrm
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: minicrm_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # select-tests.ts shells `git diff base..head`, which needs full history
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
+      - name: Run TIA selection
+        id: select
+        if: always()
+        run: |
+          npm run select:tests --workspace=minicrm-server --silent -- \
+            --base=origin/${{ github.base_ref }} --head=${{ github.event.pull_request.head.sha }} \
+            > /tmp/tia-selection.json
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          COVERAGE_DB_NAME: minicrm_coverage_test
+          NODE_ENV: test
+
+      - name: Build selection rationale comment
+        if: always()
+        run: |
+          {
+            echo "## TIA Selection (advisory — MINCRM-633)"
+            echo ""
+            if [ -s /tmp/tia-selection.json ] && jq -e . /tmp/tia-selection.json >/dev/null 2>&1; then
+              MODE=$(jq -r '.mode' /tmp/tia-selection.json)
+              echo "**Mode:** \`$MODE\`"
+              echo ""
+              jq -r '.rationale[] | "- " + .' /tmp/tia-selection.json
+              echo ""
+              if [ "$MODE" = "targeted" ]; then
+                COUNT=$(jq '.specFiles | length' /tmp/tia-selection.json)
+                echo "<details><summary>$COUNT selected spec file(s)</summary>"
+                echo ""
+                jq -r '.specFiles[] | "- `" + . + "`"' /tmp/tia-selection.json
+                echo ""
+                echo "</details>"
+              fi
+              UNRESOLVED=$(jq '.unresolvedTestIds | length' /tmp/tia-selection.json)
+              if [ "$UNRESOLVED" -gt 0 ]; then
+                echo ""
+                echo "⚠️ $UNRESOLVED selected test(s) could not be resolved to a spec file."
+              fi
+            else
+              echo "⚠️ Selection did not complete (see the \`tia-selection\` job log). This is advisory-only and does not block this PR."
+            fi
+            echo ""
+            echo "_Advisory only — a green result here is not a promise the full suite passed. The authoritative gate is the post-merge/nightly full-suite run (MINCRM-633 record mode)._"
+          } > /tmp/tia-comment-body.md
+          cat /tmp/tia-comment-body.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post selection rationale comment
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: tia-selection
+          path: /tmp/tia-comment-body.md
+
+      - name: Upload selection result artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tia-selection-${{ github.run_id }}
+          path: /tmp/tia-selection.json
+          retention-days: 14
+          if-no-files-found: warn
+
   server-tests:
     name: Phase 2 - Server Unit Tests
     needs: [lint-and-typecheck, changes]
