@@ -13,8 +13,13 @@
  *     this workspace's qa/e2e test runner.
  *   - full-suite: the safety net decided a partial run isn't safe for this
  *     diff (unmapped changes, low confidence, a widen-always dependency
- *     file, or a stale/missing map) — falls back to running everything,
- *     exactly as CI's own full-suite fallback would.
+ *     file, or a stale/missing map) — falls back to the full @functional
+ *     suite (non-serial then serial, two scoped Playwright invocations —
+ *     see runFullSuiteFallbackAndAttest below), matching
+ *     .claude/gates/e2e-run.md's own documented full-suite procedure.
+ *     "Everything" means every @functional-tagged test, never literally
+ *     every spec Playwright can discover (that included qa/e2e/framework/'s
+ *     own self-tests until this was fixed — MINCRM-636/637).
  *
  * After the run, server/src/scripts/verify-test-attestation.ts (MINCRM-642)
  * — the SAME shared gate CI's own attestation step uses — verifies
@@ -206,6 +211,67 @@ function runPlaywright(specFiles: readonly string[]): void {
   });
 }
 
+function runPlaywrightWithArgs(playwrightArgs: readonly string[]): void {
+  execFileSync('npm', ['run', 'test', '--', ...playwrightArgs], {
+    cwd: resolve(REPO_ROOT, 'qa'),
+    stdio: 'inherit',
+    env: process.env,
+  });
+}
+
+/**
+ * Runs the full-suite safety-net fallback — invoked from BOTH full-suite
+ * call sites in main() below, never from the targeted path (runPlaywright
+ * above, which already receives a specific, curated specFiles list from
+ * select-tests.ts and needs neither this scoping nor this split).
+ *
+ * Two real defects fixed here, found via a real local push that timed out
+ * twice under load (MINCRM-636/637):
+ *
+ * 1. The previous single `npm run test -- --grep-invert serial` call with
+ *    no `--grep @functional` matched literally every spec Playwright can
+ *    discover — 2014 tests including qa/e2e/framework/tests/'s own
+ *    self-tests (heal-methods.spec.ts, rest-client.spec.ts, etc.), not the
+ *    @functional suite this gate is actually meant to validate. Scoped to
+ *    `@functional` now, matching .claude/gates/e2e-run.md's own documented
+ *    procedure — the single source of truth this script was silently
+ *    diverging from.
+ * 2. `--grep-invert serial` is a TEXT filter against each test's own
+ *    title/tags — it does nothing for a spec file whose tests aren't
+ *    literally tagged "@serial" even when the file itself uses Playwright's
+ *    `test.describe.serial(...)` (concurrency.spec.ts's F-CC suite is
+ *    exactly this case: serial-within-file by API, untagged by name). Under
+ *    the previous single combined run, such a file could still be scheduled
+ *    concurrently with unrelated spec files on another worker, racing
+ *    shared state. Now runs as two genuinely separate Playwright
+ *    invocations — non-serial then serial — exactly like e2e-run.md's own
+ *    two commands and like CI's own separate e2e-functional/e2e-serial
+ *    jobs.
+ *
+ * Each invocation gets its own attestOrThrow call immediately after,
+ * rather than one call after both: Playwright's own junit reporter writes
+ * to one fixed path (playwright.config.ts's own outputFile), so a second
+ * invocation would silently overwrite the first run's results.xml rather
+ * than merge with them. Attesting right after each run, before the next
+ * one starts, is what CI's own separate e2e-functional/e2e-serial jobs
+ * effectively do too (never merged, always two independent pass/fail
+ * signals).
+ *
+ * --workers=1 matches e2e-run.md's own current documented value (not
+ * capacity.ts's CI-oriented, sharding-aware plan — see that file's own
+ * WORKERS_CAP docblock — the gate file settled on 1 for local runs after
+ * this same class of cross-file race was found there too).
+ */
+function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsResult | null): void {
+  console.log('[pre-push-tia] Running full suite, non-serial (safety net fallback).');
+  runPlaywrightWithArgs(['--grep', '@functional', '--grep-invert', 'serial', '--workers=1']);
+  attestOrThrow(headSha, selection);
+
+  console.log('[pre-push-tia] Running full suite, serial (safety net fallback).');
+  runPlaywrightWithArgs(['--grep', '@functional.*@serial|@serial.*@functional', '--workers=1']);
+  attestOrThrow(headSha, selection);
+}
+
 interface AttestationResult {
   passed: boolean;
   reasons: string[];
@@ -303,8 +369,7 @@ function main(): void {
     console.error(
       `[pre-push-tia] WARN: selection failed (${err instanceof Error ? err.message : String(err)}) — falling back to the full suite.`,
     );
-    runPlaywright([]);
-    attestOrThrow(headSha, null);
+    runFullSuiteFallbackAndAttest(headSha, null);
     return;
   }
 
@@ -313,9 +378,7 @@ function main(): void {
   }
 
   if (selection.mode === 'full-suite') {
-    console.log('[pre-push-tia] Running full suite (safety net fallback).');
-    runPlaywright([]);
-    attestOrThrow(headSha, selection);
+    runFullSuiteFallbackAndAttest(headSha, selection);
     return;
   }
 
