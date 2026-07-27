@@ -46,7 +46,7 @@ import { linkCoverageUnitsToTest } from '../../services/coverageMappingService.j
 import type { CoverageTestLinkInput } from '../../services/coverageMappingService.js';
 import { findCoverageSessionDumpByDumpId } from '../../services/coverageSessionService.js';
 import { upsertBuildSummaryForCommit } from '../../services/coverageBuildSummaryService.js';
-import { COVERAGE_DUMPS_ROOT } from '../coverageConfig.js';
+import { COVERAGE_DUMPS_ROOT, resolveSourceRoot } from '../coverageConfig.js';
 import { readRawDumpPayload, symbolicateCoverageDump } from './coverageSymbolicationService.js';
 import type { IngestCoverageDumpResult } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
 import logger from '../../logger.js';
@@ -72,9 +72,12 @@ export class CoverageDumpMalformedError extends Error {
 export interface IngestCoverageDumpOptions {
   /**
    * Repo root the dump's commitSha was captured/checked out at, used to
-   * resolve backend V8 script URLs back to real files on disk. Defaults to
-   * process.cwd() — the same assumption coverageConfig.ts already makes for
-   * where the running process's own source lives.
+   * relativize both backend V8 script URLs and frontend Istanbul paths back
+   * to portable, repo-root-relative identities. Defaults to
+   * resolveSourceRoot() (COVERAGE_SOURCE_ROOT env var, falling back to
+   * process.cwd()) — see that function's own docblock for why
+   * process.cwd() alone is not reliably the repo root in every environment
+   * this runs in.
    */
   sourceRoot?: string;
 }
@@ -109,7 +112,7 @@ export async function ingestCoverageDump(
     );
   }
 
-  const sourceRoot = options.sourceRoot ?? process.cwd();
+  const sourceRoot = options.sourceRoot ?? resolveSourceRoot();
   const { units } = await symbolicateCoverageDump(dump.agent, dump.format, payload, { sourceRoot });
 
   // Looked up before the transaction so a session-attribution lookup

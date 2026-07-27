@@ -75,7 +75,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run migrations on E2E database
-        run: npm run migrate --workspace=minicrm-server
+        # migrate:fresh, not migrate: this job's postgres service container
+        # always starts empty, with no prior pgmigrations rows. Plain
+        # `npm run migrate` replays 001-N after 000_baseline already created
+        # those same objects, failing on the first re-declared table
+        # ("relation already exists") — see 000_baseline.js's own docblock
+        # and ci.yml's e2e jobs, which all use migrate:fresh for this reason.
+        run: npm run migrate:fresh --workspace=minicrm-server
         env:
           DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
           DB_USER: minicrm

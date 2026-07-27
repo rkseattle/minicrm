@@ -10,7 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Session } from 'inspector';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -125,18 +125,66 @@ describe('coverageSymbolicationService', () => {
 
       expect(symbolicated.agent).toBe('browser-istanbul');
       expect(symbolicated.units).toHaveLength(2);
+      // '/src/Widget.tsx' is outside this test's temp sourceRoot, so branch
+      // hit counts/positions resolve correctly (istanbul's own job) even
+      // though cross-machine path identity does not (MINCRM-636/637) — see
+      // the dedicated "flags a path outside sourceRoot" test below for that.
       expect(symbolicated.units[0]).toMatchObject({
         filePath: '/src/Widget.tsx',
         unitKey: 'render@1',
         branchId: '0:0',
         granularity: 'branch',
         hitCount: 3,
-        resolved: true,
+        resolved: false,
       });
       expect(symbolicated.units[1]).toMatchObject({
         branchId: '0:1',
         hitCount: 2,
       });
+    });
+
+    it('flags a path outside sourceRoot as unresolved rather than silently storing it as a usable mapping (MINCRM-636/637)', async () => {
+      // A frontend Istanbul dump's absolute path can never match the
+      // repo-root-relative paths changeUnitResolver.ts derives from `git
+      // diff` — e.g. a dump captured on a different machine, or (today's
+      // known local-dev limitation) the E2E harness's host-run Vite dev
+      // server vs. server-e2e's containerized backend. Storing such a unit
+      // as resolved: true would silently claim it's usable for test
+      // selection when it structurally cannot be.
+      const istanbulPayload = {
+        '/src/Elsewhere.tsx': {
+          path: '/src/Elsewhere.tsx',
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'render',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 5 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 6 },
+          b: {},
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0]).toMatchObject({
+        filePath: '/src/Elsewhere.tsx',
+        unitKey: 'render@1',
+        hitCount: 6,
+        resolved: false,
+      });
+      expect(symbolicated.units[0].unresolvedReason).toContain('/src/Elsewhere.tsx');
     });
 
     it('falls back to function-granularity units when a file has no branches', async () => {
@@ -167,13 +215,17 @@ describe('coverageSymbolicationService', () => {
       );
 
       expect(symbolicated.units).toHaveLength(1);
+      // '/src/utils.ts' is outside this test's temp sourceRoot — see the
+      // dedicated "flags a path outside sourceRoot" test above for why
+      // resolved is false here (MINCRM-636/637); this test's own purpose is
+      // the function-granularity fallback, unaffected by path resolution.
       expect(symbolicated.units[0]).toMatchObject({
         filePath: '/src/utils.ts',
         unitKey: 'add@1',
         branchId: null,
         granularity: 'function',
         hitCount: 7,
-        resolved: true,
+        resolved: false,
       });
     });
 
@@ -390,6 +442,57 @@ describe('coverageSymbolicationService', () => {
         filePath: '/src/Good.ts',
         unitKey: 'good@1',
         hitCount: 2,
+      });
+    });
+
+    it('relativizes a file path that is genuinely under sourceRoot, matching what changeUnitResolver.ts derives from git diff output (MINCRM-636/637)', async () => {
+      // Unlike this describe block's other fixtures (e.g. '/src/Widget.tsx'),
+      // which live OUTSIDE the temp sourceRoot and so exercise the
+      // uncontained fallback path, this one is placed genuinely under
+      // sourceRoot — reproducing a real Vite-instrumented dump whose
+      // FileCoverageData#path happens to already be sourceRoot-relative in
+      // absolute form (see symbolicateIstanbulCoverageMap's own docblock:
+      // an absolute browser path stored verbatim can never match the
+      // repo-root-relative paths select-tests.ts looks up against).
+      const absolutePath = join(sourceRoot, 'client', 'src', 'Widget.tsx');
+      // Must exist for real: the containment check realpath()-resolves
+      // data.path (see symbolicateIstanbulCoverageMap), which throws for a
+      // path with nothing on disk — the exact fallback path a synthetic
+      // fixture would otherwise hit, defeating this test's purpose of
+      // proving the CONTAINED case's relativization actually happens.
+      await mkdir(join(sourceRoot, 'client', 'src'), { recursive: true });
+      await writeFile(absolutePath, 'export function render() {}', 'utf8');
+      const istanbulPayload = {
+        [absolutePath]: {
+          path: absolutePath,
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'render',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 10 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 4 },
+          b: {},
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0]).toMatchObject({
+        filePath: join('client', 'src', 'Widget.tsx'),
+        unitKey: 'render@1',
+        hitCount: 4,
       });
     });
   });

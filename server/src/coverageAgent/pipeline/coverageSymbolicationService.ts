@@ -87,7 +87,7 @@ export async function symbolicateCoverageDump(
   }
 
   if (agent === 'browser-istanbul' && format === 'istanbul') {
-    const units = await symbolicateIstanbulCoverageMap(payload);
+    const units = await symbolicateIstanbulCoverageMap(payload, options.sourceRoot);
     return { agent, units };
   }
 
@@ -167,9 +167,24 @@ async function symbolicateV8ScriptCoverage(
  * CoverageMapData shape, already resolved to original TS/JSX by vite-plugin-istanbul's
  * Babel + sourcemap pipeline — see module docblock) into NormalizedCoverageUnit rows.
  */
-async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<NormalizedCoverageUnit[]> {
+async function symbolicateIstanbulCoverageMap(
+  payload: unknown,
+  sourceRoot: string,
+): Promise<NormalizedCoverageUnit[]> {
   const coverageMap = payload as CoverageMapData;
   const units: NormalizedCoverageUnit[] = [];
+
+  // Resolved once, up front — same discipline as symbolicateV8ScriptCoverage's
+  // own resolvedSourceRoot: a symlinked source root (macOS os.tmpdir() ->
+  // /private/var/...) must be compared against in its resolved form on both
+  // sides of every relative()/containment check below, or every path under a
+  // symlinked root spuriously fails containment.
+  let resolvedSourceRoot: string;
+  try {
+    resolvedSourceRoot = await realpath(sourceRoot);
+  } catch {
+    resolvedSourceRoot = sourceRoot;
+  }
 
   for (const [filePath, fileCoverage] of Object.entries(coverageMap)) {
     // A null/malformed per-file entry would otherwise crash on data.path
@@ -187,13 +202,57 @@ async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<Normali
     }
     const data = fileCoverage as FileCoverageData;
     // istanbul's own FileCoverageData#path is the absolute path the
-    // instrumenting build (vite-plugin-istanbul) recorded at build time —
-    // best-effort source for structural-key derivation on this path. It may
-    // not exist on THIS machine (e.g. a dump built in CI, ingested locally);
-    // readSourceTextForStructuralKey below handles that by returning
-    // undefined, which degrades gracefully to the legacy line-based key.
+    // instrumenting build (vite-plugin-istanbul) recorded at build time.
+    // Stored verbatim, this is a per-machine host path (e.g.
+    // /Users/rob/dev/minicrm/client/src/...) that can never match the
+    // repo-root-relative paths changeUnitResolver.ts derives from `git
+    // diff` output — every findTestsForUnitAcrossBranches lookup would
+    // silently return zero matches forever, degrading every PR to a
+    // full-suite fallback (found via a real local coverage-map generation
+    // run, MINCRM-636/637). Relativized against sourceRoot here, exactly
+    // like symbolicateV8ScriptCoverage's own relativePath, so both agents'
+    // units share one consistent, portable filePath identity. Falls back to
+    // the raw path when it isn't actually under sourceRoot (a dump built on
+    // a different machine and ingested elsewhere) — degraded but no longer
+    // silently wrong, and readSourceTextForStructuralKey below still
+    // degrades key derivation gracefully via data.path regardless.
+    //
+    // data.path itself must ALSO be realpath-resolved before comparison,
+    // not just sourceRoot — otherwise a symlinked source root (macOS
+    // os.tmpdir()'s /var -> /private/var, the exact case a real test caught,
+    // MINCRM-636/637) compares an unresolved path against a resolved root
+    // and spuriously fails containment for every file under it. Falls back
+    // to the raw (unresolved) data.path when realpath fails — a synthetic
+    // path with no real file backing it on this machine at all (test
+    // fixtures, or a dump built elsewhere) degrades to the same "not
+    // contained" outcome the resolved comparison would have reached anyway.
+    let resolvedDataPath: string;
+    try {
+      resolvedDataPath = await realpath(data.path);
+    } catch {
+      resolvedDataPath = data.path;
+    }
+    const isContained = isPathContainedIn(resolvedSourceRoot, resolvedDataPath);
+    const overrideFilePath = isContained
+      ? relative(resolvedSourceRoot, resolvedDataPath)
+      : filePath;
+    // An uncontained path is never repo-root-relative and so can never match
+    // changeUnitResolver.ts's own lookups — flagged as unresolved rather than
+    // silently stored as if resolution had succeeded, matching
+    // symbolicateV8ScriptCoverage's convention for its own unresolvable case
+    // (MINCRM-615's "unresolvable regions flagged rather than silently
+    // dropped" AC). Coverage counts themselves are still real and valid;
+    // only cross-machine path-identity resolution failed.
+    const unresolvedReason = isContained
+      ? undefined
+      : `File path "${filePath}" is not under sourceRoot "${sourceRoot}" — likely a dump captured on a different machine`;
     units.push(
-      ...(await unitsFromFileCoverageMap({ [filePath]: fileCoverage }, filePath, data.path)),
+      ...(await unitsFromFileCoverageMap(
+        { [filePath]: fileCoverage },
+        overrideFilePath,
+        data.path,
+        unresolvedReason,
+      )),
     );
   }
 
@@ -222,6 +281,17 @@ async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<Normali
  * reading source text is allowed to fail (wrong machine, deleted file) and
  * falls back to the legacy name+line key without affecting overrideFilePath
  * or any hit-count/branch data.
+ *
+ * unresolvedReason (MINCRM-636/637): set by symbolicateIstanbulCoverageMap
+ * when overrideFilePath couldn't be relativized under sourceRoot (a dump
+ * captured on a different machine). Every unit still gets stored —
+ * coverage_units never drops resolved=false rows, matching this module's
+ * "flagged rather than silently dropped" convention — but resolved=false
+ * excludes it from coverage_test_links (see coverageIngestionService's own
+ * `.filter((unit) => unit.resolved)`), since an unportable path can never
+ * match a repo-root-relative changeUnitResolver.ts lookup anyway; storing
+ * it as if resolution had succeeded would silently misrepresent this data
+ * as usable for test selection when it structurally cannot be.
  */
 /**
  * Clamps a raw hit count to a valid non-negative integer, warning once per
@@ -255,6 +325,7 @@ async function unitsFromFileCoverageMap(
   coverageMap: CoverageMapData,
   overrideFilePath: string,
   sourcePathForKeyDerivation?: string,
+  unresolvedReason?: string,
 ): Promise<NormalizedCoverageUnit[]> {
   const units: NormalizedCoverageUnit[] = [];
   const sourceText = sourcePathForKeyDerivation
@@ -304,8 +375,8 @@ async function unitsFromFileCoverageMap(
           branchId: `${branchKey}:${branchIndex}`,
           granularity: 'branch',
           hitCount: sanitizeHitCount(rawHitCount, { filePath: overrideFilePath, unitKey }),
-          resolved: true,
-          unresolvedReason: null,
+          resolved: unresolvedReason == null,
+          unresolvedReason: unresolvedReason ?? null,
         });
       });
     }
@@ -329,8 +400,8 @@ async function unitsFromFileCoverageMap(
         branchId: null,
         granularity: 'function',
         hitCount: sanitizeHitCount(data.f[fnKey] ?? 0, { filePath: overrideFilePath, unitKey }),
-        resolved: true,
-        unresolvedReason: null,
+        resolved: unresolvedReason == null,
+        unresolvedReason: unresolvedReason ?? null,
       });
     }
   }
@@ -403,6 +474,22 @@ function qualifiedUnitKeyForLine(
  * macOS os.tmpdir()'s /var -> /private/var symlink) would spuriously fail
  * the startsWith check for every script under a symlinked source root.
  */
+/**
+ * True containment test: is `candidate` equal to or strictly under `root`?
+ * A plain `candidate.startsWith(root)` string check would wrongly accept a
+ * sibling directory that merely shares the root as a string prefix (e.g.
+ * root "/app/repo" would incorrectly "contain" "/app/repo-internal/x.js").
+ * relative() plus an escape check is the standard way to test true path
+ * containment. Both arguments must already be in the SAME (resolved-or-not)
+ * form — callers are responsible for realpath-resolving both sides
+ * consistently, or a symlinked root (macOS os.tmpdir()'s /var ->
+ * /private/var) spuriously fails containment for every real match.
+ */
+function isPathContainedIn(root: string, candidate: string): boolean {
+  const relativePath = relative(root, candidate);
+  return relativePath !== '' && !relativePath.startsWith('..') && !isAbsolute(relativePath);
+}
+
 async function resolveScriptPath(
   url: string,
   resolvedSourceRoot: string,
@@ -422,15 +509,7 @@ async function resolveScriptPath(
 
   try {
     const realResolved = await realpath(candidate);
-    // A plain realResolved.startsWith(resolvedSourceRoot) string check would
-    // wrongly accept a sibling directory that merely shares the root as a
-    // string prefix (e.g. resolvedSourceRoot "/app/repo" would incorrectly
-    // "contain" "/app/repo-internal/x.js"). relative() plus an escape check
-    // is the standard way to test true path containment.
-    const relativePath = relative(resolvedSourceRoot, realResolved);
-    const isContained =
-      relativePath !== '' && !relativePath.startsWith('..') && !isAbsolute(relativePath);
-    return isContained ? realResolved : undefined;
+    return isPathContainedIn(resolvedSourceRoot, realResolved) ? realResolved : undefined;
   } catch {
     // realpath fails if the file doesn't actually exist on disk — not a
     // symlink-resolution concern, just "this script has no real source".

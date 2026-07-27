@@ -47,6 +47,43 @@ function resolveGranularity(): CoverageGranularity {
 }
 
 /**
+ * Resolves the repo root coverage symbolication relativizes file paths
+ * against (see coverageSymbolicationService.ts's use of this for both the
+ * backend V8 and frontend Istanbul paths).
+ *
+ * process.cwd() is NOT reliably the repo root: `npm run <script>
+ * --workspace=<name>` sets the spawned process's cwd to that workspace's
+ * own subdirectory (e.g. server/), not the repo root, on every npm version
+ * from 7 onward. This repo's own e2e-functional/e2e-serial CI jobs start
+ * the server via exactly that form (`npm run start --workspace=minicrm-server`),
+ * so process.cwd() there is <repo>/server — anything under shared/ or
+ * client/ (e.g. every frontend Istanbul dump) then fails
+ * resolveScriptPath's/symbolicateIstanbulCoverageMap's containment check
+ * and falls back to an unrelativized, unportable absolute path (found via a
+ * real local coverage-map generation run, MINCRM-636/637). CI sets
+ * COVERAGE_SOURCE_ROOT=github.workspace (see e2e-infra/action.yml) to fix
+ * this, since both the backend and Vite there run under one shared
+ * checkout.
+ *
+ * This resolves ONLY the backend-vs-workspace-cwd mismatch above. Local
+ * Docker's server-e2e container has no such mismatch for its OWN process
+ * (its command is a direct `npx tsx server/src/server.ts` with WORKDIR /app
+ * as the repo root, so process.cwd() already IS the repo root there) — but
+ * that local topology has a SEPARATE, unresolved problem this function does
+ * not fix: the E2E harness runs Vite directly on the host while the server
+ * runs inside this container, so every frontend Istanbul dump's absolute
+ * path is a host path (e.g. /Users/x/minicrm/client/src/...) the container
+ * can never see under any COVERAGE_SOURCE_ROOT value, since the host tree
+ * isn't bind-mounted at a matching path. Locally, frontend units fall back
+ * to their raw absolute path and are marked resolved=false — a known,
+ * accepted limitation of this split topology, not something this env var
+ * addresses.
+ */
+export function resolveSourceRoot(): string {
+  return process.env.COVERAGE_SOURCE_ROOT ?? process.cwd();
+}
+
+/**
  * Resolves the commit SHA to tag coverage dumps with.
  *
  * Precedence: GIT_COMMIT_SHA (explicit, vendor-neutral override) >
