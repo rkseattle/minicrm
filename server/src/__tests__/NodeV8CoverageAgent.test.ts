@@ -11,7 +11,7 @@ import { mkdtemp, readFile, readdir, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { NodeV8CoverageAgent } from '../coverageAgent/NodeV8CoverageAgent.js';
-import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
+import type { CoverageDump } from '../coverageAgent/sdk/CoverageAgentPlugin.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

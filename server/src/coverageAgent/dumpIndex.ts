@@ -14,7 +14,7 @@
 
 import { appendFile, mkdir, readFile } from 'fs/promises';
 import { dirname, join } from 'path';
-import type { CoverageDump } from './CoverageAgent.js';
+import type { CoverageDump } from './sdk/CoverageAgentPlugin.js';
 
 interface IndexEntry {
   dumpId: string;

@@ -17,7 +17,7 @@
 
 import type { PoolClient } from 'pg';
 import coverageDb from '../coverageDb.js';
-import type { CoverageDumpSource } from '../coverageAgent/CoverageAgent.js';
+import type { CoverageDumpSource } from '../coverageAgent/sdk/CoverageAgentPlugin.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
 import type { CoverageUnit } from '@minicrm/shared/schemas/coveragePipelineSchema.js';
 
@@ -402,6 +402,26 @@ export interface PruneCoverageUnitsResult {
    * would delete that entire freshly-loaded map on the very next scheduled
    * prune tick, degrading TIA to full-suite-forever with no error (found
    * via Greptile branch review).
+   *
+   * This does NOT mean a persistent deployment's map goes stale between
+   * loads and gets silently pruned out from under an active selection run
+   * (a concern raised in a later branch-review round) — verified against
+   * both real invocation paths:
+   *   - ci.yml's tia-selection job gets a fresh, empty coverageDb every run
+   *     (see load-coverage-map.ts's own docblock), so pruning never
+   *     observes stale rows there at all.
+   *   - pre-push-tia.ts unconditionally re-runs load-coverage-map.ts for
+   *     baseRef's tip SHA immediately before every local select-tests.ts
+   *     invocation (see pre-push-tia.ts's runLoadCoverageMap/runSelectTests
+   *     call order) — loadCoverageTestLinksForCommit's ON CONFLICT ... DO
+   *     UPDATE SET last_seen_at = now() means the SHA actually being
+   *     queried is always refreshed to "just now" immediately before every
+   *     query, never more than seconds stale.
+   * A coverage_test_links row can only ever fall outside the retention
+   * window for a commit_sha that is no longer being loaded/queried at
+   * all — main's tip has moved on and old PR base SHAs are no longer
+   * relevant — which is exactly the retention behavior this policy exists
+   * to provide, not a gap.
    */
   prunedLinkCount: number;
 }

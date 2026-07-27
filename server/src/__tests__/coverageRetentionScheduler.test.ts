@@ -15,11 +15,16 @@
 
 import 'dotenv/config';
 import { randomUUID } from 'crypto';
-import { runCoverageRetentionPruning } from '../coverageAgent/coverageRetentionScheduler.js';
+import { vi } from 'vitest';
+import {
+  runCoverageRetentionPruning,
+  getLastRetentionPruneOutcome,
+} from '../coverageAgent/coverageRetentionScheduler.js';
 import {
   findCoverageUnitsByCommitSha,
   upsertCoverageUnits,
 } from '../services/coverageModelService.js';
+import * as coverageModelService from '../services/coverageModelService.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
 import coverageDb from '../coverageDb.js';
 
@@ -87,5 +92,50 @@ describe('runCoverageRetentionPruning', () => {
 
     const stored = await findCoverageUnitsByCommitSha(commitSha);
     expect(stored).toHaveLength(0);
+  });
+});
+
+describe('getLastRetentionPruneOutcome', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("records status 'ok' with prunedUnitCount/prunedLinkCount after a successful run", async () => {
+    const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+    await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [makeUnit()]);
+    await coverageDb.query(
+      `UPDATE coverage_units SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
+      [commitSha],
+    );
+
+    const before = Date.now();
+    await runCoverageRetentionPruning(30);
+    const outcome = getLastRetentionPruneOutcome();
+
+    expect(outcome?.status).toBe('ok');
+    if (outcome?.status === 'ok') {
+      expect(outcome.prunedUnitCount).toBeGreaterThanOrEqual(1);
+      expect(typeof outcome.prunedLinkCount).toBe('number');
+    }
+    expect(new Date(outcome!.ranAt).getTime()).toBeGreaterThanOrEqual(before);
+  });
+
+  it("records status 'error' with the failure message, and still re-throws to the caller (server.ts's own cron .catch() must still fire)", async () => {
+    // Regression test: the daily cron's failure previously only ever
+    // reached logger.error, with GET /health continuing to report
+    // status: 'ok' indefinitely — this is the one background job
+    // MINCRM-637 introduces, and a failed run must now be observable on
+    // the health report too (found via Greptile branch review).
+    vi.spyOn(coverageModelService, 'pruneCoverageUnits').mockRejectedValue(
+      new Error('coverage db unreachable'),
+    );
+
+    await expect(runCoverageRetentionPruning(30)).rejects.toThrow('coverage db unreachable');
+
+    const outcome = getLastRetentionPruneOutcome();
+    expect(outcome?.status).toBe('error');
+    if (outcome?.status === 'error') {
+      expect(outcome.error).toBe('coverage db unreachable');
+    }
   });
 });

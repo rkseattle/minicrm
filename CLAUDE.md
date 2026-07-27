@@ -59,6 +59,11 @@ client/src/
   hooks/         → custom React hooks
 
 shared/schemas/  → Zod schemas used by both client and server (.ts only — .js outputs gitignored)
+                   (documented exception: coverageHarnessAdapterSchema.ts is a plain TS
+                   interface, no Zod, consumed only by qa/ — it lives here anyway because
+                   it imports coverageSessionSchema.ts's Zod types and qa/e2e/framework/
+                   must stay free of any @minicrm/shared/schemas import; there is no
+                   qa-local home that avoids the same import. See that file's own docblock.)
 
 db/migrations/   → sequential node-pg-migrate files (ls db/migrations/ | tail -1 to find last)
 

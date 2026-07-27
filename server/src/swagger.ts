@@ -794,6 +794,19 @@ const componentSchemas = {
           coverage_reporting_query: { type: 'boolean' },
         },
       },
+      lastRetentionPrune: {
+        type: 'object',
+        description:
+          "Outcome of the most recent scheduled retention prune. Absent if the daily cron has not fired yet this process's lifetime (not itself a degraded condition).",
+        required: ['ranAt', 'status'],
+        properties: {
+          ranAt: { type: 'string', format: 'date-time' },
+          status: { type: 'string', enum: ['ok', 'error'] },
+          prunedUnitCount: { type: 'integer', description: 'Present only when status is "ok".' },
+          prunedLinkCount: { type: 'integer', description: 'Present only when status is "ok".' },
+          error: { type: 'string', description: 'Present only when status is "error".' },
+        },
+      },
     },
   },
 };

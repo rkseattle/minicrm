@@ -4,13 +4,21 @@
  * A HarnessAdapter is the shape a test-harness integration (Playwright
  * today; a future framework's own reference client) uses to tag coverage
  * sessions and propagate the correlation ID that partitions coverage by
- * test. Lives in shared/schemas/ (not server/ or qa/) because both
- * workspaces already import from here — qa/e2e/framework/ is documented as
- * zero app-domain refs and must not import runtime code from server/, and
- * server/ has no reason to import a qa/-side client either. Generic over
- * `TClient` (the underlying HTTP client type, e.g. qa/'s own RestClient)
- * so this file never needs to import a qa/-specific type to stay
- * type-checkable.
+ * test. Generic over `TClient` (the underlying HTTP client type, e.g.
+ * qa/'s own RestClient) so this file never needs to import a qa/-specific
+ * type to stay type-checkable.
+ *
+ * Documented exception to shared/schemas/'s usual "Zod schemas used by both
+ * client and server" contract (see CLAUDE.md's Project Layout table): this
+ * file contains a plain TS interface, no Zod, and today only qa/ imports
+ * it. It lives here anyway rather than in a qa-local location because it
+ * imports the Zod types below from coverageSessionSchema.ts, and
+ * qa/e2e/framework/ must stay free of any @minicrm/shared/schemas import
+ * (enforced by qa/scripts/check-framework-purity.sh) — there is no
+ * qa-local home for this file that avoids that same import (found via
+ * Greptile branch review). If a second non-Zod, qa-only shared contract
+ * like this one is ever added, that's the trigger to introduce a proper
+ * shared/types/ directory rather than growing this exception informally.
  *
  * The reference implementation of this contract is
  * qa/e2e/framework/coverageAgent/coverage-session-control-client.ts's

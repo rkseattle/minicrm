@@ -20,6 +20,7 @@ import {
   relocateCoverageUnit,
   upsertCoverageUnits,
 } from '../services/coverageModelService.js';
+import { loadCoverageTestLinksForCommit } from '../services/coverageMappingService.js';
 import type { NormalizedCoverageUnit } from '../coverageAgent/pipeline/normalizedCoverageUnit.js';
 import coverageDb from '../coverageDb.js';
 
@@ -356,6 +357,62 @@ describe('coverageModelService', () => {
           'renders',
         ],
       );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedLinkCount).toBe(0);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(1);
+    });
+
+    it('a re-load via loadCoverageTestLinksForCommit refreshes last_seen_at, so a map that would otherwise be past the retention window survives (MINCRM-637)', async () => {
+      // Closes a round-4 branch-review question: does a persistent
+      // deployment's map go stale between loads and get silently pruned out
+      // from under an active selection run? No — pre-push-tia.ts
+      // unconditionally re-runs load-coverage-map.ts (which calls
+      // loadCoverageTestLinksForCommit) immediately before every local
+      // select-tests.ts invocation, and CI's coverageDb starts empty every
+      // run — so the commitSha actually being queried is always reloaded,
+      // and its last_seen_at always refreshed to "just now", before the
+      // very next prune tick could ever observe it as stale. This test
+      // proves the mechanism: a row seeded 100 days ago (long past the
+      // retention window) survives a prune once reloaded via the real
+      // ON CONFLICT ... DO UPDATE SET last_seen_at = now() path.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unit = makeUnit();
+      const testId = 'spec:reload.spec.ts::renders';
+      await loadCoverageTestLinksForCommit(commitSha, [
+        {
+          unitKey: unit.unitKey,
+          branchId: unit.branchId,
+          filePath: unit.filePath,
+          testId,
+          testName: 'renders',
+          testFile: null,
+          hitCount: 1,
+        },
+      ]);
+      await coverageDb.query(
+        `UPDATE coverage_test_links SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
+        [commitSha],
+      );
+
+      // The real reload path: same commitSha, same entries — mirrors
+      // load-coverage-map.ts re-running against an unchanged qa/coverage-map.json.
+      await loadCoverageTestLinksForCommit(commitSha, [
+        {
+          unitKey: unit.unitKey,
+          branchId: unit.branchId,
+          filePath: unit.filePath,
+          testId,
+          testName: 'renders',
+          testFile: null,
+          hitCount: 1,
+        },
+      ]);
 
       const result = await pruneCoverageUnits(30);
       expect(result.prunedLinkCount).toBe(0);

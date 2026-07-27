@@ -8,7 +8,7 @@
  * per-dump symbolication *output*, before it has been merged into storage.
  */
 
-import type { CoverageDumpSource } from '../CoverageAgent.js';
+import type { CoverageDumpSource } from '../sdk/CoverageAgentPlugin.js';
 import type { CoverageUnitGranularity } from './coverageSymbolicationService.js';
 
 /** A single resolved (or flagged-unresolvable) coverage unit from one dump. */

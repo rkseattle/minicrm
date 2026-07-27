@@ -4,27 +4,26 @@ Runtime code coverage collection from the live MiniCRM stack — backend and fro
 
 ## Files
 
-| Path                                                             | Purpose                                                                                                             |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`            | `CoverageAgentPlugin` SDK contract + `CoverageDump`/`AgentMetadata` types (MINCRM-636)                              |
-| `server/src/coverageAgent/CoverageAgent.ts`                      | Re-exports the SDK contract under its original names, for import-path stability                                     |
-| `server/src/coverageAgent/NodeV8CoverageAgent.ts`                | Backend agent — Node inspector API, `reset`/`snapshot`/`dump`; reference implementation of `CoverageAgentPlugin`    |
-| `shared/schemas/coverageHarnessAdapterSchema.ts`                 | `HarnessAdapterShape` — documents the harness-adapter contract against the Playwright reference client (MINCRM-636) |
-| `server/src/coverageAgent/coverageConfig.ts`                     | Env-var resolution: enabled, granularity, commit SHA, dumps root                                                    |
-| `server/src/coverageAgent/coverageAgentRegistry.ts`              | Module-level singleton holding the process's agent instance                                                         |
-| `server/src/coverageAgent/dumpIndex.ts`                          | Append-only `dumpId` → metadata-path lookup index                                                                   |
-| `server/src/services/coverageDumpService.ts`                     | Wraps the agent + dumpIndex; handles browser-dump ingestion                                                         |
-| `server/src/controllers/coverageController.ts`                   | Request/response shaping for the control API                                                                        |
-| `server/src/routes/coverage.ts`                                  | `@openapi` routes, mounted at `/api/v1/admin/coverage`                                                              |
-| `shared/schemas/coverageSchema.ts`                               | Zod request/response schemas, shared server+client+qa                                                               |
-| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeds the `coverage_instrumentation` feature flag, off by default                                                   |
-| `client/vite.config.ts`                                          | `vite-plugin-istanbul`, added to `plugins` only when `COVERAGE=true`                                                |
-| `qa/e2e/framework/coverageAgent/browser-coverage-agent.ts`       | Client-side: pulls `window.__coverage__`, submits to the dump endpoint                                              |
-| `qa/e2e/framework/coverageAgent/coverage-control-client.ts`      | Reference client for the backend verbs (reset/snapshot/dump)                                                        |
-| `qa/e2e/framework/reporting/coverage-reporter.ts`                | Triggers one final dump at run end when `E2E_COVERAGE_GRANULARITY=per-run`                                          |
-| `qa/e2e/globalTeardown.ts`                                       | Reset safety-net after each E2E run                                                                                 |
-| `qa/e2e/apps/minicrm/fixtures.ts`                                | Per-test coverage pull+submit wired into the `page` fixture                                                         |
-| `qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/` | Functional spec exercising the control API end to end                                                               |
+| Path                                                             | Purpose                                                                                                                                                                                                                                               |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`            | `CoverageAgentPlugin` SDK contract + `CoverageDump`/`AgentMetadata` types (MINCRM-636) — the only import path for these types; every caller migrated off the old `CoverageAgent.ts` re-export, which was deleted rather than kept as a permanent shim |
+| `server/src/coverageAgent/NodeV8CoverageAgent.ts`                | Backend agent — Node inspector API, `reset`/`snapshot`/`dump`; reference implementation of `CoverageAgentPlugin`                                                                                                                                      |
+| `shared/schemas/coverageHarnessAdapterSchema.ts`                 | `HarnessAdapterShape` — documents the harness-adapter contract against the Playwright reference client (MINCRM-636)                                                                                                                                   |
+| `server/src/coverageAgent/coverageConfig.ts`                     | Env-var resolution: enabled, granularity, commit SHA, dumps root                                                                                                                                                                                      |
+| `server/src/coverageAgent/coverageAgentRegistry.ts`              | Module-level singleton holding the process's agent instance                                                                                                                                                                                           |
+| `server/src/coverageAgent/dumpIndex.ts`                          | Append-only `dumpId` → metadata-path lookup index                                                                                                                                                                                                     |
+| `server/src/services/coverageDumpService.ts`                     | Wraps the agent + dumpIndex; handles browser-dump ingestion                                                                                                                                                                                           |
+| `server/src/controllers/coverageController.ts`                   | Request/response shaping for the control API                                                                                                                                                                                                          |
+| `server/src/routes/coverage.ts`                                  | `@openapi` routes, mounted at `/api/v1/admin/coverage`                                                                                                                                                                                                |
+| `shared/schemas/coverageSchema.ts`                               | Zod request/response schemas, shared server+client+qa                                                                                                                                                                                                 |
+| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeds the `coverage_instrumentation` feature flag, off by default                                                                                                                                                                                     |
+| `client/vite.config.ts`                                          | `vite-plugin-istanbul`, added to `plugins` only when `COVERAGE=true`                                                                                                                                                                                  |
+| `qa/e2e/framework/coverageAgent/browser-coverage-agent.ts`       | Client-side: pulls `window.__coverage__`, submits to the dump endpoint                                                                                                                                                                                |
+| `qa/e2e/framework/coverageAgent/coverage-control-client.ts`      | Reference client for the backend verbs (reset/snapshot/dump)                                                                                                                                                                                          |
+| `qa/e2e/framework/reporting/coverage-reporter.ts`                | Triggers one final dump at run end when `E2E_COVERAGE_GRANULARITY=per-run`                                                                                                                                                                            |
+| `qa/e2e/globalTeardown.ts`                                       | Reset safety-net after each E2E run                                                                                                                                                                                                                   |
+| `qa/e2e/apps/minicrm/fixtures.ts`                                | Per-test coverage pull+submit wired into the `page` fixture                                                                                                                                                                                           |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-instrumentation/` | Functional spec exercising the control API end to end                                                                                                                                                                                                 |
 
 Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/` — the repo's `.gitignore` has an unanchored `coverage/` pattern (for Vitest's test-coverage output) that would otherwise silently ignore a literal `coverage/` directory anywhere in the tree, including this one.
 
@@ -336,16 +335,30 @@ check never trigger (the computed ratio can never itself exceed 1).
 time (`server.ts`'s cron block), calling `coverageModelService.pruneCoverageUnits`
 with the resolved `retentionDays`. This was previously callable on demand only, with
 zero production callers — `pruneCoverageUnits` now also deletes any
-`coverage_test_links` rows left orphaned by the `coverage_units` prune, in the same
-transaction: `coverage_test_links` has no FK to `coverage_units` (cross-database FKs
-are impossible in PostgreSQL, and neither table was ever given one despite living in
-the same coverage database), so pruning `coverage_units` alone would leave orphaned
-links whose `MAPPING_RESULT_SELECT` LEFT JOIN then returns `confidence_score: null` —
-which `safetyNetPolicy.hasLowConfidenceMatch` treats as "no signal to check" rather
-than "below threshold," silently weakening the exact full-suite fallback retention
-pruning must not undermine. Runs regardless of `COVERAGE_INSTRUMENTATION`, since the
-coverage database is populated by the pipeline/mapping ingestion path independent of
-the backend V8 agent.
+`coverage_test_links` rows that are BOTH outside that same retention window AND left
+orphaned by the `coverage_units` prune, in the same transaction: `coverage_test_links`
+has no FK to `coverage_units` (cross-database FKs are impossible in PostgreSQL, and
+neither table was ever given one despite living in the same coverage database), so
+pruning `coverage_units` alone would eventually leave orphaned links whose
+`MAPPING_RESULT_SELECT` LEFT JOIN then returns `confidence_score: null` — which
+`safetyNetPolicy.hasLowConfidenceMatch` treats as "no signal to check" rather than
+"below threshold," silently weakening the exact full-suite fallback retention pruning
+must not undermine. The same retention-window bound on the link delete also protects a
+freshly-loaded `qa/coverage-map.json` (`loadCoverageTestLinksForCommit` writes
+`coverage_test_links` rows with no `coverage_units` counterpart at all — that map load
+is the normal way `select-tests.ts` gets a coverage index in CI and via
+`pre-push-tia.ts` locally) from being deleted as a false orphan; `pre-push-tia.ts`
+reloads the map — refreshing `last_seen_at` via `ON CONFLICT ... DO UPDATE` — before
+every local `select-tests.ts` run, and CI's `coverageDb` starts fresh and empty every
+run, so the commit actually being queried is never more than moments stale at query
+time. Runs regardless of `COVERAGE_INSTRUMENTATION`, since the coverage database is
+populated by the pipeline/mapping ingestion path independent of the backend V8 agent.
+
+The outcome of each run — success with counts, or the error if the prune itself threw
+— is tracked in-process (`coverageRetentionScheduler.getLastRetentionPruneOutcome()`)
+and surfaced on `GET /api/v1/admin/coverage/health` as `lastRetentionPrune` (see
+below), so a failed nightly prune is observable there rather than only in the process
+log.
 
 ## Health & Observability (MINCRM-637)
 
@@ -361,11 +374,23 @@ Reports the operational health of the framework's own services —
   statement timeout. Reuses `app.ts`'s own `/api/health` implementation pattern
   verbatim.
 - `featureFlags` — the current org-wide state of the three live coverage feature flags
-  (see [Policy Configuration](#policy-configuration-mincrm-637) above).
+  (see [Policy Configuration](#policy-configuration-mincrm-637) above). Each flag read
+  is independently guarded — a product-database outage during the read degrades that
+  flag to `false` and surfaces `featureFlagsError`, rather than the whole endpoint
+  failing with a `500`.
+- `lastRetentionPrune` — the outcome of the most recent scheduled retention prune (see
+  [Scheduled retention pruning](#scheduled-retention-pruning) below): `ranAt`, `status`
+  (`'ok'` or `'error'`), and either `prunedUnitCount`/`prunedLinkCount` (on `'ok'`) or
+  `error` (on `'error'`). Absent if the daily cron hasn't fired yet this process's
+  lifetime — e.g. right after boot, before 07:00 first hits — which is the normal
+  post-boot state, not itself degraded. This is the one background job MINCRM-637
+  introduces; without this field a failed nightly prune would only ever reach
+  `logger.error`, with this endpoint continuing to report `status: 'ok'` indefinitely.
 
-Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` (DB unreachable). A
-disabled feature flag is a normal operational state, not degraded — only DB
-unreachability affects overall `status`.
+Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` (DB unreachable, a
+feature-flag read failed, or the last scheduled retention prune errored). A disabled
+feature flag and an as-yet-unrun retention prune are both normal operational states,
+not degraded.
 
 **Gated by `authenticate → coverageAccessGate`, same as every other coverage route —
 not a public liveness probe** like the unauthenticated `/api/health`. This endpoint
@@ -382,14 +407,19 @@ are toggled.
 
 ### Operational logging
 
-Two high-volume/latency-risk call sites log structured fields on every call via the
+Three high-volume/latency-risk call sites log structured fields on every call via the
 shared app `logger` — no new logging infrastructure or dependency:
 
-| Call site                                                          | Log message                                               | Fields                                                                                           |
-| ------------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `coverageIngestionService.ingestCoverageDump`                      | `coverageIngestionService: ingested coverage dump`        | `dumpId`, `commitSha`, `alreadyIngested`, `unitCount`, `unresolvedCount`, `testId`, `durationMs` |
-| `coverageMappingService.findTestsForUnitAcrossBranches` (singular) | `coverageMappingService: findTestsForUnitAcrossBranches`  | `commitSha`, `filePath`, `unitKey`, `resultCount`, `durationMs`                                  |
-| `coverageMappingService.findTestsForUnitsAcrossBranches` (batched) | `coverageMappingService: findTestsForUnitsAcrossBranches` | `commitSha`, `inputUnitCount`, `uniqueUnitCount`, `chunkCount`, `totalMatchCount`, `durationMs`  |
+| Call site                                                          | Level   | Log message                                               | Fields                                                                                           |
+| ------------------------------------------------------------------ | ------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `coverageIngestionService.ingestCoverageDump`                      | `info`  | `coverageIngestionService: ingested coverage dump`        | `dumpId`, `commitSha`, `alreadyIngested`, `unitCount`, `unresolvedCount`, `testId`, `durationMs` |
+| `coverageMappingService.findTestsForUnitAcrossBranches` (singular) | `debug` | `coverageMappingService: findTestsForUnitAcrossBranches`  | `commitSha`, `filePath`, `unitKey`, `resultCount`, `durationMs`                                  |
+| `coverageMappingService.findTestsForUnitsAcrossBranches` (batched) | `info`  | `coverageMappingService: findTestsForUnitsAcrossBranches` | `commitSha`, `inputUnitCount`, `uniqueUnitCount`, `chunkCount`, `totalMatchCount`, `durationMs`  |
+
+The singular per-unit lookup logs at `debug`, not `info` — it fires once per changed
+unit on `testSelectionService`'s inheritance-lookup fan-out, unlike the batched
+function (once per selection run); logging every call at `info` would make the log
+itself a measurable share of the latency it reports.
 
 **How to alert on this:** these are plain structured `logger.info` calls (JSON to
 stdout in every environment — see `logger.ts`), so they flow into whatever
@@ -427,9 +457,11 @@ Enabled only when `COVERAGE_INSTRUMENTATION=true` at boot — checked once, not 
 ## Agent & Harness Adapter SDK (MINCRM-636)
 
 `NodeV8CoverageAgent` above is the reference implementation of a formal, versioned
-plugin contract — `CoverageAgentPlugin` (`server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`),
-re-exported under its original `CoverageAgent` name from `CoverageAgent.ts` for
-import-path stability. `coverageAgentRegistry.ts` is typed to the interface, not the
+plugin contract — `CoverageAgentPlugin` (`server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`).
+Every consumer of `CoverageDump`/`CoverageDumpSource` imports directly from this
+module — the original `CoverageAgent.ts` re-export shim was deleted once every call
+site was migrated, rather than kept indefinitely as a second permanent import path
+for the same contract. `coverageAgentRegistry.ts` is typed to the interface, not the
 concrete class, so a second language's agent can register without a type error. The
 harness side of the contract (`HarnessAdapterShape`,
 `shared/schemas/coverageHarnessAdapterSchema.ts`) documents, against the actual

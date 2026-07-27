@@ -29,15 +29,20 @@ import type { HarnessAdapterShape } from '@minicrm/shared/schemas/coverageHarnes
 // framework file itself — is where a @minicrm/shared/schemas import is
 // permitted; the client under test stays framework-pure. Never called at
 // runtime; its only job is to fail `tsc --noEmit` if either side's
-// signature drifts from the other.
-const _playwrightHarnessAdapterCheck: HarnessAdapterShape<RestClient> = {
-  startSession: (client, params) => startCoverageSession(client, params),
-  endSession: (client, sessionId, version) => endCoverageSession(client, sessionId, version),
-  recordDump: (client, sessionId, params) => recordCoverageSessionDump(client, sessionId, params),
-  injectCorrelationHeader: (headers, correlationId) => {
+// signature drifts from the other. Direct function references (not arrow
+// wrappers) and a real `satisfies` assertion, not a type annotation — a
+// wrapper like `(client, params) => startCoverageSession(client, params)`
+// still type-checks each parameter contextually but would NOT catch an
+// excess parameter or arity drift on the real function the way a direct
+// reference does (found via Greptile branch review).
+const _playwrightHarnessAdapterCheck = {
+  startSession: startCoverageSession,
+  endSession: endCoverageSession,
+  recordDump: recordCoverageSessionDump,
+  injectCorrelationHeader: (headers: Record<string, string>, correlationId: string) => {
     headers[CORRELATION_ID_HEADER] = correlationId;
   },
-};
+} satisfies HarnessAdapterShape<RestClient>;
 void _playwrightHarnessAdapterCheck;
 
 // ---------------------------------------------------------------------------
