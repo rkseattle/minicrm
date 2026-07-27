@@ -879,7 +879,11 @@ export default function ContactsPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-gray-500 group-data-[selected]:text-gray-600">
-                        <span className="block truncate max-w-[200px]" title={contact.email}>
+                        <span
+                          data-testid={`contact-email-${contact.id}`}
+                          className="block truncate max-w-[200px]"
+                          title={contact.email}
+                        >
                           {contact.email}
                         </span>
                       </td>

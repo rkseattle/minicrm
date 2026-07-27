@@ -20,6 +20,7 @@ import { test, expect } from '@framework/fixtures';
 import type { Locator, Page } from '@playwright/test';
 import { HealingRegistry } from '@framework/healing';
 import { t, activeLocale, registerLocaleExtension } from '@framework/i18n';
+import { resetLocaleMapsForTesting } from '@framework/i18n/locale.js';
 import { buildHealPage } from '@framework/fixtures/heal-page.fixture.js';
 
 // ---------------------------------------------------------------------------
@@ -279,7 +280,17 @@ test.describe.serial('healPage fixture teardown', () => {
 test.describe('t() locale helper', () => {
   // Register a minimal locale map so the t() tests below have known keys to resolve.
   // The framework ships no pre-loaded strings; apps must call registerLocaleExtension().
+  //
+  // resetLocaleMapsForTesting() first: LOCALE_MAPS is a process-global
+  // singleton (framework/i18n/locale.ts) with no per-file isolation —
+  // locale.spec.ts (a different spec file) registers 'fr' into that same
+  // singleton, and the "throws RangeError on unregistered locale" test
+  // below assumes 'fr' stays unregistered. Without this reset, whichever
+  // spec file's beforeAll runs second in a shared worker silently breaks
+  // the other's assumption (found via a real full-suite E2E failure — see
+  // resetLocaleMapsForTesting's own docblock).
   test.beforeAll(() => {
+    resetLocaleMapsForTesting();
     registerLocaleExtension({
       en: {
         'login.submitButton': 'Sign in',
@@ -291,6 +302,10 @@ test.describe('t() locale helper', () => {
         'nav.dashboard': 'Panel',
       },
     });
+  });
+
+  test.afterAll(() => {
+    resetLocaleMapsForTesting();
   });
 
   test('resolves known key in default locale (en)', () => {

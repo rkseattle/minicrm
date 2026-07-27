@@ -8,7 +8,28 @@
  */
 
 import { test, expect } from '@framework/fixtures';
-import { t, setLocale, activeLocale, registerLocaleExtension } from '@framework/i18n/locale.js';
+import {
+  t,
+  setLocale,
+  activeLocale,
+  registerLocaleExtension,
+  resetLocaleMapsForTesting,
+} from '@framework/i18n/locale.js';
+
+// LOCALE_MAPS is a process-global singleton (framework/i18n/locale.ts) with
+// no per-file isolation. This file's own tests assume specific locale codes
+// ('de', 'zh-Hans') stay unregistered — heal-page.fixture.spec.ts (a
+// different spec file) registers its own set of codes into that same
+// singleton, and whichever file's setup runs second in a shared Playwright
+// worker would otherwise silently corrupt the other's "unregistered" claim
+// (found via a real full-suite E2E failure — see
+// resetLocaleMapsForTesting's own docblock). Reset once before this file's
+// entire suite runs, not per-describe-block, so every describe below
+// (including ones with no beforeAll of their own) starts from a clean
+// singleton regardless of run order.
+test.beforeAll(() => {
+  resetLocaleMapsForTesting();
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

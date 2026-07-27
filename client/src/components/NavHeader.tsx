@@ -142,7 +142,10 @@ export default function NavHeader({ hamburger }: NavHeaderProps) {
       <div className="flex items-center gap-3 ms-auto">
         {user && <NotificationBell />}
         {user && (
-          <span className="text-sm text-gray-500 hidden sm:block truncate max-w-[12rem]">
+          <span
+            data-testid="nav-user-name"
+            className="text-sm text-gray-500 hidden sm:block truncate max-w-[12rem]"
+          >
             {user.name}
           </span>
         )}

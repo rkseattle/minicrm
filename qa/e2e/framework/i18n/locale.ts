@@ -56,6 +56,27 @@ export function registerLocaleExtension(extension: Partial<Record<LocaleCode, Lo
   }
 }
 
+/**
+ * Clears every registered locale map. For testing only — never call in
+ * production/fixture code.
+ *
+ * LOCALE_MAPS is a process-global singleton with no reset otherwise, which
+ * makes any test asserting "locale X is unregistered" fragile against
+ * whatever OTHER spec file happened to register that same code first in
+ * the same Playwright worker — e.g. locale.spec.ts registers 'fr', and
+ * heal-page.fixture.spec.ts independently assumed 'fr' would stay
+ * unregistered as its own probe locale, so one spec's registration silently
+ * broke the other's assertion depending on worker file distribution (found
+ * via a real full-suite E2E run failure, not by inspection alone). Call
+ * this in a beforeAll/afterAll so each spec file's locale assumptions hold
+ * regardless of what ran before it in the same worker.
+ */
+export function resetLocaleMapsForTesting(): void {
+  for (const code of Object.keys(LOCALE_MAPS) as LocaleCode[]) {
+    delete LOCALE_MAPS[code];
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Active locale resolution
 // ---------------------------------------------------------------------------

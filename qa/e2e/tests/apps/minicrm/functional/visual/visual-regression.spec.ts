@@ -320,7 +320,7 @@ test.describe('Core Layout', () => {
   test(
     'V4: contact detail page renders with populated activity timeline @visual',
     { tag: ['@visual'] },
-    async ({ page, testData, restClient }) => {
+    async ({ page, testData, restClient }, testInfo) => {
       await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
       const account = await createTestAccount(testData, restClient, {
@@ -329,6 +329,18 @@ test.describe('Core Layout', () => {
       const contact = await createTestContact(testData, restClient, {
         first_name: 'Visual',
         last_name: 'ContactDetail',
+        // Fixed-length project-name suffix, not the Date.now()-suffixed
+        // default — this contact's email is masked below regardless of
+        // content, but the default's variable-length timestamp suffix
+        // shifted the truncated span's rendered width by a few pixels run
+        // to run, nudging the mask box's right edge against the adjacent
+        // "Send Email" button and producing a small (~480px) diff even
+        // with masking in place (found via a real E2E run: masking alone
+        // wasn't sufficient here, only a stable width was). Still unique
+        // across desktop/mobile-web running this same test concurrently —
+        // contacts.email has a real DB uniqueness constraint — since
+        // testInfo.project.name is exactly one of those two fixed strings.
+        email: `visual-contact-detail-${testInfo.project.name}@example.com`,
         phone: '+1-555-0100',
         title: 'Senior Engineer',
         department: 'Engineering',
@@ -508,26 +520,35 @@ test.describe('Key Pages', () => {
   test(
     'V9: leads list renders with seeded leads at desktop viewport @visual',
     { tag: ['@visual'] },
-    async ({ page, restClient }) => {
+    async ({ page, restClient, testData }) => {
       await loginViaBrowser(sharedAdmin.email, sharedAdmin.password, { page });
 
-      // Leads are not registered with TestDataManager — the lead API does not expose
-      // a delete endpoint accessible via TestDataManager; leads are cleaned up by
-      // the E2E DB teardown between test runs. Emails are auto-generated to avoid
-      // collisions when desktop and mobile-web projects run this test in parallel.
+      // Registered with testData for cleanup — DELETE /api/v1/leads/:id is a
+      // real endpoint (leads.behaviors.ts's deleteLead, used throughout
+      // leads.spec.ts's own testData.register('lead', ...) call sites). An
+      // earlier revision of this comment claimed no delete endpoint existed
+      // and relied on "E2E DB teardown between test runs" instead — false in
+      // practice: repeated local runs against the same DB (no teardown
+      // between them) accumulate leads without bound, drifting this page's
+      // "Showing 1-N of N" count and breaking this exact visual baseline
+      // (found via a real failing E2E run, not by inspection). Emails are
+      // still auto-generated to avoid collisions when desktop and
+      // mobile-web projects run this test in parallel.
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      await createLeadViaApi(restClient, {
+      const carol = await createLeadViaApi(restClient, {
         first_name: 'Carol',
         last_name: 'VRLeads',
         email: `vr-v9-carol-${suffix}@example.com`,
         company_name: 'VR Corp',
       });
-      await createLeadViaApi(restClient, {
+      testData.register('lead', carol.id, `/api/v1/leads/${carol.id}`);
+      const dave = await createLeadViaApi(restClient, {
         first_name: 'Dave',
         last_name: 'VRLeads',
         email: `vr-v9-dave-${suffix}@example.com`,
         company_name: 'VR Inc',
       });
+      testData.register('lead', dave.id, `/api/v1/leads/${dave.id}`);
 
       await page.setViewportSize(DESKTOP_VIEWPORT);
       await navigateToLeadsPage({ page });
