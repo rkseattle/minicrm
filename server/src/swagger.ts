@@ -804,6 +804,11 @@ const componentSchemas = {
           status: { type: 'string', enum: ['ok', 'error'] },
           prunedUnitCount: { type: 'integer', description: 'Present only when status is "ok".' },
           prunedLinkCount: { type: 'integer', description: 'Present only when status is "ok".' },
+          prunedIngestedDumpCount: {
+            type: 'integer',
+            description: 'Present only when status is "ok".',
+          },
+          prunedSessionCount: { type: 'integer', description: 'Present only when status is "ok".' },
           error: { type: 'string', description: 'Present only when status is "error".' },
         },
       },

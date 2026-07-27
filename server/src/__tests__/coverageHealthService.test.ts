@@ -165,6 +165,8 @@ describe('getCoverageHealth', () => {
       status: 'ok',
       prunedUnitCount: 3,
       prunedLinkCount: 1,
+      prunedIngestedDumpCount: 2,
+      prunedSessionCount: 5,
     });
 
     const health = await getCoverageHealth();
@@ -175,6 +177,8 @@ describe('getCoverageHealth', () => {
       status: 'ok',
       prunedUnitCount: 3,
       prunedLinkCount: 1,
+      prunedIngestedDumpCount: 2,
+      prunedSessionCount: 5,
     });
   });
 
