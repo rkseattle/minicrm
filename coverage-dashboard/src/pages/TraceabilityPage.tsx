@@ -15,10 +15,17 @@ import {
 import {
   COVERAGE_UNITS_FOR_TEST_QUERY_KEY,
   COVERAGE_TESTS_FOR_UNIT_QUERY_KEY,
+  COVERAGE_UNIT_KEYS_SEARCH_QUERY_KEY,
+  COVERAGE_TEST_IDS_SEARCH_QUERY_KEY,
   fetchUnitsForTest,
   fetchTestsForUnit,
+  searchUnitKeys,
+  searchTestIds,
 } from '@/api/coverageMapping.js';
 import StatTile from '@/components/StatTile.js';
+import RecentBuildSelect from '@/components/RecentBuildSelect.js';
+import IssueKeySelect from '@/components/IssueKeySelect.js';
+import TypeaheadSelect from '@/components/TypeaheadSelect.js';
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
@@ -47,19 +54,13 @@ function IssueCoverageSection() {
         className="mb-4 flex items-end gap-3"
         data-testid="issue-coverage-form"
       >
-        <div>
-          <label htmlFor="issueKey" className="mb-1 block text-sm font-medium text-gray-700">
-            Issue key
-          </label>
-          <input
-            id="issueKey"
-            value={issueKey}
-            onChange={(e) => setIssueKey(e.target.value)}
-            placeholder="e.g. MINCRM-123"
-            className="w-48 rounded-md border border-gray-300 px-3 py-2 text-sm"
-            data-testid="issue-key-input"
-          />
-        </div>
+        <RecentBuildSelect
+          id="issueRecentBuildSha"
+          label="Recent builds"
+          testId="issue-recent-build-select"
+          onSelect={(sha) => setCommitSha(sha)}
+        />
+
         <div>
           <label htmlFor="issueCommitSha" className="mb-1 block text-sm font-medium text-gray-700">
             Build commit SHA
@@ -71,6 +72,28 @@ function IssueCoverageSection() {
             placeholder="e.g. a1b2c3d..."
             className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm"
             data-testid="issue-commit-sha-input"
+          />
+        </div>
+
+        <IssueKeySelect
+          id="issueRecentIssueKey"
+          label="Recorded issues"
+          testId="issue-recent-issue-key-select"
+          commitSha={commitSha.trim()}
+          onSelect={(key) => setIssueKey(key)}
+        />
+
+        <div>
+          <label htmlFor="issueKey" className="mb-1 block text-sm font-medium text-gray-700">
+            Issue key
+          </label>
+          <input
+            id="issueKey"
+            value={issueKey}
+            onChange={(e) => setIssueKey(e.target.value)}
+            placeholder="e.g. MINCRM-123"
+            className="w-48 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            data-testid="issue-key-input"
           />
         </div>
         <button
@@ -148,6 +171,13 @@ function TiaValueMetricsSection() {
         className="mb-4 flex items-end gap-3"
         data-testid="tia-metrics-form"
       >
+        <RecentBuildSelect
+          id="tiaRecentFromSha"
+          label="Recent builds (from)"
+          testId="tia-recent-from-select"
+          onSelect={(sha) => setFromSha(sha)}
+        />
+
         <div>
           <label htmlFor="fromSha" className="mb-1 block text-sm font-medium text-gray-700">
             From SHA
@@ -160,6 +190,14 @@ function TiaValueMetricsSection() {
             data-testid="tia-from-sha-input"
           />
         </div>
+
+        <RecentBuildSelect
+          id="tiaRecentToSha"
+          label="Recent builds (to)"
+          testId="tia-recent-to-select"
+          onSelect={(sha) => setToSha(sha)}
+        />
+
         <div>
           <label htmlFor="toSha" className="mb-1 block text-sm font-medium text-gray-700">
             To SHA
@@ -286,6 +324,13 @@ function DrillDownSection() {
             <option value="test-to-units">Test → code units</option>
           </select>
         </div>
+        <RecentBuildSelect
+          id="drilldownRecentBuildSha"
+          label="Recent builds"
+          testId="drilldown-recent-build-select"
+          onSelect={(sha) => setCommitSha(sha)}
+        />
+
         <div>
           <label
             htmlFor="drilldownCommitSha"
@@ -302,39 +347,77 @@ function DrillDownSection() {
           />
         </div>
         {direction === 'unit-to-tests' ? (
-          <div>
-            <label
-              htmlFor="drilldownUnitKey"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Unit key
-            </label>
-            <input
-              id="drilldownUnitKey"
-              value={unitKey}
-              onChange={(e) => setUnitKey(e.target.value)}
-              placeholder="e.g. render#abc123"
-              className="w-56 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              data-testid="drilldown-unit-key-input"
+          <>
+            <TypeaheadSelect
+              id="drilldownUnitKeySearch"
+              label="Search unit keys"
+              testId="drilldown-unit-key-search"
+              placeholder="e.g. handleSubmit"
+              disabled={commitSha.trim().length === 0}
+              disabledReason="Enter a build commit SHA above first"
+              queryKey={[...COVERAGE_UNIT_KEYS_SEARCH_QUERY_KEY, commitSha.trim()]}
+              search={(searchTerm) =>
+                searchUnitKeys({ commitSha: commitSha.trim(), search: searchTerm }).then(
+                  (results) =>
+                    results.map((r) => ({
+                      value: r.unitKey,
+                      label: `${r.unitKey} (${r.filePath})`,
+                    })),
+                )
+              }
+              onSelect={(value) => setUnitKey(value)}
             />
-          </div>
+            <div>
+              <label
+                htmlFor="drilldownUnitKey"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Unit key
+              </label>
+              <input
+                id="drilldownUnitKey"
+                value={unitKey}
+                onChange={(e) => setUnitKey(e.target.value)}
+                placeholder="e.g. render#abc123"
+                className="w-56 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                data-testid="drilldown-unit-key-input"
+              />
+            </div>
+          </>
         ) : (
-          <div>
-            <label
-              htmlFor="drilldownTestId"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
-              Test ID
-            </label>
-            <input
-              id="drilldownTestId"
-              value={testId}
-              onChange={(e) => setTestId(e.target.value)}
-              placeholder="e.g. spec:deals.spec.ts::test"
-              className="w-56 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              data-testid="drilldown-test-id-input"
+          <>
+            <TypeaheadSelect
+              id="drilldownTestIdSearch"
+              label="Search tests"
+              testId="drilldown-test-id-search"
+              placeholder="e.g. creates a deal"
+              disabled={commitSha.trim().length === 0}
+              disabledReason="Enter a build commit SHA above first"
+              queryKey={[...COVERAGE_TEST_IDS_SEARCH_QUERY_KEY, commitSha.trim()]}
+              search={(searchTerm) =>
+                searchTestIds({ commitSha: commitSha.trim(), search: searchTerm }).then((results) =>
+                  results.map((r) => ({ value: r.testId, label: r.testName ?? r.testId })),
+                )
+              }
+              onSelect={(value) => setTestId(value)}
             />
-          </div>
+            <div>
+              <label
+                htmlFor="drilldownTestId"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Test ID
+              </label>
+              <input
+                id="drilldownTestId"
+                value={testId}
+                onChange={(e) => setTestId(e.target.value)}
+                placeholder="e.g. spec:deals.spec.ts::test"
+                className="w-56 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                data-testid="drilldown-test-id-input"
+              />
+            </div>
+          </>
         )}
         <button
           type="submit"

@@ -303,6 +303,28 @@ export async function getIssueCoverage(
   };
 }
 
+/**
+ * Lists distinct issue keys that have at least one coverage session
+ * recorded for a given build — backs the coverage-dashboard app's issue-key
+ * picker (MINCRM-636/637). Unlike unit-key/test-ID search
+ * (coverageModelService.searchUnitKeys / coverageMappingService.searchTestIds),
+ * this needs no separate search term: the set of issue keys touched by any
+ * one build is small (bounded by how many manual-testing sessions were
+ * checked in against it, not by the size of the coverage_units/
+ * coverage_test_links tables), so listing all of them for a commit is
+ * cheap and a plain dropdown (rather than a typeahead) is the right UI for
+ * this one field.
+ */
+export async function listIssueKeysForCommit(commitSha: string): Promise<string[]> {
+  const result = await coverageDb.query<{ issue_key: string }>(
+    `SELECT DISTINCT issue_key FROM coverage_sessions
+     WHERE build_sha = $1 AND issue_key IS NOT NULL
+     ORDER BY issue_key`,
+    [commitSha],
+  );
+  return result.rows.map((row) => row.issue_key);
+}
+
 /** TIA selection value metrics over a commit range. */
 export interface TiaValueMetrics {
   fromSha: string;

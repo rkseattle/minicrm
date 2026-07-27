@@ -23,12 +23,13 @@
  * real test failure — requireFeatureEnabled's own docblock: "Must be used
  * after the authenticate middleware so that req.user is set").
  *
- * Scoped to ONLY this route file, not coverageAccessGate.ts itself:
- * coveragePipeline.ts/coverageMapping.ts/coverageSessions.ts/coverage.ts
- * also share that gate, and unlike this file's pure GET/query endpoints,
- * those manage or ingest real coverage/session data — opening those too
- * would be a much larger, unintended blast radius for a dashboard that
- * only ever calls the reporting endpoints below.
+ * Scoped to ONLY this route file and coverageSessions.ts (the two routers
+ * the coverage-dashboard app actually calls), not coverageAccessGate.ts
+ * itself: coveragePipeline.ts/coverageMapping.ts/coverage.ts also share
+ * that gate but are never called by this dashboard, so this flag never
+ * opens them up — see isDashboardNoAuthEnabled's own docblock
+ * (coverageAccessGate.ts) for the shared predicate both opting-in routers
+ * use.
  *
  * Gated the same way auth.ts's own E2E rate-limit bypass is (see that
  * file's isE2E): NODE_ENV !== 'production' is the hard safety rail so this
@@ -41,7 +42,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
+import { coverageAccessGate, isDashboardNoAuthEnabled } from '../middleware/coverageAccessGate.js';
 import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -49,6 +50,7 @@ import {
   getCoverageTrendHandler,
   getGapsHandler,
   getIssueCoverageHandler,
+  listIssueKeysHandler,
   getTiaValueMetricsHandler,
 } from '../controllers/coverageReportingController.js';
 
@@ -56,24 +58,6 @@ const router = Router();
 
 const requireFeatureEnabledForReporting = requireFeatureEnabled('coverage_reporting_query');
 
-/**
- * NODE_ENV !== 'production' is the hard safety rail — see this file's own
- * top docblock on why the flag alone (e.g. a copied .env file) must never
- * be sufficient on its own to bypass auth in a real deployment.
- */
-function isDashboardNoAuthEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.COVERAGE_DASHBOARD_NO_AUTH === 'true';
-}
-
-/**
- * Read per request, not resolved once at module-load time — matching
- * coverageAccessGate.ts's own COVERAGE_CAPABILITY_GATING precedent, and for
- * the same reason: a boot-time-only read would mean toggling this flag
- * requires a full server restart, and coverageReportingController.test.ts's
- * existing pattern of flipping COVERAGE_CAPABILITY_GATING per-test via
- * plain process.env assignment (no app re-import) would not work for a
- * module-scoped constant.
- */
 const requireCoverageReportingAccessGate: RequestHandler = (
   req: Request,
   res: Response,
@@ -234,6 +218,48 @@ router.get(
   ...requireCoverageReportingAccess,
   asyncHandler(getIssueCoverageHandler),
 );
+
+/**
+ * @openapi
+ * /api/v1/admin/coverage/reporting/issue-keys:
+ *   get:
+ *     tags: [Coverage]
+ *     operationId: listIssueKeys
+ *     summary: List distinct issue keys with a recorded coverage session for a given build (MINCRM-636/637)
+ *     description: >
+ *       Backs the coverage-dashboard app's issue-key picker. Unlike unit-key/
+ *       test-ID search, this needs no search term — the set of issue keys
+ *       touched by any one build is small (bounded by manual-testing
+ *       sessions checked in against it), so a plain dropdown of all of them
+ *       is the right UI for this field.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: commitSha
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Every distinct issue key with a coverage session recorded for this build
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 issueKeys:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ */
+router.get('/issue-keys', ...requireCoverageReportingAccess, asyncHandler(listIssueKeysHandler));
 
 /**
  * @openapi

@@ -9,6 +9,7 @@ import {
   MOCK_DEAD_ZONE_UNIT,
   MOCK_NEVER_TAKEN_BRANCH,
   MOCK_CHANGED_UNTESTED_UNIT,
+  MOCK_COVERAGE_SUMMARY,
 } from '@/test/msw/handlers.js';
 
 async function submitGapsForm(commitSha: string, baseSha = ''): Promise<void> {
@@ -134,5 +135,31 @@ describe('GapsPage', () => {
     expect(createObjectURLSpy).toHaveBeenCalled();
     createObjectURLSpy.mockRestore();
     revokeObjectURLSpy.mockRestore();
+  });
+
+  it('populates the commit-SHA input from the recent-builds dropdown', async () => {
+    renderWithProviders(<GapsPage />);
+    await waitFor(() => expect(screen.getByTestId('gaps-recent-build-select')).toBeInTheDocument());
+
+    await userEvent.selectOptions(
+      screen.getByTestId('gaps-recent-build-select'),
+      MOCK_COVERAGE_SUMMARY.commitSha,
+    );
+
+    expect(screen.getByTestId('gaps-commit-sha-input')).toHaveValue(
+      MOCK_COVERAGE_SUMMARY.commitSha,
+    );
+  });
+
+  it('populates the base-SHA input from its own recent-builds dropdown', async () => {
+    renderWithProviders(<GapsPage />);
+    await waitFor(() => expect(screen.getByTestId('gaps-recent-base-select')).toBeInTheDocument());
+
+    await userEvent.selectOptions(
+      screen.getByTestId('gaps-recent-base-select'),
+      MOCK_COVERAGE_SUMMARY.commitSha,
+    );
+
+    expect(screen.getByTestId('gaps-base-sha-input')).toHaveValue(MOCK_COVERAGE_SUMMARY.commitSha);
   });
 });

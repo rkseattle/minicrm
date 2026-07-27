@@ -672,3 +672,42 @@ export async function loadCoverageTestLinksForCommit(
     client.release();
   }
 }
+
+/** One typeahead match — testName included for display since testId alone (a Playwright-generated hash) is not human-readable. */
+export interface TestIdSearchResult {
+  testId: string;
+  testName: string | null;
+}
+
+/**
+ * Typeahead search over coverage_test_links.test_id/test_name for a given
+ * commit — backs the coverage-dashboard app's drill-down test-ID picker
+ * (MINCRM-636/637), same rationale as coverageModelService.searchUnitKeys:
+ * a plain "list every test ID" endpoint is not viable at real scale, so
+ * this always requires a commitSha (indexed via coverage_test_links_test_idx)
+ * and a non-empty search term, capped at `limit`.
+ *
+ * Matches against test_id OR test_name: testId alone (testInfo.testId, a
+ * Playwright-generated hash — see coverage-session-control-client.ts) is
+ * not something a caller could plausibly remember or search by by eye; the
+ * human-readable test_name (testInfo.title) is what they'd actually type.
+ *
+ * DISTINCT ON (test_id): a single test_id can appear many times in
+ * coverage_test_links (once per covered unit), so the result list must be
+ * deduplicated to one row per test, not one row per unit it happens to cover.
+ */
+export async function searchTestIds(
+  commitSha: string,
+  search: string,
+  limit: number,
+): Promise<TestIdSearchResult[]> {
+  const result = await coverageDb.query<{ test_id: string; test_name: string | null }>(
+    `SELECT DISTINCT ON (test_id) test_id, test_name
+     FROM coverage_test_links
+     WHERE commit_sha = $1 AND (test_id ILIKE '%' || $2 || '%' OR test_name ILIKE '%' || $2 || '%')
+     ORDER BY test_id
+     LIMIT $3`,
+    [commitSha, search, limit],
+  );
+  return result.rows.map((row) => ({ testId: row.test_id, testName: row.test_name }));
+}

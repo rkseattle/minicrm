@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { COVERAGE_GAPS_QUERY_KEY, fetchCoverageGaps } from '@/api/coverageReporting.js';
 import { exportRowsAsCsv, exportRowsAsJson } from '@/utils/exportGaps.js';
+import RecentBuildSelect from '@/components/RecentBuildSelect.js';
 
 type GapTab = 'dead-zones' | 'never-taken-branches' | 'changed-untested';
 
@@ -61,6 +62,13 @@ export default function GapsPage() {
         className="mb-6 flex items-end gap-3"
         data-testid="gaps-form"
       >
+        <RecentBuildSelect
+          id="gapsRecentBuildSha"
+          label="Recent builds"
+          testId="gaps-recent-build-select"
+          onSelect={(sha) => setCommitSha(sha)}
+        />
+
         <div>
           <label htmlFor="gapsCommitSha" className="mb-1 block text-sm font-medium text-gray-700">
             Build commit SHA
@@ -74,6 +82,14 @@ export default function GapsPage() {
             data-testid="gaps-commit-sha-input"
           />
         </div>
+
+        <RecentBuildSelect
+          id="gapsRecentBaseSha"
+          label="Recent builds (base)"
+          testId="gaps-recent-base-select"
+          onSelect={(sha) => setBaseSha(sha)}
+        />
+
         <div>
           <label htmlFor="gapsBaseSha" className="mb-1 block text-sm font-medium text-gray-700">
             Base SHA (optional, for changed-but-untested)

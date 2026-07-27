@@ -10,6 +10,7 @@ import {
   getCoverageTrendRequestSchema,
   getGapsRequestSchema,
   getIssueCoverageRequestSchema,
+  listIssueKeysRequestSchema,
   getTiaValueMetricsRequestSchema,
 } from '@minicrm/shared/schemas/coverageReportingSchema.js';
 import {
@@ -20,6 +21,7 @@ import {
   findNeverTakenBranches,
   findChangedUntestedUnits,
   getIssueCoverage,
+  listIssueKeysForCommit,
   getTiaValueMetrics,
 } from '../services/coverageReportingService.js';
 
@@ -109,6 +111,22 @@ export async function getIssueCoverageHandler(req: Request, res: Response): Prom
 
   const coverage = await getIssueCoverage(issueKey, parsed.data.commitSha);
   res.status(200).json({ coverage });
+}
+
+/**
+ * GET /api/v1/admin/coverage/reporting/issue-keys
+ * Lists distinct issue keys with at least one coverage session recorded
+ * for a given build. Admin only.
+ */
+export async function listIssueKeysHandler(req: Request, res: Response): Promise<void> {
+  const parsed = listIssueKeysRequestSchema.safeParse(req.query);
+  if (!parsed.success) {
+    respondValidationError(res, parsed.error.errors[0].message);
+    return;
+  }
+
+  const issueKeys = await listIssueKeysForCommit(parsed.data.commitSha);
+  res.status(200).json({ issueKeys });
 }
 
 /**

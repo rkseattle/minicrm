@@ -282,6 +282,46 @@ export async function deleteCoverageUnitById(id: string): Promise<void> {
   await coverageDb.query('DELETE FROM coverage_units WHERE id = $1', [id]);
 }
 
+/** One typeahead match — file_path included so a caller can disambiguate identical unit_keys across files. */
+export interface UnitKeySearchResult {
+  unitKey: string;
+  filePath: string;
+}
+
+/**
+ * Typeahead search over coverage_units.unit_key for a given commit — backs
+ * the coverage-dashboard app's drill-down unit-key picker (MINCRM-636/637):
+ * a plain "list every unit key" endpoint is not viable at real scale (a
+ * single commit's coverage_units can run into the hundreds of thousands of
+ * rows), so this always requires BOTH a commitSha (already indexed via
+ * coverage_units_commit_sha_idx) and a non-empty search term, capped at
+ * `limit`. ILIKE '%search%' rather than a prefix-only match: unit keys are
+ * function names, which callers are more likely to remember a fragment of
+ * (e.g. "handleSubmit") than the exact structural-hash suffix
+ * deriveStructuralUnitKey produces.
+ *
+ * DISTINCT ON (unit_key, file_path): the same (commit_sha, unit_key,
+ * file_path) can appear multiple times across different branch_id/agent
+ * combinations (coverage_units_identity_idx's own uniqueness includes
+ * branch_id) — a typeahead result list should show each (unit_key,
+ * file_path) pair once, not once per branch within it.
+ */
+export async function searchUnitKeys(
+  commitSha: string,
+  search: string,
+  limit: number,
+): Promise<UnitKeySearchResult[]> {
+  const result = await coverageDb.query<{ unit_key: string; file_path: string }>(
+    `SELECT DISTINCT ON (unit_key, file_path) unit_key, file_path
+     FROM coverage_units
+     WHERE commit_sha = $1 AND unit_key ILIKE '%' || $2 || '%'
+     ORDER BY unit_key, file_path
+     LIMIT $3`,
+    [commitSha, search, limit],
+  );
+  return result.rows.map((row) => ({ unitKey: row.unit_key, filePath: row.file_path }));
+}
+
 /**
  * Updates a unit's file_path and/or unit_key in place — used by
  * coverageReconciliationService to carry a mapping forward when

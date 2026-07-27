@@ -64,6 +64,16 @@ export async function fetchIssueCoverage(
   return data.coverage;
 }
 
+export const COVERAGE_ISSUE_KEYS_QUERY_KEY = ['coverage', 'issue-keys'] as const;
+
+export async function fetchIssueKeys(commitSha: string): Promise<string[]> {
+  const { data } = await apiClient.get<{ issueKeys: string[] }>(
+    '/admin/coverage/reporting/issue-keys',
+    { params: { commitSha } },
+  );
+  return data.issueKeys;
+}
+
 export async function fetchTiaValueMetrics(
   fromSha: string,
   toSha: string,

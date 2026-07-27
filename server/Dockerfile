@@ -16,6 +16,20 @@ RUN npm ci
 COPY server/ ./server/
 COPY shared/ ./shared/
 
+# shared's own compiled .js MUST exist before minicrm-server's build runs.
+# server/tsconfig.build.json's `include` only ever covers server/src/**/*, so
+# it never compiles shared/schemas/*.ts itself despite the tsconfig `paths`
+# entry pointing there — Node16 module resolution actually resolves
+# `@minicrm/shared/schemas/*.js` imports through shared/package.json's own
+# `exports` map (a literal `./schemas/*": "./schemas/*"` passthrough), which
+# needs the real .js file on disk regardless of what `paths` says. Without
+# this step, minicrm-server's own tsc invocation fails outright on any
+# schema not yet compiled from a prior local `npm run build
+# --workspace=@minicrm/shared` run — this build never caught that in CI,
+# since ci.yml never actually builds this Dockerfile at all (found via a
+# real clean `docker build` reproduction, MINCRM-636/637).
+RUN npm run build --workspace=@minicrm/shared
+
 RUN npm run build --workspace=minicrm-server
 
 # Runtime stage: node only, no TypeScript source or tsx (MINCRM-288)

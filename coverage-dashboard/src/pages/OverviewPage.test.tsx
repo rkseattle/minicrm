@@ -79,6 +79,29 @@ describe('OverviewPage', () => {
     );
   });
 
+  it('populates and submits the commit SHA input when a recent build is picked from the dropdown', async () => {
+    renderWithProviders(<OverviewPage />);
+
+    await waitFor(() => expect(screen.getByTestId('recent-build-select')).toBeInTheDocument());
+    await userEvent.selectOptions(
+      screen.getByTestId('recent-build-select'),
+      MOCK_COVERAGE_SUMMARY.commitSha,
+    );
+
+    expect(screen.getByTestId('commit-sha-input')).toHaveValue(MOCK_COVERAGE_SUMMARY.commitSha);
+    await waitFor(() => expect(screen.getByTestId('summary-stat-tiles')).toBeInTheDocument());
+  });
+
+  it('does not render the recent-builds dropdown when the trend has no builds yet', async () => {
+    server.use(
+      http.get('*/api/v1/admin/coverage/reporting/trend', () => HttpResponse.json({ results: [] })),
+    );
+    renderWithProviders(<OverviewPage />);
+
+    await waitFor(() => expect(screen.getByTestId('summary-empty')).toBeInTheDocument());
+    expect(screen.queryByTestId('recent-build-select')).not.toBeInTheDocument();
+  });
+
   it('switches the test-type stat tile when the filter changes', async () => {
     renderWithProviders(<OverviewPage />);
 

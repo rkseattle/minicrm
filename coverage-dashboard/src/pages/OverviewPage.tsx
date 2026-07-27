@@ -13,6 +13,7 @@ import {
 } from '@/api/coverageReporting.js';
 import StatTile from '@/components/StatTile.js';
 import CoverageTrendChart from '@/components/CoverageTrendChart.js';
+import RecentBuildSelect from '@/components/RecentBuildSelect.js';
 
 type TestTypeFilter = 'all' | 'automated' | 'manual';
 
@@ -57,6 +58,16 @@ export default function OverviewPage() {
         className="mb-6 flex items-end gap-3"
         data-testid="commit-sha-form"
       >
+        <RecentBuildSelect
+          id="recentBuildSha"
+          label="Recent builds"
+          testId="recent-build-select"
+          onSelect={(sha) => {
+            setCommitSha(sha);
+            setSubmittedCommitSha(sha);
+          }}
+        />
+
         <div>
           <label htmlFor="commitSha" className="mb-1 block text-sm font-medium text-gray-700">
             Build commit SHA
