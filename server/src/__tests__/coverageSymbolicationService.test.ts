@@ -278,6 +278,120 @@ describe('coverageSymbolicationService', () => {
 
       expect(after.units[0].unitKey).not.toBe(before.units[0].unitKey);
     });
+
+    it('clamps a negative hit count to 0 rather than passing it through to a hit_count >= 0 DB constraint (MINCRM-636/637)', async () => {
+      // Regression test: a real local run produced hitCount: -534773760 on
+      // a hot node_modules/bcryptjs branch (V8's own raw counter, not
+      // accumulation — first_seen_at equalled last_seen_at on the failing
+      // row) and crashed the entire dump's ingestion with an unhandled 500,
+      // discarding every other unit's valid coverage in the same request
+      // (found via a real local coverage-map generation run).
+      const istanbulPayload = {
+        '/src/HotLoop.ts': {
+          path: '/src/HotLoop.ts',
+          statementMap: {},
+          fnMap: {},
+          branchMap: {
+            '0': {
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              type: 'if',
+              locations: [
+                { start: { line: 1, column: 0 }, end: { line: 2, column: 0 } },
+                { start: { line: 2, column: 0 }, end: { line: 3, column: 1 } },
+              ],
+              line: 1,
+            },
+          },
+          s: {},
+          f: {},
+          b: { '0': [-534773760, 4] },
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(2);
+      expect(symbolicated.units[0]).toMatchObject({ branchId: '0:0', hitCount: 0 });
+      expect(symbolicated.units[1]).toMatchObject({ branchId: '0:1', hitCount: 4 });
+    });
+
+    it('clamps a non-integer hit count to 0 the same way', async () => {
+      const istanbulPayload = {
+        '/src/utils.ts': {
+          path: '/src/utils.ts',
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'add',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 5 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': NaN },
+          b: {},
+        },
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0].hitCount).toBe(0);
+    });
+
+    it('skips a null/malformed file coverage entry rather than crashing the whole dump (MINCRM-636/637)', async () => {
+      // Regression test: a real local run hit "TypeError: Cannot convert
+      // undefined or null to object" inside Object.entries(data.fnMap),
+      // meaning v8-to-istanbul's own toIstanbul() output contained at least
+      // one null/malformed per-file entry — this crashed the whole dump's
+      // ingestion rather than flagging just that one file (found via a real
+      // local coverage-map generation run).
+      const istanbulPayload = {
+        '/src/Good.ts': {
+          path: '/src/Good.ts',
+          statementMap: {},
+          fnMap: {
+            '0': {
+              name: 'good',
+              decl: { start: { line: 1, column: 0 }, end: { line: 1, column: 5 } },
+              loc: { start: { line: 1, column: 0 }, end: { line: 3, column: 1 } },
+              line: 1,
+            },
+          },
+          branchMap: {},
+          s: {},
+          f: { '0': 2 },
+          b: {},
+        },
+        '/src/Malformed.ts': null,
+      };
+
+      const symbolicated = await symbolicateCoverageDump(
+        'browser-istanbul',
+        'istanbul',
+        istanbulPayload,
+        { sourceRoot },
+      );
+
+      expect(symbolicated.units).toHaveLength(1);
+      expect(symbolicated.units[0]).toMatchObject({
+        filePath: '/src/Good.ts',
+        unitKey: 'good@1',
+        hitCount: 2,
+      });
+    });
   });
 
   it('throws UnsupportedCoverageFormatError for an unknown agent/format pair', async () => {

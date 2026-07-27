@@ -172,6 +172,19 @@ async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<Normali
   const units: NormalizedCoverageUnit[] = [];
 
   for (const [filePath, fileCoverage] of Object.entries(coverageMap)) {
+    // A null/malformed per-file entry would otherwise crash on data.path
+    // below before unitsFromFileCoverageMap's own guard for the same
+    // condition ever runs — this is a separate, earlier access to the same
+    // untrusted value, not a duplicate of that guard (found via a real
+    // local coverage-map generation run, MINCRM-636/637; see
+    // unitsFromFileCoverageMap's own docblock for the full context).
+    if (fileCoverage == null || typeof fileCoverage !== 'object') {
+      logger.warn(
+        { filePath },
+        'coverageSymbolicationService: file coverage entry was null/malformed — skipping rather than failing the whole dump',
+      );
+      continue;
+    }
     const data = fileCoverage as FileCoverageData;
     // istanbul's own FileCoverageData#path is the absolute path the
     // instrumenting build (vite-plugin-istanbul) recorded at build time —
@@ -210,6 +223,34 @@ async function symbolicateIstanbulCoverageMap(payload: unknown): Promise<Normali
  * falls back to the legacy name+line key without affecting overrideFilePath
  * or any hit-count/branch data.
  */
+/**
+ * Clamps a raw hit count to a valid non-negative integer, warning once per
+ * call site when the input needed correcting.
+ *
+ * coverage_units.hit_count has a DB-level `CHECK (hit_count >= 0)` (this
+ * table has no legitimate reason to record negative coverage), but nothing
+ * between V8's raw Profiler.takePreciseCoverage() output and that INSERT
+ * validated the value — a single corrupted/overflowed counter (observed in
+ * practice: -534773760 on a hot node_modules/bcryptjs branch under heavy
+ * local test-suite repetition, first-seen on that row, not accumulated) took
+ * down the ENTIRE dump's ingestion with an unhandled 500, discarding every
+ * other unit's real, valid coverage data in the same request. Clamping the
+ * one bad unit to 0 and logging it is far preferable to an all-or-nothing
+ * failure on unrelated data (found via a real local coverage-map generation
+ * run, MINCRM-636/637).
+ */
+function sanitizeHitCount(
+  rawHitCount: number,
+  context: { filePath: string; unitKey: string },
+): number {
+  if (Number.isInteger(rawHitCount) && rawHitCount >= 0) return rawHitCount;
+  logger.warn(
+    { rawHitCount, ...context },
+    'coverageSymbolicationService: raw hit count was negative or non-integer — clamped to 0 rather than failing the whole dump',
+  );
+  return 0;
+}
+
 async function unitsFromFileCoverageMap(
   coverageMap: CoverageMapData,
   overrideFilePath: string,
@@ -222,6 +263,21 @@ async function unitsFromFileCoverageMap(
 
   for (const fileCoverage of Object.values(coverageMap)) {
     const data = fileCoverage as FileCoverageData;
+
+    // A malformed/null entry (observed in practice from v8-to-istanbul's
+    // own toIstanbul() output on at least one real dump — found via a real
+    // local coverage-map generation run, MINCRM-636/637) would otherwise
+    // crash Object.entries(data.fnMap) below and take down the whole
+    // dump's ingestion. Flagged and skipped, not silently dropped, matching
+    // this module's existing unresolved-unit convention (see the
+    // resolveScriptPath/converter.load() failure paths above).
+    if (data == null || typeof data !== 'object' || data.fnMap == null || data.branchMap == null) {
+      logger.warn(
+        { overrideFilePath },
+        'coverageSymbolicationService: file coverage entry was null/malformed — skipping rather than failing the whole dump',
+      );
+      continue;
+    }
 
     // Branch mappings whose enclosing function has at least one branch —
     // tracked per fnKey so the function-fallback loop below can skip
@@ -241,13 +297,13 @@ async function unitsFromFileCoverageMap(
     for (const [branchKey, mapping] of Object.entries(data.branchMap)) {
       const unitKey = qualifiedUnitKeyForLine(data, mapping.line, sourceText);
       const hits: number[] = data.b[branchKey] ?? [];
-      hits.forEach((hitCount, branchIndex) => {
+      hits.forEach((rawHitCount, branchIndex) => {
         units.push({
           filePath: overrideFilePath,
           unitKey,
           branchId: `${branchKey}:${branchIndex}`,
           granularity: 'branch',
-          hitCount,
+          hitCount: sanitizeHitCount(rawHitCount, { filePath: overrideFilePath, unitKey }),
           resolved: true,
           unresolvedReason: null,
         });
@@ -261,12 +317,18 @@ async function unitsFromFileCoverageMap(
     // other functions in the same file do.
     for (const [fnKey, mapping] of Object.entries(data.fnMap)) {
       if (fnKeysWithBranches.has(fnKey)) continue;
+      const unitKey = qualifiedUnitKey(
+        mapping.name,
+        mapping.decl.start.line,
+        mapping.loc,
+        sourceText,
+      );
       units.push({
         filePath: overrideFilePath,
-        unitKey: qualifiedUnitKey(mapping.name, mapping.decl.start.line, mapping.loc, sourceText),
+        unitKey,
         branchId: null,
         granularity: 'function',
-        hitCount: data.f[fnKey] ?? 0,
+        hitCount: sanitizeHitCount(data.f[fnKey] ?? 0, { filePath: overrideFilePath, unitKey }),
         resolved: true,
         unresolvedReason: null,
       });
