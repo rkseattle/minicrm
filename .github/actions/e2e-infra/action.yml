@@ -63,8 +63,15 @@ runs:
       run: npx playwright install --with-deps chromium
 
     - name: Run migrations on E2E database
+      # migrate:fresh, not migrate: this action always runs against a brand-new
+      # service-container Postgres with no prior pgmigrations rows. Plain
+      # `npm run migrate` replays 001-N after 000_baseline already created
+      # those same objects, so it fails on the first re-declared table
+      # ("relation already exists") — see 000_baseline.js's own docblock and
+      # ci.yml's e2e-functional/e2e-serial/update-visual-snapshots jobs, which
+      # all use migrate:fresh for this same reason.
       shell: bash
-      run: npm run migrate --workspace=minicrm-server
+      run: npm run migrate:fresh --workspace=minicrm-server
       env:
         DATABASE_URL: postgresql://minicrm:password@localhost:5432/minicrm_e2e
         DB_USER: minicrm
@@ -129,12 +136,27 @@ runs:
         NODE_ENCRYPTION_KEY: ${{ inputs.node-encryption-key }}
         COVERAGE_INSTRUMENTATION: ${{ inputs.coverage-instrumentation }}
         COVERAGE_SESSION_MANAGEMENT: ${{ inputs.coverage-instrumentation }}
+        # `npm run start --workspace=minicrm-server` sets this process's cwd
+        # to server/, not the repo root — coverageConfig.ts's
+        # resolveSourceRoot() would otherwise relativize coverage paths
+        # against the wrong root, rejecting containment for anything under
+        # shared/ or client/ (every frontend Istanbul dump) and falling back
+        # to unportable absolute paths. Harmless when coverage instrumentation
+        # is off — nothing consults it.
+        COVERAGE_SOURCE_ROOT: ${{ github.workspace }}
 
     - name: Start frontend dev server
       shell: bash
       run: npm run dev --workspace=minicrm-client &
       env:
         API_URL: http://localhost:3001
+        # client/vite.config.ts only adds the Istanbul instrumentation plugin
+        # when COVERAGE=true — without it window.__coverage__ never exists in
+        # the browser, so per-test frontend coverage attribution in
+        # fixtures.ts (pullAndSubmitBrowserCoverage) is a permanent no-op.
+        # Tied to the same input as the backend agent: every other caller of
+        # this action needs an uninstrumented, byte-identical dev build.
+        COVERAGE: ${{ inputs.coverage-instrumentation }}
 
     - name: Wait for servers to be ready
       shell: bash

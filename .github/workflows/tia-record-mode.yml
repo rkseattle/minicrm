@@ -145,7 +145,17 @@ jobs:
             --workers=1 \
             --grep @functional
         env:
-          E2E_COVERAGE_GRANULARITY: per-run
+          # E2E_COVERAGE_GRANULARITY intentionally UNSET (per-test, the
+          # default — see coverage.md's Low-Overhead Mode table). Record
+          # mode's whole purpose is populating coverage_test_links with real
+          # per-test attribution so select-tests.ts can resolve testId ->
+          # testFile; per-run mode routes every dump through
+          # coverage-reporter.ts's single end-of-run dump instead, which
+          # carries no session/testId attribution at all (sessionDump is
+          # null in coverageIngestionService.ts), so coverage_test_links
+          # would stay empty regardless of how many tests ran. Not
+          # latency-sensitive (see e2e-infra step above), so per-test's
+          # higher overhead is an acceptable tradeoff here.
           PW_WORKERS: '1'
 
       - name: Ingest coverage dumps into the mapping engine
