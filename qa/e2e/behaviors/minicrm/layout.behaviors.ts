@@ -314,6 +314,35 @@ export async function resolveTimestampMasks(
     tryResolve(page, [{ type: 'css', value: '[data-testid^="user-joined-"]' }], {
       intent: 'user management table joined date cells',
     }),
+    // Not timestamps, but resolved here rather than as a separate mask
+    // function since every visual-regression call site already spreads
+    // this same array — E2E admin fixtures mint a randomized display name
+    // per test run (e.g. "VR Admin 1785118878095-..."), so any element
+    // that renders it is inherently non-deterministic across any two
+    // captures, the same class of problem every other mask in this list
+    // solves. Two independent elements render this name — the top-nav
+    // header (NavHeader.tsx, had no data-testid at all until this fix) and
+    // the dashboard's own welcome heading (DashboardPage.tsx, already
+    // carried dashboard-heading) — found via a real visual-regression run:
+    // after regenerating stale baselines, captures still failed by small
+    // pixel counts that looked like noise but traced to these two
+    // unmasked elements.
+    tryResolve(page, [{ type: 'testId', value: 'nav-user-name' }], {
+      intent: 'top-nav user display name (randomized per E2E fixture run)',
+    }),
+    tryResolve(page, [{ type: 'testId', value: 'dashboard-heading' }], {
+      intent: 'dashboard welcome heading, embeds the same randomized user display name',
+    }),
+    // Also not a timestamp — contacts-list rows render each contact's
+    // email, and createTestContact's default email carries the same
+    // Date.now()-based suffix as above when a call site doesn't override
+    // it (V7's contacts-list visual test intentionally doesn't, to stay
+    // collision-safe across the desktop/mobile-web projects running it in
+    // parallel). Matched by attribute prefix, not a fixed id, since each
+    // seeded contact's id is generated server-side.
+    tryResolve(page, [{ type: 'css', value: '[data-testid^="contact-email-"]' }], {
+      intent: 'contacts list row email cells (randomized per E2E fixture run)',
+    }),
   ]);
   return candidates.filter((c): c is SafeLocator => c !== null);
 }
