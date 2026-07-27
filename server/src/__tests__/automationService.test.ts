@@ -23,7 +23,7 @@ import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 import type { QueryResult } from 'pg';
-import { waitUntil } from './testUtils.js';
+import { waitUntil, clearAuditLogFor } from './testUtils.js';
 
 const FILE_PREFIX = 'auto-svc';
 
@@ -688,9 +688,7 @@ const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000003', name: 'Automat
 
 describe('audit log entries for automation rules (MINCRM-382)', () => {
   beforeEach(async () => {
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [AUDIT_ACTOR.id]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await clearAuditLogFor(AUDIT_ACTOR.id);
   });
 
   it('createAutomationRule writes an audit entry with event_type=created', async () => {

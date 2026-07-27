@@ -20,7 +20,7 @@ import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
 import type { QueryResult } from 'pg';
-import { waitUntil } from './testUtils.js';
+import { waitUntil, clearAuditLogFor } from './testUtils.js';
 
 const FILE_PREFIX = 'tag-svc';
 
@@ -336,9 +336,7 @@ const TAG_AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000004', name: 'Tag
 
 describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
   beforeEach(async () => {
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TAG_AUDIT_ACTOR.id]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await clearAuditLogFor(TAG_AUDIT_ACTOR.id);
   });
 
   it('attachTag writes an audit entry with fieldName=tags and newValue=tag name', async () => {
@@ -374,9 +372,7 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
     const tag = await attachTag('contact', contactId, { name: `${FILE_PREFIX}-audit-detach` });
     const tagName = tag.name;
 
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TAG_AUDIT_ACTOR.id]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await clearAuditLogFor(TAG_AUDIT_ACTOR.id);
 
     await detachTag('contact', contactId, tag.id, TAG_AUDIT_ACTOR);
 
@@ -399,12 +395,16 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
   });
 
   it('attachTag with no actor writes no audit entry', async () => {
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    // No DISABLE/ENABLE TRIGGER needed around either COUNT(*) below —
+    // audit_log_no_modify only fires BEFORE DELETE OR UPDATE (see migration
+    // 000_baseline.js), never SELECT. Toggling it around a plain read
+    // served no purpose and was itself a needless instance of the global,
+    // catalog-level trigger-state race clearAuditLogFor's own docblock
+    // describes — removed rather than wrapped.
     const before = await pool.query(
       `SELECT COUNT(*) AS count FROM audit_log WHERE record_id = $1`,
       [contactId],
     );
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 
     // No actor passed: attachTag's own source only calls
     // writeAuditEntryBestEffort inside `if (actor && ...)`, so with no actor
@@ -413,11 +413,9 @@ describe('audit log entries for tag attach/detach (MINCRM-382)', () => {
     // attachTag's own promise resolves.
     await attachTag('contact', contactId, { name: `${FILE_PREFIX}-no-actor` });
 
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
     const after = await pool.query(`SELECT COUNT(*) AS count FROM audit_log WHERE record_id = $1`, [
       contactId,
     ]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
 
     expect(parseInt(after.rows[0].count)).toBe(parseInt(before.rows[0].count));
   });

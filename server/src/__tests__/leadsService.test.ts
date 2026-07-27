@@ -29,7 +29,7 @@ import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import { convertLeadSchema } from '@minicrm/shared/schemas/leadSchema.js';
 import pool from '../db.js';
-import { uid } from './testUtils.js';
+import { uid, clearAuditLogFor } from './testUtils.js';
 
 const FILE_PREFIX = 'leads-svc';
 
@@ -652,9 +652,7 @@ const AUDIT_ACTOR = { id: '00000000-0000-0000-0000-000000000002', name: 'Lead Au
 
 describe('audit log entries for leads (MINCRM-382)', () => {
   beforeEach(async () => {
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [AUDIT_ACTOR.id]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await clearAuditLogFor(AUDIT_ACTOR.id);
   });
 
   it('updateLead writes field-level audit entries in the transaction', async () => {
