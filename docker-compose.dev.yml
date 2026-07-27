@@ -62,6 +62,14 @@ services:
       # them; production deployments must never set these.
       COVERAGE_INSTRUMENTATION: "true"
       COVERAGE_SESSION_MANAGEMENT: "true"
+      # Lets the coverage-dashboard app browse this container's real,
+      # already-ingested E2E coverage data (minicrm_coverage_e2e) with no
+      # CRM login — same flag/rail as the plain `server` service's own
+      # docker-compose.yml entry; server-e2e needs its own copy since this
+      # block fully overrides that service's environment rather than
+      # merging into it. NODE_ENV=development above satisfies the
+      # NODE_ENV!=='production' safety rail this flag requires.
+      COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
       # coverageConfig.ts's resolveCommitSha() falls back to 'unknown' when
       # `git rev-parse HEAD` fails — which it always does inside this
       # container, since only ./server and ./shared are bind-mounted, never
