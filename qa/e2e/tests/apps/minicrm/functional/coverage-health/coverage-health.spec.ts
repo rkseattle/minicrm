@@ -16,7 +16,7 @@
  * @serial.
  *
  * Tests:
- *   COVH-01  An authenticated admin gets a 200 with the expected report shape
+ *   COVH-01  An authenticated admin gets a 200 or 503 with the expected report shape
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -33,7 +33,7 @@ test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
 });
 
-test('@functional COVH-01: an authenticated admin gets a 200 with the expected coverage health report shape', async ({
+test('@functional COVH-01: an authenticated admin gets a 200 or 503 with the expected coverage health report shape', async ({
   restClient,
 }) => {
   const res = await restClient.get<{
@@ -47,8 +47,15 @@ test('@functional COVH-01: an authenticated admin gets a 200 with the expected c
     };
   }>('/api/v1/admin/coverage/health');
 
-  expect(res.status).toBe(200);
-  expect(res.body.status).toBe('ok');
+  // Asserts [200, 503] and status in ['ok', 'degraded'], not pinned to the
+  // healthy pair — the retention cron is live in this E2E environment
+  // (server.ts, gated only on NODE_ENV !== 'test') and a prune failure
+  // during a run would legitimately degrade this report; pinning to 200/ok
+  // would fail this spec for a reason unrelated to the health endpoint's
+  // own behavior (found via Greptile branch review). Mirrors
+  // coverageHealthRouteGating.test.ts's own [200, 503] assertion.
+  expect([200, 503]).toContain(res.status);
+  expect(['ok', 'degraded']).toContain(res.body.status);
   expect(res.body.db).toBe('ok');
   expect(typeof res.body.agentRunning).toBe('boolean');
   expect(typeof res.body.featureFlags.coverage_pipeline_ingestion).toBe('boolean');

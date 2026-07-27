@@ -38,6 +38,7 @@ registry machinery until a second implementation actually needs it.
 Implement `CoverageAgentPlugin` (`server/src/coverageAgent/sdk/CoverageAgentPlugin.ts`):
 
 ```ts
+import { randomUUID } from 'crypto';
 import type {
   AgentMetadata,
   CoverageAgentPlugin,
@@ -53,19 +54,37 @@ const MY_AGENT_METADATA: AgentMetadata = {
 export class MyLanguageCoverageAgent implements CoverageAgentPlugin {
   readonly metadata = MY_AGENT_METADATA;
 
+  constructor(private readonly commitSha: string) {}
+
   async reset(): Promise<void> {
-    /* clear accumulated counters */
+    // clear accumulated counters
   }
-  // CoverageDump.agent/format below are still the closed CoverageDumpSource/
-  // CoverageDumpFormat unions — a real new agent whose dumps must reach
-  // coverage_units needs a schema change to widen coverage_units_agent_check
-  // first (see "Scope of 'no core changes'" above); this stub compiles by
-  // reusing an existing value, not by widening the union speculatively.
+
+  // CoverageDump.agent/format below reuse the EXISTING 'node-v8'/
+  // 'v8-script-coverage' union members, not new ones — CoverageDumpSource/
+  // CoverageDumpFormat (CoverageAgentPlugin.ts) are closed unions, and a
+  // real new-language agent whose dumps must reach coverage_units needs a
+  // schema change to widen coverage_units_agent_check first (see "Scope of
+  // 'no core changes'" above). This stub compiles only because it borrows
+  // an existing value; it does not actually claim to BE a V8 agent.
   async snapshot(label: string): Promise<CoverageDump> {
-    /* read without full persist */
+    return this.captureDump(label);
   }
+
   async dump(label: string): Promise<CoverageDump> {
-    /* persist a tagged artifact */
+    return this.captureDump(label);
+  }
+
+  private async captureDump(label: string): Promise<CoverageDump> {
+    return {
+      dumpId: randomUUID(),
+      agent: 'node-v8',
+      label,
+      commitSha: this.commitSha,
+      capturedAt: new Date().toISOString(),
+      format: 'v8-script-coverage',
+      path: `${label}.json`, // write the real payload to this path under dumpsRoot
+    };
   }
 }
 ```
@@ -75,7 +94,7 @@ Register the instance at boot the same way `server.ts` registers
 
 ```ts
 import { registerCoverageAgent } from './coverageAgent/coverageAgentRegistry.js';
-registerCoverageAgent(new MyLanguageCoverageAgent(options));
+registerCoverageAgent(new MyLanguageCoverageAgent(commitSha));
 ```
 
 `coverageAgentRegistry` is typed to the `CoverageAgentPlugin` interface, not the
@@ -95,18 +114,22 @@ The harness-adapter contract is `HarnessAdapterShape<TClient>`
 over the underlying HTTP client type, not prose. A new harness integration's client
 module can be checked against it directly:
 
+A harness adapter's client lives in `qa/`, where the shared-schemas import alias is
+`@minicrm/shared/schemas/*` (`qa/tsconfig.json`) — NOT `@shared/schemas/*`, which only
+exists in `client/`'s and `coverage-dashboard/`'s own `tsconfig.json`:
+
 ```ts
-import type { HarnessAdapterShape } from '@shared/schemas/coverageHarnessAdapterSchema.js';
+import type { HarnessAdapterShape } from '@minicrm/shared/schemas/coverageHarnessAdapterSchema.js';
 import type { MyHarnessClient } from './my-harness-client.js';
 
-export const myHarnessAdapter: HarnessAdapterShape<MyHarnessClient> = {
+export const myHarnessAdapter = {
   startSession: startMyHarnessCoverageSession,
   endSession: endMyHarnessCoverageSession,
   recordDump: recordMyHarnessCoverageSessionDump,
-  injectCorrelationHeader: (headers, correlationId) => {
+  injectCorrelationHeader: (headers: Record<string, string>, correlationId: string) => {
     headers[CORRELATION_ID_HEADER] = correlationId;
   },
-};
+} satisfies HarnessAdapterShape<MyHarnessClient>;
 ```
 
 The Playwright reference implementation satisfies this shape structurally (same

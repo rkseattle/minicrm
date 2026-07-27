@@ -281,6 +281,10 @@ describe('RolesSettings — create form', () => {
     fireEvent.click(screen.getByTestId('roles-settings-new-button'));
 
     expect(screen.getByTestId('capability-picker')).toBeInTheDocument();
+    // A real capability renders — proves the negative assertion below means
+    // "coverage:admin specifically is excluded," not "the picker rendered
+    // nothing at all" (found via Greptile branch review).
+    expect(screen.getByTestId('capability-checkbox-contacts:view')).toBeInTheDocument();
     expect(screen.queryByTestId('capability-checkbox-coverage:admin')).not.toBeInTheDocument();
   });
 });

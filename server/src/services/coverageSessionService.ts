@@ -441,3 +441,33 @@ export async function findCoverageSessionDumpsByBuildSha(
     recordedAt: row.recorded_at.toISOString(),
   }));
 }
+
+/**
+ * Prunes coverage_sessions rows started more than `retentionDays` days ago
+ * (MINCRM-637's configurable retention policy), regardless of status —
+ * both a long-ended session and one abandoned mid-run (a crashed E2E job,
+ * a browser tab closed mid-recording, never explicitly ended — see
+ * listActiveCoverageSessions' own docblock on why those can otherwise
+ * accumulate unboundedly) age out the same way. coverage_session_dumps
+ * rows cascade automatically via their session_id REFERENCES ...
+ * ON DELETE CASCADE (qa/migrations/001_coverage_baseline.js) — no separate
+ * delete needed here.
+ *
+ * started_by is the column MINCRM-637's own AC names as "session metadata
+ * (possible PII)" — before this function, coverage_sessions had zero
+ * retention pruning at all, unlike coverage_units/coverage_test_links,
+ * despite the ticket's central-policy-config AC covering retention
+ * generally, not just those two tables (found via Greptile branch review).
+ * Scheduled daily alongside pruneCoverageUnits via
+ * coverageRetentionScheduler.ts; also callable on demand by an operator.
+ */
+export async function pruneCoverageSessions(retentionDays: number): Promise<number> {
+  const result = await coverageDb.query(
+    // Multiplying an interval literal by the parameter, not string-
+    // concatenating into an ::interval cast — same rationale as
+    // coverageModelService.pruneCoverageUnits' identical pattern.
+    `DELETE FROM coverage_sessions WHERE started_at < now() - ($1 * interval '1 day')`,
+    [retentionDays],
+  );
+  return result.rowCount ?? 0;
+}

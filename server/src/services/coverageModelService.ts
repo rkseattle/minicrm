@@ -32,6 +32,16 @@ const COVERAGE_UNIT_INSERT_COLUMN_COUNT = 9;
 // fits in one statement.
 const MAX_UNITS_PER_INSERT_BATCH = Math.floor(65535 / COVERAGE_UNIT_INSERT_COLUMN_COUNT);
 
+const PRUNED_LINK_DELETE_COLUMN_COUNT = 4;
+
+// Same 65535 bind-parameter ceiling as MAX_UNITS_PER_INSERT_BATCH above,
+// applied to pruneCoverageUnits' orphan-link cleanup: retention has never
+// run in production before this ticket wired up the daily cron, so the
+// first run on an established deployment could plausibly delete far more
+// than 65535/4 units in one prune — chunked rather than assuming the
+// deleted-unit set always fits in one VALUES list.
+const MAX_UNITS_PER_LINK_DELETE_BATCH = Math.floor(65535 / PRUNED_LINK_DELETE_COLUMN_COUNT);
+
 interface CoverageUnitRow {
   id: string;
   commit_sha: string;
@@ -380,102 +390,135 @@ export interface PruneCoverageUnitsResult {
   /** coverage_units rows deleted for being older than the retention window. */
   prunedUnitCount: number;
   /**
-   * coverage_test_links rows deleted because they were both outside the
-   * SAME retention window as the coverage_units prune above AND had no
-   * matching coverage_units row at the time. coverage_test_links has no FK
-   * to coverage_units (cross-database FKs are impossible in PostgreSQL, and
-   * both tables live in the same coverage database but were never given
-   * one) — pruning coverage_units alone would eventually leave these
-   * orphaned, which silently weakens the safety net: MAPPING_RESULT_SELECT's
-   * LEFT JOIN would then return confidence_score: null for an orphaned
-   * link, and safetyNetPolicy.hasLowConfidenceMatch treats null as "no
-   * signal to check" (`confidenceScore !== null && confidenceScore <
-   * threshold`) rather than "below threshold" — the exact full-suite
-   * fallback retention pruning must not weaken (MINCRM-637).
+   * coverage_ingested_dumps rows deleted for being older than the same
+   * retention window as the coverage_units prune above. Unlike
+   * coverage_units/coverage_test_links, there is no orphan-cleanup
+   * relationship to reason about here — coverage_ingested_dumps is a
+   * standalone idempotency-claim ledger (coverageIngestionService's
+   * isDumpAlreadyIngested/ingestCoverageDump), not referenced by any other
+   * coverage table, so a plain age-based delete is sufficient. Included in
+   * this same function/transaction (rather than a separate prune call)
+   * because it shares the exact same retention window and because this was
+   * previously the only unbounded coverage table with zero pruning at all
+   * — MINCRM-637's own "central policy config: retention" AC covers it,
+   * not just coverage_units/coverage_test_links (found via Greptile branch
+   * review).
+   */
+  prunedIngestedDumpCount: number;
+  /**
+   * coverage_test_links rows deleted because the specific coverage_units
+   * row they matched was itself just deleted by the prune above, in this
+   * same transaction. coverage_test_links has no FK to coverage_units
+   * (cross-database FKs are impossible in PostgreSQL, and both tables live
+   * in the same coverage database but were never given one) — pruning
+   * coverage_units alone would leave these orphaned, which silently
+   * weakens the safety net: MAPPING_RESULT_SELECT's LEFT JOIN would then
+   * return confidence_score: null for an orphaned link, and
+   * safetyNetPolicy.hasLowConfidenceMatch treats null as "no signal to
+   * check" (`confidenceScore !== null && confidenceScore < threshold`)
+   * rather than "below threshold" — the exact full-suite fallback
+   * retention pruning must not weaken (MINCRM-637).
    *
-   * The retention-window predicate on l.last_seen_at is required, not just
-   * defensive: loadCoverageTestLinksForCommit (coverageMappingService.ts)
-   * writes coverage_test_links rows from a committed qa/coverage-map.json
-   * with NO corresponding coverage_units rows at all — that map load is the
-   * normal way select-tests.ts gets a coverage index in CI and via
-   * pre-push-tia.ts locally. Without the time bound, a plain NOT EXISTS
-   * would delete that entire freshly-loaded map on the very next scheduled
-   * prune tick, degrading TIA to full-suite-forever with no error (found
-   * via Greptile branch review).
-   *
-   * This does NOT mean a persistent deployment's map goes stale between
-   * loads and gets silently pruned out from under an active selection run
-   * (a concern raised in a later branch-review round) — verified against
-   * both real invocation paths:
-   *   - ci.yml's tia-selection job gets a fresh, empty coverageDb every run
-   *     (see load-coverage-map.ts's own docblock), so pruning never
-   *     observes stale rows there at all.
-   *   - pre-push-tia.ts unconditionally re-runs load-coverage-map.ts for
-   *     baseRef's tip SHA immediately before every local select-tests.ts
-   *     invocation (see pre-push-tia.ts's runLoadCoverageMap/runSelectTests
-   *     call order) — loadCoverageTestLinksForCommit's ON CONFLICT ... DO
-   *     UPDATE SET last_seen_at = now() means the SHA actually being
-   *     queried is always refreshed to "just now" immediately before every
-   *     query, never more than seconds stale.
-   * A coverage_test_links row can only ever fall outside the retention
-   * window for a commit_sha that is no longer being loaded/queried at
-   * all — main's tip has moved on and old PR base SHAs are no longer
-   * relevant — which is exactly the retention behavior this policy exists
-   * to provide, not a gap.
+   * Scoped to units actually deleted THIS transaction (via the prunedUnits
+   * DELETE ... RETURNING below), not to "any link whose own last_seen_at is
+   * past the window" — an earlier revision used the latter and was itself
+   * a bug: coverage_units.last_seen_at is refreshed only by real V8
+   * ingestion (upsertCoverageUnits), while coverage_test_links.last_seen_at
+   * is refreshed independently by loadCoverageTestLinksForCommit's map-load
+   * path (ON CONFLICT ... DO UPDATE SET last_seen_at = now()) — these are
+   * two genuinely decoupled write paths, so "stale unit, fresh link" is a
+   * reachable, normal state on any persistent deployment (a commit stops
+   * being actively ingested once it's no longer HEAD, while pre-push-tia.ts
+   * keeps reloading the same base SHA's map on every push). Scoping by
+   * l.last_seen_at alone would leave that link an orphan forever — exactly
+   * the confidence_score: null weakening this cleanup exists to prevent
+   * (found via Greptile branch review). Scoping by "was this link's own
+   * unit just deleted" closes both directions at once: a link whose unit
+   * still exists is never touched (protecting a freshly-loaded map with no
+   * unit row at all — see loadCoverageTestLinksForCommit's own docblock),
+   * and a link whose unit really was just pruned is always removed,
+   * regardless of the link's own independent freshness.
    */
   prunedLinkCount: number;
 }
 
 /**
- * Prunes coverage_units rows not touched in more than `retentionDays` days
- * (MINCRM-616's configurable retention policy), then deletes
- * coverage_test_links rows that are BOTH outside that same retention
- * window AND left orphaned by that prune, in the same transaction.
- * Scheduled daily via coverageRetentionScheduler.ts (MINCRM-637); also
- * callable on demand by an operator.
+ * Prunes coverage_units and coverage_ingested_dumps rows not touched in
+ * more than `retentionDays` days (MINCRM-616's configurable retention
+ * policy), then deletes any coverage_test_links rows matching a unit
+ * deleted by that same prune, all in the same transaction. Scheduled
+ * daily via coverageRetentionScheduler.ts (MINCRM-637); also callable on
+ * demand by an operator.
  */
 export async function pruneCoverageUnits(retentionDays: number): Promise<PruneCoverageUnitsResult> {
   const client: PoolClient = await coverageDb.connect();
   try {
     await client.query('BEGIN');
 
-    const prunedUnits = await client.query(
+    const prunedUnits = await client.query<{
+      commit_sha: string;
+      file_path: string;
+      unit_key: string;
+      branch_id: string | null;
+    }>(
       // Multiplying an interval literal by the parameter (rather than
       // string concatenation into an ::interval cast) lets PostgreSQL
       // handle the numeric coercion directly — no risk of producing an
-      // invalid interval string for an unexpected input.
-      `DELETE FROM coverage_units WHERE last_seen_at < now() - ($1 * interval '1 day')`,
+      // invalid interval string for an unexpected input. RETURNING the
+      // deleted identities so the coverage_test_links cleanup below can be
+      // scoped to exactly these units, not a broader last_seen_at bound —
+      // see PruneCoverageUnitsResult.prunedLinkCount's own docblock.
+      `DELETE FROM coverage_units
+       WHERE last_seen_at < now() - ($1 * interval '1 day')
+       RETURNING commit_sha, file_path, unit_key, branch_id`,
       [retentionDays],
     );
 
+    // No orphan-dependency to reason about — see
+    // PruneCoverageUnitsResult.prunedIngestedDumpCount's own docblock.
+    const prunedIngestedDumps = await client.query(
+      `DELETE FROM coverage_ingested_dumps WHERE ingested_at < now() - ($1 * interval '1 day')`,
+      [retentionDays],
+    );
+
+    // Deletes only links matching a unit identity actually deleted above —
+    // NOT a blanket "orphaned AND stale" predicate (see
+    // PruneCoverageUnitsResult.prunedLinkCount's docblock for why the
+    // latter was itself a bug). No rows deleted above means no links are
+    // in scope either; skip the query entirely rather than issuing a
+    // guaranteed-empty-array ANY() call.
+    //
     // COALESCE(branch_id, '') matches coverage_units_identity_idx and
     // coverage_test_links_identity_idx's own dedup convention — NULL <>
     // NULL in SQL, so a plain equality would never match two NULL
-    // branch_id rows for the same otherwise-identical identity.
-    //
-    // l.last_seen_at < the SAME retention cutoff as the coverage_units
-    // delete above is required so a link row loaded moments ago by
-    // loadCoverageTestLinksForCommit — which intentionally writes no
-    // coverage_units row at all — is never in scope just because its unit
-    // row doesn't exist. Only a link that is itself stale AND unmatched is
-    // a genuine orphan of this prune.
-    const prunedLinks = await client.query(
-      `DELETE FROM coverage_test_links l
-       WHERE l.last_seen_at < now() - ($1 * interval '1 day')
-         AND NOT EXISTS (
-           SELECT 1 FROM coverage_units u
-           WHERE u.commit_sha = l.commit_sha
-             AND u.file_path = l.file_path
-             AND u.unit_key = l.unit_key
-             AND COALESCE(u.branch_id, '') = COALESCE(l.branch_id, '')
+    // branch_id rows for the same otherwise-identical identity. Composite
+    // (commit_sha, file_path, unit_key, branch_id) tuples can't be matched
+    // via a single ANY($array) the way a single-column IN can — each is
+    // matched individually via a VALUES list, still one round trip.
+    let prunedLinkCount = 0;
+    for (let start = 0; start < prunedUnits.rows.length; start += MAX_UNITS_PER_LINK_DELETE_BATCH) {
+      const batch = prunedUnits.rows.slice(start, start + MAX_UNITS_PER_LINK_DELETE_BATCH);
+      const values: unknown[] = [];
+      const rowPlaceholders = batch.map((unit, index) => {
+        const base = index * PRUNED_LINK_DELETE_COLUMN_COUNT;
+        values.push(unit.commit_sha, unit.file_path, unit.unit_key, unit.branch_id);
+        return `($${base + 1}, $${base + 2}, $${base + 3}, COALESCE($${base + 4}, ''))`;
+      });
+      const result = await client.query(
+        `DELETE FROM coverage_test_links l
+         WHERE (l.commit_sha, l.file_path, l.unit_key, COALESCE(l.branch_id, '')) IN (
+           VALUES ${rowPlaceholders.join(', ')}
          )`,
-      [retentionDays],
-    );
+        values,
+      );
+      prunedLinkCount += result.rowCount ?? 0;
+    }
 
     await client.query('COMMIT');
     return {
       prunedUnitCount: prunedUnits.rowCount ?? 0,
-      prunedLinkCount: prunedLinks.rowCount ?? 0,
+      prunedIngestedDumpCount: prunedIngestedDumps.rowCount ?? 0,
+      prunedLinkCount,
     };
   } catch (error) {
     await client.query('ROLLBACK');

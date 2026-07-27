@@ -22,6 +22,7 @@ import {
   findActiveCoverageSessionByCorrelationId,
   recordCoverageSessionDump,
   findCoverageSessionDumpsByBuildSha,
+  pruneCoverageSessions,
   CoverageSessionNotFoundError,
   CoverageSessionConflictError,
   CoverageSessionEndedError,
@@ -441,5 +442,71 @@ describe('findCoverageSessionDumpsByBuildSha', () => {
   it('returns an empty array when no session exists for the given SHA at all', async () => {
     const found = await findCoverageSessionDumpsByBuildSha(`nonexistent-${randomUUID()}`);
     expect(found).toEqual([]);
+  });
+});
+
+// ── pruneCoverageSessions ───────────────────────────────────────────────────
+
+describe('pruneCoverageSessions (MINCRM-637)', () => {
+  it('deletes an ended session older than retentionDays', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await endCoverageSession(session.id, session.version);
+    await coverageDb.query(
+      `UPDATE coverage_sessions SET started_at = now() - interval '100 days' WHERE id = $1`,
+      [session.id],
+    );
+
+    const prunedCount = await pruneCoverageSessions(30);
+    expect(prunedCount).toBeGreaterThanOrEqual(1);
+
+    const remaining = await findCoverageSession(session.id);
+    expect(remaining).toBeNull();
+  });
+
+  it('deletes an ACTIVE (never-ended) session older than retentionDays — an abandoned session, not just an ended one, still ages out', async () => {
+    // listActiveCoverageSessions' own docblock notes active sessions can
+    // accumulate unboundedly if never explicitly ended (a crashed E2E run,
+    // a browser tab closed mid-recording) — pruneCoverageSessions doesn't
+    // filter by status, so this case is covered too, not just the
+    // explicitly-ended one above.
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await coverageDb.query(
+      `UPDATE coverage_sessions SET started_at = now() - interval '100 days' WHERE id = $1`,
+      [session.id],
+    );
+
+    const prunedCount = await pruneCoverageSessions(30);
+    expect(prunedCount).toBeGreaterThanOrEqual(1);
+
+    const remaining = await findCoverageSession(session.id);
+    expect(remaining).toBeNull();
+  });
+
+  it('does not delete a session newer than retentionDays', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+
+    await pruneCoverageSessions(30);
+
+    const remaining = await findCoverageSession(session.id);
+    expect(remaining).not.toBeNull();
+  });
+
+  it('cascades to coverage_session_dumps via ON DELETE CASCADE — no separate delete needed', async () => {
+    const session = await startCoverageSession(BASE_SESSION_PARAMS, actor);
+    await recordCoverageSessionDump(session.id, randomUUID(), session.correlationId, {
+      testId: 'spec:widget.spec.ts::renders',
+    });
+    await coverageDb.query(
+      `UPDATE coverage_sessions SET started_at = now() - interval '100 days' WHERE id = $1`,
+      [session.id],
+    );
+
+    await pruneCoverageSessions(30);
+
+    const remainingDumps = await coverageDb.query(
+      'SELECT id FROM coverage_session_dumps WHERE session_id = $1',
+      [session.id],
+    );
+    expect(remainingDumps.rowCount).toBe(0);
   });
 });

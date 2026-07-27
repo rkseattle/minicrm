@@ -302,13 +302,13 @@ describe('coverageModelService', () => {
       expect(stored).toHaveLength(1);
     });
 
-    it('deletes coverage_test_links rows orphaned by the coverage_units prune, when the link is also stale (MINCRM-637)', async () => {
+    it('deletes a coverage_test_links row whose matching coverage_units row was just pruned in the same transaction (MINCRM-637)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
       await coverageDb.query(
         `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, last_seen_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 1, now() - interval '100 days')`,
+         VALUES ($1, $2, $3, $4, $5, $6, 1, now())`,
         [
           commitSha,
           unit.unitKey,
@@ -334,20 +334,70 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(0);
     });
 
-    it('does not delete a recently-loaded coverage_test_links row that has no coverage_units row at all (MINCRM-637)', async () => {
+    it("deletes an orphaned link even when the link's OWN last_seen_at is recent — scoped to which units were just pruned, not to the link's independent freshness (MINCRM-637)", async () => {
+      // Closes a real bug a later branch-review round found in an earlier
+      // revision of this cleanup: coverage_units.last_seen_at is refreshed
+      // ONLY by real V8 ingestion (upsertCoverageUnits), while
+      // coverage_test_links.last_seen_at is refreshed independently by
+      // loadCoverageTestLinksForCommit's map-load path (ON CONFLICT ... DO
+      // UPDATE SET last_seen_at = now()) — these are two genuinely decoupled
+      // write paths. On a persistent deployment, a commit can stop being
+      // actively ingested (no longer HEAD) while pre-push-tia.ts keeps
+      // reloading the SAME base SHA's map on every push, refreshing only the
+      // LINK's last_seen_at forever while the UNIT goes stale and gets
+      // pruned. A predicate scoped to "the link is ALSO stale" would leave
+      // this link an orphan forever. Scoping to "was this link's own unit
+      // just deleted" (regardless of the link's own last_seen_at) is what
+      // actually closes it.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unit = makeUnit();
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
+      await coverageDb.query(
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 1, now())`,
+        [
+          commitSha,
+          unit.unitKey,
+          unit.branchId,
+          unit.filePath,
+          'spec:widget.spec.ts::renders',
+          'renders',
+        ],
+      );
+      // The unit goes stale (simulating "this commit is no longer HEAD, no
+      // new V8 dumps target it"); the link stays recent (simulating a
+      // repeated pre-push-tia.ts reload of the same base SHA's map).
+      await coverageDb.query(
+        `UPDATE coverage_units SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
+        [commitSha],
+      );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedUnitCount).toBeGreaterThanOrEqual(1);
+      expect(result.prunedLinkCount).toBeGreaterThanOrEqual(1);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(0);
+    });
+
+    it('does not delete a coverage_test_links row that has no coverage_units row at all, regardless of the link being stale (MINCRM-637)', async () => {
       // Mirrors loadCoverageTestLinksForCommit's real shape: a committed
       // qa/coverage-map.json load writes coverage_test_links rows with NO
       // corresponding coverage_units rows, ever — that's the normal, only
       // way select-tests.ts gets a coverage index in CI and via
-      // pre-push-tia.ts locally. A prune that used NOT EXISTS alone (with
-      // no last_seen_at bound) would delete this row on its very next run,
-      // silently degrading TIA to full-suite-forever. Found via Greptile
-      // branch review of MINCRM-637.
+      // pre-push-tia.ts locally. This cleanup is scoped to "matches a unit
+      // identity deleted in THIS prune" — a link with no unit at all was
+      // never a match in the first place, so it's out of scope regardless
+      // of its own last_seen_at. Found via Greptile branch review of
+      // MINCRM-637.
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       await coverageDb.query(
-        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
-         VALUES ($1, $2, $3, $4, $5, $6, 1)`,
+        `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 1, now() - interval '100 days')`,
         [
           commitSha,
           unit.unitKey,
@@ -368,22 +418,11 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(1);
     });
 
-    it('a re-load via loadCoverageTestLinksForCommit refreshes last_seen_at, so a map that would otherwise be past the retention window survives (MINCRM-637)', async () => {
-      // Closes a round-4 branch-review question: does a persistent
-      // deployment's map go stale between loads and get silently pruned out
-      // from under an active selection run? No — pre-push-tia.ts
-      // unconditionally re-runs load-coverage-map.ts (which calls
-      // loadCoverageTestLinksForCommit) immediately before every local
-      // select-tests.ts invocation, and CI's coverageDb starts empty every
-      // run — so the commitSha actually being queried is always reloaded,
-      // and its last_seen_at always refreshed to "just now", before the
-      // very next prune tick could ever observe it as stale. This test
-      // proves the mechanism: a row seeded 100 days ago (long past the
-      // retention window) survives a prune once reloaded via the real
-      // ON CONFLICT ... DO UPDATE SET last_seen_at = now() path.
+    it('a re-load via loadCoverageTestLinksForCommit keeps a link matched to a still-live unit untouched, even at a huge age (MINCRM-637)', async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
       const testId = 'spec:reload.spec.ts::renders';
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', [unit]);
       await loadCoverageTestLinksForCommit(commitSha, [
         {
           unitKey: unit.unitKey,
@@ -424,6 +463,74 @@ describe('coverageModelService', () => {
       expect(remainingLinks.rowCount).toBe(1);
     });
 
+    it('chunks the orphan-link cleanup past the bind-parameter ceiling without throwing', async () => {
+      // Mirrors "inserts a unit count exceeding PostgreSQL bind-parameter
+      // limits in one call without throwing" above, but for the NEW
+      // MAX_UNITS_PER_LINK_DELETE_BATCH chunking this prune's link cleanup
+      // needs (4 bind params per unit identity vs. that test's 9 per
+      // insert) — retention has never run in production before this
+      // ticket, so an established deployment's first prune could plausibly
+      // exceed one VALUES list's worth of deleted units.
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      const unitCount = 20_000;
+      const units = Array.from({ length: unitCount }, (_, i) =>
+        makeUnit({ unitKey: `render@${i}`, filePath: `${FILE_PREFIX}/chunked-${i}.ts` }),
+      );
+      await upsertAndTrack(randomUUID(), commitSha, 'node-v8', units);
+      for (const unit of units) {
+        await coverageDb.query(
+          `INSERT INTO coverage_test_links (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count, last_seen_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 1, now())`,
+          [commitSha, unit.unitKey, unit.branchId, unit.filePath, 'spec:chunk.spec.ts::t', 't'],
+        );
+      }
+      await coverageDb.query(
+        `UPDATE coverage_units SET last_seen_at = now() - interval '100 days' WHERE commit_sha = $1`,
+        [commitSha],
+      );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedUnitCount).toBe(unitCount);
+      expect(result.prunedLinkCount).toBe(unitCount);
+
+      const remainingLinks = await coverageDb.query(
+        'SELECT id FROM coverage_test_links WHERE commit_sha = $1',
+        [commitSha],
+      );
+      expect(remainingLinks.rowCount).toBe(0);
+    }, 30_000);
+
+    it('deletes coverage_ingested_dumps rows older than the retention window (MINCRM-637)', async () => {
+      // coverage_ingested_dumps had zero retention pruning at all before
+      // this — an unbounded idempotency-claim ledger that would eventually
+      // slow ingestCoverageDump's own claim INSERT (found via Greptile
+      // branch review).
+      const dumpId = randomUUID();
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      await upsertAndTrack(dumpId, commitSha, 'node-v8', [makeUnit()]);
+      await coverageDb.query(
+        `UPDATE coverage_ingested_dumps SET ingested_at = now() - interval '100 days' WHERE dump_id = $1`,
+        [dumpId],
+      );
+
+      const result = await pruneCoverageUnits(30);
+      expect(result.prunedIngestedDumpCount).toBeGreaterThanOrEqual(1);
+
+      const remaining = await isDumpAlreadyIngested(dumpId);
+      expect(remaining).toBe(false);
+    });
+
+    it('does not delete a coverage_ingested_dumps row newer than the retention window', async () => {
+      const dumpId = randomUUID();
+      const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
+      await upsertAndTrack(dumpId, commitSha, 'node-v8', [makeUnit()]);
+
+      await pruneCoverageUnits(30);
+
+      const remaining = await isDumpAlreadyIngested(dumpId);
+      expect(remaining).toBe(true);
+    });
+
     it("does not touch a still-linked (non-pruned) unit's coverage_units or coverage_test_links row", async () => {
       const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
       const unit = makeUnit();
@@ -441,9 +548,10 @@ describe('coverageModelService', () => {
         ],
       );
       // last_seen_at deliberately left recent — this unit is NOT within the
-      // retention window and must survive the prune untouched, so its
-      // coverage_test_links row is never a NOT EXISTS orphan in the first
-      // place (see coverageMappingService.test.ts for the LEFT JOIN /
+      // retention window and must survive the prune untouched, so it's
+      // never in prunedUnits' RETURNING set, and its coverage_test_links
+      // row is therefore never in scope for the link cleanup either (see
+      // coverageMappingService.test.ts for the LEFT JOIN /
       // confidenceScore: null behavior this orphan-cleanup exists to
       // prevent for units that DO get pruned).
 

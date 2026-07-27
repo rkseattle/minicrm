@@ -92,7 +92,7 @@ and the safety-net/scorer decoupling invariant.
 | `server/src/middleware/coverageAccessGate.ts`               | Access-control gate — `requireRole('admin')` or `coverage:admin` capability, per `COVERAGE_CAPABILITY_GATING` (see [Access Control](#access-control-mincrm-637)) |
 | `db/migrations/162_add_coverage_admin_capability.js`        | Seeds `coverage:admin` to the built-in `admin` role (product database)                                                                                           |
 | `server/src/coverageAgent/coveragePolicyConfig.ts`          | Centralizes granularity/retention/safety-threshold config behind `resolveCoveragePolicy()` (see [Policy Configuration](#policy-configuration-mincrm-637))        |
-| `server/src/coverageAgent/coverageRetentionScheduler.ts`    | Daily cron entry point for `pruneCoverageUnits` (see [Scheduled retention pruning](#scheduled-retention-pruning))                                                |
+| `server/src/coverageAgent/coverageRetentionScheduler.ts`    | Daily cron entry point for `pruneCoverageUnits` + `pruneCoverageSessions` (see [Scheduled retention pruning](#scheduled-retention-pruning))                      |
 | `qa/migrations/005_coverage_test_links_last_seen_at_idx.js` | Index supporting the retention prune's `coverage_test_links` query (coverage database)                                                                           |
 | `server/src/services/coverageHealthService.ts`              | `getCoverageHealth()` — agent/DB/feature-flag status (see [`GET /api/v1/admin/coverage/health`](#get-apiv1admincoveragehealth))                                  |
 | `server/src/controllers/coverageHealthController.ts`        | Maps health status to `200`/`503`                                                                                                                                |
@@ -332,33 +332,64 @@ check never trigger (the computed ratio can never itself exceed 1).
 ### Scheduled retention pruning
 
 `coverageRetentionScheduler.runCoverageRetentionPruning()` runs daily at 07:00 server
-time (`server.ts`'s cron block), calling `coverageModelService.pruneCoverageUnits`
-with the resolved `retentionDays`. This was previously callable on demand only, with
-zero production callers — `pruneCoverageUnits` now also deletes any
-`coverage_test_links` rows that are BOTH outside that same retention window AND left
-orphaned by the `coverage_units` prune, in the same transaction: `coverage_test_links`
-has no FK to `coverage_units` (cross-database FKs are impossible in PostgreSQL, and
-neither table was ever given one despite living in the same coverage database), so
-pruning `coverage_units` alone would eventually leave orphaned links whose
+time (`server.ts`'s cron block), calling two independent prune functions — a rejection
+in one does not prevent the other from running, and their counts are aggregated into
+one `lastRetentionPrune` outcome:
+
+- `coverageModelService.pruneCoverageUnits(retentionDays)` — `coverage_units`,
+  `coverage_test_links`, and `coverage_ingested_dumps` (see below).
+- `coverageSessionService.pruneCoverageSessions(retentionDays)` — `coverage_sessions`
+  (any status, not just `'ended'` — an abandoned/never-ended session ages out the same
+  way; see [Session Management](#session-management-mincrm-609612) above for why one
+  can accumulate unboundedly with no cleanup otherwise) and, via `coverage_session_dumps`'
+  `session_id REFERENCES ... ON DELETE CASCADE`, its dumps too. `coverage_sessions.started_by`
+  is the column this ticket's own AC names as "session metadata (possible PII)" —
+  before this, `coverage_sessions` had zero retention pruning at all, unlike
+  `coverage_units`/`coverage_test_links`.
+
+`coverage_build_summary` remains deliberately unpruned — a rolled-up aggregate (one row
+per commit), not raw per-dump/per-unit telemetry, growing at a much slower rate than
+the tables above.
+
+`pruneCoverageUnits` was previously callable on demand only, with zero production
+callers — it now also deletes any
+`coverage_test_links` rows matching a `coverage_units` identity deleted by that same
+prune, in the same transaction (via `DELETE ... RETURNING` on the units query, then a
+chunked `DELETE ... WHERE (commit_sha, file_path, unit_key, branch_id) IN (VALUES ...)`
+on the links, chunked at `MAX_UNITS_PER_LINK_DELETE_BATCH` for the same
+65535-bind-parameter reason `MAX_UNITS_PER_INSERT_BATCH` already chunks ingestion):
+`coverage_test_links` has no FK to `coverage_units` (cross-database FKs are impossible
+in PostgreSQL, and neither table was ever given one despite living in the same coverage
+database), so pruning `coverage_units` alone would eventually leave orphaned links whose
 `MAPPING_RESULT_SELECT` LEFT JOIN then returns `confidence_score: null` — which
 `safetyNetPolicy.hasLowConfidenceMatch` treats as "no signal to check" rather than
 "below threshold," silently weakening the exact full-suite fallback retention pruning
-must not undermine. The same retention-window bound on the link delete also protects a
-freshly-loaded `qa/coverage-map.json` (`loadCoverageTestLinksForCommit` writes
-`coverage_test_links` rows with no `coverage_units` counterpart at all — that map load
-is the normal way `select-tests.ts` gets a coverage index in CI and via
-`pre-push-tia.ts` locally) from being deleted as a false orphan; `pre-push-tia.ts`
-reloads the map — refreshing `last_seen_at` via `ON CONFLICT ... DO UPDATE` — before
-every local `select-tests.ts` run, and CI's `coverageDb` starts fresh and empty every
-run, so the commit actually being queried is never more than moments stale at query
-time. Runs regardless of `COVERAGE_INSTRUMENTATION`, since the coverage database is
-populated by the pipeline/mapping ingestion path independent of the backend V8 agent.
+must not undermine.
 
-The outcome of each run — success with counts, or the error if the prune itself threw
-— is tracked in-process (`coverageRetentionScheduler.getLastRetentionPruneOutcome()`)
-and surfaced on `GET /api/v1/admin/coverage/health` as `lastRetentionPrune` (see
-below), so a failed nightly prune is observable there rather than only in the process
-log.
+The link cleanup is scoped to "matches a unit identity deleted THIS transaction," not
+to "the link's own `last_seen_at` is also past the window" — an earlier revision used
+the latter and was itself a bug: `coverage_units.last_seen_at` is refreshed only by
+real V8 ingestion (`upsertCoverageUnits`), while `coverage_test_links.last_seen_at` is
+refreshed independently by `loadCoverageTestLinksForCommit`'s map-load path (`ON
+CONFLICT ... DO UPDATE SET last_seen_at = now()` — the normal way `select-tests.ts`
+gets a coverage index in CI and via `pre-push-tia.ts` locally). These are two
+genuinely decoupled write paths: on a persistent deployment, a commit can stop being
+actively ingested (it's no longer `HEAD`) while `pre-push-tia.ts` keeps reloading that
+same base SHA's map on every push, refreshing only the link's `last_seen_at` forever
+while the unit goes stale and gets pruned — "stale unit, fresh link" is a reachable,
+normal state, not an edge case. Scoping the link delete by the link's own freshness
+would have left that link an orphan forever; scoping it by "was this link's own unit
+just deleted" closes both directions — a link whose unit still exists is never
+touched, and a link whose unit really was just pruned is always removed, regardless of
+the link's own independent freshness. Both prunes run regardless of
+`COVERAGE_INSTRUMENTATION`, since the coverage database is populated by the
+pipeline/mapping/session-recorder ingestion paths independent of the backend V8 agent.
+
+The outcome of each run — success with counts from both prunes, or the combined error
+message if either (or both) prune functions threw — is tracked in-process
+(`coverageRetentionScheduler.getLastRetentionPruneOutcome()`) and surfaced on
+`GET /api/v1/admin/coverage/health` as `lastRetentionPrune` (see below), so a failed
+nightly prune is observable there rather than only in the process log.
 
 ## Health & Observability (MINCRM-637)
 
@@ -380,12 +411,14 @@ Reports the operational health of the framework's own services —
   failing with a `500`.
 - `lastRetentionPrune` — the outcome of the most recent scheduled retention prune (see
   [Scheduled retention pruning](#scheduled-retention-pruning) below): `ranAt`, `status`
-  (`'ok'` or `'error'`), and either `prunedUnitCount`/`prunedLinkCount` (on `'ok'`) or
-  `error` (on `'error'`). Absent if the daily cron hasn't fired yet this process's
-  lifetime — e.g. right after boot, before 07:00 first hits — which is the normal
-  post-boot state, not itself degraded. This is the one background job MINCRM-637
-  introduces; without this field a failed nightly prune would only ever reach
-  `logger.error`, with this endpoint continuing to report `status: 'ok'` indefinitely.
+  (`'ok'` or `'error'`), and either `prunedUnitCount`/`prunedLinkCount`/
+  `prunedIngestedDumpCount`/`prunedSessionCount` (on `'ok'`) or `error` (on `'error'`,
+  a combined message if both the units-side and sessions-side prunes failed). Absent
+  if the daily cron hasn't fired yet this process's lifetime — e.g. right after boot,
+  before 07:00 first hits — which is the normal post-boot state, not itself degraded.
+  This is the one background job MINCRM-637 introduces; without this field a failed
+  nightly prune would only ever reach `logger.error`, with this endpoint continuing to
+  report `status: 'ok'` indefinitely.
 
 Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` (DB unreachable, a
 feature-flag read failed, or the last scheduled retention prune errored). A disabled
@@ -616,8 +649,8 @@ Unresolvable regions (a script URL with no real file backing it — e.g. a `node
 - `unit_key` is a qualified function/method signature (e.g. `render@42`), not a line number — chosen so the mapping-engine phase (`pr-tia-4`) that eventually consumes this table has a key stable across in-line edits, per MINCRM-619's stable-structural-key requirement. Full body-hash/AST-based key derivation is that later phase's work; this table's shape is simply built to support it.
 - `branch_id` is `null` for function-granularity rows (no PG `''` sentinel — a `CHECK (branch_id IS NULL OR branch_id <> '')` constraint enforces this at the schema level, since the identity index below treats `NULL` and `''` as the same dedup slot and a real empty string would silently collide with a genuinely branch-less row).
 - **Dedup/compaction:** a unique index over `(commit_sha, file_path, unit_key, COALESCE(branch_id, ''))` — `COALESCE` because a plain `UNIQUE` constraint would never treat two `NULL`-`branch_id` rows for the same unit as duplicates (SQL `NULL <> NULL`). Re-ingesting a dump for an already-seen identity accumulates `hit_count` and advances `last_seen_at` rather than duplicating the row.
-- **Retention:** `coverageModelService.pruneCoverageUnits(retentionDays)` deletes rows whose `last_seen_at` is older than the window, along with any `coverage_test_links` rows left orphaned by that deletion (same transaction). Scheduled daily via `coverageRetentionScheduler.ts` (MINCRM-637) — see [Policy Configuration](#policy-configuration-mincrm-637) above for the full scheduling and retention-window details.
-- `coverage_ingested_dumps` — tracks which `dumpId`s have already been normalized, the mechanism behind MINCRM-614's idempotency/race-safety guarantee above. Not FK'd to raw dump metadata (still file-based, per Phase 1).
+- **Retention:** `coverageModelService.pruneCoverageUnits(retentionDays)` deletes rows whose `last_seen_at` is older than the window, along with any `coverage_test_links` rows matching a unit deleted by that same prune (same transaction) and any `coverage_ingested_dumps` rows past the same window. Scheduled daily via `coverageRetentionScheduler.ts` (MINCRM-637) — see [Scheduled retention pruning](#scheduled-retention-pruning) below for the full mechanism, including why the link cleanup is scoped by "was this unit just deleted," not the link's own independent freshness.
+- `coverage_ingested_dumps` — tracks which `dumpId`s have already been normalized, the mechanism behind MINCRM-614's idempotency/race-safety guarantee above. Not FK'd to raw dump metadata (still file-based, per Phase 1). Retention-pruned by the same `pruneCoverageUnits` call above (MINCRM-637).
 
 Not audited (no `AuditActor`/`writeAuditEntry`) — `coverage_units` is derived, system-internal telemetry with no owning user and no user-facing mutation surface, mirroring `coverageSessionService.recordCoverageSessionDump`'s own unaudited high-frequency writes.
 
