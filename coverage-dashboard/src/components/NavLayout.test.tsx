@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -40,5 +40,17 @@ describe('NavLayout', () => {
     await userEvent.click(screen.getByTestId('nav-logout-button'));
 
     await waitFor(() => expect(logoutCalled).toBe(true));
+  });
+
+  describe('VITE_COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('hides the Sign out button — there is no session to sign out of', () => {
+      vi.stubEnv('VITE_COVERAGE_DASHBOARD_NO_AUTH', 'true');
+      renderWithProviders(<TestApp />);
+      expect(screen.queryByTestId('nav-logout-button')).not.toBeInTheDocument();
+    });
   });
 });

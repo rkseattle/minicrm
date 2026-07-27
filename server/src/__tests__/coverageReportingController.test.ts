@@ -141,6 +141,59 @@ describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637
   });
 });
 
+describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+  const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  beforeEach(async () => {
+    await setFlagEnabled('coverage_reporting_query', true);
+    process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+  });
+
+  afterEach(() => {
+    if (originalNoAuth !== undefined) {
+      process.env.COVERAGE_DASHBOARD_NO_AUTH = originalNoAuth;
+    } else {
+      delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
+    }
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it('serves an unauthenticated request with no cookie at all — the coverage-dashboard app has no login of its own', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .query({ commitSha: 'abc' });
+    // 404 COVERAGE_BUILD_NOT_FOUND, not 401 — proves the request reached
+    // the handler with no Cookie header set at all.
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
+  });
+
+  it('does NOT enforce the coverage_reporting_query feature flag under the bypass — requireFeatureEnabled needs req.user to evaluate per-user overrides and there is none', async () => {
+    // Disabling the flag would 403 a real authenticated caller (see the
+    // "returns 403 FEATURE_DISABLED" test above), but requireFeatureEnabled
+    // itself requires req.user (isFlagEnabledForUser resolves per-user/
+    // per-team overrides) — with auth skipped entirely there is no
+    // coherent "is this enabled for X" to ask, so the whole chain,
+    // including this check, is skipped together rather than 401ing on a
+    // missing req.user the bypass never populates.
+    await setFlagEnabled('coverage_reporting_query', false);
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .query({ commitSha: 'abc' });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
+  });
+
+  it('never bypasses auth when NODE_ENV=production, regardless of the flag — the hard safety rail a copied .env file could not defeat', async () => {
+    process.env.NODE_ENV = 'production';
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .query({ commitSha: 'abc' });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('coverage reporting API — validation', () => {
   beforeEach(async () => {
     await setFlagEnabled('coverage_reporting_query', true);

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { logout, AUTH_ME_QUERY_KEY } from '@/api/auth.js';
+import { isNoAuthMode } from '@/hooks/useAuth.js';
 
 const NAV_LINK_CLASS = ({ isActive }: { isActive: boolean }): string =>
   `rounded-md px-3 py-2 text-sm font-medium ${
@@ -38,14 +39,16 @@ export default function NavLayout() {
               Sessions
             </NavLink>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-700"
-            data-testid="nav-logout-button"
-          >
-            Sign out
-          </button>
+          {!isNoAuthMode() && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-700"
+              data-testid="nav-logout-button"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </nav>
       <Outlet />

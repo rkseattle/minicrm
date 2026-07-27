@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { Routes, Route } from 'react-router-dom';
@@ -50,5 +50,25 @@ describe('ProtectedRoute', () => {
     );
     renderWithProviders(<TestApp />);
     await waitFor(() => expect(screen.getByText('Access denied page')).toBeInTheDocument());
+  });
+
+  describe('VITE_COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('renders protected content immediately with no GET /auth/me call at all', async () => {
+      vi.stubEnv('VITE_COVERAGE_DASHBOARD_NO_AUTH', 'true');
+      let authMeCalled = false;
+      server.use(
+        http.get('*/api/v1/auth/me', () => {
+          authMeCalled = true;
+          return HttpResponse.json({ user: MOCK_ADMIN_USER });
+        }),
+      );
+      renderWithProviders(<TestApp />);
+      await waitFor(() => expect(screen.getByText('Protected content')).toBeInTheDocument());
+      expect(authMeCalled).toBe(false);
+    });
   });
 });
