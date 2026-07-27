@@ -1,15 +1,19 @@
 /**
  * Coverage/TIA operational health check. (MINCRM-637)
  *
- * Reports three things an operator needs to know the framework's own
- * services are working: whether the backend V8 agent is running, whether
- * the coverage database is reachable, and each of the three live feature
- * flags' current org-wide state (coverage_pipeline_ingestion,
- * coverage_mapping_query, coverage_reporting_query — see
- * docs/dev/coverage.md's "Policy Configuration" section for the full list;
- * coverage_instrumentation/coverage_session_management were removed by
- * migration 161 in favor of boot-time env vars, so there is no flag state
- * to report for those two routers here).
+ * Reports what an operator needs to know the framework's own services are
+ * working: whether the backend V8 agent is running, whether the coverage
+ * database is reachable, each of the three live feature flags' current
+ * org-wide state (coverage_pipeline_ingestion, coverage_mapping_query,
+ * coverage_reporting_query — see docs/dev/coverage.md's "Policy
+ * Configuration" section for the full list; coverage_instrumentation/
+ * coverage_session_management were removed by migration 161 in favor of
+ * boot-time env vars, so there is no flag state to report for those two
+ * routers here), and the outcome of the most recent scheduled retention
+ * prune — the one background job MINCRM-637 introduces that runs
+ * unattended and would otherwise be invisible here (a failed nightly prune
+ * previously only logged an error; this report continued to say
+ * status: 'ok' indefinitely — found via Greptile branch review).
  *
  * Not wrapped in a transaction (BEGIN/COMMIT) around the SET LOCAL
  * statement_timeout call — mirrors app.ts's own /api/health implementation
@@ -23,6 +27,10 @@
 import coverageDb from '../coverageDb.js';
 import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
 import { isFeatureEnabled } from './featureFlagService.js';
+import {
+  getLastRetentionPruneOutcome,
+  type RetentionPruneOutcome,
+} from '../coverageAgent/coverageRetentionScheduler.js';
 
 export type CoverageHealthStatus = 'ok' | 'degraded';
 
@@ -38,6 +46,8 @@ export interface CoverageHealthReport {
   };
   /** Present only when one or more feature-flag reads failed (e.g. the product DB was unreachable) — the corresponding featureFlags field falls back to false rather than the report itself failing. */
   featureFlagsError?: string;
+  /** Outcome of the most recent scheduled retention prune, or undefined if it hasn't run yet this process's lifetime (e.g. right after boot, before the daily cron first fires — NOT itself a degraded condition). */
+  lastRetentionPrune?: RetentionPruneOutcome;
 }
 
 async function checkCoverageDb(): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -106,7 +116,14 @@ export async function getCoverageHealth(): Promise<CoverageHealthReport> {
     (r) => !r.ok,
   )?.error;
 
-  if (!dbResult.ok || featureFlagsError !== undefined) {
+  // undefined (never run yet this process's lifetime) is NOT a degraded
+  // condition — right after boot, before the daily cron first fires at
+  // 07:00, is the normal state for every process. Only an actual recorded
+  // 'error' outcome degrades the report.
+  const lastRetentionPrune = getLastRetentionPruneOutcome();
+  const retentionPruneFailed = lastRetentionPrune?.status === 'error';
+
+  if (!dbResult.ok || featureFlagsError !== undefined || retentionPruneFailed) {
     return {
       status: 'degraded',
       agentRunning,
@@ -114,6 +131,7 @@ export async function getCoverageHealth(): Promise<CoverageHealthReport> {
       ...(!dbResult.ok && { dbError: dbResult.error }),
       featureFlags,
       ...(featureFlagsError !== undefined && { featureFlagsError }),
+      ...(lastRetentionPrune !== undefined && { lastRetentionPrune }),
     };
   }
 
@@ -122,5 +140,6 @@ export async function getCoverageHealth(): Promise<CoverageHealthReport> {
     agentRunning,
     db: 'ok',
     featureFlags,
+    ...(lastRetentionPrune !== undefined && { lastRetentionPrune }),
   };
 }

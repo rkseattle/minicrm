@@ -19,6 +19,7 @@
 import 'dotenv/config';
 import { vi } from 'vitest';
 import * as coverageAgentRegistry from '../coverageAgent/coverageAgentRegistry.js';
+import * as coverageRetentionScheduler from '../coverageAgent/coverageRetentionScheduler.js';
 import { getCoverageHealth } from '../services/coverageHealthService.js';
 import { __clearCacheForTest } from '../services/featureFlagService.js';
 import coverageDb from '../coverageDb.js';
@@ -147,5 +148,53 @@ describe('getCoverageHealth', () => {
       coverage_reporting_query: false,
     });
     expect(health.featureFlagsError).toBe('product db unreachable');
+  });
+
+  it('omits lastRetentionPrune and stays status ok when the retention cron has not run yet this process (undefined is the normal post-boot state)', async () => {
+    vi.spyOn(coverageRetentionScheduler, 'getLastRetentionPruneOutcome').mockReturnValue(undefined);
+
+    const health = await getCoverageHealth();
+
+    expect(health.status).toBe('ok');
+    expect(health.lastRetentionPrune).toBeUndefined();
+  });
+
+  it("includes lastRetentionPrune without affecting status when the last prune succeeded ('ok' is not itself a degraded condition)", async () => {
+    vi.spyOn(coverageRetentionScheduler, 'getLastRetentionPruneOutcome').mockReturnValue({
+      ranAt: '2026-07-26T07:00:00.000Z',
+      status: 'ok',
+      prunedUnitCount: 3,
+      prunedLinkCount: 1,
+    });
+
+    const health = await getCoverageHealth();
+
+    expect(health.status).toBe('ok');
+    expect(health.lastRetentionPrune).toEqual({
+      ranAt: '2026-07-26T07:00:00.000Z',
+      status: 'ok',
+      prunedUnitCount: 3,
+      prunedLinkCount: 1,
+    });
+  });
+
+  it('reports status degraded when the last scheduled retention prune failed — the one background job this endpoint would otherwise never surface', async () => {
+    // Regression test: a failed nightly prune previously only ever reached
+    // logger.error, with GET /health continuing to report status: 'ok'
+    // indefinitely (found via Greptile branch review).
+    vi.spyOn(coverageRetentionScheduler, 'getLastRetentionPruneOutcome').mockReturnValue({
+      ranAt: '2026-07-26T07:00:00.000Z',
+      status: 'error',
+      error: 'coverage db unreachable',
+    });
+
+    const health = await getCoverageHealth();
+
+    expect(health.status).toBe('degraded');
+    expect(health.lastRetentionPrune).toEqual({
+      ranAt: '2026-07-26T07:00:00.000Z',
+      status: 'error',
+      error: 'coverage db unreachable',
+    });
   });
 });

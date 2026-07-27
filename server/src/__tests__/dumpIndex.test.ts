@@ -10,7 +10,7 @@ import { mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { DumpIndex } from '../coverageAgent/dumpIndex.js';
-import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
+import type { CoverageDump } from '../coverageAgent/sdk/CoverageAgentPlugin.js';
 
 let dumpsRoot: string;
 

@@ -21,7 +21,7 @@ import { dirname, join } from 'path';
 import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
 import { getSharedDumpIndex } from '../coverageAgent/dumpIndex.js';
 import { COVERAGE_DUMPS_ROOT, resolveCoverageConfig } from '../coverageAgent/coverageConfig.js';
-import type { CoverageDump } from '../coverageAgent/CoverageAgent.js';
+import type { CoverageDump } from '../coverageAgent/sdk/CoverageAgentPlugin.js';
 import logger from '../logger.js';
 
 // Resolved lazily on each use, NOT bound to a module-level const — a

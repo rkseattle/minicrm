@@ -47,7 +47,7 @@ import v8toIstanbul from 'v8-to-istanbul';
 import type { CoverageMapData, FileCoverageData, FunctionMapping } from 'istanbul-lib-coverage';
 import type { Profiler } from 'inspector';
 import logger from '../../logger.js';
-import type { CoverageDumpSource } from '../CoverageAgent.js';
+import type { CoverageDumpSource } from '../sdk/CoverageAgentPlugin.js';
 import type { NormalizedCoverageUnit, SymbolicationResult } from './normalizedCoverageUnit.js';
 import { deriveStructuralUnitKey } from './structuralKeyService.js';
 
