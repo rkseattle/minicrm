@@ -62,6 +62,18 @@ services:
       # them; production deployments must never set these.
       COVERAGE_INSTRUMENTATION: "true"
       COVERAGE_SESSION_MANAGEMENT: "true"
+      # coverageConfig.ts's resolveCommitSha() falls back to 'unknown' when
+      # `git rev-parse HEAD` fails — which it always does inside this
+      # container, since only ./server and ./shared are bind-mounted, never
+      # .git. Without this, every coverage dump produced by a local E2E run
+      # is tagged commitSha: "unknown" and can never match a real branch SHA
+      # in select-tests.ts's lookups, making a locally-generated
+      # qa/coverage-map.json permanently useless (found while investigating
+      # why the local pre-push hook's TIA selection always falls back to
+      # the full suite). Export GIT_COMMIT_SHA=$(git rev-parse HEAD) in the
+      # invoking shell before `docker compose ... up -d server-e2e` — see
+      # .claude/gates/e2e-run.md.
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}

@@ -36,6 +36,12 @@ date
 ```
 
 ```bash
+# GIT_COMMIT_SHA lets server-e2e tag coverage dumps with the real branch SHA
+# instead of falling back to "unknown" — server-e2e has no .git mounted, so
+# `git rev-parse HEAD` always fails inside the container otherwise. Export
+# before build/up so the value is available when the container starts.
+export GIT_COMMIT_SHA=$(git rev-parse HEAD)
+
 # Rebuild the E2E server image so new server code is actually in the container
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e build server-e2e
 docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d server-e2e
