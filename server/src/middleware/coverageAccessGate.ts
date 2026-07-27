@@ -23,6 +23,31 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { requireRole, requireCapability } from './requireRole.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
+/**
+ * Shared by coverageReporting.ts and coverageSessions.ts — the two routers
+ * the coverage-dashboard app actually calls (MINCRM-636/637). Deliberately
+ * NOT wired into coverageAccessGate itself: that would silently apply the
+ * bypass to every consumer of this gate, including coveragePipeline.ts/
+ * coverageMapping.ts/coverage.ts, which this dashboard never calls and
+ * which this flag was never meant to open up. Each opting-in router checks
+ * this explicitly and builds its own bypass chain — see coverageReporting.ts
+ * for the fuller rationale on why the whole access chain (not just auth)
+ * needs replacing together, not just this one predicate.
+ *
+ * NODE_ENV !== 'production' is the hard safety rail, same as E2E=true's own
+ * precedent in auth.ts — a copied .env file can never leave this open in a
+ * real deployment regardless of how COVERAGE_DASHBOARD_NO_AUTH is set.
+ *
+ * Read per request, not resolved once at module-load time — a boot-time-
+ * only read would mean toggling this flag requires a full server restart,
+ * and existing tests flip COVERAGE_CAPABILITY_GATING per-test via plain
+ * process.env assignment (no app re-import); a module-scoped constant
+ * would not support the same pattern for this flag.
+ */
+export function isDashboardNoAuthEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.COVERAGE_DASHBOARD_NO_AUTH === 'true';
+}
+
 const requireRoleAdmin = requireRole('admin');
 const requireCoverageAdminCapability = requireCapability(Capability.CoverageAdmin);
 

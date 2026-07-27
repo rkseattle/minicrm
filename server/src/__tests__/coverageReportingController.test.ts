@@ -14,6 +14,7 @@ import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { upsertCoverageUnits } from '../services/coverageModelService.js';
 import { upsertBuildSummaryForCommit } from '../services/coverageBuildSummaryService.js';
+import { startCoverageSession, endCoverageSession } from '../services/coverageSessionService.js';
 import { makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'coverage-reporting-ctrl';
@@ -314,5 +315,61 @@ describe('coverage reporting API — query happy path', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.metrics.totalBuilds).toBe(1);
+  });
+});
+
+describe('coverage reporting API — GET /issue-keys (MINCRM-636/637)', () => {
+  const commitSha = `${FILE_PREFIX}-issue-keys-${randomUUID()}`;
+
+  beforeAll(async () => {
+    await setFlagEnabled('coverage_reporting_query', true);
+    const sessionA = await startCoverageSession({
+      label: 'manual-testing-a',
+      source: 'manual',
+      buildSha: commitSha,
+      environment: 'test',
+      issueKey: 'MINCRM-1001',
+    });
+    await endCoverageSession(sessionA.id, sessionA.version);
+    const sessionB = await startCoverageSession({
+      label: 'manual-testing-b',
+      source: 'manual',
+      buildSha: commitSha,
+      environment: 'test',
+      issueKey: 'MINCRM-1002',
+    });
+    await endCoverageSession(sessionB.id, sessionB.version);
+    // No issueKey — must never surface as a null/empty entry in the list.
+    const sessionNoIssue = await startCoverageSession({
+      label: 'manual-testing-no-issue',
+      source: 'manual',
+      buildSha: commitSha,
+      environment: 'test',
+    });
+    await endCoverageSession(sessionNoIssue.id, sessionNoIssue.version);
+  });
+
+  afterAll(async () => {
+    await coverageDb.query('DELETE FROM coverage_sessions WHERE build_sha = $1', [commitSha]);
+  });
+
+  it('lists distinct issue keys with a coverage session recorded for this build', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/issue-keys')
+      .set('Cookie', adminCookie)
+      .query({ commitSha });
+
+    expect(res.status).toBe(200);
+    expect(res.body.issueKeys).toEqual(['MINCRM-1001', 'MINCRM-1002']);
+  });
+
+  it('returns an empty array for a commit with no sessions at all', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/issue-keys')
+      .set('Cookie', adminCookie)
+      .query({ commitSha: `${FILE_PREFIX}-issue-keys-never-recorded` });
+
+    expect(res.status).toBe(200);
+    expect(res.body.issueKeys).toEqual([]);
   });
 });

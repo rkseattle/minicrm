@@ -132,6 +132,53 @@ describe('coverage session control API — COVERAGE_CAPABILITY_GATING=true (MINC
   });
 });
 
+describe('coverage session control API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+  const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  beforeEach(() => {
+    process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+  });
+
+  afterEach(async () => {
+    if (originalNoAuth !== undefined) {
+      process.env.COVERAGE_DASHBOARD_NO_AUTH = originalNoAuth;
+    } else {
+      delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
+    }
+    process.env.NODE_ENV = originalNodeEnv;
+    // Cleans up sessions this describe block starts with no adminId to
+    // scope by (requests carry no cookie at all under the bypass) — the
+    // dashboard-recognizable label prefix is the only handle available.
+    await coverageDb.query(
+      "DELETE FROM coverage_session_dumps WHERE session_id IN (SELECT id FROM coverage_sessions WHERE label LIKE 'no-auth-%')",
+    );
+    await coverageDb.query("DELETE FROM coverage_sessions WHERE label LIKE 'no-auth-%'");
+  });
+
+  it('starts and lists a session with no cookie at all — the coverage-dashboard app has no login of its own', async () => {
+    const startRes = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .send(baseSessionBody('no-auth-lifecycle'));
+    expect(startRes.status).toBe(201);
+    expect(startRes.body.session).toMatchObject({ label: 'no-auth-lifecycle', status: 'active' });
+
+    const listRes = await request(app).get('/api/v1/admin/coverage/sessions');
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ label: 'no-auth-lifecycle' })]),
+    );
+  });
+
+  it('never bypasses auth when NODE_ENV=production, regardless of the flag — the hard safety rail a copied .env file could not defeat', async () => {
+    process.env.NODE_ENV = 'production';
+    const res = await request(app)
+      .post('/api/v1/admin/coverage/sessions')
+      .send(baseSessionBody('no-auth-production-guard'));
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('coverage session control API — validation', () => {
   it('returns 400 VALIDATION_ERROR when label is missing on start', async () => {
     const res = await request(app)

@@ -28,13 +28,26 @@ import {
 const sessionIdParamSchema = z.string().uuid();
 const correlationIdParamSchema = z.string().uuid();
 
+/**
+ * Nil UUID, matching the repo's own SYSTEM_ACTOR convention
+ * (accountService.ts et al.) — used only when req.user is absent, which
+ * happens exactly once: COVERAGE_DASHBOARD_NO_AUTH=true bypasses
+ * authenticate for this router (routes/coverageSessions.ts), so the
+ * dashboard's Sessions tab can start/end sessions with no logged-in user
+ * at all. Safe here specifically because coverage_sessions.started_by is
+ * a plain uuid column with no cross-database foreign key into users (see
+ * this file's own header docblock reference and
+ * qa/migrations/001_coverage_baseline.js) — there is no row this sentinel
+ * needs to actually exist.
+ */
+const NO_AUTH_DASHBOARD_ACTOR_ID = '00000000-0000-0000-0000-000000000000';
+
 function actorFromRequest(req: Request): { id: string } {
-  // Route middleware guarantees req.user is set (authenticate runs first).
   // Only id is recorded (coverage_sessions.started_by) — coverage sessions
   // are unaudited system telemetry in their own database, not a
   // product-DB audit_log entry, so no changedByName is needed here (see
   // coverageSessionService.ts's module docblock).
-  return { id: req.user!.id };
+  return { id: req.user?.id ?? NO_AUTH_DASHBOARD_ACTOR_ID };
 }
 
 /**

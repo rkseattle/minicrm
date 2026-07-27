@@ -55,6 +55,14 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       E2E: ${E2E:-false}
       COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
+      # Off by default (zero-overhead — see coverageConfig.ts's own
+      # resolveCoverageConfig). Previously only server-e2e set these
+      # (docker-compose.dev.yml), so the coverage-dashboard app's Sessions
+      # tab and any backend coverage collection never worked against this
+      # ordinary dev server at all, E2E or not — set both to 'true' in
+      # .env to use the dashboard against regular local dev (MINCRM-636/637).
+      COVERAGE_INSTRUMENTATION: ${COVERAGE_INSTRUMENTATION:-false}
+      COVERAGE_SESSION_MANAGEMENT: ${COVERAGE_SESSION_MANAGEMENT:-false}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

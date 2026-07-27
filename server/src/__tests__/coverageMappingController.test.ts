@@ -250,3 +250,101 @@ describe('coverage mapping API — query happy path', () => {
     });
   });
 });
+
+describe('coverage mapping API — unit-key/test-ID typeahead search (MINCRM-636/637)', () => {
+  const commitSha = `${FILE_PREFIX}-search-${randomUUID()}`;
+
+  beforeAll(async () => {
+    await setFlagEnabled('coverage_mapping_query', true);
+    await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [
+      {
+        filePath: 'src/DealsPage.tsx',
+        unitKey: 'handleSubmit#aaa111',
+        branchId: null,
+        granularity: 'function',
+        hitCount: 5,
+        resolved: true,
+        unresolvedReason: null,
+      },
+      {
+        filePath: 'src/DealsPage.tsx',
+        unitKey: 'renderRow#bbb222',
+        branchId: null,
+        granularity: 'function',
+        hitCount: 2,
+        resolved: true,
+        unresolvedReason: null,
+      },
+    ]);
+    await linkAndCommit(
+      commitSha,
+      'spec:deals.spec.ts::submits the deal form',
+      'submits the deal form',
+      [
+        {
+          unitKey: 'handleSubmit#aaa111',
+          branchId: null,
+          filePath: 'src/DealsPage.tsx',
+          hitCount: 5,
+        },
+      ],
+    );
+  });
+
+  afterAll(async () => {
+    await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [commitSha]);
+    await coverageDb.query('DELETE FROM coverage_units WHERE commit_sha = $1', [commitSha]);
+  });
+
+  it('finds a unit key by a case-insensitive substring match', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/unit-keys/search')
+      .set('Cookie', adminCookie)
+      .query({ commitSha, search: 'handlesubmit' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ unitKey: 'handleSubmit#aaa111', filePath: 'src/DealsPage.tsx' }),
+      ]),
+    );
+    expect(res.body.results).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ unitKey: 'renderRow#bbb222' })]),
+    );
+  });
+
+  it('returns 400 VALIDATION_ERROR when search is missing', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/unit-keys/search')
+      .set('Cookie', adminCookie)
+      .query({ commitSha });
+    expect(res.status).toBe(400);
+  });
+
+  it('finds a test by matching test_name, not just test_id', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/test-ids/search')
+      .set('Cookie', adminCookie)
+      .query({ commitSha, search: 'submits the deal' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          testId: 'spec:deals.spec.ts::submits the deal form',
+          testName: 'submits the deal form',
+        }),
+      ]),
+    );
+  });
+
+  it('returns an empty array for a search term with no matches', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/test-ids/search')
+      .set('Cookie', adminCookie)
+      .query({ commitSha, search: 'nonexistent-test-xyz' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([]);
+  });
+});

@@ -16,11 +16,25 @@
  * identical to today's role check. As with coverage.ts, this router's own
  * registration gate means the swap has no observable effect unless
  * COVERAGE_SESSION_MANAGEMENT is also set.
+ *
+ * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637): drops authenticate +
+ * coverageAccessGate for this router too, same as coverageReporting.ts —
+ * the coverage-dashboard app's Sessions tab (manual-testing session
+ * recorder: start/end a session, get a CRM correlation link) calls this
+ * router directly, and without this it 401s on every request with the
+ * dashboard's own global 401 interceptor hard-redirecting to /login, which
+ * then bounces straight back to / since useAuth() reports authenticated —
+ * a redirect loop, not a graceful degradation (found via real local
+ * testing after the reporting-only bypass shipped). See
+ * isDashboardNoAuthEnabled's own docblock (coverageAccessGate.ts) for why
+ * this is opted into per-router rather than baked into coverageAccessGate
+ * itself.
  */
 
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
+import { coverageAccessGate, isDashboardNoAuthEnabled } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   startCoverageSessionHandler,
@@ -33,7 +47,25 @@ import {
 
 const router = Router();
 
-const requireCoverageSessionAccess = [authenticate, coverageAccessGate] as const;
+const requireCoverageSessionAccessGate: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (isDashboardNoAuthEnabled()) {
+    next();
+    return;
+  }
+  authenticate(req, res, (authErr?: unknown) => {
+    if (authErr) {
+      next(authErr);
+      return;
+    }
+    coverageAccessGate(req, res, next);
+  });
+};
+
+const requireCoverageSessionAccess = [requireCoverageSessionAccessGate] as const;
 
 /** Registers every coverage session route — only called when COVERAGE_SESSION_MANAGEMENT is 'true' at boot. */
 function registerCoverageSessionRoutes(): void {

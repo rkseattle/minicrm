@@ -12,7 +12,11 @@ import type {
   DeadZoneUnit,
   ChangedUntestedUnit,
 } from '@shared/schemas/coverageReportingSchema.js';
-import type { CoverageMappingResult } from '@shared/schemas/coverageMappingSchema.js';
+import type {
+  CoverageMappingResult,
+  UnitKeySearchResult,
+  TestIdSearchResult,
+} from '@shared/schemas/coverageMappingSchema.js';
 
 export const MOCK_ADMIN_USER: AuthUser = {
   id: 'user-admin-1',
@@ -58,6 +62,16 @@ export const MOCK_CHANGED_UNTESTED_UNIT: ChangedUntestedUnit = {
   filePath: 'src/services/dealService.ts',
   unitKey: 'createDeal#1234567800000000',
   changeKind: 'in-line',
+};
+
+export const MOCK_UNIT_KEY_SEARCH_RESULT: UnitKeySearchResult = {
+  unitKey: 'handleSubmit#abc123',
+  filePath: 'src/pages/DealsPage.tsx',
+};
+
+export const MOCK_TEST_ID_SEARCH_RESULT: TestIdSearchResult = {
+  testId: 'spec:deals.spec.ts::creates a deal',
+  testName: 'creates a deal',
 };
 
 export const MOCK_MAPPING_RESULT: CoverageMappingResult = {
@@ -111,5 +125,14 @@ export const handlers = [
   ),
   http.get('*/api/v1/admin/coverage/mapping/units-for-test', () =>
     HttpResponse.json({ results: [] }),
+  ),
+  http.get('*/api/v1/admin/coverage/mapping/unit-keys/search', () =>
+    HttpResponse.json({ results: [] }),
+  ),
+  http.get('*/api/v1/admin/coverage/mapping/test-ids/search', () =>
+    HttpResponse.json({ results: [] }),
+  ),
+  http.get('*/api/v1/admin/coverage/reporting/issue-keys', () =>
+    HttpResponse.json({ issueKeys: [] }),
   ),
 ];

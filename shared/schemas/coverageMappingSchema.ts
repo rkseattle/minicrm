@@ -60,3 +60,54 @@ export const findUnitsForTestResponseSchema = z.object({
 });
 
 export type FindUnitsForTestResponse = z.infer<typeof findUnitsForTestResponseSchema>;
+
+// ── Typeahead search (MINCRM-636/637) — backs the coverage-dashboard app's
+// unit-key/test-ID pickers, since neither field is something a caller can
+// plausibly type from memory. Both always require a non-empty search term
+// (never "list everything") — a single commit's coverage_units/
+// coverage_test_links can run into the hundreds of thousands of rows, so an
+// unscoped listing is not viable at real scale. ──────────────────────────
+
+const MAX_SEARCH_LIMIT = 50;
+
+export const searchUnitKeysRequestSchema = z.object({
+  commitSha: z.string().min(1, 'commitSha is required'),
+  search: z.string().min(1, 'search is required'),
+  limit: z.coerce.number().int().min(1).max(MAX_SEARCH_LIMIT).default(20),
+});
+
+export type SearchUnitKeysRequest = z.infer<typeof searchUnitKeysRequestSchema>;
+
+export const unitKeySearchResultSchema = z.object({
+  unitKey: z.string(),
+  filePath: z.string(),
+});
+
+export type UnitKeySearchResult = z.infer<typeof unitKeySearchResultSchema>;
+
+export const searchUnitKeysResponseSchema = z.object({
+  results: z.array(unitKeySearchResultSchema),
+});
+
+export type SearchUnitKeysResponse = z.infer<typeof searchUnitKeysResponseSchema>;
+
+export const searchTestIdsRequestSchema = z.object({
+  commitSha: z.string().min(1, 'commitSha is required'),
+  search: z.string().min(1, 'search is required'),
+  limit: z.coerce.number().int().min(1).max(MAX_SEARCH_LIMIT).default(20),
+});
+
+export type SearchTestIdsRequest = z.infer<typeof searchTestIdsRequestSchema>;
+
+export const testIdSearchResultSchema = z.object({
+  testId: z.string(),
+  testName: z.string().nullable(),
+});
+
+export type TestIdSearchResult = z.infer<typeof testIdSearchResultSchema>;
+
+export const searchTestIdsResponseSchema = z.object({
+  results: z.array(testIdSearchResultSchema),
+});
+
+export type SearchTestIdsResponse = z.infer<typeof searchTestIdsResponseSchema>;

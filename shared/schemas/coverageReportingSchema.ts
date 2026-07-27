@@ -103,6 +103,18 @@ export const issueCoverageSchema = z.object({
 
 export type IssueCoverage = z.infer<typeof issueCoverageSchema>;
 
+export const listIssueKeysRequestSchema = z.object({
+  commitSha: z.string().min(1, 'commitSha is required'),
+});
+
+export type ListIssueKeysRequest = z.infer<typeof listIssueKeysRequestSchema>;
+
+export const listIssueKeysResponseSchema = z.object({
+  issueKeys: z.array(z.string()),
+});
+
+export type ListIssueKeysResponse = z.infer<typeof listIssueKeysResponseSchema>;
+
 export const getTiaValueMetricsRequestSchema = z.object({
   fromSha: z.string().min(1, 'fromSha is required'),
   toSha: z.string().min(1, 'toSha is required'),
