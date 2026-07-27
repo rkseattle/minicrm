@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { Routes, Route } from 'react-router-dom';
 import LoginPage from './LoginPage.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
@@ -40,5 +41,24 @@ describe('LoginPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('login-error')).toHaveTextContent(/something went wrong/i),
     );
+  });
+
+  describe('VITE_COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637)', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('redirects away from the login form — useAuth() reports authenticated with no login required', async () => {
+      vi.stubEnv('VITE_COVERAGE_DASHBOARD_NO_AUTH', 'true');
+      renderWithProviders(
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<div>Home page</div>} />
+        </Routes>,
+        { initialEntries: ['/login'] },
+      );
+      await waitFor(() => expect(screen.getByText('Home page')).toBeInTheDocument());
+      expect(screen.queryByTestId('login-form')).not.toBeInTheDocument();
+    });
   });
 });

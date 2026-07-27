@@ -9,7 +9,10 @@ architecture (data model, mapping engine, TIA test selection).
 
 ## Running locally
 
-1. Start the backend (Postgres + server), same as for the CRM client:
+1. Set `COVERAGE_DASHBOARD_NO_AUTH=true` in the repo root's `.env` (see
+   `.env.example`'s own comment on this var) so this internal tool doesn't
+   require a CRM login (see "Accessing it" below), then start the backend
+   (Postgres + server), same as for the CRM client:
 
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
@@ -21,10 +24,12 @@ architecture (data model, mapping engine, TIA test selection).
    npm install --prefix coverage-dashboard
    ```
 
-3. Start the dashboard's dev server from the repo root:
+3. Start the dashboard's dev server from the repo root. Set
+   `VITE_COVERAGE_DASHBOARD_NO_AUTH=true` to match the server-side flag from step 1 —
+   the two only take effect together (see "Accessing it" below):
 
    ```bash
-   npm run dev --workspace=minicrm-coverage-dashboard
+   VITE_COVERAGE_DASHBOARD_NO_AUTH=true npm run dev --workspace=minicrm-coverage-dashboard
    ```
 
 This serves the app at **http://localhost:5174** (not 5173 — `client/`'s dev server
@@ -33,17 +38,32 @@ keeps that port; both run simultaneously). The dev server proxies `/api/*` reque
 your server runs elsewhere:
 
 ```bash
-API_URL=http://localhost:4001 npm run dev --workspace=minicrm-coverage-dashboard
+API_URL=http://localhost:4001 VITE_COVERAGE_DASHBOARD_NO_AUTH=true npm run dev --workspace=minicrm-coverage-dashboard
 ```
 
 ## Accessing it
 
-Open **http://localhost:5174**. Auth reuses `minicrm-server`'s existing
-httpOnly session cookie rather than a separate credential store — you must already be
-logged in as an **admin** at the CRM client (`http://localhost:5173`) in the same
-browser first; otherwise the app redirects to its login page. Every reporting endpoint
-is independently `requireRole('admin')`-gated server-side regardless of what the
-client shows.
+Open **http://localhost:5174**.
+
+With `COVERAGE_DASHBOARD_NO_AUTH=true` set on the server (step 1) AND
+`VITE_COVERAGE_DASHBOARD_NO_AUTH=true` set on this app's own dev server (step 3) —
+recommended for local dev — the dashboard requires no login at all: this is a pure
+internal engineering tool with no customer-facing surface, and requiring a CRM admin
+login just to view test coverage/gap data was unnecessary friction. Both flags are
+needed together: the client flag alone still renders the app, but every API call it
+makes 401s from the server's own (still-enforced) auth check; the server flag alone
+still works for direct API/curl access, but this app's own `ProtectedRoute` keeps
+redirecting to its login page since it never learns auth was dropped server-side. The
+server enforces `NODE_ENV !== 'production'` before ever honoring its flag, so it can't
+accidentally leave reporting data open in a real deployment.
+
+Without both flags set (the default), auth instead reuses `minicrm-server`'s
+existing httpOnly session cookie rather than a separate credential store — you
+must already be logged in as an **admin** at the CRM client
+(`http://localhost:5173`) in the same browser first; otherwise the app
+redirects to its login page. Every reporting endpoint is independently
+`requireRole('admin')`/`coverage:admin`-gated server-side regardless of what
+the client shows.
 
 Reusing the CRM's cookie only works out of the box because both apps run on
 `localhost` under `sameSite: 'lax'`. A real cross-origin deployment needs the

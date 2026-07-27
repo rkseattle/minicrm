@@ -2,8 +2,43 @@
  * Coverage/TIA reporting query routes — all endpoints require
  * authentication, coverage:admin access, and the coverage_reporting_query
  * feature flag. (MINCRM-629/630/631, MINCRM-637)
+ *
+ * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637) drops the ENTIRE access chain
+ * — authenticate, coverageAccessGate, AND requireFeatureEnabled — for these
+ * read-only reporting routes. The standalone coverage-dashboard app
+ * (coverage-dashboard/) is a pure internal engineering tool with no
+ * customer-facing surface and no auth system of its own — today it
+ * piggybacks on the CRM product's own admin login, which means an engineer
+ * who wants to check coverage/gap data must first be a CRM admin and log
+ * in to the product just to view internal test-infra reporting. That's
+ * real, unwanted friction for a local-dev-only tool, not a deliberate
+ * security boundary.
+ *
+ * requireFeatureEnabled is dropped too, not just auth: it's inherently
+ * user/role-scoped (per-user force overrides, per-team overrides, role
+ * rollout percentages — see featureFlagService.isFlagEnabledForUser) and
+ * requires req.user to evaluate at all; with no authenticated user there is
+ * no coherent "is this enabled for X" to ask. Bypassing auth while leaving
+ * this check in place would just trade one 401 for another (found via a
+ * real test failure — requireFeatureEnabled's own docblock: "Must be used
+ * after the authenticate middleware so that req.user is set").
+ *
+ * Scoped to ONLY this route file, not coverageAccessGate.ts itself:
+ * coveragePipeline.ts/coverageMapping.ts/coverageSessions.ts/coverage.ts
+ * also share that gate, and unlike this file's pure GET/query endpoints,
+ * those manage or ingest real coverage/session data — opening those too
+ * would be a much larger, unintended blast radius for a dashboard that
+ * only ever calls the reporting endpoints below.
+ *
+ * Gated the same way auth.ts's own E2E rate-limit bypass is (see that
+ * file's isE2E): NODE_ENV !== 'production' is the hard safety rail so this
+ * can never activate in a real deployment regardless of how
+ * COVERAGE_DASHBOARD_NO_AUTH is set (e.g. a copied .env file) — the flag
+ * itself is the explicit local opt-in on top of that rail, not a
+ * standalone switch.
  */
 
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
@@ -19,11 +54,51 @@ import {
 
 const router = Router();
 
-const requireCoverageReportingAccess = [
-  authenticate,
-  coverageAccessGate,
-  requireFeatureEnabled('coverage_reporting_query'),
-] as const;
+const requireFeatureEnabledForReporting = requireFeatureEnabled('coverage_reporting_query');
+
+/**
+ * NODE_ENV !== 'production' is the hard safety rail — see this file's own
+ * top docblock on why the flag alone (e.g. a copied .env file) must never
+ * be sufficient on its own to bypass auth in a real deployment.
+ */
+function isDashboardNoAuthEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.COVERAGE_DASHBOARD_NO_AUTH === 'true';
+}
+
+/**
+ * Read per request, not resolved once at module-load time — matching
+ * coverageAccessGate.ts's own COVERAGE_CAPABILITY_GATING precedent, and for
+ * the same reason: a boot-time-only read would mean toggling this flag
+ * requires a full server restart, and coverageReportingController.test.ts's
+ * existing pattern of flipping COVERAGE_CAPABILITY_GATING per-test via
+ * plain process.env assignment (no app re-import) would not work for a
+ * module-scoped constant.
+ */
+const requireCoverageReportingAccessGate: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (isDashboardNoAuthEnabled()) {
+    next();
+    return;
+  }
+  authenticate(req, res, (authErr?: unknown) => {
+    if (authErr) {
+      next(authErr);
+      return;
+    }
+    coverageAccessGate(req, res, (gateErr?: unknown) => {
+      if (gateErr) {
+        next(gateErr);
+        return;
+      }
+      requireFeatureEnabledForReporting(req, res, next);
+    });
+  });
+};
+
+const requireCoverageReportingAccess = [requireCoverageReportingAccessGate] as const;
 
 /**
  * @openapi

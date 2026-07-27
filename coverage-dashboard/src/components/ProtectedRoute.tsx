@@ -14,10 +14,17 @@
  * capability-aware is unscoped follow-up work, not a security regression —
  * every reporting endpoint's own server-side gate is unaffected by what this
  * component does.
+ *
+ * VITE_COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636/637) skips the role check
+ * entirely: useAuth() reports isAuthenticated=true with user=null in this
+ * mode (no /auth/me call was ever made), so `user?.role !== 'admin'` would
+ * otherwise always be true and redirect to /access-denied — there is no
+ * user to have a role at all, so "is this user admin" is not a meaningful
+ * question to ask here.
  */
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth.js';
+import { useAuth, isNoAuthMode } from '@/hooks/useAuth.js';
 
 export default function ProtectedRoute() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -35,7 +42,7 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user?.role !== 'admin') {
+  if (!isNoAuthMode() && user?.role !== 'admin') {
     return <Navigate to="/access-denied" replace />;
   }
 

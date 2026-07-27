@@ -197,7 +197,9 @@ architecture AC ("standalone app/service ... no shared route table with
   than inventing a separate credential store — its `ProtectedRoute` additionally checks
   `user.role === 'admin'` client-side (a UX nicety only; every reporting endpoint is
   independently `coverageAccessGate`-gated server-side regardless — see
-  [Access Control](#access-control-mincrm-637)).
+  [Access Control](#access-control-mincrm-637)). Or, with `COVERAGE_DASHBOARD_NO_AUTH=true`
+  set on the server AND `VITE_COVERAGE_DASHBOARD_NO_AUTH=true` set on this app's own
+  build, skips login entirely — see the "No-login mode" subsection below (MINCRM-636/637).
 - Is English-only, with no i18n system of its own — an internal developer/QA tool, not
   a customer-facing product surface.
 
@@ -217,6 +219,36 @@ per-tier (API/frontend) coverage stat tiles, automated-vs-manual test-type filte
 `dataviz` skill's mark specs and validated default categorical palette — blue for API,
 orange for frontend, both direct-labeled with collision-avoidance when their trailing
 values are equal).
+
+### No-login mode (MINCRM-636/637)
+
+This is a pure internal engineering tool with no customer-facing surface and no auth
+system of its own — requiring a CRM admin login just to view coverage/gap data was
+unwanted friction, not a deliberate security boundary. Two flags, set together, drop
+the login requirement end-to-end:
+
+- **`COVERAGE_DASHBOARD_NO_AUTH=true`** on the server (`.env`'s own comment on this var)
+  drops `authenticate` + `coverageAccessGate` + `requireFeatureEnabled` entirely for
+  `coverageReporting.ts`'s routes ONLY — the pure read-only reporting endpoints this
+  dashboard calls, not `coveragePipeline.ts`/`coverageMapping.ts`/`coverageSessions.ts`/
+  `coverage.ts`, which manage or ingest real coverage/session data and stay fully gated
+  regardless. `requireFeatureEnabled` is dropped too, not just auth: it's inherently
+  user/role-scoped (`isFlagEnabledForUser` resolves per-user/per-team overrides) and
+  requires `req.user` to evaluate at all — with auth skipped there is no coherent "is
+  this enabled for X" left to ask.
+- **`VITE_COVERAGE_DASHBOARD_NO_AUTH=true`** on this app's own build makes `useAuth()`
+  (`src/hooks/useAuth.ts`) report `{ user: null, isAuthenticated: true, isLoading:
+false }` immediately, with no `GET /auth/me` call at all. `ProtectedRoute` skips its
+  role check in this mode too (there is no user to have a role), and `NavLayout` hides
+  the "Sign out" button (there is no session to sign out of).
+
+Both are gated on `NODE_ENV !== 'production'` server-side (same hard safety rail as
+`E2E=true`, `.env.example`'s own comment) — a copied `.env` file can never leave
+reporting data open in a real deployment. The two flags are meant to be set together:
+the client flag alone still renders the dashboard, but every API call 401s from the
+server's own (still-enforced) auth check; the server flag alone still works for direct
+API/curl access, but the dashboard's own UI keeps redirecting to its login page since
+its `ProtectedRoute` never learns auth was dropped.
 
 ## Mounting
 
