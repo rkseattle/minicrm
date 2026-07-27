@@ -29,7 +29,7 @@ import {
   getOriginalPiiFromCascadeLog,
   hasGdprErasureForContact,
 } from '../services/gdprService.js';
-import { uid } from './testUtils.js';
+import { uid, clearAuditLogFor } from './testUtils.js';
 
 const FILE_PREFIX = 'gdpr-svc';
 
@@ -37,21 +37,6 @@ const FILE_PREFIX = 'gdpr-svc';
 
 let adminId: string;
 let adminActor: { id: string; name: string };
-
-/**
- * Deletes audit_log rows scoped to this test file, bypassing the append-only trigger.
- * All three statements run on the same connection so the session-level DISABLE takes effect.
- */
-async function clearAuditLog(actorId: string): Promise<void> {
-  const client = await pool.connect();
-  try {
-    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await client.query('DELETE FROM audit_log WHERE changed_by_id = $1', [actorId]);
-    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
-  } finally {
-    client.release();
-  }
-}
 
 beforeAll(async () => {
   // Clean up any leftover rows from failed prior runs
@@ -77,14 +62,14 @@ beforeEach(async () => {
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
   // Audit log cleanup uses a single connection to ensure DISABLE TRIGGER takes effect.
-  await clearAuditLog(adminId);
+  await clearAuditLogFor(adminId);
 });
 
 afterAll(async () => {
   await pool.query('DELETE FROM gdpr_deletion_log WHERE requested_by = $1', [adminId]);
   await pool.query('DELETE FROM leads WHERE owner_id = $1', [adminId]);
   await pool.query('DELETE FROM contacts WHERE owner_id = $1', [adminId]);
-  await clearAuditLog(adminId);
+  await clearAuditLogFor(adminId);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   await pool.end();
 });

@@ -37,16 +37,37 @@ const FILE_RECORD_IDS = [RECORD_ID, RECORD_ID_2];
 const FILE_ACTOR_IDS = [ACTOR.id, ACTOR_2_ID];
 
 /**
- * Helper: clear only this file's audit_log entries (scoped by record_id or actor).
- * Temporarily disables the append-only trigger so we can delete test data.
+ * Helper: clear only this file's audit_log entries (scoped by record_id or
+ * actor). Temporarily disables the append-only trigger so we can delete
+ * test data. Filters by both record_id and changed_by_id, so this can't
+ * share testUtils.ts's clearAuditLogFor helper directly — same underlying
+ * fix though: all three statements run in one transaction on a single
+ * client, since ALTER TABLE ... DISABLE/ENABLE TRIGGER is catalog-level
+ * (visible to every concurrent connection, not session-scoped) but takes an
+ * ACCESS EXCLUSIVE lock on the table held until COMMIT — that lock
+ * serializes any other caller of this same disable/delete/enable sequence
+ * (including a different test file's own copy, run concurrently by Vitest
+ * against the shared test database) behind this one. See
+ * clearAuditLogFor's own docblock for the two claims verified directly
+ * against a real Postgres session pair.
  */
 async function clearAuditLog(): Promise<void> {
-  await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-  await pool.query('DELETE FROM audit_log WHERE record_id = ANY($1) OR changed_by_id = ANY($2)', [
-    FILE_RECORD_IDS,
-    FILE_ACTOR_IDS,
-  ]);
-  await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await client.query(
+      'DELETE FROM audit_log WHERE record_id = ANY($1) OR changed_by_id = ANY($2)',
+      [FILE_RECORD_IDS, FILE_ACTOR_IDS],
+    );
+    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 beforeEach(async () => {

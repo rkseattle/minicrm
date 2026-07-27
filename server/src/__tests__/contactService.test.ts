@@ -386,9 +386,16 @@ describe('listContacts', () => {
 
 describe('listContacts — search filter', () => {
   it('returns contacts whose first_name matches the search term (case-insensitive)', async () => {
+    // first_name carries a uid() suffix and the search term is that same
+    // suffix (mixed-case, to also exercise case-insensitivity) — a bare
+    // 'Alice'/'ali' collides with fixture names other test FILES create
+    // concurrently against the same shared test DB (found via cross-file
+    // pollution: this test failed intermittently when >1 result matched
+    // 'ali'). uid() is unique per test run, so no other file can collide.
+    const uniqueFirstName = `Ali-${uid()}`;
     await createContact({
       ...makeContact(),
-      first_name: 'Alice',
+      first_name: uniqueFirstName,
       owner_id: ownerId,
     });
     await createContact({
@@ -397,15 +404,19 @@ describe('listContacts — search filter', () => {
       owner_id: ownerId,
     });
 
-    const results = await listContacts({ search: 'ali' });
+    const results = await listContacts({ search: uniqueFirstName.toUpperCase() });
     expect(results.data).toHaveLength(1);
-    expect(results.data[0].first_name).toBe('Alice');
+    expect(results.data[0].first_name).toBe(uniqueFirstName);
   });
 
   it('returns contacts whose last_name matches the search term (case-insensitive)', async () => {
+    // Same uid()-suffixed uniqueness rationale as the first_name case
+    // above — a bare 'Smith'/'SMITH' is a common fixture surname collision
+    // risk across other concurrently-running test files.
+    const uniqueLastName = `Smith-${uid()}`;
     await createContact({
       ...makeContact(),
-      last_name: 'Smith',
+      last_name: uniqueLastName,
       owner_id: ownerId,
     });
     await createContact({
@@ -414,9 +425,9 @@ describe('listContacts — search filter', () => {
       owner_id: ownerId,
     });
 
-    const results = await listContacts({ search: 'SMITH' });
+    const results = await listContacts({ search: uniqueLastName.toUpperCase() });
     expect(results.data).toHaveLength(1);
-    expect(results.data[0].last_name).toBe('Smith');
+    expect(results.data[0].last_name).toBe(uniqueLastName);
   });
 
   it('returns contacts whose email matches the search term', async () => {

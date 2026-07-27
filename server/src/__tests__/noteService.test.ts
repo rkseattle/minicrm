@@ -39,11 +39,34 @@ let repId: string;
 let repActor: { id: string; name: string };
 let contactId: string;
 
-/** Deletes audit_log rows scoped to this test file, bypassing the append-only trigger. */
+/**
+ * Deletes audit_log rows scoped to this test file, bypassing the append-only
+ * trigger. Takes an arbitrary whereClause/params (a subquery against users,
+ * not a single actor ID), so this can't share testUtils.ts's
+ * clearAuditLogFor helper directly — same underlying fix though: all three
+ * statements run in one transaction on a single client, since ALTER TABLE
+ * ... DISABLE/ENABLE TRIGGER is catalog-level (visible to every concurrent
+ * connection, not session-scoped) but takes an ACCESS EXCLUSIVE lock on the
+ * table held until COMMIT — that lock serializes any other caller of this
+ * same disable/delete/enable sequence (including a different test file's
+ * own copy, run concurrently by Vitest against the shared test database)
+ * behind this one. See clearAuditLogFor's own docblock for the two claims
+ * verified directly against a real Postgres session pair.
+ */
 async function clearAuditLog(whereClause: string, params: unknown[]): Promise<void> {
-  await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-  await pool.query(`DELETE FROM audit_log WHERE ${whereClause}`, params);
-  await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await client.query(`DELETE FROM audit_log WHERE ${whereClause}`, params);
+    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 beforeAll(async () => {

@@ -30,13 +30,36 @@ async function cleanupTestPipelines(): Promise<void> {
   ]);
 }
 
-/** Clears audit entries written by this file. Disables the append-only trigger temporarily. */
+/**
+ * Clears audit entries written by this file. Disables the append-only
+ * trigger temporarily. Filters by record_type/record_name, not an actor
+ * ID, so this can't share testUtils.ts's clearAuditLogFor helper directly
+ * — same underlying fix though: all three statements run in one
+ * transaction on a single client, since ALTER TABLE ... DISABLE/ENABLE
+ * TRIGGER is catalog-level (visible to every concurrent connection, not
+ * session-scoped) but takes an ACCESS EXCLUSIVE lock on the table held
+ * until COMMIT — that lock serializes any other caller of this same
+ * disable/delete/enable sequence (including this file's own sibling,
+ * pipelineStageService.test.ts, run alongside it per SERIAL_FILES) behind
+ * this one. See clearAuditLogFor's own docblock for the two claims
+ * verified directly against a real Postgres session pair.
+ */
 async function clearPipelineAuditLog(): Promise<void> {
-  await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-  await pool.query(
-    `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines'`,
-  );
-  await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await client.query(
+      `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines'`,
+    );
+    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // ACTOR.id must reference a real user row because pipelines.created_by is a FK.

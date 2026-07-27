@@ -5,6 +5,7 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import pool from '../db.js';
 
 /** Returns an 8-character random hex string for use in test email addresses. */
 export const uid = () => randomUUID().slice(0, 8);
@@ -52,5 +53,45 @@ export async function waitUntil(
       throw new Error(`waitUntil: condition not met within ${timeoutMs}ms`);
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+}
+
+/**
+ * Deletes audit_log rows scoped to `actorId`, bypassing the append-only
+ * trigger (audit_log_no_modify, migration 000_baseline.js — BEFORE DELETE
+ * OR UPDATE only, never SELECT). Every audit-log integration test suite
+ * needs this same cleanup; it used to be duplicated per-file as three
+ * unwrapped pool.query() calls (DISABLE TRIGGER / DELETE / ENABLE TRIGGER).
+ *
+ * ALTER TABLE ... DISABLE/ENABLE TRIGGER is catalog-level, not
+ * session-scoped — it is visible to every concurrent connection, not just
+ * the one that issued it (verified directly: a second, independent session
+ * can INSERT past a trigger a first session disabled, before the first
+ * re-enables it). Wrapping all three statements in one transaction on a
+ * single client is the actual fix, not a workaround for that: ALTER TABLE
+ * DISABLE/ENABLE TRIGGER takes an ACCESS EXCLUSIVE lock on the table,
+ * released only at COMMIT (verified directly: a second session's own
+ * ALTER TABLE against the same table blocks until the first's transaction
+ * commits). That lock serializes any other caller of this same
+ * disable/delete/enable sequence — including a different test FILE's own
+ * concurrently-running beforeEach, since Vitest runs test files in
+ * parallel against the shared test database — behind this one, closing
+ * the race that otherwise lets one invocation's ENABLE TRIGGER fire before
+ * another's DELETE completes and trips "audit_log is append-only" on an
+ * unrelated test (found via a real cross-file-parallel test run failure).
+ */
+export async function clearAuditLogFor(actorId: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
+    await client.query('DELETE FROM audit_log WHERE changed_by_id = $1', [actorId]);
+    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 }

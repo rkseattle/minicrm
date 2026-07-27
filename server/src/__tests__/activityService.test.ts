@@ -25,7 +25,7 @@ import {
 } from '@minicrm/shared/schemas/activitySchema.js';
 import pool from '../db.js';
 import type { QueryResult } from 'pg';
-import { waitUntil } from './testUtils.js';
+import { waitUntil, clearAuditLogFor } from './testUtils.js';
 
 const FILE_PREFIX = 'act-svc';
 
@@ -901,9 +901,7 @@ const TEST_ACTOR = { id: '00000000-0000-0000-0000-000000000001', name: 'Audit Te
 
 describe('audit log entries (MINCRM-382)', () => {
   beforeEach(async () => {
-    await pool.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await pool.query(`DELETE FROM audit_log WHERE changed_by_id = $1`, [TEST_ACTOR.id]);
-    await pool.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
+    await clearAuditLogFor(TEST_ACTOR.id);
   });
 
   it('createActivity writes an audit entry with record_type=activity and event_type=created', async () => {
