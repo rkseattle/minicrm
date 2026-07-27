@@ -35,6 +35,12 @@ RUN npm run build --workspace=minicrm-server
 # Runtime stage: node only, no TypeScript source or tsx (MINCRM-288)
 FROM node:20-alpine
 
+# curl is required by docker-compose.yml's own healthcheck
+# (CMD curl -f http://localhost:3001/api/health) — node:20-alpine has no
+# curl by default, so that healthcheck always failed with "executable file
+# not found in $PATH" and the container never reported healthy.
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # tsc outputs to server/dist/server/src/ (mirrors workspace-relative source tree)
