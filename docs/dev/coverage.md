@@ -598,7 +598,7 @@ Three independent, off-by-default toggles so an unmodified run pays zero overhea
 
 ### Measured overhead
 
-Measured 2026-07-20 against a live `server-e2e` container, functional suite subset (`webhooks/` + `deals/`, 43 tests, desktop project, 2 local workers):
+Measured 2026-07-20 against a live E2E server container (then `server-e2e`, now `minicrm-test-server`), functional suite subset (`webhooks/` + `deals/`, 43 tests, desktop project, 2 local workers):
 
 | Mode                                                                | Total test duration | Overhead |
 | ------------------------------------------------------------------- | ------------------- | -------- |
@@ -721,12 +721,15 @@ COVERAGE_INSTRUMENTATION=true npx tsx server/src/server.ts
 COVERAGE=true npm run dev --workspace=minicrm-client
 ```
 
-**Local — E2E against a coverage-enabled server-e2e:**
+**Local — E2E against the coverage-enabled test server:**
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d server-e2e \
-  -e COVERAGE_INSTRUMENTATION=true  # or set in docker-compose.override.yml
+docker compose -f docker-compose.test.yml up -d server
 ```
+
+The test stack sets `COVERAGE_INSTRUMENTATION=true` and `COVERAGE_SESSION_MANAGEMENT=true`
+unconditionally (`docker-compose.test.yml`), so no extra flag is needed. Production
+deployments must never set either.
 
 Then enable the `coverage_instrumentation` feature flag (via the admin UI, or directly: `UPDATE feature_flags SET enabled = true WHERE flag_key = 'coverage_instrumentation'`) before calling the control API.
 

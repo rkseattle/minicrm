@@ -21,7 +21,7 @@ Read `.claude/gates/e2e-run.md` and run the gate. Key points, since this is wher
 run usually goes wrong:
 
 - `date` in its own Bash call, first.
-- Rebuild and recreate `server-e2e` — a stale container silently runs old server code
+- Rebuild and recreate the test server (`docker-compose.test.yml`) — a stale container silently runs old server code
   and produces failures that look like test bugs.
 - `rm -rf qa/e2e/test-results/` so stale output cannot influence the verdict.
 - Scope the `--grep` to the domains this branch touched. If you are not confident the

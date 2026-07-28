@@ -56,7 +56,7 @@ invocation.
 
 ### The E2E server, not client CPU, is the real capacity ceiling
 
-`minicrm-server-e2e-1` — the containerized API server — stayed pegged at
+`minicrm-test-server` — the containerized API server — stayed pegged at
 ~87-108% CPU for the entire `--workers=4` run. It is a single-threaded Node
 process (`tsx server.ts`, no clustering), so it saturates one core regardless
 of how many Playwright workers send it concurrent requests. Host CPU (12

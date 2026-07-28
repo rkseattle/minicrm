@@ -87,7 +87,7 @@ export default async function globalSetup(): Promise<void> {
   // Shares the same advisory lock key as runMigrations(), create-e2e-db.ts, and
   // migrate-fresh.ts (MINCRM-658), so this bootstrap cannot interleave with a
   // concurrent migration run against the same database (e.g. a developer
-  // running `npm test` while `server-e2e` is also booting against minicrm_test).
+  // running `npm test` while the test server is also booting against minicrm_test).
   await withMigrationLock(databaseUrl, async () => {
     await migrationRunner({ ...SHARED_OPTIONS, count: 1 });
     await migrationRunner({

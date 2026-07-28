@@ -11,10 +11,14 @@ git clone https://github.com/rkseattle/minicrm.git
 cd minicrm
 cp .env.example .env
 # Edit .env: set ADMIN_PASSWORD and generate JWT_SECRET (see .env.example for instructions)
-docker compose up -d
+docker compose --profile web up -d
 ```
 
-Open http://localhost:5173 — the admin account is created automatically on first boot.
+Open http://localhost — the admin account is created automatically on first boot.
+
+`--profile web` starts the nginx client on port 80. It serves a production build, so it
+does not hot-reload; for day-to-day development use the Vite dev server instead (see
+Local Development below).
 
 ## Documentation
 
@@ -74,13 +78,23 @@ npm run seed:demo
 To run with source mounts and hot-reload instead of built images:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+npm run dev:client   # separate terminal — Vite dev server with HMR
 ```
 
 The application will be available at:
 
-- Client: http://localhost:5173
+- Client: http://localhost:5173 (Vite dev server — this is the one with hot reload)
 - Server API: http://localhost:3001
+
+Hot reload only exists on the Vite dev server. The containerized client is a static
+production build behind the `web` profile and needs an image rebuild to pick up changes,
+so develop against 5173, not 80. (MINCRM-684)
+
+E2E runs against the isolated test environment in `docker-compose.test.yml`, never this
+stack. See [.claude/gates/e2e-run.md](.claude/gates/e2e-run.md). Repointing the server
+unit, coverage and TIA suites is in progress (MINCRM-684) — until that lands, `npm test`
+still targets port 5432.
 
 To develop without Docker:
 

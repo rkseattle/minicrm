@@ -148,7 +148,7 @@ describe('coverageSymbolicationService', () => {
       // repo-root-relative paths changeUnitResolver.ts derives from `git
       // diff` — e.g. a dump captured on a different machine, or (today's
       // known local-dev limitation) the E2E harness's host-run Vite dev
-      // server vs. server-e2e's containerized backend. Storing such a unit
+      // server vs. the containerized test-server backend. Storing such a unit
       // as resolved: true would silently claim it's usable for test
       // selection when it structurally cannot be.
       const istanbulPayload = {

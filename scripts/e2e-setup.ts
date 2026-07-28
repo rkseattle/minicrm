@@ -2,7 +2,7 @@
  * e2e-setup.ts — Initialise local E2E infrastructure before running the functional suite.
  *
  * Prerequisites:
- *   docker compose -f docker-compose.dev.yml --profile e2e up -d
+ *   docker compose -f docker-compose.test.yml up -d
  *
  * Steps:
  *   1. Create minicrm_e2e database and run migrations (MINCRM-330)
@@ -46,19 +46,28 @@ try {
 
 const E2E_DB_NAME = 'minicrm_e2e';
 
-const MINIO_HEALTH_URL = 'http://localhost:9000/minio/health/live';
+// Host-side MinIO port. The test stack publishes MinIO on 9002 (docker-compose.test.yml)
+// so it cannot collide with anything already bound to 9000. Container-side stays 9000 —
+// see MINIO_SERVER_ENDPOINT below. (MINCRM-684)
+const MINIO_HEALTH_URL = 'http://localhost:9002/minio/health/live';
 const MINIO_IMAGE = 'minio/minio:latest';
 const MINIO_BUCKET = 'minicrm-test-bucket';
 const MINIO_ALIAS = 'local';
-// Host-side endpoint (used by mc for bucket creation and health checks)
-const MINIO_ENDPOINT = 'http://localhost:9000';
-// Docker-internal endpoint written into system_settings so the server-e2e
-// container can reach MinIO via the Docker service name rather than localhost.
+// CONTAINER-side endpoint. `mc alias set` runs via `docker exec` inside the MinIO
+// container itself (see createMinioBucket below), so this localhost is the container's
+// own loopback, where MinIO listens on 9000 — NOT the published host port. It only ever
+// looked host-side because the two used to be the same number.
+const MINIO_CONTAINER_ENDPOINT = 'http://localhost:9000';
+// Docker-internal endpoint written into system_settings so the test server container
+// can reach MinIO via the Docker service name rather than localhost. Unaffected by the
+// host-side port change above — this is the in-network port.
 const MINIO_SERVER_ENDPOINT = 'http://minio:9000';
+/** Compose project owning the test stack — scopes container lookups below. */
+const TEST_COMPOSE_PROJECT = 'minicrm-test';
 const MINIO_ROOT_USER = 'minioadmin';
 const MINIO_ROOT_PASSWORD = 'minioadmin';
 
-// Docker-internal SMTP host written into system_settings so the server-e2e
+// Docker-internal SMTP host written into system_settings so the test server
 // container can reach Mailhog via the Docker service name rather than localhost.
 const MAILHOG_SERVER_HOST = 'mailhog';
 const MAILHOG_SMTP_PORT = '1025';
@@ -66,24 +75,64 @@ const MAILHOG_SMTP_PORT = '1025';
 const READINESS_TIMEOUT_MS = 30_000;
 const READINESS_POLL_INTERVAL_MS = 1_000;
 
+/** Host port of the isolated test Postgres (docker-compose.test.yml). */
+const TEST_DB_PORT = '5433';
+/** Host port of the DEV Postgres. This script must never connect to it. */
+const DEV_DB_PORT = '5432';
+
+/**
+ * Resolves the DB connection settings injected into every child process below.
+ *
+ * Defaults DB_PORT to the TEST stack (5433), never 5432. This script loads the root
+ * .env (above) for NODE_ENCRYPTION_KEY, which also carries DB_NAME=minicrm — and
+ * neither .env nor qa/e2e/.env sets DB_PORT. With a 5432 fallback, every child here
+ * would connect to the dev database, and resetE2eData() runs TRUNCATE audit_log
+ * CASCADE plus mass DELETEs. That is precisely how the dev database was wiped
+ * (MINCRM-684).
+ *
+ * Explicitly rejects DB_PORT=5432 rather than silently proceeding: a caller that sets
+ * it has almost certainly sourced the dev .env by mistake, and continuing would destroy
+ * their data. DB_NAME is forced to the test databases at each call site.
+ */
+function resolveTestDbEnv(): {
+  DB_USER: string;
+  DB_PASSWORD: string;
+  DB_HOST: string;
+  DB_PORT: string;
+} {
+  const dbPort = process.env.DB_PORT ?? TEST_DB_PORT;
+
+  if (dbPort === DEV_DB_PORT) {
+    console.error(
+      `[e2e:setup] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
+        '  This script truncates and reseeds every table it touches. Running it against\n' +
+        `  the dev stack destroys your data. The test stack listens on ${TEST_DB_PORT}:\n` +
+        '    docker compose -f docker-compose.test.yml up -d\n' +
+        '  Unset DB_PORT (or set it to 5433) and re-run.',
+    );
+    process.exit(1);
+  }
+
+  return {
+    DB_USER: process.env.DB_USER ?? 'minicrm',
+    DB_PASSWORD: process.env.DB_PASSWORD ?? 'password',
+    DB_HOST: process.env.DB_HOST ?? 'localhost',
+    DB_PORT: dbPort,
+  };
+}
+
 // ── Step 1: Create minicrm_e2e database and run migrations ───────────────────
 
 function ensureE2eDatabase(): void {
   console.log(`[e2e:setup] Ensuring ${E2E_DB_NAME} database exists and is migrated...`);
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run create:e2e-db --workspace=minicrm-server', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
+      ...dbEnv,
     },
   });
 
@@ -99,19 +148,13 @@ const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
 function ensureCoverageE2eDatabase(): void {
   console.log(`[e2e:setup] Ensuring ${COVERAGE_E2E_DB_NAME} database exists and is migrated...`);
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run create:coverage-e2e-db --workspace=minicrm-qa', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
+      ...dbEnv,
     },
   });
 
@@ -138,20 +181,14 @@ function resetE2eData(): void {
 
   console.log('[e2e:setup] Resetting accumulated E2E test data...');
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run reset:e2e-data --workspace=minicrm-server', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
+      ...dbEnv,
       DB_NAME: E2E_DB_NAME,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
       E2E_ADMIN_EMAIL: adminEmail,
     },
   });
@@ -175,20 +212,14 @@ function seedE2eAdmin(): void {
 
   console.log('[e2e:setup] Seeding E2E admin user...');
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run seed:e2e-admin', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
+      ...dbEnv,
       DB_NAME: E2E_DB_NAME,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
       E2E_ADMIN_EMAIL: adminEmail,
       E2E_ADMIN_PASSWORD: adminPassword,
     },
@@ -221,7 +252,7 @@ async function waitForMinio(): Promise<void> {
   console.error(
     `[e2e:setup] ERROR: MinIO did not become ready within ${READINESS_TIMEOUT_MS / 1000} seconds.\n` +
       '  Make sure the e2e Compose profile is running:\n' +
-      '    docker compose -f docker-compose.dev.yml --profile e2e up -d',
+      '    docker compose -f docker-compose.test.yml up -d',
   );
   process.exit(1);
 }
@@ -231,15 +262,22 @@ async function waitForMinio(): Promise<void> {
 function createMinioBucket(): void {
   console.log('[e2e:setup] Locating MinIO container...');
 
-  const containerId = execSync(`docker ps --filter "ancestor=${MINIO_IMAGE}" --format "{{.ID}}"`)
+  // Scoped to the test Compose project, not just the image: an `ancestor=` filter alone
+  // matches every running MinIO on the machine and returns them newline-joined, which
+  // would interpolate into a malformed `docker exec`. (MINCRM-684)
+  const containerId = execSync(
+    `docker ps --filter "label=com.docker.compose.project=${TEST_COMPOSE_PROJECT}" ` +
+      `--filter "ancestor=${MINIO_IMAGE}" --format "{{.ID}}"`,
+  )
     .toString()
     .trim();
 
   if (!containerId) {
     console.error(
-      `[e2e:setup] ERROR: No running container found for image "${MINIO_IMAGE}".\n` +
-        '  Make sure the e2e Compose profile is running:\n' +
-        '    docker compose -f docker-compose.dev.yml --profile e2e up -d',
+      `[e2e:setup] ERROR: No running MinIO container found in the "${TEST_COMPOSE_PROJECT}" ` +
+        'Compose project.\n' +
+        '  Start the test stack first:\n' +
+        '    docker compose -f docker-compose.test.yml up -d',
     );
     process.exit(1);
   }
@@ -247,7 +285,7 @@ function createMinioBucket(): void {
   console.log(`[e2e:setup] Found MinIO container: ${containerId}`);
 
   execSync(
-    `docker exec ${containerId} mc alias set ${MINIO_ALIAS} ${MINIO_ENDPOINT} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}`,
+    `docker exec ${containerId} mc alias set ${MINIO_ALIAS} ${MINIO_CONTAINER_ENDPOINT} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}`,
     { stdio: 'pipe' },
   );
 
@@ -264,20 +302,14 @@ function createMinioBucket(): void {
 function seedStorageConfig(): void {
   console.log('[e2e:setup] Seeding MinIO storage config into system_settings...');
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run seed:e2e-storage', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
+      ...dbEnv,
       DB_NAME: E2E_DB_NAME,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
       E2E_STORAGE_ENDPOINT: MINIO_SERVER_ENDPOINT,
       E2E_STORAGE_BUCKET: MINIO_BUCKET,
       E2E_STORAGE_ACCESS_KEY_ID: MINIO_ROOT_USER,
@@ -295,20 +327,14 @@ function seedStorageConfig(): void {
 function seedSmtpConfig(): void {
   console.log('[e2e:setup] Seeding Mailhog SMTP config into smtp_configuration...');
 
-  const dbUser = process.env.DB_USER ?? 'minicrm';
-  const dbPassword = process.env.DB_PASSWORD ?? 'password';
-  const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = process.env.DB_PORT ?? '5432';
+  const dbEnv = resolveTestDbEnv();
 
   execSync('npm run seed:e2e-smtp', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DB_USER: dbUser,
-      DB_PASSWORD: dbPassword,
+      ...dbEnv,
       DB_NAME: E2E_DB_NAME,
-      DB_HOST: dbHost,
-      DB_PORT: dbPort,
       E2E_SMTP_HOST: MAILHOG_SERVER_HOST,
       E2E_SMTP_PORT: MAILHOG_SMTP_PORT,
     },

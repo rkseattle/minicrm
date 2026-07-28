@@ -56,7 +56,7 @@ services:
       E2E: ${E2E:-false}
       COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
       # Off by default (zero-overhead — see coverageConfig.ts's own
-      # resolveCoverageConfig). Previously only server-e2e set these
+      # resolveCoverageConfig). Previously only the E2E server set these
       # (docker-compose.dev.yml), so the coverage-dashboard app's Sessions
       # tab and any backend coverage collection never worked against this
       # ordinary dev server at all, E2E or not — set both to 'true' in
@@ -84,8 +84,20 @@ services:
       retries: 3
       start_period: 15s
 
+  # MINCRM-684: Behind the `web` profile so it does not start with a plain local
+  # `docker compose up`. This image serves a production build baked in at build time
+  # (client/Dockerfile) — it has no /@vite/client and cannot hot-reload, so a developer
+  # who opens http://localhost sees stale assets and concludes HMR is broken. Local dev
+  # uses the Vite dev server on :5173 instead (`npm run dev:client`).
+  #
+  # Deployments must pass the profile explicitly:
+  #   docker compose --profile web --profile backup up -d
+  # See docs/operations.md — this file is the production deployment artifact, so the
+  # service is profiled rather than removed.
   client:
     container_name: minicrm-client
+    profiles:
+      - web
     logging: *default-logging
     build:
       context: .

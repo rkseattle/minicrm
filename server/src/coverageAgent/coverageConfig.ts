@@ -66,7 +66,7 @@ function resolveGranularity(): CoverageGranularity {
  * checkout.
  *
  * This resolves ONLY the backend-vs-workspace-cwd mismatch above. Local
- * Docker's server-e2e container has no such mismatch for its OWN process
+ * Docker's test-server container has no such mismatch for its OWN process
  * (its command is a direct `npx tsx server/src/server.ts` with WORKDIR /app
  * as the repo root, so process.cwd() already IS the repo root there) — but
  * that local topology has a SEPARATE, unresolved problem this function does
