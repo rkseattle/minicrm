@@ -42,6 +42,12 @@ in `check-framework-purity.sh`: `MINCRM-*` ticket refs match the `mini?crm` patt
 and the word `pipeline` matches the CRM i18n namespace check — including inside JSDoc
 `@example` and `@param` blocks. Rephrase rather than suppress.
 
+**Any `.env*.example` in the diff** — `bash qa/scripts/check-env-example-parity.sh`.
+Asserts each template declares the same variable names as the local file it is copied
+to. `.env.test.example` had silently lost `COVERAGE_DB_NAME` and `NODE_ENCRYPTION_KEY`,
+so a fresh clone got a test suite that failed with no hint the template was incomplete
+(MINCRM-684).
+
 **Any `docker-compose*.yml` in the diff** — `bash qa/scripts/check-compose-isolation.sh`
 is mandatory for that commit. It asserts the dev and test stacks share no
 `container_name`, no published host port, and no named volume, and that the test stack

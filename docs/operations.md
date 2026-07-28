@@ -481,8 +481,9 @@ Two shell scripts in `scripts/` perform backups and restores directly against a
 PostgreSQL instance accessible from the host — useful when you are not using the
 Docker-based automated service or when you need a one-off backup before an upgrade.
 
-Both scripts read the same environment variables as `docker-compose.yml`.
-Set them in your shell or prefix the command:
+Both scripts read the same environment variables as `docker-compose.yml`. The values
+below are the **dev/production** stack (port 5432) — backups target real data, never the
+test stack on 5433. Set them in your shell or prefix the command:
 
 ```bash
 export DB_HOST=localhost DB_PORT=5432 DB_USER=minicrm DB_NAME=minicrm

@@ -91,10 +91,10 @@ Hot reload only exists on the Vite dev server. The containerized client is a sta
 production build behind the `web` profile and needs an image rebuild to pick up changes,
 so develop against 5173, not 80. (MINCRM-684)
 
-E2E runs against the isolated test environment in `docker-compose.test.yml`, never this
-stack. See [.claude/gates/e2e-run.md](.claude/gates/e2e-run.md). Repointing the server
-unit, coverage and TIA suites is in progress (MINCRM-684) — until that lands, `npm test`
-still targets port 5432.
+Automated tests never touch this stack. The server unit, coverage and E2E suites all run
+against the isolated test environment in `docker-compose.test.yml` (Postgres on 5433) —
+see [.claude/gates/e2e-run.md](.claude/gates/e2e-run.md) and Running Tests below.
+(MINCRM-684)
 
 To develop without Docker:
 
@@ -118,9 +118,12 @@ npm run dev --workspace=minicrm-client
 
 ## Running Tests
 
-**Server tests** (requires a running Postgres instance):
+**Server tests** (run against the isolated test stack, never the dev database):
 
 ```bash
+# Start the test stack first — the suite targets Postgres on 5433, not 5432.
+docker compose -f docker-compose.test.yml up -d
+
 cp .env.test.example .env.test
 # Fill in DB_PASSWORD and JWT_SECRET — see comments in .env.test.example for generation instructions.
 # Never commit .env.test — it is excluded by .gitignore.
