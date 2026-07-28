@@ -29,6 +29,13 @@ stack: Postgres on **5433**, server on 3002, MinIO on 9002/9003 (MINCRM-684). Ne
 point an E2E run at the dev stack's 5432/3001. `E2E_API_URL=http://localhost:3002` and
 `E2E_BASE_URL=http://localhost:5173` live in `qa/e2e/.env`.
 
+> **`e2e:client`, not `dev:client`.** Both serve Vite on **the same port, 5173**, and
+> differ only in `API_URL` — `e2e:client` proxies to the test server (3002),
+> `dev:client` to the dev server (3001). Starting the wrong one is silent: the page
+> loads normally, then every login times out in `waitForURL` because the browser is
+> authenticating against a stack whose database has no E2E admin. If a run fails at
+> login with no other explanation, check which Vite is running before anything else.
+
 Regenerating `qa/coverage-map.json` locally requires frontend coverage
 instrumentation, which is off by default: start the client with
 `COVERAGE=true npm run e2e:client` instead. Without it, `window.__coverage__`
