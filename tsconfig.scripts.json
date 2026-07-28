@@ -1,12 +1,24 @@
 {
+  // Typechecks the root scripts/ directory. No workspace tsconfig covers it — each is
+  // scoped to its own package, and qa's "scripts/**/*.ts" is qa-relative — so these
+  // files fell through every gate. A renamed symbol left one stale reference in
+  // pre-push-tia.ts and reached a commit as a ReferenceError that broke the targeted
+  // TIA path, surfacing as "Test run failed" rather than as the syntax error it was.
+  // Wired into the root `typecheck` script so that cannot recur. (MINCRM-684)
+  //
+  // ESNext module/bundler resolution, not Node16: these run under tsx as ES modules and
+  // use import.meta.url, which Node16 rejects as CommonJS-incompatible. That mismatch is
+  // why this config existed but was never part of the typecheck chain.
   "compilerOptions": {
     "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noEmit": true
   },
-  "include": ["scripts/**/*"]
+  "include": ["scripts/**/*.ts"]
 }

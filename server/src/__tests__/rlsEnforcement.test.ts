@@ -36,6 +36,7 @@ import { createAccount } from '../services/accountService.js';
 import { createDeal } from '../services/dealService.js';
 import { createLead } from '../services/leadsService.js';
 import { createActivity } from '../services/activityService.js';
+import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
 
 // ── Test users ────────────────────────────────────────────────────────────────
 
@@ -79,7 +80,9 @@ let appPool: pg.Pool;
 // ── Setup & teardown ──────────────────────────────────────────────────────────
 
 beforeAll(async () => {
-  const { DB_HOST = 'localhost', DB_PORT = '5432', DB_NAME } = process.env;
+  // No 5432 default — see globalSetup.ts. (MINCRM-684)
+  const DB_PORT = assertTestDatabasePort('rlsEnforcement.test');
+  const { DB_HOST = 'localhost', DB_NAME } = process.env;
 
   appPool = new pg.Pool({
     user: 'minicrm_app',

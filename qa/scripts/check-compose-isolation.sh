@@ -97,11 +97,14 @@ if [ -n "$dup_ports" ]; then
   echo "$dup_ports" | sed 's/^/    /'
 fi
 
-# ── 4. named volume collisions ───────────────────────────────────────────────
+# ── 4. named volume / network collisions ─────────────────────────────────────
+# The `name:` key under a top-level volumes: or networks: block renders identically, so
+# this catches both. Both must be disjoint, and both are project-scoped by Compose, so a
+# collision here means a project name clash rather than a stray declaration.
 dup_volumes=$( { grep -oE '^    name: minicrm[a-z0-9_-]*$' <<<"$dev_config"
                  grep -oE '^    name: minicrm[a-z0-9_-]*$' <<<"$test_config"; } | sort | uniq -d)
 if [ -n "$dup_volumes" ]; then
-  fail "named volume shared between the dev and test stacks:"
+  fail "named volume or network shared between the dev and test stacks:"
   echo "$dup_volumes" | sed 's/^/    /'
 fi
 

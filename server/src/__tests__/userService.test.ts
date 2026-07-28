@@ -587,11 +587,12 @@ describe('seedDefaultAdmin', () => {
     expect(rows[0].count).toBe(1);
   });
 
-  // ADMIN_EMAIL taken by a user who cannot log in as admin is an unbootable
-  // configuration. Returning quietly would leave the deployment with no way in and
-  // only a log line behind — the silent lockout this ticket removes — so startup must
-  // fail loudly instead.
-  it('throws when ADMIN_EMAIL is taken by a non-admin user', async () => {
+  // ADMIN_EMAIL taken by a user who cannot log in as admin is logged loudly but must
+  // NOT throw: seedDefaultAdmin runs inside server.ts's startup block, whose catch
+  // exits the process. Demoting or deactivating the bootstrap admin is a supported
+  // admin-UI action, so throwing would turn a routine change into a boot loop on the
+  // next restart. The seed is a bootstrap convenience, not a liveness requirement.
+  it('warns without throwing when ADMIN_EMAIL is taken by a non-admin user', async () => {
     const address = `${FILE_PREFIX}-seed-conflict-role@example.com`;
     await createUser({
       email: address,
@@ -604,10 +605,14 @@ describe('seedDefaultAdmin', () => {
     process.env.ADMIN_NAME = 'Seed Admin';
     process.env.ADMIN_PASSWORD = 'SeedPass1';
 
-    await expect(seedDefaultAdmin()).rejects.toThrow(/role="rep"/);
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+
+    // The existing row is left exactly as it was — never silently promoted.
+    const stillRep = await findUserByEmail(address);
+    expect(stillRep!.role).toBe('rep');
   });
 
-  it('throws when ADMIN_EMAIL is taken by a deactivated admin', async () => {
+  it('warns without throwing when ADMIN_EMAIL is taken by a deactivated admin', async () => {
     const address = `${FILE_PREFIX}-seed-conflict-status@example.com`;
     const user = await createUser({
       email: address,
@@ -621,13 +626,16 @@ describe('seedDefaultAdmin', () => {
     process.env.ADMIN_NAME = 'Seed Admin';
     process.env.ADMIN_PASSWORD = 'SeedPass1';
 
-    await expect(seedDefaultAdmin()).rejects.toThrow(/status="inactive"/);
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+
+    const stillInactive = await findUserByEmail(address);
+    expect(stillInactive!.status).toBe('inactive');
   });
 
   // An active admin with no password_hash boots fine but cannot log in —
   // authController rejects it with AUTH_ACCOUNT_NOT_ACTIVATED. Invited and
   // SCIM/SSO-provisioned rows are created this way and can be promoted to admin.
-  it('throws when ADMIN_EMAIL is taken by an admin with no password hash', async () => {
+  it('warns without throwing when ADMIN_EMAIL is taken by an admin with no password hash', async () => {
     const address = `${FILE_PREFIX}-seed-conflict-nohash@example.com`;
     await createUser({
       email: address,
@@ -640,7 +648,10 @@ describe('seedDefaultAdmin', () => {
     process.env.ADMIN_NAME = 'Seed Admin';
     process.env.ADMIN_PASSWORD = 'SeedPass1';
 
-    await expect(seedDefaultAdmin()).rejects.toThrow(/password_hash=null/);
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+
+    const stillHashless = await findUserByEmail(address);
+    expect(stillHashless!.password_hash).toBeNull();
   });
 
   it('is a no-op when ADMIN_EMAIL is not set', async () => {
