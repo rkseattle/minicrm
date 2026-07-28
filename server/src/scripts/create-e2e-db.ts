@@ -18,6 +18,7 @@ import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import { MIGRATIONS_DIR, countBaselineCoveredMigrations, withMigrationLock } from '../migrate.js';
+import { assertTestDatabasePort } from './assertTestDatabaseTarget.js';
 
 const E2E_DB_NAME = 'minicrm_e2e';
 
@@ -25,7 +26,9 @@ async function main(): Promise<void> {
   const dbUser = process.env.DB_USER ?? 'minicrm';
   const dbPassword = process.env.DB_PASSWORD ?? 'password';
   const dbHost = process.env.DB_HOST ?? 'localhost';
-  const dbPort = Number(process.env.DB_PORT) || 5432;
+  // No 5432 fallback: provisioning test databases on the dev instance recreates the
+  // shared-Postgres setup this separation removed. (MINCRM-684)
+  const dbPort = Number(assertTestDatabasePort('create-e2e-db'));
 
   // Connect to the postgres maintenance database to create the E2E DB if absent.
   const adminClient = new pg.Client({

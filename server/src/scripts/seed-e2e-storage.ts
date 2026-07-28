@@ -23,6 +23,7 @@
 import 'dotenv/config';
 import crypto from 'crypto';
 import pg from 'pg';
+import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
 
 const { Pool } = pg;
 
@@ -34,9 +35,7 @@ const IV_BYTES = 12;
 function getKey(): Buffer {
   const raw = process.env.NODE_ENCRYPTION_KEY ?? '';
   if (raw.length !== 64 || !/^[0-9a-fA-F]+$/.test(raw)) {
-    throw new Error(
-      'NODE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).',
-    );
+    throw new Error('NODE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).');
   }
   return Buffer.from(raw, 'hex');
 }
@@ -52,12 +51,17 @@ function encrypt(plaintext: string): string {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+// Refuse to run against anything but a test database — this script is destructive.
+// The returned target IS the connection config: resolving DB_PORT/DB_NAME again from
+// process.env would reintroduce the `|| 5432` fallback the guard exists to remove.
+const testDbTarget = assertTestDatabaseTarget('seed-e2e-storage');
+
 const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  host: process.env.DB_HOST ?? 'localhost',
-  port: Number(process.env.DB_PORT) || 5432,
+  database: testDbTarget.database,
+  host: testDbTarget.host,
+  port: Number(testDbTarget.port),
 });
 
 async function main(): Promise<void> {
@@ -92,9 +96,7 @@ async function main(): Promise<void> {
         [key, value],
       );
     }
-    console.log(
-      `[seed-e2e-storage] Storage config written: endpoint=${endpoint} bucket=${bucket}`,
-    );
+    console.log(`[seed-e2e-storage] Storage config written: endpoint=${endpoint} bucket=${bucket}`);
   } finally {
     client.release();
     await pool.end();

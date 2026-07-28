@@ -36,15 +36,21 @@
  */
 
 import pg from 'pg';
+import { assertTestDatabaseTarget } from './assertTestDatabaseTarget.js';
 
 const { Pool } = pg;
+
+// Refuse to run against anything but a test database — this script is destructive.
+// The returned target IS the connection config: resolving DB_PORT/DB_NAME again from
+// process.env would reintroduce the `|| 5432` fallback the guard exists to remove.
+const testDbTarget = assertTestDatabaseTarget('reset-e2e-data');
 
 const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  host: process.env.DB_HOST ?? 'localhost',
-  port: Number(process.env.DB_PORT) || 5432,
+  database: testDbTarget.database,
+  host: testDbTarget.host,
+  port: Number(testDbTarget.port),
 });
 
 // Seed pipeline stage names that must never be deleted.

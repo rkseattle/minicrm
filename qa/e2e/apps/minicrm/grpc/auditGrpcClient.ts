@@ -14,6 +14,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { GrpcClientError } from '@framework/clients/grpc-client.js';
 import type { GrpcClient } from '@framework/clients/grpc-client.js';
+import { resolveApiBaseUrl } from '../apiBaseUrl.js';
 
 // ── Domain types (snake_case, mirrors proto field names for compatibility) ────
 
@@ -160,7 +161,7 @@ function encodeConnectFrame(json: unknown): Uint8Array {
 }
 
 function apiBase(): string {
-  return process.env['E2E_API_URL'] ?? 'http://localhost:3002';
+  return resolveApiBaseUrl();
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

@@ -38,12 +38,13 @@ import { searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import { searchAccountsViaApi } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealsByAccount } from '@behaviors/minicrm/deals.behaviors.js';
 import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
 
 // ---------------------------------------------------------------------------
 // Import request helper — wraps Playwright multipart POSTs to admin import
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
+const BASE_URL = resolveApiBaseUrl();
 
 async function importParse(
   request: APIRequestContext,
