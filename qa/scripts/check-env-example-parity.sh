@@ -20,23 +20,33 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-# example-file:local-file pairs.
-#
-# .env / .env.example is deliberately NOT listed yet: that pair has pre-existing drift
-# (the local .env omits DB_HOST/DB_PORT/PORT/SMTP_*, and carries COVERAGE_*/E2E the
-# template lacks). The missing DB_PORT is the very reason every non-.env.test path fell
-# back to localhost:5432 — worth fixing, but it means editing a developer's live dev
-# environment and is outside MINCRM-684's scope. Tracked separately; add the pair here
-# once reconciled.
-PAIRS=(
-  ".env.test.example:.env.test"
-  "qa/e2e/.env.example:qa/e2e/.env"
-)
+# Derived from the tracked templates rather than hand-listed: a hand-maintained list is
+# itself a thing that drifts, and the whole point of this check is to catch drift. Every
+# tracked `*.env*.example` maps to the local file it is copied to by dropping `.example`.
+PAIRS=()
+while IFS= read -r example; do
+  [ -n "$example" ] && PAIRS+=("${example}:${example%.example}")
+done < <(git ls-files '*.env.example' '*.env*.example' 2>/dev/null | sort -u)
 
-# Extracts sorted, unique variable names. Ignores comments, blanks and indented
-# continuation lines; tolerates `export FOO=` and trailing whitespace.
+if [ ${#PAIRS[@]} -eq 0 ]; then
+  echo "check-env-example-parity: no tracked .env*.example templates found — nothing to check."
+  exit 0
+fi
+
+# Active (uncommented) variable names. Tolerates `export FOO=` and leading whitespace.
 env_keys() {
   sed -E 's/^[[:space:]]*export[[:space:]]+//' "$1" \
+    | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' \
+    | cut -d= -f1 \
+    | sort -u
+}
+
+# Every name a template DOCUMENTS, active or commented (`# FOO=bar`). Templates mark
+# optional variables by commenting them out, so a commented entry still counts as
+# documented — otherwise this check would force developers to declare variables they do
+# not need, contradicting .env.example's own "required unless marked optional" contract.
+documented_keys() {
+  sed -E 's/^[[:space:]]*#[[:space:]]*//; s/^[[:space:]]*export[[:space:]]+//' "$1" \
     | grep -E '^[A-Za-z_][A-Za-z0-9_]*=' \
     | cut -d= -f1 \
     | sort -u
@@ -54,8 +64,12 @@ for pair in "${PAIRS[@]}"; do
     continue
   fi
 
-  only_local=$(comm -23 <(env_keys "$local_file") <(env_keys "$example"))
-  only_example=$(comm -13 <(env_keys "$local_file") <(env_keys "$example"))
+  # Anything active locally must at least be documented in the template — that is the
+  # drift that strands a fresh clone (COVERAGE_DB_NAME / NODE_ENCRYPTION_KEY, MINCRM-684).
+  only_local=$(comm -23 <(env_keys "$local_file") <(documented_keys "$example"))
+  # Anything the template declares ACTIVE (not commented) is required, so it must exist
+  # locally. Commented template entries are optional and intentionally not required.
+  only_example=$(comm -13 <(documented_keys "$local_file") <(env_keys "$example"))
 
   if [ -n "$only_local" ]; then
     echo "FAIL: $local_file defines variables missing from $example:"
