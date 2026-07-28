@@ -266,7 +266,7 @@ function runPlaywright(specFiles: readonly string[]): void {
   execFileSync('npm', args, {
     cwd: resolve(REPO_ROOT, 'qa'),
     stdio: 'inherit',
-    env: { ...process.env, ...TEST_STACK_DB_ENV },
+    env: { ...process.env, ...testStackDbEnv() },
   });
 }
 

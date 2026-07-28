@@ -334,17 +334,29 @@ export async function listActiveUsers(): Promise<ActiveUserRow[]> {
  * only a log line behind, which is the silent lockout MINCRM-684 exists to remove.
  * Throwing lets server.ts's startup handler exit the process loudly instead.
  */
-function assertUsableAdmin(user: UserRow, normalizedAdminEmail: string): void {
+function warnIfAdminUnusable(user: UserRow, normalizedAdminEmail: string): void {
   // password_hash is part of the contract, not a detail: authController rejects login
   // with AUTH_ACCOUNT_NOT_ACTIVATED when it is null, so an active admin with no hash
   // boots cleanly and still cannot sign in. Invited users and SCIM/SSO-provisioned
   // rows are created without one and can be promoted to admin later.
   if (user.role === 'admin' && user.status === 'active' && user.password_hash !== null) return;
-  throw new Error(
-    `Cannot seed default admin: "${normalizedAdminEmail}" is already taken by a user with ` +
+
+  // Warn, never throw. ADMIN_EMAIL stays set for the life of a deployment
+  // (docker-compose.yml passes it unconditionally), and demoting or deactivating that
+  // user is a supported admin-UI action — userController's updateUserRole and
+  // updateUserStatus. Throwing here would run inside server.ts's startup block, whose
+  // catch calls process.exit(1), so an operator who promotes a second admin and
+  // deactivates the original bootstrap account would turn their next restart into a
+  // boot loop recoverable only by editing .env on the host. That is a worse failure
+  // than the lockout this function fixes: previously the service still ran and only the
+  // seed no-op'd silently. The seed is a bootstrap convenience, not a liveness
+  // requirement — log loudly and let the server come up.
+  logger.warn(
+    `Skipping default admin seed: "${normalizedAdminEmail}" is taken by a user with ` +
       `role="${user.role}" status="${user.status}" ` +
-      `password_hash=${user.password_hash === null ? 'null' : 'set'}. ` +
-      `Resolve the conflict or set a different ADMIN_EMAIL.`,
+      `password_hash=${user.password_hash === null ? 'null' : 'set'}, ` +
+      'which cannot be used to log in. Reactivate or re-promote that account, or set a ' +
+      'different ADMIN_EMAIL.',
   );
 }
 
@@ -377,7 +389,7 @@ export async function seedDefaultAdmin(): Promise<void> {
 
   const existing = await findUserByEmail(normalizedAdminEmail);
   if (existing) {
-    assertUsableAdmin(existing, normalizedAdminEmail);
+    warnIfAdminUnusable(existing, normalizedAdminEmail);
     logger.info(`Default admin user already exists, skipping seed: ${normalizedAdminEmail}`);
     return;
   }
@@ -409,7 +421,7 @@ export async function seedDefaultAdmin(): Promise<void> {
     // no-op, not a failure.
     const conflicting = await findUserByEmail(normalizedAdminEmail);
     if (!conflicting) throw error; // Row vanished — not the race we handle; surface it.
-    assertUsableAdmin(conflicting, normalizedAdminEmail);
+    warnIfAdminUnusable(conflicting, normalizedAdminEmail);
     logger.info(`Default admin user created concurrently, skipping seed: ${normalizedAdminEmail}`);
     return;
   }

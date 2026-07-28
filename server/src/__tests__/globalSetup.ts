@@ -24,6 +24,7 @@ import {
   countBaselineCoveredMigrations,
   withMigrationLock,
 } from '../migrate.js';
+import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
 
 /** Creates `databaseName` (via the ambient 'postgres' maintenance database) if it doesn't already exist. */
 async function ensureDatabaseExists(params: {
@@ -56,7 +57,14 @@ async function ensureDatabaseExists(params: {
 }
 
 export default async function globalSetup(): Promise<void> {
-  const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
+  // No 5432 default. This function runs CREATE DATABASE and the full migration
+  // sequence, so a wrong port provisions minicrm_test on the DEV instance — the shared
+  // setup MINCRM-684 removed. Isolation must not rest solely on .env.test carrying
+  // DB_PORT: a bare `npx vitest run` (without the DOTENV_CONFIG_PATH that
+  // server/package.json's `test` script sets) would otherwise silently target dev.
+  // assertTestDatabasePort exempts CI, where 5432 is the only Postgres.
+  const DB_PORT = assertTestDatabasePort('vitest-globalSetup');
+  const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost' } = process.env;
 
   await ensureDatabaseExists({
     user: DB_USER,

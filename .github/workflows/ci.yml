@@ -91,6 +91,9 @@ jobs:
               - 'qa/e2e/*.ts'
               - 'qa/scripts/**/*.sh'
               - 'qa/scripts/**/*.ts'
+              # check-compose-isolation.sh (below) validates these, so a compose-only
+              # change must still trigger this job. (MINCRM-684)
+              - 'docker-compose*.yml'
               - 'qa/package.json'
               - 'qa/package-lock.json'
               - 'qa/tsconfig*.json'
@@ -676,6 +679,9 @@ jobs:
 
       - name: Check spec files do not use waitForLoadState('networkidle') (MINCRM-551)
         run: bash qa/scripts/check-networkidle.sh
+
+      - name: Check dev and test Compose stacks stay isolated (MINCRM-684)
+        run: bash qa/scripts/check-compose-isolation.sh
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests

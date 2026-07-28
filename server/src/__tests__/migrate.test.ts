@@ -20,8 +20,12 @@ import {
   runCoverageMigrations,
   runMigrations,
 } from '../migrate.js';
+import { assertTestDatabasePort } from '../scripts/assertTestDatabaseTarget.js';
 
-const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost', DB_PORT = '5432' } = process.env;
+// No 5432 default: this file creates and drops scratch databases, so a wrong port acts
+// on the dev instance. globalSetup validates first, making this belt-and-braces.
+const DB_PORT = assertTestDatabasePort('migrate.test');
+const { DB_USER, DB_PASSWORD, DB_NAME, DB_HOST = 'localhost' } = process.env;
 const databaseUrl = `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
 
 const FIXTURE_TABLE = 'migrate_lock_test_widgets';
@@ -203,7 +207,7 @@ describe('runCoverageMigrations', () => {
   // suites share) so this test genuinely proves "creates a database that
   // does not exist yet" rather than exercising an already-provisioned one.
   const testDbName = `migrate_test_coverage_db_${randomUUID().replace(/-/g, '_')}`;
-  const adminDatabaseUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/postgres`;
+  const adminDatabaseUrl = `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${DB_PORT}/postgres`;
 
   afterEach(async () => {
     const adminClient = new pg.Client({ connectionString: adminDatabaseUrl });
@@ -238,7 +242,7 @@ describe('runCoverageMigrations', () => {
       }
 
       const coverageClient = new pg.Client({
-        connectionString: `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${process.env.DB_PORT ?? 5432}/${testDbName}`,
+        connectionString: `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST ?? 'localhost'}:${DB_PORT}/${testDbName}`,
       });
       await coverageClient.connect();
       try {
