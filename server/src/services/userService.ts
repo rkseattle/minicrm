@@ -20,6 +20,17 @@ const SYSTEM_ACTOR: AuditActor = { id: '00000000-0000-0000-0000-000000000000', n
 /** Number of bcrypt salt rounds for password hashing */
 const BCRYPT_SALT_ROUNDS = 12;
 
+/**
+ * PostgreSQL unique_violation SQLSTATE. Declared module-locally, as ~20 other services
+ * already do — migrate.ts has its own copy but is the migration runner, and importing
+ * from it would couple this service to that layer for a two-character constant.
+ * Consolidating all of them into a shared module is worth doing, but as its own change.
+ */
+const PG_UNIQUE_VIOLATION = '23505';
+
+/** Unique constraint on users.email (db/migrations/001_create_users.js). */
+const USERS_EMAIL_CONSTRAINT = 'users_email_key';
+
 /** Full user row as stored in the database */
 export interface UserRow {
   id: string;
@@ -315,14 +326,42 @@ export async function listActiveUsers(): Promise<ActiveUserRow[]> {
 }
 
 /**
- * Seeds a default admin user if no users exist in the database.
- * Reads credentials from ADMIN_EMAIL, ADMIN_NAME, and ADMIN_PASSWORD env vars.
- * No-op if any user already exists.
+ * Throws unless `user` can actually be used to log in as the bootstrap admin.
+ *
+ * Reached from both seedDefaultAdmin paths: the pre-insert lookup and the post-insert
+ * unique-violation recovery. If ADMIN_EMAIL is taken by a rep or a deactivated account,
+ * seeding cannot proceed and the deployment has no way in — booting anyway would leave
+ * only a log line behind, which is the silent lockout MINCRM-684 exists to remove.
+ * Throwing lets server.ts's startup handler exit the process loudly instead.
+ */
+function assertUsableAdmin(user: UserRow, normalizedAdminEmail: string): void {
+  // password_hash is part of the contract, not a detail: authController rejects login
+  // with AUTH_ACCOUNT_NOT_ACTIVATED when it is null, so an active admin with no hash
+  // boots cleanly and still cannot sign in. Invited users and SCIM/SSO-provisioned
+  // rows are created without one and can be promoted to admin later.
+  if (user.role === 'admin' && user.status === 'active' && user.password_hash !== null) return;
+  throw new Error(
+    `Cannot seed default admin: "${normalizedAdminEmail}" is already taken by a user with ` +
+      `role="${user.role}" status="${user.status}" ` +
+      `password_hash=${user.password_hash === null ? 'null' : 'set'}. ` +
+      `Resolve the conflict or set a different ADMIN_EMAIL.`,
+  );
+}
+
+/**
+ * Seeds the admin user identified by ADMIN_EMAIL, if that user does not already exist.
+ *
+ * Idempotent on the ADMIN_EMAIL address (case- and whitespace-insensitive). No-op when
+ * any of ADMIN_EMAIL / ADMIN_NAME / ADMIN_PASSWORD is unset. Throws when ADMIN_EMAIL is
+ * already taken by a user that cannot serve as an admin, so startup fails loudly rather
+ * than booting with no way in.
+ *
+ * Scoped to ADMIN_EMAIL rather than "does any user exist": a table-wide guard lets any
+ * unrelated row — a service account, a deactivated user, a leftover test fixture —
+ * permanently block admin creation with no log line, which is unrecoverable without
+ * direct DB access (MINCRM-684).
  */
 export async function seedDefaultAdmin(): Promise<void> {
-  const { rows } = await pool.query('SELECT 1 FROM users LIMIT 1');
-  if (rows.length > 0) return;
-
   const { ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD } = process.env;
 
   if (!ADMIN_EMAIL || !ADMIN_NAME || !ADMIN_PASSWORD) {
@@ -330,17 +369,52 @@ export async function seedDefaultAdmin(): Promise<void> {
     return;
   }
 
+  // Log and compare the normalized form throughout: createUser stores
+  // email.toLowerCase().trim(), so a raw comparison would miss the stored row whenever
+  // ADMIN_EMAIL carries different case or padding — and a raw log line would show an
+  // operator an address that does not match what is in the table.
+  const normalizedAdminEmail = ADMIN_EMAIL.toLowerCase().trim();
+
+  const existing = await findUserByEmail(normalizedAdminEmail);
+  if (existing) {
+    assertUsableAdmin(existing, normalizedAdminEmail);
+    logger.info(`Default admin user already exists, skipping seed: ${normalizedAdminEmail}`);
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_SALT_ROUNDS);
 
-  await createUser({
-    email: ADMIN_EMAIL,
-    name: ADMIN_NAME,
-    role: 'admin',
-    passwordHash,
-    status: 'active',
-  });
+  try {
+    await createUser({
+      email: normalizedAdminEmail,
+      name: ADMIN_NAME,
+      role: 'admin',
+      passwordHash,
+      status: 'active',
+    });
+  } catch (error) {
+    // `in` narrowing rather than an `as` cast, matching migrate.ts:313. The constraint
+    // name is checked too: 23505 on any other unique index is a different bug and must
+    // not be swallowed as an already-seeded admin.
+    const isEmailCollision =
+      error instanceof Error &&
+      'code' in error &&
+      error.code === PG_UNIQUE_VIOLATION &&
+      'constraint' in error &&
+      error.constraint === USERS_EMAIL_CONSTRAINT;
+    if (!isEmailCollision) throw error;
 
-  logger.info(`Default admin user created: ${ADMIN_EMAIL}`);
+    // The lookup above is not atomic with this INSERT, so a concurrently-booting
+    // server can create the row in between. That is the already-seeded outcome — a
+    // no-op, not a failure.
+    const conflicting = await findUserByEmail(normalizedAdminEmail);
+    if (!conflicting) throw error; // Row vanished — not the race we handle; surface it.
+    assertUsableAdmin(conflicting, normalizedAdminEmail);
+    logger.info(`Default admin user created concurrently, skipping seed: ${normalizedAdminEmail}`);
+    return;
+  }
+
+  logger.info(`Default admin user created: ${normalizedAdminEmail}`);
 }
 
 /**
