@@ -142,11 +142,17 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     );
   }
 
-  // Extract the minicrm_token value from the Set-Cookie header.
+  // Cookie name is env-driven so the test stack can use its own and avoid clobbering
+  // the dev stack's session in the shared localhost cookie jar. (MINCRM-684)
+  const authCookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+
+  // Extract the auth cookie value from the Set-Cookie header.
   const setCookieHeader = response.headers.get('set-cookie') ?? '';
-  const tokenMatch = setCookieHeader.match(/minicrm_token=([^;]+)/);
+  const tokenMatch = setCookieHeader.match(new RegExp(`${authCookieName}=([^;]+)`));
   if (!tokenMatch) {
-    throw new Error(`[globalSetup] minicrm_token not found in Set-Cookie header from ${loginUrl}`);
+    throw new Error(
+      `[globalSetup] ${authCookieName} not found in Set-Cookie header from ${loginUrl}`,
+    );
   }
   const cookieValue = tokenMatch[1];
 
@@ -157,7 +163,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      Cookie: `minicrm_token=${cookieValue}`,
+      Cookie: `${authCookieName}=${cookieValue}`,
     },
     body: JSON.stringify({ onboarding_completed: true }),
   });
@@ -173,7 +179,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   const storageState = {
     cookies: [
       {
-        name: 'minicrm_token',
+        name: authCookieName,
         value: cookieValue,
         domain: apiDomain,
         path: '/',

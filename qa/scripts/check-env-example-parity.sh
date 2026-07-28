@@ -67,9 +67,12 @@ for pair in "${PAIRS[@]}"; do
   # Anything active locally must at least be documented in the template — that is the
   # drift that strands a fresh clone (COVERAGE_DB_NAME / NODE_ENCRYPTION_KEY, MINCRM-684).
   only_local=$(comm -23 <(env_keys "$local_file") <(documented_keys "$example"))
-  # Anything the template declares ACTIVE (not commented) is required, so it must exist
-  # locally. Commented template entries are optional and intentionally not required.
-  only_example=$(comm -13 <(documented_keys "$local_file") <(env_keys "$example"))
+  # Anything the template declares ACTIVE (not commented) is required, so it must be
+  # ACTIVE locally too. Commented template entries are optional and not required at all.
+  # Both sides use env_keys deliberately: accepting a commented-out local line here would
+  # let `# NODE_ENCRYPTION_KEY=…` satisfy a required variable and pass the gate, then
+  # fail the crypto suites with no hint — exactly the drift this script exists to catch.
+  only_example=$(comm -13 <(env_keys "$local_file") <(env_keys "$example"))
 
   if [ -n "$only_local" ]; then
     echo "FAIL: $local_file defines variables missing from $example:"

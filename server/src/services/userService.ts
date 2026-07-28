@@ -326,13 +326,11 @@ export async function listActiveUsers(): Promise<ActiveUserRow[]> {
 }
 
 /**
- * Throws unless `user` can actually be used to log in as the bootstrap admin.
+ * Logs a warning when `user` cannot actually be used to log in as the bootstrap admin.
+ * Never throws — see the inline comment on the warn path for why.
  *
  * Reached from both seedDefaultAdmin paths: the pre-insert lookup and the post-insert
- * unique-violation recovery. If ADMIN_EMAIL is taken by a rep or a deactivated account,
- * seeding cannot proceed and the deployment has no way in — booting anyway would leave
- * only a log line behind, which is the silent lockout MINCRM-684 exists to remove.
- * Throwing lets server.ts's startup handler exit the process loudly instead.
+ * unique-violation recovery.
  */
 function warnIfAdminUnusable(user: UserRow, normalizedAdminEmail: string): void {
   // password_hash is part of the contract, not a detail: authController rejects login
@@ -364,9 +362,15 @@ function warnIfAdminUnusable(user: UserRow, normalizedAdminEmail: string): void 
  * Seeds the admin user identified by ADMIN_EMAIL, if that user does not already exist.
  *
  * Idempotent on the ADMIN_EMAIL address (case- and whitespace-insensitive). No-op when
- * any of ADMIN_EMAIL / ADMIN_NAME / ADMIN_PASSWORD is unset. Throws when ADMIN_EMAIL is
- * already taken by a user that cannot serve as an admin, so startup fails loudly rather
- * than booting with no way in.
+ * any of ADMIN_EMAIL / ADMIN_NAME / ADMIN_PASSWORD is unset.
+ *
+ * Never throws on a configuration conflict: when ADMIN_EMAIL is already taken by a user
+ * that cannot serve as an admin (wrong role, deactivated, or no password hash), it logs
+ * a warning and returns. This function is awaited inside server.ts's startup block,
+ * whose catch calls process.exit(1), and demoting or deactivating the bootstrap admin is
+ * a supported admin-UI action — so throwing would turn a routine user-management change
+ * into a boot loop. Operators must watch for that warning; the server will come up with
+ * no usable admin if the conflict is left unresolved.
  *
  * Scoped to ADMIN_EMAIL rather than "does any user exist": a table-wide guard lets any
  * unrelated row — a service account, a deactivated user, a leftover test fixture —
