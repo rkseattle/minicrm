@@ -73,14 +73,18 @@ docker exec minicrm-db pg_dump \
 #      at runtime (MINCRM-658) and throws if they don't, so both must be
 #      updated together, in the same commit as the regenerated baseline.
 
-# 4. Verify against a clean Docker environment
-docker exec minicrm-db psql -U minicrm -c "CREATE DATABASE minicrm_baseline_test"
-DATABASE_URL=postgres://minicrm:password@localhost:5432/minicrm_baseline_test \
+# 4. Verify against a clean Docker environment.
+#    Use the TEST stack (port 5433) — never create scratch databases on the dev
+#    instance, which is what the dev/test split exists to prevent (MINCRM-684).
+docker exec minicrm-test-db psql -U minicrm -d postgres \
+  -c "CREATE DATABASE minicrm_baseline_test"
+DATABASE_URL=postgres://minicrm:password@localhost:5433/minicrm_baseline_test \
   npm run migrate:fresh --workspace=minicrm-server
-# Compare table/index/constraint counts against the production DB
+# Compare table/index/constraint counts against the dev DB
 
 # 5. Drop the test DB
-docker exec minicrm-db psql -U minicrm -c "DROP DATABASE minicrm_baseline_test"
+docker exec minicrm-test-db psql -U minicrm -d postgres \
+  -c "DROP DATABASE minicrm_baseline_test"
 ```
 
 ---
@@ -148,7 +152,8 @@ Either check throws a clear error instead of silently mis-skipping or mis-execut
 `docs/schema/` contains auto-generated Markdown and Mermaid ERD output from [tbls](https://github.com/k1LoW/tbls). There is no automated CI staleness check (tbls output is non-deterministic across postgres versions).
 
 ```bash
-# Generate using dev DB (postgres://minicrm:password@localhost:5432/minicrm)
+# Generate using the dev DB (postgres://minicrm:password@localhost:5432/minicrm) —
+# the ERD documents the real schema, so the dev stack is correct here.
 npm run db:erd --workspace=minicrm-server
 
 # Override DB
