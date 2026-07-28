@@ -69,6 +69,17 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Vite blocks Host headers it does not recognise, so a friendly /etc/hosts alias
+    // (e.g. `127.0.0.1 dev.minicrm.local` → http://dev.minicrm.local:5173) is refused
+    // with "This host is not allowed" until it is listed here. Additive and opt-in:
+    // unset, this is an empty array and behaviour is exactly as before. CI only ever
+    // uses localhost:5173, so it is unaffected. Remember to add the same origin to
+    // CORS_ORIGIN — the server allowlists origins explicitly, with no wildcard.
+    // (MINCRM-684)
+    allowedHosts: (process.env.DEV_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean),
     proxy: {
       '/api': {
         target: process.env.API_URL ?? 'http://localhost:3001',
