@@ -534,21 +534,140 @@ describe('seedDefaultAdmin', () => {
     expect(user!.status).toBe('active');
   });
 
-  it('is a no-op when users already exist', async () => {
+  // MINCRM-684: the guard is scoped to ADMIN_EMAIL, not "any user exists". An
+  // unrelated row (service account, deactivated user, leftover test fixture) must not
+  // permanently block the configured admin from being created — that is the lockout
+  // this ticket fixes.
+  it('creates the configured admin even when other users already exist', async () => {
     await createUser(BASE_USER);
-    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-should-not-exist@example.com`;
-    process.env.ADMIN_NAME = 'Ghost';
-    process.env.ADMIN_PASSWORD = 'GhostPass1';
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-with-others@example.com`;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
 
     await seedDefaultAdmin();
 
-    const ghost = await findUserByEmail(`${FILE_PREFIX}-should-not-exist@example.com`);
-    expect(ghost).toBeNull();
+    const admin = await findUserByEmail(`${FILE_PREFIX}-seed-with-others@example.com`);
+    expect(admin).not.toBeNull();
+    expect(admin!.role).toBe('admin');
+    expect(admin!.status).toBe('active');
+  });
+
+  it('is idempotent when the configured admin already exists', async () => {
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-idempotent@example.com`;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await seedDefaultAdmin();
+    await seedDefaultAdmin();
+
+    const { rows } = await pool.query<{ count: number }>(
+      'SELECT COUNT(*)::int AS count FROM users WHERE email = $1',
+      [`${FILE_PREFIX}-seed-idempotent@example.com`],
+    );
+    expect(rows[0].count).toBe(1);
+  });
+
+  // createUser stores email lowercased and trimmed. A guard that compares the raw
+  // ADMIN_EMAIL would miss the stored row on every boot, then fail the insert on the
+  // unique constraint — reintroducing the silent no-op this ticket removes.
+  it('is idempotent when ADMIN_EMAIL differs from the stored row only by case and whitespace', async () => {
+    const address = `${FILE_PREFIX}-seed-mixed-case@example.com`;
+    process.env.ADMIN_EMAIL = address;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+    await seedDefaultAdmin();
+
+    process.env.ADMIN_EMAIL = `  ${address.toUpperCase()}  `;
+    await seedDefaultAdmin();
+
+    const { rows } = await pool.query<{ count: number }>(
+      'SELECT COUNT(*)::int AS count FROM users WHERE email = $1',
+      [address],
+    );
+    expect(rows[0].count).toBe(1);
+  });
+
+  // ADMIN_EMAIL taken by a user who cannot log in as admin is an unbootable
+  // configuration. Returning quietly would leave the deployment with no way in and
+  // only a log line behind — the silent lockout this ticket removes — so startup must
+  // fail loudly instead.
+  it('throws when ADMIN_EMAIL is taken by a non-admin user', async () => {
+    const address = `${FILE_PREFIX}-seed-conflict-role@example.com`;
+    await createUser({
+      email: address,
+      name: 'Existing Rep',
+      role: 'rep',
+      passwordHash: 'hash',
+      status: 'active',
+    });
+    process.env.ADMIN_EMAIL = address;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await expect(seedDefaultAdmin()).rejects.toThrow(/role="rep"/);
+  });
+
+  it('throws when ADMIN_EMAIL is taken by a deactivated admin', async () => {
+    const address = `${FILE_PREFIX}-seed-conflict-status@example.com`;
+    const user = await createUser({
+      email: address,
+      name: 'Disabled Admin',
+      role: 'admin',
+      passwordHash: '$2b$12$placeholder_hash',
+      status: 'active',
+    });
+    await updateUserStatus(user.id, 'inactive');
+    process.env.ADMIN_EMAIL = address;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await expect(seedDefaultAdmin()).rejects.toThrow(/status="inactive"/);
+  });
+
+  // An active admin with no password_hash boots fine but cannot log in —
+  // authController rejects it with AUTH_ACCOUNT_NOT_ACTIVATED. Invited and
+  // SCIM/SSO-provisioned rows are created this way and can be promoted to admin.
+  it('throws when ADMIN_EMAIL is taken by an admin with no password hash', async () => {
+    const address = `${FILE_PREFIX}-seed-conflict-nohash@example.com`;
+    await createUser({
+      email: address,
+      name: 'Invited Admin',
+      role: 'admin',
+      passwordHash: null,
+      status: 'active',
+    });
+    process.env.ADMIN_EMAIL = address;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await expect(seedDefaultAdmin()).rejects.toThrow(/password_hash=null/);
   });
 
   it('is a no-op when ADMIN_EMAIL is not set', async () => {
     delete process.env.ADMIN_EMAIL;
     await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+  });
+
+  it('is a no-op when ADMIN_NAME is not set', async () => {
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-no-name@example.com`;
+    delete process.env.ADMIN_NAME;
+    process.env.ADMIN_PASSWORD = 'SeedPass1';
+
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+
+    const user = await findUserByEmail(`${FILE_PREFIX}-seed-no-name@example.com`);
+    expect(user).toBeNull();
+  });
+
+  it('is a no-op when ADMIN_PASSWORD is not set', async () => {
+    process.env.ADMIN_EMAIL = `${FILE_PREFIX}-seed-no-password@example.com`;
+    process.env.ADMIN_NAME = 'Seed Admin';
+    delete process.env.ADMIN_PASSWORD;
+
+    await expect(seedDefaultAdmin()).resolves.toBeUndefined();
+
+    const user = await findUserByEmail(`${FILE_PREFIX}-seed-no-password@example.com`);
+    expect(user).toBeNull();
   });
 });
 
