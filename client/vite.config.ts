@@ -66,6 +66,12 @@ export default defineConfig({
       },
     },
   },
+  // Both dev and E2E serve on 5173 and differ only in which API they proxy to, so the
+  // banner names the target explicitly. Getting it wrong is otherwise silent: the page
+  // loads normally and every login fails later against a stack whose database has no
+  // matching user. E2E stays on 5173 because CI hardcodes localhost:5173 in its
+  // readiness gates and E2E_BASE_URL — moving it locally would diverge from CI, which is
+  // a worse trade than the ambiguity. (MINCRM-684)
   server: {
     host: '0.0.0.0',
     port: 5173,
