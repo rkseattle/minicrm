@@ -1,13 +1,17 @@
 # Development overrides for docker-compose.yml.
-# Mounts local source into containers for hot-reload and overrides NODE_ENV.
+# Mounts local source into containers and overrides NODE_ENV.
 #
 # Usage (normal dev):
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#   npm run dev:client     # Vite dev server on :5173 — this is the dev UI, with HMR
 #
-# Usage (E2E testing — starts server-e2e, MinIO + Mailhog in addition to the dev stack):
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
+# Automated testing does NOT run here. E2E, unit, coverage and TIA all target the
+# isolated stack in docker-compose.test.yml (MINCRM-684):
+#   docker compose -f docker-compose.test.yml up -d
 #   npm run e2e:setup
-# (MINCRM-317, MINCRM-330)
+# server-e2e, MinIO and Mailhog moved there; they shared this stack's `db` and were the
+# path by which a test run truncated the dev database.
+# (MINCRM-317, MINCRM-330, MINCRM-684)
 
 services:
   server:
@@ -24,124 +28,14 @@ services:
       # host source tree is mounted on top of /app.
       - /app/node_modules
 
+  # Only applies under `--profile web`, since the base service is profiled (MINCRM-684).
+  # NODE_ENV is set for parity with the other services; the bind mounts are deliberately
+  # NOT carried over from the previous version of this block — the image serves a
+  # production build baked in at build time (client/Dockerfile), so mounting host source
+  # over /app/client changed nothing and implied a hot-reload path that never existed.
   client:
     environment:
       NODE_ENV: development
-    volumes:
-      - ./client:/app/client
-      - ./shared:/app/shared
-      - /app/client/node_modules
-
-  # MINCRM-317: Optional E2E infrastructure — disabled by default.
-  # Enable with: docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile e2e up -d
-  # Then run: npm run e2e:setup
-
-  # MINCRM-330: Dedicated app server for E2E runs.
-  # Connects to minicrm_e2e so test traffic never touches the main minicrm database.
-  # Listens on port 3002 to avoid colliding with the dev server on 3001.
-  # E2E_API_URL in qa/e2e/.env must be set to http://localhost:3002.
-  server-e2e:
-    profiles:
-      - e2e
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-    environment:
-      NODE_ENV: development
-      PORT: 3002
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: minicrm_e2e
-      # Coverage/TIA tables live in their own database — see server/src/coverageDb.ts.
-      COVERAGE_DB_NAME: minicrm_coverage_e2e
-      # Coverage/TIA control API and session management routes are registered
-      # only when these are 'true' at process boot (MINCRM-663) — set here so
-      # coverage-instrumentation.spec.ts/coverage-sessions.spec.ts can reach
-      # them; production deployments must never set these.
-      COVERAGE_INSTRUMENTATION: "true"
-      COVERAGE_SESSION_MANAGEMENT: "true"
-      # Lets the coverage-dashboard app browse this container's real,
-      # already-ingested E2E coverage data (minicrm_coverage_e2e) with no
-      # CRM login — same flag/rail as the plain `server` service's own
-      # docker-compose.yml entry; server-e2e needs its own copy since this
-      # block fully overrides that service's environment rather than
-      # merging into it. NODE_ENV=development above satisfies the
-      # NODE_ENV!=='production' safety rail this flag requires.
-      COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
-      # coverageConfig.ts's resolveCommitSha() falls back to 'unknown' when
-      # `git rev-parse HEAD` fails — which it always does inside this
-      # container, since only ./server and ./shared are bind-mounted, never
-      # .git. Without this, every coverage dump produced by a local E2E run
-      # is tagged commitSha: "unknown" and can never match a real branch SHA
-      # in select-tests.ts's lookups, making a locally-generated
-      # qa/coverage-map.json permanently useless (found while investigating
-      # why the local pre-push hook's TIA selection always falls back to
-      # the full suite). Export GIT_COMMIT_SHA=$(git rev-parse HEAD) in the
-      # invoking shell before `docker compose ... up -d server-e2e` — see
-      # .claude/gates/e2e-run.md.
-      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
-      JWT_SECRET: ${JWT_SECRET}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
-      NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
-      E2E: "true"
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      APP_URL: ${APP_URL:-http://localhost}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
-      SSO_CALLBACK_BASE_URL: ${SSO_CALLBACK_BASE_URL:-http://localhost}
-    # MINCRM-558: intentionally no watch mode. tsx watch restarts the Node process
-    # on any source file change. If a developer saves a file mid-run, server-e2e
-    # restarts, drops active connections, and causes non-deterministic test failures.
-    # The dev server on port 3001 keeps tsx watch for iterative development.
-    command: npx tsx server/src/server.ts
-    volumes:
-      - ./server:/app/server
-      - ./shared:/app/shared
-      - /app/node_modules
-    ports:
-      - "3002:3002"
-      # Port 50051 (grpc-js server) removed in MINCRM-377 — AuditService now served on port 3002 via ConnectRPC
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # MinIO — S3-compatible object storage for attachment E2E tests.
-  # Port 9000: S3 API (used by the app server)
-  # Port 9001: web console (useful for debugging uploaded files)
-  # Image and healthcheck match ci.yml exactly so local and CI behaviour are identical.
-  minio:
-    profiles:
-      - e2e
-    image: minio/minio:latest
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address :9001
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  # Mailhog — SMTP capture server for email delivery E2E tests.
-  # Port 1025: SMTP (the app server sends email here)
-  # Port 8025: HTTP API (E2E tests query this to assert on delivered messages)
-  # Activated by MINCRM-306; stub is present now so the profile is complete.
-  mailhog:
-    profiles:
-      - e2e
-    image: mailhog/mailhog:latest
-    ports:
-      - "1025:1025"
-      - "8025:8025"
 
   # MINCRM-399: Dex OIDC provider for local SSO testing.
   # Enable with: docker compose -f docker-compose.dev.yml --profile sso up -d

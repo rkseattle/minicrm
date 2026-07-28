@@ -10,7 +10,7 @@
  *   3. Run all remaining truly-pending migrations for real.
  *
  * The whole sequence is wrapped in a Postgres advisory lock (MINCRM-658) so that
- * concurrent invocations — e.g. `server-e2e`'s boot-time runMigrations() racing
+ * concurrent invocations — e.g. the test server's boot-time runMigrations() racing
  * a developer's `npm run e2e:setup` against the same database — serialize instead
  * of interleaving. See docs/dev/migrations.md "Concurrency & Locking".
  */

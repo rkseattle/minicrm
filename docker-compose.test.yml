@@ -1,0 +1,216 @@
+# Local automated-test environment — fully isolated from the dev stack (MINCRM-684).
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#   npm run e2e:setup
+#
+# This is a SEPARATE Compose project (`name:` below), not an overlay on
+# docker-compose.yml.
+#
+# Intended end state: every test entrypoint — server unit (vitest), coverage, Playwright
+# E2E, and the TIA pre-push hook — targets this stack and nothing else. Those
+# repointings land in later commits on this branch; until they do, DO NOT assume
+# `npm test` is isolated from the dev database just because this file exists.
+#
+# Why a second Postgres container rather than more databases in the dev one:
+# isolation used to be by DB_NAME alone, on one shared instance. A single process that
+# resolved the wrong DB_NAME wrote straight into the dev database — which is exactly what
+# happened: a test run truncated every dev table. Separating the port converts that
+# silent corruption into a connection error, because `minicrm` does not exist on 5433.
+# Physical separation is the guarantee; DB_NAME is only a label.
+#
+# Host ports are offset from the dev stack so both can run simultaneously:
+#   Postgres 5433 (dev 5432) · server 3002 (dev 3001) · client 8080 (dev 80)
+#   MinIO 9002/9003 (dev used 9000/9001) · Mailhog 1025/8025 (dev no longer runs it)
+#
+# Container names are set explicitly because container_name is global to the Docker
+# daemon, NOT scoped by Compose project — `minicrm-db` in two projects would collide.
+# Named volumes ARE project-scoped, so `db_data` here resolves to
+# `minicrm-test_db_data`, distinct from the dev stack's `minicrm_db_data`.
+#
+# ENV RESOLUTION: Compose interpolates ${...} below from the ROOT .env, because the
+# project directory is the repo root — this file has no env_file: of its own. Only
+# credentials and secrets are read that way (DB_USER, DB_PASSWORD, JWT_SECRET,
+# NODE_ENCRYPTION_KEY, SMTP_*, COVERAGE_DASHBOARD_NO_AUTH, GIT_COMMIT_SHA), which are
+# identical across both stacks. Every value that decides WHICH database or origin this
+# stack talks to — DB_NAME, COVERAGE_DB_NAME, PORT, CORS_ORIGIN, APP_URL — is hardcoded
+# or TEST_*-prefixed here, deliberately. The root .env's DB_NAME=minicrm and
+# COVERAGE_DB_NAME=minicrm_coverage must never reach this stack.
+
+name: minicrm-test
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    container_name: minicrm-test-db
+    logging: *default-logging
+    image: postgres:16
+    restart: "no"
+    # Matches the dev stack's rationale: each parallel vitest worker opens its own pool
+    # (db.ts + coverageDb.ts, DB_POOL_MAX default 10 each), and full-suite load can
+    # multiply past Postgres's default 100 connections — seen as sporadic transaction
+    # failures in files that pass in isolation.
+    command: postgres -c max_connections=200
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # The E2E product database. minicrm_test, minicrm_coverage_test and
+      # minicrm_coverage_e2e are created on demand — by the server's own startup
+      # migrations, by scripts/e2e-setup.ts, and by vitest's globalSetup.ts.
+      POSTGRES_DB: minicrm_e2e
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d minicrm_e2e"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # The service key MUST stay `server`: client/nginx.conf hardcodes
+  # `proxy_pass http://server:3001` and is baked into the client image at build time
+  # (client/Dockerfile), not bind-mounted. The key is the network alias nginx resolves;
+  # container_name is only the daemon-level label. Likewise PORT stays 3001 INSIDE the
+  # container and is published on 3002: the old server-e2e listened on 3002 internally,
+  # so nginx's fixed `server:3001` upstream could never have reached it — which is why
+  # the E2E profile had no client container at all.
+  server:
+    container_name: minicrm-test-server
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: "no"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: minicrm_e2e
+      # Coverage/TIA tables live in their own database — see server/src/coverageDb.ts.
+      COVERAGE_DB_NAME: minicrm_coverage_e2e
+      # Coverage/TIA control API and session-management routes register only when these
+      # are 'true' at process boot (MINCRM-663), so coverage-instrumentation.spec.ts and
+      # coverage-sessions.spec.ts can reach them. Production must never set these.
+      COVERAGE_INSTRUMENTATION: "true"
+      COVERAGE_SESSION_MANAGEMENT: "true"
+      # Lets the coverage-dashboard app browse this stack's ingested E2E coverage with
+      # no CRM login. NODE_ENV=development above satisfies the NODE_ENV!=='production'
+      # safety rail this flag requires.
+      COVERAGE_DASHBOARD_NO_AUTH: ${COVERAGE_DASHBOARD_NO_AUTH:-false}
+      # coverageConfig.ts's resolveCommitSha() falls back to 'unknown' when
+      # `git rev-parse HEAD` fails — which it always does in this container, since only
+      # ./server and ./shared are mounted, never .git. Without this, every coverage dump
+      # is tagged commitSha "unknown" and can never match a real branch SHA, making a
+      # locally generated qa/coverage-map.json useless. Export
+      # GIT_COMMIT_SHA=$(git rev-parse HEAD) before `up`. See .claude/gates/e2e-run.md.
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
+      JWT_SECRET: ${JWT_SECRET}
+      # Both browser origins that drive this stack: the Vite dev server E2E actually
+      # runs against, and the static client below. app.ts rejects any origin not listed
+      # here — there is no wildcard.
+      CORS_ORIGIN: ${TEST_CORS_ORIGIN:-http://localhost:5173,http://localhost:8080}
+      # Password-reset and invite links are built from these (authController,
+      # emailService). They must point at the browser origin E2E drives, NOT the
+      # `http://localhost` port-80 default the dev stack used — that client is now
+      # profiled off.
+      APP_URL: ${TEST_APP_URL:-http://localhost:5173}
+      APP_BASE_URL: ${TEST_APP_BASE_URL:-http://localhost:5173}
+      # This one is the SERVER's own public origin, not a browser origin: the IdP
+      # redirects/POSTs back to the Express API, which is published on 3002.
+      SSO_CALLBACK_BASE_URL: ${TEST_SSO_CALLBACK_BASE_URL:-http://localhost:3002}
+      NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
+      E2E: "true"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # ADMIN_EMAIL/ADMIN_NAME/ADMIN_PASSWORD are deliberately NOT set. The E2E admin is
+      # created by `npm run seed:e2e-admin` from E2E_ADMIN_EMAIL, and qa/e2e/.env uses
+      # the same address as the dev stack's ADMIN_EMAIL — supplying both would race two
+      # seeding paths for one address. seedDefaultAdmin() logs a warn and skips.
+    # Deliberately no `tsx watch`: it restarts the Node process on any source change, so
+    # saving a file mid-run drops connections and produces non-deterministic failures.
+    # The dev server keeps watch mode for iterative development. (MINCRM-558)
+    command: npx tsx server/src/server.ts
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      # Anonymous volume keeps the image's node_modules when the host tree is mounted.
+      - /app/node_modules
+    ports:
+      - "3002:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Static production build of the client, for verifying the built bundle and React
+  # Router fallback behaviour. E2E does NOT target this — it drives the instrumented
+  # Vite dev server on :5173 (`npm run e2e:client`), because the Istanbul plugin is
+  # gated on COVERAGE=true in client/vite.config.ts and this image has no such build
+  # arg, so a container-served frontend can never produce window.__coverage__.
+  client:
+    container_name: minicrm-test-client
+    logging: *default-logging
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    restart: "no"
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+
+  # MinIO — S3-compatible object storage for attachment E2E tests.
+  # Image and healthcheck match ci.yml exactly so local and CI behaviour are identical.
+  # Host ports are offset (9002/9003) so this can coexist with anything on 9000/9001;
+  # the in-container ports stay 9000/9001, which is what the server talks to.
+  minio:
+    container_name: minicrm-test-minio
+    logging: *default-logging
+    image: minio/minio:latest
+    restart: "no"
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address :9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Mailhog — SMTP capture for email-delivery E2E tests.
+  # Port 1025: SMTP (the app server sends here) · 8025: HTTP API (specs assert on it).
+  # Host ports are unchanged: three qa files hardcode localhost:8025 and no local env
+  # file sets MAILHOG_URL, and the dev stack no longer runs Mailhog, so there is nothing
+  # to collide with. Moving them would buy nothing and break those defaults.
+  mailhog:
+    container_name: minicrm-test-mailhog
+    logging: *default-logging
+    image: mailhog/mailhog:latest
+    restart: "no"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  db_data:

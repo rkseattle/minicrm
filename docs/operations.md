@@ -5,26 +5,35 @@ the PostgreSQL database.
 
 ---
 
-## Local E2E Infrastructure (developer workflow)
+## Local Test Environment (developer workflow)
 
-The E2E functional suite includes tests that depend on MinIO (file attachment storage) and
-Mailhog (SMTP capture). Both are defined in `docker-compose.dev.yml` under the `e2e` Compose
-profile so they can be started without affecting the normal development stack. (MINCRM-317)
+The E2E suite runs against an isolated Compose project defined in
+`docker-compose.test.yml`, completely separate from the dev stack. Previously the two
+shared one Postgres container and were separated only by database name, which let a
+stray test run truncate the dev database (MINCRM-684). Repointing the server unit,
+coverage and TIA suites onto the same stack is in progress.
 
 ### Starting the services
 
 Run once per local development session from the repo root:
 
 ```bash
-docker compose -f docker-compose.dev.yml --profile e2e up -d
+docker compose -f docker-compose.test.yml up -d
 ```
 
-This starts:
+This starts the `minicrm-test` project:
 
-| Service | Purpose                        | Port(s)                      |
-| ------- | ------------------------------ | ---------------------------- |
-| MinIO   | S3-compatible attachment store | 9000 (API), 9001 (console)   |
-| Mailhog | SMTP capture for email tests   | 1025 (SMTP), 8025 (HTTP API) |
+| Service  | Purpose                        | Host port(s)                 |
+| -------- | ------------------------------ | ---------------------------- |
+| Postgres | Test databases                 | 5433                         |
+| Server   | App server for E2E             | 3002                         |
+| Client   | Static build (E2E uses Vite)   | 8080                         |
+| MinIO    | S3-compatible attachment store | 9002 (API), 9003 (console)   |
+| Mailhog  | SMTP capture for email tests   | 1025 (SMTP), 8025 (HTTP API) |
+
+Every port that the dev stack also uses is offset, so both can run at once and a
+misconfigured test process fails to connect rather than silently writing into dev data.
+Mailhog keeps 1025/8025 because the dev stack no longer runs it.
 
 ### Initialising the infrastructure
 
@@ -36,9 +45,11 @@ npm run e2e:setup
 
 This script:
 
-1. Waits up to 30 seconds for MinIO to become healthy
-2. Creates the `minicrm-test-bucket` bucket inside the MinIO container (idempotent)
-3. Seeds MinIO storage coordinates into `system_settings` so the app server uses them
+1. Creates and migrates `minicrm_e2e` and `minicrm_coverage_e2e`
+2. Resets accumulated test data and seeds the E2E admin user
+3. Waits up to 30 seconds for MinIO to become healthy
+4. Creates the `minicrm-test-bucket` bucket inside the MinIO container (idempotent)
+5. Seeds MinIO storage and Mailhog SMTP coordinates into `system_settings`
 
 The script is idempotent — safe to re-run if you restart the Docker services or wipe
 the database.
@@ -46,13 +57,15 @@ the database.
 ### Stopping the services
 
 ```bash
-docker compose -f docker-compose.dev.yml --profile e2e down
+docker compose -f docker-compose.test.yml down
 ```
 
-### Profile isolation
+### Isolation from the dev stack
 
-Running the standard dev stack **without** `--profile e2e` does **not** start MinIO or
-Mailhog. The profile flag is required to activate them.
+The dev stack (`docker-compose.yml` + `docker-compose.dev.yml`) runs no MinIO, no
+Mailhog and no test databases. `qa/scripts/check-compose-isolation.sh` enforces that the
+two projects share no container name, host port or named volume, and that the test stack
+never names a dev database.
 
 ---
 
@@ -280,10 +293,15 @@ docker compose pull
 # 3. Stop the running containers.
 #    IMPORTANT: omit -v. Using "docker compose down -v" destroys the db_data volume
 #    and permanently deletes all your data. Plain "down" preserves the volume.
-docker compose down
+#    --profile web is needed here too, or the client container is left running.
+docker compose --profile web down
 
 # 4. Start with the new images. Migrations run automatically on server startup.
-docker compose up -d
+#    --profile web is REQUIRED: the nginx client service is behind that profile
+#    (MINCRM-684) so a local `docker compose up` does not occupy port 80. Omitting it
+#    brings the stack up with no frontend. Add --profile backup if you use the
+#    automated backup service.
+docker compose --profile web up -d
 ```
 
 ### Confirming migrations ran
@@ -315,11 +333,12 @@ Check the full log for the error and follow the rollback procedure below.
 
 Down migrations are **not** a safe recovery strategy in production. If a migration fails:
 
-1. Run `docker compose down` to stop all containers.
+1. Run `docker compose --profile web down` to stop all containers. The profile flag is
+   required or the nginx client container is left running (MINCRM-684).
 2. Restore from the backup you took before pulling the new images (see [Backup and Restore](#backup-and-restore)).
 3. Re-tag or revert to the previous image version in your `docker-compose.yml` or by re-pulling
    the prior tag.
-4. Start the old version: `docker compose up -d`.
+4. Start the old version: `docker compose --profile web up -d`.
 
 > **Warning — data loss risk:** `docker compose down -v` deletes the `db_data` volume and
 > permanently destroys your database. Never use the `-v` flag unless you intend to wipe all

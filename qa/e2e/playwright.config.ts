@@ -126,12 +126,12 @@ export default defineConfig({
   //
   // PW_GLOBAL_TIMEOUT_MS overrides this — needed by pre-push-tia.ts's local
   // full-suite fallback (MINCRM-636/637), which runs the ENTIRE @functional
-  // suite unsharded against one server-e2e process, unlike CI's own 4-shard
+  // suite unsharded against one test-server process, unlike CI's own 4-shard
   // x 2-worker x 2-project matrix this 20-minute figure is actually
   // calibrated against. Measured directly: 1030 non-serial tests completed
   // only ~420-445 of them in 20 minutes at 1 or 2 local workers (a ~6%
   // difference between worker counts, not the ~2x more workers would
-  // predict) — server-e2e is a single Node process, so it bottlenecks
+  // predict) — the test server is a single Node process, so it bottlenecks
   // throughput regardless of how many Playwright workers send it requests
   // concurrently. There is no local sharding equivalent to shrink this run
   // down to CI's per-shard slice, so the honest fix is a longer local-only

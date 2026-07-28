@@ -42,6 +42,12 @@ in `check-framework-purity.sh`: `MINCRM-*` ticket refs match the `mini?crm` patt
 and the word `pipeline` matches the CRM i18n namespace check — including inside JSDoc
 `@example` and `@param` blocks. Rephrase rather than suppress.
 
+**Any `docker-compose*.yml` in the diff** — `bash qa/scripts/check-compose-isolation.sh`
+is mandatory for that commit. It asserts the dev and test stacks share no
+`container_name`, no published host port, and no named volume, and that the test stack
+never names a dev database. Isolation by `DB_NAME` alone is what let a test run truncate
+the dev database (MINCRM-684).
+
 **Changed `.md` files** — run `markdownlint-cli2` on them. CI `lint-docs` catches what
 the pre-commit hook misses.
 

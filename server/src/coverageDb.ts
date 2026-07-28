@@ -54,13 +54,19 @@ const STATEMENT_TIMEOUT_MS = 30_000;
  * Shared connection pool instance for the coverage database.
  *
  * Falls back to the product DB's own DB_USER/DB_PASSWORD/DB_HOST/DB_PORT
- * when the COVERAGE_DB_* equivalents are unset — both databases live on
- * the same Postgres instance/credentials in every environment this repo
- * currently targets (see docker-compose.yml: one `db` service, multiple
- * database names). COVERAGE_DB_NAME has no such fallback — it must be set
- * explicitly (or defaults to 'minicrm_coverage' below) so a misconfigured
- * environment can never accidentally point this pool at the product
- * database by inheriting DB_NAME.
+ * when the COVERAGE_DB_* equivalents are unset. The invariant this relies on is
+ * per-stack, not repo-wide: within any one environment the product and coverage
+ * databases share a Postgres instance, credentials and port, differing only by
+ * database name. Since MINCRM-684 there are two such stacks locally — dev on
+ * :5432 (minicrm / minicrm_coverage, docker-compose.yml) and test on :5433
+ * (minicrm_e2e / minicrm_coverage_e2e, docker-compose.test.yml) — so the
+ * fallback is what keeps a test process's coverage pool on the same port as its
+ * product pool. Splitting the two across different hosts or ports would break
+ * that and require COVERAGE_DB_HOST/COVERAGE_DB_PORT to be set explicitly.
+ *
+ * COVERAGE_DB_NAME has no such fallback — it must be set explicitly (or defaults
+ * to 'minicrm_coverage' below) so a misconfigured environment can never
+ * accidentally point this pool at the product database by inheriting DB_NAME.
  */
 const coverageDb = new Pool({
   user: process.env.COVERAGE_DB_USER ?? process.env.DB_USER,

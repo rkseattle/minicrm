@@ -245,7 +245,7 @@ function runPlaywright(specFiles: readonly string[]): void {
  * 2-project matrix — see that file's own comment) is unreachable for a
  * single unsharded local run: measured directly, only ~420-445 of 1030
  * tests completed in 20 minutes regardless of using 1 or 2 local workers
- * (a ~6% difference, not the ~2x more workers would predict) — server-e2e
+ * (a ~6% difference, not the ~2x more workers would predict) — the test server
  * is one Node process, so it bottlenecks throughput no matter how many
  * Playwright workers send it concurrent requests. There is no local
  * sharding equivalent to shrink this down to CI's per-shard slice, so

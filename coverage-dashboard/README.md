@@ -35,7 +35,17 @@ architecture (data model, mapping engine, TIA test selection).
 This serves the app at **http://localhost:5174** (not 5173 — `client/`'s dev server
 keeps that port; both run simultaneously). The dev server proxies `/api/*` requests to
 `minicrm-server` at `http://localhost:3001` by default — override with `API_URL` if
-your server runs elsewhere:
+your server runs elsewhere.
+
+**To browse E2E coverage data**, point it at the test stack instead: that data lives in
+`minicrm_coverage_e2e`, served by the test server on port 3002 (MINCRM-684).
+
+```bash
+API_URL=http://localhost:3002 VITE_COVERAGE_DASHBOARD_NO_AUTH=true \
+  npm run dev --workspace=minicrm-coverage-dashboard
+```
+
+To override the target for any other reason:
 
 ```bash
 API_URL=http://localhost:4001 VITE_COVERAGE_DASHBOARD_NO_AUTH=true npm run dev --workspace=minicrm-coverage-dashboard

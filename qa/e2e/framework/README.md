@@ -231,16 +231,13 @@ Review the diff in `qa/e2e/playwright-report/` before committing the new baselin
 
 **Baselines must be generated on Linux.** Playwright renders fonts differently on macOS
 and Windows, so a baseline created on macOS will produce false pixel-diff failures in CI
-(which runs on Linux). Always generate or update baselines inside the Docker E2E
-environment:
+(which runs on Linux). Always generate or update baselines on Linux, via CI:
 
 ```bash
-# Start the e2e Compose profile (once per session)
-docker compose -f docker-compose.dev.yml --profile e2e up -d
-
-# Run tests with --update-snapshots inside the Linux container
-docker compose -f docker-compose.dev.yml exec e2e \
-  bash -c "cd /app/qa && npm run test -- --update-snapshots --grep @functional"
+# Regenerate Linux baselines via CI — the test stack's server image contains no
+# Playwright, no browsers and no qa/ suite, so snapshots cannot be updated locally
+# on macOS in a way that matches CI's Linux rendering.
+gh workflow run update-baselines.yml --ref "$(git branch --show-current)"
 ```
 
 Commit the updated snapshot files from `qa/e2e/snapshots/` as part of the same PR that
