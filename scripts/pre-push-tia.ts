@@ -211,14 +211,6 @@ function runPlaywright(specFiles: readonly string[]): void {
   });
 }
 
-function runPlaywrightWithArgs(playwrightArgs: readonly string[]): void {
-  execFileSync('npm', ['run', 'test', '--', ...playwrightArgs], {
-    cwd: resolve(REPO_ROOT, 'qa'),
-    stdio: 'inherit',
-    env: process.env,
-  });
-}
-
 /**
  * Runs the full-suite safety-net fallback — invoked from BOTH full-suite
  * call sites in main() below, never from the targeted path (runPlaywright
@@ -226,7 +218,7 @@ function runPlaywrightWithArgs(playwrightArgs: readonly string[]): void {
  * select-tests.ts and needs neither this scoping nor this split).
  *
  * Two real defects fixed here, found via a real local push that timed out
- * twice under load (MINCRM-636/637):
+ * repeatedly under this fallback (MINCRM-636/637):
  *
  * 1. The previous single `npm run test -- --grep-invert serial` call with
  *    no `--grep @functional` matched literally every spec Playwright can
@@ -235,18 +227,31 @@ function runPlaywrightWithArgs(playwrightArgs: readonly string[]): void {
  *    @functional suite this gate is actually meant to validate. Scoped to
  *    `@functional` now, matching .claude/gates/e2e-run.md's own documented
  *    procedure — the single source of truth this script was silently
- *    diverging from.
+ *    diverging from. This alone brought the run down from 2014 to 1030
+ *    (non-serial) + 292 (serial) tests.
  * 2. `--grep-invert serial` is a TEXT filter against each test's own
  *    title/tags — it does nothing for a spec file whose tests aren't
  *    literally tagged "@serial" even when the file itself uses Playwright's
  *    `test.describe.serial(...)` (concurrency.spec.ts's F-CC suite is
- *    exactly this case: serial-within-file by API, untagged by name). Under
- *    the previous single combined run, such a file could still be scheduled
- *    concurrently with unrelated spec files on another worker, racing
- *    shared state. Now runs as two genuinely separate Playwright
- *    invocations — non-serial then serial — exactly like e2e-run.md's own
- *    two commands and like CI's own separate e2e-functional/e2e-serial
- *    jobs.
+ *    exactly this case: serial-within-file ordering by API, untagged by
+ *    name). Now runs as two genuinely separate Playwright invocations —
+ *    non-serial then serial — exactly like e2e-run.md's own two commands
+ *    and like CI's own separate e2e-functional/e2e-serial jobs, so a
+ *    describe.serial file's tests are never scheduled alongside an
+ *    unrelated spec file on another worker.
+ *
+ * Even correctly scoped to 1030 non-serial tests, playwright.config.ts's
+ * own 20-minute globalTimeout (calibrated for CI's 4-shard x 2-worker x
+ * 2-project matrix — see that file's own comment) is unreachable for a
+ * single unsharded local run: measured directly, only ~420-445 of 1030
+ * tests completed in 20 minutes regardless of using 1 or 2 local workers
+ * (a ~6% difference, not the ~2x more workers would predict) — server-e2e
+ * is one Node process, so it bottlenecks throughput no matter how many
+ * Playwright workers send it concurrent requests. There is no local
+ * sharding equivalent to shrink this down to CI's per-shard slice, so
+ * PW_GLOBAL_TIMEOUT_MS overrides the default here rather than accepting a
+ * deadline the suite structurally cannot meet. Budgets below include real
+ * headroom over the measured/estimated throughput, not just bare minimums.
  *
  * Each invocation gets its own attestOrThrow call immediately after,
  * rather than one call after both: Playwright's own junit reporter writes
@@ -257,18 +262,30 @@ function runPlaywrightWithArgs(playwrightArgs: readonly string[]): void {
  * effectively do too (never merged, always two independent pass/fail
  * signals).
  *
- * --workers=1 matches e2e-run.md's own current documented value (not
- * capacity.ts's CI-oriented, sharding-aware plan — see that file's own
- * WORKERS_CAP docblock — the gate file settled on 1 for local runs after
- * this same class of cross-file race was found there too).
+ * --workers=1: e2e-run.md's own current documented value, not capacity.ts's
+ * CI-oriented, sharding-aware plan (see that file's own WORKERS_CAP
+ * docblock) — chosen for simplicity given 2 workers bought negligible real
+ * throughput here, not because 2 workers were proven unsafe for this
+ * specific scoped, non-serial set (unlike the true fix in defect 2 above,
+ * this is a pragmatic choice, not a correctness requirement).
  */
 function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsResult | null): void {
+  const nonSerialEnv = { ...process.env, PW_GLOBAL_TIMEOUT_MS: String(60 * 60 * 1000) };
   console.log('[pre-push-tia] Running full suite, non-serial (safety net fallback).');
-  runPlaywrightWithArgs(['--grep', '@functional', '--grep-invert', 'serial', '--workers=1']);
+  execFileSync(
+    'npm',
+    ['run', 'test', '--', '--grep', '@functional', '--grep-invert', 'serial', '--workers=1'],
+    { cwd: resolve(REPO_ROOT, 'qa'), stdio: 'inherit', env: nonSerialEnv },
+  );
   attestOrThrow(headSha, selection);
 
+  const serialEnv = { ...process.env, PW_GLOBAL_TIMEOUT_MS: String(25 * 60 * 1000) };
   console.log('[pre-push-tia] Running full suite, serial (safety net fallback).');
-  runPlaywrightWithArgs(['--grep', '@functional.*@serial|@serial.*@functional', '--workers=1']);
+  execFileSync(
+    'npm',
+    ['run', 'test', '--', '--grep', '@functional.*@serial|@serial.*@functional', '--workers=1'],
+    { cwd: resolve(REPO_ROOT, 'qa'), stdio: 'inherit', env: serialEnv },
+  );
   attestOrThrow(headSha, selection);
 }
 
