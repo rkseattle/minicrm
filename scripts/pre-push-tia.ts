@@ -87,10 +87,69 @@ function loadEnvFile(path: string): void {
  * inspection alone. Root loaded first so an identically-named var in
  * qa/e2e/.env (there are none today, but the ordering is the safe
  * default) can't silently shadow it.
+ *
+ * Root .env is loaded for its secrets, NOT its database coordinates: it names the DEV
+ * database (DB_NAME=minicrm, COVERAGE_DB_NAME=minicrm_coverage) on port 5432. Every
+ * subprocess below is given testStackDbEnv() explicitly so those values can never
+ * reach a child. (MINCRM-684)
  */
 function loadRootEnv(): void {
   loadEnvFile(resolve(REPO_ROOT, '.env'));
   loadEnvFile(resolve(REPO_ROOT, 'qa', 'e2e', '.env'));
+}
+
+/**
+ * Database coordinates for every subprocess this hook spawns.
+ *
+ * Applied to ALL of them, not just the four that talk to the coverage database: the
+ * Playwright children read DB_NAME/COVERAGE_DB_NAME too (globalSetup's stale-data guard,
+ * the coverage ingest/dump path), and inheriting root .env's dev values there is the
+ * same leak in a different costume.
+ *
+ * COVERAGE_DB_NAME must be minicrm_coverage_e2e, not minicrm_coverage_test: E2E runs
+ * deposit coverage into the _e2e database (docker-compose.test.yml), so pointing TIA at
+ * the unit-test database would find zero mappings and silently degrade every push to a
+ * full-suite run — defeating the point of test selection. .claude/gates/e2e-run.md's own
+ * dump:coverage-map invocation passes the same value. (MINCRM-684)
+ */
+const TEST_DB_PORT = '5433';
+const DEV_DB_PORT = '5432';
+
+/**
+ * Resolves once at first use, following scripts/e2e-setup.ts's resolve-then-reject
+ * shape rather than blindly overriding: an operator running the test stack on a
+ * non-default port can still export DB_PORT, but the dev port is refused outright
+ * because every child below reads or writes test data.
+ */
+function resolveTestStackDbEnv(): Record<string, string> {
+  const dbPort = process.env.DB_PORT ?? TEST_DB_PORT;
+
+  if (dbPort === DEV_DB_PORT) {
+    console.error(
+      `[pre-push:tia] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
+        '  This hook runs E2E suites and rewrites coverage/TIA data. The test stack\n' +
+        `  listens on ${TEST_DB_PORT}: docker compose -f docker-compose.test.yml up -d`,
+    );
+    process.exit(1);
+  }
+
+  return {
+    DB_HOST: process.env.DB_HOST ?? 'localhost',
+    DB_PORT: dbPort,
+    DB_NAME: 'minicrm_e2e',
+    COVERAGE_DB_NAME: 'minicrm_coverage_e2e',
+  };
+}
+
+/**
+ * Lazily memoized: module-scope evaluation would run BEFORE main()'s loadRootEnv() call
+ * and so never observe DB_PORT/DB_HOST from the .env files, silently resolving defaults
+ * instead of the developer's configuration.
+ */
+let cachedTestStackDbEnv: Record<string, string> | undefined;
+function testStackDbEnv(): Record<string, string> {
+  cachedTestStackDbEnv ??= resolveTestStackDbEnv();
+  return cachedTestStackDbEnv;
 }
 
 function currentBranchName(): string {
@@ -147,7 +206,7 @@ function runCreateCoverageDb(): void {
   try {
     execFileSync('npx', ['tsx', 'src/scripts/create-coverage-db.ts'], {
       cwd: resolve(REPO_ROOT, 'server'),
-      env: { ...process.env, LOG_DESTINATION: 'stderr' },
+      env: { ...process.env, ...testStackDbEnv(), LOG_DESTINATION: 'stderr' },
       stdio: ['ignore', 'inherit', 'inherit'],
     });
   } catch (err) {
@@ -172,7 +231,7 @@ function runLoadCoverageMap(sha: string): void {
   try {
     execFileSync('npx', ['tsx', 'src/scripts/load-coverage-map.ts', `--sha=${sha}`], {
       cwd: resolve(REPO_ROOT, 'server'),
-      env: { ...process.env, LOG_DESTINATION: 'stderr' },
+      env: { ...process.env, ...testStackDbEnv(), LOG_DESTINATION: 'stderr' },
       stdio: ['ignore', 'inherit', 'inherit'],
     });
   } catch (err) {
@@ -190,7 +249,7 @@ function runSelectTests(baseRef: string, headRef: string): SelectTestsResult {
     {
       cwd: resolve(REPO_ROOT, 'server'),
       encoding: 'utf8',
-      env: { ...process.env, LOG_DESTINATION: 'stderr' },
+      env: { ...process.env, ...testStackDbEnv(), LOG_DESTINATION: 'stderr' },
       stdio: ['ignore', 'pipe', 'inherit'],
     },
   );
@@ -207,7 +266,7 @@ function runPlaywright(specFiles: readonly string[]): void {
   execFileSync('npm', args, {
     cwd: resolve(REPO_ROOT, 'qa'),
     stdio: 'inherit',
-    env: process.env,
+    env: { ...process.env, ...TEST_STACK_DB_ENV },
   });
 }
 
@@ -270,7 +329,11 @@ function runPlaywright(specFiles: readonly string[]): void {
  * this is a pragmatic choice, not a correctness requirement).
  */
 function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsResult | null): void {
-  const nonSerialEnv = { ...process.env, PW_GLOBAL_TIMEOUT_MS: String(60 * 60 * 1000) };
+  const nonSerialEnv = {
+    ...process.env,
+    ...testStackDbEnv(),
+    PW_GLOBAL_TIMEOUT_MS: String(60 * 60 * 1000),
+  };
   console.log('[pre-push-tia] Running full suite, non-serial (safety net fallback).');
   execFileSync(
     'npm',
@@ -279,7 +342,11 @@ function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsRe
   );
   attestOrThrow(headSha, selection);
 
-  const serialEnv = { ...process.env, PW_GLOBAL_TIMEOUT_MS: String(25 * 60 * 1000) };
+  const serialEnv = {
+    ...process.env,
+    ...testStackDbEnv(),
+    PW_GLOBAL_TIMEOUT_MS: String(25 * 60 * 1000),
+  };
   console.log('[pre-push-tia] Running full suite, serial (safety net fallback).');
   execFileSync(
     'npm',
@@ -321,7 +388,7 @@ function runAttestation(headSha: string, selection: SelectTestsResult | null): A
       const stdout = execFileSync('npx', args, {
         cwd: resolve(REPO_ROOT, 'server'),
         encoding: 'utf8',
-        env: { ...process.env, LOG_DESTINATION: 'stderr' },
+        env: { ...process.env, ...testStackDbEnv(), LOG_DESTINATION: 'stderr' },
         stdio: ['ignore', 'pipe', 'inherit'],
       });
       return JSON.parse(stdout) as AttestationResult;

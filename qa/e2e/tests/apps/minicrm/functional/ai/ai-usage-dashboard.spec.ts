@@ -37,8 +37,9 @@ import {
 } from '@behaviors/minicrm/ai-usage-dashboard.behaviors.js';
 import { resetAiCostRates } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
 
-const BASE_URL = process.env['E2E_API_URL'] ?? 'http://localhost:3001';
+const BASE_URL = resolveApiBaseUrl();
 
 test.use({ storageState: { cookies: [], origins: [] } });
 

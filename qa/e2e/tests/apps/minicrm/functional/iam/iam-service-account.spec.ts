@@ -21,6 +21,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
+import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -32,7 +33,7 @@ const ADMIN_EMAIL = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
 const ADMIN_PASSWORD = process.env['E2E_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) throw new Error('[F-SA] E2E_ADMIN_PASSWORD is not set');
 
-const API_BASE_URL = process.env['E2E_API_URL'] ?? 'http://localhost:3002';
+const API_BASE_URL = resolveApiBaseUrl();
 
 // ---------------------------------------------------------------------------
 // Shared setup
