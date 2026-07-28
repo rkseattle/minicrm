@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "dev:dev-stack": "echo '\u2192 DEV stack: API http://localhost:3001, UI http://localhost:5173 (or http://dev.minicrm.local:5173)' && cross-env API_URL=http://localhost:3001 DEV_ALLOWED_HOSTS=dev.minicrm.local vite",
-    "dev:e2e": "echo '\u2192 TEST stack: API http://localhost:3002, UI http://localhost:5173 (matches CI)' && cross-env API_URL=http://localhost:3002 vite",
+    "dev:e2e": "echo '\u2192 TEST stack: API http://localhost:3002, UI http://localhost:5175' && cross-env API_URL=http://localhost:3002 vite --port 5175 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

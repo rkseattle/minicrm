@@ -14,8 +14,17 @@ import type { JwtTokenPayload } from '../types/express.js';
 import { findUserById, findUserByApiToken } from '../services/userService.js';
 import { runWithRequestContext } from '../utils/requestContext.js';
 
-/** Name of the cookie that holds the JWT */
-export const AUTH_COOKIE_NAME = 'minicrm_token';
+/**
+ * Name of the cookie that holds the JWT.
+ *
+ * Overridable via AUTH_COOKIE_NAME so two stacks on the same host can hold independent
+ * sessions. Cookies are scoped by domain, NOT by port, so the dev stack (localhost:5173)
+ * and the test stack (localhost:5175) otherwise share one jar: logging into either
+ * overwrites the other's token, and the victim sees "your session has expired" because
+ * the surviving token names a user that exists only in the other stack's database.
+ * Defaults to the historical value, so unset changes nothing. (MINCRM-684)
+ */
+export const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'minicrm_token';
 
 /**
  * Express middleware that validates the JWT from the httpOnly cookie and

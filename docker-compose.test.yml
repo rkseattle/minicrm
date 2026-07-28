@@ -113,17 +113,25 @@ services:
       # locally generated qa/coverage-map.json useless. Export
       # GIT_COMMIT_SHA=$(git rev-parse HEAD) before `up`. See .claude/gates/e2e-run.md.
       GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}
-      JWT_SECRET: ${JWT_SECRET}
+      # Distinct from the dev stack's secret on purpose. Both stacks serve localhost, and
+      # cookies are scoped by domain rather than port, so a shared secret means a token
+      # minted here validates against the dev server too — it just names a user that only
+      # exists in this database, which surfaces as a bogus "session expired" on the dev
+      # UI. A different secret makes the token cryptographically inert over there.
+      JWT_SECRET: ${TEST_JWT_SECRET:-test-stack-jwt-secret-at-least-32-characters-long}
+      # Distinct cookie name so the two stacks do not overwrite each other's session in
+      # the shared localhost cookie jar. See middleware/auth.ts. (MINCRM-684)
+      AUTH_COOKIE_NAME: minicrm_token_test
       # Both browser origins that drive this stack: the Vite dev server E2E actually
       # runs against, and the static client below. app.ts rejects any origin not listed
       # here — there is no wildcard.
-      CORS_ORIGIN: ${TEST_CORS_ORIGIN:-http://localhost:5173,http://localhost:8080}
+      CORS_ORIGIN: ${TEST_CORS_ORIGIN:-http://localhost:5175,http://localhost:8080,http://localhost:5173}
       # Password-reset and invite links are built from these (authController,
       # emailService). They must point at the browser origin E2E drives, NOT the
       # `http://localhost` port-80 default the dev stack used — that client is now
       # profiled off.
-      APP_URL: ${TEST_APP_URL:-http://localhost:5173}
-      APP_BASE_URL: ${TEST_APP_BASE_URL:-http://localhost:5173}
+      APP_URL: ${TEST_APP_URL:-http://localhost:5175}
+      APP_BASE_URL: ${TEST_APP_BASE_URL:-http://localhost:5175}
       # This one is the SERVER's own public origin, not a browser origin: the IdP
       # redirects/POSTs back to the Express API, which is published on 3002.
       SSO_CALLBACK_BASE_URL: ${TEST_SSO_CALLBACK_BASE_URL:-http://localhost:3002}
