@@ -1058,8 +1058,9 @@ attestation all succeeding, which is why no incomplete map has ever been committ
 > in one place means checking the other — MINCRM-687's missing SMTP seeding was caused by
 > exactly that drift.
 
-`qa/coverage-map.json`, the artifact this workflow produces, is also consumed by
-`docker-compose.test.yml`.
+`qa/coverage-map.json` is the artifact this workflow produces. It is loaded into a fresh
+database by `npm run load:coverage-map`, which is how CI — having no persistent coverage
+database — restores the committed map before a selection run.
 
 Because both projects run, `coverage_test_links` holds roughly twice the rows a
 single-project run would produce: `testInfo.testId` is project-scoped, so the same test

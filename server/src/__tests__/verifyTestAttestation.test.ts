@@ -400,6 +400,32 @@ describe('findTestsSkippedEverywhere', () => {
     expect(findTestsSkippedEverywhere(cases)).toEqual([]);
   });
 
+  // An orphan row (swept up outside any <testsuite>) has project '' — its
+  // provenance is unknown, so it must not attest anything. Mirrors the
+  // orphan sweep's own refusal to let a suite row mask an orphan <failure>.
+  it('does not let an unattributed passing row mask a real skip', () => {
+    const cases = [
+      testCase({ name: 'ambiguous', project: '', passed: true }),
+      testCase({ name: 'ambiguous', project: 'desktop', skipped: true }),
+    ];
+
+    expect(findTestsSkippedEverywhere(cases)).toEqual([
+      { classname: 'a.spec.ts', name: 'ambiguous' },
+    ]);
+  });
+
+  // testCaseKey joins on NUL precisely so these two do not collide. A space
+  // separator would make both ("a.spec.ts", "b c") and ("a.spec.ts b", "c")
+  // hash to "a.spec.ts b c", letting the passing one attest the skipped one.
+  it('does not collide two tests whose classname/name split differs by a space', () => {
+    const cases = [
+      testCase({ classname: 'a.spec.ts', name: 'b c', passed: true }),
+      testCase({ classname: 'a.spec.ts b', name: 'c', skipped: true }),
+    ];
+
+    expect(findTestsSkippedEverywhere(cases)).toEqual([{ classname: 'a.spec.ts b', name: 'c' }]);
+  });
+
   // Guards the scope limitation stated in the module docblock: the rule
   // reconciles what the results file CONTAINS. A single-project run is not
   // weakened by the change — a test skipped there passed nowhere, so it is
@@ -495,6 +521,27 @@ describe('parseJUnitResults — row collection never drops a failure', () => {
     expect(result.testCases[0].passed).toBe(false);
     expect(result.testCases[0].failureMessage).toBe('assertion failed');
     expect(hasParseDisagreement(result)).toBe(false);
+  });
+
+  // Regression guard for strip ORDERING: when the CDATA-bodied elements were
+  // stripped in two sequential passes, a <failure> body containing the literal
+  // text "<system-out>" opened a region the system-out pass then swallowed
+  // across </failure> and </testcase>, dropping every later row.
+  it('does not drop rows when a <failure> body mentions <system-out>', () => {
+    const xml = `<testsuites tests="2" failures="1" skipped="0" errors="0">
+<testsuite name="a.spec.ts" hostname="desktop" tests="2" failures="1" skipped="0" errors="0">
+<testcase name="t1" classname="a.spec.ts"><failure message="REAL FAILURE"><![CDATA[snippet mentioning <system-out> tag]]></failure></testcase>
+<testcase name="t2" classname="a.spec.ts"><system-out><![CDATA[ok]]></system-out></testcase>
+</testsuite>
+</testsuites>`;
+
+    const result = parseJUnitResults(xml);
+
+    expect(result.testCases).toHaveLength(2);
+    expect(result.testCases.map((t) => t.name)).toEqual(['t1', 't2']);
+    expect(findFailedTests(result.testCases)).toEqual([
+      { classname: 'a.spec.ts', name: 't1', message: 'REAL FAILURE' },
+    ]);
   });
 
   it('collects rows from every testsuite without double-counting them as orphans', () => {
