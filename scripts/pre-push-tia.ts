@@ -368,6 +368,21 @@ interface AttestationResult {
  * to satisfy. Returns the parsed result rather than throwing on a FAILED
  * attestation (a non-zero exit code there means "attestation failed", a
  * legitimate outcome this caller needs to inspect, not a script crash).
+ *
+ * MINCRM-687 changed what that gate treats as a skip failure, and this hook
+ * is its other caller, so the effect here is worth stating explicitly.
+ * Neither invocation below passes --project, so Playwright runs every
+ * configured project and the results.xml carries one row per
+ * (test, project). The gate now reports a test only when it was skipped in
+ * EVERY project present, rather than in any one of them.
+ *
+ * That is a deliberate loosening, and it is the correct one for a
+ * multi-project run: this suite guards viewport-specific tests in both
+ * directions, so under the old rule a full local run could never pass the
+ * gate at all — every desktop-only test skipped under mobile-web, and vice
+ * versa. What it does NOT loosen: a test skipped everywhere still fails, a
+ * test failing in any project still fails, and the SHA-binding and
+ * freshness anti-cheat checks are untouched.
  */
 function runAttestation(headSha: string, selection: SelectTestsResult | null): AttestationResult {
   const tmpDir = mkdtempSync(join(tmpdir(), 'tia-prepush-'));
