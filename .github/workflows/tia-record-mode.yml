@@ -46,14 +46,14 @@ on:
     inputs:
       ref:
         description: >-
-          Branch or SHA to check out. Defaults to main, which is what every
-          scheduled and post-merge run uses. Override ONLY to validate a
-          change to this workflow itself before merging it: the checkout is
-          otherwise pinned to main, so dispatching a branch would run main's
-          workflow definition against main's code and prove nothing about the
-          branch. A map exported from a non-main dispatch is still committed
-          back to main by the step below, so treat non-main runs as
-          throwaway validation and re-run on main after merging. (MINCRM-687)
+          Branch to check out. Defaults to main, which is what every scheduled
+          and post-merge run uses. Override ONLY to validate a change to this
+          workflow itself before merging it: the checkout is otherwise pinned
+          to main, so dispatching a branch would run main's workflow
+          definition against main's code and prove nothing about the branch.
+          A non-main run exports its coverage map but does NOT commit it —
+          only main's map is authoritative — so treat such runs as throwaway
+          validation and re-run on main after merging. (MINCRM-687)
         required: false
         default: main
 
@@ -295,11 +295,13 @@ jobs:
           # is the margin this needs: the figure above was measured locally,
           # and a GitHub runner is slower than a dev machine.
           #
-          # Cross-check: scripts/pre-push-tia.ts budgets 60 min + 25 min = 85
-          # min for this same 1322-test, two-project set — it passes no
-          # --project either, so it runs every configured project exactly as
-          # this step does. 150 min is that budget plus headroom for a
-          # runner slower than the dev machine those figures came from.
+          # Cross-check: scripts/pre-push-tia.ts covers the same 1322 tests
+          # across the same two projects (it passes no --project either), but
+          # as TWO sequential invocations of disjoint subsets — 60 min for the
+          # 1030 non-serial, then 25 min for the 292 serial. Not a directly
+          # comparable single budget, but it brackets the same work at 85 min
+          # total, which is the useful signal: one unsharded invocation of the
+          # union needs more than that, not less.
           #
           # GitHub's default 360-minute job limit is the only hard ceiling.
           #
@@ -340,13 +342,26 @@ jobs:
       # diagnoses. Reads the JUnit XML the run already writes rather than
       # Playwright's exit code, per the project rule to read result files.
       #
-      # The ingest step below deliberately still exits 0 on an empty dump set
-      # — it is if: always() so it runs after partial failures, and an empty
-      # ingest is legitimate when the suite genuinely failed earlier. This
-      # guard is the compensating control for that gap.
+      # Scope: this guard covers the ZERO-TESTS half of the problem, not the
+      # zero-DUMPS half. The ingest step below still exits 0 on an empty dump
+      # set — deliberately, since it is if: always() and an empty ingest is
+      # legitimate when the suite failed earlier. So a run where all 1322
+      # tests pass but no coverage dumps are produced (instrumentation
+      # silently off, say) still reaches the attestation gate and fails there
+      # with 'no-session-attribution' rather than being named here. That is
+      # the accepted residual: attributing it correctly needs a dump-count
+      # assertion the ingest step does not currently expose, and the
+      # attestation reason is at least specific about what is missing.
+      # Gated on the suite step having actually executed, NOT bare always().
+      # When an earlier step fails — e2e-infra died in two of the runs in this
+      # ticket's own history — run-suite is skipped, no results.xml exists, and
+      # a bare always() would fire this guard's "check the suite step" message
+      # over the real infra error. Naming the wrong cause is the exact failure
+      # mode this ticket exists to remove, so the guard must not reintroduce
+      # it. It still runs when run-suite FAILS, which is the case it diagnoses.
       - name: Verify the suite actually ran tests
         id: verify-ran
-        if: always()
+        if: always() && steps.run-suite.conclusion != 'skipped'
         run: |
           if [ ! -f "$RESULTS_XML" ]; then
             echo "::error::No results file at $RESULTS_XML — the suite produced no JUnit output at all. Check the 'Run full functional + serial suite' step: if every spec threw at import time (a missing E2E_ADMIN_PASSWORD does this), Playwright collects 0 tests and writes nothing."
@@ -425,9 +440,20 @@ jobs:
           DB_HOST: localhost
           DB_PORT: 5432
 
+      # Only main's map is authoritative, so only a run that actually checked
+      # out main may commit one. A validation dispatch against a branch (see
+      # the `ref` input) produces a real map, but committing it would push to
+      # whatever ref was checked out — and on a SHA dispatch, to a detached
+      # HEAD, failing the job at its last step after a multi-hour run. Skip
+      # instead, and say so: the export step above still ran, so the artifact
+      # is inspectable in the uploaded report.
       - name: Commit updated coverage map
         if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
         run: |
+          if [ "$CHECKED_OUT_REF" != "main" ]; then
+            echo "::notice::Checked out '$CHECKED_OUT_REF', not main — skipping the coverage-map commit. Re-run on main to publish it."
+            exit 0
+          fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add qa/coverage-map.json
@@ -435,8 +461,10 @@ jobs:
             echo "Coverage map unchanged — nothing to commit."
           else
             git commit -m "chore(coverage-tia): update coverage map [skip ci]"
-            git push
+            git push origin HEAD:main
           fi
+        env:
+          CHECKED_OUT_REF: ${{ inputs.ref || 'main' }}
 
       - name: Upload Playwright report
         if: always()

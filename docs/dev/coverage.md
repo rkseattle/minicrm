@@ -1059,7 +1059,7 @@ attestation all succeeding, which is why no incomplete map has ever been committ
 > exactly that drift.
 
 `qa/coverage-map.json` is the artifact this workflow produces. It is loaded into a fresh
-database by `npm run load:coverage-map`, which is how CI — having no persistent coverage
+database by `npm run load:coverage-map --workspace=minicrm-server`, which is how CI — having no persistent coverage
 database — restores the committed map before a selection run.
 
 Because both projects run, `coverage_test_links` holds roughly twice the rows a

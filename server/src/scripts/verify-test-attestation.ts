@@ -105,10 +105,11 @@ function parseArgs(argv: readonly string[]): CliArgs {
 // node_modules only as a transitive dep of minio/promptfoo, undeclared and
 // not safe to rely on surviving a future dependency bump).
 //
-// The one place the shape is NOT flat is <system-out>/<system-err>, whose
-// CDATA payload is captured console output and can therefore contain
-// anything — including text that looks like JUnit structure. Playwright's
-// escaping neutralizes only `]]>`. Those blocks are stripped before any
+// What is NOT flat are the CDATA-bodied elements — <system-out>/<system-err>
+// (captured console output) and <failure>/<error> (formatFailure output,
+// including the failing source snippet). Their payloads can contain
+// anything, including text that looks like JUnit structure. Playwright's
+// escaping neutralizes only `]]>`. Those bodies are stripped before any
 // structural scan (stripCapturedOutput), and the reporter's own declared
 // totals are cross-checked against what was recovered, so a document this
 // extractor cannot fully read is reported rather than silently under-parsed.
@@ -425,12 +426,34 @@ export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
 export function findTestsSkippedEverywhere(
   testCases: readonly JUnitTestCase[],
 ): Array<{ classname: string; name: string }> {
-  const passedAnywhere = new Set(
-    testCases.filter((t) => t.passed && t.project !== '').map((t) => testCaseKey(t)),
-  );
-  return dedupeByKey(testCases.filter((t) => t.skipped && !passedAnywhere.has(testCaseKey(t)))).map(
-    (t) => ({ classname: t.classname, name: t.name }),
-  );
+  // Keyed on (project, test), not (test): a skip is attested only by a pass
+  // in a DIFFERENT project run. Keying on the test alone would let a pass
+  // attest a skip of the same test in the SAME project — "passed in at least
+  // one project run" is the documented rule, and a pass and a skip of one
+  // test within one project is a contradiction that must be reported, not
+  // resolved in favour of the pass. Playwright emits one row per
+  // (test, project) so this cannot arise from its reporter today; the
+  // stricter key means a malformed or hand-merged results file cannot quietly
+  // exploit the looser one.
+  const attestingProjects = new Map<string, Set<string>>();
+  for (const t of testCases) {
+    if (!t.passed || t.project === '') continue;
+    const key = testCaseKey(t);
+    const projects = attestingProjects.get(key) ?? new Set<string>();
+    projects.add(t.project);
+    attestingProjects.set(key, projects);
+  }
+
+  const skippedEverywhere = testCases.filter((t) => {
+    if (!t.skipped) return false;
+    const projects = attestingProjects.get(testCaseKey(t));
+    if (!projects) return true;
+    // A pass in this same project does not attest this skip — only a pass in
+    // some OTHER project run does.
+    return !Array.from(projects).some((project) => project !== t.project);
+  });
+
+  return dedupeByKey(skippedEverywhere).map((t) => ({ classname: t.classname, name: t.name }));
 }
 
 /**
