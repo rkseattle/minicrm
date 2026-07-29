@@ -1049,12 +1049,18 @@ The export and commit steps are gated on the suite, the zero-test guard, and the
 attestation all succeeding, which is why no incomplete map has ever been committed.
 
 > **Note:** `.github/actions/e2e-infra` is record mode's setup action, but `ci.yml`'s E2E
-> jobs still inline their own equivalent sequence rather than calling it (recorded as R3 in
-> `docs/plans/MINCRM-684.md`). Changing a step in one place means checking the other —
-> MINCRM-687's missing SMTP seeding was caused by exactly that drift.
+> jobs still inline their own equivalent sequence rather than calling it. Changing a step
+> in one place means checking the other — MINCRM-687's missing SMTP seeding was caused by
+> exactly that drift.
 
 `qa/coverage-map.json`, the artifact this workflow produces, is also consumed by
 `docker-compose.test.yml`.
+
+Because both projects run, `coverage_test_links` holds roughly twice the rows a
+single-project run would produce: `testInfo.testId` is project-scoped, so the same test
+contributes one row per project. Selection is unaffected — `select-tests.ts` resolves
+through `testFile`, and both testIds converge on the same file — but expect the committed
+map to be about twice the size of a desktop-only one.
 
 ## Deferred to later phases
 

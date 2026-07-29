@@ -176,16 +176,25 @@ jobs:
       # which projects were intended, so it will not catch the mistake for
       # you — it would simply report the now-uncovered tests as skipped.
       #
-      # Known risk accepted when this landed: 56 @serial tests across six
-      # spec files (feature-flags, admin/aiSettings, visibility, sso,
-      # branding, settings) carry NO viewport handling and had never run
-      # under mobile-web before this change — ci.yml runs serial specs on
-      # desktop only. Some target pages hide elements responsively
-      # (GeneralSettings.tsx's `hidden lg:block`, BrandingSettings.tsx's
-      # `hidden sm:block`). If this run goes red on those specs, the fix is
-      # to viewport-guard them, NOT to drop --project=mobile-web: dropping it
-      # just moves the failure to the six mobile-only tests, which would then
-      # be skipped everywhere and reported by the gate.
+      # Known risk accepted when this landed: most @serial spec files carry
+      # NO viewport handling at all and had never run under mobile-web
+      # before this change, because ci.yml runs serial specs on desktop only
+      # (ci.yml:1436). Some target pages hide elements responsively — e.g.
+      # client/src/pages/admin/GeneralSettings.tsx:152 (`hidden lg:block`)
+      # and client/src/pages/admin/BrandingSettings.tsx:350
+      # (`hidden sm:block`) — so a spec that assumes such an element is
+      # present will fail under the Pixel 5 viewport.
+      #
+      # For the current census (a count quoted here would drift with every
+      # spec edit):
+      #   for f in $(grep -rl "@serial" qa/e2e/tests/apps/minicrm/functional/); do
+      #     grep -q "isMobile\|viewportSize" "$f" || echo "$f"
+      #   done
+      #
+      # If this run goes red on those specs, the fix is to viewport-guard
+      # them, NOT to drop --project=mobile-web: dropping it just moves the
+      # failure onto the mobile-only tests, which would then be skipped in
+      # every project present and reported by the gate.
       - name: Run full functional + serial suite (record mode)
         id: run-suite
         run: |
@@ -218,6 +227,22 @@ jobs:
           E2E_API_URL: http://localhost:3001
           E2E: true
           MAILHOG_URL: http://localhost:8025
+          # Bind the coverage sessions this run records to the SAME SHA the
+          # attestation step verifies against. resolveSessionBuildSha()
+          # (coverage-session-control-client.ts:28-30) falls back to
+          # GITHUB_SHA, which for a workflow_dispatch launched against a
+          # non-main ref is the DISPATCHED ref's tip — not the `ref: main`
+          # this job actually checks out. The gate would then query one SHA
+          # while sessions were tagged with another, find nothing, and fail
+          # with 'no-session-attribution': a correct suite run reported as a
+          # coverage-plumbing fault, which is exactly the confusing symptom
+          # the zero-test guard below was added to stop producing.
+          #
+          # The checkout step's own comment (:113-122) already establishes
+          # that every later step must use the resolved SHA rather than
+          # github.sha; this closes the one path that still did not.
+          # MINCRM-688 tracks the same fix for the local/ingest paths.
+          GIT_COMMIT_SHA: ${{ steps.resolve-sha.outputs.sha }}
           # AI healing is deliberately NOT enabled here, unlike ci.yml's
           # e2e-functional/e2e-serial jobs. Healing repairs drifted locators
           # at runtime; this run is the authoritative source of coverage
@@ -225,14 +250,29 @@ jobs:
           # resolve to, not what an LLM patched them into. Do not "restore
           # parity" with ci.yml by adding AI_HEALING/ANTHROPIC_API_KEY.
           #
-          # 90 minutes, overriding playwright.config.ts's 20-minute default
-          # (:154-156), which is calibrated for a sharded run. Derived from
-          # qa/e2e/test-timing-baseline.json: 97 functional spec files sum
-          # to ~43.6 min of file time (57 measured medians + 40 at the 30s
-          # fallback), collected under multi-worker sharding, so
-          # single-worker wall clock is strictly higher — and this runs both
-          # projects (see the two --project flags above), so the suite is
-          # traversed twice. 90 min is ~2x the derived floor.
+          # 150 minutes, overriding playwright.config.ts's 20-minute default
+          # (:154-156), which is calibrated for CI's sharded 4x2x2 matrix and
+          # is far too small for one unsharded single-worker process.
+          #
+          # Derived from this repo's own MEASURED single-worker throughput,
+          # not from sharded per-file medians (which understate a serialized
+          # run): playwright.config.ts's comment records ~420-445 of 1030
+          # tests completing in 20 minutes at 1-2 local workers — the test
+          # server is a single Node process, so it bottlenecks throughput
+          # regardless of worker count. That is ~21-22 tests/min.
+          #
+          # This invocation is 1322 tests (661 per project x 2 projects,
+          # counted with `playwright test --grep @functional --list`), so
+          # ~60-63 min at that rate. 150 min is ~2.4x the projection, which
+          # is the margin this needs: the figure above was measured locally,
+          # and a GitHub runner is slower than a dev machine.
+          #
+          # Cross-check: scripts/pre-push-tia.ts budgets 60 min + 25 min = 85
+          # min for the same suite at --workers=1 on ONE project. Two
+          # projects must exceed that, which the previous 90-minute value
+          # barely did.
+          #
+          # GitHub's default 360-minute job limit is the only hard ceiling.
           #
           # This does NOT interact with verify-test-attestation's
           # DEFAULT_MAX_AGE_MINUTES = 120 (:46) the way a job-duration budget
@@ -242,7 +282,7 @@ jobs:
           # results.xml left over from an earlier run of the same commit, not
           # against a long job. GitHub's default 360-minute job limit is the
           # only ceiling this value has to respect.
-          PW_GLOBAL_TIMEOUT_MS: '5400000'
+          PW_GLOBAL_TIMEOUT_MS: '9000000'
           # E2E_COVERAGE_GRANULARITY intentionally UNSET (per-test, the
           # default — see coverage.md's Low-Overhead Mode table). Record
           # mode's whole purpose is populating coverage_test_links with real
