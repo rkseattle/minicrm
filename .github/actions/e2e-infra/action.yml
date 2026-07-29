@@ -7,10 +7,11 @@
 # Its only caller today is .github/workflows/tia-record-mode.yml. ci.yml's
 # e2e-functional/e2e-serial/update-visual-snapshots jobs still inline an
 # equivalent sequence of their own rather than calling this action — a known
-# duplication (recorded as R3 in docs/plans/MINCRM-684.md). When changing a
-# step here, check whether ci.yml's copies need the same change; MINCRM-687
-# was caused by exactly that drift, where this action lacked the SMTP seeding
-# step both ci.yml jobs have.
+# duplication kept for now because consolidating three large CI jobs is its
+# own change, not a rider on a bug fix. When changing a step here, check
+# whether ci.yml's copies need the same change: MINCRM-687 was caused by
+# exactly that drift, where this action lacked the SMTP seeding step both
+# ci.yml jobs have.
 #
 # Callers are responsible for declaring the postgres and minio services at
 # the job level — service containers cannot be defined inside a composite
