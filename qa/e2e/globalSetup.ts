@@ -95,23 +95,6 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   // cascading failures from stale data are caught before any worker starts.
   await assertStaleDataGuard();
 
-  // No default outside CI. A silent fallback to :3001 points the whole suite at the DEV
-  // server and, through it, the dev database — the leak class MINCRM-684 exists to
-  // close. Every documented local invocation sources qa/e2e/.env (which sets :3002), so
-  // an unset value here means the runner was started wrong, and failing beats silently
-  // driving the wrong stack. CI sets E2E_API_URL explicitly in all nine of its jobs;
-  // the fallback is kept for that path only.
-  const E2E_API_URL =
-    process.env['E2E_API_URL'] ?? (process.env['CI'] ? 'http://localhost:3001' : '');
-  if (!E2E_API_URL) {
-    throw new Error(
-      'E2E_API_URL is not set. Local E2E runs must target the test stack on ' +
-        'http://localhost:3002 — never the dev server on :3001. Source qa/e2e/.env first:\n' +
-        "  cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test",
-    );
-  }
-  const loginUrl = `${E2E_API_URL}/api/v1/auth/login`;
-
   const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const adminPassword = process.env['E2E_ADMIN_PASSWORD'];
 
@@ -129,6 +112,26 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     );
     return;
   }
+
+  // Only past this point does globalSetup actually need an app server, so the guard
+  // lives here rather than at the top: framework-only runs (qa/e2e/tests/framework/)
+  // return above with no E2E_ADMIN_PASSWORD and must not be forced to supply an API
+  // target they never use.
+  //
+  // No default outside CI. A silent fallback to :3001 points the suite at the DEV server
+  // and, through it, the dev database — the leak class MINCRM-684 exists to close. Every
+  // documented local invocation sources qa/e2e/.env (which sets :3002). CI sets
+  // E2E_API_URL explicitly in every job, so the fallback is kept for that path only.
+  const E2E_API_URL =
+    process.env['E2E_API_URL'] ?? (process.env['CI'] ? 'http://localhost:3001' : '');
+  if (!E2E_API_URL) {
+    throw new Error(
+      'E2E_API_URL is not set. Local E2E runs must target the test stack on ' +
+        'http://localhost:3002 — never the dev server on :3001. Source qa/e2e/.env first:\n' +
+        "  cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test",
+    );
+  }
+  const loginUrl = `${E2E_API_URL}/api/v1/auth/login`;
 
   const response = await fetch(loginUrl, {
     method: 'POST',
