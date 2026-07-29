@@ -970,13 +970,14 @@ The suite step's `env:` block must track `ci.yml`'s E2E jobs (`ci.yml:1443-1452`
 closest analogue). This is not optional polish — MINCRM-687 was a five-week outage of this
 workflow caused by one missing variable:
 
-| Variable                             | Consequence if unset                                                                                                                       |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `E2E_ADMIN_PASSWORD`                 | **Hard failure.** No default anywhere. Eleven `@functional` specs `throw` at module scope, so Playwright collects **0 tests**.             |
-| `E2E_ADMIN_EMAIL`                    | Silently defaults to `admin@example.com`; login 401s if the seeded admin differs.                                                          |
-| `E2E_API_URL`                        | `globalSetup.ts` falls back to `:3001` under CI, but `apps/minicrm/apiBaseUrl.ts` defaults to `:3002` — set it so the two cannot disagree. |
-| `E2E_BASE_URL`, `E2E`, `MAILHOG_URL` | CI-only fallbacks happen to be correct; set explicitly for parity.                                                                         |
-| `PW_GLOBAL_TIMEOUT_MS`               | Falls back to the config's 20-minute default, calibrated for a _sharded_ run. A single-worker full-suite run needs far more.               |
+| Variable                             | Consequence if unset                                                                                                                                                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_ADMIN_PASSWORD`                 | **Hard failure.** No default anywhere. Eleven `@functional` specs `throw` at module scope, so Playwright collects **0 tests**.                                                                                                                 |
+| `E2E_ADMIN_EMAIL`                    | Silently defaults to `admin@example.com`; login 401s if the seeded admin differs.                                                                                                                                                              |
+| `E2E_API_URL`                        | `globalSetup.ts` falls back to `:3001` under CI, but `apps/minicrm/apiBaseUrl.ts` defaults to `:3002` — set it so the two cannot disagree.                                                                                                     |
+| `E2E_BASE_URL`, `E2E`, `MAILHOG_URL` | CI-only fallbacks happen to be correct; set explicitly for parity.                                                                                                                                                                             |
+| `PW_GLOBAL_TIMEOUT_MS`               | Falls back to the config's 20-minute default, calibrated for a _sharded_ run. A single-worker full-suite run needs far more.                                                                                                                   |
+| `GIT_COMMIT_SHA`                     | Coverage sessions fall back to `GITHUB_SHA`, which for a `workflow_dispatch` against a non-`main` ref is not the SHA the job checked out — the gate then queries one SHA while sessions carry another and fails with `no-session-attribution`. |
 
 **The failure is silent, which is what made it expensive.** With `E2E_ADMIN_PASSWORD`
 absent, `globalSetup.ts:104-114` does not throw — it writes an empty `storageState` and
@@ -1025,10 +1026,14 @@ pre-push hook.
 
 ### Why the run is slow, and what that does not affect
 
-The full suite at `--workers=1` across two projects is budgeted at 90 minutes via
-`PW_GLOBAL_TIMEOUT_MS`. Single-worker is deliberate: this run mixes `@functional` and
-`@serial` in one invocation, and `@serial` specs mutate shared `system_settings` rows.
-`ci.yml` gets away with more parallelism only because it _splits_ the suite across jobs.
+The full suite at `--workers=1` across two projects is 1322 tests (661 per project) and is
+budgeted at 150 minutes via `PW_GLOBAL_TIMEOUT_MS`. That figure comes from this repo's
+measured single-worker throughput of ~21–22 tests/min (`playwright.config.ts:143-152`),
+which projects to ~60–63 minutes, plus margin for a CI runner slower than the dev machine
+that rate was measured on. `scripts/pre-push-tia.ts` budgets 85 minutes for the same
+two-project set. Single-worker is deliberate: this run mixes `@functional` and `@serial` in
+one invocation, and `@serial` specs mutate shared `system_settings` rows. `ci.yml` gets
+away with more parallelism only because it _splits_ the suite across jobs.
 
 The attestation script's `--max-age-minutes` (default 120) is **not** a competing budget:
 it stats the results file's mtime, written when the suite _finishes_, and the gate runs

@@ -332,6 +332,17 @@ export interface AttestationResult {
  * Identity of a test independent of which project it ran under — the pair
  * that Playwright repeats once per project in the JUnit XML. Used to
  * reconcile a test's outcomes across projects. (MINCRM-687)
+ *
+ * Joined on NUL because `classname` is a file path and `name` is
+ * Playwright's title path, both of which may contain spaces — a space
+ * separator would let ("a.spec.ts", "b c") and ("a.spec.ts b", "c") collide.
+ *
+ * Assumes test titles are unique within a spec file, which Playwright does
+ * not enforce. Two same-named tests in one file collapse to one key, so a
+ * passing one would attest a skipped one. No duplicate identities exist in
+ * the suite today (checked by enumerating `playwright test --list`), and
+ * duplicate titles are a test-authoring smell in their own right — but if
+ * that changes, this key needs an ordinal component.
  */
 function testCaseKey(testCase: Pick<JUnitTestCase, 'classname' | 'name'>): string {
   return `${testCase.classname} ${testCase.name}`;
@@ -364,7 +375,11 @@ function dedupeByKey(testCases: JUnitTestCase[]): JUnitTestCase[] {
  * parser's rows do:
  *
  *  - row count: N declared vs. rows recovered
- *  - skip presence: skips declared but none recovered
+ *  - skip count: <testsuites skipped="N"> declared vs. skipped rows
+ *    recovered. A count comparison rather than a presence check, so a
+ *    <skipped> element missed WITHIN an otherwise-recovered row is caught
+ *    too — the row-count predicate cannot see that case, since the row
+ *    itself was recovered.
  *
  * Guarded on `totalTests > 0` so a document carrying no <testsuites>
  * attributes at all (which yields 0) is not condemned on the strength of an
@@ -373,8 +388,10 @@ function dedupeByKey(testCases: JUnitTestCase[]): JUnitTestCase[] {
  */
 export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
   const rowCountDisagrees = parsed.totalTests > 0 && parsed.totalTests !== parsed.testCases.length;
-  const skipPresenceDisagrees = parsed.totalSkipped > 0 && !parsed.testCases.some((t) => t.skipped);
-  return rowCountDisagrees || skipPresenceDisagrees;
+  const skipCountDisagrees =
+    parsed.totalSkipped > 0 &&
+    parsed.testCases.filter((t) => t.skipped).length !== parsed.totalSkipped;
+  return rowCountDisagrees || skipCountDisagrees;
 }
 
 /**
