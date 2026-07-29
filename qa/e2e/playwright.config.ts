@@ -1,12 +1,29 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 
+const IS_CI = Boolean(process.env.CI);
+
 // MINCRM-123: E2E_BASE_URL is the frontend origin Playwright navigates to.
 // E2E_API_URL is the backend API origin used by RestClient and globalSetup.
 // Set these to the deployed frontend/API URLs in staging/production.
-const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
+//
+// No default outside CI (MINCRM-684). Locally `npm run e2e:client` serves the test
+// stack's UI on 5175; a silent :5173 fallback would navigate the browser to the DEV
+// frontend, whose Vite proxies to the dev API on :3001 — so the browser would mutate the
+// dev database while globalSetup authenticated against the test API. That split-brain is
+// the leak class this ticket removes, and it must not depend on an env file being
+// present. CI sets E2E_BASE_URL explicitly in every job and serves its own client on
+// 5173, so the fallback is kept for that path only.
+const BASE_URL = process.env.E2E_BASE_URL ?? (IS_CI ? 'http://localhost:5173' : '');
 
-const IS_CI = Boolean(process.env.CI);
+if (!BASE_URL) {
+  throw new Error(
+    'E2E_BASE_URL is not set. Local E2E runs must target the test stack UI on ' +
+      'http://localhost:5175 — never the dev frontend on :5173, which proxies to the ' +
+      'dev API and database. Source qa/e2e/.env first:\n' +
+      "  cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test",
+  );
+}
 
 // MINCRM-135: Anchor output paths to __dirname (qa/e2e/) so they are
 // predictable regardless of the working directory when npx playwright runs.
