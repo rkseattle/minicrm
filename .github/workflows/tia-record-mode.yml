@@ -141,6 +141,11 @@ jobs:
           # main's definition — which is how MINCRM-687's breakage survived
           # five weeks and several inspection-only reviews.
           ref: ${{ inputs.ref || 'main' }}
+          # Full history: the commit step below uses `git merge-base
+          # --is-ancestor` to decide whether what was tested is on main, and
+          # rebases onto main's tip before pushing. Neither works against the
+          # default depth-1 shallow clone. (MINCRM-687)
+          fetch-depth: 0
 
       - name: Resolve checked-out SHA
         id: resolve-sha
@@ -450,8 +455,22 @@ jobs:
       - name: Commit updated coverage map
         if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
         run: |
-          if [ "$CHECKED_OUT_REF" != "main" ]; then
-            echo "::notice::Checked out '$CHECKED_OUT_REF', not main — skipping the coverage-map commit. Re-run on main to publish it."
+          # Ask git what was actually checked out rather than string-matching
+          # the `ref` input. That input is a user-supplied label and takes
+          # several forms for the same commit — `main`, `refs/heads/main`,
+          # `origin/main`, a raw SHA — so comparing it to a literal would skip
+          # the publish for a legitimate main dispatch (and any future
+          # equivalent spelling). Comparing COMMITS answers the only question
+          # that matters: is what we just tested exactly main's tip?
+          # Ancestry, not equality: main moves during a run this long, and a
+          # merge landing mid-run must not cost us the map. What disqualifies
+          # a run is having tested a commit that is not ON main at all — a
+          # branch or an arbitrary SHA — which is exactly what
+          # `merge-base --is-ancestor` answers.
+          git fetch --quiet origin main
+          HEAD_SHA="$(git rev-parse HEAD)"
+          if ! git merge-base --is-ancestor "$HEAD_SHA" origin/main; then
+            echo "::notice::HEAD ($HEAD_SHA) is not an ancestor of origin/main — skipping the coverage-map commit. The map was still exported and is in the uploaded report; re-run on main to publish it."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
@@ -461,10 +480,17 @@ jobs:
             echo "Coverage map unchanged — nothing to commit."
           else
             git commit -m "chore(coverage-tia): update coverage map [skip ci]"
+            # Replay onto main's current tip before pushing. This job can run
+            # for over two hours, so main has often moved since checkout; a
+            # plain push would then be rejected as non-fast-forward and the
+            # map would be lost after a full suite run. The commit touches
+            # only qa/coverage-map.json, which nothing else writes, so the
+            # rebase is conflict-free in practice.
+            git rebase origin/main
+            # Explicit destination: HEAD may be detached (a SHA dispatch), where
+            # a bare `git push` has no upstream to infer.
             git push origin HEAD:main
           fi
-        env:
-          CHECKED_OUT_REF: ${{ inputs.ref || 'main' }}
 
       - name: Upload Playwright report
         if: always()
