@@ -7,23 +7,21 @@ const IS_CI = Boolean(process.env.CI);
 // E2E_API_URL is the backend API origin used by RestClient and globalSetup.
 // Set these to the deployed frontend/API URLs in staging/production.
 //
-// No default outside CI (MINCRM-684). Locally `npm run e2e:client` serves the test
-// stack's UI on 5175; a silent :5173 fallback would navigate the browser to the DEV
-// frontend, whose Vite proxies to the dev API on :3001 — so the browser would mutate the
-// dev database while globalSetup authenticated against the test API. That split-brain is
-// the leak class this ticket removes, and it must not depend on an env file being
-// present. CI sets E2E_BASE_URL explicitly in every job and serves its own client on
-// 5173, so the fallback is kept for that path only.
-const BASE_URL = process.env.E2E_BASE_URL ?? (IS_CI ? 'http://localhost:5173' : '');
-
-if (!BASE_URL) {
-  throw new Error(
-    'E2E_BASE_URL is not set. Local E2E runs must target the test stack UI on ' +
-      'http://localhost:5175 — never the dev frontend on :5173, which proxies to the ' +
-      'dev API and database. Source qa/e2e/.env first:\n' +
-      "  cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test",
-  );
-}
+// No local default (MINCRM-684). `npm run e2e:client` serves the test stack's UI on
+// 5175; a silent :5173 fallback would navigate the browser to the DEV frontend, whose
+// Vite proxies to the dev API on :3001 — so browser traffic would mutate the dev
+// database while globalSetup authenticated against the test API.
+//
+// Left UNDEFINED rather than throwing here. This config is shared with the
+// framework-only suite (`npm run test:framework`, qa/e2e/tests/framework/), which drives
+// no browser and needs no frontend; throwing at config load would break those runs for a
+// variable they never use. With baseURL undefined, Playwright rejects any relative
+// navigation with an explicit error, so the specs that actually need a frontend still
+// fail loudly and immediately — while the ones that don't are unaffected.
+//
+// CI sets E2E_BASE_URL explicitly in every job that navigates and serves its own client
+// on 5173, so the fallback is kept for that path only.
+const BASE_URL = process.env.E2E_BASE_URL ?? (IS_CI ? 'http://localhost:5173' : undefined);
 
 // MINCRM-135: Anchor output paths to __dirname (qa/e2e/) so they are
 // predictable regardless of the working directory when npx playwright runs.
