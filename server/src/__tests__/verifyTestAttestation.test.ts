@@ -3,10 +3,17 @@
  *
  * parseJUnitResults is pure (no DB, no filesystem) and the highest-risk
  * logic in this script — a false "passed" here would let a broken run
- * through the attestation gate. verifyAttestation itself (DB-backed) is
- * exercised via the E2E functional spec instead, following the same
- * split testSelectionService.test.ts/coverageMappingController.test.ts
- * already use elsewhere in this codebase.
+ * through the attestation gate. The reconciliation rules it feeds
+ * (findTestsSkippedEverywhere, findFailedTests, hasParseDisagreement) are
+ * exported as pure functions for the same reason and tested directly below.
+ *
+ * NOT covered here: verifyAttestation's own reason assembly, which reads the
+ * filesystem and queries coverage_sessions. An earlier version of this
+ * docblock claimed an E2E functional spec exercised it; no such spec exists
+ * (MINCRM-687 — the coverage-* specs cover the pipeline, sessions and
+ * mapping APIs, not this gate). The gate's decision logic is therefore
+ * verified only through the pure helpers it delegates to, and a change that
+ * stopped calling one of them would not be caught. Worth closing.
  */
 
 import {
@@ -398,6 +405,21 @@ describe('findTestsSkippedEverywhere', () => {
     ];
 
     expect(findTestsSkippedEverywhere(cases)).toEqual([]);
+  });
+
+  // "Passed in at least one PROJECT RUN" — a pass cannot attest a skip of the
+  // same test in the SAME project. Playwright emits one row per
+  // (test, project) so this cannot arise from its reporter, but a malformed
+  // or hand-merged results file must not exploit a looser key.
+  it('does not let a pass attest a skip of the same test in the same project', () => {
+    const cases = [
+      testCase({ name: 'contradiction', project: 'desktop', passed: true }),
+      testCase({ name: 'contradiction', project: 'desktop', skipped: true }),
+    ];
+
+    expect(findTestsSkippedEverywhere(cases)).toEqual([
+      { classname: 'a.spec.ts', name: 'contradiction' },
+    ]);
   });
 
   // An orphan row (swept up outside any <testsuite>) has project '' — its
