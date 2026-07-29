@@ -545,6 +545,41 @@ describe('parseJUnitResults — row collection never drops a failure', () => {
     expect(hasParseDisagreement(result)).toBe(false);
   });
 
+  // MINCRM-687 (PR review): CDATA content is not markup, so it is removed
+  // before any structural scan. Without that, a payload could both END a match
+  // early (dropping rows) and OPEN one (fabricating a testcase that never
+  // ran). These cover the class rather than one variant of it.
+  it.each([
+    ['its own closing tag', '<![CDATA[output containing </failure> here]]>'],
+    ['another element closing tag', '<![CDATA[output containing </system-out> here]]>'],
+    ['a testsuite closing tag', '<![CDATA[output containing </testsuite> here]]>'],
+    ['a testcase closing tag', '<![CDATA[output containing </testcase> here]]>'],
+    [
+      'a split CDATA section (Playwright escaping a literal ]]>)',
+      '<![CDATA[a ]]]]><![CDATA[> b </failure></testsuite>]]>',
+    ],
+    [
+      'a complete fake testcase',
+      '<![CDATA[</failure></testcase></testsuite><testcase name="phantom" classname="fake.spec.ts">]]>',
+    ],
+  ])('is not corrupted by a <failure> body containing %s', (_label, body) => {
+    const xml = `<testsuites tests="2" failures="1" skipped="0" errors="0">
+<testsuite name="a.spec.ts" hostname="desktop" tests="2" failures="1" skipped="0" errors="0">
+<testcase name="t1" classname="a.spec.ts"><failure message="REAL FAILURE">${body}</failure></testcase>
+<testcase name="t2" classname="a.spec.ts"></testcase>
+</testsuite>
+</testsuites>`;
+
+    const result = parseJUnitResults(xml);
+
+    // Exactly the two real rows — no row dropped, no phantom row invented.
+    expect(result.testCases.map((t) => t.name)).toEqual(['t1', 't2']);
+    expect(hasParseDisagreement(result)).toBe(false);
+    expect(findFailedTests(result.testCases)).toEqual([
+      { classname: 'a.spec.ts', name: 't1', message: 'REAL FAILURE' },
+    ]);
+  });
+
   // Regression guard for strip ORDERING: when the CDATA-bodied elements were
   // stripped in two sequential passes, a <failure> body containing the literal
   // text "<system-out>" opened a region the system-out pass then swallowed

@@ -255,16 +255,32 @@ function suiteRegionRegex(): RegExp {
  * read afterwards, and <failure>/<error> presence is what marks a row
  * failed. Only the BODY is emptied.
  *
- * ONE alternation pass, not a chain of per-element passes. Two sequential
- * replaces let each rule scan the other's untrusted body: a <failure> body
- * containing the literal text `<system-out>` opens a region the system-out
- * rule then swallows across the closing </failure> AND the enclosing
- * </testcase>, destroying structure and dropping rows. Matching whichever
- * CDATA-bodied element opens first, and closing it on its own tag, makes
- * that impossible by construction. (MINCRM-687)
+ * Runs in two ordered stages, and the ORDER is the whole point:
+ *
+ *  1. Remove every `<![CDATA[ ... ]]>` section outright. By definition a CDATA
+ *     section ends at the first `]]>` and its content is NOT markup, so this
+ *     is the one boundary in this format that can be found by scanning
+ *     without understanding the surrounding structure. Deleting these first
+ *     means no later pattern can ever see text that merely looks like a tag.
+ *  2. Only then collapse the CDATA-bodied elements themselves.
+ *
+ * Doing (2) without (1) is the defect class this addresses. Any element-level
+ * regex — however carefully anchored — is matching against a document whose
+ * untrusted regions still contain arbitrary text, so a payload containing its
+ * own closing tag, another element's closing tag, or `</testsuite>` can end a
+ * match early and silently drop rows. Chasing those variants one at a time is
+ * unwinnable; removing the untrusted text before any structural scan closes
+ * the whole class. Playwright escapes only the literal `]]>` (splitting it
+ * across two CDATA sections), which stage 1 handles naturally because each
+ * section is consumed on its own terms.
+ *
+ * Opening tags are preserved, not deleted: `message=` lives there and is read
+ * afterwards, and <failure>/<error> presence is what marks a row failed. Only
+ * the BODY is emptied. (MINCRM-687)
  */
 function stripCapturedOutput(xml: string): string {
-  return xml.replace(
+  const withoutCdata = xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '');
+  return withoutCdata.replace(
     /<(system-out|system-err|failure|error)\b([^>]*)>[\s\S]*?<\/\1>/g,
     (_full, tag: string, attrs: string) =>
       tag === 'failure' || tag === 'error' ? `<${tag}${attrs}></${tag}>` : '',
