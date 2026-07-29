@@ -43,6 +43,19 @@ on:
     # a stale map older than this window.
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      ref:
+        description: >-
+          Branch or SHA to check out. Defaults to main, which is what every
+          scheduled and post-merge run uses. Override ONLY to validate a
+          change to this workflow itself before merging it: the checkout is
+          otherwise pinned to main, so dispatching a branch would run main's
+          workflow definition against main's code and prove nothing about the
+          branch. A map exported from a non-main dispatch is still committed
+          back to main by the step below, so treat non-main runs as
+          throwaway validation and re-run on main after merging. (MINCRM-687)
+        required: false
+        default: main
 
 # Serialize record-mode runs so two overlapping runs never write
 # coverage_test_links for the same commit concurrently in a way that could
@@ -109,18 +122,25 @@ jobs:
         with:
           # Explicit ref removes any ambiguity for the schedule/
           # workflow_dispatch triggers, which have no natural "ref" of
-          # their own — record mode always runs against main's own tip.
+          # their own — record mode runs against main's own tip by default.
           #
           # workflow_dispatch can be launched against ANY ref in the
           # GitHub UI, not just main — github.sha in that case resolves to
           # the DISPATCHED ref's tip, not main's, even though this step
-          # always checks out main regardless (found via Greptile PR
+          # checks out the resolved ref regardless (found via Greptile PR
           # review: a non-main dispatch would test main's code but
           # attestation/failure-reporting below would reference a
           # different commit than what was actually tested). The step
           # below resolves and records the SHA actually checked out here,
           # and every later step uses that output, never github.sha.
-          ref: main
+          #
+          # The `ref` input (MINCRM-687) exists solely so a change to THIS
+          # workflow can be validated before it is merged; every non-dispatch
+          # trigger still gets main. Without it the pin made this file
+          # untestable by construction — a dispatch against a branch ran
+          # main's definition — which is how MINCRM-687's breakage survived
+          # five weeks and several inspection-only reviews.
+          ref: ${{ inputs.ref || 'main' }}
 
       - name: Resolve checked-out SHA
         id: resolve-sha

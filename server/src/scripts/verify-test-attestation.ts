@@ -252,12 +252,22 @@ function suiteRegionRegex(): RegExp {
  *
  * Opening tags are preserved, not deleted: `message=` lives there and is
  * read afterwards, and <failure>/<error> presence is what marks a row
- * failed. Only the BODY is emptied. (MINCRM-687)
+ * failed. Only the BODY is emptied.
+ *
+ * ONE alternation pass, not a chain of per-element passes. Two sequential
+ * replaces let each rule scan the other's untrusted body: a <failure> body
+ * containing the literal text `<system-out>` opens a region the system-out
+ * rule then swallows across the closing </failure> AND the enclosing
+ * </testcase>, destroying structure and dropping rows. Matching whichever
+ * CDATA-bodied element opens first, and closing it on its own tag, makes
+ * that impossible by construction. (MINCRM-687)
  */
 function stripCapturedOutput(xml: string): string {
-  return xml
-    .replace(/(<system-(?:out|err)\b[^>]*>)[\s\S]*?(<\/system-(?:out|err)>)/g, '')
-    .replace(/(<(?:failure|error)\b[^>]*>)[\s\S]*?(<\/(?:failure|error)>)/g, '$1$2');
+  return xml.replace(
+    /<(system-out|system-err|failure|error)\b([^>]*)>[\s\S]*?<\/\1>/g,
+    (_full, tag: string, attrs: string) =>
+      tag === 'failure' || tag === 'error' ? `<${tag}${attrs}></${tag}>` : '',
+  );
 }
 
 /** Blanks out every complete <testsuite>…</testsuite> region so only testcases outside a suite remain visible to a follow-up scan. */
@@ -345,7 +355,7 @@ export interface AttestationResult {
  * that changes, this key needs an ordinal component.
  */
 function testCaseKey(testCase: Pick<JUnitTestCase, 'classname' | 'name'>): string {
-  return `${testCase.classname} ${testCase.name}`;
+  return `${testCase.classname}\0${testCase.name}`;
 }
 
 /**
@@ -401,6 +411,13 @@ export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
  * project but passing under another is attested and absent from the result.
  * Entries are deduped, so a test skipped under three projects appears once.
  *
+ * Only project-attributed rows can attest. A row swept up outside any
+ * <testsuite> carries project '' — its provenance is unknown — so letting it
+ * satisfy "passed somewhere" would let an unattributed pass mask a real skip.
+ * That is the same masking the orphan sweep above refuses to do for
+ * <failure> rows, and the reasoning is identical: an ALL-PASS gate must not
+ * discard evidence on the strength of a row it cannot place.
+ *
  * Pure, and exported for direct unit testing — this rule is the substance of
  * MINCRM-687's gate change, so it must be verifiable without a database
  * rather than only through verifyAttestation's DB-bound path.
@@ -408,7 +425,9 @@ export function hasParseDisagreement(parsed: JUnitParseResult): boolean {
 export function findTestsSkippedEverywhere(
   testCases: readonly JUnitTestCase[],
 ): Array<{ classname: string; name: string }> {
-  const passedAnywhere = new Set(testCases.filter((t) => t.passed).map((t) => testCaseKey(t)));
+  const passedAnywhere = new Set(
+    testCases.filter((t) => t.passed && t.project !== '').map((t) => testCaseKey(t)),
+  );
   return dedupeByKey(testCases.filter((t) => t.skipped && !passedAnywhere.has(testCaseKey(t)))).map(
     (t) => ({ classname: t.classname, name: t.name }),
   );
