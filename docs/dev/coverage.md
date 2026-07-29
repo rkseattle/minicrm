@@ -956,6 +956,106 @@ drop-all scorer still leaves baseline tests present after `applySafetyNetPolicy`
 structurally (a source-text scan asserting `safetyNetPolicy.ts` contains no reference to
 "scorer").
 
+## Record Mode — the authoritative run (MINCRM-633/687)
+
+`.github/workflows/tia-record-mode.yml` runs the full `@functional` suite with coverage
+instrumentation on every push to `main` and nightly at 03:00 UTC, ingests every dump it
+produces, and — only if the run is clean — exports `qa/coverage-map.json` and commits it
+back to `main`. It is the **authoritative** signal the PR-time gating defers to;
+`ci.yml`'s own `tia-selection` job is fast, advisory feedback only.
+
+### The environment contract
+
+The suite step's `env:` block must track `ci.yml`'s E2E jobs (`ci.yml:1443-1452` is the
+closest analogue). This is not optional polish — MINCRM-687 was a five-week outage of this
+workflow caused by one missing variable:
+
+| Variable                             | Consequence if unset                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `E2E_ADMIN_PASSWORD`                 | **Hard failure.** No default anywhere. Eleven `@functional` specs `throw` at module scope, so Playwright collects **0 tests**.             |
+| `E2E_ADMIN_EMAIL`                    | Silently defaults to `admin@example.com`; login 401s if the seeded admin differs.                                                          |
+| `E2E_API_URL`                        | `globalSetup.ts` falls back to `:3001` under CI, but `apps/minicrm/apiBaseUrl.ts` defaults to `:3002` — set it so the two cannot disagree. |
+| `E2E_BASE_URL`, `E2E`, `MAILHOG_URL` | CI-only fallbacks happen to be correct; set explicitly for parity.                                                                         |
+| `PW_GLOBAL_TIMEOUT_MS`               | Falls back to the config's 20-minute default, calibrated for a _sharded_ run. A single-worker full-suite run needs far more.               |
+
+**The failure is silent, which is what made it expensive.** With `E2E_ADMIN_PASSWORD`
+absent, `globalSetup.ts:104-114` does not throw — it writes an empty `storageState` and
+returns. The run then fails three steps later at the attestation gate with
+`no-session-attribution`, which reads like a coverage-plumbing fault rather than "nothing
+ran". A zero-test guard now fails the job immediately after the suite step so the real
+cause is named at the point it occurs.
+
+AI healing is **deliberately off** here, unlike `ci.yml`'s E2E jobs. Healing repairs
+drifted locators at runtime; the authoritative source of coverage attribution must record
+what selectors actually resolve to, not what an LLM patched them into.
+
+### Both Playwright projects run
+
+The suite is invoked with `--project=desktop --project=mobile-web`. This is required, not
+thoroughness for its own sake: the suite guards viewport-specific tests in **both**
+directions, so no single project selection produces a skip-free run, and
+`verify-test-attestation.ts` reports tests that never ran an assertion anywhere. Running
+one project would leave the other's tests uncovered and the gate would report them.
+
+Do not narrow this to one project. Doing so does not avoid the problem — it relocates it.
+
+### How the attestation gate treats skips (MINCRM-687)
+
+`verify-test-attestation.ts` raises **integrity** (the tests that ran, genuinely passed),
+not **completeness**. A viewport-conditional skip is a test correctly declining to run
+where it does not apply, which is not an integrity failure. So the gate reconciles each
+test **across the project runs present in the results file**:
+
+- passed in at least one project, failed in none → **attested**
+- skipped in every project present → reported as `skipped-tests`
+- failed in any project → reported as `test-failures`
+
+Playwright emits one `<testsuite>` per (spec file, project) and puts the project name in
+`hostname`, which is what makes this reconciliation possible.
+
+Two properties worth knowing. First, the gate reconciles what the file _contains_ — it
+cannot know which projects the caller intended, so a single-project invocation gets
+exactly the guarantee it always had. Second, the reporter's declared `<testsuites tests="N">`
+is cross-checked against the rows recovered; a disagreement is reported as
+`results-file-unparseable` rather than passed over, because an all-pass gate must never
+pass on evidence it failed to read.
+
+This gate is shared with `scripts/pre-push-tia.ts`, so the same rules govern the local
+pre-push hook.
+
+### Why the run is slow, and what that does not affect
+
+The full suite at `--workers=1` across two projects is budgeted at 90 minutes via
+`PW_GLOBAL_TIMEOUT_MS`. Single-worker is deliberate: this run mixes `@functional` and
+`@serial` in one invocation, and `@serial` specs mutate shared `system_settings` rows.
+`ci.yml` gets away with more parallelism only because it _splits_ the suite across jobs.
+
+The attestation script's `--max-age-minutes` (default 120) is **not** a competing budget:
+it stats the results file's mtime, written when the suite _finishes_, and the gate runs
+seconds later. It guards against a stale results file left from an earlier run of the same
+commit, not against a long job.
+
+### Reading a failed run
+
+- `results-file-missing` / the zero-test guard → the suite never ran; check the env block.
+- `no-session-attribution` → coverage sessions were not recorded for this SHA; check that
+  `coverage-instrumentation` is `'true'` on the `e2e-infra` step.
+- `skipped-tests` → a test was skipped under every project; usually a project was dropped
+  from the invocation.
+- `results-file-unparseable` → the results file could not be fully read. This is a
+  parser/reporter disagreement, _not_ a test outcome — do not infer pass or fail from it.
+
+The export and commit steps are gated on the suite, the zero-test guard, and the
+attestation all succeeding, which is why no incomplete map has ever been committed.
+
+> **Note:** `.github/actions/e2e-infra` is record mode's setup action, but `ci.yml`'s E2E
+> jobs still inline their own equivalent sequence rather than calling it (recorded as R3 in
+> `docs/plans/MINCRM-684.md`). Changing a step in one place means checking the other —
+> MINCRM-687's missing SMTP seeding was caused by exactly that drift.
+
+`qa/coverage-map.json`, the artifact this workflow produces, is also consumed by
+`docker-compose.test.yml`.
+
 ## Deferred to later phases
 
 Not built here — later `pr-tia-*` phases:
