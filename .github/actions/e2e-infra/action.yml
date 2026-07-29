@@ -1,14 +1,23 @@
 # Composite action: e2e-infra
 #
 # Installs deps, caches Playwright browsers, runs DB migrations, seeds test
-# data, starts the app server + frontend dev server, and waits for both to
-# be healthy. Called by e2e-functional and update-visual-snapshots.
+# data (admin user, MinIO bucket + storage config, SMTP config), starts the
+# app server + frontend dev server, and waits for both to be healthy.
+#
+# Its only caller today is .github/workflows/tia-record-mode.yml. ci.yml's
+# e2e-functional/e2e-serial/update-visual-snapshots jobs still inline an
+# equivalent sequence of their own rather than calling this action — a known
+# duplication (recorded as R3 in docs/plans/MINCRM-684.md). When changing a
+# step here, check whether ci.yml's copies need the same change; MINCRM-687
+# was caused by exactly that drift, where this action lacked the SMTP seeding
+# step both ci.yml jobs have.
 #
 # Callers are responsible for declaring the postgres and minio services at
 # the job level — service containers cannot be defined inside a composite
-# action.
+# action. A caller whose specs assert on email delivery must also declare a
+# mailhog service on :1025/:8025, which the SMTP seeding step below assumes.
 #
-# MINCRM-324
+# MINCRM-324, MINCRM-687
 
 name: E2E infrastructure setup
 description: >
@@ -119,6 +128,27 @@ runs:
         E2E_STORAGE_BUCKET: minicrm-test-bucket
         E2E_STORAGE_ACCESS_KEY_ID: minioadmin
         E2E_STORAGE_SECRET_ACCESS_KEY: minioadmin
+
+    # MINCRM-306: Write Mailhog SMTP config into system_settings so the server
+    # routes transactional email to Mailhog instead of a real SMTP server.
+    #
+    # MINCRM-687: this action was missing the step ci.yml's e2e-functional and
+    # e2e-serial jobs both run (ci.yml:954-963, :1317-1326). Callers declaring
+    # a mailhog service still had no SMTP config written, so the @functional
+    # email-delivery specs — email-delivery.spec.ts's F1-EM1/F1-EM2 and
+    # send-email.spec.ts's two tests — failed against an unconfigured backend
+    # as soon as a caller actually ran them.
+    - name: Seed E2E SMTP config
+      shell: bash
+      run: npm run seed:e2e-smtp
+      env:
+        DB_USER: minicrm
+        DB_PASSWORD: password
+        DB_NAME: minicrm_e2e
+        DB_HOST: localhost
+        DB_PORT: 5432
+        E2E_SMTP_HOST: localhost
+        E2E_SMTP_PORT: '1025'
 
     - name: Start application server
       shell: bash
