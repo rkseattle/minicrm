@@ -537,6 +537,24 @@ describe('hasParseDisagreement', () => {
     ).toBe(true);
   });
 
+  // A count comparison, not a presence check: a <skipped> element missed
+  // inside an otherwise-recovered row leaves the row count matching, so the
+  // row-count predicate cannot see it.
+  it('reports a skip-count mismatch even when some skips were recovered', () => {
+    expect(
+      hasParseDisagreement(
+        parsed({
+          totalTests: 2,
+          totalSkipped: 2,
+          testCases: [
+            testCase({ name: 'a', skipped: true }),
+            testCase({ name: 'b', passed: true }),
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it('reports declared skips that the parser never recovered', () => {
     expect(
       hasParseDisagreement(

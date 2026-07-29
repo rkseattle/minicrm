@@ -195,6 +195,14 @@ jobs:
       # them, NOT to drop --project=mobile-web: dropping it just moves the
       # failure onto the mobile-only tests, which would then be skipped in
       # every project present and reported by the gate.
+      #
+      # Most likely first casualty if one exists: ai.spec.ts's F-AI6, which
+      # reads the session sidebar (AiPage.tsx's `hidden md:flex`) with no
+      # viewport guard, unlike its neighbours F-AI7/F-AI8 which do guard.
+      # It is EXPECTED to survive — both getSessionSidebarText and
+      # waitForAiSidebarText go through textContent(), which reads
+      # display:none elements, unlike innerText() — but it is the first
+      # place to look.
       - name: Run full functional + serial suite (record mode)
         id: run-suite
         run: |
@@ -268,15 +276,16 @@ jobs:
           # and a GitHub runner is slower than a dev machine.
           #
           # Cross-check: scripts/pre-push-tia.ts budgets 60 min + 25 min = 85
-          # min for the same suite at --workers=1 on ONE project. Two
-          # projects must exceed that, which the previous 90-minute value
-          # barely did.
+          # min for this same 1322-test, two-project set — it passes no
+          # --project either, so it runs every configured project exactly as
+          # this step does. 150 min is that budget plus headroom for a
+          # runner slower than the dev machine those figures came from.
           #
           # GitHub's default 360-minute job limit is the only hard ceiling.
           #
           # This does NOT interact with verify-test-attestation's
-          # DEFAULT_MAX_AGE_MINUTES = 120 (:46) the way a job-duration budget
-          # would: that gate stats the results.xml mtime (:255-256), which is
+          # DEFAULT_MAX_AGE_MINUTES (120) the way a job-duration budget
+          # would: that gate stats the results.xml mtime, which is
           # written when the SUITE finishes, and the attestation step runs
           # seconds later. The freshness window guards against a stale
           # results.xml left over from an earlier run of the same commit, not
