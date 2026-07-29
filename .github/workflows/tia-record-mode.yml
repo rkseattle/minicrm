@@ -147,9 +147,19 @@ jobs:
           # default depth-1 shallow clone. (MINCRM-687)
           fetch-depth: 0
 
+      # Also records main's tip AS OF NOW, which the commit step needs to tell
+      # "main advanced while we ran" (fine — rebase and publish) apart from
+      # "we deliberately tested an old commit" (not fine — the map would be
+      # attributed to newer code). Both are ancestors of origin/main by the
+      # time that step runs, so ancestry alone cannot distinguish them; only a
+      # checkout-time snapshot can. (MINCRM-687)
       - name: Resolve checked-out SHA
         id: resolve-sha
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "main-at-checkout=$(git rev-parse origin/main)"
+          } >> "$GITHUB_OUTPUT"
 
       # e2e-infra's own "Run migrations on E2E database" step handles this —
       # no separate migration step needed here.
@@ -459,18 +469,32 @@ jobs:
           # the `ref` input. That input is a user-supplied label and takes
           # several forms for the same commit — `main`, `refs/heads/main`,
           # `origin/main`, a raw SHA — so comparing it to a literal would skip
-          # the publish for a legitimate main dispatch (and any future
-          # equivalent spelling). Comparing COMMITS answers the only question
-          # that matters: is what we just tested exactly main's tip?
-          # Ancestry, not equality: main moves during a run this long, and a
-          # merge landing mid-run must not cost us the map. What disqualifies
-          # a run is having tested a commit that is not ON main at all — a
-          # branch or an arbitrary SHA — which is exactly what
-          # `merge-base --is-ancestor` answers.
+          # the publish for a legitimate main dispatch and for any future
+          # equivalent spelling. Comparing COMMITS sidesteps the whole class.
+          #
+          # TWO conditions, because the map is attributed to a SHA and
+          # select-tests.ts resolves coverage links by that SHA. Publishing a
+          # map derived from older code would misattribute it to newer code:
+          # selection would then miss relationships the newer code introduced
+          # and act on ones it removed.
+          #
+          #  1. HEAD must be ON main — not a branch, not an arbitrary commit.
+          #  2. HEAD must have been main's TIP when this run checked out.
+          #     `main` legitimately advances during a run this long, and a
+          #     merge landing mid-run must not cost us the map — that is what
+          #     the rebase below handles. But a DELIBERATELY old commit
+          #     (dispatching HEAD~50, say) is a different thing, and ancestry
+          #     alone cannot tell them apart: by the time this step runs both
+          #     are ancestors of origin/main. Comparing against the
+          #     checkout-time snapshot does distinguish them.
           git fetch --quiet origin main
           HEAD_SHA="$(git rev-parse HEAD)"
           if ! git merge-base --is-ancestor "$HEAD_SHA" origin/main; then
-            echo "::notice::HEAD ($HEAD_SHA) is not an ancestor of origin/main — skipping the coverage-map commit. The map was still exported and is in the uploaded report; re-run on main to publish it."
+            echo "::notice::HEAD ($HEAD_SHA) is not on origin/main — skipping the coverage-map commit. The map was still exported and is in the uploaded report; re-run on main to publish it."
+            exit 0
+          fi
+          if [ "$HEAD_SHA" != "$MAIN_AT_CHECKOUT" ]; then
+            echo "::notice::HEAD ($HEAD_SHA) was not main's tip at checkout ($MAIN_AT_CHECKOUT) — this run tested older code, so publishing its map would attribute those coverage links to newer code. Skipping the commit; the map is in the uploaded report."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
@@ -491,6 +515,8 @@ jobs:
             # a bare `git push` has no upstream to infer.
             git push origin HEAD:main
           fi
+        env:
+          MAIN_AT_CHECKOUT: ${{ steps.resolve-sha.outputs.main-at-checkout }}
 
       - name: Upload Playwright report
         if: always()
