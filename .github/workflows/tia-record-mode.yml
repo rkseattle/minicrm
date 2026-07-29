@@ -59,6 +59,16 @@ jobs:
     name: Full-suite record mode
     runs-on: ubuntu-latest
 
+    # MINCRM-687: the Playwright JUnit artifact, named once. Both the
+    # zero-test guard and the attestation gate below read this exact file,
+    # and a drift between two hardcoded copies would mean the guard silently
+    # checked a file nobody else used. Job-level rather than step-level
+    # because two steps need it — unlike the suite step's credentials, which
+    # stay step-scoped so they are not exposed to the `git push` further
+    # down. The path itself is not a secret.
+    env:
+      RESULTS_XML: ${{ github.workspace }}/qa/e2e/test-results/results.xml
+
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -136,15 +146,103 @@ jobs:
       # race under concurrent workers. Slower than ci.yml's sharded run, but
       # record mode isn't latency-sensitive — it runs post-merge/nightly,
       # off the PR's own critical path.
+      #
+      # A bare `--grep @functional` reaches the @serial tests too: every
+      # @serial test in the suite also carries @functional (verified across
+      # all 29 @serial files), so the single grep is the union of ci.yml's
+      # two jobs rather than a subset of either. ci.yml needs its narrower
+      # patterns only because it SPLITS the suite — the shards use
+      # `--grep-invert "visual-regression|serial"` (ci.yml:1036) to push
+      # serial work to a separate job, and that job re-selects it with a
+      # both-tags pattern (ci.yml:1436). Record mode wants everything in one
+      # pass, so it excludes nothing. @visual tests are not swept in: they
+      # are tagged @visual and deliberately NOT @functional
+      # (visual-regression.spec.ts:39), because they need OS-matching
+      # baselines.
+      #
+      # MINCRM-687: both projects, not just desktop. This suite guards
+      # viewport-specific tests in BOTH directions — some skip on mobile
+      # viewports, others on desktop ones — so a desktop-only run leaves the
+      # mobile-only tests never having run an assertion anywhere, and
+      # verify-test-attestation.ts reports those as 'skipped-tests' (see
+      # findTestsSkippedEverywhere there: a test is attested when it passed
+      # in at least one project run present in the results file). Running
+      # both projects means every viewport-conditional test is covered by
+      # the union. ci.yml:826 already runs @functional over both, so this is
+      # existing practice, not a new combination.
+      #
+      # Narrowing this back to one project would re-introduce that failure.
+      # The gate reconciles what the results file CONTAINS and cannot know
+      # which projects were intended, so it will not catch the mistake for
+      # you — it would simply report the now-uncovered tests as skipped.
+      #
+      # Known risk accepted when this landed: 56 @serial tests across six
+      # spec files (feature-flags, admin/aiSettings, visibility, sso,
+      # branding, settings) carry NO viewport handling and had never run
+      # under mobile-web before this change — ci.yml runs serial specs on
+      # desktop only. Some target pages hide elements responsively
+      # (GeneralSettings.tsx's `hidden lg:block`, BrandingSettings.tsx's
+      # `hidden sm:block`). If this run goes red on those specs, the fix is
+      # to viewport-guard them, NOT to drop --project=mobile-web: dropping it
+      # just moves the failure to the six mobile-only tests, which would then
+      # be skipped everywhere and reported by the gate.
       - name: Run full functional + serial suite (record mode)
         id: run-suite
         run: |
           npx playwright test \
             --config=qa/e2e/playwright.config.ts \
             --project=desktop \
+            --project=mobile-web \
             --workers=1 \
             --grep @functional
         env:
+          # MINCRM-687: this block previously set PW_WORKERS and nothing
+          # else, so E2E_ADMIN_PASSWORD was unset for the run. That has no
+          # default anywhere, and eleven @functional spec files throw at
+          # module scope when it is missing — the suite collected 0 tests on
+          # every run since this workflow was added, which then surfaced
+          # three steps later as the attestation gate's confusing
+          # "no-session-attribution". Kept in step-level env (not job-level)
+          # so the credentials are not exposed to the `git push` in "Commit
+          # updated coverage map" below. Mirrors ci.yml's e2e-serial job
+          # (ci.yml:1443-1452), the closest analogue: a single-worker
+          # --project run of the same suite.
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          E2E_BASE_URL: http://localhost:5173
+          # Set explicitly even though globalSetup.ts falls back to :3001
+          # under CI: qa/e2e/apps/minicrm/apiBaseUrl.ts defaults to :3002
+          # (the docker-compose test stack) instead, and nothing listens
+          # there in this job. Two modules agreeing by coincidence is the
+          # fragility class MINCRM-684 closed.
+          E2E_API_URL: http://localhost:3001
+          E2E: true
+          MAILHOG_URL: http://localhost:8025
+          # AI healing is deliberately NOT enabled here, unlike ci.yml's
+          # e2e-functional/e2e-serial jobs. Healing repairs drifted locators
+          # at runtime; this run is the authoritative source of coverage
+          # attribution, so it must record what the selectors actually
+          # resolve to, not what an LLM patched them into. Do not "restore
+          # parity" with ci.yml by adding AI_HEALING/ANTHROPIC_API_KEY.
+          #
+          # 90 minutes, overriding playwright.config.ts's 20-minute default
+          # (:154-156), which is calibrated for a sharded run. Derived from
+          # qa/e2e/test-timing-baseline.json: 97 functional spec files sum
+          # to ~43.6 min of file time (57 measured medians + 40 at the 30s
+          # fallback), collected under multi-worker sharding, so
+          # single-worker wall clock is strictly higher — and this runs both
+          # projects (see the two --project flags above), so the suite is
+          # traversed twice. 90 min is ~2x the derived floor.
+          #
+          # This does NOT interact with verify-test-attestation's
+          # DEFAULT_MAX_AGE_MINUTES = 120 (:46) the way a job-duration budget
+          # would: that gate stats the results.xml mtime (:255-256), which is
+          # written when the SUITE finishes, and the attestation step runs
+          # seconds later. The freshness window guards against a stale
+          # results.xml left over from an earlier run of the same commit, not
+          # against a long job. GitHub's default 360-minute job limit is the
+          # only ceiling this value has to respect.
+          PW_GLOBAL_TIMEOUT_MS: '5400000'
           # E2E_COVERAGE_GRANULARITY intentionally UNSET (per-test, the
           # default — see coverage.md's Low-Overhead Mode table). Record
           # mode's whole purpose is populating coverage_test_links with real
@@ -156,7 +254,45 @@ jobs:
           # would stay empty regardless of how many tests ran. Not
           # latency-sensitive (see e2e-infra step above), so per-test's
           # higher overhead is an acceptable tradeoff here.
-          PW_WORKERS: '1'
+          #
+          # PW_WORKERS intentionally absent: --workers=1 on the CLI above
+          # takes precedence over the config's PW_WORKERS read, so setting
+          # it here was inert.
+
+      # MINCRM-687 (AC 7): fail loudly, here, when the suite collected no
+      # tests. Without this the symptom surfaces two steps later as the
+      # attestation gate's "no-session-attribution" — which reads as a
+      # coverage-plumbing problem and sent a previous investigation down
+      # exactly that wrong path, when the real cause was that every spec
+      # threw at import time and nothing ran at all.
+      #
+      # if: always() so it also fires when the suite step itself failed: a
+      # crashed run that produced no results.xml is precisely the case this
+      # diagnoses. Reads the JUnit XML the run already writes rather than
+      # Playwright's exit code, per the project rule to read result files.
+      #
+      # The ingest step below deliberately still exits 0 on an empty dump set
+      # — it is if: always() so it runs after partial failures, and an empty
+      # ingest is legitimate when the suite genuinely failed earlier. This
+      # guard is the compensating control for that gap.
+      - name: Verify the suite actually ran tests
+        id: verify-ran
+        if: always()
+        run: |
+          if [ ! -f "$RESULTS_XML" ]; then
+            echo "::error::No results file at $RESULTS_XML — the suite produced no JUnit output at all. Check the 'Run full functional + serial suite' step: if every spec threw at import time (a missing E2E_ADMIN_PASSWORD does this), Playwright collects 0 tests and writes nothing."
+            exit 1
+          fi
+          TEST_COUNT=$(sed -n 's/.*<testsuites[^>]*tests="\([0-9]*\)".*/\1/p' "$RESULTS_XML" | head -1)
+          if [ -z "$TEST_COUNT" ]; then
+            echo "::error::Could not read a test count from $RESULTS_XML — the file exists but has no <testsuites tests=\"N\"> attribute, so it is malformed or truncated."
+            exit 1
+          fi
+          if [ "$TEST_COUNT" -eq 0 ]; then
+            echo "::error::The suite collected 0 tests. This is a harness failure, not a passing run — record mode must never export a coverage map from an empty run. Check the suite step's env block against ci.yml's E2E jobs."
+            exit 1
+          fi
+          echo "Suite collected $TEST_COUNT test(s)."
 
       - name: Ingest coverage dumps into the mapping engine
         id: ingest
@@ -182,7 +318,7 @@ jobs:
         if: always()
         run: |
           npm run --workspace=minicrm-server --silent verify:test-attestation -- \
-            --results=${{ github.workspace }}/qa/e2e/test-results/results.xml \
+            --results="$RESULTS_XML" \
             --sha=${{ steps.resolve-sha.outputs.sha }}
         env:
           DB_USER: minicrm
@@ -211,7 +347,7 @@ jobs:
       # actually passed. Ingestion succeeding is necessary (there must be
       # something to export) but not sufficient.
       - name: Export coverage map
-        if: always() && steps.run-suite.outcome == 'success' && steps.attest.outcome == 'success'
+        if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
         run: npm run dump:coverage-map --workspace=minicrm-server
         env:
           DB_USER: minicrm
@@ -221,7 +357,7 @@ jobs:
           DB_PORT: 5432
 
       - name: Commit updated coverage map
-        if: always() && steps.run-suite.outcome == 'success' && steps.attest.outcome == 'success'
+        if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
