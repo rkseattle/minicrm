@@ -4,22 +4,24 @@
  * feature flag. (MINCRM-621, MINCRM-637)
  *
  * COVERAGE_DASHBOARD_NO_AUTH (MINCRM-636/637): drops authenticate +
- * coverageAccessGate + requireFeatureEnabled for this router too, same
- * shape as coverageReporting.ts/coverageSessions.ts — the
- * coverage-dashboard app's Traceability tab calls tests-for-unit/
- * units-for-test directly for its drill-down section, and the new
- * unit-key/test-ID typeahead endpoints below exist specifically to back
- * that same tab. See isDashboardNoAuthEnabled's own docblock
- * (coverageAccessGate.ts) for why this is opted into per-router rather
- * than baked into coverageAccessGate itself, and coverageReporting.ts's
- * own docblock for why requireFeatureEnabled is dropped alongside auth,
- * not left in place.
+ * coverageAccessGate for this router too, same shape as
+ * coverageReporting.ts/coverageSessions.ts — the coverage-dashboard app's
+ * Traceability tab calls tests-for-unit/units-for-test directly for its
+ * drill-down section, and the unit-key/test-ID typeahead endpoints below
+ * exist specifically to back that same tab. See isDashboardNoAuthEnabled's
+ * own docblock (coverageAccessGate.ts) for why this is opted into
+ * per-router rather than baked into coverageAccessGate itself.
+ *
+ * The feature flag is NOT dropped (MINCRM-694). It narrows to an org-wide
+ * check — requireFeatureEnabledOrgWide — because the user-scoped targeting
+ * rules need a req.user this path does not have, but the flag's org-wide
+ * kill switch does not. Dropping the check entirely, as this router
+ * originally did, meant coverage_mapping_query read as enabled no matter
+ * what its stored value was.
  */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { coverageAccessGate, isDashboardNoAuthEnabled } from '../middleware/coverageAccessGate.js';
-import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { buildCoverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   findTestsForUnitHandler,
@@ -27,37 +29,10 @@ import {
   searchUnitKeysHandler,
   searchTestIdsHandler,
 } from '../controllers/coverageMappingController.js';
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 const router = Router();
 
-const requireFeatureEnabledForMapping = requireFeatureEnabled('coverage_mapping_query');
-
-const requireCoverageMappingAccessGate: RequestHandler = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void => {
-  if (isDashboardNoAuthEnabled()) {
-    next();
-    return;
-  }
-  authenticate(req, res, (authErr?: unknown) => {
-    if (authErr) {
-      next(authErr);
-      return;
-    }
-    coverageAccessGate(req, res, (gateErr?: unknown) => {
-      if (gateErr) {
-        next(gateErr);
-        return;
-      }
-      requireFeatureEnabledForMapping(req, res, next);
-    });
-  });
-};
-
-const requireCoverageMappingAccess = [requireCoverageMappingAccessGate] as const;
+const requireCoverageMappingAccess = [buildCoverageAccessGate('coverage_mapping_query')] as const;
 
 /**
  * @openapi

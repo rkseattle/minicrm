@@ -24,7 +24,22 @@ architecture (data model, mapping engine, TIA test selection).
    npm install --prefix coverage-dashboard
    ```
 
-3. Start the dashboard's dev server from the repo root. Set
+3. Enable the two feature flags this app's endpoints are gated on. Both seed
+   **disabled** (migrations 159/160 — they are developer tooling, meant to stay off in
+   production), and every dashboard API call returns `403 FEATURE_DISABLED` until they
+   are on. `COVERAGE_DASHBOARD_NO_AUTH` drops the login requirement but deliberately
+   does **not** drop these — see [docs/dev/coverage.md](../docs/dev/coverage.md) and
+   MINCRM-694:
+
+   ```bash
+   docker compose exec db psql -U minicrm -d minicrm -c \
+     "UPDATE feature_flags SET enabled = true
+        WHERE flag_key IN ('coverage_reporting_query', 'coverage_mapping_query');"
+   ```
+
+   Or toggle them in the CRM's own admin Feature Flags screen.
+
+4. Start the dashboard's dev server from the repo root. Set
    `VITE_COVERAGE_DASHBOARD_NO_AUTH=true` to match the server-side flag from step 1 —
    the two only take effect together (see "Accessing it" below):
 
@@ -56,7 +71,7 @@ API_URL=http://localhost:4001 VITE_COVERAGE_DASHBOARD_NO_AUTH=true npm run dev -
 Open **http://localhost:5174**.
 
 With `COVERAGE_DASHBOARD_NO_AUTH=true` set on the server (step 1) AND
-`VITE_COVERAGE_DASHBOARD_NO_AUTH=true` set on this app's own dev server (step 3) —
+`VITE_COVERAGE_DASHBOARD_NO_AUTH=true` set on this app's own dev server (step 4) —
 recommended for local dev — the dashboard requires no login at all: this is a pure
 internal engineering tool with no customer-facing surface, and requiring a CRM admin
 login just to view test coverage/gap data was unnecessary friction. Both flags are
@@ -66,6 +81,11 @@ still works for direct API/curl access, but this app's own `ProtectedRoute` keep
 redirecting to its login page since it never learns auth was dropped server-side. The
 server enforces `NODE_ENV !== 'production'` before ever honoring its flag, so it can't
 accidentally leave reporting data open in a real deployment.
+
+Dropping the login does **not** drop the `coverage_reporting_query` /
+`coverage_mapping_query` feature flags (step 3). Those still apply, evaluated org-wide
+rather than per-user since there is no authenticated user on this path — so a
+`403 FEATURE_DISABLED` here means the flag is off, not that auth failed. (MINCRM-694)
 
 Without both flags set (the default), auth instead reuses `minicrm-server`'s
 existing httpOnly session cookie rather than a separate credential store — you

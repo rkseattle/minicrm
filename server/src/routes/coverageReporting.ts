@@ -14,22 +14,26 @@
  * real, unwanted friction for a local-dev-only tool, not a deliberate
  * security boundary.
  *
- * requireFeatureEnabled is dropped too, not just auth: it's inherently
- * user/role-scoped (per-user force overrides, per-team overrides, role
- * rollout percentages — see featureFlagService.isFlagEnabledForUser) and
- * requires req.user to evaluate at all; with no authenticated user there is
- * no coherent "is this enabled for X" to ask. Bypassing auth while leaving
- * this check in place would just trade one 401 for another (found via a
- * real test failure — requireFeatureEnabled's own docblock: "Must be used
- * after the authenticate middleware so that req.user is set").
+ * requireFeatureEnabled NARROWS on this path rather than being dropped
+ * (MINCRM-694). Its user-scoped rules — per-user force overrides, per-team
+ * overrides, role rollout percentages (see
+ * featureFlagService.isFlagEnabledForUser) — genuinely cannot be evaluated
+ * without req.user, and leaving that middleware in place would just trade a
+ * 401 for another 401. But the flag's ORG-WIDE `enabled` column needs no
+ * identity, and it is the kill switch the flag exists to provide. This path
+ * therefore uses requireFeatureEnabledOrgWide.
  *
- * Scoped to ONLY this route file and coverageSessions.ts (the two routers
- * the coverage-dashboard app actually calls), not coverageAccessGate.ts
- * itself: coveragePipeline.ts/coverageMapping.ts/coverage.ts also share
- * that gate but are never called by this dashboard, so this flag never
- * opens them up — see isDashboardNoAuthEnabled's own docblock
- * (coverageAccessGate.ts) for the shared predicate both opting-in routers
- * use.
+ * An earlier revision dropped the check entirely, which meant the flag read
+ * as enabled here no matter what its stored value was — silently. That is
+ * what MINCRM-694 fixed, in this file and in coverageMapping.ts.
+ *
+ * Opted into per-router rather than baked into coverageAccessGate.ts: this
+ * file, coverageSessions.ts, and coverageMapping.ts (whose tests-for-unit /
+ * units-for-test endpoints back the dashboard's Traceability tab) each opt
+ * in explicitly. coveragePipeline.ts and coverage.ts share the same gate but
+ * do NOT opt in, so this flag never opens them up — see
+ * isDashboardNoAuthEnabled's own docblock (coverageAccessGate.ts) for the
+ * shared predicate the opting-in routers use.
  *
  * Gated the same way auth.ts's own E2E rate-limit bypass is (see that
  * file's isE2E): NODE_ENV !== 'production' is the hard safety rail so this
@@ -39,11 +43,8 @@
  * standalone switch.
  */
 
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { coverageAccessGate, isDashboardNoAuthEnabled } from '../middleware/coverageAccessGate.js';
-import { requireFeatureEnabled } from '../middleware/requireFeatureEnabled.js';
+import { buildCoverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   getCoverageSummaryHandler,
@@ -56,33 +57,15 @@ import {
 
 const router = Router();
 
-const requireFeatureEnabledForReporting = requireFeatureEnabled('coverage_reporting_query');
-
-const requireCoverageReportingAccessGate: RequestHandler = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void => {
-  if (isDashboardNoAuthEnabled()) {
-    next();
-    return;
-  }
-  authenticate(req, res, (authErr?: unknown) => {
-    if (authErr) {
-      next(authErr);
-      return;
-    }
-    coverageAccessGate(req, res, (gateErr?: unknown) => {
-      if (gateErr) {
-        next(gateErr);
-        return;
-      }
-      requireFeatureEnabledForReporting(req, res, next);
-    });
-  });
-};
-
-const requireCoverageReportingAccess = [requireCoverageReportingAccessGate] as const;
+// MINCRM-694: same defect as coverageMapping.ts, fixed in the same pass — the
+// no-auth path dropped the flag check entirely rather than narrowing it to the
+// part evaluable without a user. Nothing was failing here (no spec asserted
+// this router's flag behaviour under no-auth; one asserted the defect as
+// intended), which is precisely why it was worth fixing: the flag read as
+// enabled regardless of its stored value, and nothing would have told anyone.
+const requireCoverageReportingAccess = [
+  buildCoverageAccessGate('coverage_reporting_query'),
+] as const;
 
 /**
  * @openapi

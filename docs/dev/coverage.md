@@ -228,14 +228,22 @@ unwanted friction, not a deliberate security boundary. Two flags, set together, 
 the login requirement end-to-end:
 
 - **`COVERAGE_DASHBOARD_NO_AUTH=true`** on the server (`.env`'s own comment on this var)
-  drops `authenticate` + `coverageAccessGate` + `requireFeatureEnabled` entirely for
-  `coverageReporting.ts`'s routes ONLY — the pure read-only reporting endpoints this
-  dashboard calls, not `coveragePipeline.ts`/`coverageMapping.ts`/`coverageSessions.ts`/
-  `coverage.ts`, which manage or ingest real coverage/session data and stay fully gated
-  regardless. `requireFeatureEnabled` is dropped too, not just auth: it's inherently
-  user/role-scoped (`isFlagEnabledForUser` resolves per-user/per-team overrides) and
-  requires `req.user` to evaluate at all — with auth skipped there is no coherent "is
-  this enabled for X" left to ask.
+  drops `authenticate` + `coverageAccessGate` for the three routers this dashboard
+  actually calls — `coverageReporting.ts`, `coverageSessions.ts`, and
+  `coverageMapping.ts` (the last backs the Traceability tab's drill-down and typeahead).
+  `coveragePipeline.ts` and `coverage.ts` do NOT opt in: they ingest and manage real
+  coverage data and stay fully gated regardless.
+
+  The **feature flag is not dropped** (MINCRM-694). It narrows to
+  `requireFeatureEnabledOrgWide`, which consults the flag's org-wide `enabled` column
+  and `enable_at` scheduling. The user-scoped rules — per-user force overrides,
+  per-team overrides, role rollout percentages (`isFlagEnabledForUser`) — genuinely
+  cannot be evaluated with no `req.user`, but the org-wide kill switch can, and
+  discarding it meant `coverage_mapping_query`/`coverage_reporting_query` read as
+  enabled no matter what was stored. Note both flags seed `enabled = false`, so a fresh
+  database needs them switched on before the dashboard returns data rather than
+  `403 FEATURE_DISABLED`.
+
 - **`VITE_COVERAGE_DASHBOARD_NO_AUTH=true`** on this app's own build makes `useAuth()`
   (`src/hooks/useAuth.ts`) report `{ user: null, isAuthenticated: true, isLoading:
 false }` immediately, with no `GET /auth/me` call at all. `ProtectedRoute` skips its

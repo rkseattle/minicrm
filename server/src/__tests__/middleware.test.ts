@@ -13,6 +13,8 @@ import jwt from 'jsonwebtoken';
 import { vi } from 'vitest';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { requireRole, requireCapability, requireCapabilities } from '../middleware/requireRole.js';
+import { requireFeatureEnabledOrgWide } from '../middleware/requireFeatureEnabled.js';
+import * as featureFlagService from '../services/featureFlagService.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 import type { Request, Response, NextFunction } from 'express';
 
@@ -346,5 +348,105 @@ describe('asyncHandler middleware', () => {
     // service to throw a DB error that asyncHandler forwards to the error handler.
     const res = await request(app).get('/api/v1/contacts/not-a-uuid').set('Cookie', repCookie);
     expect(res.status).toBe(500);
+  });
+});
+
+// ── requireFeatureEnabledOrgWide (MINCRM-694) ─────────────────────────────────
+
+describe('requireFeatureEnabledOrgWide', () => {
+  /**
+   * Exercised directly rather than through a route: these assertions are about
+   * the middleware's own three branches, and the two coverage routers that use
+   * it already cover the integrated path in their own controller specs.
+   *
+   * The flag store is stubbed per case so the org-wide check can be driven to
+   * each outcome — including the throw, which no route test can reach without
+   * breaking the database out from under the whole suite.
+   */
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function invoke(): {
+    req: Request;
+    res: Response;
+    next: ReturnType<typeof vi.fn>;
+    status: ReturnType<typeof vi.fn>;
+    json: ReturnType<typeof vi.fn>;
+  } {
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    return {
+      // No `user` at all — the whole point of this middleware is that it runs
+      // on a path where authenticate never populated one.
+      req: {} as unknown as Request,
+      res: { status } as unknown as Response,
+      next: vi.fn(),
+      status,
+      json,
+    };
+  }
+
+  it('calls next() when the flag is enabled org-wide', async () => {
+    vi.spyOn(featureFlagService, 'isFeatureEnabled').mockResolvedValue(true);
+    const { req, res, next, status } = invoke();
+
+    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(next).toHaveBeenCalledWith();
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 FEATURE_DISABLED when the flag is disabled org-wide', async () => {
+    vi.spyOn(featureFlagService, 'isFeatureEnabled').mockResolvedValue(false);
+    const { req, res, next, status, json } = invoke();
+
+    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(status).toHaveBeenCalledWith(403);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.objectContaining({ code: 'FEATURE_DISABLED' }) }),
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('forwards a flag-store failure to the error handler rather than failing open', async () => {
+    // Failing open here would silently re-create the defect this middleware
+    // exists to fix: a route that answers 200 regardless of the flag.
+    const boom = new Error('flag store unreachable');
+    vi.spyOn(featureFlagService, 'isFeatureEnabled').mockRejectedValue(boom);
+    const { req, res, next, status } = invoke();
+
+    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(next).toHaveBeenCalledWith(boom);
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  it('does not consult the user-scoped resolver, which needs a req.user this path lacks', async () => {
+    const orgWide = vi.spyOn(featureFlagService, 'isFeatureEnabled').mockResolvedValue(true);
+    const perUser = vi.spyOn(featureFlagService, 'isFlagEnabledForUser');
+    const { req, res, next } = invoke();
+
+    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(orgWide).toHaveBeenCalledWith('coverage_mapping_query');
+    expect(perUser).not.toHaveBeenCalled();
   });
 });
