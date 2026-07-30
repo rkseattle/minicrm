@@ -7,12 +7,11 @@
  *     --expected-files 5 \
  *     path/to/group-0.xml path/to/group-1.xml …
  *
- * Written to replace two byte-identical inline `node --input-type=module`
- * heredocs in .github/workflows/ci.yml — the e2e-serial conflict-group merge
- * (`Merge conflict-group JUnit XML results`) and the e2e-aggregate shard merge
- * (`Merge JUnit XML results`). Those two call sites are switched over in the
- * commits that follow this one; nothing in .github/ invokes this module yet.
- * Both heredocs share the same two defects:
+ * Called from two steps in .github/workflows/ci.yml — the e2e-serial
+ * conflict-group merge (`Merge conflict-group JUnit XML results`) and the
+ * e2e-aggregate shard merge (`Merge JUnit XML results`). Each previously carried
+ * its own byte-identical inline `node --input-type=module` heredoc, sharing the
+ * same two defects:
  *
  *  1. TRUNCATION. Both matched suites with a bare non-greedy
  *     /<testsuite(?!s)[\s\S]*?<\/testsuite>/g over the raw document, so a
@@ -279,14 +278,19 @@ export interface CliArgs {
    * When true, an input file containing no <testsuite> is warned about and
    * skipped instead of failing the merge.
    *
-   * Defaults to FALSE — fatal — because an empty file is silent partial data:
-   * `--expected-files` cannot catch it (the file is present) and
-   * hasParseDisagreement cannot either (the root sum stays self-consistent with
-   * whatever rows survived). The two call sites genuinely differ, so each states
-   * its own policy rather than inheriting one: `e2e-aggregate` passes this flag
-   * because a shard that legitimately collected zero tests is normal there and
-   * its step has no `if:` guard, while `e2e-serial` leaves it off so a group that
-   * crashed after writing an empty file fails the merge loudly.
+   * Defaults to FALSE — fatal — so a caller has to think about it: an empty file
+   * is silent partial data that nothing downstream can detect
+   * (`--expected-files` sees a present file, and hasParseDisagreement sees a
+   * root sum consistent with whatever rows survived).
+   *
+   * BOTH current CI call sites pass it, for the same reason: Playwright emits a
+   * zero-`<testsuite>` document whenever a group or shard matches no tests or its
+   * globalSetup throws, and refusing to merge over that would discard every
+   * other group's or shard's rows AND write no output file at all — blanking the
+   * GitHub Check, the uploaded artifact and the PR-comment row. A failed
+   * group/shard is already reported by its own job's exit code, so this merger
+   * is not the detector; its job is to preserve whatever did run. An all-empty
+   * merge stays fatal regardless of this flag.
    */
   allowEmptyInputs: boolean;
 }
