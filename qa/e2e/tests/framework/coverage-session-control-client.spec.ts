@@ -367,13 +367,19 @@ test.describe('resolveSessionBuildSha', () => {
   //
   // The two resolvers are deliberately NOT shared code: this module runs in
   // the QA workspace's own process and must stay free of server imports.
-  // Following the precedent CLAUDE.md documents for the
-  // qa/scripts/junit-xml.ts <-> server/src/scripts/junitXml.ts pair, the
-  // duplication is pinned by a test rather than left to two prose comments.
   //
-  // The server's real pattern is IMPORTED, never copied: a local copy of the
-  // regex would keep passing while the two implementations drifted apart,
-  // which is the exact failure this test exists to catch. Importing
+  // What this test covers, precisely: that the QA RESOLVER — not merely its
+  // regex — accepts and rejects what the server's rule does. It runs the real
+  // resolveSessionBuildSha() over the corpus, so it also catches a resolver
+  // that stops consulting its pattern, mangles the value, or short-circuits.
+  // Its detection power for pure REGEX drift is bounded by the corpus, which
+  // is why it is not the only guard: qa/scripts/check-sha-pattern-parity.sh
+  // diffs the three definitions as source text and catches any character
+  // change, including ones no corpus would distinguish. The two are
+  // complementary — text equality there, behavioural equivalence here.
+  //
+  // The server's real pattern is IMPORTED, never copied, so this test moves
+  // with the server's rule rather than a snapshot of it. Importing
   // coverageConfig.ts is safe here for the same reason junitXml.ts is — it
   // pulls in only pino via logger.ts, no pg.Pool and no dotenv/config, so no
   // socket is opened and no env is rewritten inside a Playwright worker.

@@ -66,11 +66,20 @@ for entry in "${DEFINITIONS[@]}"; do
     continue
   fi
 
-  # Take everything after the first '=' on the declaration line, minus the
+  # Take everything after the first '=' on the DECLARATION line, minus the
   # trailing semicolon. Deliberately compares the literal source text: two
   # regexes that differ only cosmetically still represent a decision someone
   # made in one place and not the others, and should be reconciled explicitly.
-  pattern="$(grep -E "(const|export const) ${name} = " "$path" | head -1 | sed -E 's/^[^=]*= *//; s/;[[:space:]]*$//')"
+  #
+  # Anchored to start-of-line (optionally indented) so a mention inside a
+  # comment cannot be picked up instead — all three files carry long docblocks
+  # that name the constant, and a line like
+  #   // Historical: const SAFE_BUILD_SHA_PATTERN = /^old$/;
+  # above the real declaration would otherwise silently redirect the whole
+  # comparison. `--text` so a file with an unexpected byte reports its content
+  # rather than "Binary file matches", which would compare as equal to nothing
+  # and produce a confusing diff.
+  pattern="$(grep --text -E "^[[:space:]]*(export )?const ${name} = " "$path" | head -1 | sed -E 's/^[^=]*= *//; s/;[[:space:]]*$//')"
 
   if [[ -z "$pattern" ]]; then
     echo "ERROR: could not find '${name}' in $file"

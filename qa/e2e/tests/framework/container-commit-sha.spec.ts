@@ -2,9 +2,10 @@
  * Unit tests for qa/scripts/container-commit-sha.ts. (MINCRM-688)
  *
  * This is the parse half of scripts/pre-push-tia.ts's stale-test-stack check.
- * Every fixture below is real `docker inspect` output shape:
+ * Every fixture below is real `docker inspect` output shape — the exact format
+ * string that script passes:
  *
- *   docker inspect <name> --format '{{.State.Running}}\n{{range .Config.Env}}{{println .}}{{end}}'
+ *   docker inspect <name> --format '{{.State.Running}}\n{{json .Config.Env}}'
  *
  * The three outcomes are behaviourally distinct and each drives a different
  * message in the hook, so all three are covered — `empty` in particular must

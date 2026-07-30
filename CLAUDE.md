@@ -89,11 +89,16 @@ failure the test exists to catch.
    `junitXml.ts` was split out of `verify-test-attestation.ts` specifically to make
    this import free of a `pg.Pool` and `dotenv/config`. (MINCRM-689)
 2. `qa/e2e/tests/framework/coverage-session-control-client.spec.ts` →
-   `server/src/coverageAgent/coverageConfig.ts` — pins the coverage-SHA accept-set
-   (`SAFE_PATH_SEGMENT_PATTERN`) against the QA session resolver's own copy. One
-   tags coverage SESSIONS, the other coverage DUMPS; a split is invisible until a
-   gate reports `no-session-attribution` or a generated map is unusable.
-   `coverageConfig.ts` reaches only `pino` via `logger.ts` — no pool, no dotenv.
+   `server/src/coverageAgent/coverageConfig.ts` — runs the QA session resolver
+   over a corpus and asserts it accepts/rejects what `SAFE_PATH_SEGMENT_PATTERN`
+   does. One tags coverage SESSIONS, the other coverage DUMPS; a split is
+   invisible until a gate reports `no-session-attribution` or a generated map is
+   unusable. `coverageConfig.ts` reaches only `pino` via `logger.ts` — no pool,
+   no dotenv. Note this covers RESOLVER BEHAVIOUR, not regex text: source-level
+   equality of the three copies is enforced separately by
+   `qa/scripts/check-sha-pattern-parity.sh`, whose detection is not bounded by a
+   hand-written corpus. Keep both — one catches a resolver that stops consulting
+   its pattern, the other catches a character change no corpus distinguishes.
    (MINCRM-688)
 
 **Adding a third requires all of the same:** import-safety (no `pg.Pool`, no
