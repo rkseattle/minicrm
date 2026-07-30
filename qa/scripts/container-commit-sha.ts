@@ -36,7 +36,10 @@ export type ContainerCommitSha =
 
 /**
  * Parses the output of
- *   docker inspect <name> --format '{{json .State.Running}}\n{{json .Config.Env}}'
+ *   docker inspect <name> --format '{{.State.Running}}\n{{json .Config.Env}}'
+ *
+ * (`.State.Running` bare, since a Go bool renders as `true`/`false` either way;
+ * `.Config.Env` as JSON for the reason below.)
  *
  * JSON, deliberately, NOT `{{range .Config.Env}}{{println .}}{{end}}`: that
  * form emits one line per variable, so a variable whose own VALUE contains a
