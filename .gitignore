@@ -117,3 +117,8 @@ framework-test-results-*/
 framework-coverage-*/
 e2e-shard-*/
 e2e-merged-*/
+
+# Local implementation-planning scratch docs. Untracked by convention — these are
+# working notes for a single ticket, not repo documentation, and committing them
+# would put process narrative in the history. (MINCRM-689)
+docs/plans/

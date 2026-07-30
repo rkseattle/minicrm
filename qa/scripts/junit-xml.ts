@@ -157,17 +157,22 @@ function extractAttr(tagText: string, attrName: string): string | null {
 }
 
 /**
- * Reads a count attribute, treating absent, unparseable and negative alike as 0.
+ * Reads a count attribute. Anything that is not a plain non-negative integer —
+ * absent, empty, negative, fractional, or carrying trailing junk — reads as 0.
  *
- * Negatives are clamped rather than passed through: these four attributes are
- * counts, nothing downstream validates the merged root, and a negative would
- * silently corrupt a sum (or make `tests` disagree with the row count and trip
- * `hasParseDisagreement` for a reason no reader could trace back to here).
+ * Deliberately stricter than `parseInt`, which accepts a valid prefix and
+ * discards the rest: it turns `"3abc"` into 3, `"2.9"` into 2 and `"1e3"` into 1.
+ * Those four attributes are summed into the merged root that downstream
+ * consumers trust, and nothing validates that root, so a partially-parsed value
+ * is silent corruption of a count — the exact failure class this module exists to
+ * remove. A malformed attribute means the document is not what this module
+ * expects, and contributing 0 keeps the root honest: `tests` then disagrees with
+ * the recovered row count and `hasParseDisagreement` reports the document as
+ * unreliable, which is the visible outcome. Guessing a number from a malformed
+ * one produces a plausible root that is quietly wrong instead.
  */
 export function extractNumericAttr(tagText: string, attrName: string): number {
   const raw = extractAttr(tagText, attrName);
-  if (raw === null) return 0;
-  const value = parseInt(raw, 10);
-  if (Number.isNaN(value) || value < 0) return 0;
-  return value;
+  if (raw === null || !/^\d+$/.test(raw)) return 0;
+  return Number(raw);
 }

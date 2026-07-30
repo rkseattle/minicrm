@@ -15,7 +15,10 @@
  *  - `real CI artifact` uses a document captured from run 30483113589 rather
  *    than a synthetic fixture, because every structural assumption here (flat
  *    suites, no orphans, accurate per-suite counts) is a claim about what
- *    Playwright actually emits.
+ *    Playwright actually emits. Note what it does NOT cover: none of its CDATA
+ *    blocks happen to contain `</testsuite>`, so the truncation hazard itself is
+ *    exercised only by the synthetic TRUNCATING_* fixtures below. The real
+ *    artifact pins the document SHAPE; the synthetic ones pin the defect.
  *  - `frozen oracle` pins the OLD regex so MINCRM-689's AC 4 ("a regression
  *    test covers the truncation case; it fails against the current
  *    implementation") stays falsifiable after the inline heredocs are deleted.
@@ -182,6 +185,30 @@ test.describe('merge-junit-results — AC 2: root attributes', () => {
     expect(rootTag).not.toContain('time=');
     expect(rootTag).not.toContain('id=');
     expect(rootTag).not.toContain('name=');
+  });
+
+  test('treats malformed count attributes as contributing zero', () => {
+    // Malformed count attributes must contribute 0 rather than a partially
+    // parsed number. `parseInt` would accept a valid prefix and silently turn
+    // "3abc" into 3, "2.9" into 2 and "1e3" into 1 — a plausible-looking root
+    // that is quietly wrong, which is the failure class this module removes.
+    // Contributing 0 instead makes `tests` disagree with the recovered row count
+    // so hasParseDisagreement reports the document as unreliable. These cases
+    // found the prefix-parsing bug they now pin.
+    for (const bad of ['-3', 'abc', '', '1e3', '3abc', '2.9', ' 4']) {
+      const xml = wrap(
+        `<testsuite name="a.spec.ts" hostname="desktop" tests="${bad}" failures="${bad}" skipped="${bad}" errors="${bad}">\n<testcase name="t" classname="a.spec.ts" time="1.0"></testcase>\n</testsuite>`,
+      );
+
+      const result = mergeJUnitDocuments([doc('g0.xml', xml)]);
+
+      expect(result.totals, `tests="${bad}" must contribute 0`).toEqual({
+        tests: 0,
+        failures: 0,
+        skipped: 0,
+        errors: 0,
+      });
+    }
   });
 
   test('treats a suite missing count attributes as contributing zero', () => {

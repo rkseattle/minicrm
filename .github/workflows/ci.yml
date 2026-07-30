@@ -91,6 +91,18 @@ jobs:
               - 'qa/e2e/*.ts'
               - 'qa/scripts/**/*.sh'
               - 'qa/scripts/**/*.ts'
+              # qa/e2e/tests/framework/merge-junit-results.spec.ts asserts that
+              # qa/scripts/junit-xml.ts and server/src/scripts/junitXml.ts redact
+              # the same JUnit payload regions. That rule deliberately exists in
+              # both workspaces (qa/ must not import server's DB-bound modules at
+              # runtime), and this parity test is the only thing pinning the two
+              # together — so a server-side edit has to trigger this job or the
+              # guard is absent on exactly the change it exists to catch.
+              # (MINCRM-689)
+              - 'server/src/scripts/junitXml.ts'
+              # The parity/shape assertions read a captured real CI artifact, so a
+              # fixture-only edit must re-run them too — the *.ts globs miss it.
+              - 'qa/e2e/tests/framework/__fixtures__/**'
               # check-compose-isolation.sh (below) validates these, so a compose-only
               # change must still trigger this job. (MINCRM-684)
               - 'docker-compose*.yml'
@@ -1489,7 +1501,7 @@ jobs:
           # even though it works on ubuntu-latest. Group filenames are
           # group-<int>.xml, so word splitting is safe here.
           # shellcheck disable=SC2046
-          set -- $(find qa/e2e/test-results/serial-groups -maxdepth 1 -name 'group-*.xml' | sort)
+          set -- $(find qa/e2e/test-results/serial-groups -maxdepth 1 -name 'group-*.xml' | sort -V)
 
           if [ "$#" -eq 0 ]; then
             echo "::error::No group JUnit XML files found — all groups failed before Playwright ran."
@@ -1497,13 +1509,21 @@ jobs:
           fi
 
           # --expected-files guards against a group file that went MISSING, not
-          # against a group that failed: Playwright writes a JUnit document even
-          # when a group matches no tests or its globalSetup throws, so a failed
-          # group still leaves a file behind and is reported by the run step's
-          # exit code instead. The real hazard this catches is the per-group
-          # `--output` wipe described at :1424 deleting an earlier group's XML.
-          # The manifest is what the run step iterated, so it is the only honest
-          # source for the expected count.
+          # against a group whose tests failed. Verified against the installed
+          # Playwright, since the distinction decides whether this is safe:
+          #
+          #   - matched no tests        → writes <testsuites tests="0"> (no
+          #                               <testsuite> children)
+          #   - globalSetup threw       → same zero-<testsuite> document
+          #   - config failed to load   → writes NOTHING
+          #
+          # The first two are what --allow-empty-inputs absorbs, so a group whose
+          # login or onboarding call failed does not discard the other groups'
+          # results; its own non-zero exit from the run step is the report. Only
+          # the third loses a file, which is exactly what this count catches —
+          # along with the per-group `--output` wipe described at :1424 deleting
+          # an earlier group's XML. The manifest is what the run step iterated,
+          # so it is the only honest source for the expected count.
           if [ -f qa/e2e/playwright.serial-groups.json ]; then
             EXPECTED_GROUPS=$(jq 'length' qa/e2e/playwright.serial-groups.json)
           else

@@ -283,14 +283,18 @@ export interface CliArgs {
    * (`--expected-files` sees a present file, and hasParseDisagreement sees a
    * root sum consistent with whatever rows survived).
    *
-   * BOTH current CI call sites pass it, for the same reason: Playwright emits a
-   * zero-`<testsuite>` document whenever a group or shard matches no tests or its
-   * globalSetup throws, and refusing to merge over that would discard every
-   * other group's or shard's rows AND write no output file at all — blanking the
-   * GitHub Check, the uploaded artifact and the PR-comment row. A failed
-   * group/shard is already reported by its own job's exit code, so this merger
-   * is not the detector; its job is to preserve whatever did run. An all-empty
-   * merge stays fatal regardless of this flag.
+   * BOTH current CI call sites pass it. Verified against the installed
+   * Playwright: a run that matches no tests, and a run whose globalSetup throws,
+   * each write `<testsuites tests="0">` with no `<testsuite>` children. (A run
+   * whose CONFIG fails to load writes no file at all — a different case, caught
+   * by `--expected-files` rather than absorbed here.)
+   *
+   * Refusing to merge over a zero-suite document would discard every other
+   * group's or shard's rows AND write no output file at all — blanking the GitHub
+   * Check, the uploaded artifact and the PR-comment row. A group or shard that
+   * failed is already reported by its own job's exit code, so this merger is not
+   * the detector; its job is to preserve whatever did run. An all-empty merge
+   * stays fatal regardless of this flag.
    */
   allowEmptyInputs: boolean;
 }
