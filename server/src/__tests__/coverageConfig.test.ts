@@ -58,6 +58,19 @@ describe('resolveCoverageConfig', () => {
     expect(resolveCoverageConfig().commitSha).toBe('from-github-sha');
   });
 
+  it('falls back to GITHUB_SHA when GIT_COMMIT_SHA is set but EMPTY', () => {
+    // docker-compose.test.yml sets `GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:-}`, so an
+    // operator who never exported the variable hands this process an empty
+    // string rather than an unset one. Under the previous `??` chain that
+    // empty value shadowed GITHUB_SHA and skipped to the git-rev-parse
+    // fallback, contradicting the documented precedence. The QA-side session
+    // resolver must agree with this one or the attestation gate and the
+    // coverage map key off different SHAs.
+    process.env.GIT_COMMIT_SHA = '';
+    process.env.GITHUB_SHA = 'from-github-sha';
+    expect(resolveCoverageConfig().commitSha).toBe('from-github-sha');
+  });
+
   it('falls back to git rev-parse HEAD when no env var is set', () => {
     // We're running inside a real git repo, so this should resolve to a
     // real-looking SHA rather than throwing or returning 'unknown'.
