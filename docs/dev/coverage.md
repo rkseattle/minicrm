@@ -986,14 +986,14 @@ The suite step's `env:` block must track `ci.yml`'s E2E jobs (`ci.yml:1443-1452`
 closest analogue). This is not optional polish — MINCRM-687 was a five-week outage of this
 workflow caused by one missing variable:
 
-| Variable                             | Consequence if unset                                                                                                                                                                                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `E2E_ADMIN_PASSWORD`                 | **Hard failure.** No default anywhere. Eleven `@functional` specs `throw` at module scope, so Playwright collects **0 tests**.                                                                                                                 |
-| `E2E_ADMIN_EMAIL`                    | Silently defaults to `admin@example.com`; login 401s if the seeded admin differs.                                                                                                                                                              |
-| `E2E_API_URL`                        | `globalSetup.ts` falls back to `:3001` under CI, but `apps/minicrm/apiBaseUrl.ts` defaults to `:3002` — set it so the two cannot disagree.                                                                                                     |
-| `E2E_BASE_URL`, `E2E`, `MAILHOG_URL` | CI-only fallbacks happen to be correct; set explicitly for parity.                                                                                                                                                                             |
-| `PW_GLOBAL_TIMEOUT_MS`               | Falls back to the config's 20-minute default, calibrated for a _sharded_ run. A single-worker full-suite run needs far more.                                                                                                                   |
-| `GIT_COMMIT_SHA`                     | Coverage sessions fall back to `GITHUB_SHA`, which for a `workflow_dispatch` against a non-`main` ref is not the SHA the job checked out — the gate then queries one SHA while sessions carry another and fails with `no-session-attribution`. |
+| Variable                             | Consequence if unset                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_ADMIN_PASSWORD`                 | **Hard failure.** No default anywhere. Eleven `@functional` specs `throw` at module scope, so Playwright collects **0 tests**.                                                                                                                                                                                                                                                                           |
+| `E2E_ADMIN_EMAIL`                    | Silently defaults to `admin@example.com`; login 401s if the seeded admin differs.                                                                                                                                                                                                                                                                                                                        |
+| `E2E_API_URL`                        | `globalSetup.ts` falls back to `:3001` under CI, but `apps/minicrm/apiBaseUrl.ts` defaults to `:3002` — set it so the two cannot disagree.                                                                                                                                                                                                                                                               |
+| `E2E_BASE_URL`, `E2E`, `MAILHOG_URL` | CI-only fallbacks happen to be correct; set explicitly for parity.                                                                                                                                                                                                                                                                                                                                       |
+| `PW_GLOBAL_TIMEOUT_MS`               | Falls back to the config's 20-minute default, calibrated for a _sharded_ run. A single-worker full-suite run needs far more.                                                                                                                                                                                                                                                                             |
+| `GIT_COMMIT_SHA`                     | Coverage sessions fall back to `GITHUB_SHA` (when it is non-empty), which for a `workflow_dispatch` against a non-`main` ref is not the SHA the job checked out — the gate then queries one SHA while sessions carry another and fails with `no-session-attribution`. With neither variable usable, sessions are tagged `unknown` and the harness emits a `[coverage-session]` warning naming the cause. |
 
 **The failure is silent, which is what made it expensive.** With `E2E_ADMIN_PASSWORD`
 absent, `globalSetup.ts:104-114` does not throw — it writes an empty `storageState` and
@@ -1060,7 +1060,13 @@ commit, not against a long job.
 
 - `results-file-missing` / the zero-test guard → the suite never ran; check the env block.
 - `no-session-attribution` → coverage sessions were not recorded for this SHA; check that
-  `coverage-instrumentation` is `'true'` on the `e2e-infra` step.
+  `coverage-instrumentation` is `'true'` on the `e2e-infra` step. **Locally, the usual
+  cause is a buildSha mismatch rather than missing instrumentation**: the gate queries
+  `coverage_sessions.build_sha` for the SHA passed as `--sha`, so a run that recorded
+  sessions under a different value finds nothing. Since MINCRM-688 this announces itself
+  rather than failing silently — grep the Playwright output for
+  `[coverage-session]`, which names the reason (neither variable set, or a malformed
+  value) and the fix. See "Local buildSha provenance" below.
 - `skipped-tests` → a test was skipped under every project; usually a project was dropped
   from the invocation.
 - `results-file-unparseable` → the results file could not be fully read. This is a
@@ -1068,6 +1074,36 @@ commit, not against a long job.
 
 The export and commit steps are gated on the suite, the zero-test guard, and the
 attestation all succeeding, which is why no incomplete map has ever been committed.
+
+### Local buildSha provenance (MINCRM-688)
+
+A local run stamps a commit SHA in **two independent places**, from two processes, at
+two different times. They are consumed by different things, so they fail differently:
+
+| Aspect            | Coverage **sessions**                                             | Coverage **dumps**                                                   |
+| ----------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Resolved in       | the Playwright harness, on the **host**                           | the test server, in the **container**                                |
+| Reads             | `GIT_COMMIT_SHA` from the harness's own environment, at test time | `GIT_COMMIT_SHA` from Compose, at **`docker compose up` time**       |
+| Consumed by       | the attestation gate (`--sha`)                                    | `dump:coverage-map` → the committed `qa/coverage-map.json`           |
+| Wrong value means | the gate fails with `no-session-attribution`                      | the gate is fine, but the generated map is keyed to the wrong commit |
+
+Both resolve `GIT_COMMIT_SHA`, then `GITHUB_SHA`, then degrade — each variable tested
+for a non-empty value independently, so an empty string falls through rather than
+winning. Neither degrades silently any more:
+
+- The harness prints a `[coverage-session]` warning naming the reason and the fix.
+- `pre-push-tia.ts` passes the resolved HEAD SHA to every Playwright child it spawns,
+  so sessions and the gate cannot disagree on the pre-push path, and warns when the
+  running container's SHA is not HEAD.
+
+The container's value is the one that goes stale: it is read once at `up` and never
+re-read, so a stack outliving a branch switch keeps stamping the old SHA. Realigning
+means rebuilding and recreating the server, which **wipes the dumps inside it** — copy
+them out first if a run you care about has already produced them.
+
+A third path, the coverage dashboard's manual Session Recorder, resolves its own
+`VITE_BUILD_SHA` at build time and shows an on-screen notice when the result is
+unusable; see [the dashboard README](../../coverage-dashboard/README.md).
 
 > **Note:** `.github/actions/e2e-infra` is record mode's setup action, but `ci.yml`'s E2E
 > jobs still inline their own equivalent sequence rather than calling it. Changing a step
