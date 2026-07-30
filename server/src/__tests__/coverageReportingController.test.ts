@@ -170,18 +170,34 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
     expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
   });
 
-  it('does NOT enforce the coverage_reporting_query feature flag under the bypass — requireFeatureEnabled needs req.user to evaluate per-user overrides and there is none', async () => {
-    // Disabling the flag would 403 a real authenticated caller (see the
-    // "returns 403 FEATURE_DISABLED" test above), but requireFeatureEnabled
-    // itself requires req.user (isFlagEnabledForUser resolves per-user/
-    // per-team overrides) — with auth skipped entirely there is no
-    // coherent "is this enabled for X" to ask, so the whole chain,
-    // including this check, is skipped together rather than 401ing on a
-    // missing req.user the bypass never populates.
+  it('STILL enforces the coverage_reporting_query feature flag under the bypass, org-wide (MINCRM-694)', async () => {
+    // This test previously asserted the OPPOSITE — that the flag is not
+    // enforced here at all — and so locked in the defect MINCRM-694 fixed.
+    //
+    // Its reasoning was half right: requireFeatureEnabled resolves per-user
+    // and per-team overrides and role rollout percentages via
+    // isFlagEnabledForUser, none of which can be evaluated with no req.user.
+    // But the conclusion drawn from that — skip the flag entirely — also threw
+    // away the flag's ORG-WIDE kill switch, which needs no identity. The
+    // result was that coverage_reporting_query read as enabled no matter what
+    // was stored, with nothing to indicate it.
+    //
+    // The check now narrows rather than disappearing: requireFeatureEnabledOrgWide
+    // consults only the `enabled` column and enable_at scheduling.
     await setFlagEnabled('coverage_reporting_query', false);
     const res = await request(app)
       .get('/api/v1/admin/coverage/reporting/summary')
       .query({ commitSha: 'abc' });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FEATURE_DISABLED');
+  });
+
+  it('serves the request when the flag is on, proving the org-wide check is not a blanket deny', async () => {
+    await setFlagEnabled('coverage_reporting_query', true);
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/reporting/summary')
+      .query({ commitSha: 'abc' });
+    // 404 COVERAGE_BUILD_NOT_FOUND — reached the handler, no such build.
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
   });

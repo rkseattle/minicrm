@@ -31,10 +31,8 @@
  * itself.
  */
 
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
-import { coverageAccessGate, isDashboardNoAuthEnabled } from '../middleware/coverageAccessGate.js';
+import { buildCoverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
   startCoverageSessionHandler,
@@ -47,25 +45,14 @@ import {
 
 const router = Router();
 
-const requireCoverageSessionAccessGate: RequestHandler = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void => {
-  if (isDashboardNoAuthEnabled()) {
-    next();
-    return;
-  }
-  authenticate(req, res, (authErr?: unknown) => {
-    if (authErr) {
-      next(authErr);
-      return;
-    }
-    coverageAccessGate(req, res, next);
-  });
-};
-
-const requireCoverageSessionAccess = [requireCoverageSessionAccessGate] as const;
+// `null` flag key, unlike coverageMapping.ts and coverageReporting.ts, which
+// pass their own (MINCRM-694). This router has NO feature_flags row to
+// enforce: it is gated wholesale by COVERAGE_SESSION_MANAGEMENT at boot —
+// registerCoverageSessionRoutes below is never called when that env var is
+// unset, so the routes do not exist rather than 403ing. Audited as part of
+// MINCRM-694 and left flagless deliberately; stated here so the next reader
+// auditing this file does not have to re-derive it from an absent import.
+const requireCoverageSessionAccess = [buildCoverageAccessGate(null)] as const;
 
 /** Registers every coverage session route — only called when COVERAGE_SESSION_MANAGEMENT is 'true' at boot. */
 function registerCoverageSessionRoutes(): void {

@@ -372,6 +372,14 @@ const SERIAL_FILES = [
   // only serializing every file each one happens to have raced so far.
   'src/__tests__/coverageMappingController.test.ts',
   'src/__tests__/coverageReportingController.test.ts',
+  // middleware.test.ts's requireFeatureEnabledOrgWide cases vi.spyOn the
+  // featureFlagService MODULE NAMESPACE (isFeatureEnabled/isFlagEnabledForUser).
+  // That replacement is process-wide for as long as the spy is installed, so a
+  // parallel file reading a real flag through the same service during that
+  // window would get the stub's answer instead of the database's — the same
+  // class of cross-file interference the two entries above are serialized for,
+  // reached by mocking rather than by cache invalidation. (MINCRM-694)
+  'src/__tests__/middleware.test.ts',
 ];
 
 const sharedResolve = {

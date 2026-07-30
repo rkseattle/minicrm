@@ -147,6 +147,68 @@ describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)'
   });
 });
 
+describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)', () => {
+  const originalNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  beforeEach(() => {
+    process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+  });
+
+  afterEach(async () => {
+    if (originalNoAuth !== undefined) {
+      process.env.COVERAGE_DASHBOARD_NO_AUTH = originalNoAuth;
+    } else {
+      delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
+    }
+    process.env.NODE_ENV = originalNodeEnv;
+    await setFlagEnabled('coverage_mapping_query', true);
+  });
+
+  it('serves an unauthenticated request when the flag is on', async () => {
+    await setFlagEnabled('coverage_mapping_query', true);
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
+      .query({ commitSha: 'abc', unitKey: 'render#123' });
+    // No cookie at all — this is the whole point of the no-auth mode. 200 with
+    // an empty array proves the request reached the handler.
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([]);
+  });
+
+  it('STILL returns 403 FEATURE_DISABLED when the flag is off', async () => {
+    // The regression. This router used to call next() unconditionally in
+    // no-auth mode, which skipped authenticate, coverageAccessGate AND the
+    // feature-flag guard — so the flag read as enabled no matter what was
+    // stored, and COVM-02 could never pass in the local E2E stack (which sets
+    // COVERAGE_DASHBOARD_NO_AUTH=true).
+    //
+    // Dropping auth is deliberate; dropping the kill switch was not. The
+    // user-scoped targeting rules genuinely need a req.user this path lacks,
+    // so the check narrows to the org-wide `enabled` column rather than
+    // disappearing.
+    await setFlagEnabled('coverage_mapping_query', false);
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
+      .query({ commitSha: 'abc', unitKey: 'render#123' });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FEATURE_DISABLED');
+  });
+
+  it('never bypasses auth when NODE_ENV=production, regardless of the flag', async () => {
+    // The hard safety rail a copied .env file could not defeat. Mirrors the
+    // same case in coverageReportingController and coverageSessionController —
+    // worth pinning per router because buildCoverageAccessGate now makes one
+    // isDashboardNoAuthEnabled() branch govern all three, so a regression
+    // there would open every one of them at once.
+    process.env.NODE_ENV = 'production';
+    const res = await request(app)
+      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
+      .query({ commitSha: 'abc', unitKey: 'render#123' });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('coverage mapping API — validation', () => {
   beforeEach(async () => {
     await setFlagEnabled('coverage_mapping_query', true);
