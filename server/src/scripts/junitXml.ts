@@ -131,7 +131,9 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
   let suiteMatch: RegExpExecArray | null;
   while ((suiteMatch = suiteRegex.exec(scrubbedXml)) !== null) {
     const project = extractAttr(suiteMatch[1], 'hostname') ?? '';
-    collectTestCases(suiteMatch[2], project, testCases);
+    // Group 2 is undefined for the self-closing <testsuite …/> form, which has
+    // no body to scan.
+    collectTestCases(suiteMatch[2] ?? '', project, testCases);
   }
 
   // Sweep anything outside a <testsuite> — a reporter that omits the wrapper
@@ -158,9 +160,20 @@ export function parseJUnitResults(xml: string): JUnitParseResult {
  * same regions, so they must not be two hand-copied regexes that can drift.
  * Built fresh per call because /g regexes carry mutable lastIndex state.
  * (MINCRM-687)
+ *
+ * Matches the self-closing `<testsuite …/>` form as well (group 2 is undefined
+ * there — callers must treat it as an empty body). Without that branch, a
+ * self-closing suite preceding a populated one is not seen as a region, so the
+ * next match's non-greedy body starts at the self-closing tag and swallows the
+ * populated suite's `</testsuite>`: both suites collapse into one region and
+ * every row inside is attributed to the WRONG `hostname`, i.e. the wrong
+ * Playwright project. That feeds findTestsSkippedEverywhere's cross-project
+ * attestation directly, where a mis-attributed row can attest a skip that never
+ * passed anywhere. Not reachable from today's reporter, which never self-closes,
+ * but the cost of the branch is one alternation. (MINCRM-689)
  */
 function suiteRegionRegex(): RegExp {
-  return /<testsuite\b([^>]*?)>([\s\S]*?)<\/testsuite>/g;
+  return /<testsuite\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testsuite>)/g;
 }
 
 /**

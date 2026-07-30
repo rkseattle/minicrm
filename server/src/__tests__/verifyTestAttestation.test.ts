@@ -16,13 +16,18 @@
  * stopped calling one of them would not be caught. Worth closing.
  */
 
+// Imports from junitXml.ts, not the verify-test-attestation.js re-export shim:
+// that shim pulls in coverageDb, which constructs a pg.Pool and loads
+// dotenv/config at module load. These are pure-function tests and have no reason
+// to pay for a database connection — avoiding exactly that is why the split
+// exists. (MINCRM-689)
 import {
   parseJUnitResults,
   findTestsSkippedEverywhere,
   findFailedTests,
   hasParseDisagreement,
   type JUnitTestCase,
-} from '../scripts/verify-test-attestation.js';
+} from '../scripts/junitXml.js';
 
 /** Builds a JUnitTestCase with the fields these tests care about. */
 function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
@@ -338,6 +343,33 @@ Stack trace
     expect(result.testCases).toHaveLength(1);
     expect(result.testCases[0].project).toBe('');
     expect(result.testCases[0].passed).toBe(true);
+  });
+
+  it('attributes rows correctly when a self-closing <testsuite/> precedes a populated one', () => {
+    // A self-closing suite that is not recognized as a region lets the NEXT
+    // match's non-greedy body start at the self-closing tag and run to the
+    // populated suite's </testsuite>, collapsing both into one region — so every
+    // row inside gets the FIRST suite's hostname, i.e. the wrong Playwright
+    // project. That feeds findTestsSkippedEverywhere's cross-project attestation,
+    // where a mis-attributed row can attest a skip that never passed anywhere.
+    // Today's reporter never self-closes; this pins the parse either way.
+    // (MINCRM-689)
+    const xml = `<testsuites id="" name="" tests="2" failures="1" skipped="0" errors="0" time="0.2">
+<testsuite name="empty.spec.ts" timestamp="2026-07-29T00:00:00.000Z" hostname="mobile-web" tests="0" failures="0" skipped="0" errors="0" time="0"/>
+<testsuite name="b.spec.ts" timestamp="2026-07-29T00:00:00.000Z" hostname="desktop" tests="2" failures="1" skipped="0" errors="0" time="0.2">
+<testcase name="fails" classname="apps/minicrm/functional/b.spec.ts" time="0.1">
+<failure message="boom" type="AssertionError">stack</failure>
+</testcase>
+<testcase name="passes" classname="apps/minicrm/functional/b.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`;
+
+    const result = parseJUnitResults(xml);
+
+    expect(result.testCases).toHaveLength(2);
+    expect(result.testCases.map((t) => t.project)).toEqual(['desktop', 'desktop']);
+    expect(hasParseDisagreement(result)).toBe(false);
   });
 });
 

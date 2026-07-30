@@ -1520,20 +1520,32 @@ jobs:
           # The first two are what --allow-empty-inputs absorbs, so a group whose
           # login or onboarding call failed does not discard the other groups'
           # results; its own non-zero exit from the run step is the report. Only
-          # the third loses a file, which is exactly what this count catches —
-          # along with the per-group `--output` wipe described at :1424 deleting
-          # an earlier group's XML. The manifest is what the run step iterated,
-          # so it is the only honest source for the expected count.
+          # the third loses a file — that, and the per-group `--output` wipe
+          # described at :1424, are what a count assertion could catch here.
+          #
+          # DEGRADE THE GUARD, NEVER THE OUTPUT — the same rule the shard merge
+          # states at :1690. A missing group file must NOT abort the merge: doing
+          # so writes no results.xml at all, blanking the GitHub Check below, the
+          # uploaded artifact, and the PR comment's serial row, which is exactly
+          # the blackout the MINCRM-658 comment at :1570 records having already
+          # been fixed once. Losing one group's rows is strictly better than
+          # losing every group's. So the shortfall is surfaced as an error
+          # ANNOTATION and the merge still runs over what survived; the run step's
+          # own non-zero exit is what fails the job.
           if [ -f qa/e2e/playwright.serial-groups.json ]; then
             EXPECTED_GROUPS=$(jq 'length' qa/e2e/playwright.serial-groups.json)
           else
-            echo "::warning::No conflict-group manifest found — cannot assert the expected group count, falling back to the number of files present."
-            EXPECTED_GROUPS="$#"
+            EXPECTED_GROUPS=0
+          fi
+
+          # `jq length` also yields 0 for `null` or `[]`, so this one branch
+          # covers a missing, empty and malformed-but-parseable manifest alike.
+          if [ "$EXPECTED_GROUPS" -gt 0 ] && [ "$#" -lt "$EXPECTED_GROUPS" ]; then
+            echo "::error::Only $#/$EXPECTED_GROUPS conflict-group JUnit files found — a group produced no output (config load failure) or its XML was overwritten. Merging the $# file(s) that survived; the serial job's own exit code reports the failure."
           fi
 
           npx tsx qa/scripts/merge-junit-results.ts \
             --output qa/e2e/test-results/results.xml \
-            --expected-files "$EXPECTED_GROUPS" \
             --allow-empty-inputs \
             "$@"
 
@@ -1673,7 +1685,7 @@ jobs:
           # exactly one results.xml at the root of each shard artifact. Adding a
           # nested results.xml to that glob would silently feed this merge.
           # shellcheck disable=SC2046
-          set -- $(find ./shard-artifacts -name 'results.xml' | sort)
+          set -- $(find ./shard-artifacts -name 'results.xml' | sort -V)
 
           if [ "$#" -eq 0 ]; then
             echo "::error::No results.xml files found — all shards failed before Playwright ran."

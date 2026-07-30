@@ -131,6 +131,23 @@ reporter's own root `time` is wall-clock while each suite's is summed test
 duration, so a summed value would be wrong whenever a group runs more than one
 worker.
 
+**The two call sites treat a missing input file differently, on purpose.**
+
+- `e2e-serial` merges per-group files produced by sequential invocations _within
+  one job_. A shortfall there is reported as an error annotation and the merge
+  still runs over what survived, because aborting would write no `results.xml` at
+  all — blanking the GitHub Check, the artifact and the PR-comment row for every
+  group, when only one group was lost. The job still fails via the run step's own
+  exit code.
+- `e2e-aggregate` merges one file per shard _job_, and passes `--expected-files`
+  as a hard failure. That preserves the pre-existing MINCRM-662 guard: a whole
+  shard job dying is a different signal from one sequential group failing, and a
+  silently partial full-suite result is what that check exists to prevent.
+
+Both sites pass `--allow-empty-inputs`, because Playwright writes a
+zero-`<testsuite>` document for a run that matched no tests or whose
+`globalSetup` threw. Only a _config-load_ failure produces no file at all.
+
 Native `npx playwright merge-reports --reporter junit` was evaluated as a
 replacement. It is blocked for different reasons per job, and the distinction
 matters for anyone revisiting it:
