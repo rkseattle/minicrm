@@ -73,7 +73,21 @@ qa/e2e/
   pages/minicrm/ → Page Objects
   apps/minicrm/  → fixtures.ts, helpers.ts, test-data-manager.ts
   tests/apps/minicrm/functional/<domain>/ → spec files tagged @functional
+  tests/framework/ → unit specs for framework/ and qa/scripts/ helpers
 ```
+
+**Documented exception — the one qa→server source import.**
+`qa/e2e/tests/framework/merge-junit-results.spec.ts` imports
+`server/src/scripts/junitXml.ts`. The Playwright JUnit CDATA-redaction rule
+deliberately exists in both workspaces (`qa/scripts/junit-xml.ts` and that server
+module) because `qa/` must not import server's DB-bound modules at runtime — so
+that spec is what pins the two definitions together, and it can only do so by
+importing the real one. `junitXml.ts` was split out of
+`verify-test-attestation.ts` specifically to make this import free of a `pg.Pool`
+and `dotenv/config`. The `qa` paths filter in `ci.yml` lists that server file so a
+server-side edit re-runs the parity test. This is the only source-level import
+from `qa/` into `server/src/`; do not add another without the same justification.
+(MINCRM-689)
 
 Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) ·
 [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) ·

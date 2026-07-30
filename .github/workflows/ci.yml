@@ -1521,17 +1521,22 @@ jobs:
           # login or onboarding call failed does not discard the other groups'
           # results; its own non-zero exit from the run step is the report. Only
           # the third loses a file — that, and the per-group `--output` wipe
-          # described at :1424, are what a count assertion could catch here.
+          # documented in the "Run serial functional tests" step above, are what a
+          # count assertion could catch here.
           #
-          # DEGRADE THE GUARD, NEVER THE OUTPUT — the same rule the shard merge
-          # states at :1690. A missing group file must NOT abort the merge: doing
-          # so writes no results.xml at all, blanking the GitHub Check below, the
-          # uploaded artifact, and the PR comment's serial row, which is exactly
-          # the blackout the MINCRM-658 comment at :1570 records having already
-          # been fixed once. Losing one group's rows is strictly better than
-          # losing every group's. So the shortfall is surfaced as an error
-          # ANNOTATION and the merge still runs over what survived; the run step's
-          # own non-zero exit is what fails the job.
+          # MERGE FIRST, THEN FAIL. A shortfall must not abort before the merge:
+          # that writes no results.xml at all, blanking the GitHub Check below,
+          # the uploaded artifact and the PR comment's serial row for EVERY group
+          # when only one was lost — the blackout the MINCRM-658 comment in the
+          # "Upload serial failure diagnostics" step records having been fixed
+          # once already. But it must still fail the job, because the run step's
+          # exit code only propagates TEST failures: a group whose XML was
+          # overwritten while all its tests passed leaves exit_code=0, so without
+          # the exit below a green run could ship silently incomplete results —
+          # precisely the defect class this ticket closes. So the shortfall is
+          # recorded, the merge runs over what survived, and the step exits
+          # non-zero afterwards. Every downstream consumer is `if: always()`, so
+          # failing here costs no reporting.
           if [ -f qa/e2e/playwright.serial-groups.json ]; then
             EXPECTED_GROUPS=$(jq 'length' qa/e2e/playwright.serial-groups.json)
           else
@@ -1540,14 +1545,20 @@ jobs:
 
           # `jq length` also yields 0 for `null` or `[]`, so this one branch
           # covers a missing, empty and malformed-but-parseable manifest alike.
+          GROUP_SHORTFALL=0
           if [ "$EXPECTED_GROUPS" -gt 0 ] && [ "$#" -lt "$EXPECTED_GROUPS" ]; then
-            echo "::error::Only $#/$EXPECTED_GROUPS conflict-group JUnit files found — a group produced no output (config load failure) or its XML was overwritten. Merging the $# file(s) that survived; the serial job's own exit code reports the failure."
+            echo "::error::Only $#/$EXPECTED_GROUPS conflict-group JUnit files found — a group produced no output (config load failure) or its XML was overwritten. Merging the $# file(s) that survived, then failing this step."
+            GROUP_SHORTFALL=1
           fi
 
           npx tsx qa/scripts/merge-junit-results.ts \
             --output qa/e2e/test-results/results.xml \
             --allow-empty-inputs \
             "$@"
+
+          if [ "$GROUP_SHORTFALL" -eq 1 ]; then
+            exit 1
+          fi
 
       - name: Publish serial results to GitHub Checks
         uses: dorny/test-reporter@v3
@@ -1680,10 +1691,11 @@ jobs:
           # MINCRM-662: sourced from capacity-probe instead of a hardcoded constant.
           EXPECTED_SHARDS: ${{ needs.capacity-probe.outputs.total-shards }}
         run: |
-          # No -maxdepth bound is needed here (unlike the serial site, which has
-          # nested per-group artifact dirs): the shard upload glob at :1067 puts
-          # exactly one results.xml at the root of each shard artifact. Adding a
-          # nested results.xml to that glob would silently feed this merge.
+          # No -maxdepth bound is needed here, unlike the serial site with its
+          # nested per-group artifact dirs: the "Upload shard test artifacts" step
+          # puts one results.xml per shard artifact, and the only nested content
+          # (blob-report/) holds .zip files exclusively. Adding a second
+          # results.xml to that upload would silently feed this merge.
           # shellcheck disable=SC2046
           set -- $(find ./shard-artifacts -name 'results.xml' | sort -V)
 
@@ -1696,9 +1708,8 @@ jobs:
           # capacity-probe failed — in which case total-shards is the empty
           # string. The inline version this replaces did `parseInt('')` → NaN and
           # `files.length < NaN` → false, silently skipping the guard but still
-          # writing the merged file. Passing "" straight through would instead
-          # abort the merge and leave no merged-results.xml, blanking two GitHub
-          # Checks and both PR-comment rows. Degrade the guard, never the output.
+          # writing the merged file. Passing "" straight through to the merger
+          # would instead abort it, leaving no merged-results.xml.
           if printf '%s' "$EXPECTED_SHARDS" | grep -Eq '^[0-9]+$'; then
             EXPECTED_FILES="$EXPECTED_SHARDS"
           else
@@ -1706,11 +1717,27 @@ jobs:
             EXPECTED_FILES="$#"
           fi
 
+          # MERGE FIRST, THEN FAIL — same rule as the serial merge step, and for
+          # the same reason. The MINCRM-662 hard failure on a missing shard is
+          # preserved, but it must not cost the report: passing --expected-files to
+          # the merger would abort before anything is written, leaving no
+          # merged-results.xml and blanking two GitHub Checks plus both
+          # PR-comment rows. So the shortfall is asserted here, the merge runs over
+          # what survived, and the step exits non-zero afterwards.
+          SHARD_SHORTFALL=0
+          if [ "$#" -lt "$EXPECTED_FILES" ]; then
+            echo "::error::Only $#/$EXPECTED_FILES shard results.xml files found. Some shards failed before Playwright ran and produced no output. Merging the $# file(s) that survived, then failing this step to prevent a partial green result from masking real failures."
+            SHARD_SHORTFALL=1
+          fi
+
           npx tsx qa/scripts/merge-junit-results.ts \
             --output merged-results.xml \
-            --expected-files "$EXPECTED_FILES" \
             --allow-empty-inputs \
             "$@"
+
+          if [ "$SHARD_SHORTFALL" -eq 1 ]; then
+            exit 1
+          fi
 
       - name: Merge JSON results and count flaky tests (MINCRM-355)
         if: always()

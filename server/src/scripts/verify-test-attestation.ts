@@ -107,14 +107,12 @@ function parseArgs(argv: readonly string[]): CliArgs {
   };
 }
 
-export {
-  findFailedTests,
-  findTestsSkippedEverywhere,
-  hasParseDisagreement,
-  parseJUnitResults,
-  stripCapturedOutput,
-} from './junitXml.js';
-export type { JUnitParseResult, JUnitTestCase } from './junitXml.js';
+// No re-export of junitXml.js's surface here. An earlier version of this split
+// kept one "so the existing public surface keeps working", but nothing imports
+// this module — it is only ever run as a CLI (server/package.json's
+// verify:test-attestation, scripts/pre-push-tia.ts, tia-record-mode.yml), and its
+// test file imports junitXml.js directly. A pass-through export with no consumer
+// is just a second name for the same thing. (MINCRM-689)
 
 // ── Attestation result ───────────────────────────────────────────────────────
 

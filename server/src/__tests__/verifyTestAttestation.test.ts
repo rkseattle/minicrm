@@ -16,11 +16,14 @@
  * stopped calling one of them would not be caught. Worth closing.
  */
 
-// Imports from junitXml.ts, not the verify-test-attestation.js re-export shim:
-// that shim pulls in coverageDb, which constructs a pg.Pool and loads
-// dotenv/config at module load. These are pure-function tests and have no reason
-// to pay for a database connection — avoiding exactly that is why the split
-// exists. (MINCRM-689)
+// Imports from junitXml.ts, not verify-test-attestation.ts, which pulls in
+// coverageDb (a pg.Pool plus dotenv/config at module load). These are
+// pure-function tests, so importing the DB-bound script for them would be
+// gratuitous. Note this does NOT make the file runnable without Postgres — the
+// suite's globalSetup creates and migrates the test database for every file
+// regardless. The import graph is simply honest about what these tests use; the
+// spec that genuinely benefits is qa/'s, which has no globalSetup.
+// (MINCRM-689)
 import {
   parseJUnitResults,
   findTestsSkippedEverywhere,
