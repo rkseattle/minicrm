@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite name="apps/minicrm/functional/ai/ai-session-persistence.spec.ts" timestamp="2026-07-29T19:49:08.453Z" hostname="desktop" tests="2" failures="0" skipped="0" time="7.836" errors="0">
+<testcase name="F-AI-PERSIST1 — message history is retained after a full page reload @functional @serial" classname="apps/minicrm/functional/ai/ai-session-persistence.spec.ts" time="4.02">
+</testcase>
+<testcase name="F-AI-PERSIST2 — the active session is retained after a full page reload @functional @serial" classname="apps/minicrm/functional/ai/ai-session-persistence.spec.ts" time="3.816">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-context.spec.ts" timestamp="2026-07-29T19:46:31.986Z" hostname="desktop" tests="7" failures="0" skipped="0" time="15.695" errors="0">
+<testcase name="F-AI-CTX-1 — Context panel is visible on the AI page @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.223">
+</testcase>
+<testcase name="F-AI-CTX-2 — Context panel shows empty state when no entries exist @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.089">
+</testcase>
+<testcase name="F-AI-CTX-3 — Adding a context entry via the UI saves and displays it @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.319">
+</testcase>
+<testcase name="F-AI-CTX-4 — Context entry created via API appears in the panel @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.183">
+</testcase>
+<testcase name="F-AI-CTX-5 — Cancelling the add form discards the entry @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.262">
+</testcase>
+<testcase name="F-AI-CTX-6 — Editing a context entry via the panel updates it @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.326">
+</testcase>
+<testcase name="F-AI-CTX-7 — Deleting a context entry via the panel removes it @functional @serial" classname="apps/minicrm/functional/ai/ai-context.spec.ts" time="2.293">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/settings/settings.spec.ts" timestamp="2026-07-29T19:46:31.986Z" hostname="desktop" tests="1" failures="0" skipped="0" time="5.432" errors="0">
+<testcase name="admin can configure exchange rates and reload to confirm persistence @functional @serial" classname="apps/minicrm/functional/settings/settings.spec.ts" time="5.432">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai.spec.ts" timestamp="2026-07-29T19:49:19.063Z" hostname="desktop" tests="10" failures="0" skipped="0" time="35.426" errors="0">
+<testcase name="F-AI1 — /ai route accessible from nav when flag is on @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.823">
+</testcase>
+<testcase name="F-AI2 — Two-panel layout renders: thread panel and input controls @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.168">
+</testcase>
+<testcase name="F-AI3 — Empty state shown when session has no messages @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.186">
+</testcase>
+<testcase name="F-AI4 — New Session button creates a fresh conversation @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="7.499">
+</testcase>
+<testcase name="F-AI5 — Sending a message appends user turn and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.364">
+</testcase>
+<testcase name="F-AI6 — Session is auto-named from the first message @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.33">
+</testcase>
+<testcase name="F-AI7 — User can switch between sessions; thread updates @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.333">
+</testcase>
+<testcase name="F-AI8 — Deleting a session removes it from the session list @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="2.334">
+</testcase>
+<testcase name="F-AI9 — /ai nav link hidden when ai_nli_page flag is off @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="6.591">
+</testcase>
+<testcase name="F-AI10 — Sessions scoped to authenticated user; other user cannot access @functional @serial" classname="apps/minicrm/functional/ai/ai.spec.ts" time="4.798">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" timestamp="2026-07-29T19:48:07.393Z" hostname="desktop" tests="8" failures="0" skipped="0" time="28.553" errors="0">
+<testcase name="F-AI-C1 — Normal AI stub response does not show a confirmation block @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="8.694">
+</testcase>
+<testcase name="F-AI-C2 — Sending cancel phrase after confirmation dispatches correct message @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.477">
+</testcase>
+<testcase name="F-AI-C3 — Sending confirm phrase after confirmation dispatches correct message @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.368">
+</testcase>
+<testcase name="F-AI-C4 — Create pending_action renders a confirmation block with fields @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.272">
+</testcase>
+<testcase name="F-AI-C5 — Confirm sends the exact confirm phrase and clears pending_action @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.35">
+</testcase>
+<testcase name="F-AI-C6 — Cancel sends the exact cancel phrase and clears pending_action @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.471">
+</testcase>
+<testcase name="F-AI-C7 — Bulk pending_action renders count and sample @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="2.307">
+</testcase>
+<testcase name="F-AI-C8 — Bulk-delete requires typing the count before Confirm is enabled @functional @serial" classname="apps/minicrm/functional/ai/ai-mutation-confirmation.spec.ts" time="5.614">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/admin/aiSettings.spec.ts" timestamp="2026-07-29T19:39:07.514Z" hostname="desktop" tests="14" failures="0" skipped="0" time="85.157" errors="0">
+<testcase name="@functional @serial F-AI1: admin can navigate to the AI tab and see the AI settings panel" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.199">
+</testcase>
+<testcase name="@functional @serial F-AI2: clicking the master toggle shows a confirmation dialog that can be cancelled" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.246">
+</testcase>
+<testcase name="@functional @serial F-AI3: confirming the toggle dialog enables AI and updates toggle state" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.443">
+</testcase>
+<testcase name="@functional @serial F-AI4: DPA warning banner is visible when DPA has not been acknowledged" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.104">
+</testcase>
+<testcase name="@functional @serial F-AI5: DPA warning banner disappears after DPA is acknowledged" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="21.191">
+<system-err>
+<![CDATA[AiHealer: DOM snapshot truncated for selector "warning banner shown when the data processing agreement has not been acknowledged": 15857 → 57 chars (child-trim)
+]]>
+</system-err>
+</testcase>
+<testcase name="@functional @serial F-AI6: data posture badge is visible on the AI settings page" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.163">
+</testcase>
+<testcase name="@functional @serial F-AI7: model selector is present and lists available models" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.124">
+</testcase>
+<testcase name="@functional @serial F-AI8: Test Connection button is visible and shows a result on click" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.185">
+</testcase>
+<testcase name="@functional @serial F-AI9: rep receives 403 when accessing the AI config endpoint" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="1.574">
+</testcase>
+<testcase name="@functional @serial F-AI10: sub-navigation switches between General, Usage &amp; Budgets, Data Retention, and Data Minimization" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.481">
+</testcase>
+<testcase name="@functional @serial F-AI11: deep-linking via ?tab=ai&amp;section= lands directly on the target section" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="4.94">
+</testcase>
+<testcase name="@functional @serial F-AI12: master toggle remains visible and interactive on every sub-section" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.189">
+</testcase>
+<testcase name="@functional @serial F-AI13: session retention days can be updated from the Data Retention section" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.212">
+</testcase>
+<testcase name="@functional @serial F-AI14: a standard field exclusion can be toggled from the Data Minimization section" classname="apps/minicrm/functional/admin/aiSettings.spec.ts" time="5.106">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/branding/branding.spec.ts" timestamp="2026-07-29T19:39:07.514Z" hostname="desktop" tests="4" failures="0" skipped="0" time="19.985" errors="0">
+<testcase name="admin can save a company name and see success confirmation @functional @serial" classname="apps/minicrm/functional/branding/branding.spec.ts" time="5.037">
+</testcase>
+<testcase name="admin can save a primary colour @functional @serial" classname="apps/minicrm/functional/branding/branding.spec.ts" time="4.959">
+</testcase>
+<testcase name="admin can select a custom font @functional @serial" classname="apps/minicrm/functional/branding/branding.spec.ts" time="4.961">
+</testcase>
+<testcase name="admin can reset branding to defaults @functional @serial" classname="apps/minicrm/functional/branding/branding.spec.ts" time="5.028">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts" timestamp="2026-07-29T19:39:07.514Z" hostname="desktop" tests="3" failures="0" skipped="0" time="0.726" errors="0">
+<testcase name="@functional @serial COVM-01: an ingested dump with test attribution is queryable both directions, with confidence attached" classname="apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts" time="0.278">
+</testcase>
+<testcase name="@functional @serial COVM-02: guarded route returns 403 FEATURE_DISABLED when the mapping flag is off" classname="apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts" time="0.224">
+</testcase>
+<testcase name="@functional @serial COVM-03: querying a unit no test covers returns an empty results array" classname="apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts" time="0.224">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/navigation/navigation.spec.ts" timestamp="2026-07-29T19:39:07.514Z" hostname="desktop" tests="18" failures="0" skipped="1" time="176.336" errors="0">
+<testcase name="Layout-mutating tests › Top Nav layout › @functional @serial F8-TN1: top nav — all destinations reachable and correct page loads" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="21.773">
+</testcase>
+<testcase name="Layout-mutating tests › Top Nav layout › @functional @serial F8-TN2: top nav — active page link is visually indicated" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="5.011">
+</testcase>
+<testcase name="Layout-mutating tests › Left Nav layout › @functional @serial F8-LN1: left nav — all destinations reachable and correct page loads" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="21.637">
+</testcase>
+<testcase name="Layout-mutating tests › Left Nav layout › @functional @serial F8-LN2: left nav — active page link is visually indicated" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="5.026">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Nav layout › @functional @serial F8-HB1: hamburger nav — all destinations reachable and correct page loads" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="19.847">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Nav layout › @functional @serial F8-HB2: hamburger nav — active page link is visually indicated when menu is open" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="12.084">
+</testcase>
+<testcase name="Layout-mutating tests › Admin section divider › @functional @serial F8-AD1: admin sees Administration divider across all layouts — left nav" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="4.752">
+</testcase>
+<testcase name="Layout-mutating tests › Admin section divider › @functional @serial F8-AD1: admin sees Administration divider across all layouts — top nav (desktop)" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="4.666">
+</testcase>
+<testcase name="Layout-mutating tests › Admin section divider › @functional @serial F8-AD1: admin sees Administration divider across all layouts — hamburger nav" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="12.311">
+</testcase>
+<testcase name="Layout-mutating tests › Admin section divider › @functional @serial F8-AD1: admin sees Administration divider across all layouts — mobile drawer" classname="apps/minicrm/functional/navigation/navigation.spec.ts">
+<properties>
+<property name="skip" value="F8-AD1 [mobile drawer]: only runs under the mobile-web Playwright project">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Layout-mutating tests › Layout switching › @functional @serial F8-LS1: switching layout in Settings renders the new nav immediately without full page reload" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="5.258">
+</testcase>
+<testcase name="Layout-mutating tests › Layout switching › @functional @serial F8-LS2: selected layout persists after page refresh — left layout" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="6.218">
+</testcase>
+<testcase name="Layout-mutating tests › Layout switching › @functional @serial F8-LS2: selected layout persists after page refresh — hamburger layout" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="9.424">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Menu mechanics › @functional @serial F8-HM1: hamburger menu opens on toggle tap" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="6.593">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Menu mechanics › @functional @serial F8-HM2: hamburger menu closes on outside tap" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="12.58">
+<system-err>
+<![CDATA[AiHealer: response appears truncated (does not end with '}'); raw: ```json
+{
+  "type": "testId",
+  "value": "nav-hamburger-drawer",
+  "confidence": 0.0
+}
+```
+
+The element described as "hamburger nav drawer overlay" is not present in the provided DOM snapshot. The snapshot shows only the main dashboard content area with stat cards, pipeline breakdown, and recent activity sections. There is no hamburger menu, navigation drawer, or overlay element visible in this DOM tree. The failed strategy already tried to use the testId "nav-hamburger-drawer" which confirms this element is not in the current DOM scope.
+]]>
+</system-err>
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Menu mechanics › @functional @serial F8-HM3: hamburger menu closes on navigation" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="6.748">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Menu mechanics › @functional @serial F8-HM4: hamburger menu — all destinations are accessible within the menu" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="12.261">
+</testcase>
+<testcase name="Layout-mutating tests › Hamburger Menu mechanics › @functional @serial F8-HM5: hamburger menu is keyboard-accessible (tab + enter)" classname="apps/minicrm/functional/navigation/navigation.spec.ts" time="6.6">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/visibility/visibility.spec.ts" timestamp="2026-07-29T19:39:07.514Z" hostname="desktop" tests="9" failures="0" skipped="0" time="30.595" errors="0">
+<testcase name="@functional @serial F-VIS1: admin can navigate to the visibility tab and see the settings panel" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="5.189">
+</testcase>
+<testcase name="@functional @serial F-VIS2: admin can change a visibility policy and see the save success message" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="4.902">
+</testcase>
+<testcase name="@functional @serial F-VIS3: rep with org policy can list contacts owned by other users" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="2.961">
+</testcase>
+<testcase name="@functional @serial F-VIS4: rep with private policy cannot see contacts owned by other users" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="3.349">
+</testcase>
+<testcase name="@functional @serial F-VIS5: manager sees only contacts owned by their team members" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="4.448">
+</testcase>
+<testcase name="@functional @serial F-VIS6: manager can reassign a contact to a member of their team" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="2.781">
+</testcase>
+<testcase name="@functional @serial F-VIS7: manager gets 403 when reassigning a contact to a user outside their team" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="2.836">
+</testcase>
+<testcase name="@functional @serial F-VIS8: rep cannot call the visibility settings PUT endpoint" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="1.52">
+</testcase>
+<testcase name="@functional @serial F-VIS9: rep with private account policy cannot read an account owned by another rep" classname="apps/minicrm/functional/visibility/visibility.spec.ts" time="2.609">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/notifications/notifications.spec.ts" timestamp="2026-07-29T19:38:41.726Z" hostname="desktop" tests="3" failures="0" skipped="0" time="22.407" errors="0">
+<testcase name="Admin Settings — global email notifications › @functional @serial F10-AS1: email notifications section is visible in admin settings" classname="apps/minicrm/functional/notifications/notifications.spec.ts" time="7.659">
+</testcase>
+<testcase name="Admin Settings — global email notifications › @functional @serial F10-AS2: recipient count is displayed in admin settings" classname="apps/minicrm/functional/notifications/notifications.spec.ts" time="5.732">
+</testcase>
+<testcase name="Admin Settings — global email notifications › @functional @serial F10-AS3: toggling global email notifications off and back on persists via API (AC2)" classname="apps/minicrm/functional/notifications/notifications.spec.ts" time="9.016">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/reports/reports-nav.spec.ts" timestamp="2026-07-29T19:38:41.726Z" hostname="desktop" tests="1" failures="0" skipped="0" time="8.494" errors="0">
+<testcase name="reports nav: clicking Reports nav link lands on /reports @functional @serial" classname="apps/minicrm/functional/reports/reports-nav.spec.ts" time="8.494">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" timestamp="2026-07-29T19:46:56.248Z" hostname="desktop" tests="14" failures="0" skipped="0" time="31.281" errors="0">
+<testcase name="AI session retention UI › F-AI-DL-1: AI settings panel shows the session retention section @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="5.04">
+</testcase>
+<testcase name="AI session retention UI › F-AI-DL-2: admin can update the retention window and see a success message @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="5.218">
+</testcase>
+<testcase name="AI session retention UI › F-AI-DL-3: entering a value below 30 shows a validation error @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="5.037">
+</testcase>
+<testcase name="AI session retention UI › F-AI-DL-4: entering a value above 3650 shows a validation error @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="4.94">
+</testcase>
+<testcase name="AI session retention API › F-AI-DL-5: PATCH /admin/ai/session-retention rejects retention_days &lt; 30 with 400 @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.135">
+</testcase>
+<testcase name="AI session retention API › F-AI-DL-6: PATCH /admin/ai/session-retention accepts valid value and persists it @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.139">
+</testcase>
+<testcase name="GDPR AI cascade › F-AI-DL-7: GET /contacts/:id/ai-cascade returns empty array before any erasure @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.129">
+</testcase>
+<testcase name="GDPR AI cascade › F-AI-DL-8: POST /contacts/:id/ai-cascade returns 409 if contact has not been GDPR-erased @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.127">
+</testcase>
+<testcase name="GDPR AI cascade › F-AI-DL-9: POST /contacts/:id/ai-cascade returns 202 after GDPR erasure @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.137">
+</testcase>
+<testcase name="GDPR AI cascade › F-AI-DL-10: after manual cascade trigger, GET /contacts/:id/ai-cascade returns a log entry @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.139">
+</testcase>
+<testcase name="AI session retention stats and manual purge UI › F-AI-DL-11: AI settings panel shows session/message retention stats @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="4.887">
+</testcase>
+<testcase name="AI session retention stats and manual purge UI › F-AI-DL-12: admin can manually trigger a purge and see an accepted state @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="5.13">
+</testcase>
+<testcase name="AI session retention stats and manual purge API › F-AI-DL-13: POST /admin/ai/retention/purge returns 202 accepted immediately @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.116">
+</testcase>
+<testcase name="AI session retention stats and manual purge API › F-AI-DL-14: GET /admin/ai/retention-stats returns session/message counts @functional @serial" classname="apps/minicrm/functional/ai/ai-data-lifecycle.spec.ts" time="0.107">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/sso/sso.spec.ts" timestamp="2026-07-29T19:46:56.248Z" hostname="desktop" tests="5" failures="0" skipped="0" time="23.101" errors="0">
+<testcase name="admin can configure OIDC SSO and see the enabled badge @functional @serial" classname="apps/minicrm/functional/sso/sso.spec.ts" time="5.145">
+</testcase>
+<testcase name="SSO login button appears on the login page when SSO is enabled @functional @serial" classname="apps/minicrm/functional/sso/sso.spec.ts" time="2.339">
+</testcase>
+<testcase name="admin can disable SSO via the confirmation flow @functional @serial" classname="apps/minicrm/functional/sso/sso.spec.ts" time="6.54">
+</testcase>
+<testcase name="SSO login button disappears from the login page after SSO is disabled @functional @serial" classname="apps/minicrm/functional/sso/sso.spec.ts" time="8.873">
+</testcase>
+<testcase name="SSO status API returns correct state after configure and disable cycle @functional @serial" classname="apps/minicrm/functional/sso/sso.spec.ts" time="0.204">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/accessibility/accessibility.spec.ts" timestamp="2026-07-29T19:38:26.332Z" hostname="desktop" tests="1" failures="0" skipped="0" time="9.371" errors="0">
+<testcase name="@functional @serial A11Y-N1: main navigation — top layout landmark structure" classname="apps/minicrm/functional/accessibility/accessibility.spec.ts" time="9.371">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-usage-dashboard.spec.ts" timestamp="2026-07-29T19:38:26.332Z" hostname="desktop" tests="1" failures="0" skipped="0" time="0.244" errors="0">
+<testcase name="AI cost rate configuration › F-AI-UD-6: PATCH /admin/ai/cost-rates persists both rates @functional @serial" classname="apps/minicrm/functional/ai/ai-usage-dashboard.spec.ts" time="0.244">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/deals/deal-health-check.spec.ts" timestamp="2026-07-29T19:38:26.332Z" hostname="desktop" tests="1" failures="0" skipped="0" time="11.313" errors="0">
+<testcase name="F7-DH4: a rep cannot run a health check on a deal they do not own @functional @serial" classname="apps/minicrm/functional/deals/deal-health-check.spec.ts" time="11.313">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" timestamp="2026-07-29T19:48:38.853Z" hostname="desktop" tests="6" failures="0" skipped="0" time="13.646" errors="0">
+<testcase name="F-AI-NLI-ENT1 — Note cross-entity search by keyword sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.371">
+</testcase>
+<testcase name="F-AI-NLI-ENT2 — Note cross-entity search by author sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.213">
+</testcase>
+<testcase name="F-AI-NLI-ENT3 — Tag attach intent sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.217">
+</testcase>
+<testcase name="F-AI-NLI-ENT4 — Tag rename intent sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.288">
+</testcase>
+<testcase name="F-AI-NLI-ENT5 — Report generation intent sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.323">
+</testcase>
+<testcase name="F-AI-NLI-ENT6 — Report save intent sends and receives stub reply @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-entities.spec.ts" time="2.234">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-nli-result-rendering.spec.ts" timestamp="2026-07-29T19:48:55.547Z" hostname="desktop" tests="1" failures="0" skipped="0" time="2.435" errors="0">
+<testcase name="F-AI-RESULT1 — read-query reply renders a native CRM result card @functional @serial" classname="apps/minicrm/functional/ai/ai-nli-result-rendering.spec.ts" time="2.435">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-context-proposal.spec.ts" timestamp="2026-07-29T19:44:24.579Z" hostname="desktop" tests="3" failures="0" skipped="0" time="7.753" errors="0">
+<testcase name="F-AI-PROP1 — ambiguous-query reply surfaces interpretation and a proposal chip @functional @serial" classname="apps/minicrm/functional/ai/ai-context-proposal.spec.ts" time="2.59">
+</testcase>
+<testcase name="F-AI-PROP2 — accepting a proposal saves it to the context panel @functional @serial" classname="apps/minicrm/functional/ai/ai-context-proposal.spec.ts" time="2.471">
+</testcase>
+<testcase name="F-AI-PROP3 — dismissing a proposal does not save it and is not re-proposed in the session @functional @serial" classname="apps/minicrm/functional/ai/ai-context-proposal.spec.ts" time="2.692">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts" timestamp="2026-07-29T19:44:24.579Z" hostname="desktop" tests="3" failures="0" skipped="0" time="0.681" errors="0">
+<testcase name="@functional @serial COVP-01: ingesting a browser-origin dump succeeds, then retry is idempotent" classname="apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts" time="0.24">
+</testcase>
+<testcase name="@functional @serial COVP-02: guarded route returns 403 FEATURE_DISABLED when the pipeline flag is off" classname="apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts" time="0.222">
+</testcase>
+<testcase name="@functional @serial COVP-03: ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND" classname="apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts" time="0.219">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" timestamp="2026-07-29T19:44:24.579Z" hostname="desktop" tests="20" failures="0" skipped="0" time="92.795" errors="0">
+<testcase name="@functional @serial F-FF2: admin can disable a flag via the confirmation dialog" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.7">
+</testcase>
+<testcase name="@functional @serial F-FF3: toggling a flag writes a feature_flag audit entry" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="0.413">
+</testcase>
+<testcase name="@functional @serial F-FF4: API route guarded by requireFeatureEnabled returns 403 when flag is disabled" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="0.342">
+</testcase>
+<testcase name="@functional @serial F-FF9: toggling ai_features off shows the AI panel disabled banner in real time" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="7.726">
+</testcase>
+<testcase name="@functional @serial F-FF10: admin sets enable_at and the Scheduled badge appears; clearing it removes the badge" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.642">
+</testcase>
+<testcase name="@functional @serial F-FF11: a scheduled flag is seen as enabled by an ordinary user once enable_at passes" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.857">
+</testcase>
+<testcase name="@functional @serial F-FF12: beta-enrolled rep sees a globally-disabled flag as enabled via /me" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="2.415">
+</testcase>
+<testcase name="@functional @serial F-FF13: enrolled beta user appears in the admin feature flags beta panel" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="6.37">
+</testcase>
+<testcase name="@functional @serial F-FF14: setting rollout_percentage shows a badge in the admin UI; clearing it removes the badge" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="7.708">
+</testcase>
+<testcase name="@functional @serial F-FF15: a rep bucketed outside a 0% rollout sees the flag as disabled via /me" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="1.819">
+</testcase>
+<testcase name="@functional @serial F-FF16: adding a force_enabled override shows the badge in admin UI; removing it hides the badge and row" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="6.588">
+</testcase>
+<testcase name="@functional @serial F-FF17: a force_enabled override lets a rep see a globally-disabled flag as enabled via /me" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="2.331">
+</testcase>
+<testcase name="@functional @serial F-FF18: admin can create a flag group and it appears in the groups section" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.518">
+</testcase>
+<testcase name="@functional @serial F-FF19: disabling a group gate makes member flags return false via /me for non-beta users" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="2.339">
+</testcase>
+<testcase name="@functional @serial F-FF20: re-enabling a disabled group gate restores member flag visibility via /me" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="2.374">
+</testcase>
+<testcase name="@functional @serial F-FF21: rep role override on a previously-unrestricted flag is honored by /me" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="2.324">
+</testcase>
+<testcase name="@functional @serial F-FF22: PATCH role_overrides with an unknown role key returns 422" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="0.322">
+</testcase>
+<testcase name="@functional @serial F-FF23: custom role name renders as a checkbox in the admin UI role override panel" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.411">
+</testcase>
+<testcase name="@functional @serial F-FF24: deleting a non-empty flag group shows warning dialog and cascade-deletes on confirm" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="16.297">
+</testcase>
+<testcase name="@functional @serial F-FF25: demo_data section shows disabled banner when flag is off, not hidden" classname="apps/minicrm/functional/feature-flags/feature-flags.spec.ts" time="5.299">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/i18n/i18n.spec.ts" timestamp="2026-07-29T19:44:24.579Z" hostname="desktop" tests="5" failures="0" skipped="1" time="22.559" errors="0">
+<testcase name="Language switching (MINCRM-239) › @functional @serial F9-L1: admin sets system default language to es — UI shows Spanish nav label after reload" classname="apps/minicrm/functional/i18n/i18n.spec.ts" time="4.944">
+</testcase>
+<testcase name="Language switching (MINCRM-239) › @functional @serial F9-L2: user language preference fr persists after two reloads" classname="apps/minicrm/functional/i18n/i18n.spec.ts" time="6.727">
+</testcase>
+<testcase name="Language switching (MINCRM-239) › @functional @serial F9-L3: per-user language preference de overrides system default en" classname="apps/minicrm/functional/i18n/i18n.spec.ts" time="4.005">
+</testcase>
+<testcase name="Language switching (MINCRM-239) › @functional @serial F9-L4: nav language selector changes language immediately and persists after reload" classname="apps/minicrm/functional/i18n/i18n.spec.ts" time="6.444">
+</testcase>
+<testcase name="Language switching (MINCRM-239) › @functional @serial F9-L5: mobile nav language selector changes UI language" classname="apps/minicrm/functional/i18n/i18n.spec.ts">
+<properties>
+<property name="skip" value="F9-L5 only runs under the mobile-web Playwright project">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-permissions.spec.ts" timestamp="2026-07-29T19:49:00.922Z" hostname="desktop" tests="1" failures="0" skipped="0" time="4.827" errors="0">
+<testcase name="F-AI-PERM1 — unauthorized tool call surfaces a plain-language permission error @functional @serial" classname="apps/minicrm/functional/ai/ai-permissions.spec.ts" time="4.827">
+</testcase>
+</testsuite>
+<testsuite name="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" timestamp="2026-07-29T19:47:53.800Z" hostname="desktop" tests="5" failures="0" skipped="0" time="10.693" errors="0">
+<testcase name="AI data minimization UI › F-AI-FE-1: AI settings panel shows the always-excluded fields list @functional @serial" classname="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" time="5.204">
+</testcase>
+<testcase name="AI data minimization UI › F-AI-FE-2: admin can toggle a standard field exclusion on and it persists @functional @serial" classname="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" time="5.133">
+</testcase>
+<testcase name="AI data minimization API › F-AI-FE-3: GET /admin/ai/field-exclusions returns the effective exclusion list @functional @serial" classname="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" time="0.118">
+</testcase>
+<testcase name="AI data minimization API › F-AI-FE-4: PATCH /admin/ai/field-exclusions rejects an unknown field name @functional @serial" classname="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" time="0.114">
+</testcase>
+<testcase name="AI data minimization API › F-AI-FE-5: PATCH /admin/ai/field-exclusions persists a toggle @functional @serial" classname="apps/minicrm/functional/ai/ai-field-exclusions.spec.ts" time="0.124">
+</testcase>
+</testsuite>
+</testsuites>
