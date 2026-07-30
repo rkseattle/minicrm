@@ -1451,44 +1451,71 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AI_HEAL_COST_WARNING_THRESHOLD: '20'
 
-      - name: Merge conflict-group JUnit XML results (MINCRM-661)
+      # MINCRM-689: the merge moved to the unit-tested
+      # qa/scripts/merge-junit-results.ts. The inline version it replaces
+      # truncated suites on embedded CDATA and emitted an attribute-less root —
+      # see that module's docblock for the full defect description rather than
+      # duplicating it here.
+      #
+      # What stays here is caller-specific policy, not merge logic: the
+      # serial-groups directory check and the group-count expectation.
+      #
+      # --allow-empty-inputs IS passed, deliberately. Playwright writes a
+      # zero-`<testsuite>` document whenever a group matches no tests or its
+      # globalSetup throws — verified against this repo's own config. Treating
+      # that as fatal would make one transient group failure discard the results
+      # of every other group AND write no results.xml at all, blanking the
+      # GitHub Check, the uploaded artifact, and the PR-comment row (the same
+      # blackout MINCRM-658, below, exists to prevent). A group that fails is
+      # already reported loudly by the run step's own propagated exit code, so
+      # the merge step does not need to be the detector; its job is to preserve
+      # whatever did run.
+      - name: Merge conflict-group JUnit XML results (MINCRM-661, MINCRM-689)
         if: always()
         run: |
-          node --input-type=module << 'EOF'
-          import { readFileSync, writeFileSync, existsSync } from 'fs';
-          import { execSync } from 'child_process';
+          if [ ! -d qa/e2e/test-results/serial-groups ]; then
+            echo "No serial-groups directory — single blanket invocation already wrote results.xml directly."
+            exit 0
+          fi
 
-          const outputPath = 'qa/e2e/test-results/results.xml';
-          if (!existsSync('qa/e2e/test-results/serial-groups')) {
-            console.log('No serial-groups directory — single blanket invocation already wrote results.xml directly.');
-            process.exit(0);
-          }
+          # -maxdepth 1 with an explicit group-*.xml name: the run step writes
+          # each group's JUnit as serial-groups/group-N.xml but ALSO creates
+          # serial-groups/group-N-artifacts/ dirs (--output). A bare
+          # `-name "*.xml"` descends into those and would feed attachment XML to
+          # the merger as if it were a results document.
+          #
+          # `set --` rather than `mapfile`: mapfile is a bash 4+ builtin, so the
+          # whole block would be untestable on a macOS dev machine (bash 3.2)
+          # even though it works on ubuntu-latest. Group filenames are
+          # group-<int>.xml, so word splitting is safe here.
+          # shellcheck disable=SC2046
+          set -- $(find qa/e2e/test-results/serial-groups -maxdepth 1 -name 'group-*.xml' | sort)
 
-          const files = execSync(
-            'find qa/e2e/test-results/serial-groups -name "*.xml"'
-          ).toString().trim().split('\n').filter(Boolean);
+          if [ "$#" -eq 0 ]; then
+            echo "::error::No group JUnit XML files found — all groups failed before Playwright ran."
+            exit 1
+          fi
 
-          if (files.length === 0) {
-            console.error('No group results.xml files found — all groups failed before Playwright ran.');
-            process.exit(1);
-          }
+          # --expected-files guards against a group file that went MISSING, not
+          # against a group that failed: Playwright writes a JUnit document even
+          # when a group matches no tests or its globalSetup throws, so a failed
+          # group still leaves a file behind and is reported by the run step's
+          # exit code instead. The real hazard this catches is the per-group
+          # `--output` wipe described at :1424 deleting an earlier group's XML.
+          # The manifest is what the run step iterated, so it is the only honest
+          # source for the expected count.
+          if [ -f qa/e2e/playwright.serial-groups.json ]; then
+            EXPECTED_GROUPS=$(jq 'length' qa/e2e/playwright.serial-groups.json)
+          else
+            echo "::warning::No conflict-group manifest found — cannot assert the expected group count, falling back to the number of files present."
+            EXPECTED_GROUPS="$#"
+          fi
 
-          const testcases = files.flatMap(f => {
-            const xml = readFileSync(f, 'utf8');
-            const matches = xml.match(/<testsuite(?!s)[\s\S]*?<\/testsuite>/g) ?? [];
-            return matches;
-          });
-
-          const merged = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            '<testsuites>',
-            ...testcases,
-            '</testsuites>',
-          ].join('\n');
-
-          writeFileSync(outputPath, merged);
-          console.log(`Merged ${files.length} group JUnit XML files, ${testcases.length} testsuites, into ${outputPath}`);
-          EOF
+          npx tsx qa/scripts/merge-junit-results.ts \
+            --output qa/e2e/test-results/results.xml \
+            --expected-files "$EXPECTED_GROUPS" \
+            --allow-empty-inputs \
+            "$@"
 
       - name: Publish serial results to GitHub Checks
         uses: dorny/test-reporter@v3
