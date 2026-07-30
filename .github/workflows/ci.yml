@@ -1636,46 +1636,49 @@ jobs:
           --reporter html
           ./blob-report
 
-      - name: Merge JUnit XML results
+      # MINCRM-689: the merge moved to the unit-tested
+      # qa/scripts/merge-junit-results.ts — see its docblock for the defects it
+      # fixes and for why --allow-empty-inputs is passed.
+      #
+      # The MINCRM-662 shard-completeness guard is preserved, not dropped: it
+      # moves into --expected-files, which fails on the same "fewer files than
+      # shards" condition for the same reason.
+      - name: Merge JUnit XML results (MINCRM-689)
         env:
           # MINCRM-662: sourced from capacity-probe instead of a hardcoded constant.
           EXPECTED_SHARDS: ${{ needs.capacity-probe.outputs.total-shards }}
         run: |
-          node --input-type=module << 'EOF'
-          import { readFileSync, writeFileSync } from 'fs';
-          import { execSync } from 'child_process';
+          # No -maxdepth bound is needed here (unlike the serial site, which has
+          # nested per-group artifact dirs): the shard upload glob at :1067 puts
+          # exactly one results.xml at the root of each shard artifact. Adding a
+          # nested results.xml to that glob would silently feed this merge.
+          # shellcheck disable=SC2046
+          set -- $(find ./shard-artifacts -name 'results.xml' | sort)
 
-          const files = execSync(
-            'find ./shard-artifacts -name "results.xml"'
-          ).toString().trim().split('\n').filter(Boolean);
+          if [ "$#" -eq 0 ]; then
+            echo "::error::No results.xml files found — all shards failed before Playwright ran."
+            exit 1
+          fi
 
-          const EXPECTED_SHARDS = parseInt(process.env.EXPECTED_SHARDS, 10);
-          if (files.length === 0) {
-            console.error('No results.xml files found — all shards failed before Playwright ran.');
-            process.exit(1);
-          }
-          if (files.length < EXPECTED_SHARDS) {
-            console.error(`Only ${files.length}/${EXPECTED_SHARDS} shard results.xml files found. Some shards failed before Playwright ran and produced no output. Failing to prevent a partial green result from masking real failures.`);
-            console.error('Files found:', files.join(', '));
-            process.exit(1);
-          }
+          # This job runs under `if: always()`, so it also executes when
+          # capacity-probe failed — in which case total-shards is the empty
+          # string. The inline version this replaces did `parseInt('')` → NaN and
+          # `files.length < NaN` → false, silently skipping the guard but still
+          # writing the merged file. Passing "" straight through would instead
+          # abort the merge and leave no merged-results.xml, blanking two GitHub
+          # Checks and both PR-comment rows. Degrade the guard, never the output.
+          if printf '%s' "$EXPECTED_SHARDS" | grep -Eq '^[0-9]+$'; then
+            EXPECTED_FILES="$EXPECTED_SHARDS"
+          else
+            echo "::warning::capacity-probe produced no total-shards value — cannot assert shard completeness, falling back to the number of files present."
+            EXPECTED_FILES="$#"
+          fi
 
-          const testcases = files.flatMap(f => {
-            const xml = readFileSync(f, 'utf8');
-            const matches = xml.match(/<testsuite(?!s)[\s\S]*?<\/testsuite>/g) ?? [];
-            return matches;
-          });
-
-          const merged = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            '<testsuites>',
-            ...testcases,
-            '</testsuites>',
-          ].join('\n');
-
-          writeFileSync('merged-results.xml', merged);
-          console.log(`Merged ${files.length} JUnit XML files, ${testcases.length} testsuites`);
-          EOF
+          npx tsx qa/scripts/merge-junit-results.ts \
+            --output merged-results.xml \
+            --expected-files "$EXPECTED_FILES" \
+            --allow-empty-inputs \
+            "$@"
 
       - name: Merge JSON results and count flaky tests (MINCRM-355)
         if: always()

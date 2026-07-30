@@ -108,6 +108,36 @@ A test tagged only `@functional` (without `@serial`) that mutates shared state
 will cause non-deterministic failures in the parallel job depending on shard
 assignment and concurrency timing.
 
+#### Merging the per-group and per-shard JUnit XML (MINCRM-689)
+
+Both the `e2e-serial` job (per conflict group) and the `e2e-aggregate` job (per
+shard) produce one JUnit XML file each, merged into a single document by
+`qa/scripts/merge-junit-results.ts`. Two properties of that merger matter when
+reading CI output:
+
+- **The merged root declares real counts.** `<testsuites tests= failures=
+skipped= errors=>` is summed across the merged suites. Both merge steps
+  previously emitted a bare `<testsuites>`, so anything reading those attributes
+  — `parseJUnitResults` in the attestation gate, in particular — saw `0` for a
+  full green run.
+- **Captured output survives the merge byte-for-byte.** Suite regions are located
+  in a masked copy of each document and sliced from the original, so
+  `<system-out>`/`<system-err>` and `<failure>` bodies reach the merged file
+  intact. `.github/scripts/parse-junit.py` reads `<failure>` bodies to build the
+  PR comment's failure details, so redacting them would blank it.
+
+`time`, `id` and `name` are deliberately absent from the merged root: the
+reporter's own root `time` is wall-clock while each suite's is summed test
+duration, so a summed value would be wrong whenever a group runs more than one
+worker.
+
+Native `npx playwright merge-reports --reporter junit` was evaluated as a
+replacement and does not currently work for either job — the blob reporter
+deletes its `outputDir` on every invocation (so sequential per-group runs
+destroy each other's blobs), and `--reporter` on the `merge-reports` CLI carries
+no output-file option, sending the XML to stdout instead of a file. Revisit only
+with those two facts re-checked against the installed Playwright version.
+
 ### Tagging syntax
 
 Inline tag string (most tests):
