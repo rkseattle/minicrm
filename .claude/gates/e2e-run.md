@@ -24,6 +24,12 @@ docker compose -f docker-compose.test.yml up -d
 npm run e2e:client   # separate terminal — serves the test UI on :5175, API :3002
 ```
 
+> **Before a run that records coverage, use the export + build/up sequence in
+> [The run](#the-run) instead of the bare `up` above.** The server reads
+> `GIT_COMMIT_SHA` once, at start, so it must be exported first — and a stack started
+> here on one commit keeps tagging dumps with that SHA after you switch branches.
+> Bringing the stack up this way is fine for everything else.
+
 The test stack is its own Compose project (`minicrm-test`), fully isolated from the dev
 stack: Postgres on **5433**, server on 3002, MinIO on 9002/9003 (MINCRM-684). Never
 point an E2E run at the dev stack's 5432/3001. `E2E_API_URL=http://localhost:3002` and
@@ -59,6 +65,15 @@ date
 # instead of falling back to "unknown" — that container has no .git mounted, so
 # `git rev-parse HEAD` always fails inside the container otherwise. Export
 # before build/up so the value is available when the container starts.
+#
+# The export and the build/up below are ONE unit: the container reads this value
+# only at start, so re-exporting without recreating the server changes nothing,
+# and a stack started on an earlier commit keeps tagging dumps with that stale
+# SHA. Skipping the export no longer fails silently — the Playwright harness
+# warns when a session would be tagged "unknown", and the pre-push hook warns
+# when the running stack's SHA is not HEAD (MINCRM-688). Recreating the server
+# WIPES /app/coverage-dumps, so copy out anything you still need first (see
+# "Ingesting" below).
 export GIT_COMMIT_SHA=$(git rev-parse HEAD)
 
 # Rebuild the E2E server image so new server code is actually in the container
