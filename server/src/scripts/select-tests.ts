@@ -107,6 +107,33 @@ function parseArgs(argv: readonly string[]): CliArgs {
   const forceFullSuite = argv.includes('--force-full-suite');
 
   const baseRef = baseArg?.split('=')[1] ?? process.env.GITHUB_BASE_REF ?? 'origin/main';
+
+  // Caller audit (MINCRM-688). The GIT_COMMIT_SHA/GITHUB_SHA links in this
+  // chain are UNREACHABLE from every committed caller — all three pass
+  // --head= explicitly:
+  //   - .github/workflows/ci.yml:363-364  --head=<pull_request.head.sha>
+  //   - scripts/pre-push-tia.ts:248       --head=HEAD
+  //   - server/package.json:27            pass-through wrapper, no args of
+  //                                       its own
+  // They are retained only for ad-hoc invocation, and deliberately NOT
+  // hardened the way verify-test-attestation.ts:94-95 hard-requires --sha.
+  //
+  // The asymmetry is intentional and worth stating, because the two scripts
+  // look similar. That one is the GATE: it decides whether a push or a CI run
+  // is allowed to claim its tests ran, so a defaulted SHA there would let an
+  // unverifiable claim pass as attested. This one is ADVISORY — its CI job is
+  // continue-on-error (ci.yml:283), and a wrong headRef cannot mis-attribute
+  // anything, because the mapping lookups it drives are keyed on baseSha
+  // (selectTestsForChangedUnits, resolveTestFiles), never on headSha.
+  //
+  // What a wrong headRef CAN do is change the computed diff — it is passed to
+  // parseGitDiff and resolveChangedUnits — and so widen or NARROW the selected
+  // set. Narrowing means tests that should have run do not, which is why the
+  // caller's safety net falls back to the full suite rather than trusting a
+  // thin selection.
+  //
+  // Call sites named rather than cited by line: same-file line references rot
+  // on the next edit to this file — including the one that added this comment.
   const headRef =
     headArg?.split('=')[1] ?? process.env.GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'HEAD';
 
