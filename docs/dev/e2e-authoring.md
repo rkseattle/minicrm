@@ -115,10 +115,10 @@ shard) produce one JUnit XML file each, merged into a single document by
 `qa/scripts/merge-junit-results.ts`. Two properties of that merger matter when
 reading CI output:
 
-- **The merged root declares real counts.** `<testsuites tests= failures=
-skipped= errors=>` is summed across the merged suites. Both merge steps
-  previously emitted a bare `<testsuites>`, so anything reading those attributes
-  — `parseJUnitResults` in the attestation gate, in particular — saw `0` for a
+- **The merged root declares real counts.** `tests`, `failures`, `skipped` and
+  `errors` are summed across the merged suites. Both merge steps previously
+  emitted a bare `<testsuites>`, so anything reading those attributes —
+  `parseJUnitResults` in the attestation gate, in particular — saw `0` for a
   full green run.
 - **Captured output survives the merge byte-for-byte.** Suite regions are located
   in a masked copy of each document and sliced from the original, so
@@ -132,11 +132,23 @@ duration, so a summed value would be wrong whenever a group runs more than one
 worker.
 
 Native `npx playwright merge-reports --reporter junit` was evaluated as a
-replacement and does not currently work for either job — the blob reporter
-deletes its `outputDir` on every invocation (so sequential per-group runs
-destroy each other's blobs), and `--reporter` on the `merge-reports` CLI carries
-no output-file option, sending the XML to stdout instead of a file. Revisit only
-with those two facts re-checked against the installed Playwright version.
+replacement. It is blocked for different reasons per job, and the distinction
+matters for anyone revisiting it:
+
+- **`e2e-serial`** — blocked twice over. The blob reporter deletes its
+  `outputDir` on every `playwright test` invocation, and this job runs one
+  invocation per conflict group _sequentially_, so each group destroys the
+  previous group's blob. Blob filenames also collide, since they are
+  disambiguated only by `--shard`, which these groups do not use.
+- **`e2e-aggregate`** — only the output-path limitation applies. This job runs no
+  Playwright tests; it downloads blobs from the shard jobs and already runs
+  `merge-reports --reporter html` successfully. But `--reporter` on the
+  `merge-reports` CLI carries no output-file option, so a `junit` reporter added
+  there writes the XML to stdout rather than to `merged-results.xml`. Directing
+  it would need `PLAYWRIGHT_JUNIT_OUTPUT_FILE`, plus a replacement for the
+  shard-completeness assertion that `--expected-files` currently provides.
+
+Re-check both against the installed Playwright version before acting on either.
 
 ### Tagging syntax
 
