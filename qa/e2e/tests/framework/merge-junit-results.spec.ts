@@ -484,6 +484,37 @@ test.describe('merge-junit-results — run() end to end', () => {
 
     expect(fs.readFileSync(output, 'utf-8')).toContain('<testsuites tests="2"');
   });
+
+  test('writes a parseable non-zero document for the mixed empty+populated case (AC 3)', () => {
+    // This is the shape the e2e-serial call site actually hits in production:
+    // Playwright emits a zero-<testsuite> document whenever a group matches no
+    // tests or its globalSetup throws, so a real run mixes empty and populated
+    // group files. The surviving rows must reach the merged file — failing here
+    // instead would blank the GitHub Check, the artifact and the PR-comment row.
+    const emptyLikePlaywright = writeInput(
+      'group-0.xml',
+      '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites id="" name="" tests="0" failures="0" skipped="0" errors="0" time="0.1">\n</testsuites>',
+    );
+    const populated = writeInput('group-1.xml', fs.readFileSync(REAL_ARTIFACT, 'utf-8'));
+    const output = path.join(workDir, 'results.xml');
+
+    run([
+      'node',
+      'merge-junit-results.ts',
+      '--output',
+      output,
+      '--expected-files',
+      '2',
+      '--allow-empty-inputs',
+      emptyLikePlaywright,
+      populated,
+    ]);
+
+    const parsed = parseJUnitResults(fs.readFileSync(output, 'utf-8'));
+    expect(parsed.totalTests).toBe(146);
+    expect(parsed.testCases).toHaveLength(146);
+    expect(hasParseDisagreement(parsed)).toBe(false);
+  });
 });
 
 test.describe('merge-junit-results — parseArgs', () => {
