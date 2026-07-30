@@ -12,6 +12,13 @@ interface ImportMetaEnv {
    * server actually enforces auth on will still 401. See useAuth.ts.
    */
   readonly VITE_COVERAGE_DASHBOARD_NO_AUTH?: string;
+  /**
+   * Commit SHA manually recorded coverage sessions are tagged with. Unset or
+   * empty degrades to 'unknown', which records a valid session that can never
+   * be matched to a commit — SessionRecorderPage surfaces that on screen
+   * rather than letting it pass silently. (MINCRM-688)
+   */
+  readonly VITE_BUILD_SHA?: string;
 }
 
 interface ImportMeta {

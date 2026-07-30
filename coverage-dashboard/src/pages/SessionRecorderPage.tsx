@@ -57,12 +57,56 @@ function buildCrmCorrelationLink(correlationId: string): string {
   return url.toString();
 }
 
+/** Tag applied when no usable build SHA is available. */
+const UNKNOWN_BUILD_SHA = 'unknown';
+
+/**
+ * Same accept-set as the two sibling resolvers — the QA harness's
+ * SAFE_BUILD_SHA_PATTERN and the server's SAFE_PATH_SEGMENT_PATTERN. All three
+ * tag sessions or dumps that the attestation gate and the coverage map later
+ * key off, so a value one accepts and another rejects is a silent split.
+ *
+ * A malformed value here is a build-time misconfiguration (a branch-style ref,
+ * a quoted string, a stray newline) rather than a path-traversal risk, since
+ * this value goes into a JSON body rather than a filesystem path — but the
+ * remedy is the same: refuse it, tag 'unknown', and say so on screen.
+ */
+const SAFE_BUILD_SHA_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
+
+/**
+ * Resolves the build SHA a manually recorded session is tagged with.
+ * (MINCRM-688)
+ *
+ * `||`, not `??`: an EMPTY VITE_BUILD_SHA is what an unset or misconfigured
+ * build-time substitution actually produces, and under `??` that empty string
+ * won outright and was sent as the buildSha. coverageSessionSchema requires
+ * min(1), so the request 400s and the user sees the generic "please try
+ * again" error — advice that cannot possibly help, since retrying re-sends
+ * the same empty value. Degrading to 'unknown' at least produces a session;
+ * the caller surfaces that state in the UI.
+ *
+ * Read at CALL time, never captured in a module-level const: vi.stubEnv only
+ * affects reads that happen after the stub is applied, so a value computed
+ * once at import time would be invisible to per-test stubbing. Same lesson as
+ * useAuth.ts's isNoAuthMode() — see its docblock.
+ */
+function resolveBuildSha(): string {
+  const configured = import.meta.env['VITE_BUILD_SHA'];
+  if (!configured) return UNKNOWN_BUILD_SHA;
+  return SAFE_BUILD_SHA_PATTERN.test(configured) ? configured : UNKNOWN_BUILD_SHA;
+}
+
 export default function SessionRecorderPage() {
   const queryClient = useQueryClient();
   const [label, setLabel] = useState('');
   const [issueKey, setIssueKey] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
+
+  // Called from render rather than hoisted to a module-level const — see
+  // resolveBuildSha's own docblock on vi.stubEnv timing.
+  const buildSha = resolveBuildSha();
+  const hasUnknownBuildSha = buildSha === UNKNOWN_BUILD_SHA;
 
   const {
     data: activeSessions,
@@ -79,7 +123,7 @@ export default function SessionRecorderPage() {
       startCoverageSession({
         label: label.trim(),
         source: 'manual',
-        buildSha: import.meta.env['VITE_BUILD_SHA'] ?? 'unknown',
+        buildSha,
         environment: import.meta.env.MODE,
         issueKey: issueKey.trim() || undefined,
       }),
@@ -134,6 +178,28 @@ export default function SessionRecorderPage() {
           data-testid="coverage-session-recorder-action-error"
         >
           {actionError}
+        </p>
+      )}
+
+      {/*
+        MINCRM-688: a session tagged 'unknown' records fine but can never be
+        matched to a real commit, so any coverage attributed to it is
+        unusable for build-level reporting. Surfaced here, before check-in,
+        because this is a human-initiated flow — a console warning (what the
+        automated E2E harness does) would never be seen by the person
+        actually starting the session.
+      */}
+      {hasUnknownBuildSha && (
+        <p
+          role="status"
+          className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+          data-testid="coverage-session-unknown-build-sha-notice"
+        >
+          No usable build SHA (VITE_BUILD_SHA is unset, empty, or malformed), so sessions started
+          here are tagged &ldquo;unknown&rdquo; and cannot be matched to a commit. Recording still
+          works, but this coverage will not appear in build-level reports. Rebuild this dashboard
+          from a git checkout, or set <code>GIT_COMMIT_SHA</code> before building. See
+          docs/dev/coverage.md.
         </p>
       )}
 

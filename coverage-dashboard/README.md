@@ -66,6 +66,28 @@ To override the target for any other reason:
 API_URL=http://localhost:4001 VITE_COVERAGE_DASHBOARD_NO_AUTH=true npm run dev --workspace=minicrm-coverage-dashboard
 ```
 
+## Build SHA for manual session recording
+
+The Session Recorder tags every manually recorded coverage session with a commit
+SHA, so its coverage can be attributed to a build. `vite.config.ts` resolves that
+value at **build time** and inlines it as `VITE_BUILD_SHA`, preferring an explicit
+`GIT_COMMIT_SHA` (or `GITHUB_SHA`) and otherwise falling back to
+`git rev-parse HEAD`. Building from a normal checkout therefore needs no
+configuration.
+
+A build that has no `.git` available — a container image, most notably — must pass
+the SHA in explicitly:
+
+```bash
+GIT_COMMIT_SHA=$(git rev-parse HEAD) npm run build --workspace=minicrm-coverage-dashboard
+```
+
+If the value ends up unset, empty, or not a usable SHA, sessions are tagged
+`unknown` and the recorder shows an on-screen notice. Recording still works, but
+that coverage can never be matched to a commit and will not appear in build-level
+reports — see [docs/dev/coverage.md](../docs/dev/coverage.md). Note the value is
+baked into the bundle: changing it requires a rebuild, not just a restart.
+
 ## Accessing it
 
 Open **http://localhost:5174**.
