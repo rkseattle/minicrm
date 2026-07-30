@@ -100,6 +100,17 @@ jobs:
               # guard is absent on exactly the change it exists to catch.
               # (MINCRM-689)
               - 'server/src/scripts/junitXml.ts'
+              # Same arrangement, second instance:
+              # qa/e2e/tests/framework/coverage-session-control-client.spec.ts
+              # asserts that the QA session resolver's SHA accept-set matches
+              # server/src/coverageAgent/coverageConfig.ts's
+              # SAFE_PATH_SEGMENT_PATTERN. One tags coverage SESSIONS (what the
+              # attestation gate joins on), the other tags coverage DUMPS (what
+              # the coverage map keys on), so a split between them is invisible
+              # until a gate reports no-session-attribution or a generated map
+              # turns out to be unusable. Without this entry a server-only edit
+              # to that pattern would not re-run the parity test. (MINCRM-688)
+              - 'server/src/coverageAgent/coverageConfig.ts'
               # The parity/shape assertions read a captured real CI artifact, so a
               # fixture-only edit must re-run them too — the *.ts globs miss it.
               - 'qa/e2e/tests/framework/__fixtures__/**'

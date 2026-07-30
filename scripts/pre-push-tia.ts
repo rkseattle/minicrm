@@ -48,6 +48,12 @@ import {
 import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Pure parse only — the execFileSync call stays here. Lives under qa/scripts/
+// because root scripts/ has no test runner; see that module's own docblock.
+import {
+  parseContainerCommitSha,
+  type ContainerCommitSha,
+} from '../qa/scripts/container-commit-sha.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -264,21 +270,6 @@ function runSelectTests(baseRef: string, headRef: string): SelectTestsResult {
  */
 const TEST_SERVER_CONTAINER = 'minicrm-test-server';
 
-/** Prefix matched and stripped when scanning `docker inspect`'s env output. */
-const GIT_COMMIT_SHA_ENV_PREFIX = 'GIT_COMMIT_SHA=';
-
-/**
- * What the running test-server container has for GIT_COMMIT_SHA.
- *
- * `empty` is kept distinct from `unreadable` on purpose: an empty value is the
- * defect this ticket names (docker-compose.test.yml's `${GIT_COMMIT_SHA:-}`
- * default, when the operator never exported the variable), and it means every
- * dump the stack produces is tagged 'unknown'. Collapsing it into "could not
- * check" would hide precisely the condition worth reporting.
- */
-type ContainerCommitSha =
-  { kind: 'present'; value: string } | { kind: 'empty' } | { kind: 'unreadable' };
-
 /**
  * Reads GIT_COMMIT_SHA out of the running test-server container.
  *
@@ -290,14 +281,10 @@ type ContainerCommitSha =
  * name, and does not require the container to be responsive.
  */
 function readContainerCommitSha(): ContainerCommitSha {
-  let raw: string;
   try {
-    // .State.Running is read alongside the env because `docker inspect`
-    // succeeds for any container that EXISTS — created, exited, dead — and
-    // returns its full creation-time config. A stopped stack produces no
-    // dumps at all, so warning that "dumps from this run will be tagged
-    // stale" would be false; it is reported as unreadable instead.
-    raw = execFileSync(
+    // .State.Running is requested alongside the env so parseContainerCommitSha
+    // can reject a stopped container — see its own docblock.
+    const raw = execFileSync(
       'docker',
       [
         'inspect',
@@ -307,19 +294,11 @@ function readContainerCommitSha(): ContainerCommitSha {
       ],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
     );
+    return parseContainerCommitSha(raw);
   } catch {
     // Docker absent, daemon down, or no such container.
     return { kind: 'unreadable' };
   }
-
-  const [runningLine, ...envLines] = raw.split('\n');
-  if (runningLine?.trim() !== 'true') return { kind: 'unreadable' };
-
-  const line = envLines.find((entry) => entry.startsWith(GIT_COMMIT_SHA_ENV_PREFIX));
-  if (line === undefined) return { kind: 'unreadable' };
-
-  const value = line.slice(GIT_COMMIT_SHA_ENV_PREFIX.length).trim();
-  return value ? { kind: 'present', value } : { kind: 'empty' };
 }
 
 /**
