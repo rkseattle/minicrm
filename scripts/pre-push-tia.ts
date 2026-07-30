@@ -256,7 +256,182 @@ function runSelectTests(baseRef: string, headRef: string): SelectTestsResult {
   return JSON.parse(stdout) as SelectTestsResult;
 }
 
-function runPlaywright(specFiles: readonly string[]): void {
+/**
+ * Hand-synced mirror of docker-compose.test.yml's `container_name` for the
+ * server service. Renaming it there without updating this makes the staleness
+ * check below a permanent no-op — it would take the 'unreadable' branch
+ * forever and stay silent, which is indistinguishable from "no stack running".
+ */
+const TEST_SERVER_CONTAINER = 'minicrm-test-server';
+
+/** Prefix matched and stripped when scanning `docker inspect`'s env output. */
+const GIT_COMMIT_SHA_ENV_PREFIX = 'GIT_COMMIT_SHA=';
+
+/**
+ * What the running test-server container has for GIT_COMMIT_SHA.
+ *
+ * `empty` is kept distinct from `unreadable` on purpose: an empty value is the
+ * defect this ticket names (docker-compose.test.yml's `${GIT_COMMIT_SHA:-}`
+ * default, when the operator never exported the variable), and it means every
+ * dump the stack produces is tagged 'unknown'. Collapsing it into "could not
+ * check" would hide precisely the condition worth reporting.
+ */
+type ContainerCommitSha =
+  { kind: 'present'; value: string } | { kind: 'empty' } | { kind: 'unreadable' };
+
+/**
+ * Reads GIT_COMMIT_SHA out of the running test-server container.
+ *
+ * `docker inspect`, deliberately, NOT `docker compose exec printenv`:
+ * `printenv` exits non-zero for an EMPTY variable, so it cannot distinguish
+ * "empty" from "command failed" — and per the type above, that distinction is
+ * one this check reports on. `docker inspect` reads the creation-time config,
+ * needs no `-f` file and no awareness of the `minicrm-test` compose project
+ * name, and does not require the container to be responsive.
+ */
+function readContainerCommitSha(): ContainerCommitSha {
+  let raw: string;
+  try {
+    // .State.Running is read alongside the env because `docker inspect`
+    // succeeds for any container that EXISTS — created, exited, dead — and
+    // returns its full creation-time config. A stopped stack produces no
+    // dumps at all, so warning that "dumps from this run will be tagged
+    // stale" would be false; it is reported as unreadable instead.
+    raw = execFileSync(
+      'docker',
+      [
+        'inspect',
+        TEST_SERVER_CONTAINER,
+        '--format',
+        '{{.State.Running}}\n{{range .Config.Env}}{{println .}}{{end}}',
+      ],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+  } catch {
+    // Docker absent, daemon down, or no such container.
+    return { kind: 'unreadable' };
+  }
+
+  const [runningLine, ...envLines] = raw.split('\n');
+  if (runningLine?.trim() !== 'true') return { kind: 'unreadable' };
+
+  const line = envLines.find((entry) => entry.startsWith(GIT_COMMIT_SHA_ENV_PREFIX));
+  if (line === undefined) return { kind: 'unreadable' };
+
+  const value = line.slice(GIT_COMMIT_SHA_ENV_PREFIX.length).trim();
+  return value ? { kind: 'present', value } : { kind: 'empty' };
+}
+
+/**
+ * Warns when the running test stack was started against a different commit
+ * than the one being pushed. (MINCRM-688)
+ *
+ * The container reads GIT_COMMIT_SHA once, at `docker compose up` time, and
+ * tags every coverage DUMP with it (coverageConfig.ts). Nothing re-reads it
+ * afterwards, so a stack that outlives a branch switch keeps stamping dumps
+ * with a stale SHA. This script does not restart the stack — doing so on every
+ * push would mean an image rebuild and a re-seed, which is a large and
+ * surprising side effect for a pre-push hook — so it reports instead.
+ *
+ * Deliberately a warning and not a hard failure. A stale dump SHA cannot fail
+ * a test and cannot fail the attestation gate, which joins only on session
+ * build_sha; its blast radius is a coverage map regenerated from those dumps
+ * being keyed to the wrong commit, and that only happens through the separate,
+ * manual dump:coverage-map procedure. Blocking every push over a cache key
+ * would cost far more than it protects. Compare server.ts's own SMTP_FROM
+ * advisory, which warns for a degraded-but-functional configuration.
+ *
+ * Note what this MEANS for the two SHAs after this change: on a stale stack,
+ * session build_sha is now correct (threaded above) while dump commit_sha
+ * stays stale, so the two can disagree where previously they were wrong
+ * together. That divergence is exactly what this warning exists to surface.
+ */
+function warnIfTestStackShaIsStale(headSha: string): void {
+  const container = readContainerCommitSha();
+
+  // Verbatim the sequence in .claude/gates/e2e-run.md — `build` then `up`,
+  // no --force-recreate. The build step is not optional: server/Dockerfile
+  // copies source in rather than bind-mounting it, so recreating alone would
+  // realign the SHA while still running stale server code. Emitting anything
+  // other than the documented commands would leave two divergent procedures
+  // in circulation.
+  const realign =
+    'export GIT_COMMIT_SHA=$(git rev-parse HEAD) && ' +
+    'docker compose -f docker-compose.test.yml build server && ' +
+    'docker compose -f docker-compose.test.yml up -d server';
+
+  // Recreating the server wipes /app/coverage-dumps, which lives in the
+  // container's own filesystem — and those dumps are the very artifacts the
+  // stale-SHA warning is about. Say so, or the remedy silently destroys what
+  // the warning was protecting (see e2e-run.md's own `docker cp` step).
+  const dumpLossCaveat =
+    'Note this discards any coverage dumps still in the container — copy them out first ' +
+    'if a run you care about has already produced them.';
+
+  if (container.kind === 'unreadable') {
+    // Absent, stopped, or unreachable. Not a degraded state — it is the
+    // normal one for a docs- or client-only push — so this stays silent
+    // rather than prefacing every such push with a notice about a check that
+    // had nothing to check. (The plan called for a skip line here; suppressed
+    // deliberately after seeing how often this path is the common one.)
+    return;
+  }
+
+  // console.error for WARN: lines, console.log for informational — the local
+  // convention in this file (see runCreateCoverageDb/runLoadCoverageMap).
+
+  if (container.kind === 'empty') {
+    console.error(
+      `[pre-push-tia] WARN: ${TEST_SERVER_CONTAINER} was started with an EMPTY GIT_COMMIT_SHA, ` +
+        "so every coverage dump it produces is tagged 'unknown' and can never match a real " +
+        `branch SHA. To fix: ${realign} (see .claude/gates/e2e-run.md). ${dumpLossCaveat}`,
+    );
+    return;
+  }
+
+  if (container.value === headSha) return;
+
+  console.error(
+    `[pre-push-tia] WARN: the running test stack was started against ${container.value}, but ` +
+      `HEAD is ${headSha}. Coverage DUMPS this stack produces are tagged with the stale SHA, ` +
+      'so a coverage map regenerated from them would be keyed to the wrong commit. Coverage ' +
+      'SESSIONS and the attestation gate are unaffected — both use HEAD. ' +
+      `To realign: ${realign} (see .claude/gates/e2e-run.md). ${dumpLossCaveat}`,
+  );
+}
+
+/**
+ * Builds the environment for a Playwright child process.
+ *
+ * GIT_COMMIT_SHA is the point of this helper (MINCRM-688). The QA harness
+ * resolves each coverage session's buildSha from it
+ * (coverage-session-control-client.ts), and this script already resolves the
+ * very same SHA for the attestation gate's --sha (runAttestation below). Those
+ * are the two ends of one comparison: the gate queries sessions by build_sha,
+ * so if the harness is left to pick its own value the gate can query one SHA
+ * while the run recorded another and fail with no-session-attribution on an
+ * otherwise correct suite. Passing the resolved SHA explicitly is the local
+ * analogue of what tia-record-mode.yml does for CI, where the same
+ * steps.resolve-sha output feeds both the suite run and the gate.
+ *
+ * One helper rather than the same spread inlined at each of this file's three
+ * Playwright invocations (runPlaywright, and both halves of
+ * runFullSuiteFallbackAndAttest), following testStackDbEnv()'s own precedent.
+ */
+function playwrightEnv(headSha: string, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  // GIT_COMMIT_SHA is spread LAST so `extra` cannot override it — that value
+  // is the one invariant this helper exists to enforce.
+  return { ...process.env, ...testStackDbEnv(), ...extra, GIT_COMMIT_SHA: headSha };
+}
+
+function runPlaywright(specFiles: readonly string[], headSha: string): void {
+  // Checked here, and in runFullSuiteFallbackAndAttest, rather than once at
+  // the top of main(): these are the only points at which a run actually
+  // produces coverage dumps, so anywhere earlier would warn that "dumps this
+  // stack produces are tagged stale" on paths that produce none (a selection
+  // resolving to zero spec files, for instance).
+  warnIfTestStackShaIsStale(headSha);
+
   // Array args via execFileSync — never a shell string — same precedent
   // as every other subprocess call in this file (runLoadCoverageMap,
   // runSelectTests, runAttestation). A spec file path containing a shell
@@ -266,7 +441,7 @@ function runPlaywright(specFiles: readonly string[]): void {
   execFileSync('npm', args, {
     cwd: resolve(REPO_ROOT, 'qa'),
     stdio: 'inherit',
-    env: { ...process.env, ...testStackDbEnv() },
+    env: playwrightEnv(headSha),
   });
 }
 
@@ -329,11 +504,12 @@ function runPlaywright(specFiles: readonly string[]): void {
  * this is a pragmatic choice, not a correctness requirement).
  */
 function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsResult | null): void {
-  const nonSerialEnv = {
-    ...process.env,
-    ...testStackDbEnv(),
+  // See runPlaywright's own call: warned at the point dumps are produced.
+  warnIfTestStackShaIsStale(headSha);
+
+  const nonSerialEnv = playwrightEnv(headSha, {
     PW_GLOBAL_TIMEOUT_MS: String(60 * 60 * 1000),
-  };
+  });
   console.log('[pre-push-tia] Running full suite, non-serial (safety net fallback).');
   execFileSync(
     'npm',
@@ -342,11 +518,9 @@ function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsRe
   );
   attestOrThrow(headSha, selection);
 
-  const serialEnv = {
-    ...process.env,
-    ...testStackDbEnv(),
+  const serialEnv = playwrightEnv(headSha, {
     PW_GLOBAL_TIMEOUT_MS: String(25 * 60 * 1000),
-  };
+  });
   console.log('[pre-push-tia] Running full suite, serial (safety net fallback).');
   execFileSync(
     'npm',
@@ -495,7 +669,7 @@ function main(): void {
   }
 
   console.log(`[pre-push-tia] Running ${selection.specFiles.length} selected spec file(s).`);
-  runPlaywright(selection.specFiles);
+  runPlaywright(selection.specFiles, headSha);
   attestOrThrow(headSha, selection);
 }
 
