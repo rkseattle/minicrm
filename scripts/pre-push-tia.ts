@@ -283,15 +283,12 @@ const TEST_SERVER_CONTAINER = 'minicrm-test-server';
 function readContainerCommitSha(): ContainerCommitSha {
   try {
     // .State.Running is requested alongside the env so parseContainerCommitSha
-    // can reject a stopped container — see its own docblock.
+    // can reject a stopped container, and the env is requested as JSON so a
+    // value containing a newline cannot masquerade as its own entry — see that
+    // function's docblock.
     const raw = execFileSync(
       'docker',
-      [
-        'inspect',
-        TEST_SERVER_CONTAINER,
-        '--format',
-        '{{.State.Running}}\n{{range .Config.Env}}{{println .}}{{end}}',
-      ],
+      ['inspect', TEST_SERVER_CONTAINER, '--format', '{{.State.Running}}\n{{json .Config.Env}}'],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
     );
     return parseContainerCommitSha(raw);

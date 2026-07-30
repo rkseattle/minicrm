@@ -21,6 +21,7 @@ bash qa/scripts/check-framework-purity.sh
 bash qa/scripts/check-behavior-layer.sh
 bash qa/scripts/check-settings-mutations.sh
 bash qa/scripts/check-networkidle.sh
+bash qa/scripts/check-sha-pattern-parity.sh
 ```
 
 Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
