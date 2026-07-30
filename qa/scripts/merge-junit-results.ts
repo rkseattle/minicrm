@@ -418,6 +418,15 @@ if (invokedPath !== undefined && resolvePath(invokedPath) === resolvePath(__file
     run(process.argv);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof MergeInvariantError) {
+      // A broken invariant is this script's bug, not the caller's input. Say so
+      // and print the stack — otherwise the two classes are indistinguishable in
+      // a CI log and whoever reads it starts by re-checking their files. Exit 2
+      // separates it from an input error (1) for anything scripting this.
+      console.error(`[merge-junit-results] INTERNAL: ${message}`);
+      if (error.stack) console.error(error.stack);
+      process.exit(2);
+    }
     console.error(`[merge-junit-results] ${message}`);
     process.exit(1);
   }

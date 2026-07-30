@@ -81,9 +81,22 @@ function payloadElementPattern(): RegExp {
  * <testsuite> per (spec file, project) and a multi-project run therefore has
  * siblings. Non-greedy is only safe once payloads have been redacted — that is
  * the whole point of pairing this with redactEmbeddedPayloads.
+ *
+ * The self-closing `<testsuite …/>` form is matched too, and NOT as a
+ * completeness flourish. Without it, a self-closing suite preceding a populated
+ * one is not recognized as a region, so the non-greedy body of the *next* match
+ * starts at the self-closing tag and runs to the populated suite's
+ * `</testsuite>` — collapsing two suites into one region that carries the EMPTY
+ * suite's attributes. The merged root then declares tests="0" for a document
+ * holding real rows, and hasParseDisagreement cannot catch it because that check
+ * is guarded on `totalTests > 0`. That is this ticket's own defect 2 re-created,
+ * so the form is handled rather than assumed away. (Today's Playwright
+ * serializer never self-closes, but this module deliberately does not depend on
+ * reporter internals staying as they are — same reasoning as stage 2 of
+ * redactEmbeddedPayloads below.)
  */
 export function suiteRegionPattern(): RegExp {
-  return /<testsuite\b([^>]*?)>([\s\S]*?)<\/testsuite>/g;
+  return /<testsuite\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testsuite>)/g;
 }
 
 /** Matches a <testcase> element, self-closing or with a body. */

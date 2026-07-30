@@ -372,6 +372,28 @@ test.describe('merge-junit-results — input contracts', () => {
     expect(() => mergeJUnitDocuments([doc('orphan.xml', orphaned)])).toThrow(MergeInputError);
   });
 
+  test('does not let a self-closing <testsuite/> swallow the next suite', () => {
+    // Regression guard for a re-expression of this ticket's own defect 2. When a
+    // self-closing suite is not recognized as a region, the NEXT match's
+    // non-greedy body starts at the self-closing tag and runs to the populated
+    // suite's </testsuite> — collapsing both into one region carrying the empty
+    // suite's attributes. The root then declared tests="0" for a document holding
+    // 2 tests and 1 failure, and hasParseDisagreement could not catch it because
+    // that check is guarded on totalTests > 0.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite name="empty-spec" hostname="mobile-web" tests="0" failures="0" skipped="0" errors="0"/>
+${makeSuite('b.spec.ts', 'desktop', { tests: 2, failures: 1, skipped: 0, errors: 0 }, '<testcase name="t1" classname="b.spec.ts" time="1.0"><failure message="boom"/></testcase>\n<testcase name="t2" classname="b.spec.ts" time="1.0"></testcase>')}
+</testsuites>`;
+
+    const result = mergeJUnitDocuments([doc('g0.xml', xml)]);
+
+    expect(result.suiteCount).toBe(2);
+    expect(result.totals).toEqual({ tests: 2, failures: 1, skipped: 0, errors: 0 });
+    // The empty suite still reaches the output rather than being absorbed.
+    expect(result.xml).toContain('empty-spec');
+  });
+
   test('keeps sibling suites from different projects separate', () => {
     const xml = wrap(
       makeSuite(
