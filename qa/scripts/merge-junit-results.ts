@@ -108,10 +108,13 @@ export class MergeInputError extends Error {
 
 /**
  * Thrown when one of this script's own invariants is violated — distinct from
- * MergeInputError so a caller can tell "your files are wrong" from "this script
- * is broken", which are differently actionable.
+ * MergeInputError so the CLI can tell "your files are wrong" (exit 1) from "this
+ * script is broken" (exit 2, with a stack), which are differently actionable in a
+ * CI log. Not exported: the only consumer is the `instanceof` check in this
+ * file's own entrypoint, and it is unreachable unless maskEmbeddedPayloads has a
+ * bug.
  */
-export class MergeInvariantError extends Error {
+class MergeInvariantError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'MergeInvariantError';
