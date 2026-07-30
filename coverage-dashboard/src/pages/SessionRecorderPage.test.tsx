@@ -204,6 +204,119 @@ describe('SessionRecorderPage', () => {
     expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
   });
 
+  // MINCRM-688: VITE_BUILD_SHA used to be read with `??`, so an EMPTY value
+  // was sent verbatim as buildSha. coverageSessionSchema requires min(1), so
+  // the request 400s and the user is told to "try again" — advice that cannot
+  // work, since the retry sends the same empty value. These cover the three
+  // env states and assert both the payload and the on-screen signal.
+  describe('build SHA resolution', () => {
+    // Not configured globally in this workspace, so stubs would otherwise
+    // leak into every later test in the file.
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    /** Captures the buildSha the page actually sends on check-in. */
+    function captureCheckInBuildSha(): { get: () => string | undefined } {
+      let sent: string | undefined;
+      server.use(
+        http.get('*/api/v1/admin/coverage/sessions', () =>
+          HttpResponse.json({ data: [], total: 0, page: 1, limit: 25 }),
+        ),
+        http.post('*/api/v1/admin/coverage/sessions', async ({ request }) => {
+          const body = (await request.json()) as { buildSha?: string };
+          sent = body.buildSha;
+          return HttpResponse.json({ session: ACTIVE_SESSION }, { status: 201 });
+        }),
+      );
+      return { get: () => sent };
+    }
+
+    async function checkIn(): Promise<void> {
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-label-input')).toBeInTheDocument();
+      });
+      await userEvent.type(screen.getByTestId('coverage-session-label-input'), 'Exploratory pass');
+      await userEvent.click(screen.getByTestId('coverage-session-check-in-button'));
+    }
+
+    it('sends the configured VITE_BUILD_SHA and shows no notice', async () => {
+      vi.stubEnv('VITE_BUILD_SHA', 'e9f97b2f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d');
+      const captured = captureCheckInBuildSha();
+      renderPage();
+
+      await checkIn();
+
+      await waitFor(() => {
+        expect(captured.get()).toBe('e9f97b2f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d');
+      });
+
+      // Asserted after the sessions query has settled, not just on first
+      // paint, so a regression that surfaced the notice late still fails.
+      expect(
+        screen.queryByTestId('coverage-session-unknown-build-sha-notice'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('falls back to "unknown" and warns on screen when VITE_BUILD_SHA is unset', async () => {
+      // `as unknown as string`: vi.stubEnv's type signature accepts only
+      // string, but passing undefined is how it models an UNSET variable (as
+      // opposed to one set to ''), which is a distinct branch here. The value
+      // is genuinely undefined at runtime, so the cast narrows nothing unsafe.
+      vi.stubEnv('VITE_BUILD_SHA', undefined as unknown as string);
+      const captured = captureCheckInBuildSha();
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-unknown-build-sha-notice')).toBeInTheDocument();
+      });
+
+      await checkIn();
+
+      await waitFor(() => {
+        expect(captured.get()).toBe('unknown');
+      });
+    });
+
+    it('falls back to "unknown" and warns on screen when VITE_BUILD_SHA is EMPTY', async () => {
+      // The regression: `??` passed '' straight through to a min(1) schema.
+      vi.stubEnv('VITE_BUILD_SHA', '');
+      const captured = captureCheckInBuildSha();
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-unknown-build-sha-notice')).toBeInTheDocument();
+      });
+
+      await checkIn();
+
+      await waitFor(() => {
+        expect(captured.get()).toBe('unknown');
+      });
+    });
+
+    it('falls back to "unknown" and warns on screen when VITE_BUILD_SHA is MALFORMED', async () => {
+      // Symmetry with the two sibling resolvers, which both reject a value
+      // that is non-empty but not a usable SHA. Without this the page would
+      // send `feature/foo` verbatim, producing a session that looks fine but
+      // can never match the attestation gate's --sha — a divergence with no
+      // visible signal, which is what AC-3 forbids.
+      vi.stubEnv('VITE_BUILD_SHA', 'feature/some-branch');
+      const captured = captureCheckInBuildSha();
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('coverage-session-unknown-build-sha-notice')).toBeInTheDocument();
+      });
+
+      await checkIn();
+
+      await waitFor(() => {
+        expect(captured.get()).toBe('unknown');
+      });
+    });
+  });
+
   it('shows an error when check-in fails', async () => {
     server.use(
       http.get('*/api/v1/admin/coverage/sessions', () =>

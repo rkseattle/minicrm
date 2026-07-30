@@ -202,6 +202,14 @@ architecture AC ("standalone app/service ... no shared route table with
   build, skips login entirely — see the "No-login mode" subsection below (MINCRM-636/637).
 - Is English-only, with no i18n system of its own — an internal developer/QA tool, not
   a customer-facing product surface.
+- **`VITE_BUILD_SHA`** tags every session started from the Session Recorder, and is
+  resolved at **build time** by `coverage-dashboard/vite.config.ts` — explicit
+  `GIT_COMMIT_SHA`/`GITHUB_SHA` first, then `git rev-parse HEAD`. Building from a
+  checkout needs no configuration; a build with no `.git` (a container image) must pass
+  `GIT_COMMIT_SHA` explicitly. Unset, empty, or malformed tags sessions `unknown`, which
+  records fine but can never be matched to a commit — the recorder shows an on-screen
+  notice rather than letting that pass silently. The value is baked into the bundle, so
+  changing it needs a rebuild, not a restart. (MINCRM-688)
 
 **CORS:** since this app's dev server (5174) and the API (3001, or 5173's own dev
 proxy target) are different origins, and auth relies on an httpOnly cookie
