@@ -40,7 +40,15 @@ const UNKNOWN_COMMIT_SHA = 'unknown';
 // A path-separator or traversal sequence in an operator/CI-supplied
 // GIT_COMMIT_SHA/GITHUB_SHA value could otherwise move dump writes outside
 // the intended dumps root — restrict to a safe filename-segment charset.
-const SAFE_PATH_SEGMENT_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
+// Exported solely so the QA-side session resolver's parity test can assert
+// against THIS definition rather than a copy of it. The two resolvers are
+// deliberately not shared code (qa/e2e/framework/ must stay free of server
+// imports at runtime), so a test is what pins them together — the same
+// arrangement CLAUDE.md documents for the
+// qa/scripts/junit-xml.ts <-> server/src/scripts/junitXml.ts pair. A copy of
+// the regex in the test would go on passing while the two implementations
+// drifted, which is exactly the failure it exists to catch.
+export const SAFE_PATH_SEGMENT_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
 
 function resolveGranularity(): CoverageGranularity {
   return process.env.COVERAGE_GRANULARITY === 'function' ? 'function' : DEFAULT_GRANULARITY;
@@ -94,7 +102,16 @@ export function resolveSourceRoot(): string {
  * outside the dumps root.
  */
 function resolveCommitSha(): string {
-  const explicit = process.env.GIT_COMMIT_SHA ?? process.env.GITHUB_SHA;
+  // `||`, not `??`: docker-compose.test.yml sets `GIT_COMMIT_SHA:
+  // ${GIT_COMMIT_SHA:-}`, so an operator who never exported the variable gives
+  // this process an EMPTY string rather than an unset one. Under `??` that
+  // empty value shadowed GITHUB_SHA entirely and skipped straight to the
+  // git-rev-parse fallback, contradicting the documented precedence above.
+  // Matches the QA-side resolver in
+  // qa/e2e/framework/coverageAgent/coverage-session-control-client.ts, which
+  // tags coverage SESSIONS while this one tags coverage DUMPS — the two must
+  // agree or the attestation gate and the coverage map key off different SHAs.
+  const explicit = process.env.GIT_COMMIT_SHA || process.env.GITHUB_SHA;
   if (explicit) {
     if (!SAFE_PATH_SEGMENT_PATTERN.test(explicit)) {
       logger.warn(
