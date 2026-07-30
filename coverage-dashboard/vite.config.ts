@@ -47,13 +47,20 @@ function resolveBuildSha(): string {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  define: {
-    // JSON.stringify so the value is inlined as a string literal, not as a
-    // bare identifier Vite would treat as an expression.
-    'import.meta.env.VITE_BUILD_SHA': JSON.stringify(resolveBuildSha()),
-  },
+  // Only for a real build. The function form of defineConfig means the git
+  // subprocess is not spawned when this config is loaded for `vitest run` or
+  // the dev server — and the unit tests stub VITE_BUILD_SHA per case anyway,
+  // so an inlined value there would be overwritten and only cost a fork.
+  define:
+    command === 'build'
+      ? {
+          // JSON.stringify so the value is inlined as a string literal, not as
+          // a bare identifier Vite would treat as an expression.
+          'import.meta.env.VITE_BUILD_SHA': JSON.stringify(resolveBuildSha()),
+        }
+      : {},
   resolve: {
     alias: {
       /** @shared resolves to the shared package at the repo root — schemas
@@ -97,4 +104,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
