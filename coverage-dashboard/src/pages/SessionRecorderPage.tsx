@@ -61,17 +61,25 @@ function buildCrmCorrelationLink(correlationId: string): string {
 const UNKNOWN_BUILD_SHA = 'unknown';
 
 /**
- * Same accept-set as the two sibling resolvers — the QA harness's
+ * Third copy of the coverage-SHA accept-set, alongside the QA harness's
  * SAFE_BUILD_SHA_PATTERN and the server's SAFE_PATH_SEGMENT_PATTERN. All three
- * tag sessions or dumps that the attestation gate and the coverage map later
- * key off, so a value one accepts and another rejects is a silent split.
+ * tag sessions or dumps the attestation gate and the coverage map later key
+ * off, so a value one accepts and another rejects is a silent split.
+ *
+ * Copied rather than imported from @minicrm/shared, deliberately: that package
+ * is consumed as COMPILED .js (the .ts sources are the build input, and the
+ * outputs are gitignored), and neither this workspace's vitest run nor CI's
+ * framework-spec job builds it first — a newly-added shared export resolves to
+ * undefined at runtime in both. Verified by trying it. The copy is instead
+ * pinned by a parity test in this file's own spec, which transcribes the
+ * server's rule and asserts the two agree.
  *
  * A malformed value here is a build-time misconfiguration (a branch-style ref,
  * a quoted string, a stray newline) rather than a path-traversal risk, since
  * this value goes into a JSON body rather than a filesystem path — but the
  * remedy is the same: refuse it, tag 'unknown', and say so on screen.
  */
-const SAFE_BUILD_SHA_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
+export const SAFE_BUILD_SHA_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
 
 /**
  * Resolves the build SHA a manually recorded session is tagged with.

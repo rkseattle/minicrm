@@ -76,18 +76,31 @@ qa/e2e/
   tests/framework/ → unit specs for framework/ and qa/scripts/ helpers
 ```
 
-**Documented exception — the one qa→server source import.**
-`qa/e2e/tests/framework/merge-junit-results.spec.ts` imports
-`server/src/scripts/junitXml.ts`. The Playwright JUnit CDATA-redaction rule
-deliberately exists in both workspaces (`qa/scripts/junit-xml.ts` and that server
-module) because `qa/` must not import server's DB-bound modules at runtime — so
-that spec is what pins the two definitions together, and it can only do so by
-importing the real one. `junitXml.ts` was split out of
-`verify-test-attestation.ts` specifically to make this import free of a `pg.Pool`
-and `dotenv/config`. The `qa` paths filter in `ci.yml` lists that server file so a
-server-side edit re-runs the parity test. This is the only source-level import
-from `qa/` into `server/src/`; do not add another without the same justification.
-(MINCRM-689)
+**Documented exception — the qa→server source imports (allowlist of two).**
+Both exist for the same reason: a rule that deliberately lives in BOTH workspaces
+(because `qa/` must not import server's DB-bound modules at runtime) needs
+something to pin the two copies together, and a test can only do that by
+importing the real definition rather than a copy of it. A copied constant in the
+test would go on passing while the implementations drifted — which is the exact
+failure the test exists to catch.
+
+1. `qa/e2e/tests/framework/merge-junit-results.spec.ts` → `server/src/scripts/junitXml.ts`
+   — pins the Playwright JUnit CDATA-redaction rule against `qa/scripts/junit-xml.ts`.
+   `junitXml.ts` was split out of `verify-test-attestation.ts` specifically to make
+   this import free of a `pg.Pool` and `dotenv/config`. (MINCRM-689)
+2. `qa/e2e/tests/framework/coverage-session-control-client.spec.ts` →
+   `server/src/coverageAgent/coverageConfig.ts` — pins the coverage-SHA accept-set
+   (`SAFE_PATH_SEGMENT_PATTERN`) against the QA session resolver's own copy. One
+   tags coverage SESSIONS, the other coverage DUMPS; a split is invisible until a
+   gate reports `no-session-attribution` or a generated map is unusable.
+   `coverageConfig.ts` reaches only `pino` via `logger.ts` — no pool, no dotenv.
+   (MINCRM-688)
+
+**Adding a third requires all of the same:** import-safety (no `pg.Pool`, no
+`dotenv/config` pulled in at module load), an in-file comment carrying this
+justification, and an entry in `ci.yml`'s `qa` paths filter for the server file —
+without that filter entry the parity test is silent on exactly the server-side
+edit it guards.
 
 Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) ·
 [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) ·

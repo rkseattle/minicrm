@@ -18,6 +18,11 @@ export const CORRELATION_ID_HEADER = 'x-coverage-correlation-id';
 const UNKNOWN_COMMIT_SHA = 'unknown';
 const DEFAULT_ENVIRONMENT = 'local';
 
+// A deliberate copy: this layer must stay product-agnostic and free of shared
+// schema imports, so the rule cannot simply be imported. The copy is pinned by
+// the parity test in this module's own spec, which imports the server-side
+// definition and asserts both accept and reject the same corpus.
+//
 // Mirrors the server-side coverageConfig.ts pattern of the same name. There,
 // the SHA becomes a filesystem path segment, so the check is a traversal
 // guard. Here it never touches the filesystem — it goes into a SQL parameter
