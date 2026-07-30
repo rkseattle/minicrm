@@ -40,14 +40,17 @@ const UNKNOWN_COMMIT_SHA = 'unknown';
 // A path-separator or traversal sequence in an operator/CI-supplied
 // GIT_COMMIT_SHA/GITHUB_SHA value could otherwise move dump writes outside
 // the intended dumps root — restrict to a safe filename-segment charset.
-// Exported solely so the QA-side session resolver's parity test can assert
-// against THIS definition rather than a copy of it. The two resolvers are
+// Exported so the QA-side session resolver's behavioural parity test can assert
+// against THIS definition rather than a snapshot of it. The two resolvers are
 // deliberately not shared code (qa/e2e/framework/ must stay free of server
-// imports at runtime), so a test is what pins them together — the same
-// arrangement CLAUDE.md documents for the
-// qa/scripts/junit-xml.ts <-> server/src/scripts/junitXml.ts pair. A copy of
-// the regex in the test would go on passing while the two implementations
-// drifted, which is exactly the failure it exists to catch.
+// imports at runtime) — the same arrangement CLAUDE.md documents for the
+// qa/scripts/junit-xml.ts <-> server/src/scripts/junitXml.ts pair.
+//
+// That test covers resolver behaviour over a corpus. Source-level equality
+// across all three copies of this rule (here, the QA resolver, and the coverage
+// dashboard) is enforced separately by qa/scripts/check-sha-pattern-parity.sh,
+// which diffs the declarations directly and so catches a character change no
+// corpus would distinguish. Changing this pattern requires updating all three.
 export const SAFE_PATH_SEGMENT_PATTERN = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
 
 function resolveGranularity(): CoverageGranularity {

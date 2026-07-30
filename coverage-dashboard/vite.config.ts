@@ -16,21 +16,30 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Commit SHA baked into the bundle for SessionRecorderPage to tag manually
- * recorded coverage sessions with. (MINCRM-688)
+ * Commit SHA inlined for SessionRecorderPage to tag manually recorded coverage
+ * sessions with. (MINCRM-688)
  *
- * Resolved here, at build time, because a browser bundle has no other way to
- * learn it: unlike the server (which can shell out) or the E2E harness (which
+ * Resolved in this config because a browser bundle has no other way to learn
+ * it: unlike the server (which can shell out) or the E2E harness (which
  * inherits GIT_COMMIT_SHA from its parent process), this app only ever sees
  * values Vite inlines. An explicit GIT_COMMIT_SHA wins so a container or CI
- * build that has no .git can still supply one; otherwise `git rev-parse HEAD`
- * covers the ordinary case of building from a checkout.
+ * build with no .git can still supply one; otherwise `git rev-parse HEAD`
+ * covers the ordinary case of running from a checkout.
+ *
+ * Applies to `serve` as well as `build`, deliberately: nothing in this repo
+ * builds the coverage dashboard — no CI job, no Dockerfile — and its README
+ * documents `npm run dev` as the way to run it. Gating this on
+ * `command === 'build'` therefore left the value undefined on the only path
+ * anyone uses, so every manually recorded session was tagged 'unknown' and the
+ * page's degradation notice was permanently on. A warning that is always
+ * showing carries no signal, which is worse than the silent failure it
+ * replaced.
  *
  * Empty string on failure rather than a thrown error or a fabricated
  * placeholder: a session tagged with a wrong-but-plausible SHA is worse than
  * one openly tagged 'unknown', and SessionRecorderPage turns the empty value
- * into a visible on-screen notice. A dashboard build must not fail because a
- * SHA could not be resolved.
+ * into a visible on-screen notice. Starting the dashboard must not fail
+ * because a SHA could not be resolved.
  */
 function resolveBuildSha(): string {
   const explicit = process.env.GIT_COMMIT_SHA || process.env.GITHUB_SHA;
@@ -47,20 +56,28 @@ function resolveBuildSha(): string {
   }
 }
 
-export default defineConfig(({ command }) => ({
+// Not validated here against SAFE_BUILD_SHA_PATTERN, deliberately: importing a
+// .tsx page module into a Vite config to reuse one regex would pull React into
+// config evaluation, and duplicating the pattern would add a FOURTH copy for
+// check-sha-pattern-parity.sh to keep in step. SessionRecorderPage validates
+// whatever lands in import.meta.env before using it, so a malformed value
+// still degrades to 'unknown' with the on-screen notice — this function only
+// has to avoid inventing a value, which returning '' on failure achieves.
+
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  // Only for a real build. The function form of defineConfig means the git
-  // subprocess is not spawned when this config is loaded for `vitest run` or
-  // the dev server — and the unit tests stub VITE_BUILD_SHA per case anyway,
-  // so an inlined value there would be overwritten and only cost a fork.
+  // Both `build` and `serve` — see resolveBuildSha's docblock for why gating on
+  // the build command alone made this dead code. Skipped only under vitest,
+  // where every test stubs VITE_BUILD_SHA per case, so inlining a real value
+  // would be overwritten immediately and cost a git subprocess per run.
   define:
-    command === 'build'
-      ? {
+    mode === 'test'
+      ? {}
+      : {
           // JSON.stringify so the value is inlined as a string literal, not as
           // a bare identifier Vite would treat as an expression.
           'import.meta.env.VITE_BUILD_SHA': JSON.stringify(resolveBuildSha()),
-        }
-      : {},
+        },
   resolve: {
     alias: {
       /** @shared resolves to the shared package at the repo root — schemas

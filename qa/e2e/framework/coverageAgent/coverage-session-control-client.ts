@@ -56,7 +56,8 @@ const warnedBuildShaReasons = new Set<string>();
 /**
  * The environment a SHA is resolved from. Injectable so tests never mutate the
  * real process.env: playwright.config.ts sets fullyParallel, and the per-test
- * fixture calls resolveSessionBuildSha() for EVERY test, so a spec that
+ * fixture calls resolveSessionBuildSha() for every test under the default
+ * per-test coverage granularity, so a spec that
  * reassigned process.env would corrupt the buildSha of unrelated functional
  * tests sharing its worker — reintroducing the exact defect this module
  * exists to prevent.

@@ -111,18 +111,26 @@ function parseArgs(argv: readonly string[]): CliArgs {
   // Caller audit (MINCRM-688). The GIT_COMMIT_SHA/GITHUB_SHA links in this
   // chain are UNREACHABLE from every committed caller — all three pass
   // --head= explicitly:
-  //   - .github/workflows/ci.yml:363-364  --head=<pull_request.head.sha>
-  //   - scripts/pre-push-tia.ts:248       --head=HEAD
-  //   - server/package.json:27            pass-through wrapper, no args of
-  //                                       its own
+  //   - .github/workflows/ci.yml, the `tia-selection` job's "Run TIA selection"
+  //     step            --head=<github.event.pull_request.head.sha>
+  //   - scripts/pre-push-tia.ts, runSelectTests()   --head=HEAD
+  //   - server/package.json's `select:tests`        pass-through wrapper, no
+  //                                                 args of its own
   // They are retained only for ad-hoc invocation, and deliberately NOT
-  // hardened the way verify-test-attestation.ts:94-95 hard-requires --sha.
+  // hardened the way verify-test-attestation.ts's parseArgs hard-requires
+  // --sha.
+  //
+  // Cited by step/function name rather than line number on purpose: the first
+  // version of this comment carried three line references that were already
+  // stale when it was committed, since adding the comment shifted the file it
+  // pointed into and the CI workflow had moved independently.
   //
   // The asymmetry is intentional and worth stating, because the two scripts
   // look similar. That one is the GATE: it decides whether a push or a CI run
   // is allowed to claim its tests ran, so a defaulted SHA there would let an
   // unverifiable claim pass as attested. This one is ADVISORY — its CI job is
-  // continue-on-error (ci.yml:283), and a wrong headRef cannot mis-attribute
+  // continue-on-error (the `tia-selection` job), and a wrong headRef cannot
+  // mis-attribute
   // anything, because the mapping lookups it drives are keyed on baseSha
   // (selectTestsForChangedUnits, resolveTestFiles), never on headSha.
   //
