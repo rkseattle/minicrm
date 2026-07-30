@@ -15,6 +15,7 @@ import { http, HttpResponse } from 'msw';
 import SessionRecorderPage from './SessionRecorderPage.js';
 import { renderWithProviders } from '@/test/renderWithProviders.js';
 import { server } from '@/test/setup.js';
+import { SAFE_BUILD_SHA_PATTERN } from './SessionRecorderPage.js';
 
 function renderPage() {
   return renderWithProviders(<SessionRecorderPage />, { initialEntries: ['/sessions'] });
@@ -202,6 +203,42 @@ describe('SessionRecorderPage', () => {
     });
     // the form clears after a successful check-in
     expect(screen.getByTestId('coverage-session-label-input')).toHaveValue('');
+  });
+
+  // Pins the dashboard's copy of the SHA accept-set. Three resolvers hold this
+  // rule — this page, the QA harness, and the server's own
+  // SAFE_PATH_SEGMENT_PATTERN — and a split between any two is invisible until
+  // a gate reports no-session-attribution or a coverage map turns out
+  // unusable. The QA framework spec already pins QA <-> server by importing
+  // the server's real constant; this covers the third copy.
+  describe('SHA accept-set parity with the server-side resolver', () => {
+    it('accepts and rejects exactly what the server-side pattern does', () => {
+      // Transcribed literal, not an import: server/src is not reachable from
+      // this workspace, and @minicrm/shared is consumed as compiled .js that
+      // nothing rebuilds before this suite runs. Transcribing means a
+      // server-side change to the rule makes this fail here rather than
+      // drifting silently.
+      const serverPattern = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
+
+      const corpus = [
+        'e9f97b2f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
+        'a1b2c3d4.feature-branch_v2',
+        '..abc',
+        'refs/heads/main',
+        '../../tmp/evil',
+        '.',
+        '..',
+        'has space',
+        'quoted"value',
+      ];
+
+      for (const candidate of corpus) {
+        expect(
+          SAFE_BUILD_SHA_PATTERN.test(candidate),
+          `"${candidate}" diverges between the shared pattern and the server's`,
+        ).toBe(serverPattern.test(candidate));
+      }
+    });
   });
 
   // MINCRM-688: VITE_BUILD_SHA used to be read with `??`, so an EMPTY value
