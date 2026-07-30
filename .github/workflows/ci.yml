@@ -111,6 +111,13 @@ jobs:
               # turns out to be unusable. Without this entry a server-only edit
               # to that pattern would not re-run the parity test. (MINCRM-688)
               - 'server/src/coverageAgent/coverageConfig.ts'
+              # check-sha-pattern-parity.sh (in the qa-static-checks job) reads
+              # the coverage build-SHA accept-set out of all THREE files that
+              # hold it. The other two are already matched by the globs above
+              # and the coverageConfig.ts entry; this is the third. Without it a
+              # dashboard-only edit to that pattern would not run the check that
+              # exists to catch exactly that drift. (MINCRM-688)
+              - 'coverage-dashboard/src/pages/SessionRecorderPage.tsx'
               # The parity/shape assertions read a captured real CI artifact, so a
               # fixture-only edit must re-run them too — the *.ts globs miss it.
               - 'qa/e2e/tests/framework/__fixtures__/**'
@@ -705,6 +712,9 @@ jobs:
 
       - name: Check dev and test Compose stacks stay isolated (MINCRM-684)
         run: bash qa/scripts/check-compose-isolation.sh
+
+      - name: Check the coverage build-SHA accept-set has not drifted (MINCRM-688)
+        run: bash qa/scripts/check-sha-pattern-parity.sh
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests

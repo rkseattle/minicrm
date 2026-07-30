@@ -18,7 +18,7 @@ import { parseContainerCommitSha } from '../../../scripts/container-commit-sha.j
 
 /** Builds the exact two-part shape the docker --format string produces. */
 function inspectOutput(running: boolean, env: readonly string[]): string {
-  return [String(running), ...env, ''].join('\n');
+  return `${String(running)}\n${JSON.stringify(env)}`;
 }
 
 const REAL_SHA = '45c3da32645836cb158794d6b1f2639005019459';
@@ -62,14 +62,35 @@ test.describe('parseContainerCommitSha', () => {
     expect(parseContainerCommitSha('')).toEqual({ kind: 'unreadable' });
   });
 
-  test('is not fooled by an earlier variable whose value embeds a fake entry', () => {
-    // `{{println .}}` emits one line per variable, so a value containing a
-    // newline is indistinguishable from a real entry. Docker appends the real
-    // environment in declaration order and docker-compose.test.yml declares
-    // GIT_COMMIT_SHA itself, so the LAST match is the authoritative one.
+  test('reports unreadable when the env payload is not valid JSON', () => {
+    expect(parseContainerCommitSha('true\nnot-json')).toEqual({ kind: 'unreadable' });
+  });
+
+  test('reports unreadable when the env payload is JSON but not an array', () => {
+    expect(parseContainerCommitSha('true\n{"GIT_COMMIT_SHA":"x"}')).toEqual({
+      kind: 'unreadable',
+    });
+  });
+
+  test('is not fooled by a decoy entry embedded BEFORE the real one', () => {
     const raw = inspectOutput(true, [
       'SOME_VAR=harmless\nGIT_COMMIT_SHA=spoofed-value',
       `GIT_COMMIT_SHA=${REAL_SHA}`,
+    ]);
+
+    expect(parseContainerCommitSha(raw)).toEqual({ kind: 'present', value: REAL_SHA });
+  });
+
+  test('is not fooled by a decoy entry embedded AFTER the real one', () => {
+    // The case a positional scan cannot solve in general: docker-compose.test.yml
+    // declares GIT_COMMIT_SHA in the MIDDLE of its environment block, with
+    // JWT_SECRET, CORS_ORIGIN, NODE_ENCRYPTION_KEY and the SMTP_* values after
+    // it — several sourced from .env — so a value with an embedded newline can
+    // sit on either side of the real entry. Taking the last match would fail
+    // this; JSON array boundaries make the whole class impossible.
+    const raw = inspectOutput(true, [
+      `GIT_COMMIT_SHA=${REAL_SHA}`,
+      'SMTP_PASS=hunter2\nGIT_COMMIT_SHA=spoofed-value',
     ]);
 
     expect(parseContainerCommitSha(raw)).toEqual({ kind: 'present', value: REAL_SHA });

@@ -5,9 +5,14 @@
  * root `scripts/` is covered by tsconfig.scripts.json for typecheck ONLY —
  * `npm run unit_test` runs the server/client/coverage-dashboard workspaces and
  * Playwright's testDir is qa/e2e/tests, so nothing executes a spec placed next
- * to that script. qa/scripts/**\/*.ts is already in the framework-spec runner's
- * scope (see qa/e2e/tests/framework/), which makes this the closest home that
- * costs no new build wiring.
+ * to that script. Specs under qa/e2e/tests/framework/ can import from here, and
+ * qa/scripts is already in CI's `qa` paths filter, which makes this the closest
+ * home that costs no new build wiring.
+ *
+ * Note this file is NOT counted by the c8 gate: qa/package.json's
+ * test:framework:coverage restricts --include to e2e/framework/**, so the
+ * coverage percentage is unaffected either way. The reason to put it here is
+ * that its tests RUN, not that they score.
  *
  * The subprocess call deliberately stays in pre-push-tia.ts. Only the parse
  * lives here, so these tests exercise real logic rather than a mock of
@@ -31,7 +36,17 @@ export type ContainerCommitSha =
 
 /**
  * Parses the output of
- *   docker inspect <name> --format '{{.State.Running}}\n{{range .Config.Env}}{{println .}}{{end}}'
+ *   docker inspect <name> --format '{{json .State.Running}}\n{{json .Config.Env}}'
+ *
+ * JSON, deliberately, NOT `{{range .Config.Env}}{{println .}}{{end}}`: that
+ * form emits one line per variable, so a variable whose own VALUE contains a
+ * newline followed by "GIT_COMMIT_SHA=..." is indistinguishable from a real
+ * entry. Neither a forward nor a backward scan fixes that — docker-compose.
+ * test.yml declares GIT_COMMIT_SHA in the MIDDLE of its environment block,
+ * with JWT_SECRET, CORS_ORIGIN, NODE_ENCRYPTION_KEY and the SMTP_* values
+ * (several sourced from .env) after it, so a decoy can be positioned on either
+ * side of the real entry. JSON preserves the array boundaries, which makes the
+ * ambiguity structurally impossible rather than merely unlikely.
  *
  * Returns `unreadable` for a container that is not running. `docker inspect`
  * succeeds for any container that EXISTS — created, exited, dead — and returns
@@ -40,25 +55,25 @@ export type ContainerCommitSha =
  * that cannot happen.
  */
 export function parseContainerCommitSha(raw: string): ContainerCommitSha {
-  const [runningLine, ...envLines] = raw.split('\n');
-  if (runningLine?.trim() !== 'true') return { kind: 'unreadable' };
+  const newlineIndex = raw.indexOf('\n');
+  if (newlineIndex === -1) return { kind: 'unreadable' };
 
-  // Scans BACKWARDS, not forwards: `{{println .}}` emits one line per env var,
-  // but a variable whose own VALUE contains a newline followed by
-  // "GIT_COMMIT_SHA=..." is indistinguishable from a real entry and would win a
-  // forward scan. Docker appends the real environment in declaration order, and
-  // docker-compose.test.yml declares GIT_COMMIT_SHA itself, so the last match
-  // cannot be shadowed by an earlier variable's embedded newline. A manual loop
-  // rather than Array.findLast, which needs an ES2023 lib this workspace does
-  // not target.
-  let line: string | undefined;
-  for (let i = envLines.length - 1; i >= 0; i -= 1) {
-    const entry = envLines[i];
-    if (entry !== undefined && entry.startsWith(GIT_COMMIT_SHA_ENV_PREFIX)) {
-      line = entry;
-      break;
-    }
+  const runningRaw = raw.slice(0, newlineIndex).trim();
+  const envRaw = raw.slice(newlineIndex + 1).trim();
+  if (runningRaw !== 'true') return { kind: 'unreadable' };
+
+  let envEntries: unknown;
+  try {
+    envEntries = JSON.parse(envRaw);
+  } catch {
+    return { kind: 'unreadable' };
   }
+  if (!Array.isArray(envEntries)) return { kind: 'unreadable' };
+
+  const line = envEntries.find(
+    (entry): entry is string =>
+      typeof entry === 'string' && entry.startsWith(GIT_COMMIT_SHA_ENV_PREFIX),
+  );
   if (line === undefined) return { kind: 'unreadable' };
 
   const value = line.slice(GIT_COMMIT_SHA_ENV_PREFIX.length).trim();
