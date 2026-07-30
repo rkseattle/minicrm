@@ -66,13 +66,17 @@ const UNKNOWN_BUILD_SHA = 'unknown';
  * tag sessions or dumps the attestation gate and the coverage map later key
  * off, so a value one accepts and another rejects is a silent split.
  *
- * Copied rather than imported from @minicrm/shared, deliberately: that package
- * is consumed as COMPILED .js (the .ts sources are the build input, and the
- * outputs are gitignored), and neither this workspace's vitest run nor CI's
- * framework-spec job builds it first — a newly-added shared export resolves to
- * undefined at runtime in both. Verified by trying it. The copy is instead
- * pinned by a parity test in this file's own spec, which transcribes the
- * server's rule and asserts the two agree.
+ * Copied rather than imported from the shared package, deliberately: that
+ * package is consumed as COMPILED .js (the .ts sources are the build input,
+ * and the outputs are gitignored), and neither this workspace's vitest run nor
+ * CI's framework-spec job builds it first — a newly-added shared export
+ * resolves to undefined at runtime in both. Verified by trying it.
+ *
+ * Drift is caught by qa/scripts/check-sha-pattern-parity.sh, which reads all
+ * three definitions out of their source files. A unit test cannot do this job:
+ * no workspace can import all three, so an in-suite assertion would compare
+ * this copy against a transcribed literal and keep passing when the server's
+ * rule changed.
  *
  * A malformed value here is a build-time misconfiguration (a branch-style ref,
  * a quoted string, a stray newline) rather than a path-traversal risk, since
