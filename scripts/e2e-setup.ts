@@ -31,6 +31,7 @@ import {
   DevDatabaseRefusedError,
   DEV_DB_PORT,
   TEST_DB_PORT,
+  type TestStackDbSource,
 } from '../qa/scripts/test-stack-db-env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -58,12 +59,12 @@ const EXPORTED_DB_USER = process.env.DB_USER;
 const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
 
 /**
- * Reads DB_HOST/DB_PORT straight out of qa/e2e/.env, bypassing process.env —
+ * Reads the DB coordinates AND credentials straight out of qa/e2e/.env, bypassing process.env —
  * root .env is loaded below for NODE_ENCRYPTION_KEY and its DEV coordinates
  * would otherwise shadow the test stack's. This is what keeps a developer's
  * non-default test-stack host/port working. (MINCRM-698)
  */
-function readE2eEnvFileCoordinates(): { DB_PORT?: string; DB_HOST?: string } {
+function readE2eEnvFileDbSource(): TestStackDbSource {
   try {
     const contents = readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8');
     return pickDbCoordinates(parseEnvFileContents(contents));
@@ -159,7 +160,7 @@ function resolveTestDbEnv(): {
         DB_USER: EXPORTED_DB_USER,
         DB_PASSWORD: EXPORTED_DB_PASSWORD,
       },
-      readE2eEnvFileCoordinates(),
+      readE2eEnvFileDbSource(),
     );
   } catch (err) {
     if (err instanceof DevDatabaseRefusedError) {
