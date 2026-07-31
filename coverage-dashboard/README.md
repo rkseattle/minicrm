@@ -24,23 +24,38 @@ architecture (data model, mapping engine, TIA test selection).
    npm install --prefix coverage-dashboard
    ```
 
-3. Enable the two feature flags this app's endpoints are gated on. Both seed
-   **disabled** (migrations 159/160 — they are developer tooling, meant to stay off in
-   production), and every dashboard API call returns `403 FEATURE_DISABLED` until they
-   are on. `COVERAGE_DASHBOARD_NO_AUTH` drops the login requirement but deliberately
-   does **not** drop these — see [docs/dev/coverage.md](../docs/dev/coverage.md) and
-   MINCRM-694:
+3. Set the three env vars this app's endpoints are gated on, in your `.env`, and
+   restart the server:
 
    ```bash
-   docker compose exec db psql -U minicrm -d minicrm -c \
-     "UPDATE feature_flags SET enabled = true
-        WHERE flag_key IN ('coverage_reporting_query', 'coverage_mapping_query');"
+   COVERAGE_REPORTING_QUERY=true
+   COVERAGE_MAPPING_QUERY=true
+   # The Sessions tab (SessionRecorderPage) calls /admin/coverage/sessions, which
+   # has its own gate — omit this and that one tab 404s while the rest works.
+   COVERAGE_SESSION_MANAGEMENT=true
    ```
 
-   Or toggle them in the CRM's own admin Feature Flags screen.
+   Both default off — this is developer tooling, meant to stay off in production. They
+   gate route **registration** at process boot (MINCRM-663 for
+   `COVERAGE_SESSION_MANAGEMENT`, MINCRM-685 for the other two), so a server missing
+   one answers **`404`** on every request to that router: the routes do not exist. That is not
+   the same as a permission error, and it is why restarting matters — a boot-time gate
+   cannot be flipped on a running server.
+
+   `COVERAGE_REPORTING_QUERY` and `COVERAGE_MAPPING_QUERY` replaced the
+   `coverage_reporting_query` / `coverage_mapping_query` `feature_flags` rows, which
+   migration 163 deleted; `COVERAGE_SESSION_MANAGEMENT` replaced
+   `coverage_session_management`, deleted by migration 161. If you are following older notes
+   telling you to `UPDATE feature_flags` or toggle these in the CRM's admin Feature
+   Flags screen: those rows are gone, and deliberately — internal test infrastructure
+   has no business being toggleable from the product's own UI. See
+   [docs/dev/coverage.md](../docs/dev/coverage.md).
+
+   `GET /api/v1/admin/coverage/health` reports a `routers` block showing exactly which
+   gates were open at boot — the fastest way to confirm this step took effect.
 
 4. Start the dashboard's dev server from the repo root. Set
-   `VITE_COVERAGE_DASHBOARD_NO_AUTH=true` to match the server-side flag from step 1 —
+   `VITE_COVERAGE_DASHBOARD_NO_AUTH=true` to match the `COVERAGE_DASHBOARD_NO_AUTH` flag from step 1 —
    the two only take effect together (see "Accessing it" below):
 
    ```bash
@@ -106,12 +121,14 @@ redirecting to its login page since it never learns auth was dropped server-side
 server enforces `NODE_ENV !== 'production'` before ever honoring its flag, so it can't
 accidentally leave reporting data open in a real deployment.
 
-Dropping the login does **not** drop the `coverage_reporting_query` /
-`coverage_mapping_query` feature flags (step 3). Those still apply, evaluated org-wide
-rather than per-user since there is no authenticated user on this path — so a
-`403 FEATURE_DISABLED` here means the flag is off, not that auth failed. (MINCRM-694)
+Dropping the login does **not** make unregistered routes appear. The two env vars from
+step 3 still apply: without them the routers register nothing, so every request 404s no
+matter how auth is configured. MINCRM-694 previously kept an org-wide feature-flag
+check alive on this path for the same purpose; MINCRM-685 deleted those rows and the
+boot gate took over — harder to defeat than a row an admin could flip, but it needs a
+restart rather than a toggle to change.
 
-Without both flags set (the default), auth instead reuses `minicrm-server`'s
+Without both `*_NO_AUTH` flags set (the default), auth instead reuses `minicrm-server`'s
 existing httpOnly session cookie rather than a separate credential store — you
 must already be logged in as an **admin** at the CRM client
 (`http://localhost:5173`) in the same browser first; otherwise the app

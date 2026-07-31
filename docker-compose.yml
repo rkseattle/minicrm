@@ -65,10 +65,11 @@ services:
       COVERAGE_SESSION_MANAGEMENT: ${COVERAGE_SESSION_MANAGEMENT:-false}
       # Same boot-time gating for the query/ingestion routers (MINCRM-685) — these
       # replaced the coverage_mapping_query/coverage_reporting_query/
-      # coverage_pipeline_ingestion feature_flags rows that MINCRM-685 removes.
+      # coverage_pipeline_ingestion feature_flags rows that migration 163 deleted.
       # Unset means those routes are never registered and 404. The
       # coverage-dashboard app needs MAPPING and REPORTING set to 'true' in .env
-      # to show anything against this dev server.
+      # to show anything against this dev server, plus COVERAGE_SESSION_MANAGEMENT
+      # above for its Sessions tab.
       COVERAGE_MAPPING_QUERY: ${COVERAGE_MAPPING_QUERY:-false}
       COVERAGE_REPORTING_QUERY: ${COVERAGE_REPORTING_QUERY:-false}
       COVERAGE_PIPELINE_INGESTION: ${COVERAGE_PIPELINE_INGESTION:-false}

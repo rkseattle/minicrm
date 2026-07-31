@@ -2,9 +2,12 @@
  * Auth API — this dashboard reuses minicrm-server's existing session-cookie
  * auth (POST /auth/login sets the same httpOnly minicrm_token cookie the
  * CRM client itself relies on) rather than inventing a separate auth
- * mechanism. The reporting query API this dashboard consumes is
- * `authenticate -> requireRole('admin') -> requireFeatureEnabled(...)`
- * gated exactly like every other admin-only CRM endpoint.
+ * mechanism. The reporting query API this dashboard consumes is gated by
+ * `authenticate -> coverageAccessGate` (MINCRM-637 replaced the bare
+ * `requireRole('admin')` check), and its router registers only when
+ * COVERAGE_REPORTING_QUERY is set at server boot — MINCRM-685 removed the
+ * per-request `requireFeatureEnabled` step along with the feature_flags row it
+ * read. An unconfigured server therefore answers 404, not 403.
  */
 
 import apiClient from './axiosInstance.js';

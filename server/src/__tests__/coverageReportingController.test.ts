@@ -156,9 +156,9 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
     expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
   });
 
-  // MINCRM-694's "STILL enforces the coverage_reporting_query feature flag
-  // under the bypass, org-wide" case is retired here, and the invariant it
-  // pinned is DELIBERATELY DROPPED rather than relocated (MINCRM-685). Stating
+  // MINCRM-694's flag-enforcement-under-the-bypass case is retired here, and the
+  // invariant it pinned is DELIBERATELY DROPPED rather than relocated (MINCRM-685;
+  // the coverage_reporting_query row it named no longer exists). Stating
   // that plainly because it is a real reduction, not a refactor: with
   // COVERAGE_DASHBOARD_NO_AUTH on, this router now has no per-request gate at
   // all — the org-wide flag column was the last one, and it is gone with the

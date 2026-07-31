@@ -51,16 +51,16 @@ const router = Router();
  *     summary: Operational health of the Coverage/TIA framework's own services
  *     description: >
  *       Reports whether the backend V8 agent is running, whether the coverage
- *       database is reachable, and each live coverage feature flag's current
- *       state. Admin only — this reveals feature-flag state and DB reachability,
- *       operational detail, not a public liveness probe (unlike /api/health).
- *       Registered unconditionally, unlike this router's other routes: the
- *       mapping/reporting/pipeline routers and the coverage database itself are
- *       live independent of COVERAGE_INSTRUMENTATION, so a health check nested
- *       inside registerCoverageControlRoutes below would 404 in exactly the
- *       deployments where those other routers are actually running. Always-on,
- *       no feature-flag gate — it must stay reachable regardless of which
- *       coverage subsystem flags are toggled.
+ *       database is reachable, and which coverage routers registered their
+ *       routes at boot. Admin only — this reveals registration state and DB
+ *       reachability, operational detail, not a public liveness probe (unlike
+ *       /api/health). Registered unconditionally, unlike this router's other
+ *       routes, because it is diagnostic: an operator asking why coverage is
+ *       not working needs an answer in precisely the deployment where every
+ *       gate is off, and a health check that 404s whenever the subsystem is
+ *       disabled cannot distinguish "disabled" from "misdeployed". No
+ *       feature-flag gate either — MINCRM-663/685 removed every coverage
+ *       feature_flags row in favour of boot-time env vars.
  *     security:
  *       - cookieAuth: []
  *     responses:
