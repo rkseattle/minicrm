@@ -107,6 +107,27 @@ justification, and an entry in `ci.yml`'s `qa` paths filter for the server file 
 without that filter entry the parity test is silent on exactly the server-side
 edit it guards.
 
+**The paths-filter rule generalizes beyond those two.** Any test that pins a file
+outside its own workspace — a parity assertion, a docs-completeness check, a
+shared fixture — must ensure that file triggers the job running the test, or the
+guard is silent on precisely the edit it exists to catch. The invariant is usually
+**bidirectional**: it breaks by editing either side.
+
+**Scope the trigger to the job, not the workspace.** Check what the natural
+workspace filter actually gates before adding to it — `server` gates eight jobs
+including the full `e2e-functional` matrix, so registering a doc there means a
+typo fix boots Postgres and every E2E shard. When the workspace filter is broader
+than the jobs that run the test, add a **single-purpose filter output** and OR it
+into those jobs' `if:` conditions. The `qa` entries above are fine as-is because
+`qa` gates only the two framework jobs that run those parity specs.
+
+The worked example is `attestation-docs` (MINCRM-691):
+`verifyTestAttestation.test.ts` asserts every `AttestationFailureReason` is
+documented in `docs/dev/coverage.md`'s "Reading a failed run" list, so that file
+gets its own filter output, OR'd into `server-tests` alone. Without any entry a
+docs-only PR deleting a reason would run markdownlint and skip the guard; folded
+into `server` it would have run the entire E2E suite.
+
 Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) ·
 [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) ·
 [ai-chat](docs/dev/ai-chat.md) · [coverage](docs/dev/coverage.md) ·

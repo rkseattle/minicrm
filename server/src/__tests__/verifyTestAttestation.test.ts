@@ -174,9 +174,10 @@ async function writeSelection(raw: string): Promise<string> {
  * (9 declared vs 2 recovered) and unattributed, with a selection naming a spec
  * that never ran. Returns the selection path.
  *
- * Extracted because assembling it inline in each consumer put four copies of
- * the same XML-plus-utimes block in this file — the exact duplication the
- * pre-commit refactor step exists to catch. (MINCRM-691)
+ * Named rather than inlined because the interesting part of the consuming test
+ * is its assertion, not the twelve lines of XML and utimes needed to provoke
+ * every reason at once — and because a second consumer would otherwise copy the
+ * block rather than share it. (MINCRM-691)
  */
 async function writeEveryReasonFixture(): Promise<string> {
   const path =
@@ -1019,6 +1020,60 @@ describe('verify-test-attestation.ts', () => {
         expect(result.reasons).toEqual([]);
       });
 
+      // The boundary itself: `ageMinutes > maxAgeMinutes` is exclusive, so a
+      // file aged EXACTLY to the window is fresh. Flipping > to >= leaves every
+      // other staleness test green, because they all sit clear of the boundary.
+      //
+      // Hitting it exactly needs a frozen clock. The gate derives age from
+      // Date.now() at read time, which under a live clock is always strictly
+      // later than the Date.now() used to backdate the file — so a wall-clock
+      // fixture lands just under or just over, never on (measured: 0.999850 of
+      // a 1-minute window for a 59_990ms backdate, where both operators agree).
+      // vi.useFakeTimers pins both reads to the same instant, making the
+      // equal-age case exact and deterministic rather than a race.
+      // (Precedent: notificationService.test.ts:315,345.)
+      it('treats a file aged exactly to the staleness window as fresh', async () => {
+        attestedDumps();
+        const path = await writeResults(PASSING_XML);
+        const maxAgeMinutes = 120;
+        const now = new Date('2026-07-30T12:00:00.000Z');
+        const exactlyAtWindow = new Date(now.getTime() - maxAgeMinutes * 60_000);
+        // utimes must happen on the real clock; only the gate's Date.now() reads
+        // are frozen, so the two cannot drift apart between them.
+        await utimes(path, exactlyAtWindow, exactlyAtWindow);
+
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+        try {
+          const result = await verifyAttestation(attestArgs({ maxAgeMinutes }));
+
+          expect(result.reasons).toEqual([]);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      // One millisecond past it is stale — the other side of the same boundary,
+      // so the pair pins the operator rather than just the general behavior.
+      it('treats a file one millisecond older than the window as stale', async () => {
+        attestedDumps();
+        const path = await writeResults(PASSING_XML);
+        const maxAgeMinutes = 120;
+        const now = new Date('2026-07-30T12:00:00.000Z');
+        const justPastWindow = new Date(now.getTime() - maxAgeMinutes * 60_000 - 1);
+        await utimes(path, justPastWindow, justPastWindow);
+
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+        try {
+          const result = await verifyAttestation(attestArgs({ maxAgeMinutes }));
+
+          expect(result.reasons).toEqual(['results-file-stale']);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
       // The window is a parameter, not a constant: a file inside the default
       // 120-minute window is still stale under a tighter --max-age-minutes.
       it('honors a narrowed staleness window', async () => {
@@ -1543,6 +1598,13 @@ describe('verify-test-attestation.ts', () => {
     // again next PR, which is the reasoning check-env-example-parity.sh and
     // check-sha-pattern-parity.sh already encode for their own invariants. Same
     // shape here: the source list is exported, so the docs are held to it.
+    //
+    // Limit, stated rather than implied: this checks that each reason is
+    // MENTIONED, not that the surrounding prose describes it correctly — a
+    // bullet reworded to explain the wrong condition still passes. That is the
+    // same class of residue as FAILURE_MESSAGES' `() => []` (the type forces an
+    // entry to exist, not to be right). Catching presence catches the drift
+    // that actually happened here; judging prose accuracy is a reviewer's job.
     it('documents every failure reason in docs/dev/coverage.md', async () => {
       const docPath = resolvePath(__dirname, '../../../docs/dev/coverage.md');
       const doc = await readFile(docPath, 'utf8');
