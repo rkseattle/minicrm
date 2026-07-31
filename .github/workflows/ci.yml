@@ -538,6 +538,14 @@ jobs:
           # coverageSessionController.test.ts can reach those routes.
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
+          # Same, for the query/ingestion routers (MINCRM-685) — needed so
+          # coverageMappingController.test.ts/coverageReportingController.test.ts/
+          # coveragePipelineController.test.ts reach their handlers instead of a
+          # 404 once those routers gate on these vars. Declared here ahead of the
+          # route-layer change so that commit lands green; inert until then.
+          COVERAGE_MAPPING_QUERY: "true"
+          COVERAGE_REPORTING_QUERY: "true"
+          COVERAGE_PIPELINE_INGESTION: "true"
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
           NODE_ENCRYPTION_KEY: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
@@ -1055,6 +1063,16 @@ jobs:
           # functional job, not e2e-serial.
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
+          # Same, for the query/ingestion routers (MINCRM-685). This job boots the server
+          # that serves those routers, so it needs the vars in parity with e2e-serial —
+          # NOT because any spec running here reads them today. Declared ahead of the
+          # route-layer change so that commit lands green; inert until then.
+          # coverage-mapping.spec.ts/coverage-pipeline.spec.ts are still @serial and run
+          # in e2e-serial, which sets these independently — read that job's own comment
+          # before assuming either job can drop them.
+          COVERAGE_MAPPING_QUERY: "true"
+          COVERAGE_REPORTING_QUERY: "true"
+          COVERAGE_PIPELINE_INGESTION: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
@@ -1422,6 +1440,14 @@ jobs:
           # spec, only the two being actively edited.
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
+          # Same, for the query/ingestion routers (MINCRM-685) — the two @serial
+          # coverage specs above call /admin/coverage/mapping/* and
+          # /admin/coverage/pipeline/ingest, which these gate at boot once the
+          # route-layer change lands. Declared ahead of it so that commit lands green;
+          # inert until then.
+          COVERAGE_MAPPING_QUERY: "true"
+          COVERAGE_REPORTING_QUERY: "true"
+          COVERAGE_PIPELINE_INGESTION: "true"
 
       - name: Start frontend dev server
         run: npm run dev --workspace=minicrm-client &
