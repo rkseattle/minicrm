@@ -72,20 +72,6 @@ function readE2eEnvFileCoordinates(): { DB_PORT?: string; DB_HOST?: string } {
   }
 }
 
-/** Credentials from qa/e2e/.env, read off disk for the same reason as the coordinates above. */
-function readE2eEnvFileCredentials(): { DB_USER?: string; DB_PASSWORD?: string } {
-  try {
-    const contents = readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8');
-    const parsed = parseEnvFileContents(contents);
-    const credentials: { DB_USER?: string; DB_PASSWORD?: string } = {};
-    if (parsed.DB_USER) credentials.DB_USER = parsed.DB_USER;
-    if (parsed.DB_PASSWORD) credentials.DB_PASSWORD = parsed.DB_PASSWORD;
-    return credentials;
-  } catch {
-    return {};
-  }
-}
-
 // Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
 // to child scripts (e.g. seed:e2e-storage needs NODE_ENCRYPTION_KEY to encrypt secrets).
 try {
@@ -167,7 +153,12 @@ function resolveTestDbEnv(): {
   let resolved;
   try {
     resolved = resolveTestStackDbEnv(
-      { DB_PORT: EXPORTED_DB_PORT, DB_HOST: EXPORTED_DB_HOST },
+      {
+        DB_PORT: EXPORTED_DB_PORT,
+        DB_HOST: EXPORTED_DB_HOST,
+        DB_USER: EXPORTED_DB_USER,
+        DB_PASSWORD: EXPORTED_DB_PASSWORD,
+      },
       readE2eEnvFileCoordinates(),
     );
   } catch (err) {
@@ -183,20 +174,12 @@ function resolveTestDbEnv(): {
     }
     throw err;
   }
-  // Credentials follow the same precedence as host/port — export, then
-  // qa/e2e/.env, then the test-stack default — rather than reading the
-  // post-flatten process.env, where root .env's DEV credentials would win. Latent
-  // today because both stacks use minicrm/password, but the moment a developer
-  // gives the test stack its own password (or root .env diverges, as
-  // .env.example's DB_PASSWORD=changeme already hints), reading process.env here
-  // would aim DEV credentials at a TEST host. Same root cause as the port bug
-  // this ticket fixes. (MINCRM-698)
-  const fileCredentials = readE2eEnvFileCredentials();
+  // Every field comes from the shared resolver, so none can be inherited from
+  // root .env's dev values — credentials included, which the pre-push hook
+  // needs too and which therefore live in the resolver rather than here.
   return {
-    DB_USER: EXPORTED_DB_USER ?? fileCredentials.DB_USER ?? 'minicrm',
-    DB_PASSWORD: EXPORTED_DB_PASSWORD ?? fileCredentials.DB_PASSWORD ?? 'password',
-    // Host and port both come from the snapshot-backed resolver, so neither can
-    // be inherited from root .env's dev coordinates.
+    DB_USER: resolved.DB_USER,
+    DB_PASSWORD: resolved.DB_PASSWORD,
     DB_HOST: resolved.DB_HOST,
     DB_PORT: resolved.DB_PORT,
   };

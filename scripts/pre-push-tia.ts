@@ -90,6 +90,8 @@ const BYPASS_LOG_PATH = resolve(REPO_ROOT, '.git', 'tia-prepush-bypass.log');
  */
 const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
+const EXPORTED_DB_USER = process.env.DB_USER;
+const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
 
 /**
  * Reads DB_HOST/DB_PORT straight out of qa/e2e/.env, bypassing process.env.
@@ -214,7 +216,12 @@ function resolveTestStackDbEnvOrExit(): TestStackDbEnv {
   const e2eEnvFile = readE2eEnvFileCoordinates();
   try {
     return resolveTestStackDbEnv(
-      { DB_PORT: EXPORTED_DB_PORT, DB_HOST: EXPORTED_DB_HOST },
+      {
+        DB_PORT: EXPORTED_DB_PORT,
+        DB_HOST: EXPORTED_DB_HOST,
+        DB_USER: EXPORTED_DB_USER,
+        DB_PASSWORD: EXPORTED_DB_PASSWORD,
+      },
       e2eEnvFile,
     );
   } catch (err) {

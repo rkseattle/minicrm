@@ -28,6 +28,8 @@ import {
   TEST_DB_PORT,
   TEST_DB_NAME,
   TEST_COVERAGE_DB_NAME,
+  TEST_DB_USER,
+  TEST_DB_PASSWORD,
 } from '../../../scripts/test-stack-db-env.js';
 
 test.describe('resolveTestStackDbEnv', () => {
@@ -235,5 +237,53 @@ test.describe('pickDbCoordinates', () => {
 
   test('treats an empty value as absent', () => {
     expect(pickDbCoordinates({ DB_PORT: '', DB_HOST: 'h' })).toEqual({ DB_HOST: 'h' });
+  });
+});
+
+// Credentials follow the same chain as host/port, and are returned by the
+// resolver rather than left to each caller. pre-push-tia.ts previously handed
+// children a corrected host/port while DB_USER/DB_PASSWORD still fell through
+// from root .env's DEV values — latent only because both stacks currently share
+// minicrm/password. (MINCRM-698, PR #369 review)
+test.describe('resolveTestStackDbEnv — credentials', () => {
+  test('defaults to the test-stack credentials', () => {
+    const env = resolveTestStackDbEnv({});
+
+    expect(env.DB_USER).toBe(TEST_DB_USER);
+    expect(env.DB_PASSWORD).toBe(TEST_DB_PASSWORD);
+  });
+
+  test('uses qa/e2e/.env credentials when nothing is exported', () => {
+    const env = resolveTestStackDbEnv({}, { DB_USER: 'test_user', DB_PASSWORD: 'test_pw' });
+
+    expect(env.DB_USER).toBe('test_user');
+    expect(env.DB_PASSWORD).toBe('test_pw');
+  });
+
+  test('lets an explicit export outrank qa/e2e/.env credentials', () => {
+    const env = resolveTestStackDbEnv(
+      { DB_USER: 'exported_user', DB_PASSWORD: 'exported_pw' },
+      { DB_USER: 'file_user', DB_PASSWORD: 'file_pw' },
+    );
+
+    expect(env.DB_USER).toBe('exported_user');
+    expect(env.DB_PASSWORD).toBe('exported_pw');
+  });
+
+  // The regression this closes: root .env's DEV credentials must never reach a
+  // child. They are not in either source, so the test-stack defaults win.
+  test('never inherits credentials from an unlisted source', () => {
+    const env = resolveTestStackDbEnv({}, { DB_PORT: '15433' });
+
+    expect(env.DB_USER).toBe(TEST_DB_USER);
+    expect(env.DB_PASSWORD).toBe(TEST_DB_PASSWORD);
+  });
+});
+
+test.describe('pickDbCoordinates — credentials', () => {
+  test('extracts credentials alongside host and port', () => {
+    expect(
+      pickDbCoordinates({ DB_PORT: '15433', DB_USER: 'u', DB_PASSWORD: 'p', OTHER: 'x' }),
+    ).toEqual({ DB_PORT: '15433', DB_USER: 'u', DB_PASSWORD: 'p' });
   });
 });

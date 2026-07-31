@@ -28,11 +28,29 @@ export const DEV_DB_PORT = '5432';
 export const TEST_DB_NAME = 'minicrm_e2e';
 export const TEST_COVERAGE_DB_NAME = 'minicrm_coverage_e2e';
 
+/**
+ * One layer of the precedence chain: a partial set of coordinates from a single
+ * source (the real environment, or a .env file). Every field optional so an
+ * absent key falls through to the next layer rather than pinning a value.
+ */
+export interface TestStackDbSource {
+  DB_PORT?: string;
+  DB_HOST?: string;
+  DB_USER?: string;
+  DB_PASSWORD?: string;
+}
+
+/** Credentials the test stack is provisioned with (docker-compose.test.yml). */
+export const TEST_DB_USER = 'minicrm';
+export const TEST_DB_PASSWORD = 'password';
+
 export interface TestStackDbEnv {
   DB_HOST: string;
   DB_PORT: string;
   DB_NAME: string;
   COVERAGE_DB_NAME: string;
+  DB_USER: string;
+  DB_PASSWORD: string;
 }
 
 /** Thrown when the resolved port is the dev database. The caller decides how to report and exit. */
@@ -87,8 +105,8 @@ export class DevDatabaseRefusedError extends Error {
  * @throws DevDatabaseRefusedError when the resolved port is the dev port.
  */
 export function resolveTestStackDbEnv(
-  exported: Readonly<{ DB_PORT?: string; DB_HOST?: string }>,
-  fromE2eEnvFile: Readonly<{ DB_PORT?: string; DB_HOST?: string }> = {},
+  exported: Readonly<TestStackDbSource>,
+  fromE2eEnvFile: Readonly<TestStackDbSource> = {},
 ): TestStackDbEnv {
   const dbPort = exported.DB_PORT ?? fromE2eEnvFile.DB_PORT ?? TEST_DB_PORT;
 
@@ -101,6 +119,14 @@ export function resolveTestStackDbEnv(
     DB_PORT: dbPort,
     DB_NAME: TEST_DB_NAME,
     COVERAGE_DB_NAME: TEST_COVERAGE_DB_NAME,
+    // Credentials follow the same chain, and are returned here rather than left
+    // to each caller: pre-push-tia.ts previously handed children a corrected
+    // host/port while DB_USER/DB_PASSWORD still fell through from root .env's
+    // DEV values. Latent only because both stacks currently use
+    // minicrm/password — a test stack with its own credentials could not run
+    // Playwright, selection or attestation at all. (MINCRM-698, PR #369 review)
+    DB_USER: exported.DB_USER ?? fromE2eEnvFile.DB_USER ?? TEST_DB_USER,
+    DB_PASSWORD: exported.DB_PASSWORD ?? fromE2eEnvFile.DB_PASSWORD ?? TEST_DB_PASSWORD,
   };
 }
 
@@ -114,13 +140,12 @@ export function resolveTestStackDbEnv(
  * the TEST stack. Absent keys are omitted rather than set to undefined, so the
  * resolver's `??` chain falls through cleanly. (MINCRM-698)
  */
-export function pickDbCoordinates(parsed: Readonly<Record<string, string>>): {
-  DB_PORT?: string;
-  DB_HOST?: string;
-} {
-  const coordinates: { DB_PORT?: string; DB_HOST?: string } = {};
+export function pickDbCoordinates(parsed: Readonly<Record<string, string>>): TestStackDbSource {
+  const coordinates: TestStackDbSource = {};
   if (parsed.DB_PORT) coordinates.DB_PORT = parsed.DB_PORT;
   if (parsed.DB_HOST) coordinates.DB_HOST = parsed.DB_HOST;
+  if (parsed.DB_USER) coordinates.DB_USER = parsed.DB_USER;
+  if (parsed.DB_PASSWORD) coordinates.DB_PASSWORD = parsed.DB_PASSWORD;
   return coordinates;
 }
 
