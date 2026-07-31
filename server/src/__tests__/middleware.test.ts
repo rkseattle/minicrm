@@ -356,8 +356,18 @@ describe('asyncHandler middleware', () => {
 describe('requireFeatureEnabledOrgWide', () => {
   /**
    * Exercised directly rather than through a route: these assertions are about
-   * the middleware's own three branches, and the two coverage routers that use
-   * it already cover the integrated path in their own controller specs.
+   * the middleware's own three branches.
+   *
+   * MINCRM-685 left this file as the ONLY coverage of requireFeatureEnabledOrgWide.
+   * Its two callers were coverageMapping.ts and coverageReporting.ts, both of
+   * which moved to boot-time env-var gating and no longer consult any
+   * feature_flags row — so there is no integrated path left to cover it. The
+   * middleware is retained deliberately (it is correct, tested, and the natural
+   * choice for any future route reachable without a req.user); these tests are
+   * what keep it honest. The sample flag key moved from 'coverage_mapping_query'
+   * to 'reporting' in the same change, because the coverage rows were deleted —
+   * the key is arbitrary here since the flag store is stubbed, but it should
+   * name a flag that actually exists.
    *
    * The flag store is stubbed per case so the org-wide check can be driven to
    * each outcome — including the throw, which no route test can reach without
@@ -391,11 +401,7 @@ describe('requireFeatureEnabledOrgWide', () => {
     vi.spyOn(featureFlagService, 'isFeatureEnabled').mockResolvedValue(true);
     const { req, res, next, status } = invoke();
 
-    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
-      req,
-      res,
-      next as unknown as NextFunction,
-    );
+    await requireFeatureEnabledOrgWide('reporting')(req, res, next as unknown as NextFunction);
 
     expect(next).toHaveBeenCalledWith();
     expect(status).not.toHaveBeenCalled();
@@ -405,11 +411,7 @@ describe('requireFeatureEnabledOrgWide', () => {
     vi.spyOn(featureFlagService, 'isFeatureEnabled').mockResolvedValue(false);
     const { req, res, next, status, json } = invoke();
 
-    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
-      req,
-      res,
-      next as unknown as NextFunction,
-    );
+    await requireFeatureEnabledOrgWide('reporting')(req, res, next as unknown as NextFunction);
 
     expect(status).toHaveBeenCalledWith(403);
     expect(json).toHaveBeenCalledWith(
@@ -425,11 +427,7 @@ describe('requireFeatureEnabledOrgWide', () => {
     vi.spyOn(featureFlagService, 'isFeatureEnabled').mockRejectedValue(boom);
     const { req, res, next, status } = invoke();
 
-    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
-      req,
-      res,
-      next as unknown as NextFunction,
-    );
+    await requireFeatureEnabledOrgWide('reporting')(req, res, next as unknown as NextFunction);
 
     expect(next).toHaveBeenCalledWith(boom);
     expect(status).not.toHaveBeenCalled();
@@ -440,13 +438,9 @@ describe('requireFeatureEnabledOrgWide', () => {
     const perUser = vi.spyOn(featureFlagService, 'isFlagEnabledForUser');
     const { req, res, next } = invoke();
 
-    await requireFeatureEnabledOrgWide('coverage_mapping_query')(
-      req,
-      res,
-      next as unknown as NextFunction,
-    );
+    await requireFeatureEnabledOrgWide('reporting')(req, res, next as unknown as NextFunction);
 
-    expect(orgWide).toHaveBeenCalledWith('coverage_mapping_query');
+    expect(orgWide).toHaveBeenCalledWith('reporting');
     expect(perUser).not.toHaveBeenCalled();
   });
 });

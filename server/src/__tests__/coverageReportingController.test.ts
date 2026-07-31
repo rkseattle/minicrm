@@ -1,6 +1,6 @@
 /**
  * Integration tests for the coverage reporting query API. (MINCRM-629/630/631)
- * Covers: auth boundaries (401/403-role/403-flag), Zod validation, and the
+ * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, and the
  * query happy path for each endpoint.
  */
 
@@ -9,7 +9,6 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { upsertCoverageUnits } from '../services/coverageModelService.js';
@@ -21,11 +20,6 @@ const FILE_PREFIX = 'coverage-reporting-ctrl';
 
 let adminCookie: string;
 let repCookie: string;
-
-async function setFlagEnabled(flagKey: string, enabled: boolean): Promise<void> {
-  await pool.query(`UPDATE feature_flags SET enabled = $1 WHERE flag_key = $2`, [enabled, flagKey]);
-  __clearCacheForTest();
-}
 
 async function upsertSummary(commitSha: string): Promise<void> {
   const client = await coverageDb.connect();
@@ -70,14 +64,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  await setFlagEnabled('coverage_reporting_query', false);
 });
 
 describe('coverage reporting API — auth boundaries', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
-  });
-
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
       .get('/api/v1/admin/coverage/reporting/summary')
@@ -93,22 +82,20 @@ describe('coverage reporting API — auth boundaries', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 403 FEATURE_DISABLED when the flag is off, even for an admin', async () => {
-    await setFlagEnabled('coverage_reporting_query', false);
-    const res = await request(app)
-      .get('/api/v1/admin/coverage/reporting/summary')
-      .set('Cookie', adminCookie)
-      .query({ commitSha: 'abc' });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
+  // The former "403 FEATURE_DISABLED when the flag is off" case is gone with
+  // the coverage_reporting_query row (MINCRM-685). Its replacement lives in
+  // coverageRouteGating.test.ts, which asserts a 404 when
+  // COVERAGE_REPORTING_QUERY is unset at boot — the routes are not registered
+  // at all rather than registered-and-refusing. It cannot live here: this file
+  // imports app.js once at module load, and a boot-time gate can only be
+  // exercised by the vi.resetModules() + dynamic re-import discipline that
+  // file is built around.
 });
 
 describe('coverage reporting API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
     process.env.COVERAGE_CAPABILITY_GATING = 'true';
   });
 
@@ -147,7 +134,6 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
     process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
   });
 
@@ -170,37 +156,26 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
     expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
   });
 
-  it('STILL enforces the coverage_reporting_query feature flag under the bypass, org-wide (MINCRM-694)', async () => {
-    // This test previously asserted the OPPOSITE — that the flag is not
-    // enforced here at all — and so locked in the defect MINCRM-694 fixed.
-    //
-    // Its reasoning was half right: requireFeatureEnabled resolves per-user
-    // and per-team overrides and role rollout percentages via
-    // isFlagEnabledForUser, none of which can be evaluated with no req.user.
-    // But the conclusion drawn from that — skip the flag entirely — also threw
-    // away the flag's ORG-WIDE kill switch, which needs no identity. The
-    // result was that coverage_reporting_query read as enabled no matter what
-    // was stored, with nothing to indicate it.
-    //
-    // The check now narrows rather than disappearing: requireFeatureEnabledOrgWide
-    // consults only the `enabled` column and enable_at scheduling.
-    await setFlagEnabled('coverage_reporting_query', false);
-    const res = await request(app)
-      .get('/api/v1/admin/coverage/reporting/summary')
-      .query({ commitSha: 'abc' });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
-
-  it('serves the request when the flag is on, proving the org-wide check is not a blanket deny', async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
-    const res = await request(app)
-      .get('/api/v1/admin/coverage/reporting/summary')
-      .query({ commitSha: 'abc' });
-    // 404 COVERAGE_BUILD_NOT_FOUND — reached the handler, no such build.
-    expect(res.status).toBe(404);
-    expect(res.body.error.code).toBe('COVERAGE_BUILD_NOT_FOUND');
-  });
+  // MINCRM-694's "STILL enforces the coverage_reporting_query feature flag
+  // under the bypass, org-wide" case is retired here, and the invariant it
+  // pinned is DELIBERATELY DROPPED rather than relocated (MINCRM-685). Stating
+  // that plainly because it is a real reduction, not a refactor: with
+  // COVERAGE_DASHBOARD_NO_AUTH on, this router now has no per-request gate at
+  // all — the org-wide flag column was the last one, and it is gone with the
+  // row.
+  //
+  // What replaces it is a coarser gate one level up: the routes are not
+  // registered at all unless COVERAGE_REPORTING_QUERY was 'true' at boot, so
+  // the bypass has nothing to expose in a deployment that did not opt in. That
+  // is harder to defeat than a mutable row an admin could flip from the product
+  // UI, but it is not the same guarantee — it cannot be revoked without a
+  // restart, and it is all-or-nothing per deployment rather than per request.
+  // Acceptable here because isDashboardNoAuthEnabled additionally requires
+  // NODE_ENV !== 'production' (asserted below), so the combination cannot occur
+  // in a real deployment.
+  //
+  // The boot gate itself is covered by coverageRouteGating.test.ts; the bypass
+  // predicate's own scope is covered by coverageAccessGate.test.ts.
 
   it('never bypasses auth when NODE_ENV=production, regardless of the flag — the hard safety rail a copied .env file could not defeat', async () => {
     process.env.NODE_ENV = 'production';
@@ -212,10 +187,6 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
 });
 
 describe('coverage reporting API — validation', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
-  });
-
   it('returns 400 VALIDATION_ERROR when commitSha is missing on /summary', async () => {
     const res = await request(app)
       .get('/api/v1/admin/coverage/reporting/summary')
@@ -237,7 +208,6 @@ describe('coverage reporting API — query happy path', () => {
   const commitSha = `${FILE_PREFIX}-${randomUUID()}`;
 
   beforeAll(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
     await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [
       {
         filePath: `${FILE_PREFIX}/widget.ts`,
@@ -338,7 +308,6 @@ describe('coverage reporting API — GET /issue-keys (MINCRM-636/637)', () => {
   const commitSha = `${FILE_PREFIX}-issue-keys-${randomUUID()}`;
 
   beforeAll(async () => {
-    await setFlagEnabled('coverage_reporting_query', true);
     const sessionA = await startCoverageSession({
       label: 'manual-testing-a',
       source: 'manual',

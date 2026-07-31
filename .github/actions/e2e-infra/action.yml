@@ -39,16 +39,14 @@ inputs:
     description: >
       Set to 'true' to start the app server with the whole Coverage/TIA
       surface enabled (MINCRM-633 record mode): COVERAGE_INSTRUMENTATION,
-      COVERAGE_SESSION_MANAGEMENT, and — as MINCRM-685 moves them off
+      COVERAGE_SESSION_MANAGEMENT, and — since MINCRM-685 moved them off
       feature_flags rows onto boot-time env vars — COVERAGE_MAPPING_QUERY,
-      COVERAGE_REPORTING_QUERY, and COVERAGE_PIPELINE_INGESTION. The last
-      three are declared ahead of the route-layer change that reads them and
-      are inert until it lands. One input drives all five deliberately: a
-      record-mode run needs the agent, the session API, and the ingestion
-      pipeline together, and once MINCRM-685 deletes the
-      coverage_pipeline_ingestion row, qa/e2e/scripts/ingest-coverage-dumps.ts
-      can no longer switch the pipeline on for itself over REST — this input
-      is what supplies that precondition instead.
+      COVERAGE_REPORTING_QUERY, and COVERAGE_PIPELINE_INGESTION. One input
+      drives all five deliberately: a record-mode run needs the agent, the
+      session API, and the ingestion pipeline together, and
+      qa/e2e/scripts/ingest-coverage-dumps.ts can no longer switch the pipeline
+      on for itself over REST now that there is no flag row to switch — this
+      input is what supplies that precondition instead.
       Every other caller needs the backend V8 agent OFF for a clean,
       zero-overhead baseline run, so this defaults to unset.
     required: false

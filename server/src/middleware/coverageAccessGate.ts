@@ -22,7 +22,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { requireRole, requireCapability } from './requireRole.js';
 import { authenticate } from './auth.js';
-import { requireFeatureEnabled, requireFeatureEnabledOrgWide } from './requireFeatureEnabled.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
 
 /**
@@ -41,13 +40,15 @@ import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
  * contradiction is what MINCRM-694's investigation ran into, since both
  * routers point readers here for the rationale.
  *
- * What the bypass replaces: authenticate and coverageAccessGate. It does NOT
- * drop the feature-flag check — that narrows to requireFeatureEnabledOrgWide
- * (MINCRM-694), which evaluates the flag's org-wide `enabled` column without
- * the user-scoped targeting rules that need a req.user this path lacks.
- * Dropping the check entirely, as these routers originally did, meant the flag
- * read as enabled no matter what was stored. See coverageReporting.ts for the
- * fuller rationale.
+ * What the bypass replaces: authenticate and coverageAccessGate — which since
+ * MINCRM-685 is the whole chain, because there is no feature-flag step left to
+ * keep. MINCRM-694 had narrowed that step to requireFeatureEnabledOrgWide
+ * rather than dropping it, since the flag's org-wide `enabled` column was the
+ * last gate on an unauthenticated request here. Each of these routers is now
+ * gated wholesale by its own boot-time env var instead: unset means the routes
+ * were never registered, so no request reaches this gate at all. Harder by
+ * default than the flag it replaces, at the cost of no longer being flippable
+ * without a restart. See coverageReporting.ts for the fuller rationale.
  *
  * NODE_ENV !== 'production' is the hard safety rail, same as E2E=true's own
  * precedent in auth.ts — a copied .env file can never leave this open in a
@@ -106,7 +107,7 @@ export const coverageAccessGate: RequestHandler = async (
 
 /**
  * Builds the full access chain a dashboard-facing coverage router needs, in one
- * place. (MINCRM-694)
+ * place. (MINCRM-694, MINCRM-685)
  *
  * Extracted because coverageReporting.ts, coverageMapping.ts, and
  * coverageSessions.ts each held a hand-written copy of the same nested
@@ -114,35 +115,45 @@ export const coverageAccessGate: RequestHandler = async (
  * which is exactly the duplication that let one copy drift from the other in
  * the first place. A third copy is one more place for the next fix to miss.
  *
- * Normal path: authenticate → coverageAccessGate → the flag check.
- * COVERAGE_DASHBOARD_NO_AUTH path: the org-wide flag check ONLY. Auth and the
- * role/capability gate are what the flag deliberately drops; the feature flag
- * is not, because its org-wide `enabled` column needs no identity to evaluate
- * and is the kill switch the flag exists to provide.
+ * Normal path: authenticate → coverageAccessGate.
+ * COVERAGE_DASHBOARD_NO_AUTH path: neither. Dropping the CRM login is the whole
+ * point of that flag, and after MINCRM-685 there is no feature-flag step left
+ * behind it, so on that path these routers run entirely ungated per request.
  *
- * @param flagKey - The feature flag gating this router, or null for a router
- *   with no feature_flags row (coverageSessions.ts, gated wholesale by
- *   COVERAGE_SESSION_MANAGEMENT at boot). Null means no flag step on either
- *   path — not "skip the flag on the bypass", which was the original defect.
+ * Be precise about what that exposes, because "internal read-only reporting" is
+ * only true of two of the three opted-in routers. coverageReporting.ts and
+ * coverageMapping.ts are read-only. coverageSessions.ts is NOT — it exposes
+ * POST /sessions, POST /:sessionId/end, and POST /:sessionId/dumps, so under
+ * the bypass those writes are unauthenticated too. That predates this change
+ * (MINCRM-694 passed `null` for sessions, which was already checkless) and is
+ * accepted for the same reason the rest of the bypass is: isDashboardNoAuthEnabled
+ * requires NODE_ENV !== 'production', the routers only register at all when
+ * their own boot-time env var is set, and the data behind them is CI/dev
+ * coverage output rather than product data. It is called out here rather than
+ * left implicit so the next reader does not infer a read-only guarantee this
+ * gate does not provide.
  *
- *   Typed as a union rather than a bare string so a mistyped key is a compile
- *   error. Otherwise it would surface only at runtime, as isFeatureEnabled's
- *   "unknown flag key — treating as disabled" path silently 403ing an entire
- *   router.
+ * MINCRM-685 removed this builder's feature-flag step, along with the
+ * `flagKey` parameter and the `CoverageRouterFlagKey` union that typed it.
+ * Every coverage router is now gated wholesale by its own boot-time env var
+ * (COVERAGE_MAPPING_QUERY / COVERAGE_REPORTING_QUERY / COVERAGE_SESSION_MANAGEMENT),
+ * so there is no feature_flags row left for any of them to enforce — the three
+ * that had one were deleted as internal CI/dev tooling that had no business
+ * being toggleable from the product's own admin Settings page.
+ *
+ * That retires MINCRM-694's org-wide narrowing, which existed because the flag
+ * was the last gate on an unauthenticated no-auth-mode request. The env var
+ * replaces it: unset means the routes were never registered, so nothing
+ * reaches this middleware at all, where the flag was a mutable row an admin
+ * could flip from the product UI. Harder by default, at the cost of needing a
+ * restart to change. requireFeatureEnabled/requireFeatureEnabledOrgWide are both
+ * untouched and still used by (respectively) the product's own flagged routes
+ * and their own unit tests.
  */
-export type CoverageRouterFlagKey = 'coverage_mapping_query' | 'coverage_reporting_query';
-
-export function buildCoverageAccessGate(flagKey: CoverageRouterFlagKey | null): RequestHandler {
-  const requireFlagForUser = flagKey === null ? null : requireFeatureEnabled(flagKey);
-  const requireFlagOrgWide = flagKey === null ? null : requireFeatureEnabledOrgWide(flagKey);
-
+export function buildCoverageAccessGate(): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (isDashboardNoAuthEnabled()) {
-      if (requireFlagOrgWide) {
-        requireFlagOrgWide(req, res, next);
-      } else {
-        next();
-      }
+      next();
       return;
     }
 
@@ -157,19 +168,7 @@ export function buildCoverageAccessGate(flagKey: CoverageRouterFlagKey | null): 
       // not propagate the promise either. Discarding it would turn a rejected
       // capability lookup into an unhandled rejection instead of a 500 through
       // Express's error handler.
-      Promise.resolve(
-        coverageAccessGate(req, res, (gateErr?: unknown) => {
-          if (gateErr) {
-            next(gateErr);
-            return;
-          }
-          if (requireFlagForUser) {
-            requireFlagForUser(req, res, next);
-          } else {
-            next();
-          }
-        }),
-      ).catch(next);
+      Promise.resolve(coverageAccessGate(req, res, next)).catch(next);
     });
   };
 }

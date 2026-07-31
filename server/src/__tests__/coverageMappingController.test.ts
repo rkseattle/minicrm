@@ -1,6 +1,6 @@
 /**
  * Integration tests for the coverage mapping query API. (MINCRM-621)
- * Covers: auth boundaries (401/403-role/403-flag), Zod validation, and the
+ * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, and the
  * query happy path (both directions), including that confidence/freshness
  * is attached to results.
  */
@@ -10,7 +10,6 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { upsertCoverageUnits } from '../services/coverageModelService.js';
@@ -21,11 +20,6 @@ const FILE_PREFIX = 'coverage-mapping-ctrl';
 
 let adminCookie: string;
 let repCookie: string;
-
-async function setFlagEnabled(flagKey: string, enabled: boolean): Promise<void> {
-  await pool.query(`UPDATE feature_flags SET enabled = $1 WHERE flag_key = $2`, [enabled, flagKey]);
-  __clearCacheForTest();
-}
 
 async function linkAndCommit(
   commitSha: string,
@@ -76,14 +70,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  await setFlagEnabled('coverage_mapping_query', false);
 });
 
 describe('coverage mapping API — auth boundaries', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
-  });
-
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
       .get('/api/v1/admin/coverage/mapping/tests-for-unit')
@@ -99,22 +88,19 @@ describe('coverage mapping API — auth boundaries', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 403 FEATURE_DISABLED when the flag is off, even for an admin', async () => {
-    await setFlagEnabled('coverage_mapping_query', false);
-    const res = await request(app)
-      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
-      .set('Cookie', adminCookie)
-      .query({ commitSha: 'abc', unitKey: 'render#123' });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
+  // The former "403 FEATURE_DISABLED when the flag is off" case is gone with
+  // the coverage_mapping_query row (MINCRM-685). Its replacement lives in
+  // coverageRouteGating.test.ts, which asserts a 404 when COVERAGE_MAPPING_QUERY
+  // is unset at boot — the routes are not registered at all rather than
+  // registered-and-refusing. It cannot live here: this file imports app.js
+  // once at module load, and a boot-time gate can only be exercised by the
+  // vi.resetModules() + dynamic re-import discipline that file is built around.
 });
 
 describe('coverage mapping API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
     process.env.COVERAGE_CAPABILITY_GATING = 'true';
   });
 
@@ -162,11 +148,9 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
       delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
     }
     process.env.NODE_ENV = originalNodeEnv;
-    await setFlagEnabled('coverage_mapping_query', true);
   });
 
   it('serves an unauthenticated request when the flag is on', async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
     const res = await request(app)
       .get('/api/v1/admin/coverage/mapping/tests-for-unit')
       .query({ commitSha: 'abc', unitKey: 'render#123' });
@@ -176,24 +160,14 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
     expect(res.body.results).toEqual([]);
   });
 
-  it('STILL returns 403 FEATURE_DISABLED when the flag is off', async () => {
-    // The regression. This router used to call next() unconditionally in
-    // no-auth mode, which skipped authenticate, coverageAccessGate AND the
-    // feature-flag guard — so the flag read as enabled no matter what was
-    // stored, and COVM-02 could never pass in the local E2E stack (which sets
-    // COVERAGE_DASHBOARD_NO_AUTH=true).
-    //
-    // Dropping auth is deliberate; dropping the kill switch was not. The
-    // user-scoped targeting rules genuinely need a req.user this path lacks,
-    // so the check narrows to the org-wide `enabled` column rather than
-    // disappearing.
-    await setFlagEnabled('coverage_mapping_query', false);
-    const res = await request(app)
-      .get('/api/v1/admin/coverage/mapping/tests-for-unit')
-      .query({ commitSha: 'abc', unitKey: 'render#123' });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
+  // MINCRM-694's "STILL returns 403 FEATURE_DISABLED when the flag is off"
+  // case is retired here, and the invariant it pinned is DELIBERATELY DROPPED
+  // rather than relocated (MINCRM-685) — with COVERAGE_DASHBOARD_NO_AUTH on,
+  // this router now has no per-request gate at all. See the equivalent comment
+  // in coverageReportingController.test.ts for the full rationale; the short
+  // version is that route registration (COVERAGE_MAPPING_QUERY at boot) is now
+  // the gate, which is coarser but harder to defeat, and the bypass still
+  // requires NODE_ENV !== 'production'.
 
   it('never bypasses auth when NODE_ENV=production, regardless of the flag', async () => {
     // The hard safety rail a copied .env file could not defeat. Mirrors the
@@ -210,10 +184,6 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
 });
 
 describe('coverage mapping API — validation', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
-  });
-
   it('returns 400 VALIDATION_ERROR when unitKey is missing on tests-for-unit', async () => {
     const res = await request(app)
       .get('/api/v1/admin/coverage/mapping/tests-for-unit')
@@ -240,7 +210,6 @@ describe('coverage mapping API — query happy path', () => {
   const unitKey = 'render#abc123';
 
   beforeAll(async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
     await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [
       {
         filePath: 'src/widget.ts',
@@ -317,7 +286,6 @@ describe('coverage mapping API — unit-key/test-ID typeahead search (MINCRM-636
   const commitSha = `${FILE_PREFIX}-search-${randomUUID()}`;
 
   beforeAll(async () => {
-    await setFlagEnabled('coverage_mapping_query', true);
     await upsertCoverageUnits(randomUUID(), commitSha, 'node-v8', [
       {
         filePath: 'src/DealsPage.tsx',

@@ -13,25 +13,31 @@
  *   COVM-01  A dump ingested with session/test attribution is queryable
  *            both directions (unit -> tests, test -> units), with
  *            confidence attached
- *   COVM-02  Guarded route returns 403 FEATURE_DISABLED when the
- *            coverage_mapping_query flag is off
  *   COVM-03  Querying a unit no test covers returns an empty results array
  *
- * Mutates the coverage_pipeline_ingestion and coverage_mapping_query feature
- * flags directly via the REST API (not withFlags(), which only intercepts
- * the browser's client-side flag fetch and would not affect server-side
- * requireFeatureEnabled enforcement for restClient calls) — tagged @serial
- * per the E2E authoring rules for real feature-flag mutations, restored in
- * afterEach. Every test in this file mutates the SAME flag keys, so the
- * file also opts into test.describe.serial.
+ * Mutates no feature flag (MINCRM-685). This spec used to toggle
+ * coverage_pipeline_ingestion and coverage_mapping_query over the REST API and
+ * assert a 403 FEATURE_DISABLED path in COVM-02. Those rows are gone: each
+ * router now gates its entire route registration on its own env var at process
+ * boot (COVERAGE_MAPPING_QUERY / COVERAGE_PIPELINE_INGESTION), exactly as the
+ * dump and session-control routes have gated on COVERAGE_INSTRUMENTATION /
+ * COVERAGE_SESSION_MANAGEMENT since MINCRM-663. A boot-time env var cannot be
+ * flipped mid-run by an E2E spec, so COVM-02's intent moved to
+ * server/src/__tests__/coverageRouteGating.test.ts, which re-imports the app
+ * module with the var unset and asserts a 404 — routes absent rather than
+ * registered-and-refusing.
  *
- * The coverage_instrumentation/coverage_session_management routes this spec
- * depends on (POST /admin/coverage/dump, session control) are no longer
- * gated by a feature_flags row at all (MINCRM-663 moved them to a
- * COVERAGE_INSTRUMENTATION/COVERAGE_SESSION_MANAGEMENT env var at process
- * boot — see migration 161_remove_coverage_control_flags.js, which deleted
- * those two rows outright); CI sets both env vars 'true' for every job that
- * runs this spec, so nothing here needs to toggle them anymore.
+ * CI sets all four env vars 'true' for every job that runs this spec, so
+ * nothing here needs to arrange access at all.
+ *
+ * test.describe.serial and the @serial tags are retained, but NOT because the
+ * remaining tests depend on each other — COVM-03 deliberately queries a commit
+ * and unit key that COVM-01 does not create, and asserts an empty array. They
+ * are retained because COVM-01 writes coverage_units/coverage_test_links rows
+ * in the shared coverage database, which coverage-pipeline.spec.ts also reads
+ * and writes; see this file's entry in qa/e2e/apps/minicrm/resource-registry.ts,
+ * which now declares that contention directly instead of the feature-flag rows
+ * it used to.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -41,7 +47,6 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import {
   startCoverageSession,
   recordCoverageSessionDump,
@@ -53,26 +58,11 @@ import {
   findUnitsForTest,
 } from '@framework/coverageAgent/coverage-mapping-client.js';
 
-const PIPELINE_FLAG_KEY = 'coverage_pipeline_ingestion';
-const MAPPING_FLAG_KEY = 'coverage_mapping_query';
-const ALL_FLAG_KEYS = [PIPELINE_FLAG_KEY, MAPPING_FLAG_KEY] as const;
-
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-  // Restore the true defaults — every flag here is seeded disabled with no
-  // role_overrides, so `enabled` is the sole kill-switch.
-  await Promise.all(
-    ALL_FLAG_KEYS.map((flagKey) =>
-      updateFeatureFlag(restClient, flagKey, { enabled: false }).catch(() => {}),
-    ),
-  );
 });
 
 // ---------------------------------------------------------------------------
@@ -82,10 +72,6 @@ test.afterEach(async ({ restClient }) => {
 test('@functional @serial COVM-01: an ingested dump with test attribution is queryable both directions, with confidence attached', async ({
   restClient,
 }) => {
-  await Promise.all(
-    ALL_FLAG_KEYS.map((flagKey) => updateFeatureFlag(restClient, flagKey, { enabled: true })),
-  );
-
   const session = await startCoverageSession(restClient, {
     label: 'coverage-mapping-spec',
     source: 'automated-e2e',
@@ -178,25 +164,11 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
   expect(testsForUnit.map((result) => result.testId)).toContain(testId);
 });
 
-// ---------------------------------------------------------------------------
-// COVM-02 — flag off blocks the guarded route, even for an admin
-// ---------------------------------------------------------------------------
-
-test('@functional @serial COVM-02: guarded route returns 403 FEATURE_DISABLED when the mapping flag is off', async ({
-  restClient,
-}) => {
-  await updateFeatureFlag(restClient, MAPPING_FLAG_KEY, { enabled: false });
-
-  try {
-    await findTestsForUnit(restClient, { commitSha: 'anything', unitKey: 'anything#1' });
-    expect(true).toBe(false);
-  } catch (err: unknown) {
-    const status = (err as { status?: number }).status;
-    const body = (err as { body?: { error?: { code?: string } } }).body;
-    expect(status).toBe(403);
-    expect(body?.error?.code).toBe('FEATURE_DISABLED');
-  }
-});
+// COVM-02 removed (MINCRM-685): it asserted 403 FEATURE_DISABLED with the
+// coverage_mapping_query row toggled off. The row no longer exists and the gate
+// is now COVERAGE_MAPPING_QUERY at process boot, which no E2E spec can flip. The
+// equivalent assertion — 404, routes never registered — lives in
+// server/src/__tests__/coverageRouteGating.test.ts.
 
 // ---------------------------------------------------------------------------
 // COVM-03 — a unit no test covers returns an empty results array, not an error
@@ -205,8 +177,6 @@ test('@functional @serial COVM-02: guarded route returns 403 FEATURE_DISABLED wh
 test('@functional @serial COVM-03: querying a unit no test covers returns an empty results array', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, MAPPING_FLAG_KEY, { enabled: true });
-
   const results = await findTestsForUnit(restClient, {
     commitSha: 'coverage-mapping-spec-nonexistent-commit',
     unitKey: 'nonexistent#000',

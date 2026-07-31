@@ -32,6 +32,7 @@
  */
 
 import { Router } from 'express';
+import { registerRoutesIfEnabled } from './coverageBootGate.js';
 import { buildCoverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 import {
@@ -45,14 +46,9 @@ import {
 
 const router = Router();
 
-// `null` flag key, unlike coverageMapping.ts and coverageReporting.ts, which
-// pass their own (MINCRM-694). This router has NO feature_flags row to
-// enforce: it is gated wholesale by COVERAGE_SESSION_MANAGEMENT at boot —
-// registerCoverageSessionRoutes below is never called when that env var is
-// unset, so the routes do not exist rather than 403ing. Audited as part of
-// MINCRM-694 and left flagless deliberately; stated here so the next reader
-// auditing this file does not have to re-derive it from an absent import.
-const requireCoverageSessionAccess = [buildCoverageAccessGate(null)] as const;
+// No feature-flag argument: see buildCoverageAccessGate's docblock. This
+// router is gated wholesale by COVERAGE_SESSION_MANAGEMENT at boot.
+const requireCoverageSessionAccess = [buildCoverageAccessGate()] as const;
 
 /** Registers every coverage session route — only called when COVERAGE_SESSION_MANAGEMENT is 'true' at boot. */
 function registerCoverageSessionRoutes(): void {
@@ -370,8 +366,6 @@ function registerCoverageSessionRoutes(): void {
   );
 }
 
-if (process.env.COVERAGE_SESSION_MANAGEMENT === 'true') {
-  registerCoverageSessionRoutes();
-}
+registerRoutesIfEnabled('COVERAGE_SESSION_MANAGEMENT', registerCoverageSessionRoutes);
 
 export default router;

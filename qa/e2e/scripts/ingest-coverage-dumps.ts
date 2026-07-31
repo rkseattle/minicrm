@@ -35,10 +35,7 @@ import { resolve } from 'node:path';
 import { request as playwrightRequest } from '@playwright/test';
 import { RestClient } from '../framework/clients/rest-client.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
 import { ingestCoverageDump } from '../framework/coverageAgent/coverage-pipeline-client.js';
-
-const INGESTION_FLAG_KEY = 'coverage_pipeline_ingestion';
 
 interface DumpIndexEntry {
   dumpId: string;
@@ -74,7 +71,12 @@ async function main(): Promise<void> {
   try {
     const restClient = new RestClient(context);
     await loginAsAdmin(restClient);
-    await updateFeatureFlag(restClient, INGESTION_FLAG_KEY, { enabled: true });
+    // No feature flag to switch on first (MINCRM-685): the ingestion route is
+    // gated by COVERAGE_PIPELINE_INGESTION at process boot, which the server
+    // this script targets must already have set — .github/actions/e2e-infra's
+    // coverage-instrumentation input supplies it for record-mode runs. A PATCH
+    // here would 404 on a flag row that no longer exists and abort the whole
+    // ingestion before the first dump.
 
     let ingested = 0;
     let alreadyIngested = 0;

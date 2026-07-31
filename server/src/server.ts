@@ -221,9 +221,10 @@ void (async () => {
     // Coverage/TIA tables live in their own database (see coverageDb.ts) —
     // migrated separately here so a server can never finish booting with
     // an unprovisioned coverage database. Runs unconditionally (not gated
-    // on COVERAGE_INSTRUMENTATION) since coverage_session_management/
-    // coverage_mapping_query can be exercised independently of the backend
-    // V8 agent itself (see docs/dev/coverage.md's Coverage Database section).
+    // on COVERAGE_INSTRUMENTATION) since the session-management, mapping,
+    // and reporting routers each have their own boot-time env var and can
+    // be enabled independently of the backend V8 agent itself (MINCRM-685;
+    // see docs/dev/coverage.md's Coverage Database section).
     await runCoverageMigrations();
     await seedDefaultAdmin();
     await auditEventBus.start(pool);

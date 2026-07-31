@@ -12,24 +12,29 @@
  * Tests:
  *   COVP-01  Ingesting a browser-origin dump returns 201 with a well-formed
  *            result the first time, then 200 alreadyIngested=true on retry
- *   COVP-02  Guarded route returns 403 FEATURE_DISABLED when the
- *            coverage_pipeline_ingestion flag is off
  *   COVP-03  Ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND
  *
- * Mutates the coverage_pipeline_ingestion feature flag directly via the REST
- * API (not withFlags(), which only intercepts the browser's client-side
- * flag fetch and would not affect server-side requireFeatureEnabled
- * enforcement for restClient calls) — tagged @serial per the E2E authoring
- * rules for real feature-flag mutations, restored in afterEach. Every test
- * in this file mutates the SAME flag key, so the file also opts into
- * test.describe.serial.
+ * Mutates no feature flag (MINCRM-685). This spec used to toggle
+ * coverage_pipeline_ingestion over the REST API and assert a
+ * 403 FEATURE_DISABLED path in COVP-02. That row is gone: the router now
+ * gates its entire route registration on the COVERAGE_PIPELINE_INGESTION env
+ * var at process boot, exactly as POST /admin/coverage/dump has gated on
+ * COVERAGE_INSTRUMENTATION since MINCRM-663. A boot-time env var cannot be
+ * flipped mid-run by an E2E spec, so COVP-02's intent moved to
+ * server/src/__tests__/coverageRouteGating.test.ts, which re-imports the app
+ * module with the var unset and asserts a 404 — routes absent rather than
+ * registered-and-refusing.
  *
- * The coverage_instrumentation route this spec's dump setup depends on
- * (POST /admin/coverage/dump) is no longer gated by a feature_flags row at
- * all (MINCRM-663 moved it to a COVERAGE_INSTRUMENTATION env var at process
- * boot — see migration 161_remove_coverage_control_flags.js, which deleted
- * that row outright); CI sets the env var 'true' for every job that runs
- * this spec, so nothing here needs to toggle it anymore.
+ * CI sets both env vars 'true' for every job that runs this spec, so nothing
+ * here needs to arrange access at all.
+ *
+ * test.describe.serial and the @serial tags are retained, but NOT because the
+ * remaining tests depend on each other — COVP-03 posts a hardcoded unknown
+ * dumpId and shares no state with COVP-01. They are retained because COVP-01
+ * writes coverage_units rows in the shared coverage database, which
+ * coverage-mapping.spec.ts also reads and writes; see this file's entry in
+ * qa/e2e/apps/minicrm/resource-registry.ts, which now declares that contention
+ * directly instead of the feature-flag rows it used to.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -39,22 +44,12 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { updateFeatureFlag } from '@behaviors/minicrm/feature-flags.behaviors.js';
-
-const PIPELINE_FLAG_KEY = 'coverage_pipeline_ingestion';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 test.describe.configure({ mode: 'serial' });
 
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-  // Restore the true default — the flag is seeded disabled (migration 158)
-  // with no role_overrides, so `enabled` is the sole kill-switch.
-  await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: false }).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------
@@ -64,8 +59,6 @@ test.afterEach(async ({ restClient }) => {
 test('@functional @serial COVP-01: ingesting a browser-origin dump succeeds, then retry is idempotent', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: true });
-
   const dumpRes = await restClient.post<{ dump: Record<string, unknown> }>(
     '/api/v1/admin/coverage/dump',
     {
@@ -110,28 +103,11 @@ test('@functional @serial COVP-01: ingesting a browser-origin dump succeeds, the
   expect(secondIngest.body.result['alreadyIngested']).toBe(true);
 });
 
-// ---------------------------------------------------------------------------
-// COVP-02 — flag off blocks the guarded route, even for an admin
-// ---------------------------------------------------------------------------
-
-test('@functional @serial COVP-02: guarded route returns 403 FEATURE_DISABLED when the pipeline flag is off', async ({
-  restClient,
-}) => {
-  await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: false });
-
-  try {
-    await restClient.post('/api/v1/admin/coverage/pipeline/ingest', {
-      dumpId: '00000000-0000-0000-0000-000000000000',
-    });
-    // Should not reach here — the request must be rejected while the flag is off.
-    expect(true).toBe(false);
-  } catch (err: unknown) {
-    const status = (err as { status?: number }).status;
-    const body = (err as { body?: { error?: { code?: string } } }).body;
-    expect(status).toBe(403);
-    expect(body?.error?.code).toBe('FEATURE_DISABLED');
-  }
-});
+// COVP-02 removed (MINCRM-685): it asserted 403 FEATURE_DISABLED with the
+// coverage_pipeline_ingestion row toggled off. The row no longer exists and the
+// gate is now COVERAGE_PIPELINE_INGESTION at process boot, which no E2E spec can
+// flip. The equivalent assertion — 404, routes never registered — lives in
+// server/src/__tests__/coverageRouteGating.test.ts.
 
 // ---------------------------------------------------------------------------
 // COVP-03 — unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND
@@ -140,8 +116,6 @@ test('@functional @serial COVP-02: guarded route returns 403 FEATURE_DISABLED wh
 test('@functional @serial COVP-03: ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND', async ({
   restClient,
 }) => {
-  await updateFeatureFlag(restClient, PIPELINE_FLAG_KEY, { enabled: true });
-
   try {
     await restClient.post('/api/v1/admin/coverage/pipeline/ingest', {
       dumpId: '00000000-0000-0000-0000-000000000000',

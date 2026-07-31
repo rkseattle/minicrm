@@ -21,12 +21,17 @@
  * coverage_build_summary for the reporting query API), and
  * coverageHealthService (a SELECT 1 reachability check, MINCRM-637 — no
  * coverage-domain table reads/writes of its own). Everything else in
- * server/src/services/ continues to use db.ts's product-database pool —
+ * server/src/services/ continues to use db.ts's product-database pool, which
+ * is unchanged by the coverage split.
+ *
+ * Nothing in the product database gates these endpoints any more (MINCRM-685):
  * the coverage_pipeline_ingestion/coverage_mapping_query/
- * coverage_reporting_query feature_flags rows that gate these services'
- * HTTP endpoints stay in the product database (they're an authorization
- * concern tied to req.user/role, not coverage data), so featureFlagService
- * and everything else keeps using db.ts unchanged.
+ * coverage_reporting_query feature_flags rows that used to are deleted, and
+ * each router now decides whether to register its routes from a boot-time env
+ * var instead. Access control on what does get registered is still a product
+ * concern — authenticate plus coverageAccessGate, both reading the product
+ * database via db.ts — so that pool is still very much in play here; it just
+ * no longer has a coverage-specific row to consult.
  */
 
 import pg from 'pg';

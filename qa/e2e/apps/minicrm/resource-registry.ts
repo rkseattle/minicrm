@@ -36,8 +36,8 @@ export type ResourceKey =
   | 'settings.ai_session_retention'
   | 'settings.default_language'
   | 'settings.email_notifications_enabled'
-  | 'feature_flags.coverage_pipeline_ingestion'
-  | 'feature_flags.coverage_mapping_query'
+  | 'coverage_db.coverage_units'
+  | 'coverage_db.coverage_test_links'
   | 'feature_flags.notes'
   | 'feature_flags.tags'
   | 'feature_flags.ai_features'
@@ -103,9 +103,14 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     ],
   },
   {
+    // MINCRM-685: was the coverage_pipeline_ingestion feature_flags row, which no
+    // longer exists (the router gates on COVERAGE_PIPELINE_INGESTION at boot).
+    // The remaining shared resource is the coverage database this spec ingests
+    // into — see the coverage-mapping entry below for the full rationale and its
+    // caveat.
     file: 'qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts',
-    reads: ['feature_flags.coverage_pipeline_ingestion'],
-    writes: ['feature_flags.coverage_pipeline_ingestion'],
+    reads: ['coverage_db.coverage_units'],
+    writes: ['coverage_db.coverage_units'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts',
@@ -129,9 +134,21 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     ],
   },
   {
+    // MINCRM-685: was the coverage_pipeline_ingestion/coverage_mapping_query
+    // feature_flags rows, both deleted in favour of boot-time env vars. The
+    // remaining shared resource is the coverage database itself — COVM-01
+    // ingests a dump and links it to a test, writing the same tables
+    // coverage-pipeline.spec.ts writes.
+    //
+    // Honest caveat: each spec scopes its assertions to its own dumpId/testId
+    // and its own source file, so neither can currently OBSERVE the other's
+    // rows. This entry is therefore conservative rather than demonstrably
+    // load-bearing — it keeps the two files apart because they mutate a shared
+    // store whose isolation rests on per-test naming discipline, not on any
+    // enforced boundary. If that discipline is ever formalised, revisit.
     file: 'qa/e2e/tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts',
-    reads: ['feature_flags.coverage_pipeline_ingestion', 'feature_flags.coverage_mapping_query'],
-    writes: ['feature_flags.coverage_pipeline_ingestion', 'feature_flags.coverage_mapping_query'],
+    reads: ['coverage_db.coverage_units', 'coverage_db.coverage_test_links'],
+    writes: ['coverage_db.coverage_units', 'coverage_db.coverage_test_links'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts',
