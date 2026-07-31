@@ -65,6 +65,7 @@ jobs:
       migrations:        ${{ steps.filter.outputs.migrations }}
       ai:                ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
+      attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -149,6 +150,24 @@ jobs:
               - 'coverage-dashboard/*.ts'
               - 'coverage-dashboard/*.cjs'
               - 'shared/schemas/**'
+            # Single-purpose filter, deliberately NOT folded into `server`.
+            # verifyTestAttestation.test.ts asserts that every member of
+            # ATTESTATION_FAILURE_REASONS appears in docs/dev/coverage.md's
+            # "Reading a failed run" list — the operator's index for a red
+            # attestation gate, which had already drifted by three of seven
+            # reasons. The invariant is bidirectional: the docs can drift by
+            # DELETION just as easily as the source can drift by addition, and a
+            # docs-only edit otherwise matches only the `docs` filter
+            # (markdownlint), so server-tests would be skipped and the guard
+            # silent on exactly half of what it exists to catch.
+            #
+            # `server` would also work but gates eight jobs, including the full
+            # e2e-functional matrix — a typo fix in this one .md would boot
+            # Postgres and every E2E shard, which is what the aggregate job's own
+            # comment calls out as spurious. This output is OR'd into
+            # server-tests alone. (MINCRM-691)
+            attestation-docs:
+              - 'docs/dev/coverage.md'
 
       - name: Clear stale functional test comment
         if: github.event_name == 'pull_request'
@@ -448,7 +467,11 @@ jobs:
   server-tests:
     name: Phase 2 - Server Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.server == 'true'
+    # attestation-docs is OR'd in so a docs-only edit to docs/dev/coverage.md
+    # still runs verifyTestAttestation.test.ts's reason-documentation parity
+    # assertion. Scoped to this job rather than widening `server`, which gates
+    # the E2E matrix too. (MINCRM-691)
+    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true'
     runs-on: ubuntu-latest
 
     services:

@@ -3,17 +3,27 @@
  *
  * Split out of verify-test-attestation.ts so this logic can be imported without
  * dragging a Postgres pool along. That script imports coverageSessionService and
- * coverageDb, and coverageDb constructs a `pg.Pool` plus `dotenv/config` at
- * module load — verified: importing it opens two live sockets and rewrites 13
- * environment variables from a cwd-relative .env, including DB_NAME and
- * AUTH_COOKIE_NAME. Anything that only wants to read a JUnit document should not
- * pay that, and a test that only wants to check parsing certainly should not.
+ * coverageDb, and coverageDb constructs a `pg.Pool` and runs `import
+ * 'dotenv/config'` at module load. Anything that only wants to read a JUnit
+ * document should not pay that, and a test that only wants to check parsing
+ * certainly should not.
+ *
+ * What that actually costs, measured rather than assumed (MINCRM-691): NOT open
+ * sockets. `new pg.Pool()` is lazy and connects on the first query()/connect(),
+ * so importing coverageDb reports totalCount/idleCount/waitingCount all 0. The
+ * real costs are a process-wide `types.setTypeParser(20, ...)` mutation, a
+ * `dotenv/config` side effect reading a CWD-relative .env (harmless under
+ * Vitest, which has already loaded .env.test, but not under an arbitrary CWD),
+ * and a pool whose `error` handler THROWS — crashing the process rather than
+ * surfacing through an awaiting call — if anything ever does query it. Keeping
+ * this module clear of that graph remains correct; the reason is import hygiene
+ * and blast radius.
  *
  * The concrete consumer this unblocks is qa/scripts/merge-junit-results.ts's
  * spec (MINCRM-689), which pins its sibling implementation of the
  * captured-output rule against `stripCapturedOutput` here. Before this split,
- * that parity test opened DB sockets inside a Playwright worker while the module
- * docblocks claimed the opposite.
+ * that parity test pulled the whole DB-bound import graph into a Playwright
+ * worker while the module docblocks claimed the opposite.
  *
  * Nothing here touches the filesystem, the network, or a database. Every export
  * is a pure function of its arguments.

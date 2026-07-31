@@ -55,9 +55,9 @@ import { findCoverageSessionDumpsByBuildSha } from '../services/coverageSessionS
 import coverageDb from '../coverageDb.js';
 
 // JUnit parsing lives in junitXml.ts — pure, DB-free, and importable by
-// qa/scripts/merge-junit-results.ts's parity spec without opening a Postgres
-// pool. Re-exported here so this script's existing public surface (and its
-// own test file) keep working unchanged. (MINCRM-689)
+// qa/scripts/merge-junit-results.ts's parity spec without dragging in this
+// module's DB-bound import graph. Imported, not re-exported; see the note below
+// on why the pass-through was removed. (MINCRM-689)
 import {
   findFailedTests,
   findTestsSkippedEverywhere,
