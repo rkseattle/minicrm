@@ -18,7 +18,6 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
-import { __clearCacheForTest } from '../services/featureFlagService.js';
 
 const FILE_PREFIX = 'coverage-health-ctrl';
 
@@ -57,10 +56,10 @@ describe('GET /api/v1/admin/coverage/health', () => {
     expect(res.body.status).toBe('ok');
     expect(res.body.db).toBe('ok');
     expect(typeof res.body.agentRunning).toBe('boolean');
-    expect(res.body.featureFlags).toMatchObject({
-      coverage_pipeline_ingestion: expect.any(Boolean),
-      coverage_mapping_query: expect.any(Boolean),
-      coverage_reporting_query: expect.any(Boolean),
+    expect(res.body.routers).toMatchObject({
+      pipeline: expect.any(Boolean),
+      mapping: expect.any(Boolean),
+      reporting: expect.any(Boolean),
     });
   });
 
@@ -91,35 +90,13 @@ describe('GET /api/v1/admin/coverage/health', () => {
     expect(mockClient.release).toHaveBeenCalledOnce();
   });
 
-  it('returns 503, not 500, when a feature-flag read against the product database fails', async () => {
-    // Regression test: a rejected isFeatureEnabled() call used to reject
-    // getCoverageHealth()'s whole Promise.all, which asyncHandler forwarded
-    // to the global error handler as a 500 — defeating the endpoint's own
-    // purpose of reporting a structured degraded state (found via Greptile
-    // branch review). Only the feature_flags query is rejected, not every
-    // pool.query call — this same request's own `authenticate` middleware
-    // calls findUserById (userService.ts), which also queries `pool`; an
-    // unscoped mock would 500 the request for an unrelated reason (auth
-    // itself failing) before ever reaching coverageHealthService.
-    __clearCacheForTest();
-    const realQuery = pool.query.bind(pool);
-    vi.spyOn(pool, 'query').mockImplementation(((...args: Parameters<typeof pool.query>) => {
-      const sql = typeof args[0] === 'string' ? args[0] : (args[0] as { text: string }).text;
-      if (sql.includes('FROM feature_flags')) {
-        return Promise.reject(new Error('product db unreachable'));
-      }
-      return realQuery(...args);
-    }) as typeof pool.query);
-
-    const res = await request(app).get('/api/v1/admin/coverage/health').set('Cookie', adminCookie);
-
-    expect(res.status).toBe(503);
-    expect(res.body.status).toBe('degraded');
-    expect(res.body.featureFlags).toEqual({
-      coverage_pipeline_ingestion: false,
-      coverage_mapping_query: false,
-      coverage_reporting_query: false,
-    });
-    expect(res.body.featureFlagsError).toBe('product db unreachable');
-  });
+  // ONE test was removed here (MINCRM-685), not two: the former "503 when a
+  // feature-flag read fails" case. It covered isFeatureEnabled rejecting
+  // against the PRODUCT database, with the report falling back to false per
+  // flag rather than 500ing. GET /health no longer reads the product database
+  // at all — see coverageHealthService.ts's docblock for why that is correct
+  // rather than merely tolerable — so there is no such failure mode left.
+  //
+  // The connect-throws and query-throws coverage-DB cases above are unrelated
+  // to flags and both survive.
 });

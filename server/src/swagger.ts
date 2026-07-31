@@ -767,7 +767,7 @@ const componentSchemas = {
   // ── Coverage health (MINCRM-637) ──────────────────────────────────────────
   CoverageHealthReport: {
     type: 'object',
-    required: ['status', 'agentRunning', 'db', 'featureFlags'],
+    required: ['status', 'agentRunning', 'db', 'routers'],
     properties: {
       status: { type: 'string', enum: ['ok', 'degraded'] },
       agentRunning: {
@@ -776,22 +776,15 @@ const componentSchemas = {
       },
       db: { type: 'string', enum: ['ok', 'error'] },
       dbError: { type: 'string', description: 'Present only when db is "error".' },
-      featureFlagsError: {
-        type: 'string',
-        description:
-          'Present only when one or more feature-flag reads failed (e.g. the product database was unreachable). The corresponding featureFlags field falls back to false rather than the whole report failing.',
-      },
-      featureFlags: {
+      routers: {
         type: 'object',
-        required: [
-          'coverage_pipeline_ingestion',
-          'coverage_mapping_query',
-          'coverage_reporting_query',
-        ],
+        description:
+          'Which coverage routers registered their routes at boot, from their COVERAGE_* env vars (MINCRM-685). False means every path under that router returns 404 — the routes do not exist, rather than existing and refusing. Replaced a featureFlags block reporting three feature_flags rows that migration 163 deleted.',
+        required: ['pipeline', 'mapping', 'reporting'],
         properties: {
-          coverage_pipeline_ingestion: { type: 'boolean' },
-          coverage_mapping_query: { type: 'boolean' },
-          coverage_reporting_query: { type: 'boolean' },
+          pipeline: { type: 'boolean' },
+          mapping: { type: 'boolean' },
+          reporting: { type: 'boolean' },
         },
       },
       lastRetentionPrune: {

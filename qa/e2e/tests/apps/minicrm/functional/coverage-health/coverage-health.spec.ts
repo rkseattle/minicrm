@@ -9,11 +9,13 @@
  * (response shape, status code), mirroring coverage-mapping.spec.ts's own
  * scope split between server unit tests and this functional layer.
  *
- * No feature flag to toggle here — unlike coverage-mapping.spec.ts, this
- * route is documented as always-on (no requireFeatureEnabled gate), since
- * it must stay reachable regardless of which coverage subsystem flags are
- * toggled. Nothing in this spec mutates shared state, so it is NOT tagged
- * @serial.
+ * Nothing to toggle here: this route registers unconditionally, outside its
+ * router's boot gate, so an operator can still ask why coverage is not working
+ * in exactly the deployment where everything is switched off. Since MINCRM-685
+ * the report's `routers` block is what answers that — it reflects the
+ * COVERAGE_* env vars each router registers on, replacing a `featureFlags`
+ * block whose rows migration 163 deleted. Nothing in this spec mutates shared
+ * state, so it is NOT tagged @serial.
  *
  * Tests:
  *   COVH-01  An authenticated admin gets a 200 or 503 with the expected report shape
@@ -40,10 +42,10 @@ test('@functional COVH-01: an authenticated admin gets a 200 or 503 with the exp
     status: string;
     agentRunning: boolean;
     db: string;
-    featureFlags: {
-      coverage_pipeline_ingestion: boolean;
-      coverage_mapping_query: boolean;
-      coverage_reporting_query: boolean;
+    routers: {
+      pipeline: boolean;
+      mapping: boolean;
+      reporting: boolean;
     };
   }>('/api/v1/admin/coverage/health');
 
@@ -58,7 +60,14 @@ test('@functional COVH-01: an authenticated admin gets a 200 or 503 with the exp
   expect(['ok', 'degraded']).toContain(res.body.status);
   expect(res.body.db).toBe('ok');
   expect(typeof res.body.agentRunning).toBe('boolean');
-  expect(typeof res.body.featureFlags.coverage_pipeline_ingestion).toBe('boolean');
-  expect(typeof res.body.featureFlags.coverage_mapping_query).toBe('boolean');
-  expect(typeof res.body.featureFlags.coverage_reporting_query).toBe('boolean');
+  // Asserted as exact values, not `typeof === 'boolean'`: a shape-only check
+  // passes with all three false, so it would pass even if `routers` were
+  // hardcoded and would never notice the block losing touch with reality.
+  // docker-compose.test.yml sets all three gates to 'true' for this stack, and
+  // the specs in coverage-mapping/ and coverage-pipeline/ only pass because
+  // those routers really did register — so `true` here is the one end-to-end
+  // proof that this report reflects actual registration rather than a
+  // plausible-looking constant. If this fails, either the stack's env block
+  // changed or the report stopped reading the same gate the routers do.
+  expect(res.body.routers).toEqual({ pipeline: true, mapping: true, reporting: true });
 });

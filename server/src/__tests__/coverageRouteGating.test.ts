@@ -49,7 +49,7 @@ import { makeAuthCookie } from './testUtils.js';
 // Imported, NOT restated: this is the same list registerRoutesIfEnabled gates
 // on, so a sixth coverage router is covered by this test the moment it is
 // added rather than whenever someone remembers to update a copy here.
-import { COVERAGE_ROUTE_GATE_ENV_VARS } from '../routes/coverageBootGate.js';
+import { COVERAGE_ROUTE_GATE_ENV_VARS } from '../coverageAgent/coverageBootGate.js';
 
 const FILE_PREFIX = 'coverage-route-gating';
 

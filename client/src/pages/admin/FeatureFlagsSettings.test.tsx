@@ -691,4 +691,83 @@ describe('FeatureFlagsSettings', () => {
     });
     expect(deleteCallCount).toBe(0);
   });
+
+  // ── Category rendering: the Developer Tools removal (MINCRM-685) ────────────
+  //
+  // AC-3/AC-4 of MINCRM-685: no Coverage/TIA entry appears in Feature Flags,
+  // the "Developer Tools" section is absent entirely, and the raw
+  // `featureFlags.categories.developer_tools` string never renders.
+  //
+  // TWO independent mechanisms now enforce that, and these tests pin both,
+  // because either alone would let the section back:
+  //
+  //   1. Migration 163 deleted the last rows carrying that category, so nothing
+  //      in the table asks for the section.
+  //   2. MINCRM-685 also removed 'Developer Tools' from FEATURE_FLAG_CATEGORIES,
+  //      and this page renders one section per entry in THAT array — never per
+  //      distinct category found in the data. So even a row that somehow
+  //      reappeared with category 'Developer Tools' renders nowhere at all.
+  //
+  // Written this way deliberately: the obvious test — render the default
+  // fixture, assert the section is absent — passes today, passed before the
+  // change, and would keep passing if the migration were reverted, because
+  // FEATURE_FLAGS_FIXTURE never contained a coverage flag or that category. It
+  // would guard nothing. Seeding the row is what makes the assertion able to
+  // fail.
+
+  it('drops a flag whose category is not in FEATURE_FLAG_CATEGORIES entirely, rather than rendering an unsectioned row (MINCRM-685 AC-3/AC-4)', async () => {
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: [
+            ...FEATURE_FLAGS_FIXTURE,
+            {
+              ...FEATURE_FLAGS_FIXTURE[0],
+              flag_key: 'coverage_something_new',
+              label: 'Coverage Something New',
+              category: 'Developer Tools',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    // Wait for a category that DOES exist, so this asserts absence against a
+    // rendered page rather than one that simply has not loaded yet.
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-category-Core CRM')).toBeInTheDocument();
+    });
+
+    // No section, no raw i18n lookup path, and no sign of the flag itself —
+    // even though the API returned it.
+    expect(screen.queryByTestId('feature-flag-category-Developer Tools')).not.toBeInTheDocument();
+    expect(screen.queryByText('featureFlags.categories.developer_tools')).not.toBeInTheDocument();
+    expect(screen.queryByText('Coverage Something New')).not.toBeInTheDocument();
+  });
+
+  it('still renders a section for a category that IS in FEATURE_FLAG_CATEGORIES — the control proving the assertion above is not vacuous', async () => {
+    server.use(
+      http.get('/api/v1/admin/feature-flags', () =>
+        HttpResponse.json({
+          flags: [
+            {
+              ...FEATURE_FLAGS_FIXTURE[0],
+              flag_key: 'a_productivity_flag',
+              label: 'A Productivity Flag',
+              category: 'Productivity',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderWithProviders(<FeatureFlagsSettings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('feature-flag-category-Productivity')).toBeInTheDocument();
+    });
+    expect(screen.getByText('A Productivity Flag')).toBeInTheDocument();
+  });
 });
