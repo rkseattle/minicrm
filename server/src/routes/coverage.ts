@@ -28,7 +28,7 @@
  */
 
 import { Router } from 'express';
-import { registerRoutesIfEnabled } from './coverageBootGate.js';
+import { registerRoutesIfEnabled } from '../coverageAgent/coverageBootGate.js';
 import { authenticate } from '../middleware/auth.js';
 import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';

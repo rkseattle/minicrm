@@ -3,17 +3,25 @@
  *
  * Reports what an operator needs to know the framework's own services are
  * working: whether the backend V8 agent is running, whether the coverage
- * database is reachable, each of the three live feature flags' current
- * org-wide state (coverage_pipeline_ingestion, coverage_mapping_query,
- * coverage_reporting_query — see docs/dev/coverage.md's "Policy
- * Configuration" section for the full list; coverage_instrumentation/
- * coverage_session_management were removed by migration 161 in favor of
- * boot-time env vars, so there is no flag state to report for those two
- * routers here), and the outcome of the most recent scheduled retention
+ * database is reachable, which coverage routers actually registered their
+ * routes at boot, and the outcome of the most recent scheduled retention
  * prune — the one background job MINCRM-637 introduces that runs
  * unattended and would otherwise be invisible here (a failed nightly prune
  * previously only logged an error; this report continued to say
  * status: 'ok' indefinitely — found via Greptile branch review).
+ *
+ * `routers` reports which coverage routers registered at boot, from
+ * coverageBootGate's snapshot (MINCRM-685 — it replaced a `featureFlags` block
+ * reporting three rows migration 163 deleted). Unregistered routers are NOT a
+ * degraded condition: every gate unset is the production default, so treating
+ * it as one would leave every normal deployment's check permanently red.
+ * `degraded` is driven solely by an unreachable coverage database or a failed
+ * retention prune.
+ *
+ * This report deliberately never touches the product database. The coverage
+ * subsystem has no product-DB dependency to report on, so degrading on a
+ * product-DB outage would be reporting someone else's failure; app.ts's own
+ * /api/health covers that.
  *
  * Not wrapped in a transaction (BEGIN/COMMIT) around the SET LOCAL
  * statement_timeout call — mirrors app.ts's own /api/health implementation
@@ -26,7 +34,7 @@
 
 import coverageDb from '../coverageDb.js';
 import { getCoverageAgent } from '../coverageAgent/coverageAgentRegistry.js';
-import { isFeatureEnabled } from './featureFlagService.js';
+import { COVERAGE_ROUTE_GATES_AT_BOOT } from '../coverageAgent/coverageBootGate.js';
 import {
   getLastRetentionPruneOutcome,
   type RetentionPruneOutcome,
@@ -39,13 +47,12 @@ export interface CoverageHealthReport {
   agentRunning: boolean;
   db: 'ok' | 'error';
   dbError?: string;
-  featureFlags: {
-    coverage_pipeline_ingestion: boolean;
-    coverage_mapping_query: boolean;
-    coverage_reporting_query: boolean;
+  /** Which coverage routers registered their routes at boot. False means every path under that router 404s. */
+  routers: {
+    pipeline: boolean;
+    mapping: boolean;
+    reporting: boolean;
   };
-  /** Present only when one or more feature-flag reads failed (e.g. the product DB was unreachable) — the corresponding featureFlags field falls back to false rather than the report itself failing. */
-  featureFlagsError?: string;
   /** Outcome of the most recent scheduled retention prune, or undefined if it hasn't run yet this process's lifetime (e.g. right after boot, before the daily cron first fires — NOT itself a degraded condition). */
   lastRetentionPrune?: RetentionPruneOutcome;
 }
@@ -74,47 +81,30 @@ async function checkCoverageDb(): Promise<{ ok: true } | { ok: false; error: str
   }
 }
 
-/**
- * Resolves a single feature flag's state, never rejecting — isFeatureEnabled
- * (featureFlagService.ts) issues an unguarded pool.query() against the
- * PRODUCT database (this report's flags are product-DB rows, unlike
- * checkCoverageDb's coverage-DB check above) and propagates any rejection.
- * Without this wrapper, a cold flag cache plus a product-DB outage would
- * reject the whole getCoverageHealth() Promise.all and this endpoint would
- * 500 instead of reporting the exact degraded state it exists to surface
- * (found via Greptile branch review). Falls back to `false` on failure,
- * same fail-safe direction isFeatureEnabled itself already takes for an
- * unknown flag key.
- */
-async function checkFeatureFlag(
-  key: string,
-): Promise<{ ok: true; enabled: boolean } | { ok: false; error: string }> {
-  try {
-    return { ok: true, enabled: await isFeatureEnabled(key) };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
-  }
-}
-
 /** Resolves the current operational health of the Coverage/TIA framework's own services. */
 export async function getCoverageHealth(): Promise<CoverageHealthReport> {
-  const [dbResult, pipelineResult, mappingResult, reportingResult] = await Promise.all([
-    checkCoverageDb(),
-    checkFeatureFlag('coverage_pipeline_ingestion'),
-    checkFeatureFlag('coverage_mapping_query'),
-    checkFeatureFlag('coverage_reporting_query'),
-  ]);
+  const dbResult = await checkCoverageDb();
 
   const agentRunning = getCoverageAgent() !== undefined;
-  const featureFlags = {
-    coverage_pipeline_ingestion: pipelineResult.ok ? pipelineResult.enabled : false,
-    coverage_mapping_query: mappingResult.ok ? mappingResult.enabled : false,
-    coverage_reporting_query: reportingResult.ok ? reportingResult.enabled : false,
+  // From the BOOT SNAPSHOT, not a live process.env read. "Did this router
+  // register?" is a question about the past: registration ran once during
+  // module evaluation, and process.env can be mutated afterwards. A live read
+  // would answer with the current value while the routes stay as they were —
+  // reporting every router enabled against an app that registered none, which
+  // is precisely what coverageRouteGating.test.ts produces when it deletes the
+  // gates, boots, and restores the environment. Verified: a live read there
+  // returned {pipeline: true, mapping: true, reporting: true} while every one
+  // of those paths 404'd.
+  //
+  // Sharing coverageBootGate's snapshot rather than re-deriving it also means
+  // this report and registerRoutesIfEnabled cannot disagree about what
+  // "enabled" means, and the typed keys make a mistyped var a compile error
+  // rather than a silent always-false.
+  const routers = {
+    pipeline: COVERAGE_ROUTE_GATES_AT_BOOT.COVERAGE_PIPELINE_INGESTION,
+    mapping: COVERAGE_ROUTE_GATES_AT_BOOT.COVERAGE_MAPPING_QUERY,
+    reporting: COVERAGE_ROUTE_GATES_AT_BOOT.COVERAGE_REPORTING_QUERY,
   };
-  const featureFlagsError = [pipelineResult, mappingResult, reportingResult].find(
-    (r) => !r.ok,
-  )?.error;
 
   // undefined (never run yet this process's lifetime) is NOT a degraded
   // condition — right after boot, before the daily cron first fires at
@@ -123,14 +113,13 @@ export async function getCoverageHealth(): Promise<CoverageHealthReport> {
   const lastRetentionPrune = getLastRetentionPruneOutcome();
   const retentionPruneFailed = lastRetentionPrune?.status === 'error';
 
-  if (!dbResult.ok || featureFlagsError !== undefined || retentionPruneFailed) {
+  if (!dbResult.ok || retentionPruneFailed) {
     return {
       status: 'degraded',
       agentRunning,
       db: dbResult.ok ? 'ok' : 'error',
       ...(!dbResult.ok && { dbError: dbResult.error }),
-      featureFlags,
-      ...(featureFlagsError !== undefined && { featureFlagsError }),
+      routers,
       ...(lastRetentionPrune !== undefined && { lastRetentionPrune }),
     };
   }
@@ -139,7 +128,7 @@ export async function getCoverageHealth(): Promise<CoverageHealthReport> {
     status: 'ok',
     agentRunning,
     db: 'ok',
-    featureFlags,
+    routers,
     ...(lastRetentionPrune !== undefined && { lastRetentionPrune }),
   };
 }

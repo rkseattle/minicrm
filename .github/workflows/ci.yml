@@ -1062,9 +1062,11 @@ jobs:
           # functional job, not e2e-serial.
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
-          # Same, for the query/ingestion routers (MINCRM-685). This job boots the server
-          # that serves those routers, so it needs the vars in parity with e2e-serial —
-          # NOT because any spec running here reads them directly.
+          # Same, for the query/ingestion routers (MINCRM-685). Load-bearing in this
+          # job specifically: coverage-health.spec.ts is NOT @serial, so it runs here,
+          # and COVH-01 asserts the health report's routers block equals
+          # {pipeline: true, mapping: true, reporting: true} — which only holds because
+          # these are set. Dropping any of them fails that spec, not just the routes.
           # coverage-mapping.spec.ts/coverage-pipeline.spec.ts are still @serial and run
           # in e2e-serial, which sets these independently — read that job's own comment
           # before assuming either job can drop them.

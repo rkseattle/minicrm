@@ -9,6 +9,7 @@
  */
 
 import 'dotenv/config';
+import { FEATURE_FLAG_KEYS } from '@minicrm/shared/schemas/featureFlagSchema.js';
 import {
   listFeatureFlags,
   getFeatureFlag,
@@ -118,6 +119,32 @@ describe('listFeatureFlags', () => {
   it('returns all seeded flags', async () => {
     const flags = await listFeatureFlags();
     expect(flags.length).toBeGreaterThanOrEqual(18);
+  });
+
+  /**
+   * AC-7 guard for MINCRM-685, inverted into something that can fail.
+   *
+   * The acceptance criterion is "no test asserts the removed flags exist",
+   * which on its own is satisfied by deleting assertions and would stay
+   * satisfied if someone re-seeded a coverage_* row tomorrow. This asserts the
+   * property that actually matters instead: internal Coverage/TIA tooling has
+   * no feature_flags row at all, because FeatureFlagsSettings.tsx renders every
+   * row it finds and a re-seeded one would be discoverable and toggleable from
+   * the product's own admin Settings page — the exact thing MINCRM-663 and
+   * MINCRM-685 removed. Gate coverage tooling at boot
+   * (server/src/coverageAgent/coverageBootGate.ts), never with a flag row.
+   *
+   * Checks both the registry and the table: a key can be added to
+   * FEATURE_FLAG_KEYS without a migration, or seeded by a migration without
+   * being in the registry, and either alone puts a toggle back in the UI.
+   */
+  it('has no coverage_* feature flag in the registry or the table (MINCRM-663, MINCRM-685)', async () => {
+    expect(FEATURE_FLAG_KEYS.filter((key) => key.startsWith('coverage_'))).toEqual([]);
+
+    const flags = await listFeatureFlags();
+    expect(flags.filter((f) => f.flag_key.startsWith('coverage_')).map((f) => f.flag_key)).toEqual(
+      [],
+    );
   });
 
   it('includes active_user_count (0 when no usage recorded)', async () => {
