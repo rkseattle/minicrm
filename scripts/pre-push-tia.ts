@@ -54,28 +54,64 @@ import {
   parseContainerCommitSha,
   type ContainerCommitSha,
 } from '../qa/scripts/container-commit-sha.js';
+// Same arrangement, same reason: the resolution rule needs a test runner, which
+// root scripts/ does not have. See that module's docblock. (MINCRM-698)
+import {
+  resolveTestStackDbEnv,
+  parseEnvFileContents,
+  DevDatabaseRefusedError,
+  DEV_DB_PORT,
+  TEST_DB_PORT,
+  type TestStackDbEnv,
+} from '../qa/scripts/test-stack-db-env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const BYPASS_LOG_PATH = resolve(REPO_ROOT, '.git', 'tia-prepush-bypass.log');
 
+/**
+ * Database coordinates as they existed in the REAL environment, captured before
+ * any .env file is loaded.
+ *
+ * resolveTestStackDbEnv() consults this rather than process.env, because after
+ * loadRootEnv() the two are not the same thing: root .env legitimately names the
+ * DEV database (DB_PORT=5432), and it is loaded for its secrets, not its
+ * database coordinates (see loadRootEnv's docblock). Reading the post-load value
+ * made the dev-port guard fire on a perfectly healthy setup — every push was
+ * refused with "DB_PORT=5432 is the dev database" while the test stack was up on
+ * 5433, because first-write-wins meant qa/e2e/.env's DB_PORT=5433 could never
+ * override root's.
+ *
+ * Snapshotting the pre-file environment keeps the guard's real contract — an
+ * operator who deliberately EXPORTS DB_PORT=5432 is still refused outright,
+ * which is the case it exists for — while a value that merely came from a file
+ * this hook chose to load cannot trigger it. (MINCRM-698)
+ */
+const EXPORTED_DB_PORT = process.env.DB_PORT;
+const EXPORTED_DB_HOST = process.env.DB_HOST;
+
 // Same "never overwrite an already-set var" pattern as scripts/e2e-setup.ts —
 // so a caller's own explicit env (e.g. CI, or a developer's shell export)
 // always wins over the .env file's defaults.
+//
+// Parsing and the precedence rule both live in qa/scripts/test-stack-db-env.ts
+// so they have a test runner. This function is the only thing that mutates
+// process.env, and it delegates rather than reimplementing — an earlier version
+// of this fix kept a tested COPY of the rule here, which would have gone on
+// passing while this loop drifted away from it. (MINCRM-698)
 function loadEnvFile(path: string): void {
+  let contents: string;
   try {
-    const contents = readFileSync(path, 'utf8');
-    for (const line of contents.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx < 0) continue;
-      const key = trimmed.slice(0, eqIdx);
-      const value = trimmed.slice(eqIdx + 1);
-      if (!(key in process.env)) process.env[key] = value;
-    }
+    contents = readFileSync(path, 'utf8');
   } catch {
-    // Optional — CI supplies vars via the environment directly.
+    return; // Optional — CI supplies vars via the environment directly.
+  }
+
+  const parsed = parseEnvFileContents(contents);
+  // process.env as the pre-existing layer: anything already set (a real export,
+  // or an earlier file) wins, which is what makes this first-write-wins.
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!(key in process.env)) process.env[key] = value;
   }
 }
 
@@ -90,14 +126,27 @@ function loadEnvFile(path: string): void {
  * and writes an empty storageState, then Playwright reports zero tests
  * collected) instead of actually gating the push — found while verifying
  * this push's own attestation fix actually ran real tests, not by
- * inspection alone. Root loaded first so an identically-named var in
- * qa/e2e/.env (there are none today, but the ordering is the safe
- * default) can't silently shadow it.
+ * inspection alone.
  *
  * Root .env is loaded for its secrets, NOT its database coordinates: it names the DEV
  * database (DB_NAME=minicrm, COVERAGE_DB_NAME=minicrm_coverage) on port 5432. Every
  * subprocess below is given testStackDbEnv() explicitly so those values can never
  * reach a child. (MINCRM-684)
+ *
+ * PRECEDENCE, and why it does not matter for DB coordinates. loadEnvFile is
+ * first-write-wins, so root .env shadows qa/e2e/.env for any key both define.
+ * An earlier version of this comment said "there are none today" — that is no
+ * longer true: qa/e2e/.env now defines DB_PORT=5433, DB_NAME=minicrm_e2e and
+ * COVERAGE_DB_NAME=minicrm_coverage_e2e, all of which root .env also defines
+ * with DEV values that therefore win.
+ *
+ * That shadowing is harmless BECAUSE nothing downstream reads DB coordinates
+ * out of process.env: testStackDbEnv() hardcodes the database names and takes
+ * port/host from EXPORTED_DB_PORT/EXPORTED_DB_HOST, the pre-file snapshot. Do
+ * not "fix" the shadowing by reordering these two loads or by making the second
+ * one override — qa/e2e/.env would then leak its DB_NAME into this process, and
+ * the guard's meaning would change from "an operator exported the dev port" to
+ * "some file mentioned it". Fix the reader, not the loader. (MINCRM-698)
  */
 function loadRootEnv(): void {
   loadEnvFile(resolve(REPO_ROOT, '.env'));
@@ -118,33 +167,36 @@ function loadRootEnv(): void {
  * full-suite run — defeating the point of test selection. .claude/gates/e2e-run.md's own
  * dump:coverage-map invocation passes the same value. (MINCRM-684)
  */
-const TEST_DB_PORT = '5433';
-const DEV_DB_PORT = '5432';
-
 /**
  * Resolves once at first use, following scripts/e2e-setup.ts's resolve-then-reject
  * shape rather than blindly overriding: an operator running the test stack on a
  * non-default port can still export DB_PORT, but the dev port is refused outright
  * because every child below reads or writes test data.
+ *
+ * "Export" is meant literally — this passes EXPORTED_DB_PORT (the environment as
+ * it was BEFORE any .env file was loaded), not process.env. Reading process.env
+ * here conflated a deliberate export with root .env's dev coordinates, which this
+ * hook loads for its secrets and explicitly does not want as DB coordinates, and
+ * refused every push on a healthy setup.
+ *
+ * The rule itself lives in qa/scripts/test-stack-db-env.ts so it has a test
+ * runner — root scripts/ has none. Only the reporting and the exit stay here.
+ * (MINCRM-698)
  */
-function resolveTestStackDbEnv(): Record<string, string> {
-  const dbPort = process.env.DB_PORT ?? TEST_DB_PORT;
-
-  if (dbPort === DEV_DB_PORT) {
-    console.error(
-      `[pre-push:tia] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
-        '  This hook runs E2E suites and rewrites coverage/TIA data. The test stack\n' +
-        `  listens on ${TEST_DB_PORT}: docker compose -f docker-compose.test.yml up -d`,
-    );
-    process.exit(1);
+function resolveTestStackDbEnvOrExit(): TestStackDbEnv {
+  try {
+    return resolveTestStackDbEnv(EXPORTED_DB_PORT, EXPORTED_DB_HOST);
+  } catch (err) {
+    if (err instanceof DevDatabaseRefusedError) {
+      console.error(
+        `[pre-push:tia] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
+          '  This hook runs E2E suites and rewrites coverage/TIA data. The test stack\n' +
+          `  listens on ${TEST_DB_PORT}: docker compose -f docker-compose.test.yml up -d`,
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  return {
-    DB_HOST: process.env.DB_HOST ?? 'localhost',
-    DB_PORT: dbPort,
-    DB_NAME: 'minicrm_e2e',
-    COVERAGE_DB_NAME: 'minicrm_coverage_e2e',
-  };
 }
 
 /**
@@ -152,9 +204,9 @@ function resolveTestStackDbEnv(): Record<string, string> {
  * and so never observe DB_PORT/DB_HOST from the .env files, silently resolving defaults
  * instead of the developer's configuration.
  */
-let cachedTestStackDbEnv: Record<string, string> | undefined;
-function testStackDbEnv(): Record<string, string> {
-  cachedTestStackDbEnv ??= resolveTestStackDbEnv();
+let cachedTestStackDbEnv: TestStackDbEnv | undefined;
+function testStackDbEnv(): TestStackDbEnv {
+  cachedTestStackDbEnv ??= resolveTestStackDbEnvOrExit();
   return cachedTestStackDbEnv;
 }
 

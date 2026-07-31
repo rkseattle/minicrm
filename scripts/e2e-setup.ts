@@ -22,8 +22,36 @@ import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+// Shared with scripts/pre-push-tia.ts so the two dev-port guards cannot drift,
+// and so the rule has a test runner (root scripts/ has none). (MINCRM-698)
+import {
+  resolveTestStackDbEnv,
+  DevDatabaseRefusedError,
+  DEV_DB_PORT,
+  TEST_DB_PORT,
+} from '../qa/scripts/test-stack-db-env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * DB coordinates as they existed in the REAL environment, captured BEFORE the
+ * root .env load below.
+ *
+ * resolveTestDbEnv() consults these rather than process.env, for the same reason
+ * pre-push-tia.ts does: root .env legitimately names the DEV database
+ * (DB_PORT=5432) and is loaded here for NODE_ENCRYPTION_KEY, not for its
+ * database coordinates. Reading the post-load value made the dev-port guard
+ * refuse `npm run e2e:setup` outright on a standard local setup — the command
+ * docs/operations.md documents as the bare invocation. It only appeared to work
+ * via .claude/gates/e2e-run.md, whose `env $(cat qa/e2e/.env ...)` prefix
+ * exports DB_PORT=5433 into the real environment first.
+ *
+ * The guard's real contract is preserved: an operator who deliberately EXPORTS
+ * DB_PORT=5432 is still refused, which is the case that exists to stop this
+ * script truncating the dev database (MINCRM-684). (MINCRM-698)
+ */
+const EXPORTED_DB_PORT = process.env.DB_PORT;
+const EXPORTED_DB_HOST = process.env.DB_HOST;
 
 // Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
 // to child scripts (e.g. seed:e2e-storage needs NODE_ENCRYPTION_KEY to encrypt secrets).
@@ -75,24 +103,27 @@ const MAILHOG_SMTP_PORT = '1025';
 const READINESS_TIMEOUT_MS = 30_000;
 const READINESS_POLL_INTERVAL_MS = 1_000;
 
-/** Host port of the isolated test Postgres (docker-compose.test.yml). */
-const TEST_DB_PORT = '5433';
-/** Host port of the DEV Postgres. This script must never connect to it. */
-const DEV_DB_PORT = '5432';
-
 /**
  * Resolves the DB connection settings injected into every child process below.
  *
- * Defaults DB_PORT to the TEST stack (5433), never 5432. This script loads the root
- * .env (above) for NODE_ENCRYPTION_KEY, which also carries DB_NAME=minicrm — and
- * neither .env nor qa/e2e/.env sets DB_PORT. With a 5432 fallback, every child here
- * would connect to the dev database, and resetE2eData() runs TRUNCATE audit_log
- * CASCADE plus mass DELETEs. That is precisely how the dev database was wiped
- * (MINCRM-684).
+ * Defaults DB_PORT to the TEST stack (5433), never 5432. With a 5432 fallback, every
+ * child here would connect to the dev database, and resetE2eData() runs TRUNCATE
+ * audit_log CASCADE plus mass DELETEs. That is precisely how the dev database was
+ * wiped (MINCRM-684).
  *
- * Explicitly rejects DB_PORT=5432 rather than silently proceeding: a caller that sets
- * it has almost certainly sourced the dev .env by mistake, and continuing would destroy
- * their data. DB_NAME is forced to the test databases at each call site.
+ * Explicitly rejects an EXPORTED DB_PORT=5432 rather than silently proceeding: a
+ * caller that exports it has almost certainly sourced the dev .env by mistake, and
+ * continuing would destroy their data. DB_NAME is forced to the test databases at
+ * each call site.
+ *
+ * "Exported" is literal — this reads the pre-.env snapshot, not process.env. An
+ * earlier version read process.env and so could not tell a deliberate export from
+ * root .env's own DB_PORT=5432, which this script loads for NODE_ENCRYPTION_KEY.
+ * That refused every bare `npm run e2e:setup`. The docblock also asserted "neither
+ * .env nor qa/e2e/.env sets DB_PORT" — both set it today. (MINCRM-698)
+ *
+ * The port/guard rule itself lives in qa/scripts/test-stack-db-env.ts, shared with
+ * pre-push-tia.ts, so the two cannot drift and the rule has a test runner.
  */
 function resolveTestDbEnv(): {
   DB_USER: string;
@@ -100,24 +131,29 @@ function resolveTestDbEnv(): {
   DB_HOST: string;
   DB_PORT: string;
 } {
-  const dbPort = process.env.DB_PORT ?? TEST_DB_PORT;
-
-  if (dbPort === DEV_DB_PORT) {
-    console.error(
-      `[e2e:setup] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
-        '  This script truncates and reseeds every table it touches. Running it against\n' +
-        `  the dev stack destroys your data. The test stack listens on ${TEST_DB_PORT}:\n` +
-        '    docker compose -f docker-compose.test.yml up -d\n' +
-        '  Unset DB_PORT (or set it to 5433) and re-run.',
-    );
-    process.exit(1);
+  let resolved;
+  try {
+    resolved = resolveTestStackDbEnv(EXPORTED_DB_PORT, EXPORTED_DB_HOST);
+  } catch (err) {
+    if (err instanceof DevDatabaseRefusedError) {
+      console.error(
+        `[e2e:setup] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
+          '  This script truncates and reseeds every table it touches. Running it against\n' +
+          `  the dev stack destroys your data. The test stack listens on ${TEST_DB_PORT}:\n` +
+          '    docker compose -f docker-compose.test.yml up -d\n' +
+          '  Unset DB_PORT (or set it to 5433) and re-run.',
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
   return {
     DB_USER: process.env.DB_USER ?? 'minicrm',
     DB_PASSWORD: process.env.DB_PASSWORD ?? 'password',
-    DB_HOST: process.env.DB_HOST ?? 'localhost',
-    DB_PORT: dbPort,
+    // Host and port both come from the snapshot-backed resolver, so neither can
+    // be inherited from root .env's dev coordinates.
+    DB_HOST: resolved.DB_HOST,
+    DB_PORT: resolved.DB_PORT,
   };
 }
 
