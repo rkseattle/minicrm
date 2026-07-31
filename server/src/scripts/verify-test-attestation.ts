@@ -68,7 +68,16 @@ import {
 /** Results older than this are rejected as stale, regardless of SHA match — an anti-cheat guard against a results.xml left over from a much earlier run of the same commit. */
 const DEFAULT_MAX_AGE_MINUTES = 120;
 
-interface CliArgs {
+/**
+ * Exported so verifyTestAttestation.test.ts's argument builder names this type
+ * rather than relying on structural typing. The builder takes Partial<CliArgs>
+ * and spreads over a complete literal, so a newly REQUIRED field would fail it
+ * either way; what naming the type adds is that the builder's own signature
+ * stays readable as "the arguments verifyAttestation takes", and a field
+ * RENAMED here surfaces at the builder instead of silently becoming an excess
+ * property in the overrides. (MINCRM-691)
+ */
+export interface CliArgs {
   resultsPath: string;
   selectionPath: string | undefined;
   sha: string;
@@ -108,11 +117,16 @@ function parseArgs(argv: readonly string[]): CliArgs {
 }
 
 // No re-export of junitXml.js's surface here. An earlier version of this split
-// kept one "so the existing public surface keeps working", but nothing imports
-// this module — it is only ever run as a CLI (server/package.json's
-// verify:test-attestation, scripts/pre-push-tia.ts, tia-record-mode.yml), and its
-// test file imports junitXml.js directly. A pass-through export with no consumer
-// is just a second name for the same thing. (MINCRM-689)
+// kept one "so the existing public surface keeps working", but no PRODUCTION
+// code imports this module — it is only ever run as a CLI (server/package.json's
+// verify:test-attestation, scripts/pre-push-tia.ts, tia-record-mode.yml). A
+// pass-through export with no consumer is just a second name for the same thing.
+// (MINCRM-689)
+//
+// MINCRM-691 added the one importer: verifyTestAttestation.test.ts, which pulls
+// verifyAttestation/formatFailureOutput/readSelectionFiles in directly to test
+// them. That does not revive the case for re-exporting junitXml.js's surface —
+// the same test file imports those from junitXml.js, where they live.
 
 // ── Attestation result ───────────────────────────────────────────────────────
 
@@ -141,7 +155,14 @@ export interface AttestationResult {
   ranFileCount: number;
 }
 
-function readSelectionFiles(selectionPath: string | undefined): string[] | null {
+/**
+ * Exported for direct unit testing (MINCRM-691, AC 4). Its `full-suite`
+ * short-circuit and its catch-all fallback are both decision points of the gate
+ * — a null return silently disables the run-vs-selection reconciliation with no
+ * entry in `reasons` — so they are verified here rather than only inferred from
+ * verifyAttestation's output.
+ */
+export function readSelectionFiles(selectionPath: string | undefined): string[] | null {
   if (!selectionPath) return null;
   try {
     const raw = readFileSync(selectionPath, 'utf-8');
@@ -276,48 +297,105 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
   };
 }
 
-function formatFailureOutput(result: AttestationResult): string {
-  const lines: string[] = [];
-  if (result.reasons.includes('results-file-missing')) {
-    lines.push('No results file found — was the test run actually executed?');
-  }
-  if (result.reasons.includes('results-file-stale')) {
-    lines.push(
+/**
+ * The operator-facing explanation for each failure reason — the text a CI
+ * reader actually sees under `[verify-test-attestation] FAILED:`.
+ *
+ * A `Record` keyed on the reason union rather than a chain of `if`s, so that
+ * **adding a reason without a message is a compile error at this declaration**
+ * rather than a silently empty line in CI. That is the property MINCRM-691's
+ * AC 3 asks for. Note the limit of the guarantee: the type forces an entry to
+ * EXIST, but cannot force its body to be non-empty — a `() => []` would still
+ * type-check. That residue is covered at runtime by verifyTestAttestation.test.ts,
+ * which asserts every reason yields non-empty output while iterating
+ * ATTESTATION_FAILURE_REASONS below — this map's own keys, so the check cannot
+ * fall behind a newly added reason.
+ *
+ * Declaration order is the emission order (see formatFailureOutput). Keep it
+ * aligned with the order verifyAttestation pushes reasons, so CI output reads
+ * in the order the checks ran.
+ *
+ * These strings are also listed in prose in docs/dev/coverage.md under "Reading
+ * a failed run", for operators reading a red CI job. That list is held to this
+ * one by a test (verifyTestAttestation.test.ts, "documents every failure reason
+ * in docs/dev/coverage.md"), so adding a reason here without documenting it
+ * fails the suite rather than drifting quietly — it had already drifted by three
+ * reasons before MINCRM-691.
+ */
+const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationResult) => string[]> =
+  {
+    'results-file-missing': () => ['No results file found — was the test run actually executed?'],
+    'results-file-stale': () => [
       'Results file is older than the staleness window — re-run the tests before pushing/merging.',
-    );
-  }
-  if (result.reasons.includes('test-failures')) {
-    lines.push(`${result.failedTests.length} test(s) failed:`);
-    for (const t of result.failedTests) {
-      lines.push(`  - ${t.classname} :: ${t.name}${t.message ? ` — ${t.message}` : ''}`);
-    }
-  }
-  if (result.reasons.includes('skipped-tests')) {
-    lines.push(
+    ],
+    'test-failures': (result) => [
+      `${result.failedTests.length} test(s) failed:`,
+      ...result.failedTests.map(
+        (t) => `  - ${t.classname} :: ${t.name}${t.message ? ` — ${t.message}` : ''}`,
+      ),
+    ],
+    'skipped-tests': (result) => [
       `${result.skippedTests.length} test(s) skipped in every project that ran (never ran an assertion anywhere):`,
-    );
-    for (const t of result.skippedTests) {
-      lines.push(`  - ${t.classname} :: ${t.name}`);
-    }
-  }
-  if (result.reasons.includes('results-file-unparseable')) {
-    lines.push(
+      ...result.skippedTests.map((t) => `  - ${t.classname} :: ${t.name}`),
+    ],
+    'results-file-unparseable': (result) => [
       `Results file could not be fully parsed: the reporter declares ${result.totalTests} test(s) but ${result.parsedTestCount} row(s) were recovered. ` +
         'This is a parser/reporter disagreement, NOT a test outcome — the run may have passed or failed, and this gate cannot tell which. ' +
         'Check the results XML for a truncated or unexpectedly shaped document before trusting any result derived from it.',
-    );
-  }
-  if (result.reasons.includes('no-session-attribution')) {
-    lines.push(
+    ],
+    'no-session-attribution': () => [
       'No coverage session attribution found for this commit SHA — cannot verify which tests actually ran against it. Ensure COVERAGE_SESSION_MANAGEMENT is enabled for this run.',
-    );
-  }
-  if (result.reasons.includes('missing-required-tests')) {
-    lines.push(`${result.missingRequiredFiles.length} required test file(s) did not run:`);
-    for (const f of result.missingRequiredFiles) {
-      lines.push(`  - ${f}`);
-    }
-  }
+    ],
+    'missing-required-tests': (result) => [
+      `${result.missingRequiredFiles.length} required test file(s) did not run:`,
+      ...result.missingRequiredFiles.map((f) => `  - ${f}`),
+    ],
+  };
+
+/**
+ * Every failure reason, in emission order, derived from FAILURE_MESSAGES rather
+ * than hand-listed — so there is exactly ONE place a reason must be registered
+ * (the map above, which the union already forces to be complete) and no second
+ * list that can quietly fall behind it.
+ *
+ * Exported so the test that asserts each reason renders non-empty text iterates
+ * the real keys. An earlier version of that test kept its own copy of this list
+ * plus a compile-time guard written in the wrong direction, which asserted only
+ * that its members were valid reasons — never that they covered the union — so
+ * a newly added reason silently dropped out of coverage while still type-checking.
+ * Deriving the list removes the class rather than repairing the guard.
+ * (MINCRM-691)
+ */
+// The cast is safe because FAILURE_MESSAGES is typed
+// Record<AttestationFailureReason, …>: every key is a union member by
+// construction, and the map is a module-private literal that nothing mutates at
+// runtime. TypeScript widens Object.keys to string[] regardless — it cannot
+// express "keys of a Record are exactly the key type" — so the cast recovers
+// information the type system already guarantees rather than asserting anything
+// new.
+export const ATTESTATION_FAILURE_REASONS = Object.keys(
+  FAILURE_MESSAGES,
+) as readonly AttestationFailureReason[];
+
+/**
+ * Renders a failed attestation as the human-readable block written to stderr.
+ *
+ * Iterates FAILURE_MESSAGES' own keys and filters by `reasons.includes(...)` —
+ * deliberately NOT iterating `result.reasons`. The distinction is invisible for
+ * the results verifyAttestation produces today (it pushes in this same order and
+ * never pushes a duplicate) but this function is exported and takes an arbitrary
+ * AttestationResult: iterating `reasons` would make section order follow the
+ * caller's array and would print a repeated reason twice. Keying off the map
+ * preserves the original if-chain's semantics — fixed order, each section at
+ * most once — for any input.
+ *
+ * Exported for direct unit testing (MINCRM-691, AC 3).
+ */
+export function formatFailureOutput(result: AttestationResult): string {
+  const reasons = new Set(result.reasons);
+  const lines = ATTESTATION_FAILURE_REASONS.filter((reason) => reasons.has(reason)).flatMap(
+    (reason) => FAILURE_MESSAGES[reason](result),
+  );
   return lines.join('\n');
 }
 
