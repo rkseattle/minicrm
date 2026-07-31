@@ -2,7 +2,7 @@
  * Integration tests for auditEventBus and maskAuditEvent. (MINCRM-375)
  *
  * Covers:
- *  - auditEventBus emits 'audit_event' within 100ms of an audit_log INSERT
+ *  - auditEventBus emits 'audit_event' on an audit_log INSERT
  *  - auditEventBus.stop() releases the connection without throwing
  *  - auditEventBus does not consume a pool connection (pool idle count unchanged)
  *  - maskAuditEvent returns the event unchanged when record has no GDPR erasure
@@ -101,8 +101,21 @@ function waitForEvent(recordId: string, timeoutMs: number): Promise<AuditNotific
 }
 
 describe('auditEventBus', () => {
-  it('emits audit_event within 100ms of an audit_log INSERT', async () => {
-    const eventPromise = waitForEvent(RECORD_ID_EMIT, 100);
+  // 5s, raised from 100ms. What this test exists to prove is that the
+  // LISTEN/NOTIFY bus emits AT ALL on an audit_log INSERT — the millisecond
+  // figure was an arbitrary test-local bound, not a product SLA (no 100ms
+  // requirement exists in docs/ or auditEventBus.ts). It takes ~15ms on an idle
+  // machine, but it is a real Postgres round-trip running in the `parallel`
+  // project alongside five other DB-bound workers, and on a contended CI runner
+  // it exceeded 100ms and failed the job (PR #369).
+  //
+  // A latency assertion that fails under load is testing the runner, not the
+  // bus. The generous ceiling still catches the regression that matters — a bus
+  // that never emits — while a genuine latency budget, if one is ever wanted,
+  // belongs in a perf test with a controlled environment rather than here.
+  // (MINCRM-691)
+  it('emits audit_event on an audit_log INSERT', async () => {
+    const eventPromise = waitForEvent(RECORD_ID_EMIT, 5_000);
 
     const client = await pool.connect();
     try {
