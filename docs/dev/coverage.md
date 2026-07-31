@@ -16,7 +16,7 @@ Runtime code coverage collection from the live MiniCRM stack — backend and fro
 | `server/src/controllers/coverageController.ts`                   | Request/response shaping for the control API                                                                                                                                                                                                          |
 | `server/src/routes/coverage.ts`                                  | `@openapi` routes, mounted at `/api/v1/admin/coverage`                                                                                                                                                                                                |
 | `shared/schemas/coverageSchema.ts`                               | Zod request/response schemas, shared server+client+qa                                                                                                                                                                                                 |
-| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeds the `coverage_instrumentation` feature flag, off by default                                                                                                                                                                                     |
+| `db/migrations/156_add_coverage_instrumentation_flag.js`         | Seeded the `coverage_instrumentation` feature flag; removed by migration 161 (MINCRM-663) in favor of the `COVERAGE_INSTRUMENTATION` env var                                                                                                          |
 | `client/vite.config.ts`                                          | `vite-plugin-istanbul`, added to `plugins` only when `COVERAGE=true`                                                                                                                                                                                  |
 | `qa/e2e/framework/coverageAgent/browser-coverage-agent.ts`       | Client-side: pulls `window.__coverage__`, submits to the dump endpoint                                                                                                                                                                                |
 | `qa/e2e/framework/coverageAgent/coverage-control-client.ts`      | Reference client for the backend verbs (reset/snapshot/dump)                                                                                                                                                                                          |
@@ -29,47 +29,47 @@ Note: framework-layer coverage files live under `coverageAgent/`, not `coverage/
 
 ### Phase 2 — Session management files
 
-| Path                                                                | Purpose                                                                                                                   |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `server/src/middleware/correlationId.ts`                            | Reads `x-coverage-correlation-id` into `req.coverageCorrelationId`                                                        |
-| `server/src/services/coverageSessionService.ts`                     | `CoverageSession` CRUD + dump attribution — unaudited (see [Coverage Database](#coverage-database))                       |
-| `server/src/controllers/coverageSessionController.ts`               | Request/response shaping for the session control API                                                                      |
-| `server/src/routes/coverageSessions.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/sessions`                                                           |
-| `shared/schemas/coverageSessionSchema.ts`                           | Zod schemas for sessions + the `CORRELATION_ID_HEADER` constant                                                           |
-| `db/migrations/157_add_coverage_sessions.js`                        | Seeds the `coverage_session_management` feature flag (table creation moved — see [Coverage Database](#coverage-database)) |
-| `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)                                                            |
-| `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI                                                         |
-| `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)                                                                |
+| Path                                                                | Purpose                                                                                                                                                                                                     |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/middleware/correlationId.ts`                            | Reads `x-coverage-correlation-id` into `req.coverageCorrelationId`                                                                                                                                          |
+| `server/src/services/coverageSessionService.ts`                     | `CoverageSession` CRUD + dump attribution — unaudited (see [Coverage Database](#coverage-database))                                                                                                         |
+| `server/src/controllers/coverageSessionController.ts`               | Request/response shaping for the session control API                                                                                                                                                        |
+| `server/src/routes/coverageSessions.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/sessions`                                                                                                                                             |
+| `shared/schemas/coverageSessionSchema.ts`                           | Zod schemas for sessions + the `CORRELATION_ID_HEADER` constant                                                                                                                                             |
+| `db/migrations/157_add_coverage_sessions.js`                        | Seeded the `coverage_session_management` feature flag; removed by migration 161 (MINCRM-663) in favor of `COVERAGE_SESSION_MANAGEMENT` (table creation moved — see [Coverage Database](#coverage-database)) |
+| `qa/e2e/framework/coverageAgent/coverage-session-control-client.ts` | Reference client for the session verbs (start/end/record-dump)                                                                                                                                              |
+| `client/src/api/coverageSessions.ts`                                | Axios wrapper + `COVERAGE_SESSIONS_QUERY_KEY` for the recorder UI                                                                                                                                           |
+| `client/src/pages/admin/CoverageSessionRecorderPage.tsx`            | Manual-testing session recorder control panel (MINCRM-611)                                                                                                                                                  |
 
 ### Phase 3 — Coverage data pipeline files
 
-| Path                                                                | Purpose                                                                                                                   |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `server/src/coverageAgent/pipeline/coverageSymbolicationService.ts` | Resolves raw dumps (both formats) to real source (MINCRM-615)                                                             |
-| `server/src/coverageAgent/pipeline/normalizedCoverageUnit.ts`       | `NormalizedCoverageUnit`/`SymbolicationResult` internal types                                                             |
-| `server/src/coverageAgent/pipeline/coverageIngestionService.ts`     | Ties symbolication + storage together for a single dumpId (MINCRM-614)                                                    |
-| `server/src/services/coverageModelService.ts`                       | Owns all DB access for `coverage_units` (MINCRM-616), via `coverageDb.ts`                                                 |
-| `server/src/controllers/coveragePipelineController.ts`              | Request/response shaping for the ingestion trigger endpoint                                                               |
-| `server/src/routes/coveragePipeline.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/pipeline`                                                           |
-| `shared/schemas/coveragePipelineSchema.ts`                          | Zod request/response schemas for the pipeline                                                                             |
-| `db/migrations/158_add_coverage_pipeline.js`                        | Seeds the `coverage_pipeline_ingestion` feature flag (table creation moved — see [Coverage Database](#coverage-database)) |
-| `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                                                                               |
-| `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end                                                              |
+| Path                                                                | Purpose                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/pipeline/coverageSymbolicationService.ts` | Resolves raw dumps (both formats) to real source (MINCRM-615)                                                                                                                                                           |
+| `server/src/coverageAgent/pipeline/normalizedCoverageUnit.ts`       | `NormalizedCoverageUnit`/`SymbolicationResult` internal types                                                                                                                                                           |
+| `server/src/coverageAgent/pipeline/coverageIngestionService.ts`     | Ties symbolication + storage together for a single dumpId (MINCRM-614)                                                                                                                                                  |
+| `server/src/services/coverageModelService.ts`                       | Owns all DB access for `coverage_units` (MINCRM-616), via `coverageDb.ts`                                                                                                                                               |
+| `server/src/controllers/coveragePipelineController.ts`              | Request/response shaping for the ingestion trigger endpoint                                                                                                                                                             |
+| `server/src/routes/coveragePipeline.ts`                             | `@openapi` routes, mounted at `/api/v1/admin/coverage/pipeline`                                                                                                                                                         |
+| `shared/schemas/coveragePipelineSchema.ts`                          | Zod request/response schemas for the pipeline                                                                                                                                                                           |
+| `db/migrations/158_add_coverage_pipeline.js`                        | Seeded the `coverage_pipeline_ingestion` feature flag; removed by migration 163 (MINCRM-685) in favor of the `COVERAGE_PIPELINE_INGESTION` env var (table creation moved — see [Coverage Database](#coverage-database)) |
+| `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`        | Reference client for the ingestion endpoint                                                                                                                                                                             |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/`           | Functional spec exercising the ingestion endpoint end to end                                                                                                                                                            |
 
 ### Phase 4 — Mapping engine files
 
-| Path                                                                 | Purpose                                                                                                          |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `server/src/coverageAgent/pipeline/structuralKeyService.ts`          | Derives `name#normalizedBodyHash` structural unit keys (MINCRM-619)                                              |
-| `server/src/services/coverageMappingService.ts`                      | Owns all DB access for `coverage_test_links`, via `coverageDb.ts` (MINCRM-618)                                   |
-| `server/src/coverageAgent/pipeline/coverageReconciliationService.ts` | Confidence/freshness scoring + build-time reconciliation (MINCRM-620)                                            |
-| `server/src/controllers/coverageMappingController.ts`                | Request/response shaping for the mapping query endpoints (MINCRM-621)                                            |
-| `server/src/routes/coverageMapping.ts`                               | `@openapi` routes, mounted at `/api/v1/admin/coverage/mapping`                                                   |
-| `shared/schemas/coverageMappingSchema.ts`                            | Zod request/response schemas for the mapping query API                                                           |
-| `db/migrations/159_add_coverage_mapping_query_flag.js`               | Seeds the `coverage_mapping_query` feature flag (product database)                                               |
-| `qa/migrations/001_coverage_baseline.js`                             | `coverage_test_links` table + `coverage_units.confidence_score`/`last_reconciled_at` columns (coverage database) |
-| `qa/e2e/framework/coverageAgent/coverage-mapping-client.ts`          | Reference client for the mapping query endpoints                                                                 |
-| `qa/e2e/tests/apps/minicrm/functional/coverage-mapping/`             | Functional spec exercising the mapping query API end to end                                                      |
+| Path                                                                 | Purpose                                                                                                                      |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `server/src/coverageAgent/pipeline/structuralKeyService.ts`          | Derives `name#normalizedBodyHash` structural unit keys (MINCRM-619)                                                          |
+| `server/src/services/coverageMappingService.ts`                      | Owns all DB access for `coverage_test_links`, via `coverageDb.ts` (MINCRM-618)                                               |
+| `server/src/coverageAgent/pipeline/coverageReconciliationService.ts` | Confidence/freshness scoring + build-time reconciliation (MINCRM-620)                                                        |
+| `server/src/controllers/coverageMappingController.ts`                | Request/response shaping for the mapping query endpoints (MINCRM-621)                                                        |
+| `server/src/routes/coverageMapping.ts`                               | `@openapi` routes, mounted at `/api/v1/admin/coverage/mapping`                                                               |
+| `shared/schemas/coverageMappingSchema.ts`                            | Zod request/response schemas for the mapping query API                                                                       |
+| `db/migrations/159_add_coverage_mapping_query_flag.js`               | Seeded the `coverage_mapping_query` feature flag; removed by migration 163 (MINCRM-685) in favor of `COVERAGE_MAPPING_QUERY` |
+| `qa/migrations/001_coverage_baseline.js`                             | `coverage_test_links` table + `coverage_units.confidence_score`/`last_reconciled_at` columns (coverage database)             |
+| `qa/e2e/framework/coverageAgent/coverage-mapping-client.ts`          | Reference client for the mapping query endpoints                                                                             |
+| `qa/e2e/tests/apps/minicrm/functional/coverage-mapping/`             | Functional spec exercising the mapping query API end to end                                                                  |
 
 ### Phase 5 — Change impact analysis & test selection files
 
@@ -94,7 +94,7 @@ and the safety-net/scorer decoupling invariant.
 | `server/src/coverageAgent/coveragePolicyConfig.ts`          | Centralizes granularity/retention/safety-threshold config behind `resolveCoveragePolicy()` (see [Policy Configuration](#policy-configuration-mincrm-637))        |
 | `server/src/coverageAgent/coverageRetentionScheduler.ts`    | Daily cron entry point for `pruneCoverageUnits` + `pruneCoverageSessions` (see [Scheduled retention pruning](#scheduled-retention-pruning))                      |
 | `qa/migrations/005_coverage_test_links_last_seen_at_idx.js` | Index supporting the retention prune's `coverage_test_links` query (coverage database)                                                                           |
-| `server/src/services/coverageHealthService.ts`              | `getCoverageHealth()` — agent/DB/feature-flag status (see [`GET /api/v1/admin/coverage/health`](#get-apiv1admincoveragehealth))                                  |
+| `server/src/services/coverageHealthService.ts`              | `getCoverageHealth()` — agent/DB/router-registration status (see [`GET /api/v1/admin/coverage/health`](#get-apiv1admincoveragehealth))                           |
 | `server/src/controllers/coverageHealthController.ts`        | Maps health status to `200`/`503`                                                                                                                                |
 
 ### Phase 6 — Reporting & gap analysis files
@@ -107,7 +107,7 @@ and the safety-net/scorer decoupling invariant.
 | `server/src/controllers/coverageReportingController.ts`  | Request/response shaping for the reporting query endpoints                                                                                   |
 | `server/src/routes/coverageReporting.ts`                 | `@openapi` routes, mounted at `/api/v1/admin/coverage/reporting`                                                                             |
 | `shared/schemas/coverageReportingSchema.ts`              | Zod request/response schemas for the reporting query API                                                                                     |
-| `db/migrations/160_add_coverage_reporting_query_flag.js` | Seeds the `coverage_reporting_query` feature flag (product database)                                                                         |
+| `db/migrations/160_add_coverage_reporting_query_flag.js` | Seeded the `coverage_reporting_query` feature flag; removed by migration 163 (MINCRM-685) in favor of `COVERAGE_REPORTING_QUERY`             |
 | `coverage-dashboard/`                                    | Standalone React/Vite app — new npm workspace, see [Standalone Dashboard App](#standalone-dashboard-app-coverage-dashboard-mincrm-629) below |
 
 ## Reporting & Gap Analysis (MINCRM-629/630/631, `pr-tia-7`)
@@ -117,7 +117,7 @@ existing `coverage_units`/`coverage_test_links` tables, mounted at
 `/api/v1/admin/coverage/reporting/*` — the intended (and only) caller is the
 standalone coverage-dashboard app scaffolded alongside this API (a new
 `coverage-dashboard` npm workspace; see that workspace's own README). Gated by
-`authenticate → coverageAccessGate → requireFeatureEnabled('coverage_reporting_query')`
+`authenticate → coverageAccessGate`, with the whole router registered only when `COVERAGE_REPORTING_QUERY` is `'true'` at boot
 ([Access Control](#access-control-mincrm-637)), mounted before the general `/admin/coverage`
 router — same more-specific-before-general
 precedent as `/coverage/sessions`, `/coverage/pipeline`, and `/coverage/mapping`.
@@ -243,15 +243,19 @@ the login requirement end-to-end:
   `coveragePipeline.ts` and `coverage.ts` do NOT opt in: they ingest and manage real
   coverage data and stay fully gated regardless.
 
-  The **feature flag is not dropped** (MINCRM-694). It narrows to
-  `requireFeatureEnabledOrgWide`, which consults the flag's org-wide `enabled` column
-  and `enable_at` scheduling. The user-scoped rules — per-user force overrides,
-  per-team overrides, role rollout percentages (`isFlagEnabledForUser`) — genuinely
-  cannot be evaluated with no `req.user`, but the org-wide kill switch can, and
-  discarding it meant `coverage_mapping_query`/`coverage_reporting_query` read as
-  enabled no matter what was stored. Note both flags seed `enabled = false`, so a fresh
-  database needs them switched on before the dashboard returns data rather than
-  `403 FEATURE_DISABLED`.
+  Since MINCRM-685 there is no feature-flag step left to keep. MINCRM-694 had narrowed
+  it to `requireFeatureEnabledOrgWide` rather than dropping it, because the flag's
+  org-wide `enabled` column was the last gate on an unauthenticated request here; the
+  rows are now deleted and each router's boot-time env var takes over that job. That is
+  harder to defeat than a mutable row an admin could flip from the product UI, at the
+  cost of needing a restart rather than a toggle to change.
+
+  **Set the env vars, not a flag row.** A server without `COVERAGE_REPORTING_QUERY` and
+  `COVERAGE_MAPPING_QUERY` set to `'true'` at boot answers `404` on every dashboard
+  request — the routes do not exist — rather than the `403 FEATURE_DISABLED` older
+  revisions of this doc described. If the dashboard shows nothing, check those two vars
+  first; `GET /admin/coverage/health`'s `routers` block reports exactly what
+  registered.
 
 - **`VITE_COVERAGE_DASHBOARD_NO_AUTH=true`** on this app's own build makes `useAuth()`
   (`src/hooks/useAuth.ts`) report `{ user: null, isAuthenticated: true, isLoading:
@@ -275,7 +279,7 @@ In `app.ts`, alongside the other admin routers:
 app.use(`${API_V1}/admin/coverage`, coverageRoutes);
 ```
 
-All routes: `authenticate → coverageAccessGate → asyncHandler(handler)` (`coverage.ts`/`coverageSessions.ts`), or with an additional `requireFeatureEnabled(<flag>)` step for `coveragePipeline.ts`/`coverageMapping.ts`/`coverageReporting.ts`. See [Access Control](#access-control-mincrm-637) below for what `coverageAccessGate` does.
+All routes: `authenticate → coverageAccessGate → asyncHandler(handler)`, except that `coverageReporting.ts`, `coverageMapping.ts` and `coverageSessions.ts` compose that chain through `buildCoverageAccessGate`, which drops both steps under `COVERAGE_DASHBOARD_NO_AUTH` (see [No-login mode](#no-login-mode-mincrm-636637)). Every one of the five routers additionally registers its routes only when its own boot-time env var is `'true'` — the one exception being `coverage.ts`'s `GET /health`, registered unconditionally. There is no per-request feature-flag step on any of them since MINCRM-685. See [Access Control](#access-control-mincrm-637) below for what `coverageAccessGate` does.
 
 ## Access Control (MINCRM-637)
 
@@ -287,14 +291,18 @@ behaves identically to `requireRole('admin')`. When
 capability (`Capability.CoverageAdmin`, `shared/schemas/capabilitySchema.ts`),
 seeded to the built-in `admin` role only (`db/migrations/162_add_coverage_admin_capability.js`).
 
-**Two distinct gates on `coverage.ts`/`coverageSessions.ts`:** those two routers
-additionally register zero routes at all unless `COVERAGE_INSTRUMENTATION`/
-`COVERAGE_SESSION_MANAGEMENT` is `true` at process boot (see Mounting above) — the
-capability-gating flag has no observable effect on those two routers in a deployment
-where the underlying env var is unset, since there is nothing registered for it to
-gate. `coveragePipeline.ts`/`coverageMapping.ts`/`coverageReporting.ts` are always
-registered, so `coverageAccessGate` is the sole access-control mechanism on those
-three routers.
+**Two distinct gates on every coverage router:** each one registers zero routes at
+all — with one deliberate exception, `coverage.ts`'s own `GET /health`, registered
+unconditionally so it stays reachable when everything else is off (see
+[Health & Observability](#health--observability-mincrm-637)) — unless its own env var
+(`COVERAGE_INSTRUMENTATION`, `COVERAGE_SESSION_MANAGEMENT`, `COVERAGE_MAPPING_QUERY`,
+`COVERAGE_REPORTING_QUERY`, `COVERAGE_PIPELINE_INGESTION`) is `true` at process boot — see `server/src/coverageAgent/coverageBootGate.ts`, which owns
+that list and the `registerRoutesIfEnabled` helper all five call. In a deployment where
+a router's env var is unset, `coverageAccessGate` and the capability-gating flag have no
+observable effect on it, because there is nothing registered for them to gate: every
+path 404s rather than 403ing. Where routes ARE registered, `coverageAccessGate` is the
+sole access-control mechanism — MINCRM-685 removed the last per-request feature-flag
+step (see [Policy Configuration](#policy-configuration-mincrm-637)).
 
 **`coverage:admin` is deliberately excluded from `RolesSettings.tsx`'s
 `CAPABILITY_GROUPS` picker** — assignable only via direct API call or migration,
@@ -332,25 +340,37 @@ cases for the exact behavior on both the cookie- and bearer-authenticated paths.
 
 ## Policy Configuration (MINCRM-637)
 
-The framework's config surface — three live `feature_flags` rows plus a set of
-boot-time env vars — is centralized behind `resolveCoveragePolicy()`
-(`server/src/coverageAgent/coveragePolicyConfig.ts`), resolved once at boot
-(`server.ts`) or once at script start (`select-tests.ts`), never re-read
-per-request. `.env.example`'s "Coverage/TIA Policy Configuration" section
-documents the same surface for local setup.
+The framework's config surface is entirely boot-time env vars, read in two places for
+two different jobs:
 
-### Feature flags (product database, per-request DB read via `requireFeatureEnabled`)
+- **Route-registration gates** (the five `COVERAGE_*` vars below that decide whether a
+  router registers at all) are read at MODULE EVALUATION, inside each route file, via
+  `registerRoutesIfEnabled` (`server/src/coverageAgent/coverageBootGate.ts`). They are
+  deliberately NOT resolved through `resolveCoveragePolicy()` — that decision has to
+  happen as the module loads, before anything could call a resolver.
+- **Policy knobs** (granularity, retention, the TIA safety-net thresholds) are
+  centralized behind `resolveCoveragePolicy()`
+  (`server/src/coverageAgent/coveragePolicyConfig.ts`), resolved once at boot
+  (`server.ts`) or once at script start (`select-tests.ts`), never re-read per-request.
 
-| Flag key                      | Gates                            | Migration |
-| ----------------------------- | -------------------------------- | --------- |
-| `coverage_pipeline_ingestion` | `POST /coverage/pipeline/ingest` | 158       |
-| `coverage_mapping_query`      | `GET /coverage/mapping/*`        | 159       |
-| `coverage_reporting_query`    | `GET /coverage/reporting/*`      | 160       |
+`.env.example` documents both for local setup, in two places: the route gates sit under
+its "Coverage/TIA Database" section, the policy knobs under "Coverage/TIA Policy
+Configuration".
 
-Two prior flags — `coverage_instrumentation` and `coverage_session_management` —
-were removed by migration 161 (MINCRM-663); those two routers now gate their
-entire route _registration_ on a boot-time env var instead (see Env vars below),
-not a per-request flag check.
+### No feature flags
+
+There are none, deliberately. Five `feature_flags` rows once gated this subsystem —
+`coverage_instrumentation`, `coverage_session_management` (migrations 156/157, removed
+by 161 / MINCRM-663) and `coverage_pipeline_ingestion`, `coverage_mapping_query`,
+`coverage_reporting_query` (migrations 158/159/160, removed by 163 / MINCRM-685). Each
+rendered in the CRM's own admin Settings page identically to a real product toggle,
+because `FeatureFlagsSettings.tsx` renders every row it finds: internal CI/dev test
+infrastructure was discoverable and enable-able through the product's own UI.
+
+Every router now gates its entire route _registration_ on a boot-time env var instead
+(below). Do not add a `feature_flags` row for coverage tooling — the guard in
+`featureFlagService.test.ts` fails if one reappears in either the registry or the
+table.
 
 ### Env vars (boot-time, resolved once)
 
@@ -358,6 +378,9 @@ not a per-request flag check.
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
 | `COVERAGE_INSTRUMENTATION`     | Whether the backend V8 agent starts, and whether `coverage.ts`'s routes register at all                                        | unset (off)                    |
 | `COVERAGE_SESSION_MANAGEMENT`  | Whether `coverageSessions.ts`'s routes register at all                                                                         | unset (off)                    |
+| `COVERAGE_MAPPING_QUERY`       | Whether `coverageMapping.ts`'s routes (`GET /coverage/mapping/*`) register at all                                              | unset (off)                    |
+| `COVERAGE_REPORTING_QUERY`     | Whether `coverageReporting.ts`'s routes (`GET /coverage/reporting/*`) register at all                                          | unset (off)                    |
+| `COVERAGE_PIPELINE_INGESTION`  | Whether `coveragePipeline.ts`'s route (`POST /coverage/pipeline/ingest`) registers at all                                      | unset (off)                    |
 | `COVERAGE_GRANULARITY`         | V8 coverage detail: `block` or `function`                                                                                      | `block`                        |
 | `COVERAGE_CAPABILITY_GATING`   | Switches every coverage route's access check to the `coverage:admin` capability ([Access Control](#access-control-mincrm-637)) | unset (`requireRole('admin')`) |
 | `COVERAGE_RETENTION_DAYS`      | Days a `coverage_units`/`coverage_test_links` row survives before the daily pruning cron removes it                            | `30`                           |
@@ -453,11 +476,17 @@ Reports the operational health of the framework's own services —
 - `db` — `'ok'` or `'error'`, from a `SELECT 1` against `coverageDb` with a 2-second
   statement timeout. Reuses `app.ts`'s own `/api/health` implementation pattern
   verbatim.
-- `featureFlags` — the current org-wide state of the three live coverage feature flags
-  (see [Policy Configuration](#policy-configuration-mincrm-637) above). Each flag read
-  is independently guarded — a product-database outage during the read degrades that
-  flag to `false` and surfaces `featureFlagsError`, rather than the whole endpoint
-  failing with a `500`.
+- `routers` — which coverage routers registered their routes at boot (MINCRM-685),
+  from the `COVERAGE_MAPPING_QUERY`/`COVERAGE_REPORTING_QUERY`/`COVERAGE_PIPELINE_INGESTION`
+  snapshot. `false` means every path under that router 404s. Only these three are
+  reported: `COVERAGE_INSTRUMENTATION`/`COVERAGE_SESSION_MANAGEMENT` are deliberately
+  absent, since `agentRunning` already covers the first and the sessions router is not
+  part of this report's remit — do not read the block as a complete gate inventory. Replaced a `featureFlags`
+  block that reported three `feature_flags` rows migration 163 deleted
+  (see [Policy Configuration](#policy-configuration-mincrm-637) above). Read from an
+  in-memory snapshot taken at boot, not live — registration happened once, so a later
+  `process.env` change must not move this field. This report touches no database but
+  the coverage one.
 - `lastRetentionPrune` — the outcome of the most recent scheduled retention prune (see
   [Scheduled retention pruning](#scheduled-retention-pruning) below): `ranAt`, `status`
   (`'ok'` or `'error'`), and either `prunedUnitCount`/`prunedLinkCount`/
@@ -469,23 +498,29 @@ Reports the operational health of the framework's own services —
   nightly prune would only ever reach `logger.error`, with this endpoint continuing to
   report `status: 'ok'` indefinitely.
 
-Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` (DB unreachable, a
-feature-flag read failed, or the last scheduled retention prune errored). A disabled
-feature flag and an as-yet-unrun retention prune are both normal operational states,
-not degraded.
+Returns `200` when `status: 'ok'`, `503` when `status: 'degraded'` — which means
+exactly two things: the coverage database was unreachable, or the last scheduled
+retention prune errored. An unregistered router and an as-yet-unrun retention prune are
+both normal operational states, not degraded: every gate unset is the production
+default, so degrading on it would leave every normal deployment permanently red.
 
 **Gated by `authenticate → coverageAccessGate`, same as every other coverage route —
 not a public liveness probe** like the unauthenticated `/api/health`. This endpoint
-reveals feature-flag state and DB reachability, which is operational detail worth
+reveals router-registration state and DB reachability, which is operational detail worth
 protecting the same way the rest of the coverage control surface is. Registered
-**unconditionally** in `routes/coverage.ts`, outside the
-`if (COVERAGE_INSTRUMENTATION === 'true')`-gated `registerCoverageControlRoutes()`
-block that gates this router's other routes — the mapping/reporting/pipeline routers
-and the coverage database itself are live independent of that env var, so nesting the
-health check inside that block would 404 in exactly the deployments where those other
-routers are actually running. No `requireFeatureEnabled` gate either — documented as
-always-on, since it must stay reachable regardless of which coverage subsystem flags
-are toggled.
+**unconditionally** in `routes/coverage.ts`, outside the `registerRoutesIfEnabled`
+call that gates this router's other routes.
+
+That carve-out's original rationale — "the mapping/reporting/pipeline routers are live
+independent of this env var" — stopped being true in MINCRM-685, when those three
+gained boot gates of their own. It survives on a different and better one: this
+endpoint is _diagnostic_. An operator asking "why is coverage not working?" needs an
+answer in precisely the deployment where everything is switched off, and a health check
+that 404s whenever the subsystem is disabled cannot distinguish "disabled" from
+"misdeployed" — the one question it exists to settle. The `routers` block makes it
+strictly more useful in that state, since it reports which gates were open at boot.
+This is the standard liveness-endpoint carve-out, and
+`server/src/__tests__/coverageHealthRouteGating.test.ts` pins it with every gate unset.
 
 ### Operational logging
 
@@ -518,13 +553,13 @@ Coverage/TIA data (`coverage_units`, `coverage_ingested_dumps`, `coverage_sessio
 
 **Why a separate database, not just a separate schema/namespace:** coverage/TIA data is disposable, write-heavy, retention-pruned telemetry consumed by CI tooling and developers — a fundamentally different access pattern, growth rate, and backup/retention policy than product data (contacts/deals/users), which needs strict backups and must never be bulk-deleted. None of the coverage tables carry a foreign key into the product schema — `coverage_sessions.started_by` is a plain `uuid` column, not an FK (cross-database foreign keys are impossible in PostgreSQL) — so there is no referential-integrity reason for them to share a connection pool, backup schedule, or migration history with product data.
 
-**What did NOT move:** the `coverage_pipeline_ingestion`, `coverage_mapping_query`, and `coverage_reporting_query` `feature_flags` rows (seeded by `db/migrations/158`/`159`/`160`, in the product database — see [Policy Configuration](#policy-configuration-mincrm-637) below for the full current set; `coverage_instrumentation`/`coverage_session_management` were later removed by migration 161/MINCRM-663 in favor of boot-time env vars). These gate WHO may call the coverage control APIs — checked against `req.user`/role — which is an authorization concern belonging with the product's own `users`/`feature_flags` tables, not with the coverage data itself.
+**What did NOT move, and no longer exists:** the `coverage_pipeline_ingestion`, `coverage_mapping_query`, and `coverage_reporting_query` `feature_flags` rows stayed in the product database because they gated WHO may call the coverage APIs — an authorization concern belonging with the product's own `users`/`feature_flags` tables rather than with coverage data. Migration 163 (MINCRM-685) deleted all three, following 161 (MINCRM-663) which deleted `coverage_instrumentation`/`coverage_session_management`; every router is now gated at boot instead (see [Policy Configuration](#policy-configuration-mincrm-637)). Access control on the routes that do register is still a product concern — `authenticate` plus `coverageAccessGate`, both reading the product database.
 
 **Consequence — coverage sessions are unaudited:** `coverageSessionService`'s writes used to go through the same transaction + `writeAuditEntry`/`setRlsUserId` pattern as `dealService.ts` (see CLAUDE.md). Both of those require a product-database `PoolClient` (the `audit_log` table and RLS policies live there) and cannot run against a `coverageDb` client. Coverage sessions are therefore unaudited system telemetry, exactly like `coverage_units`/`coverage_test_links` already were — derived, system-internal data with no user-facing mutation surface, not a compliance-relevant change history. `startedBy` is still recorded on `coverage_sessions` as informational attribution (who kicked off a session), just without an `audit_log` entry.
 
 **Schema location:** `qa/migrations/` (a separate `node-pg-migrate` sequence from `db/migrations/`, starting at `001`, run via `npm run migrate:coverage --workspace=minicrm-qa`), not `db/migrations/`. This mirrors the QA workspace's own ownership of E2E-adjacent infrastructure. `qa/scripts/create-coverage-e2e-db.ts` creates + migrates `minicrm_coverage_e2e`, invoked from the root `scripts/e2e-setup.ts` alongside the product DB's own `create:e2e-db` step.
 
-**Provisioning:** `server/src/migrate.ts`'s `runCoverageMigrations()` creates the coverage database (if it doesn't exist — `CREATE DATABASE` can't run inside a migration/transaction, so this connects to the ambient `postgres` maintenance database first, same pattern as `create-e2e-db.ts`/`create-coverage-e2e-db.ts`) and runs `qa/migrations/` against it. Called unconditionally from `server.ts`'s boot sequence right after the product database's own `runMigrations()` — a server can never finish starting up with an unprovisioned or schema-stale coverage database, regardless of whether any coverage feature flag is enabled. `server/src/__tests__/globalSetup.ts` (Vitest) does the equivalent for `minicrm_coverage_test` before any test file runs.
+**Provisioning:** `server/src/migrate.ts`'s `runCoverageMigrations()` creates the coverage database (if it doesn't exist — `CREATE DATABASE` can't run inside a migration/transaction, so this connects to the ambient `postgres` maintenance database first, same pattern as `create-e2e-db.ts`/`create-coverage-e2e-db.ts`) and runs `qa/migrations/` against it. Called unconditionally from `server.ts`'s boot sequence right after the product database's own `runMigrations()` — a server can never finish starting up with an unprovisioned or schema-stale coverage database, regardless of which coverage routers registered. `server/src/__tests__/globalSetup.ts` (Vitest) does the equivalent for `minicrm_coverage_test` before any test file runs.
 
 **Connection:** `server/src/coverageDb.ts` — a second `pg.Pool`, read by `coverageSessionService.ts`, `coverageModelService.ts`, `coverageMappingService.ts`, `coverageBuildSummaryService.ts`, `coverageReportingService.ts`, and `coverageHealthService.ts` (a `SELECT 1` reachability check only — no coverage-domain table reads/writes of its own) — see that file's own import-allowlist docblock for the authoritative list. Configured via `COVERAGE_DB_*` env vars, each falling back to the product DB's own `DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT` (same instance, same credentials in every environment today) except `COVERAGE_DB_NAME`, which always needs an explicit value (defaults to `minicrm_coverage`) so a misconfigured environment can never accidentally point this pool at the product database by inheriting `DB_NAME`.
 
@@ -577,7 +612,7 @@ Works headless (CI, Playwright-driven) and headed (local manual exploratory) ide
 
 `dumpId` is a `crypto.randomUUID()` generated at persist time — commit SHA is a tag _on_ the dump, not the identifier, since many dumps share a SHA across a run.
 
-**Two distinct gates, easy to conflate:** the `coverage_instrumentation` feature flag controls _who may call this API_; the `COVERAGE_INSTRUMENTATION` env var controls _whether the backend agent actually started at boot_. A flag-on, agent-off server returns `409 COVERAGE_NOT_ENABLED` on `reset`/`snapshot`/`dump` — the flag check passes, the request reaches the handler, and the handler discovers there's no agent to operate on.
+**Two distinct effects of one env var, easy to conflate:** `COVERAGE_INSTRUMENTATION` controls both _whether this router's routes register at all_ and _whether the backend agent actually started at boot_. They are not the same failure: an unset var means every path 404s (no routes), while a set var whose agent failed to start returns `409 COVERAGE_NOT_ENABLED` on `reset`/`snapshot`/`dump` — the request reaches the handler, which discovers there is no agent to operate on. The `coverage_instrumentation` feature flag that used to gate _who may call this API_ was removed by migration 161 (MINCRM-663).
 
 **Auth:** the existing Bearer service-account token path (`authenticate` middleware) — no new auth mechanism. This is what CI and the E2E reference client use.
 
@@ -592,7 +627,7 @@ await resetCoverage(restClient);
 const dump = await dumpCoverage(restClient, 'my-test-label');
 ```
 
-`restClient` needs an authenticated session (e.g. `loginAsAdmin(restClient)`) and the `coverage_instrumentation` flag enabled. Equivalent curl:
+`restClient` needs an authenticated session (e.g. `loginAsAdmin(restClient)`), and the server must have been started with `COVERAGE_INSTRUMENTATION=true` — the `coverage_instrumentation` flag this once required was deleted by migration 161 (MINCRM-663). Equivalent curl:
 
 ```bash
 curl -X POST http://localhost:3001/api/v1/admin/coverage/dump \
@@ -654,7 +689,7 @@ A `CoverageSession` is a logical grouping of one or more coverage dumps attribut
 | `POST` | `/api/v1/admin/coverage/sessions/:sessionId/end`   | End a session (optimistic-locked on `version`). `409` on conflict (already ended or stale version).                                                                                                                                                                                                                                                                                 |
 | `POST` | `/api/v1/admin/coverage/sessions/:sessionId/dumps` | Record a `dumpId`'s attribution to a session (after `POST /coverage/dump`). `409` if the session has already ended, or if `dumpId` was already recorded (anywhere — including via auto-attribution above). `400` if `correlationId` doesn't match this session's own — a caller cannot attribute a dump to `sessionId` while stamping it with a different session's correlation ID. |
 
-Gated by `authenticate → coverageAccessGate` ([Access Control](#access-control-mincrm-637)). Unlike `coverage.ts`'s reporting/pipeline/mapping routers, these routes carry no `requireFeatureEnabled` check at all — the entire router is registered only when `COVERAGE_SESSION_MANAGEMENT` is `'true'` at boot (migration 161 removed the `coverage_session_management` product-database feature flag in favor of this boot-time env var; see [Env vars (boot-time, resolved once)](#env-vars-boot-time-resolved-once) below). `COVERAGE_SESSION_MANAGEMENT` is independent of `COVERAGE_INSTRUMENTATION` (migration 156) — a session can exist even when the backend V8 agent itself never started, e.g. a browser-only manual session. Mounted in `app.ts` **before** the general `coverage.ts` router, so a future top-level route added there can never shadow `/admin/coverage/sessions`.
+Gated by `authenticate → coverageAccessGate` ([Access Control](#access-control-mincrm-637)). Like every other coverage router since MINCRM-685, these routes carry no `requireFeatureEnabled` check at all — the entire router is registered only when `COVERAGE_SESSION_MANAGEMENT` is `'true'` at boot (migration 161 removed the `coverage_session_management` product-database feature flag in favor of this boot-time env var; see [Env vars (boot-time, resolved once)](#env-vars-boot-time-resolved-once) below). `COVERAGE_SESSION_MANAGEMENT` is independent of `COVERAGE_INSTRUMENTATION` (migration 156) — a session can exist even when the backend V8 agent itself never started, e.g. a browser-only manual session. Mounted in `app.ts` **before** the general `coverage.ts` router, so a future top-level route added there can never shadow `/admin/coverage/sessions`.
 
 A dump can only ever attribute to an **active** session whose `correlation_id` matches the caller-supplied value — `recordCoverageSessionDump`'s INSERT is scoped to `WHERE EXISTS (... status = 'active' AND correlation_id = ...)` atomically in a single statement, so there's no check-then-insert race and no way to attribute a dump to one session while stamping it with another's correlation ID.
 
@@ -709,7 +744,7 @@ Not audited (no `AuditActor`/`writeAuditEntry`) — `coverage_units` is derived,
 | ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/api/v1/admin/coverage/pipeline/ingest` | Normalize + symbolicate one dump by ID into `coverage_units`. `201` on first ingestion, `200` with `alreadyIngested: true` on a repeat call, `404` for an unknown `dumpId`, `400` for a malformed payload file. |
 
-Gated by `authenticate → coverageAccessGate → requireFeatureEnabled('coverage_pipeline_ingestion')` ([Access Control](#access-control-mincrm-637)), mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions`). The `coverage_pipeline_ingestion` flag is independent of `COVERAGE_INSTRUMENTATION` and `COVERAGE_SESSION_MANAGEMENT` — a server can produce and attribute raw dumps while the normalization pipeline itself stays off.
+Gated by `authenticate → coverageAccessGate` ([Access Control](#access-control-mincrm-637)), with the whole router registered only when `COVERAGE_PIPELINE_INGESTION` is `'true'` at boot (MINCRM-685 — migration 163 removed the `coverage_pipeline_ingestion` feature flag in favor of it). Mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions`). Independent of `COVERAGE_INSTRUMENTATION` and `COVERAGE_SESSION_MANAGEMENT` — a server can produce and attribute raw dumps while the normalization pipeline itself stays off.
 
 No scheduled or automatic trigger exists — ingestion is manual/CI-triggered only, matching this phase's scope. Reference client: `qa/e2e/framework/coverageAgent/coverage-pipeline-client.ts`.
 
@@ -722,7 +757,7 @@ const result = await ingestCoverageDump(restClient, dumpId);
 
 ## Local / CI / Shared-env setup
 
-**The coverage database provisions itself automatically** — no manual step needed. `server.ts`'s own boot sequence calls `runCoverageMigrations()` right after the product database's `runMigrations()`, which creates `minicrm_coverage` (or whatever `COVERAGE_DB_NAME` resolves to) if it doesn't exist yet and runs `qa/migrations/` against it, exactly mirroring how the product database's own `POSTGRES_DB`/`runMigrations()` pairing works. This runs unconditionally on every boot, regardless of whether any coverage feature flag is enabled — a server can never finish starting up with an unprovisioned or schema-stale coverage database, the same fail-fast guarantee the product database already had. (A manual creation step existed briefly in an earlier revision of this doc before automatic provisioning was added — found missing during PR review, since a fresh CI run or deployment had no path to create this database at all before this fix.)
+**The coverage database provisions itself automatically** — no manual step needed. `server.ts`'s own boot sequence calls `runCoverageMigrations()` right after the product database's `runMigrations()`, which creates `minicrm_coverage` (or whatever `COVERAGE_DB_NAME` resolves to) if it doesn't exist yet and runs `qa/migrations/` against it, exactly mirroring how the product database's own `POSTGRES_DB`/`runMigrations()` pairing works. This runs unconditionally on every boot, regardless of which coverage routers registered — a server can never finish starting up with an unprovisioned or schema-stale coverage database, the same fail-fast guarantee the product database already had. (A manual creation step existed briefly in an earlier revision of this doc before automatic provisioning was added — found missing during PR review, since a fresh CI run or deployment had no path to create this database at all before this fix.)
 
 Server-side unit tests get the same treatment via `server/src/__tests__/globalSetup.ts` (Vitest's `globalSetup`), which now provisions both `minicrm_test` and `minicrm_coverage_test` before any test file runs. E2E provisions `minicrm_coverage_e2e` via `qa/scripts/create-coverage-e2e-db.ts`, invoked from `scripts/e2e-setup.ts` alongside the product E2E database's own `create-e2e-db.ts`.
 
@@ -744,13 +779,13 @@ COVERAGE=true npm run dev --workspace=minicrm-client
 docker compose -f docker-compose.test.yml up -d server
 ```
 
-The test stack sets `COVERAGE_INSTRUMENTATION=true` and `COVERAGE_SESSION_MANAGEMENT=true`
-unconditionally (`docker-compose.test.yml`), so no extra flag is needed. Production
-deployments must never set either.
+The test stack sets all five coverage route gates to `true` unconditionally
+(`docker-compose.test.yml`), so no extra step is needed. Production
+deployments must never set any of them.
 
-Then enable the `coverage_instrumentation` feature flag (via the admin UI, or directly: `UPDATE feature_flags SET enabled = true WHERE flag_key = 'coverage_instrumentation'`) before calling the control API.
+The `coverage_instrumentation` feature flag this step once described is gone (migration 161, MINCRM-663): `COVERAGE_INSTRUMENTATION=true` at boot is now the only switch, and it gates both the agent and the control API's route registration. There is nothing to enable in the admin UI.
 
-**CI:** set `COVERAGE_INSTRUMENTATION=true` in the server start step's env block for a job that opts in; the coverage flag still needs to be enabled separately (it's data, not env-gated). Dump artifacts land under `server/coverage-dumps/` and can be uploaded the same way `server/coverage/lcov.info` already is in `ci.yml`'s `server-tests` job.
+**CI:** set `COVERAGE_INSTRUMENTATION=true` in the server start step's env block for a job that opts in; no separate step — the coverage feature flags were removed in MINCRM-663/685. Dump artifacts land under `server/coverage-dumps/` and can be uploaded the same way `server/coverage/lcov.info` already is in `ci.yml`'s `server-tests` job.
 
 **Shared test environment:** enabling this is a legitimate use case (the story explicitly calls it out), but there is no per-session isolation — the backend agent is a single process-wide counter set with no multi-tenant separation. Every concurrent request on that server instance contributes to the same counters. This is fine for a dedicated CI/E2E instance; it would produce meaningless aggregate data if naively left on for a real multi-user shared staging environment with concurrent human traffic. Turn it off when not actively collecting.
 
@@ -851,7 +886,7 @@ Three things happen per file a commit's units reference:
 | `GET`  | `/api/v1/admin/coverage/mapping/tests-for-unit` | Code unit → covering tests, scoped by `commitSha`, confidence attached |
 | `GET`  | `/api/v1/admin/coverage/mapping/units-for-test` | Test → covered code units, scoped by `commitSha`, confidence attached  |
 
-Gated by `authenticate → coverageAccessGate → requireFeatureEnabled('coverage_mapping_query')` ([Access Control](#access-control-mincrm-637)), mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). The `coverage_mapping_query` flag (migration 159, product database — see [Coverage Database](#coverage-database)) is independent of `coverage_pipeline_ingestion`: a server can have ingested `coverage_test_links` data while the query API itself stays off, e.g. during rollout.
+Gated by `authenticate → coverageAccessGate` ([Access Control](#access-control-mincrm-637)), with the whole router registered only when `COVERAGE_MAPPING_QUERY` is `'true'` at boot (MINCRM-685 — migration 163 removed the `coverage_mapping_query` feature flag in favor of it). Mounted in `app.ts` before the general `coverage.ts` router (same more-specific-before-general precedent as `/coverage/sessions` and `/coverage/pipeline`). Independent of `COVERAGE_PIPELINE_INGESTION`: a server can have ingested `coverage_test_links` data while the query API itself stays off.
 
 Both endpoints read `coverageMappingService.findTestsForUnitWithConfidence`/`findUnitsForTestWithConfidence`, which `LEFT JOIN coverage_test_links` against `coverage_units` on the shared `(commit_sha, file_path, unit_key, branch_id)` identity — matching `coverage_units_identity_idx`'s own exact shape, so the join can never match more than one row. Both tables live in the SAME coverage database, so this is a normal same-database join, not a cross-database query. `confidenceScore`/`lastReconciledAt` are `null` in a result when no matching `coverage_units` row exists (e.g. reconciliation pruned it) — the mapping result itself is still returned, never silently dropped.
 
