@@ -1,6 +1,6 @@
 /**
  * Integration tests for the coverage pipeline ingestion API. (MINCRM-614)
- * Covers: auth boundaries (401/403-role/403-flag), Zod validation, 404
+ * Covers: auth boundaries (401 unauthenticated, 403 non-admin role), Zod validation, 404
  * COVERAGE_DUMP_NOT_FOUND, and the ingest happy path via a real
  * browser-origin dump (ingested through the existing /coverage/dump
  * endpoint first, then normalized via /coverage/pipeline/ingest).
@@ -10,7 +10,6 @@ import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
 import { createUser } from '../services/userService.js';
-import { __clearCacheForTest } from '../services/featureFlagService.js';
 import pool from '../db.js';
 import coverageDb from '../coverageDb.js';
 import { makeAuthCookie } from './testUtils.js';
@@ -19,11 +18,6 @@ const FILE_PREFIX = 'coverage-pipeline-ctrl';
 
 let adminCookie: string;
 let repCookie: string;
-
-async function setFlagEnabled(flagKey: string, enabled: boolean): Promise<void> {
-  await pool.query(`UPDATE feature_flags SET enabled = $1 WHERE flag_key = $2`, [enabled, flagKey]);
-  __clearCacheForTest();
-}
 
 beforeAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
@@ -54,15 +48,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  await setFlagEnabled('coverage_pipeline_ingestion', false);
-  await setFlagEnabled('coverage_instrumentation', false);
 });
 
 describe('coverage pipeline API — auth boundaries', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', true);
-  });
-
   it('returns 401 when unauthenticated', async () => {
     const res = await request(app)
       .post('/api/v1/admin/coverage/pipeline/ingest')
@@ -78,22 +66,20 @@ describe('coverage pipeline API — auth boundaries', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 403 FEATURE_DISABLED when the pipeline flag is off, even for an admin', async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', false);
-    const res = await request(app)
-      .post('/api/v1/admin/coverage/pipeline/ingest')
-      .set('Cookie', adminCookie)
-      .send({ dumpId: '00000000-0000-0000-0000-000000000000' });
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FEATURE_DISABLED');
-  });
+  // The former "403 FEATURE_DISABLED when the pipeline flag is off" case is
+  // gone with the coverage_pipeline_ingestion row (MINCRM-685). Its
+  // replacement lives in coverageRouteGating.test.ts, which asserts a 404 when
+  // COVERAGE_PIPELINE_INGESTION is unset at boot — the route is not registered
+  // at all rather than registered-and-refusing. It cannot live here: this file
+  // imports app.js once at module load, and a boot-time gate can only be
+  // exercised by the vi.resetModules() + dynamic re-import discipline that
+  // file is built around.
 });
 
 describe('coverage pipeline API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)', () => {
   const originalGating = process.env.COVERAGE_CAPABILITY_GATING;
 
   beforeEach(async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', true);
     process.env.COVERAGE_CAPABILITY_GATING = 'true';
   });
 
@@ -127,10 +113,6 @@ describe('coverage pipeline API — COVERAGE_CAPABILITY_GATING=true (MINCRM-637)
 });
 
 describe('coverage pipeline API — validation', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', true);
-  });
-
   it('returns 400 VALIDATION_ERROR when dumpId is missing', async () => {
     const res = await request(app)
       .post('/api/v1/admin/coverage/pipeline/ingest')
@@ -151,10 +133,6 @@ describe('coverage pipeline API — validation', () => {
 });
 
 describe('coverage pipeline API — not found', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', true);
-  });
-
   it('returns 404 COVERAGE_DUMP_NOT_FOUND for an unknown dumpId', async () => {
     const res = await request(app)
       .post('/api/v1/admin/coverage/pipeline/ingest')
@@ -166,11 +144,6 @@ describe('coverage pipeline API — not found', () => {
 });
 
 describe('coverage pipeline API — ingest happy path', () => {
-  beforeEach(async () => {
-    await setFlagEnabled('coverage_pipeline_ingestion', true);
-    await setFlagEnabled('coverage_instrumentation', true);
-  });
-
   afterEach(async () => {
     await coverageDb.query('DELETE FROM coverage_units WHERE file_path = $1', ['src/App.tsx']);
   });

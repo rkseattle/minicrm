@@ -4,9 +4,10 @@
  * canonical, tested example referenced from docs/dev/coverage.md's
  * "reference client" section.
  *
- * Requires an authenticated RestClient (admin session) and the
- * coverage_mapping_query feature flag enabled, since both endpoints are
- * admin-only and flag-gated.
+ * Requires an authenticated RestClient (admin session). The endpoints are
+ * admin-only, and the server registers them only when their own boot-time
+ * environment gate is set — so an unconfigured server answers 404 rather than
+ * a permission error.
  */
 
 import type { RestClient } from '../clients/rest-client.js';

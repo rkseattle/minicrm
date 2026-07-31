@@ -357,21 +357,24 @@ const SERIAL_FILES = [
   // __clearCacheForTest() — not just tagCreationRestriction — can race
   // tagController's read of the 'tags' flag's cached enabled state and turn an
   // expected 201 into a spurious 403 (reproduced live: coverageMappingController.test.ts/
-  // coverageReportingController.test.ts, which call __clearCacheForTest() while
-  // toggling their own unrelated coverage_* flags, triggered this exact failure
-  // in tagController — same root cause as tagCreationRestriction, just a
-  // different trigger file). (MINCRM-629/630/631)
+  // coverageReportingController.test.ts, which used to call __clearCacheForTest()
+  // while toggling their own unrelated coverage_* flags, triggered this exact
+  // failure in tagController — same root cause as tagCreationRestriction, just a
+  // different trigger file). Those two files stopped touching the flag cache in
+  // MINCRM-685, when their routers moved off feature_flags onto boot-time env
+  // vars, so they are no longer that trigger — but tagController stays serial:
+  // the race is with ANY parallel file clearing the process-wide cache, and the
+  // reason it was found here has no bearing on whether another file can do it
+  // tomorrow. (MINCRM-629/630/631, MINCRM-685)
   'src/__tests__/tagController.test.ts',
   // coverageMappingController.test.ts and coverageReportingController.test.ts
-  // both call featureFlagService.__clearCacheForTest() — a process-wide,
-  // not per-file, cache clear — while toggling their own coverage_* flags on
-  // and off across multiple tests. Running either in parallel with any other
-  // file that reads a DIFFERENT flag's cached value (e.g. tagController's
-  // 'tags' flag, see above) can race that file's read against this cache
-  // invalidation. Serializing both removes the risk at the source rather than
-  // only serializing every file each one happens to have raced so far.
-  'src/__tests__/coverageMappingController.test.ts',
-  'src/__tests__/coverageReportingController.test.ts',
+  // were serialized here because both called featureFlagService.__clearCacheForTest()
+  // — a process-wide cache clear — while toggling their own coverage_* flags.
+  // MINCRM-685 moved those routers onto boot-time env vars and deleted the flag
+  // rows, so neither file touches the flag cache at all any more and the reason
+  // for serializing them is gone. Removed rather than left in place: a stale
+  // entry here costs real wall-clock on every run and, worse, reads to the next
+  // person as evidence of a race that no longer exists.
   // middleware.test.ts's requireFeatureEnabledOrgWide cases vi.spyOn the
   // featureFlagService MODULE NAMESPACE (isFeatureEnabled/isFlagEnabledForUser).
   // That replacement is process-wide for as long as the spy is installed, so a

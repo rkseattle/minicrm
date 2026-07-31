@@ -28,12 +28,16 @@
  * with no referential-integrity reason to share a connection pool, backup
  * schedule, or migration history with product data.
  *
- * What did NOT move: the coverage_instrumentation, coverage_session_management,
- * and coverage_pipeline_ingestion feature_flags rows (db/migrations/156,
- * still in the product database) — those gate WHO may call the coverage
- * control APIs, checked against req.user/role, which is an authorization
- * concern belonging with the product's own users/feature_flags tables, not
- * with the coverage data itself.
+ * What did NOT move, and no longer exists: the coverage_instrumentation,
+ * coverage_session_management, and coverage_pipeline_ingestion feature_flags
+ * rows lived in the product database because they gated WHO may call the
+ * coverage control APIs — an authorization concern belonging with the
+ * product's own users/feature_flags tables rather than with coverage data.
+ * MINCRM-663 and MINCRM-685 removed all of them: each coverage router now
+ * gates its route registration on a boot-time env var instead, so there is no
+ * coverage-related feature_flags row in either database. Access control on the
+ * routes that do register is still a product concern (authenticate plus
+ * coverageAccessGate, both reading the product database).
  *
  * varchar + CHECK for constrained-string columns, not PG ENUMs — same repo
  * convention as every product-DB migration (see CLAUDE.md).

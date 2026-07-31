@@ -5,10 +5,19 @@
  * retention, and safety-net thresholds — behind one resolve-once-at-boot
  * function, mirroring coverageConfig.ts's own "resolve once, pass the
  * result down, never re-read process.env per request" precedent
- * (resolveCoverageConfig). Feature-flag state (coverage_pipeline_ingestion,
- * coverage_mapping_query, coverage_reporting_query) is NOT included here —
- * those are per-request DB reads via requireFeatureEnabled, not boot-time
- * env config, and stay where they are.
+ * (resolveCoverageConfig).
+ *
+ * Route REGISTRATION gates are not resolved here, though they are now
+ * boot-time env config too (MINCRM-685 moved coverage_pipeline_ingestion,
+ * coverage_mapping_query, and coverage_reporting_query off feature_flags rows
+ * onto COVERAGE_PIPELINE_INGESTION / COVERAGE_MAPPING_QUERY /
+ * COVERAGE_REPORTING_QUERY, joining COVERAGE_INSTRUMENTATION and
+ * COVERAGE_SESSION_MANAGEMENT). Each is read by a top-level `if` in its own
+ * route file, at module evaluation, to decide whether to register any routes
+ * at all — that decision has to happen as the module loads, before anything
+ * could call a resolver here. This module covers the policy knobs the running
+ * subsystem consults; see docs/dev/coverage.md's "Policy Configuration"
+ * section for the full env-var table, registration gates included.
  *
  * See docs/dev/coverage.md's "Policy Configuration" section for the full
  * table of every env var this resolves.

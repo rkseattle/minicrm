@@ -11,7 +11,7 @@
 
 import { vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
-import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
+import { buildCoverageAccessGate, coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { createUser } from '../services/userService.js';
 import { assignRoleToUser, createCustomRole } from '../services/roleService.js';
 import { Capability } from '@minicrm/shared/schemas/capabilitySchema.js';
@@ -246,5 +246,103 @@ describe('migration 162 — coverage:admin capability grant scope', () => {
     );
     const builtinRoleNames = result.rows.map((r) => r.name);
     expect(builtinRoleNames).toEqual(['admin']);
+  });
+});
+
+/**
+ * MINCRM-685: the no-auth bypass must drop auth and the role/capability gate,
+ * and nothing else.
+ *
+ * This is the surviving half of MINCRM-694's guarantee. That story fixed a
+ * defect where COVERAGE_DASHBOARD_NO_AUTH dropped the feature-flag check along
+ * with auth, so coverage_reporting_query/coverage_mapping_query read as enabled
+ * no matter what was stored. MINCRM-685 deleted those rows and moved each
+ * router behind a boot-time env var: an unset var means the routes were never
+ * registered, so nothing reaches this middleware at all, where the flag was a
+ * mutable row an admin could flip from the product UI. Harder by default, at
+ * the cost of needing a restart rather than a toggle to change.
+ *
+ * Tested here rather than in coverageRouteGating.test.ts because that file can
+ * only boot the app once per worker (a route module's top-level gate runs on
+ * first evaluation only), and proving "the bypass does not resurrect an
+ * unregistered route" needs a registered-route control in the same worker to
+ * avoid passing vacuously. At this level the chain is exercised directly, with
+ * no app boot and no module-caching hazard.
+ */
+describe('buildCoverageAccessGate — COVERAGE_DASHBOARD_NO_AUTH bypass scope (MINCRM-685)', () => {
+  const previousNoAuth = process.env.COVERAGE_DASHBOARD_NO_AUTH;
+  const previousNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (previousNoAuth === undefined) {
+      delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
+    } else {
+      process.env.COVERAGE_DASHBOARD_NO_AUTH = previousNoAuth;
+    }
+    process.env.NODE_ENV = previousNodeEnv;
+    vi.restoreAllMocks();
+  });
+
+  function invoke(): {
+    req: Request;
+    res: Response;
+    next: ReturnType<typeof vi.fn>;
+    status: ReturnType<typeof vi.fn>;
+    json: ReturnType<typeof vi.fn>;
+  } {
+    const json = vi.fn();
+    const status = vi.fn().mockReturnValue({ json });
+    return {
+      // No user and no cookie — exactly the request shape the dashboard makes.
+      req: { headers: {}, cookies: {} } as unknown as Request,
+      res: { status, json } as unknown as Response,
+      next: vi.fn(),
+      status,
+      json,
+    };
+  }
+
+  it('calls next() for an unauthenticated request when the bypass is on', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+    const gate = buildCoverageAccessGate();
+    const { req, res, next, status } = invoke();
+
+    gate(req, res, next as unknown as NextFunction);
+
+    // Synchronous on this path — the bypass short-circuits before authenticate.
+    expect(next).toHaveBeenCalledWith();
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  // The two negative cases below assert POSITIVELY on the 401, not merely that
+  // next() went uncalled. `authenticate` answers an unauthenticated request by
+  // calling res.status(401) and returning WITHOUT invoking next at all
+  // (auth.ts's missing-token branch), so `expect(next).not.toHaveBeenCalled()`
+  // is satisfied by a mock with zero calls — it would pass even if this gate's
+  // whole body were deleted. Asserting the 401 reached the response is what
+  // makes these tests able to fail.
+  it('does NOT bypass when NODE_ENV=production, the hard safety rail a copied .env cannot defeat', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.COVERAGE_DASHBOARD_NO_AUTH = 'true';
+    const gate = buildCoverageAccessGate();
+    const { req, res, next, status } = invoke();
+
+    gate(req, res, next as unknown as NextFunction);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(status).toHaveBeenCalledWith(401);
+  });
+
+  it('does NOT bypass when COVERAGE_DASHBOARD_NO_AUTH is unset', async () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.COVERAGE_DASHBOARD_NO_AUTH;
+    const gate = buildCoverageAccessGate();
+    const { req, res, next, status } = invoke();
+
+    gate(req, res, next as unknown as NextFunction);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(status).toHaveBeenCalledWith(401);
   });
 });

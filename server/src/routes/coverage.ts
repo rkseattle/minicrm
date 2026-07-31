@@ -28,6 +28,7 @@
  */
 
 import { Router } from 'express';
+import { registerRoutesIfEnabled } from './coverageBootGate.js';
 import { authenticate } from '../middleware/auth.js';
 import { coverageAccessGate } from '../middleware/coverageAccessGate.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -243,8 +244,6 @@ function registerCoverageControlRoutes(): void {
   );
 }
 
-if (process.env.COVERAGE_INSTRUMENTATION === 'true') {
-  registerCoverageControlRoutes();
-}
+registerRoutesIfEnabled('COVERAGE_INSTRUMENTATION', registerCoverageControlRoutes);
 
 export default router;

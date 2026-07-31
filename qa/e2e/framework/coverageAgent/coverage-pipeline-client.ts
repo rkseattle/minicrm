@@ -4,9 +4,10 @@
  * role as the canonical, tested example referenced from
  * docs/dev/coverage.md's "reference client" section.
  *
- * Requires an authenticated RestClient (admin session) and the
- * coverage_pipeline_ingestion feature flag enabled, since the endpoint is
- * admin-only and flag-gated.
+ * Requires an authenticated RestClient (admin session). The endpoint is
+ * admin-only, and the server registers it only when its own boot-time
+ * environment gate is set — so an unconfigured server answers 404 rather than
+ * a permission error.
  */
 
 import type { RestClient } from '../clients/rest-client.js';
