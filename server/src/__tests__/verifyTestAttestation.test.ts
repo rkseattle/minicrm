@@ -110,6 +110,13 @@ function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
 
 // ── verifyAttestation harness (MINCRM-691) ──────────────────────────────────
 
+/**
+ * Repo root, for the docs-parity assertion below. Named rather than inlined so
+ * the three-level climb out of server/src/__tests__/ appears once — matching
+ * selectTests.test.ts:15, the existing precedent in this directory.
+ */
+const REPO_ROOT = resolvePath(__dirname, '../../..');
+
 const mockFindDumps = vi.mocked(findCoverageSessionDumpsByBuildSha);
 
 /** Temp directory for the results/selection files each test writes. */
@@ -1606,8 +1613,7 @@ describe('verify-test-attestation.ts', () => {
     // entry to exist, not to be right). Catching presence catches the drift
     // that actually happened here; judging prose accuracy is a reviewer's job.
     it('documents every failure reason in docs/dev/coverage.md', async () => {
-      const docPath = resolvePath(__dirname, '../../../docs/dev/coverage.md');
-      const doc = await readFile(docPath, 'utf8');
+      const doc = await readFile(resolvePath(REPO_ROOT, 'docs/dev/coverage.md'), 'utf8');
 
       const sectionStart = doc.indexOf('### Reading a failed run');
       expect(sectionStart, 'the "Reading a failed run" section should exist').toBeGreaterThan(-1);

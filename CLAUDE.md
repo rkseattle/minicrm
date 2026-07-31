@@ -114,19 +114,30 @@ guard is silent on precisely the edit it exists to catch. The invariant is usual
 **bidirectional**: it breaks by editing either side.
 
 **Scope the trigger to the job, not the workspace.** Check what the natural
-workspace filter actually gates before adding to it — `server` gates eight jobs
-including the full `e2e-functional` matrix, so registering a doc there means a
-typo fix boots Postgres and every E2E shard. When the workspace filter is broader
-than the jobs that run the test, add a **single-purpose filter output** and OR it
-into those jobs' `if:` conditions. The `qa` entries above are fine as-is because
-`qa` gates only the two framework jobs that run those parity specs.
+workspace filter actually gates before adding to it — `server` and `qa` each
+appear in eight job conditions, including the full `e2e-functional` matrix. The
+two `qa` entries above predate this guidance and are grandfathered: a server-only
+edit to `junitXml.ts` does boot the whole E2E suite, which is over-broad but
+harmless enough that churning `ci.yml` to fix it is not worth it. Don't copy that
+shape for new guards. Instead add a **single-purpose filter output** and OR it
+into the specific jobs that run the test.
+
+**`always()` is mandatory on the job you gate.** GitHub auto-skips a job when
+anything in its `needs` was skipped, _before_ evaluating `if:` — so a
+single-purpose filter alone is not enough if an upstream job doesn't match the
+new path. Use the repo's established form (see `e2e-functional`, MINCRM-271):
+`always() && (needs.<upstream>.result == 'success' || needs.<upstream>.result ==
+'skipped') && <your changes gate>`. The explicit result check is what preserves
+the upstream gate so a real failure still blocks.
 
 The worked example is `attestation-docs` (MINCRM-691):
 `verifyTestAttestation.test.ts` asserts every `AttestationFailureReason` is
 documented in `docs/dev/coverage.md`'s "Reading a failed run" list, so that file
-gets its own filter output, OR'd into `server-tests` alone. Without any entry a
-docs-only PR deleting a reason would run markdownlint and skip the guard; folded
-into `server` it would have run the entire E2E suite.
+gets its own filter output, OR'd into `server-tests` alone, with `always()` and a
+`lint-and-typecheck` result check. All three parts are load-bearing: with no
+entry a docs-only PR deleting a reason runs markdownlint and skips the guard;
+folded into `server` it runs the entire E2E suite; without `always()` it is
+skipped anyway, because `lint-and-typecheck` doesn't match `.md` paths either.
 
 Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations.md) ·
 [grpc](docs/dev/grpc.md) · [retention](docs/dev/retention.md) ·

@@ -161,11 +161,12 @@ jobs:
             # (markdownlint), so server-tests would be skipped and the guard
             # silent on exactly half of what it exists to catch.
             #
-            # `server` would also work but gates eight jobs, including the full
-            # e2e-functional matrix — a typo fix in this one .md would boot
-            # Postgres and every E2E shard, which is what the aggregate job's own
-            # comment calls out as spurious. This output is OR'd into
-            # server-tests alone. (MINCRM-691)
+            # `server` would also work but appears in eight job conditions,
+            # including the full e2e-functional matrix — a typo fix in this one
+            # .md would boot Postgres and every E2E shard, which the aggregate
+            # job's own comment calls out as spurious. This output is OR'd into
+            # server-tests alone, which additionally needs always() there; see
+            # that job's comment for why. (MINCRM-691)
             attestation-docs:
               - 'docs/dev/coverage.md'
 
@@ -470,8 +471,20 @@ jobs:
     # attestation-docs is OR'd in so a docs-only edit to docs/dev/coverage.md
     # still runs verifyTestAttestation.test.ts's reason-documentation parity
     # assertion. Scoped to this job rather than widening `server`, which gates
-    # the E2E matrix too. (MINCRM-691)
-    if: needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true'
+    # the E2E matrix too.
+    #
+    # always() is required, not decorative: on a docs-only change
+    # lint-and-typecheck is itself skipped (its gate is client/server/qa/config/
+    # coverage-dashboard, none of which match a .md), and GitHub auto-skips any
+    # job whose `needs` were skipped — regardless of what this `if:` evaluates
+    # to. Without always() the attestation-docs path is dead on exactly the case
+    # it exists for. Same pattern and reasoning as e2e-functional below
+    # (MINCRM-271). The explicit result check preserves the Phase 1 gate: a real
+    # lint/typecheck failure still blocks this job. (MINCRM-691)
+    if: |
+      always() &&
+      (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
+      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true')
     runs-on: ubuntu-latest
 
     services:
