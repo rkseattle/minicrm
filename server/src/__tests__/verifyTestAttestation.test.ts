@@ -119,6 +119,27 @@ const REPO_ROOT = resolvePath(__dirname, '../../..');
 
 const mockFindDumps = vi.mocked(findCoverageSessionDumpsByBuildSha);
 
+/**
+ * Runs the gate and asserts its central invariant — `passed` is true exactly
+ * when `reasons` is empty — before handing the result back for reason-specific
+ * assertions.
+ *
+ * Every test below calls this rather than verifyAttestation directly, because
+ * `passed` (not `reasons`) is the field both consumers actually branch on:
+ * scripts/pre-push-tia.ts blocks the push on `!attestation.passed`, and this
+ * script's own main() sets a non-zero exit code from it, which is what gates
+ * record mode's coverage-map export. A suite that only asserts `reasons` cannot
+ * fail when the gate stops blocking — verified: a mutation returning
+ * `passed: reasons.every(r => r === 'test-failures' || ...)`, i.e. attesting a
+ * run whose tests FAILED, passed all 96 tests before this helper existed.
+ * (MINCRM-691, AC 2)
+ */
+async function attest(args: CliArgs): Promise<AttestationResult> {
+  const result = await verifyAttestation(args);
+  expect(result.passed).toBe(result.reasons.length === 0);
+  return result;
+}
+
 /** Temp directory for the results/selection files each test writes. */
 let attestationDir: string;
 
@@ -233,7 +254,18 @@ function dump(overrides: Partial<CoverageSessionDump> = {}): CoverageSessionDump
 function attestedDumps(...testFiles: string[]): void {
   const files =
     testFiles.length > 0 ? testFiles : ['qa/e2e/tests/apps/minicrm/functional/a.spec.ts'];
-  mockFindDumps.mockResolvedValue(files.map((testFile) => dump({ testFile })));
+  // Distinct id/dumpId per entry — nothing here reads them, but dump()'s
+  // docblock promises schema-valid fixtures, and rows sharing a primary key
+  // would defeat that the moment one is routed through coverageSessionDumpSchema.
+  mockFindDumps.mockResolvedValue(
+    files.map((testFile, index) =>
+      dump({
+        testFile,
+        id: `00000000-0000-0000-0000-0000000000${String(index).padStart(2, 'd')}`,
+        dumpId: `00000000-0000-0000-0000-0000000000${String(index).padStart(2, 'e')}`,
+      }),
+    ),
+  );
 }
 
 /** Builds CliArgs pointing at the per-test temp dir, with a fresh-file default age. */
@@ -959,7 +991,7 @@ describe('verify-test-attestation.ts', () => {
 
   describe('verifyAttestation — mocked DB seam', () => {
     it('runs without a live coverage database and reports a missing results file', async () => {
-      const result = await verifyAttestation(
+      const result = await attest(
         attestArgs({ resultsPath: join(attestationDir, 'never-written.xml') }),
       );
 
@@ -981,7 +1013,7 @@ describe('verify-test-attestation.ts', () => {
   describe('verifyAttestation — reason assembly', () => {
     describe('results-file-missing', () => {
       it('reports a nonexistent results file and returns a fully zeroed result', async () => {
-        const result = await verifyAttestation(
+        const result = await attest(
           attestArgs({ resultsPath: join(attestationDir, 'absent.xml') }),
         );
 
@@ -1012,7 +1044,7 @@ describe('verify-test-attestation.ts', () => {
         const staleTime = new Date(Date.now() - 200 * 60_000);
         await utimes(path, staleTime, staleTime);
 
-        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 120 }));
+        const result = await attest(attestArgs({ maxAgeMinutes: 120 }));
 
         expect(result.reasons).toEqual(['results-file-stale']);
         expect(result.passed).toBe(false);
@@ -1022,7 +1054,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps();
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 120 }));
+        const result = await attest(attestArgs({ maxAgeMinutes: 120 }));
 
         expect(result.reasons).toEqual([]);
       });
@@ -1052,7 +1084,7 @@ describe('verify-test-attestation.ts', () => {
         vi.useFakeTimers();
         vi.setSystemTime(now);
         try {
-          const result = await verifyAttestation(attestArgs({ maxAgeMinutes }));
+          const result = await attest(attestArgs({ maxAgeMinutes }));
 
           expect(result.reasons).toEqual([]);
         } finally {
@@ -1073,7 +1105,7 @@ describe('verify-test-attestation.ts', () => {
         vi.useFakeTimers();
         vi.setSystemTime(now);
         try {
-          const result = await verifyAttestation(attestArgs({ maxAgeMinutes }));
+          const result = await attest(attestArgs({ maxAgeMinutes }));
 
           expect(result.reasons).toEqual(['results-file-stale']);
         } finally {
@@ -1089,7 +1121,7 @@ describe('verify-test-attestation.ts', () => {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60_000);
         await utimes(path, tenMinutesAgo, tenMinutesAgo);
 
-        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 5 }));
+        const result = await attest(attestArgs({ maxAgeMinutes: 5 }));
 
         expect(result.reasons).toEqual(['results-file-stale']);
       });
@@ -1106,7 +1138,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['test-failures']);
         expect(result.failedTests).toEqual([
@@ -1132,7 +1164,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['test-failures']);
         // Nothing was parsed as failed — the reason came from the declared total.
@@ -1148,7 +1180,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['test-failures']);
       });
@@ -1157,7 +1189,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps();
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.failedTests).toEqual([]);
@@ -1176,7 +1208,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['skipped-tests']);
         expect(result.skippedTests).toEqual([
@@ -1192,7 +1224,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps();
         await writeResults(MULTI_PROJECT_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.skippedTests).toEqual([]);
@@ -1209,7 +1241,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['results-file-unparseable']);
         expect(result.totalTests).toBe(40);
@@ -1233,7 +1265,7 @@ describe('verify-test-attestation.ts', () => {
 </testsuite>
 </testsuites>`);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         // Exact array, matching every sibling in this block. arrayContaining is
         // a subset check and would stay green while a spurious extra reason
@@ -1247,7 +1279,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps();
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.totalTests).toBe(result.parsedTestCount);
@@ -1259,7 +1291,7 @@ describe('verify-test-attestation.ts', () => {
         // Baseline [] from beforeEach is the condition under test here.
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs({ sha: 'unattributed-sha' }));
+        const result = await attest(attestArgs({ sha: 'unattributed-sha' }));
 
         expect(result.reasons).toEqual(['no-session-attribution']);
         expect(mockFindDumps).toHaveBeenCalledWith('unattributed-sha');
@@ -1270,7 +1302,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps();
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.ranFileCount).toBe(1);
@@ -1287,7 +1319,7 @@ describe('verify-test-attestation.ts', () => {
         ]);
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.ranFileCount).toBe(1);
@@ -1299,7 +1331,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps('a.spec.ts', 'a.spec.ts', 'b.spec.ts');
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.ranFileCount).toBe(2);
       });
@@ -1313,7 +1345,7 @@ describe('verify-test-attestation.ts', () => {
           JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts', 'never-ran.spec.ts'] }),
         );
 
-        const result = await verifyAttestation(attestArgs({ selectionPath }));
+        const result = await attest(attestArgs({ selectionPath }));
 
         expect(result.reasons).toEqual(['missing-required-tests']);
         expect(result.missingRequiredFiles).toEqual(['never-ran.spec.ts']);
@@ -1329,7 +1361,7 @@ describe('verify-test-attestation.ts', () => {
           JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts'] }),
         );
 
-        const result = await verifyAttestation(attestArgs({ selectionPath }));
+        const result = await attest(attestArgs({ selectionPath }));
 
         expect(result.reasons).toEqual([]);
         expect(result.missingRequiredFiles).toEqual([]);
@@ -1339,7 +1371,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps('ran.spec.ts');
         await writeResults(PASSING_XML);
 
-        const result = await verifyAttestation(attestArgs({ selectionPath: undefined }));
+        const result = await attest(attestArgs({ selectionPath: undefined }));
 
         expect(result.reasons).toEqual([]);
         expect(result.missingRequiredFiles).toEqual([]);
@@ -1358,7 +1390,7 @@ describe('verify-test-attestation.ts', () => {
           JSON.stringify({ mode: 'full-suite', specFiles: ['never-ran.spec.ts'] }),
         );
 
-        const result = await verifyAttestation(attestArgs({ selectionPath }));
+        const result = await attest(attestArgs({ selectionPath }));
 
         expect(result.reasons).toEqual([]);
         expect(result.missingRequiredFiles).toEqual([]);
@@ -1373,7 +1405,7 @@ describe('verify-test-attestation.ts', () => {
         attestedDumps('qa/e2e/tests/apps/minicrm/functional/probe.spec.ts');
         await writeResults(MULTI_PROJECT_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual([]);
         expect(result.passed).toBe(true);
@@ -1392,7 +1424,7 @@ describe('verify-test-attestation.ts', () => {
       it('is false when exactly one reason fired, however healthy the rest', async () => {
         await writeResults(MULTI_PROJECT_XML);
 
-        const result = await verifyAttestation(attestArgs());
+        const result = await attest(attestArgs());
 
         expect(result.reasons).toEqual(['no-session-attribution']);
         expect(result.passed).toBe(false);
@@ -1411,7 +1443,7 @@ describe('verify-test-attestation.ts', () => {
     it('accumulates every applicable reason, in the order FAILURE_MESSAGES declares', async () => {
       const selectionPath = await writeEveryReasonFixture();
 
-      const result = await verifyAttestation(attestArgs({ selectionPath }));
+      const result = await attest(attestArgs({ selectionPath }));
 
       // Every reason except results-file-missing, which returns early and so can
       // never co-occur. Derived from the source's own list rather than hardcoded:
@@ -1437,7 +1469,7 @@ describe('verify-test-attestation.ts', () => {
       const staleTime = new Date(Date.now() - 500 * 60_000);
       await utimes(path, staleTime, staleTime);
 
-      const result = await verifyAttestation(attestArgs());
+      const result = await attest(attestArgs());
 
       expect(result.reasons).toEqual(['results-file-stale', 'no-session-attribution']);
       // And that is exactly the declared order filtered to what fired.
@@ -1622,8 +1654,15 @@ describe('verify-test-attestation.ts', () => {
       const nextHeading = doc.indexOf('\n### ', sectionStart + 1);
       const section = doc.slice(sectionStart, nextHeading === -1 ? undefined : nextHeading);
 
+      // Only the BULLET LIST counts, not the section's surrounding prose. The
+      // paragraph below the list discusses this very guard and names
+      // ATTESTATION_FAILURE_REASONS, so a whole-section scan would let prose
+      // that merely mentions a reason stand in for documenting it.
+      const bullets = section.split('\n').filter((line) => line.startsWith('- '));
+      const bulletText = bullets.join('\n');
+
       const undocumented = ATTESTATION_FAILURE_REASONS.filter(
-        (reason) => !section.includes(`\`${reason}\``),
+        (reason) => !bulletText.includes(`\`${reason}\``),
       );
 
       expect(undocumented, 'reasons missing from the operator troubleshooting list').toEqual([]);
