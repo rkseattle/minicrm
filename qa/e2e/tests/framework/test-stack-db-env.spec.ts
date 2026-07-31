@@ -22,6 +22,7 @@ import {
   resolveTestStackDbEnv,
   applyFirstWriteWins,
   parseEnvFileContents,
+  pickDbCoordinates,
   DevDatabaseRefusedError,
   DEV_DB_PORT,
   TEST_DB_PORT,
@@ -31,7 +32,7 @@ import {
 
 test.describe('resolveTestStackDbEnv', () => {
   test('defaults to the test stack when nothing was exported', () => {
-    const env = resolveTestStackDbEnv(undefined, undefined);
+    const env = resolveTestStackDbEnv({});
 
     expect(env.DB_PORT).toBe(TEST_DB_PORT);
     expect(env.DB_HOST).toBe('localhost');
@@ -41,7 +42,7 @@ test.describe('resolveTestStackDbEnv', () => {
   // loadEnvFile, but is NOT an export — passing undefined here is exactly what
   // the hook now does, and the guard must stay silent.
   test('does not refuse when the dev port came from a .env file rather than an export', () => {
-    const env = resolveTestStackDbEnv(undefined, undefined);
+    const env = resolveTestStackDbEnv({});
 
     expect(env.DB_PORT).toBe(TEST_DB_PORT);
     expect(env.DB_PORT).not.toBe(DEV_DB_PORT);
@@ -51,11 +52,11 @@ test.describe('resolveTestStackDbEnv', () => {
   // still refused outright. This is the case that stopped a test run truncating
   // the dev database (MINCRM-684) and must not be weakened by the fix.
   test('refuses an explicitly exported dev port', () => {
-    expect(() => resolveTestStackDbEnv(DEV_DB_PORT, undefined)).toThrow(DevDatabaseRefusedError);
+    expect(() => resolveTestStackDbEnv({ DB_PORT: DEV_DB_PORT })).toThrow(DevDatabaseRefusedError);
   });
 
   test('honors an exported non-default port for an operator running the stack elsewhere', () => {
-    const env = resolveTestStackDbEnv('15433', '127.0.0.1');
+    const env = resolveTestStackDbEnv({ DB_PORT: '15433', DB_HOST: '127.0.0.1' });
 
     expect(env.DB_PORT).toBe('15433');
     expect(env.DB_HOST).toBe('127.0.0.1');
@@ -64,7 +65,7 @@ test.describe('resolveTestStackDbEnv', () => {
   // Database names are hardcoded, never inherited — a stray DB_NAME in any file
   // or environment must not be able to point a child at the dev database.
   test('always returns the test database names regardless of input', () => {
-    const env = resolveTestStackDbEnv('15433', 'example.internal');
+    const env = resolveTestStackDbEnv({ DB_PORT: '15433', DB_HOST: 'example.internal' });
 
     expect(env.DB_NAME).toBe(TEST_DB_NAME);
     expect(env.COVERAGE_DB_NAME).toBe(TEST_COVERAGE_DB_NAME);
@@ -74,7 +75,7 @@ test.describe('resolveTestStackDbEnv', () => {
   // coverage there, so pointing TIA at the unit-test database would find zero
   // mappings and silently degrade every push to a full-suite run.
   test('points coverage at the e2e database, not the unit-test one', () => {
-    const env = resolveTestStackDbEnv(undefined, undefined);
+    const env = resolveTestStackDbEnv({});
 
     expect(env.COVERAGE_DB_NAME).toBe('minicrm_coverage_e2e');
     expect(env.COVERAGE_DB_NAME).not.toContain('_test');
@@ -165,5 +166,74 @@ test.describe('parseEnvFileContents', () => {
 
   test('preserves an empty value', () => {
     expect(parseEnvFileContents('BASE_URL=')).toEqual({ BASE_URL: '' });
+  });
+});
+
+// The precedence chain, and specifically the regression Greptile caught on
+// PR #369: an earlier revision of this fix ignored ALL file values in order to
+// avoid root .env's dev port, which also discarded a developer's legitimate
+// non-default test-stack coordinates in qa/e2e/.env and pinned everyone to
+// localhost:5433. Source matters as much as value — root .env is excluded from
+// the chain entirely; qa/e2e/.env is authoritative. (MINCRM-698)
+test.describe('resolveTestStackDbEnv — precedence', () => {
+  test('uses qa/e2e/.env coordinates when nothing is exported', () => {
+    const env = resolveTestStackDbEnv({}, { DB_PORT: '15433', DB_HOST: 'test-stack.internal' });
+
+    expect(env.DB_PORT).toBe('15433');
+    expect(env.DB_HOST).toBe('test-stack.internal');
+  });
+
+  test('lets an explicit export outrank qa/e2e/.env', () => {
+    const env = resolveTestStackDbEnv(
+      { DB_PORT: '25433', DB_HOST: 'exported.internal' },
+      { DB_PORT: '15433', DB_HOST: 'file.internal' },
+    );
+
+    expect(env.DB_PORT).toBe('25433');
+    expect(env.DB_HOST).toBe('exported.internal');
+  });
+
+  test('falls back to the test-stack default when neither source sets a port', () => {
+    const env = resolveTestStackDbEnv({}, { DB_HOST: 'file.internal' });
+
+    expect(env.DB_PORT).toBe(TEST_DB_PORT);
+    // A host-only file entry still applies.
+    expect(env.DB_HOST).toBe('file.internal');
+  });
+
+  // Root .env's DB_PORT=5432 must never reach this function — the caller reads
+  // qa/e2e/.env directly rather than process.env for exactly that reason. If it
+  // ever did arrive via the file argument, refusing is still the right answer.
+  test('refuses the dev port even if it somehow arrives from the file source', () => {
+    expect(() => resolveTestStackDbEnv({}, { DB_PORT: DEV_DB_PORT })).toThrow(
+      DevDatabaseRefusedError,
+    );
+  });
+
+  test('still refuses an exported dev port that a file would otherwise override', () => {
+    expect(() => resolveTestStackDbEnv({ DB_PORT: DEV_DB_PORT }, { DB_PORT: '15433' })).toThrow(
+      DevDatabaseRefusedError,
+    );
+  });
+});
+
+test.describe('pickDbCoordinates', () => {
+  test('extracts only the DB coordinates', () => {
+    expect(
+      pickDbCoordinates({ DB_PORT: '15433', DB_HOST: 'h', E2E_ADMIN_EMAIL: 'a@b.test' }),
+    ).toEqual({ DB_PORT: '15433', DB_HOST: 'h' });
+  });
+
+  // Absent keys are OMITTED, not set to undefined, so the resolver's ?? chain
+  // falls through to the next source instead of stopping on an explicit undefined.
+  test('omits absent keys rather than setting them undefined', () => {
+    const picked = pickDbCoordinates({ E2E_ADMIN_EMAIL: 'a@b.test' });
+
+    expect(picked).toEqual({});
+    expect('DB_PORT' in picked).toBe(false);
+  });
+
+  test('treats an empty value as absent', () => {
+    expect(pickDbCoordinates({ DB_PORT: '', DB_HOST: 'h' })).toEqual({ DB_HOST: 'h' });
   });
 });

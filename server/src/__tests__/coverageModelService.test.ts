@@ -498,7 +498,21 @@ describe('coverageModelService', () => {
         [commitSha],
       );
       expect(remainingLinks.rowCount).toBe(0);
-    }, 30_000);
+      // 90s, raised from 30s. This is by far the heaviest test in the suite —
+      // 20,000 units through an insert, a prune and a chunked link cleanup,
+      // ~29x slower than the next slowest test in this file. It takes ~5s on an
+      // idle machine, but it runs in the `parallel` project alongside five other
+      // DB-bound workers (vitest.config.ts maxWorkers: 6), and on a contended CI
+      // runner it hit exactly 30,039ms and failed the job (PR #369).
+      //
+      // The old 30s left under a 6x margin against a figure measured on an idle
+      // machine — not enough headroom for a shared runner. Same reasoning the
+      // `serial` project already applies to seedDemo ("60s allows each call up
+      // to ~15s on a loaded machine"); this test is heavier still and the
+      // parallel project has no raised default to inherit. Raising the ceiling
+      // does not slow the passing case: a test that finishes in 5s finishes in
+      // 5s either way. (MINCRM-691)
+    }, 90_000);
 
     it('deletes coverage_ingested_dumps rows older than the retention window (MINCRM-637)', async () => {
       // coverage_ingested_dumps had zero retention pruning at all before

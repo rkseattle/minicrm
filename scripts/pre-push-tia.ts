@@ -59,6 +59,7 @@ import {
 import {
   resolveTestStackDbEnv,
   parseEnvFileContents,
+  pickDbCoordinates,
   DevDatabaseRefusedError,
   DEV_DB_PORT,
   TEST_DB_PORT,
@@ -89,6 +90,27 @@ const BYPASS_LOG_PATH = resolve(REPO_ROOT, '.git', 'tia-prepush-bypass.log');
  */
 const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
+
+/**
+ * Reads DB_HOST/DB_PORT straight out of qa/e2e/.env, bypassing process.env.
+ *
+ * Necessary because by the time anything resolves coordinates, loadRootEnv() has
+ * flattened root .env and qa/e2e/.env into one namespace where root's DEV values
+ * win. Going back to the file is what lets a developer's non-default test-stack
+ * host/port — the documented way to run the stack somewhere other than
+ * localhost:5433 — still take effect, without root .env's dev port ever being
+ * mistaken for one. Missing file or missing keys yield {}, so the resolver falls
+ * through to its defaults. (MINCRM-698)
+ */
+function readE2eEnvFileCoordinates(): { DB_PORT?: string; DB_HOST?: string } {
+  let contents: string;
+  try {
+    contents = readFileSync(resolve(REPO_ROOT, 'qa', 'e2e', '.env'), 'utf8');
+  } catch {
+    return {};
+  }
+  return pickDbCoordinates(parseEnvFileContents(contents));
+}
 
 // Same "never overwrite an already-set var" pattern as scripts/e2e-setup.ts —
 // so a caller's own explicit env (e.g. CI, or a developer's shell export)
@@ -184,8 +206,17 @@ function loadRootEnv(): void {
  * (MINCRM-698)
  */
 function resolveTestStackDbEnvOrExit(): TestStackDbEnv {
+  // qa/e2e/.env is re-read directly rather than consulted through process.env:
+  // by now root .env has already been flattened in and would shadow it, which is
+  // the whole defect. Reading the file names its values as coming from the TEST
+  // stack's own config, so a developer's non-default host/port there still
+  // reaches every child. (MINCRM-698)
+  const e2eEnvFile = readE2eEnvFileCoordinates();
   try {
-    return resolveTestStackDbEnv(EXPORTED_DB_PORT, EXPORTED_DB_HOST);
+    return resolveTestStackDbEnv(
+      { DB_PORT: EXPORTED_DB_PORT, DB_HOST: EXPORTED_DB_HOST },
+      e2eEnvFile,
+    );
   } catch (err) {
     if (err instanceof DevDatabaseRefusedError) {
       console.error(

@@ -59,11 +59,24 @@ export class DevDatabaseRefusedError extends Error {
  * the post-load `process.env.DB_PORT` therefore saw 5432 on a completely healthy
  * machine and refused every push, with the test stack up and correct.
  *
- * Reading the pre-file snapshot keeps the guard's real contract: an operator who
- * deliberately EXPORTS the dev port is still refused outright — that is the case
- * it exists for, and it is what stopped a test run truncating the dev database
- * (MINCRM-684) — while a value that merely appeared in a file this hook chose to
- * load cannot trigger it.
+ * PRECEDENCE, highest first. The source of a value matters as much as the value:
+ *
+ *   1. `exported` — the real environment, captured BEFORE any .env load. An
+ *      operator who deliberately exports coordinates means it, including when
+ *      they export the dev port, which is still refused outright. That refusal
+ *      is what stopped a test run truncating the dev database (MINCRM-684).
+ *   2. `fromE2eEnvFile` — qa/e2e/.env, the file that describes the TEST stack.
+ *      Authoritative for these keys: a developer running the stack on a
+ *      non-default host/port configures it there, and that must reach every
+ *      child. An earlier revision of this fix ignored ALL file values to avoid
+ *      root .env's dev port, which also silently discarded this legitimate
+ *      customization and pinned everyone to localhost:5433.
+ *   3. The test-stack defaults below.
+ *
+ * Root .env is deliberately absent from that chain. It describes the DEV stack,
+ * is loaded only for secrets, and must never supply a database coordinate — the
+ * distinction the original defect could not draw, because by the time it read
+ * process.env both files had already been flattened into it.
  *
  * Database NAMES are hardcoded rather than resolved, so a stray DB_NAME in any
  * environment or file can never point a child at the dev database.
@@ -74,21 +87,41 @@ export class DevDatabaseRefusedError extends Error {
  * @throws DevDatabaseRefusedError when the resolved port is the dev port.
  */
 export function resolveTestStackDbEnv(
-  exportedPort: string | undefined,
-  exportedHost: string | undefined,
+  exported: Readonly<{ DB_PORT?: string; DB_HOST?: string }>,
+  fromE2eEnvFile: Readonly<{ DB_PORT?: string; DB_HOST?: string }> = {},
 ): TestStackDbEnv {
-  const dbPort = exportedPort ?? TEST_DB_PORT;
+  const dbPort = exported.DB_PORT ?? fromE2eEnvFile.DB_PORT ?? TEST_DB_PORT;
 
   if (dbPort === DEV_DB_PORT) {
     throw new DevDatabaseRefusedError();
   }
 
   return {
-    DB_HOST: exportedHost ?? 'localhost',
+    DB_HOST: exported.DB_HOST ?? fromE2eEnvFile.DB_HOST ?? 'localhost',
     DB_PORT: dbPort,
     DB_NAME: TEST_DB_NAME,
     COVERAGE_DB_NAME: TEST_COVERAGE_DB_NAME,
   };
+}
+
+/**
+ * Extracts just the DB coordinates from parsed .env contents.
+ *
+ * Both callers (scripts/pre-push-tia.ts and scripts/e2e-setup.ts) re-read
+ * qa/e2e/.env directly rather than consulting process.env, because by the time
+ * they resolve, root .env has been flattened in and its DEV values shadow the
+ * test ones. Going back to the file is what names these values as belonging to
+ * the TEST stack. Absent keys are omitted rather than set to undefined, so the
+ * resolver's `??` chain falls through cleanly. (MINCRM-698)
+ */
+export function pickDbCoordinates(parsed: Readonly<Record<string, string>>): {
+  DB_PORT?: string;
+  DB_HOST?: string;
+} {
+  const coordinates: { DB_PORT?: string; DB_HOST?: string } = {};
+  if (parsed.DB_PORT) coordinates.DB_PORT = parsed.DB_PORT;
+  if (parsed.DB_HOST) coordinates.DB_HOST = parsed.DB_HOST;
+  return coordinates;
 }
 
 /**
