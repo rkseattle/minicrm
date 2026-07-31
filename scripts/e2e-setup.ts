@@ -26,6 +26,8 @@ import { fileURLToPath } from 'url';
 // and so the rule has a test runner (root scripts/ has none). (MINCRM-698)
 import {
   resolveTestStackDbEnv,
+  parseEnvFileContents,
+  pickDbCoordinates,
   DevDatabaseRefusedError,
   DEV_DB_PORT,
   TEST_DB_PORT,
@@ -52,6 +54,37 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  */
 const EXPORTED_DB_PORT = process.env.DB_PORT;
 const EXPORTED_DB_HOST = process.env.DB_HOST;
+const EXPORTED_DB_USER = process.env.DB_USER;
+const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
+
+/**
+ * Reads DB_HOST/DB_PORT straight out of qa/e2e/.env, bypassing process.env —
+ * root .env is loaded below for NODE_ENCRYPTION_KEY and its DEV coordinates
+ * would otherwise shadow the test stack's. This is what keeps a developer's
+ * non-default test-stack host/port working. (MINCRM-698)
+ */
+function readE2eEnvFileCoordinates(): { DB_PORT?: string; DB_HOST?: string } {
+  try {
+    const contents = readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8');
+    return pickDbCoordinates(parseEnvFileContents(contents));
+  } catch {
+    return {};
+  }
+}
+
+/** Credentials from qa/e2e/.env, read off disk for the same reason as the coordinates above. */
+function readE2eEnvFileCredentials(): { DB_USER?: string; DB_PASSWORD?: string } {
+  try {
+    const contents = readFileSync(resolve(__dirname, '..', 'qa', 'e2e', '.env'), 'utf8');
+    const parsed = parseEnvFileContents(contents);
+    const credentials: { DB_USER?: string; DB_PASSWORD?: string } = {};
+    if (parsed.DB_USER) credentials.DB_USER = parsed.DB_USER;
+    if (parsed.DB_PASSWORD) credentials.DB_PASSWORD = parsed.DB_PASSWORD;
+    return credentials;
+  } catch {
+    return {};
+  }
+}
 
 // Load root .env so NODE_ENCRYPTION_KEY and other server-side vars are available
 // to child scripts (e.g. seed:e2e-storage needs NODE_ENCRYPTION_KEY to encrypt secrets).
@@ -133,7 +166,10 @@ function resolveTestDbEnv(): {
 } {
   let resolved;
   try {
-    resolved = resolveTestStackDbEnv(EXPORTED_DB_PORT, EXPORTED_DB_HOST);
+    resolved = resolveTestStackDbEnv(
+      { DB_PORT: EXPORTED_DB_PORT, DB_HOST: EXPORTED_DB_HOST },
+      readE2eEnvFileCoordinates(),
+    );
   } catch (err) {
     if (err instanceof DevDatabaseRefusedError) {
       console.error(
@@ -147,9 +183,18 @@ function resolveTestDbEnv(): {
     }
     throw err;
   }
+  // Credentials follow the same precedence as host/port — export, then
+  // qa/e2e/.env, then the test-stack default — rather than reading the
+  // post-flatten process.env, where root .env's DEV credentials would win. Latent
+  // today because both stacks use minicrm/password, but the moment a developer
+  // gives the test stack its own password (or root .env diverges, as
+  // .env.example's DB_PASSWORD=changeme already hints), reading process.env here
+  // would aim DEV credentials at a TEST host. Same root cause as the port bug
+  // this ticket fixes. (MINCRM-698)
+  const fileCredentials = readE2eEnvFileCredentials();
   return {
-    DB_USER: process.env.DB_USER ?? 'minicrm',
-    DB_PASSWORD: process.env.DB_PASSWORD ?? 'password',
+    DB_USER: EXPORTED_DB_USER ?? fileCredentials.DB_USER ?? 'minicrm',
+    DB_PASSWORD: EXPORTED_DB_PASSWORD ?? fileCredentials.DB_PASSWORD ?? 'password',
     // Host and port both come from the snapshot-backed resolver, so neither can
     // be inherited from root .env's dev coordinates.
     DB_HOST: resolved.DB_HOST,
