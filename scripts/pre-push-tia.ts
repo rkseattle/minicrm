@@ -64,6 +64,7 @@ import {
   DEV_DB_PORT,
   TEST_DB_PORT,
   type TestStackDbEnv,
+  type TestStackDbSource,
 } from '../qa/scripts/test-stack-db-env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,7 +95,7 @@ const EXPORTED_DB_USER = process.env.DB_USER;
 const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
 
 /**
- * Reads DB_HOST/DB_PORT straight out of qa/e2e/.env, bypassing process.env.
+ * Reads the DB coordinates AND credentials straight out of qa/e2e/.env, bypassing process.env.
  *
  * Necessary because by the time anything resolves coordinates, loadRootEnv() has
  * flattened root .env and qa/e2e/.env into one namespace where root's DEV values
@@ -104,7 +105,7 @@ const EXPORTED_DB_PASSWORD = process.env.DB_PASSWORD;
  * mistaken for one. Missing file or missing keys yield {}, so the resolver falls
  * through to its defaults. (MINCRM-698)
  */
-function readE2eEnvFileCoordinates(): { DB_PORT?: string; DB_HOST?: string } {
+function readE2eEnvFileDbSource(): TestStackDbSource {
   let contents: string;
   try {
     contents = readFileSync(resolve(REPO_ROOT, 'qa', 'e2e', '.env'), 'utf8');
@@ -213,7 +214,7 @@ function resolveTestStackDbEnvOrExit(): TestStackDbEnv {
   // the whole defect. Reading the file names its values as coming from the TEST
   // stack's own config, so a developer's non-default host/port there still
   // reaches every child. (MINCRM-698)
-  const e2eEnvFile = readE2eEnvFileCoordinates();
+  const e2eEnvFile = readE2eEnvFileDbSource();
   try {
     return resolveTestStackDbEnv(
       {
