@@ -1068,10 +1068,25 @@ commit, not against a long job.
   rather than failing silently — grep the Playwright output for
   `[coverage-session]`, which names the reason (neither variable set, or a malformed
   value) and the fix. See "Local buildSha provenance" below.
+- `results-file-stale` → the results file's mtime is older than `--max-age-minutes`
+  (default 120). Re-run the suite; the artifact on disk predates the commit under test.
+- `test-failures` → at least one test failed, or the reporter's own
+  `<testsuites failures=/errors=>` totals are non-zero. The failing tests are named
+  individually in the output.
 - `skipped-tests` → a test was skipped under every project; usually a project was dropped
   from the invocation.
 - `results-file-unparseable` → the results file could not be fully read. This is a
   parser/reporter disagreement, _not_ a test outcome — do not infer pass or fail from it.
+- `missing-required-tests` → a `--selection` file was supplied and the run did not cover
+  every spec it required. Only the local pre-push hook passes `--selection`; record mode
+  runs the full suite and has nothing to reconcile against.
+
+This list must name every member of `AttestationFailureReason`, and that is **enforced**,
+not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
+reason exported from `ATTESTATION_FAILURE_REASONS` is missing a backticked entry above.
+The reasons and their operator-facing text are defined together in `FAILURE_MESSAGES`
+(`server/src/scripts/verify-test-attestation.ts`), where the type already makes a reason
+without a message a compile error. (MINCRM-691)
 
 The export and commit steps are gated on the suite, the zero-test guard, and the
 attestation all succeeding, which is why no incomplete map has ever been committed.

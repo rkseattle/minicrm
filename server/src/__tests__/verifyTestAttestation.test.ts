@@ -1,20 +1,68 @@
 /**
- * Unit tests for verify-test-attestation.ts's JUnit XML parsing. (MINCRM-642)
+ * Unit tests for the test-run attestation gate. (MINCRM-642, MINCRM-691)
  *
- * parseJUnitResults is pure (no DB, no filesystem) and the highest-risk
- * logic in this script — a false "passed" here would let a broken run
- * through the attestation gate. The reconciliation rules it feeds
- * (findTestsSkippedEverywhere, findFailedTests, hasParseDisagreement) are
- * exported as pure functions for the same reason and tested directly below.
+ * Two layers, both covered here:
  *
- * NOT covered here: verifyAttestation's own reason assembly, which reads the
- * filesystem and queries coverage_sessions. An earlier version of this
- * docblock claimed an E2E functional spec exercised it; no such spec exists
- * (MINCRM-687 — the coverage-* specs cover the pipeline, sessions and
- * mapping APIs, not this gate). The gate's decision logic is therefore
- * verified only through the pure helpers it delegates to, and a change that
- * stopped calling one of them would not be caught. Worth closing.
+ *  1. **The pure JUnit parsing** (junitXml.ts) — parseJUnitResults and the
+ *     reconciliation rules it feeds (findTestsSkippedEverywhere,
+ *     findFailedTests, hasParseDisagreement). Highest-risk logic in the script:
+ *     a false "passed" here would let a broken run through the gate.
+ *
+ *  2. **verifyAttestation's reason assembly** (verify-test-attestation.ts) —
+ *     which predicate maps to which AttestationFailureReason, plus
+ *     formatFailureOutput's operator-facing text and readSelectionFiles'
+ *     short-circuit and fallbacks. Added by MINCRM-691; before that the gate's
+ *     own decision logic was verified only through the pure helpers it
+ *     delegates to, so a change that stopped CALLING one of them left the suite
+ *     green. (An older version of this docblock claimed an E2E functional spec
+ *     covered it. No such spec ever existed — the coverage-* specs cover the
+ *     pipeline, sessions and mapping APIs, not this gate.)
+ *
+ * How layer 2 runs without a coverage database: verifyAttestation has exactly
+ * one impure collaborator, findCoverageSessionDumpsByBuildSha, which is
+ * substituted at the module boundary (see the vi.mock block below). Everything
+ * else is driven through a real per-test temp directory, because
+ * existsSync/statSync/readFileSync behavior — including mtime-driven staleness —
+ * is part of what these tests exist to verify; mocking node:fs would test the
+ * mock. coverageDb is mocked too, but as a forward guard rather than a
+ * necessity — see the comment on that mock for why the pool being lazy makes it
+ * optional today.
+ *
+ * The vi.mock calls are file-scoped and so apply to layer 1's describes as
+ * well. That is inert: neither mocked module is in junitXml.ts's import graph,
+ * which is why those tests still import from junitXml.ts directly (MINCRM-689 —
+ * keeping that import graph free of a pg.Pool is what lets qa/'s parity spec
+ * share it).
  */
+
+// ── Mocked seam ─────────────────────────────────────────────────────────────
+//
+// verifyAttestation has exactly one impure collaborator:
+// findCoverageSessionDumpsByBuildSha. Substituting it at the module boundary is
+// what lets the reason assembly be driven without a live coverage database
+// (MINCRM-691, AC 5). Bare factory + relative specifier WITH the .js extension,
+// matching the source import exactly — see requireAiTokenBudget.test.ts, the
+// closest existing analogue in this workspace.
+vi.mock('../services/coverageSessionService.js', () => ({
+  findCoverageSessionDumpsByBuildSha: vi.fn(),
+}));
+
+// coverageDb is mocked as a FORWARD GUARD, not because the import would
+// otherwise open a connection. `new pg.Pool()` is lazy — it opens no socket
+// until query()/connect(), and verifyAttestation calls neither (only main()'s
+// finally touches coverageDb.end(), and main() never runs here because
+// process.argv[1] is Vitest's worker entry, failing the endsWith() guard in
+// verify-test-attestation.ts). Verified: with this mock removed the test still
+// passes and the real pool reports totalCount=0. The mock's value is that if
+// verifyAttestation ever starts querying directly, the seam surfaces `undefined`
+// instead of a unit test silently opening a live connection. (MINCRM-691)
+vi.mock('../coverageDb.js', () => ({
+  default: { end: vi.fn(async () => undefined) },
+}));
+
+import { mkdtemp, rm, writeFile, utimes, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve as resolvePath } from 'node:path';
 
 // Imports from junitXml.ts, not verify-test-attestation.ts, which pulls in
 // coverageDb (a pg.Pool plus dotenv/config at module load). These are
@@ -24,6 +72,10 @@
 // regardless. The import graph is simply honest about what these tests use; the
 // spec that genuinely benefits is qa/'s, which has no globalSetup.
 // (MINCRM-689)
+//
+// The vi.mock calls above are file-scoped and so apply to these describes too.
+// That is inert: neither mocked module is in junitXml.ts's import graph.
+// (MINCRM-691)
 import {
   parseJUnitResults,
   findTestsSkippedEverywhere,
@@ -31,6 +83,17 @@ import {
   hasParseDisagreement,
   type JUnitTestCase,
 } from '../scripts/junitXml.js';
+
+import {
+  verifyAttestation,
+  formatFailureOutput,
+  readSelectionFiles,
+  ATTESTATION_FAILURE_REASONS,
+  type AttestationResult,
+  type CliArgs,
+} from '../scripts/verify-test-attestation.js';
+import { findCoverageSessionDumpsByBuildSha } from '../services/coverageSessionService.js';
+import type { CoverageSessionDump } from '@minicrm/shared/schemas/coverageSessionSchema.js';
 
 /** Builds a JUnitTestCase with the fields these tests care about. */
 function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
@@ -44,6 +107,181 @@ function testCase(overrides: Partial<JUnitTestCase>): JUnitTestCase {
     ...overrides,
   };
 }
+
+// ── verifyAttestation harness (MINCRM-691) ──────────────────────────────────
+
+const mockFindDumps = vi.mocked(findCoverageSessionDumpsByBuildSha);
+
+/** Temp directory for the results/selection files each test writes. */
+let attestationDir: string;
+
+/**
+ * Set up per-test filesystem and mock state for the describes that exercise
+ * verify-test-attestation.ts. Called from an outer describe rather than at file
+ * scope so the ~55 pure junitXml.ts tests above do not each pay a temp-directory
+ * create plus recursive delete they never touch. (MINCRM-691)
+ */
+function useAttestationFixtures(): void {
+  beforeEach(async () => {
+    attestationDir = await mkdtemp(join(tmpdir(), 'minicrm-attestation-test-'));
+
+    // resetAllMocks, NOT clearAllMocks. clearAllMocks resets call history but
+    // leaves implementations set via mockResolvedValue in place, so a test that
+    // sets no return value silently inherits the previous test's — verified, it
+    // leaks. That is fatal here specifically because AC 1 requires asserting a
+    // reason is ABSENT, and an absent-assertion driven by a leaked
+    // implementation is a green test that proves nothing. (Precedent exists —
+    // ssoController.test.ts and client/src/hooks/usePermissions.test.ts both use
+    // resetAllMocks; the nearest analogue for the mock shape here,
+    // requireAiTokenBudget.test.ts, uses clearAllMocks, which is safe there only
+    // because every one of its tests sets its own return value.) (MINCRM-691)
+    vi.resetAllMocks();
+
+    // Explicit baseline: no attributed dumps. Every test asserting an exact
+    // `reasons` array for some OTHER reason must override this with a non-empty
+    // value, or 'no-session-attribution' joins the array and the assertion is
+    // simply wrong. See attestedDumps() below.
+    mockFindDumps.mockResolvedValue([]);
+  });
+
+  afterEach(async () => {
+    await rm(attestationDir, { recursive: true, force: true });
+  });
+}
+
+/**
+ * Writes the results XML the per-test attestArgs() already points at. The
+ * filename is fixed deliberately: a caller-chosen name would just produce
+ * 'results-file-missing' unless attestArgs were overridden to match, which is a
+ * footgun rather than a feature.
+ */
+async function writeResults(xml: string): Promise<string> {
+  const path = join(attestationDir, 'results.xml');
+  await writeFile(path, xml, 'utf8');
+  return path;
+}
+
+/** Writes a selection JSON file (raw string, so malformed input is expressible). */
+async function writeSelection(raw: string): Promise<string> {
+  const path = join(attestationDir, 'selection.json');
+  await writeFile(path, raw, 'utf8');
+  return path;
+}
+
+/**
+ * Builds the one input that provokes every reason except results-file-missing:
+ * a stale results file that is simultaneously failing, skipping, under-parsed
+ * (9 declared vs 2 recovered) and unattributed, with a selection naming a spec
+ * that never ran. Returns the selection path.
+ *
+ * Extracted because assembling it inline in each consumer put four copies of
+ * the same XML-plus-utimes block in this file — the exact duplication the
+ * pre-commit refactor step exists to catch. (MINCRM-691)
+ */
+async function writeEveryReasonFixture(): Promise<string> {
+  const path =
+    await writeResults(`<testsuites id="" name="" tests="9" failures="1" skipped="1" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="9" failures="1" skipped="1" errors="0" time="0.1">
+<testcase name="fails" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+<failure message="boom" type="AssertionError">stack</failure>
+</testcase>
+<testcase name="never runs" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>`);
+  const staleTime = new Date(Date.now() - 500 * 60_000);
+  await utimes(path, staleTime, staleTime);
+  return writeSelection(JSON.stringify({ mode: 'targeted', specFiles: ['never-ran.spec.ts'] }));
+}
+
+/**
+ * Builds a CoverageSessionDump — all nine fields, testFile deliberately
+ * nullable. IDs are valid hex so the fixture stays usable if it is ever routed
+ * through coverageSessionDumpSchema (it is not today; the lookup is mocked).
+ */
+function dump(overrides: Partial<CoverageSessionDump> = {}): CoverageSessionDump {
+  return {
+    id: '00000000-0000-0000-0000-0000000000d1',
+    sessionId: '00000000-0000-0000-0000-00000000005a',
+    dumpId: '00000000-0000-0000-0000-0000000000e1',
+    correlationId: '00000000-0000-0000-0000-0000000000c1',
+    testId: 'test-1',
+    testName: 'a test',
+    testFile: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts',
+    attempt: 0,
+    recordedAt: '2026-07-30T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/**
+ * Sets the mocked dump lookup to a non-empty result, so 'no-session-attribution'
+ * does NOT fire and a test can assert an exact `reasons` array for the reason it
+ * actually cares about. Required by every reason test except
+ * 'no-session-attribution' itself and 'results-file-missing'. (MINCRM-691)
+ */
+function attestedDumps(...testFiles: string[]): void {
+  const files =
+    testFiles.length > 0 ? testFiles : ['qa/e2e/tests/apps/minicrm/functional/a.spec.ts'];
+  mockFindDumps.mockResolvedValue(files.map((testFile) => dump({ testFile })));
+}
+
+/** Builds CliArgs pointing at the per-test temp dir, with a fresh-file default age. */
+function attestArgs(overrides: Partial<CliArgs> = {}): CliArgs {
+  return {
+    resultsPath: join(attestationDir, 'results.xml'),
+    selectionPath: undefined,
+    sha: 'deadbeefcafe',
+    maxAgeMinutes: 120,
+    ...overrides,
+  };
+}
+
+/** A minimal all-passing single-project results document. */
+const PASSING_XML = `<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="0.1">
+<testsuite name="a.spec.ts" timestamp="2026-07-30T00:00:00.000Z" hostname="desktop" tests="1" failures="0" skipped="0" time="0.1" errors="0">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`;
+
+/**
+ * A two-project run where each test passes under exactly one project and skips
+ * under the other — the shape record mode actually produces, and the one the
+ * MINCRM-687 reconciliation rule exists for. The union covers both tests, so
+ * this document is attestable: no test is skipped everywhere.
+ *
+ * <testsuites skipped="2"> is legitimately non-zero here, and both skips are
+ * recovered, so hasParseDisagreement stays false.
+ */
+const MULTI_PROJECT_XML = `<testsuites id="" name="" tests="4" failures="0" skipped="2" errors="0" time="1.4">
+<testsuite name="probe.spec.ts" timestamp="2026-07-30T00:00:00.000Z" hostname="desktop" tests="2" failures="0" skipped="1" time="0.37" errors="0">
+<testcase name="desktop only" classname="qa/e2e/tests/apps/minicrm/functional/probe.spec.ts" time="0.07">
+</testcase>
+<testcase name="mobile only" classname="qa/e2e/tests/apps/minicrm/functional/probe.spec.ts">
+<properties>
+<property name="skip" value="mobile-only probe">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="probe.spec.ts" timestamp="2026-07-30T00:00:00.000Z" hostname="mobile-web" tests="2" failures="0" skipped="1" time="0.25" errors="0">
+<testcase name="desktop only" classname="qa/e2e/tests/apps/minicrm/functional/probe.spec.ts">
+<properties>
+<property name="skip" value="desktop-only probe">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="mobile only" classname="qa/e2e/tests/apps/minicrm/functional/probe.spec.ts" time="0.08">
+</testcase>
+</testsuite>
+</testsuites>`;
 
 describe('parseJUnitResults', () => {
   it('parses a passing suite with multiple testsuites/testcases', () => {
@@ -261,34 +499,11 @@ Stack trace
   // `--project=desktop --project=mobile-web` run: the same test appears once
   // per project, skipped in the one whose viewport it does not apply to.
   it('records a viewport-conditional test as skipped in one project and passing in the other', () => {
-    const xml = `<testsuites id="" name="" tests="4" failures="0" skipped="2" errors="0" time="1.4">
-<testsuite name="probe.spec.ts" timestamp="2026-01-01T00:00:00.000Z" hostname="desktop" tests="2" failures="0" skipped="1" time="0.37" errors="0">
-<testcase name="desktop only" classname="apps/minicrm/functional/probe.spec.ts" time="0.07">
-</testcase>
-<testcase name="mobile only" classname="apps/minicrm/functional/probe.spec.ts">
-<properties>
-<property name="skip" value="mobile-only probe">
-</property>
-</properties>
-<skipped>
-</skipped>
-</testcase>
-</testsuite>
-<testsuite name="probe.spec.ts" timestamp="2026-01-01T00:00:00.000Z" hostname="mobile-web" tests="2" failures="0" skipped="1" time="0.25" errors="0">
-<testcase name="desktop only" classname="apps/minicrm/functional/probe.spec.ts">
-<properties>
-<property name="skip" value="desktop-only probe">
-</property>
-</properties>
-<skipped>
-</skipped>
-</testcase>
-<testcase name="mobile only" classname="apps/minicrm/functional/probe.spec.ts" time="0.08">
-</testcase>
-</testsuite>
-</testsuites>`;
-
-    const result = parseJUnitResults(xml);
+    // Shares MULTI_PROJECT_XML with the verifyAttestation tests below: this is
+    // the parser's view of the same document whose gate outcome they assert, so
+    // one fixture keeps the two layers describing the same run rather than two
+    // documents that can drift apart. (MINCRM-691)
+    const result = parseJUnitResults(MULTI_PROJECT_XML);
 
     const desktopOnly = result.testCases.filter((t) => t.name === 'desktop only');
     const mobileOnly = result.testCases.filter((t) => t.name === 'mobile only');
@@ -722,5 +937,698 @@ describe('hasParseDisagreement', () => {
     // that zero tests ran — judging the parser against an absent declaration
     // would fail every such file.
     expect(hasParseDisagreement(parsed({ totalTests: 0, testCases: [testCase({})] }))).toBe(false);
+  });
+});
+
+// MINCRM-691: the seam itself. Everything below in later phases depends on
+// verifyAttestation being reachable from a unit test at all, which it was not
+// before this — the module was considered un-importable because it pulls in
+// coverageDb. It is importable; the pool is lazy. This test pins that property
+// so a future change that makes the module genuinely DB-bound at import time
+// fails here, next to the explanation, rather than as a timeout somewhere else.
+describe('verify-test-attestation.ts', () => {
+  useAttestationFixtures();
+
+  describe('verifyAttestation — mocked DB seam', () => {
+    it('runs without a live coverage database and reports a missing results file', async () => {
+      const result = await verifyAttestation(
+        attestArgs({ resultsPath: join(attestationDir, 'never-written.xml') }),
+      );
+
+      expect(result.reasons).toEqual(['results-file-missing']);
+      // The lookup is never reached — the missing-file branch returns first.
+      expect(mockFindDumps).not.toHaveBeenCalled();
+    });
+  });
+
+  // MINCRM-691 (AC 1, AC 2): the reason assembly itself — which predicate maps to
+  // which reason. Every reason below is asserted BOTH ways: produced by the
+  // condition that should produce it, and absent when it should not be.
+  //
+  // Every test asserting an exact `reasons` array first calls attestedDumps(), or
+  // the beforeEach baseline of [] adds 'no-session-attribution' and the assertion
+  // is wrong rather than merely imprecise. The two exceptions are the
+  // no-session-attribution tests themselves and results-file-missing, which
+  // returns before the lookup.
+  describe('verifyAttestation — reason assembly', () => {
+    describe('results-file-missing', () => {
+      it('reports a nonexistent results file and returns a fully zeroed result', async () => {
+        const result = await verifyAttestation(
+          attestArgs({ resultsPath: join(attestationDir, 'absent.xml') }),
+        );
+
+        // A distinct early return from the main path, so its whole shape is
+        // pinned here rather than only its reason.
+        expect(result).toEqual({
+          passed: false,
+          reasons: ['results-file-missing'],
+          totalTests: 0,
+          parsedTestCount: 0,
+          failedTests: [],
+          skippedTests: [],
+          missingRequiredFiles: [],
+          ranFileCount: 0,
+        });
+      });
+
+      // No "absent" test of its own: the early return hardcodes this reason, so
+      // there is no reachable path where the file exists and it still appears.
+      // Every other test in this describe asserts an exact `reasons` array and
+      // would fail if it leaked in, which covers the negative direction.
+    });
+
+    describe('results-file-stale', () => {
+      it('reports a results file older than the staleness window', async () => {
+        attestedDumps();
+        const path = await writeResults(PASSING_XML);
+        const staleTime = new Date(Date.now() - 200 * 60_000);
+        await utimes(path, staleTime, staleTime);
+
+        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 120 }));
+
+        expect(result.reasons).toEqual(['results-file-stale']);
+        expect(result.passed).toBe(false);
+      });
+
+      it('does not report a freshly written results file', async () => {
+        attestedDumps();
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 120 }));
+
+        expect(result.reasons).toEqual([]);
+      });
+
+      // The window is a parameter, not a constant: a file inside the default
+      // 120-minute window is still stale under a tighter --max-age-minutes.
+      it('honors a narrowed staleness window', async () => {
+        attestedDumps();
+        const path = await writeResults(PASSING_XML);
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60_000);
+        await utimes(path, tenMinutesAgo, tenMinutesAgo);
+
+        const result = await verifyAttestation(attestArgs({ maxAgeMinutes: 5 }));
+
+        expect(result.reasons).toEqual(['results-file-stale']);
+      });
+    });
+
+    describe('test-failures', () => {
+      it('reports a testcase carrying a <failure>', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="1" failures="1" skipped="0" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="1" failures="1" skipped="0" errors="0" time="0.1">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+<failure message="expected 200, received 500" type="AssertionError">stack</failure>
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['test-failures']);
+        expect(result.failedTests).toEqual([
+          {
+            classname: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts',
+            name: 'a test',
+            message: 'expected 200, received 500',
+          },
+        ]);
+      });
+
+      // The condition is a three-way ||; the reporter-total arms are reachable
+      // independently of any parsed failure row. Shape chosen so the row count
+      // (1 declared, 1 recovered) and skip count (0/0) both AGREE — otherwise
+      // hasParseDisagreement fires too and this would prove two reasons at once
+      // rather than isolating the || arm.
+      it('reports a reporter-declared failure with no failing row parsed', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="1" failures="1" skipped="0" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="1" failures="0" skipped="0" errors="0" time="0.1">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['test-failures']);
+        // Nothing was parsed as failed — the reason came from the declared total.
+        expect(result.failedTests).toEqual([]);
+      });
+
+      it('reports a reporter-declared error identically', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="1" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="1" failures="0" skipped="0" errors="0" time="0.1">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['test-failures']);
+      });
+
+      it('does not report an all-passing run', async () => {
+        attestedDumps();
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.failedTests).toEqual([]);
+      });
+    });
+
+    describe('skipped-tests', () => {
+      it('reports a test skipped in every project that ran', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="1" failures="0" skipped="1" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="1" failures="0" skipped="1" errors="0" time="0.1">
+<testcase name="never runs" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['skipped-tests']);
+        expect(result.skippedTests).toEqual([
+          { classname: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts', name: 'never runs' },
+        ]);
+      });
+
+      // The MINCRM-687 reconciliation rule reaching the gate: a viewport-
+      // conditional test skipped under one project but passing under another is
+      // attested, so this reason must NOT fire. This is the case that made the
+      // gate satisfiable for the multi-project run record mode needs.
+      it('does not report a test skipped in one project but passing in another', async () => {
+        attestedDumps();
+        await writeResults(MULTI_PROJECT_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.skippedTests).toEqual([]);
+      });
+    });
+
+    describe('results-file-unparseable', () => {
+      it('reports a row-count disagreement between the reporter and the parser', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="40" failures="0" skipped="0" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="40" failures="0" skipped="0" errors="0" time="0.1">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['results-file-unparseable']);
+        expect(result.totalTests).toBe(40);
+        expect(result.parsedTestCount).toBe(1);
+      });
+
+      // hasParseDisagreement is a two-predicate ||. The row-count predicate is
+      // blind to a <skipped> element missed WITHIN an otherwise-recovered row, so
+      // the skip-count arm needs its own case: rows agree (2 declared, 2
+      // recovered) but only one of two declared skips was recovered.
+      it('reports a skip-count disagreement even when the row count agrees', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="2" failures="0" skipped="2" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="2" failures="0" skipped="2" errors="0" time="0.1">
+<testcase name="skipped one" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="passing one" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await verifyAttestation(attestArgs());
+
+        // Exact array, matching every sibling in this block. arrayContaining is
+        // a subset check and would stay green while a spurious extra reason
+        // leaked in — verified by mutation.
+        expect(result.reasons).toEqual(['skipped-tests', 'results-file-unparseable']);
+        expect(result.parsedTestCount).toBe(2);
+        expect(result.totalTests).toBe(2);
+      });
+
+      it('does not report a document whose declared totals match what was recovered', async () => {
+        attestedDumps();
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.totalTests).toBe(result.parsedTestCount);
+      });
+    });
+
+    describe('no-session-attribution', () => {
+      it('reports a SHA with no attributed coverage-session dumps', async () => {
+        // Baseline [] from beforeEach is the condition under test here.
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs({ sha: 'unattributed-sha' }));
+
+        expect(result.reasons).toEqual(['no-session-attribution']);
+        expect(mockFindDumps).toHaveBeenCalledWith('unattributed-sha');
+        expect(result.ranFileCount).toBe(0);
+      });
+
+      it('does not report when dumps are attributed to the SHA', async () => {
+        attestedDumps();
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.ranFileCount).toBe(1);
+      });
+
+      // coverage_session_dumps.test_file is nullable, and the service's SQL
+      // filters test_id IS NOT NULL but NOT test_file IS NOT NULL — so a dump
+      // with a null testFile genuinely reaches this code. It must not become a
+      // phantom entry in the ran-files set.
+      it('excludes dumps with a null testFile from ranFileCount', async () => {
+        mockFindDumps.mockResolvedValue([
+          dump({ testFile: 'qa/e2e/tests/apps/minicrm/functional/a.spec.ts' }),
+          dump({ testFile: null }),
+        ]);
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.ranFileCount).toBe(1);
+      });
+
+      // Attribution is what binds the results file to a SHA; the set is deduped,
+      // so two dumps of the same file are one ran file.
+      it('counts each attributed test file once', async () => {
+        attestedDumps('a.spec.ts', 'a.spec.ts', 'b.spec.ts');
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.ranFileCount).toBe(2);
+      });
+    });
+
+    describe('missing-required-tests', () => {
+      it('reports required spec files that did not run', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath = await writeSelection(
+          JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts', 'never-ran.spec.ts'] }),
+        );
+
+        const result = await verifyAttestation(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual(['missing-required-tests']);
+        expect(result.missingRequiredFiles).toEqual(['never-ran.spec.ts']);
+      });
+
+      // The documented rule: running MORE than required passes. A superset is not
+      // a shortfall, and treating it as one would fail every run that batched
+      // extra specs alongside the selection.
+      it('does not report when the run is a superset of the selection', async () => {
+        attestedDumps('ran.spec.ts', 'extra.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath = await writeSelection(
+          JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts'] }),
+        );
+
+        const result = await verifyAttestation(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.missingRequiredFiles).toEqual([]);
+      });
+
+      it('does not report when no selection file was given', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+
+        const result = await verifyAttestation(attestArgs({ selectionPath: undefined }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.missingRequiredFiles).toEqual([]);
+      });
+
+      // readSelectionFiles' full-suite short-circuit, reaching the gate. This is
+      // the one production path where reconciliation is disabled with no entry in
+      // `reasons` — record mode runs the full suite and has nothing targeted to
+      // reconcile against — so it is pinned end to end and not only at the helper.
+      // specFiles is non-empty and none of it ran: under targeted mode that is a
+      // shortfall, under full-suite it must be silent.
+      it('does not reconcile a full-suite selection, even when named files did not run', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath = await writeSelection(
+          JSON.stringify({ mode: 'full-suite', specFiles: ['never-ran.spec.ts'] }),
+        );
+
+        const result = await verifyAttestation(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.missingRequiredFiles).toEqual([]);
+      });
+    });
+
+    // AC 2: passed === true only when reasons is empty, driven end to end through
+    // the multi-project reconciliation path — each test passes under one project
+    // and skips under the other, with matching attributed dumps.
+    describe('passed', () => {
+      it('is true only when no reason fired, for a reconciled multi-project run', async () => {
+        attestedDumps('qa/e2e/tests/apps/minicrm/functional/probe.spec.ts');
+        await writeResults(MULTI_PROJECT_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.passed).toBe(true);
+        // Both projects' rows were read: 4 (test, project) pairs across 2 tests.
+        expect(result.totalTests).toBe(4);
+        expect(result.parsedTestCount).toBe(4);
+        expect(result.skippedTests).toEqual([]);
+        expect(result.failedTests).toEqual([]);
+        expect(result.ranFileCount).toBe(1);
+      });
+
+      // The invariant is passed === (reasons.length === 0), so the interesting
+      // case is a run that is otherwise entirely healthy and fails on ONE reason:
+      // an all-passing, freshly written, fully parseable results file that simply
+      // cannot be bound to the SHA. A single reason must still sink it.
+      it('is false when exactly one reason fired, however healthy the rest', async () => {
+        await writeResults(MULTI_PROJECT_XML);
+
+        const result = await verifyAttestation(attestArgs());
+
+        expect(result.reasons).toEqual(['no-session-attribution']);
+        expect(result.passed).toBe(false);
+        // Everything else about the run was fine — the single reason is decisive.
+        expect(result.failedTests).toEqual([]);
+        expect(result.skippedTests).toEqual([]);
+        expect(result.totalTests).toBe(result.parsedTestCount);
+      });
+    });
+
+    // Reasons accumulate — the assembly must not short-circuit on the first hit,
+    // or an operator fixes one problem only to discover the next on the re-run.
+    // This also pins the EMISSION ORDER: FAILURE_MESSAGES' docblock declares its
+    // key order to be the order reasons are pushed, and formatFailureOutput
+    // derives its section order from that, so the two must not drift.
+    it('accumulates every applicable reason, in the order FAILURE_MESSAGES declares', async () => {
+      const selectionPath = await writeEveryReasonFixture();
+
+      const result = await verifyAttestation(attestArgs({ selectionPath }));
+
+      // Every reason except results-file-missing, which returns early and so can
+      // never co-occur. Derived from the source's own list rather than hardcoded:
+      // a literal here would be exactly the drift-prone second copy that
+      // ATTESTATION_FAILURE_REASONS exists to eliminate.
+      expect(result.reasons).toEqual(
+        ATTESTATION_FAILURE_REASONS.filter((reason) => reason !== 'results-file-missing'),
+      );
+      expect(result.passed).toBe(false);
+    });
+
+    // The ordering property has to be checked against a PROPER SUBSET too. In
+    // the all-but-one case above, filtering the declared list by what fired is
+    // an identity, so that test cannot distinguish "emitted in declared order"
+    // from "emitted in the order the checks happen to run". Here only two
+    // reasons fire, and they are deliberately NOT adjacent in the declared
+    // list — so the filter genuinely reorders, and an assembly that pushed them
+    // in check order rather than declared order would differ.
+    it('emits a proper subset of reasons in declared order, not push order', async () => {
+      // stale (1st declared) + no-session-attribution (6th): everything between
+      // them is absent, so the two are non-adjacent in ATTESTATION_FAILURE_REASONS.
+      const path = await writeResults(PASSING_XML);
+      const staleTime = new Date(Date.now() - 500 * 60_000);
+      await utimes(path, staleTime, staleTime);
+
+      const result = await verifyAttestation(attestArgs());
+
+      expect(result.reasons).toEqual(['results-file-stale', 'no-session-attribution']);
+      // And that is exactly the declared order filtered to what fired.
+      expect(result.reasons).toEqual(
+        ATTESTATION_FAILURE_REASONS.filter((reason) => result.reasons.includes(reason)),
+      );
+    });
+  });
+
+  // MINCRM-691 (AC 3): the operator-facing message text. This is what a CI reader
+  // sees under "[verify-test-attestation] FAILED:", so an empty or missing branch
+  // here means a red build with no stated cause.
+  describe('formatFailureOutput', () => {
+    /** Builds an AttestationResult carrying `reasons` and enough detail to render them. */
+    function failedResult(overrides: Partial<AttestationResult> = {}): AttestationResult {
+      return {
+        passed: false,
+        reasons: [],
+        totalTests: 40,
+        parsedTestCount: 1,
+        failedTests: [{ classname: 'a.spec.ts', name: 'a test', message: 'boom' }],
+        skippedTests: [{ classname: 'a.spec.ts', name: 'never runs' }],
+        missingRequiredFiles: ['never-ran.spec.ts'],
+        ranFileCount: 0,
+        ...overrides,
+      };
+    }
+
+    // Iterates the SOURCE's own key list, not a copy of it. A hand-maintained
+    // list here would silently stop covering a newly added reason — which is the
+    // exact failure AC 3 exists to prevent, so reproducing it in the test that
+    // guards against it would be self-defeating. Registering a reason in
+    // FAILURE_MESSAGES is therefore the single action that both satisfies the
+    // compiler and enrolls it here.
+    it.each(ATTESTATION_FAILURE_REASONS)('produces non-empty output for %s', (reason) => {
+      const output = formatFailureOutput(failedResult({ reasons: [reason] }));
+
+      // Not just non-empty — a reason mapped to `() => []` or `() => ['']` would
+      // pass a bare truthiness check on the joined string.
+      expect(output.trim().length).toBeGreaterThan(0);
+    });
+
+    it('names the missing results file', () => {
+      expect(formatFailureOutput(failedResult({ reasons: ['results-file-missing'] }))).toContain(
+        'No results file found',
+      );
+    });
+
+    it('tells the operator to re-run when the results file is stale', () => {
+      expect(formatFailureOutput(failedResult({ reasons: ['results-file-stale'] }))).toContain(
+        'older than the staleness window',
+      );
+    });
+
+    it('enumerates each failed test with its message', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['test-failures'],
+          failedTests: [
+            { classname: 'a.spec.ts', name: 'first', message: 'expected 200' },
+            { classname: 'b.spec.ts', name: 'second', message: null },
+          ],
+        }),
+      );
+
+      expect(output).toContain('2 test(s) failed:');
+      expect(output).toContain('  - a.spec.ts :: first — expected 200');
+      // A null message renders the test without a dangling em-dash.
+      expect(output).toContain('  - b.spec.ts :: second');
+      expect(output).not.toContain('second —');
+    });
+
+    it('enumerates each test skipped everywhere', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['skipped-tests'],
+          skippedTests: [{ classname: 'a.spec.ts', name: 'never runs' }],
+        }),
+      );
+
+      expect(output).toContain('1 test(s) skipped in every project that ran');
+      expect(output).toContain('  - a.spec.ts :: never runs');
+    });
+
+    // The counts are the actionable part — they tell an operator how far the
+    // parse fell short, and that this is not a test outcome.
+    it('quotes both counts and disclaims a test outcome for an unparseable file', () => {
+      const output = formatFailureOutput(
+        failedResult({ reasons: ['results-file-unparseable'], totalTests: 40, parsedTestCount: 1 }),
+      );
+
+      expect(output).toContain('declares 40 test(s) but 1 row(s) were recovered');
+      expect(output).toContain('NOT a test outcome');
+    });
+
+    it('points at session management when attribution is missing', () => {
+      const output = formatFailureOutput(failedResult({ reasons: ['no-session-attribution'] }));
+
+      expect(output).toContain('No coverage session attribution found');
+      expect(output).toContain('COVERAGE_SESSION_MANAGEMENT');
+    });
+
+    it('enumerates each required file that did not run', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['missing-required-tests'],
+          missingRequiredFiles: ['one.spec.ts', 'two.spec.ts'],
+        }),
+      );
+
+      expect(output).toContain('2 required test file(s) did not run:');
+      expect(output).toContain('  - one.spec.ts');
+      expect(output).toContain('  - two.spec.ts');
+    });
+
+    it('renders every applicable section when several reasons fired', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['results-file-stale', 'test-failures', 'no-session-attribution'],
+        }),
+      );
+
+      expect(output).toContain('older than the staleness window');
+      expect(output).toContain('1 test(s) failed:');
+      expect(output).toContain('No coverage session attribution found');
+      // Sections are newline-joined, not concatenated.
+      expect(output.split('\n').length).toBeGreaterThan(3);
+    });
+
+    // This function is exported and so can be handed any AttestationResult, not
+    // only the ones verifyAttestation builds. Section order must stay fixed and
+    // each section must appear once, regardless of the caller's array — the
+    // property the original if-chain had implicitly.
+    it('emits sections in a fixed order, once each, regardless of the reasons array', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: [
+            'missing-required-tests',
+            'results-file-stale',
+            'missing-required-tests',
+            'results-file-missing',
+          ],
+        }),
+      );
+
+      const missingIdx = output.indexOf('No results file found');
+      const staleIdx = output.indexOf('older than the staleness window');
+      const requiredIdx = output.indexOf('required test file(s) did not run');
+
+      // Declaration order, not the order they were passed in.
+      expect(missingIdx).toBeGreaterThanOrEqual(0);
+      expect(staleIdx).toBeGreaterThan(missingIdx);
+      expect(requiredIdx).toBeGreaterThan(staleIdx);
+      // The duplicated reason rendered once.
+      expect(output.match(/required test file\(s\) did not run/g)).toHaveLength(1);
+    });
+
+    it('returns an empty string when no reason fired', () => {
+      expect(formatFailureOutput(failedResult({ reasons: [] }))).toBe('');
+    });
+
+    // docs/dev/coverage.md's "Reading a failed run" is the operator's index of
+    // these reasons, and it had already drifted — three of the seven were
+    // missing before MINCRM-691. Reconciling by hand fixes today and drifts
+    // again next PR, which is the reasoning check-env-example-parity.sh and
+    // check-sha-pattern-parity.sh already encode for their own invariants. Same
+    // shape here: the source list is exported, so the docs are held to it.
+    it('documents every failure reason in docs/dev/coverage.md', async () => {
+      const docPath = resolvePath(__dirname, '../../../docs/dev/coverage.md');
+      const doc = await readFile(docPath, 'utf8');
+
+      const sectionStart = doc.indexOf('### Reading a failed run');
+      expect(sectionStart, 'the "Reading a failed run" section should exist').toBeGreaterThan(-1);
+      // Bounded by the next heading of the same level, so a reason mentioned
+      // elsewhere in this long document cannot satisfy the check.
+      const nextHeading = doc.indexOf('\n### ', sectionStart + 1);
+      const section = doc.slice(sectionStart, nextHeading === -1 ? undefined : nextHeading);
+
+      const undocumented = ATTESTATION_FAILURE_REASONS.filter(
+        (reason) => !section.includes(`\`${reason}\``),
+      );
+
+      expect(undocumented, 'reasons missing from the operator troubleshooting list').toEqual([]);
+    });
+  });
+
+  // MINCRM-691 (AC 4). Every path but one returns null, and a null return
+  // silently disables the gate's run-vs-selection reconciliation with NO entry in
+  // `reasons` — so which inputs produce null is a decision worth pinning.
+  describe('readSelectionFiles', () => {
+    it('returns null when no selection path was given', () => {
+      expect(readSelectionFiles(undefined)).toBeNull();
+    });
+
+    it('returns the spec files of a targeted selection', async () => {
+      const path = await writeSelection(
+        JSON.stringify({ mode: 'targeted', specFiles: ['a.spec.ts', 'b.spec.ts'] }),
+      );
+
+      expect(readSelectionFiles(path)).toEqual(['a.spec.ts', 'b.spec.ts']);
+    });
+
+    // The short-circuit is ordered BEFORE the array check: full-suite mode means
+    // "no targeted requirement to reconcile", even though select-tests.ts always
+    // writes specFiles: [] in that mode. A non-empty specFiles here proves the
+    // ordering rather than coincidence.
+    it('short-circuits full-suite mode even when specFiles is populated', async () => {
+      const path = await writeSelection(
+        JSON.stringify({ mode: 'full-suite', specFiles: ['a.spec.ts'] }),
+      );
+
+      expect(readSelectionFiles(path)).toBeNull();
+    });
+
+    // Distinct from the null cases: an empty array IS a requirement list (an empty
+    // one), so reconciliation stays enabled and trivially passes. Null would mean
+    // "don't reconcile at all". The two are indistinguishable in `reasons` today.
+    it('returns an empty array — not null — for an empty targeted selection', async () => {
+      const path = await writeSelection(JSON.stringify({ mode: 'targeted', specFiles: [] }));
+
+      expect(readSelectionFiles(path)).toEqual([]);
+    });
+
+    it('returns null for malformed JSON', async () => {
+      const path = await writeSelection('{ not valid json');
+
+      expect(readSelectionFiles(path)).toBeNull();
+    });
+
+    it('returns null for a nonexistent selection file', () => {
+      expect(readSelectionFiles(join(attestationDir, 'no-such-file.json'))).toBeNull();
+    });
+
+    it('returns null when specFiles is absent', async () => {
+      const path = await writeSelection(JSON.stringify({ mode: 'targeted' }));
+
+      expect(readSelectionFiles(path)).toBeNull();
+    });
+
+    it('returns null when specFiles contains a non-string', async () => {
+      const path = await writeSelection(
+        JSON.stringify({ mode: 'targeted', specFiles: ['a.spec.ts', 42] }),
+      );
+
+      expect(readSelectionFiles(path)).toBeNull();
+    });
+
+    it('returns null when specFiles is not an array', async () => {
+      const path = await writeSelection(
+        JSON.stringify({ mode: 'targeted', specFiles: 'a.spec.ts' }),
+      );
+
+      expect(readSelectionFiles(path)).toBeNull();
+    });
   });
 });
