@@ -102,6 +102,15 @@ services:
       # coverage-sessions.spec.ts can reach them. Production must never set these.
       COVERAGE_INSTRUMENTATION: 'true'
       COVERAGE_SESSION_MANAGEMENT: 'true'
+      # Same boot-time gating for the query/ingestion routers (MINCRM-685), so
+      # coverage-mapping.spec.ts, coverage-pipeline.spec.ts, and the ingestion step of a
+      # record-mode run can reach them once the route-layer change lands. These replace
+      # feature_flags rows those specs toggle over REST today; a boot-time env var
+      # cannot be flipped mid-run, so MINCRM-685 moves the flag-disabled assertions to
+      # server-side route-gating tests. Production must never set these.
+      COVERAGE_MAPPING_QUERY: 'true'
+      COVERAGE_REPORTING_QUERY: 'true'
+      COVERAGE_PIPELINE_INGESTION: 'true'
       # Lets the coverage-dashboard app browse this stack's ingested E2E coverage with
       # no CRM login. NODE_ENV=development above satisfies the NODE_ENV!=='production'
       # safety rail this flag requires.

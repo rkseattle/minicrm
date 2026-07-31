@@ -63,6 +63,15 @@ services:
       # .env to use the dashboard against regular local dev (MINCRM-636/637).
       COVERAGE_INSTRUMENTATION: ${COVERAGE_INSTRUMENTATION:-false}
       COVERAGE_SESSION_MANAGEMENT: ${COVERAGE_SESSION_MANAGEMENT:-false}
+      # Same boot-time gating for the query/ingestion routers (MINCRM-685) — these
+      # replaced the coverage_mapping_query/coverage_reporting_query/
+      # coverage_pipeline_ingestion feature_flags rows that MINCRM-685 removes.
+      # Unset means those routes are never registered and 404. The
+      # coverage-dashboard app needs MAPPING and REPORTING set to 'true' in .env
+      # to show anything against this dev server.
+      COVERAGE_MAPPING_QUERY: ${COVERAGE_MAPPING_QUERY:-false}
+      COVERAGE_REPORTING_QUERY: ${COVERAGE_REPORTING_QUERY:-false}
+      COVERAGE_PIPELINE_INGESTION: ${COVERAGE_PIPELINE_INGESTION:-false}
       NODE_ENCRYPTION_KEY: ${NODE_ENCRYPTION_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
