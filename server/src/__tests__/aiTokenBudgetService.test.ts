@@ -228,9 +228,15 @@ describe('setOrgTokenBudget', () => {
   it('writes an audit entry', async () => {
     await setOrgTokenBudget({ monthly_limit: 500_000 }, ACTOR);
     const result = await pool.query(
+      // Scoped by changed_by_id: record_type + field_name are shared with
+      // aiTokenBudgetController.test.ts, which is NOT in SERIAL_FILES and so
+      // runs in the parallel project alongside this one. A single interleaved
+      // controller write would take the LIMIT 1 slot. (MINCRM-693)
       `SELECT * FROM audit_log
        WHERE record_type = 'ai_settings' AND field_name = 'org_monthly_limit'
+         AND changed_by_id = $1
        ORDER BY created_at DESC LIMIT 1`,
+      [ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].new_value).toBe('500000');

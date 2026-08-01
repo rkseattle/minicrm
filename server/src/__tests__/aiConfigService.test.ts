@@ -237,8 +237,15 @@ describe('setAiEnabled', () => {
 
   it('does not write a feature_flag audit entry when ai_features was already at the target value', async () => {
     await setAiEnabled({ enabled: false }, ACTOR);
+    // Scoped by changed_by_id as well as the created_at boundary. record_type +
+    // field_name are shared with aiConfigController.test.ts, which also mutates
+    // the ai_features flag, so a window alone cannot isolate this assertion —
+    // it only narrows the race. ACTOR.id is this file's own admin user.
+    // (MINCRM-693)
     const before = await pool.query<{ max: string | null }>(
-      `SELECT MAX(created_at)::text AS max FROM audit_log WHERE record_type = 'feature_flag' AND field_name = 'enabled'`,
+      `SELECT MAX(created_at)::text AS max FROM audit_log
+       WHERE record_type = 'feature_flag' AND field_name = 'enabled' AND changed_by_id = $1`,
+      [ACTOR.id],
     );
 
     // ai_features is already false — setting the master toggle to false again
@@ -249,9 +256,9 @@ describe('setAiEnabled', () => {
 
     const after = await pool.query<{ id: string }>(
       `SELECT id FROM audit_log
-       WHERE record_type = 'feature_flag' AND field_name = 'enabled'
+       WHERE record_type = 'feature_flag' AND field_name = 'enabled' AND changed_by_id = $2
          AND ($1::timestamptz IS NULL OR created_at > $1::timestamptz)`,
-      [before.rows[0]?.max ?? null],
+      [before.rows[0]?.max ?? null, ACTOR.id],
     );
     expect(after.rows.length).toBe(0);
   });
@@ -427,10 +434,14 @@ describe('setAiConfig', () => {
       old_value: string | null;
       new_value: string | null;
     }>(
+      // Scoped by changed_by_id — record_type + field_name are shared with
+      // aiConfigController.test.ts's own AI-config PATCHes. (MINCRM-693)
       `SELECT field_name, old_value, new_value
        FROM audit_log
        WHERE record_type = 'ai_settings' AND field_name = 'api_key'
+         AND changed_by_id = $1
        ORDER BY id DESC LIMIT 1`,
+      [ACTOR.id],
     );
     expect(row.rows).toHaveLength(1);
     // Values must be null — the audit entry records the fact of a change, never the key.

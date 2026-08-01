@@ -50,7 +50,11 @@ async function clearPipelineAuditLog(): Promise<void> {
     await client.query('BEGIN');
     await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
     await client.query(
-      `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines'`,
+      // Scoped by changed_by_id, not record_type/record_name: those two are
+      // shared with pipelineController.test.ts, so an unscoped delete removes a
+      // concurrently running file's rows out from under it. (MINCRM-693)
+      `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND changed_by_id = $1`,
+      [ACTOR.id],
     );
     await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
     await client.query('COMMIT');
@@ -162,8 +166,8 @@ describe('createPipeline', () => {
     const name = `${FILE_PREFIX}-audit-${Date.now()}`;
     await createPipeline({ name }, ACTOR);
     const { rows } = await pool.query(
-      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'created' AND new_value = $1`,
-      [name],
+      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'created' AND new_value = $1 AND changed_by_id = $2`,
+      [...[name], ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });
@@ -210,8 +214,8 @@ describe('updatePipeline', () => {
     await updatePipeline(created.id, { name: newName }, ACTOR);
 
     const { rows } = await pool.query(
-      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'updated' AND old_value = $1 AND new_value = $2`,
-      [original, newName],
+      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'updated' AND old_value = $1 AND new_value = $2 AND changed_by_id = $3`,
+      [...[original, newName], ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });
@@ -279,8 +283,8 @@ describe('deletePipeline', () => {
     await deletePipeline(created.id, ACTOR);
 
     const { rows } = await pool.query(
-      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'deleted' AND old_value = $1`,
-      [name],
+      `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'deleted' AND old_value = $1 AND changed_by_id = $2`,
+      [...[name], ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });
