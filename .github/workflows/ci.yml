@@ -526,6 +526,18 @@ jobs:
           DB_NAME: minicrm_test
           DB_HOST: localhost
           DB_PORT: 5432
+          # Runners and the postgres:16 service container both default to UTC,
+          # which is exactly the timezone where a local-vs-UTC date defect is
+          # invisible: a boundary built from local calendar fields produces the
+          # same instant as a UTC one, so a regression guard for MINCRM-700
+          # would pass here while the bug shipped. Pinning a UTC-AHEAD zone
+          # makes those guards live. Chosen over a UTC-behind zone because the
+          # month-boundary defects in this codebase (a local month start
+          # serializing to the previous month, an end-of-month landing a day
+          # early) only manifest ahead of UTC. Postgres still resolves
+          # CURRENT_DATE in UTC, so this also keeps the Node/DB disagreement
+          # that MINCRM-700 is about permanently exercised.
+          TZ: Pacific/Auckland
           # Coverage/TIA tables live in their own database (server/src/coverageDb.ts).
           # globalSetup.ts creates + migrates this database automatically (same
           # pattern as minicrm_test above) — this only needs to name it explicitly
@@ -622,6 +634,12 @@ jobs:
 
       - name: Run client tests with coverage
         run: npm run test:coverage --workspace=minicrm-client
+        env:
+          # See the server-tests job for the full rationale: a UTC runner is the
+          # one timezone where a local-vs-UTC date defect is invisible, so the
+          # MINCRM-700 guards here (AiUsageDashboardPage's default range) would
+          # pass under UTC while the bug shipped.
+          TZ: Pacific/Auckland
 
       - name: Guard against empty client test results
         if: always()

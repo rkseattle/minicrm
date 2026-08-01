@@ -59,6 +59,7 @@ import type { DealResponse } from '@shared/schemas/dealSchema.js';
 import type { SupportedCurrency } from '@shared/schemas/settingsSchema.js';
 import { getStageDisplayName } from '@/utils/pipelineStageI18nKey.js';
 import { formatLocalDate } from '@/utils/formatLocalDate.js';
+import { todayIso } from '@/utils/utcDate.js';
 import { usePipelineStages } from '@/hooks/usePipelineStages.js';
 
 /** Which view is active on the Deals page */
@@ -91,11 +92,6 @@ function formatDealValue(value: string | null, currency: string, locale: string)
   return isNaN(num)
     ? '—'
     : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num);
-}
-
-/** Today's date in YYYY-MM-DD format, used as default close date in the close modal */
-function todayIso(): string {
-  return new Date().toISOString().split('T')[0];
 }
 
 /**

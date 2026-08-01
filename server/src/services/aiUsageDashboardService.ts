@@ -25,6 +25,8 @@ import type {
   PerFeatureUsageRow,
   DailyUsagePoint,
 } from '@minicrm/shared/schemas/aiUsageSchema.js';
+import type { UsageDateRangeParams } from '@minicrm/shared/schemas/aiUsageSchema.js';
+import { ONE_DAY_MS, toUtcDateString as toDateString, utcMonthStart } from '../utils/utcDate.js';
 
 export interface DateRange {
   start: Date;
@@ -68,16 +70,68 @@ interface DailyRawRow {
 }
 
 /**
- * Formats a Date as a UTC 'YYYY-MM-DD' string for binding against `date`-typed
- * columns (usage_date). node-postgres infers the wire type for a bare Date
- * parameter from the target column and serializes `date` params using the
- * JS Date's LOCAL calendar fields (getFullYear/getMonth/getDate), not UTC —
- * so passing a Date directly silently shifts the bound date by one day
- * whenever the server process's timezone isn't UTC. Always bind an explicit
- * date string instead of a Date object against `usage_date`.
+ * Resolves the requested date range from query params. Supports either a
+ * `preset` (current_month | last_month | last_3_months) or an explicit
+ * `start`/`end` pair (ISO date strings). `start` and `end` are both treated
+ * as inclusive calendar days — `end` is advanced by one day internally to
+ * produce the exclusive boundary every query filters against, so a caller
+ * asking for `end=2026-07-01` sees that day's data (matching what a date
+ * picker labeled "End date" implies), not "up to but excluding" it.
+ *
+ * Both `start` and `end` must be supplied together — a lone one returns null
+ * rather than silently falling back to the preset path.
+ *
+ * Lives here rather than in aiUsageController.ts because it is calendar logic,
+ * not request shaping: it belongs beside toDateString/rangeIncludesCurrentMonth,
+ * which have to agree with it about what "a month" means. The controller still
+ * owns HTTP input validation — it Zod-parses the query and passes the typed
+ * result here. (MINCRM-700)
+ *
+ * `now` is injectable so tests can pin a fixed instant without faking global
+ * timers — vitest's setSystemTime requires vi.useFakeTimers(), which cannot
+ * wrap the pool.query calls these code paths make (they would hang on the
+ * pool's connection/idle timeouts).
+ *
+ * Returns null when the combination is unusable (a lone start or end, an
+ * unparsable date, an inverted range), so the caller can respond 400.
  */
-function toDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
+export function resolveDateRange(
+  query: UsageDateRangeParams,
+  now: Date = new Date(),
+): DateRange | null {
+  const { start: startParam, end: endParam } = query;
+
+  if (startParam || endParam) {
+    if (!startParam || !endParam) {
+      return null;
+    }
+    const start = new Date(startParam);
+    const inclusiveEnd = new Date(endParam);
+    if (isNaN(start.getTime()) || isNaN(inclusiveEnd.getTime())) {
+      return null;
+    }
+    const end = new Date(inclusiveEnd.getTime() + ONE_DAY_MS);
+    if (start >= end) {
+      return null;
+    }
+    return { start, end };
+  }
+
+  const startOfCurrentMonth = utcMonthStart(now, 0);
+  const startOfNextMonth = utcMonthStart(now, 1);
+
+  // Exhaustive over UsageDateRangePreset — deliberately no `default`, so adding
+  // a preset to the schema is a compile error here rather than a silent
+  // fallback to current_month. Callers must Zod-parse first; an unvalidated
+  // value reaching this switch returns null (a 400) rather than plausible data.
+  switch (query.preset ?? 'current_month') {
+    case 'current_month':
+      return { start: startOfCurrentMonth, end: startOfNextMonth };
+    case 'last_month':
+      return { start: utcMonthStart(now, -1), end: startOfCurrentMonth };
+    case 'last_3_months':
+      return { start: utcMonthStart(now, -3), end: startOfNextMonth };
+  }
 }
 
 /**

@@ -19,6 +19,7 @@
  */
 
 import logger from '../logger.js';
+import { utcDayOffset } from '../utils/utcDate.js';
 import type { AuditActor } from '../services/auditService.js';
 import { ADMIN_ONLY_TOOL_NAMES, TOOL_FEATURE_FLAG_MAP } from './tools/index.js';
 import { isFlagEnabledForUser } from '../services/featureFlagService.js';
@@ -899,10 +900,7 @@ export async function executeToolCall(
             {
               name: toolInput.name as string,
               report_type: toolInput.report_type as
-                | 'win_loss'
-                | 'activity_volume'
-                | 'stage_trend'
-                | 'leads_summary',
+                'win_loss' | 'activity_volume' | 'stage_trend' | 'leads_summary',
               date_from: (toolInput.date_from as string | undefined) ?? null,
               date_to: (toolInput.date_to as string | undefined) ?? null,
               owner_id: (toolInput.owner_id as string | undefined) ?? null,
@@ -1179,12 +1177,24 @@ async function assertEntityAccess(
   }
 }
 
+/** How far back the NLI report tools look when the caller names no start date. */
+const DEFAULT_REPORT_WINDOW_DAYS = 30;
+
+/** Today's calendar day in UTC — toISOString is already UTC-resolved. */
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return utcDayOffset(new Date(), 0);
 }
 
+/**
+ * The default report window's start, counted back from UTC midnight.
+ *
+ * This reaches reportService's `close_date >= $1 AND close_date <= $2` filters,
+ * and close_date is a timezone-naive `date` column written under a UTC Postgres
+ * session. Stepping back from the current LOCAL instant would name a different
+ * day than the database does whenever the process timezone isn't UTC, so a
+ * report asked for "the last 30 days" would silently start a day off.
+ * See docs/dev/dates-and-timezones.md. (MINCRM-700)
+ */
 function thirtyDaysAgo(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return d.toISOString().slice(0, 10);
+  return utcDayOffset(new Date(), -DEFAULT_REPORT_WINDOW_DAYS);
 }

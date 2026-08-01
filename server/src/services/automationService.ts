@@ -5,6 +5,7 @@
 
 import pool from '../db.js';
 import logger from '../logger.js';
+import { utcDayOffset } from '../utils/utcDate.js';
 import type { PaginatedResponse } from '@minicrm/shared/schemas/paginationSchema.js';
 import type {
   CreateAutomationRuleInput,
@@ -357,10 +358,14 @@ async function executeRule(rule: AutomationRuleRow, context: TriggerContext): Pr
 
       const assigneeId = assignee_type === 'specific' ? assignee_id! : context.ownerId;
 
-      const dueDate = new Date();
+      // Offset from UTC midnight, not from the current local instant: due_date
+      // is a timezone-naive `date` column and notificationService compares it
+      // against CURRENT_DATE (UTC), so deriving the day from local calendar
+      // fields would land the task a day off — and therefore mark it overdue a
+      // day early or late — for any process not running in UTC.
+      // See docs/dev/dates-and-timezones.md. (MINCRM-700)
       const offsetDays = Math.min(due_date_offset_days, MAX_DUE_DATE_OFFSET_DAYS);
-      dueDate.setDate(dueDate.getDate() + offsetDays);
-      const dueDateStr = dueDate.toISOString().slice(0, 10);
+      const dueDateStr = utcDayOffset(new Date(), offsetDays);
 
       // Determine the parent column for the task based on the triggering record type
       const parentColumn = context.recordType === 'deal' ? 'deal_id' : 'contact_id';

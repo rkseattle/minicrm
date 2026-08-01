@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NavBar from '@/components/NavBar.js';
 import { ExportMenu } from '@/components/ui/ExportMenu.js';
+import { todayIso, firstOfMonthIso } from '@/utils/utcDate.js';
 import {
   getAiUsageSummary,
   getAiUsageDaily,
@@ -47,15 +48,6 @@ function formatCost(cents: number): string {
     style: 'currency',
     currency: 'USD',
   });
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function firstOfMonthIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
 /**

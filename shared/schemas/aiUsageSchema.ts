@@ -35,6 +35,30 @@ export type SetAiCostRatesInput = z.infer<typeof setAiCostRatesSchema>;
 export const usageDateRangePresetSchema = z.enum(['current_month', 'last_month', 'last_3_months']);
 export type UsageDateRangePreset = z.infer<typeof usageDateRangePresetSchema>;
 
+/**
+ * Query params for the usage summary/daily/export endpoints. Validated in the
+ * controller before the service is called, per the boundary-validation rule.
+ *
+ * Every field is optional and the shape is permissive on purpose: which
+ * combinations are legal (start and end together; preset alone; neither, which
+ * defaults to current_month) is calendar logic, resolved by resolveDateRange.
+ * This schema's job is only to reject values that are not strings of the right
+ * form before they reach it. `start`/`end` are date-only strings from the
+ * client's date pickers, never full ISO timestamps.
+ */
+export const usageDateRangeParamsSchema = z.object({
+  start: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'start must be a YYYY-MM-DD date')
+    .optional(),
+  end: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'end must be a YYYY-MM-DD date')
+    .optional(),
+  preset: usageDateRangePresetSchema.optional(),
+});
+export type UsageDateRangeParams = z.infer<typeof usageDateRangeParamsSchema>;
+
 /** A single user's usage/cost/budget row in the usage summary. */
 export interface PerUserUsageRow {
   user_id: string;

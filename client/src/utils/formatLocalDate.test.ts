@@ -49,13 +49,26 @@ describe('formatLocalDate', () => {
     expect(formatLocalDate('2026-01-01', 'en')).toBe('Jan 1, 2026');
   });
 
+  // A full timestamp is deliberately rendered in the viewer's LOCAL timezone
+  // (only date-only strings are pinned to UTC — see formatLocalDate's docblock),
+  // so the expected day has to be derived the same way rather than hardcoded.
+  // A noon-UTC instant is NOT offset-proof: zones at or beyond +12 (Pacific/
+  // Auckland, which CI now runs) are already on the next day at 12:00Z.
+  const expectedLocalDay = (iso: string): string =>
+    new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short', day: 'numeric' }).format(
+      new Date(iso),
+    );
+
   it('formats a full ISO timestamp string', () => {
-    // Use noon UTC so the displayed day is the same regardless of local timezone offset
-    expect(formatLocalDate('2025-01-01T12:00:00.000Z', 'en')).toBe('Jan 1, 2025');
+    expect(formatLocalDate('2025-01-01T12:00:00.000Z', 'en')).toBe(
+      expectedLocalDay('2025-01-01T12:00:00.000Z'),
+    );
   });
 
   it('formats a Date object', () => {
-    expect(formatLocalDate(new Date('2025-06-15T12:00:00.000Z'), 'en')).toBe('Jun 15, 2025');
+    expect(formatLocalDate(new Date('2025-06-15T12:00:00.000Z'), 'en')).toBe(
+      expectedLocalDay('2025-06-15T12:00:00.000Z'),
+    );
   });
 
   it('returns — for null', () => {
