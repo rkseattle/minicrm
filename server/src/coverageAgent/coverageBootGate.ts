@@ -9,8 +9,7 @@
  * rationale.
  *
  * Extracted because the `if (process.env.X === 'true')` idiom was hand-copied
- * at five call sites, each repeating the bare `'true'` literal that CLAUDE.md's
- * no-magic-strings rule exists to prevent, and because
+ * at five call sites, and because
  * coverageRouteGating.test.ts had to hand-maintain a parallel list of the same
  * five names with nothing tying the two together. COVERAGE_ROUTE_GATE_ENV_VARS
  * below is now that single source of truth for WHICH VARS EXIST — the test
