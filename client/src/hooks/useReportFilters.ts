@@ -7,7 +7,7 @@
  * and does not use this hook.
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
@@ -102,21 +102,32 @@ export function useReportFilters(initialPreset: DatePreset = 'currentMonth'): Re
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  // One instant for every boundary this hook resolves, so a render that spans
-  // UTC midnight cannot mix two different "today"s across the seeds and the
-  // resolved range. Also the seam tests pin. (MINCRM-700)
-  const [now] = useState<Date>(() => new Date());
-
   const [preset, setPreset] = useState<DatePreset>(initialPreset);
-  const [customStart, setCustomStart] = useState<string>(() => monthStartIso(now));
-  const [customEnd, setCustomEnd] = useState<string>(() => monthEndIso(now));
+  const [customStart, setCustomStart] = useState<string>(() => monthStartIso());
+  const [customEnd, setCustomEnd] = useState<string>(() => monthEndIso());
   const [viewMode, setViewMode] = useState<ViewMode>('team');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
-  const { resolvedStart, resolvedEnd } = useMemo(() => {
-    const { start, end } = resolvePresetDates(preset, customStart, customEnd, now);
-    return { resolvedStart: start, resolvedEnd: end };
-  }, [preset, customStart, customEnd, now]);
+  // Resolved on every render from a freshly read clock, deliberately NOT
+  // memoized and NOT captured in state.
+  //
+  // Both of those would freeze the calendar: a report left open across UTC
+  // midnight keeps serving the previous day/week/month/quarter. A useMemo does
+  // not help — its dependency array holds no time-varying value, so it would
+  // simply move the freeze from the state initializer into the memo cache.
+  // Reproduced directly: after advancing past midnight, a plain rerender and an
+  // unrelated setState both still returned the prior month.
+  //
+  // Recomputing unconditionally is cheap — six integer reads and a string
+  // format, no allocation worth memoizing — and `resolvePresetDates` takes one
+  // `now` so start and end always agree with each other.
+  // (MINCRM-700, Greptile P1 on #371)
+  const { start: resolvedStart, end: resolvedEnd } = resolvePresetDates(
+    preset,
+    customStart,
+    customEnd,
+    new Date(),
+  );
 
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,

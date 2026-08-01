@@ -611,15 +611,25 @@ export class DealDetailPage {
     );
   }
 
-  /** Returns a resolved locator for a specific activity's card in the timeline. */
-  async activityItemLocator(activityId: string) {
+  /**
+   * Returns a resolved locator for a specific activity's card in the timeline.
+   *
+   * `fallbackTimeout` is threaded from the caller rather than left on the 2s
+   * default: the timeline is gated on the `feature-flags/me` query
+   * (EntityDetailSidebar), so `ActivityTimeline` does not mount — and
+   * `GET /api/v1/activities` never fires — until that request resolves. Under CI
+   * worker contention it has been measured at 2.9s, which exhausts both default
+   * probes before the element is ever attached. Matches ContactDetailPage's
+   * `fallbackTimeout: timeout` precedent. (MINCRM-700)
+   */
+  async activityItemLocator(activityId: string, fallbackTimeout?: number) {
     return this.page
       .locate(
         [
           { type: 'testId', value: `activity-item-${activityId}` },
           { type: 'css', value: `[data-testid="activity-item-${activityId}"]` },
         ],
-        { intent: 'activity timeline card for a specific activity' },
+        { fallbackTimeout, intent: 'activity timeline card for a specific activity' },
       )
       .resolve();
   }
