@@ -30,13 +30,23 @@ For each BLOCKER and MAJOR, in order:
    ownership clause, check every endpoint. If it was an unawaited promise on a write
    path, check every write service.
 3. **Decide the scope of the fix.** Every live instance of the root cause gets fixed in
-   this pass. An instance is excluded only when it is genuinely benign in its context,
-   and you say why.
+   this pass. An instance is excluded only when it is **benign in its context** — it
+   cannot produce a wrong result for any user or any test. "Different feature",
+   "different workspace", "big diff", "deserves its own review surface" are not benign;
+   they describe every pattern-spread fix. State the exclusion in benign terms or fix it.
 4. **Fix using the industry-standard pattern**, matching in-repo precedent where one
    exists. Not the minimal edit that clears the finding.
 
-MINOR findings: fix them unless the fix would expand the branch's scope in a way that
-belongs in its own ticket. Say which you deferred and why.
+MINOR findings: fix them. Defer only when the fix needs a decision you cannot make — a
+product choice, a migration, a superseding ADR. Branch size is not such a decision: if
+the branch has grown too large to review, that is a signal to have split it at plan time,
+not a licence to leave a live defect in place now.
+
+**Before deferring anything, and before creating any work item, follow the deferral
+procedure in `deliver`'s invariants**: test the benign claim with `commit-adversary`
+(refs only — file, line, root cause, your one-sentence claim), then ask Rob, then file.
+Filing a ticket unprompted is the failure mode this guards against; it produces the
+feeling of having handled the finding without handling it.
 
 Work through findings in batches by root cause, not one commit per finding.
 

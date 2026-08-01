@@ -59,6 +59,15 @@ clause on one endpoint is a symptom; the question is whether the other endpoints
 on this branch have it, and whether any pre-existing endpoint is missing it too. Report
 the full set.
 
+**Treat a deferral as a finding.** If the diff, its comments, its docs, or its commit
+messages hand off an instance of a root cause the branch fixes elsewhere — a follow-up
+ticket, a "known unfixed" note, a "tracked separately" line — evaluate that deferral on
+its merits and report it if it does not hold. The bar is **benign in context**: the
+deferred instance cannot produce a wrong result for any user or any test. Belonging to
+another feature, workspace, or ticket is not benign, and neither is the branch already
+being large. A filed ticket is not evidence the deferral was correct — it is the thing
+to check. Say plainly whether the instance should have been fixed in this branch.
+
 ## Output
 
 ```

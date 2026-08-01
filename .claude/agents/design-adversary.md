@@ -52,6 +52,13 @@ that is itself a finding.
 - AI tool schemas in `server/src/ai/tools/` if service signatures change
 - Evals in `qa/evals/` if NLI behavior changes
 - Blast radius: what else in the repo references the things being changed?
+- **Scope exclusions.** Grep for other live instances of every root cause the plan
+  fixes. Each one the plan excludes must be justified as **benign in context** — it
+  cannot produce a wrong result for any user or any test. Reject "different feature",
+  "different workspace", "own review surface", and "would make the branch large" as
+  justifications; they describe every pattern-spread fix. Report an unjustified
+  exclusion as a MAJOR, and an instance the plan does not mention at all as a BLOCKER —
+  a plan that silently omits a live instance cannot be evaluated for completeness.
 
 ### Sequencing
 
