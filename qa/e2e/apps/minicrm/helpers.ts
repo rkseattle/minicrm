@@ -678,36 +678,88 @@ export async function loginAndVerify(
 // Navigation helpers (MINCRM-205)
 // ---------------------------------------------------------------------------
 
+/** How long to wait for the feature-flag query that gates flag-dependent subtrees. */
+const FLAG_QUERY_TIMEOUT_MS = 15_000;
+
+/**
+ * Navigates and then waits for the app to be genuinely ready to query, rather
+ * than for the network to fall quiet.
+ *
+ * `waitUntil: 'networkidle'` is not a readiness signal here. Under the CI Vite
+ * dev server every lazy route is a separate uncached module request, so the
+ * 500ms idle window can elapse during the JS module waterfall — before the
+ * page's own API queries have even been registered. A CI trace measured
+ * networkidle returning 1.7s before the deal page issued its first request.
+ *
+ * What actually gates rendering is `GET /api/v1/feature-flags/me`: useFeatureFlag
+ * backs every flag check with that one cached query, and EntityDetailSidebar
+ * will not mount the tags, activity, or notes subtrees until it resolves — so
+ * their elements do not exist, and a locator probing for them fails against a
+ * DOM that is merely early, not wrong. Worse, one-shot `page.evaluate` sweeps
+ * that assert emptiness (the pseudo-locale hardcoded-string and overflow scans)
+ * silently PASS against a half-rendered page.
+ *
+ * The listener is armed before `goto` so a fast response cannot be missed. The
+ * wait is tolerant by design: the query is cached per browser context, so a
+ * second navigation in the same test legitimately issues no new request — and
+ * `domcontentloaded` alone is a correct floor for pages with no flag-gated
+ * content. Never silently swallow a real failure; this only tolerates absence.
+ * (MINCRM-700)
+ */
+export async function gotoAndSettle(page: SafePage, url: string): Promise<void> {
+  await navigateAndSettle(page, () => page.goto(url, { waitUntil: 'domcontentloaded' }));
+}
+
+/**
+ * As `gotoAndSettle`, but for navigations that are not a `goto` — `reload`,
+ * `goBack`, `goForward`. Same rationale; the caller supplies the action so the
+ * flag listener can be armed before it starts. (MINCRM-700)
+ */
+export async function navigateAndSettle(
+  page: SafePage,
+  navigate: () => Promise<unknown>,
+): Promise<void> {
+  const flagsSettled = page
+    .waitForResponse(
+      (response) => response.url().includes('/api/v1/feature-flags/me') && response.ok(),
+      { timeout: FLAG_QUERY_TIMEOUT_MS },
+    )
+    .catch(() => undefined);
+
+  await navigate();
+  await flagsSettled;
+}
+
 export async function navigateToContact(page: SafePage, id: string): Promise<void> {
-  await page.goto(`/contacts/${id}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, `/contacts/${id}`);
 }
 
 export async function navigateToAccount(page: SafePage, id: string): Promise<void> {
-  await page.goto(`/accounts/${id}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, `/accounts/${id}`);
 }
 
 export async function navigateToDeal(page: SafePage, id: string): Promise<void> {
-  await page.goto(`/deals/${id}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, `/deals/${id}`);
 }
 
 export async function navigateToLead(page: SafePage, id: string): Promise<void> {
-  await page.goto(`/leads/${id}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, `/leads/${id}`);
 }
 
 export async function navigateToContacts(page: SafePage): Promise<void> {
-  await page.goto('/contacts', { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, '/contacts');
 }
 
 export async function navigateToAccounts(page: SafePage): Promise<void> {
-  await page.goto('/accounts', { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, '/accounts');
 }
 
 export async function navigateToDashboard(page: SafePage): Promise<void> {
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, '/');
 }
 
 export async function navigateToAdminSettings(page: SafePage): Promise<void> {
-  await page.goto('/admin/settings', { waitUntil: 'networkidle' });
+  await gotoAndSettle(page, '/admin/settings');
 }
 
 // ---------------------------------------------------------------------------

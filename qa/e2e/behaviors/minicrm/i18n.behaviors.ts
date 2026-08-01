@@ -11,6 +11,7 @@
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
+import { navigateAndSettle } from '@apps/minicrm/helpers.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 
 // ---------------------------------------------------------------------------
@@ -123,7 +124,9 @@ export async function applyPseudoLocale(
  * Use to confirm that a language or locale change persists across navigation.
  */
 export async function reloadAndWait(context: I18nBehaviorContext): Promise<void> {
-  await context.page.reload({ waitUntil: 'networkidle' });
+  await navigateAndSettle(context.page, () =>
+    context.page.reload({ waitUntil: 'domcontentloaded' }),
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
@@ -629,7 +630,7 @@ export async function waitForAccountAttachmentsList(
  * (owner=me) and waits for the page to reach networkidle.
  */
 export async function navigateToAccountsOwnedByMe(context: AccountsBehaviorContext): Promise<void> {
-  await context.page.goto('/accounts?owner=me', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/accounts?owner=me');
 }
 
 // ---------------------------------------------------------------------------

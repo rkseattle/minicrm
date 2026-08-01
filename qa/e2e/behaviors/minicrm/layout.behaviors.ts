@@ -11,6 +11,7 @@
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
 import { StrategyExhaustedError } from '@framework/healing/index.js';
 
@@ -124,7 +125,7 @@ export async function navigateToContactDetailPage(
     (res) => res.url().includes(`/api/v1/contacts/${contactId}`) && res.status() === 200,
     { timeout: 15_000 },
   );
-  await context.page.goto(`/contacts/${contactId}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, `/contacts/${contactId}`);
   await contactLoaded;
 }
 
@@ -135,7 +136,7 @@ export async function navigateToDealDetailPage(
   dealId: string,
   context: LayoutBehaviorContext,
 ): Promise<void> {
-  await context.page.goto(`/deals/${dealId}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, `/deals/${dealId}`);
 }
 
 /**
@@ -145,42 +146,42 @@ export async function navigateToAccountDetailPage(
   accountId: string,
   context: LayoutBehaviorContext,
 ): Promise<void> {
-  await context.page.goto(`/accounts/${accountId}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, `/accounts/${accountId}`);
 }
 
 /**
  * Navigates to the contacts list page and waits for network idle.
  */
 export async function navigateToContactsPage(context: LayoutBehaviorContext): Promise<void> {
-  await context.page.goto('/contacts', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/contacts');
 }
 
 /**
  * Navigates to the accounts list page and waits for network idle.
  */
 export async function navigateToAccountsPage(context: LayoutBehaviorContext): Promise<void> {
-  await context.page.goto('/accounts', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/accounts');
 }
 
 /**
  * Navigates to the leads list page and waits for network idle.
  */
 export async function navigateToLeadsPage(context: LayoutBehaviorContext): Promise<void> {
-  await context.page.goto('/leads', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/leads');
 }
 
 /**
  * Navigates to the tasks list page and waits for network idle.
  */
 export async function navigateToTasksPage(context: LayoutBehaviorContext): Promise<void> {
-  await context.page.goto('/tasks', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/tasks');
 }
 
 /**
  * Navigates to a page by path and waits for network idle.
  */
 export async function navigateToPath(path: string, context: LayoutBehaviorContext): Promise<void> {
-  await context.page.goto(path, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, path);
 }
 
 // ---------------------------------------------------------------------------

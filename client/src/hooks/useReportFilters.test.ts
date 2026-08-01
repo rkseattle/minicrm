@@ -130,6 +130,32 @@ describe('useReportFilters', () => {
     }
   });
 
+  it('advances an idle report at UTC midnight without any user interaction', () => {
+    // Second Greptile P1 on #371. Reading the clock during render is necessary
+    // but not sufficient: an idle, focused report never re-renders on its own,
+    // so it would sit on the previous month and — because its React Query key
+    // carries the dates — never refetch either. A timer aimed at the next UTC
+    // midnight forces the render. No rerender(), no setState, no clicks here:
+    // only the clock and the timer. (MINCRM-700)
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-31T23:59:30.000Z'));
+      const { result } = renderHook(() => useReportFilters('currentMonth'));
+      expect(result.current.resolvedStart).toBe('2026-08-01');
+      expect(result.current.resolvedEnd).toBe('2026-08-31');
+
+      // Cross midnight by advancing timers, exactly as an untouched tab would.
+      act(() => {
+        vi.advanceTimersByTime(31_000);
+      });
+
+      expect(result.current.resolvedStart).toBe('2026-09-01');
+      expect(result.current.resolvedEnd).toBe('2026-09-30');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('custom preset uses customStart/customEnd for resolved dates', () => {
     const { result } = renderHook(() => useReportFilters());
     act(() => {

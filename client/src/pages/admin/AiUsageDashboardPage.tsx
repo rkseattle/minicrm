@@ -73,17 +73,26 @@ export default function AiUsageDashboardPage() {
   const { t } = useTranslation();
 
   const [preset, setPreset] = useState<UsageDateRangePreset | 'custom'>('current_month');
-  const [customStart, setCustomStart] = useState(firstOfMonthIso());
-  const [customEnd, setCustomEnd] = useState(todayIso());
+  // `null` until the user picks the custom preset, then seeded from the clock at
+  // that moment — NOT at mount. `range` below is derived synchronously and the
+  // queries carry no `enabled` gate, so the render that first shows these inputs
+  // also fires the request: a mount-time capture would fetch a stale period
+  // immediately, with a structurally valid start <= end that the server accepts
+  // and renders as real cost figures. An ops dashboard left open for days is the
+  // normal use of this page. (MINCRM-700)
+  const [customStart, setCustomStart] = useState<string | null>(null);
+  const [customEnd, setCustomEnd] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState('');
 
+  // Until both custom bounds are seeded, keep querying the last real preset
+  // rather than sending a half-range the API would reject with a 400.
   const range: UsageDateRangeQuery =
-    preset === 'custom'
+    preset === 'custom' && customStart !== null && customEnd !== null
       ? { start: customStart, end: customEnd }
-      : { preset: preset as UsageDateRangePreset };
+      : { preset: (preset === 'custom' ? 'current_month' : preset) as UsageDateRangePreset };
 
   const {
     data: summary,
@@ -229,7 +238,15 @@ export default function AiUsageDashboardPage() {
           ))}
           <button
             type="button"
-            onClick={() => setPreset('custom')}
+            onClick={() => {
+              // Seed from the clock now, not at mount — see the state declaration.
+              // Existing edits are preserved so re-selecting custom does not
+              // discard what the user typed.
+              const now = new Date();
+              setCustomStart((current) => current ?? firstOfMonthIso(now));
+              setCustomEnd((current) => current ?? todayIso(now));
+              setPreset('custom');
+            }}
             className={`px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 ${
               preset === 'custom'
                 ? 'bg-primary-600 text-white'
@@ -250,7 +267,7 @@ export default function AiUsageDashboardPage() {
               <input
                 id="ai-usage-custom-start"
                 type="date"
-                value={customStart}
+                value={customStart ?? ''}
                 onChange={(e) => setCustomStart(e.target.value)}
                 className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 data-testid="ai-usage-custom-start-input"
@@ -263,7 +280,7 @@ export default function AiUsageDashboardPage() {
               <input
                 id="ai-usage-custom-end"
                 type="date"
-                value={customEnd}
+                value={customEnd ?? ''}
                 onChange={(e) => setCustomEnd(e.target.value)}
                 className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 data-testid="ai-usage-custom-end-input"

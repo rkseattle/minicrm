@@ -7,7 +7,7 @@
  * and does not use this hook.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
@@ -108,20 +108,71 @@ export function useReportFilters(initialPreset: DatePreset = 'currentMonth'): Re
   const [viewMode, setViewMode] = useState<ViewMode>('team');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
+  // Forces a render when the UTC calendar day rolls over.
+  //
+  // Reading the clock during render is necessary but not sufficient: an idle,
+  // focused report never re-renders on its own, so without this it would sit on
+  // the previous day/week/month/quarter — and its date-bearing React Query key
+  // would not change either, so nothing would refetch. Reported as a P1 on #371.
+  //
+  // A timer aimed at the next UTC midnight, rather than an interval: one wakeup
+  // per day, and it re-arms itself off the new day's boundary. `visibilitychange`
+  // covers the case where the tab was backgrounded — browsers throttle or defer
+  // long timers in hidden tabs, so the timer alone cannot be trusted to fire on
+  // time. (MINCRM-700)
+  const [utcDay, setUtcDay] = useState<string>(() => todayIso());
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    const syncToCurrentUtcDay = (): void => {
+      setUtcDay((previous) => {
+        const current = todayIso();
+        return previous === current ? previous : current;
+      });
+    };
+
+    const scheduleNextBoundary = (): void => {
+      const now = new Date();
+      const nextMidnightUtc = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+      );
+      timer = setTimeout(() => {
+        syncToCurrentUtcDay();
+        scheduleNextBoundary();
+      }, nextMidnightUtc - now.getTime());
+    };
+
+    scheduleNextBoundary();
+    document.addEventListener('visibilitychange', syncToCurrentUtcDay);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', syncToCurrentUtcDay);
+    };
+  }, []);
+
   // Resolved on every render from a freshly read clock, deliberately NOT
   // memoized and NOT captured in state.
   //
-  // Both of those would freeze the calendar: a report left open across UTC
-  // midnight keeps serving the previous day/week/month/quarter. A useMemo does
-  // not help — its dependency array holds no time-varying value, so it would
-  // simply move the freeze from the state initializer into the memo cache.
-  // Reproduced directly: after advancing past midnight, a plain rerender and an
-  // unrelated setState both still returned the prior month.
+  // Both of those would freeze the calendar. A useMemo does not help either —
+  // its dependency array holds no time-varying value, so it would simply move
+  // the freeze from the state initializer into the memo cache. Reproduced
+  // directly: after advancing past midnight, a plain rerender and an unrelated
+  // setState both still returned the prior month.
   //
   // Recomputing unconditionally is cheap — six integer reads and a string
   // format, no allocation worth memoizing — and `resolvePresetDates` takes one
   // `now` so start and end always agree with each other.
-  // (MINCRM-700, Greptile P1 on #371)
+  //
+  // `utcDay` is deliberately NOT the resolution anchor — it exists only to
+  // guarantee a render happens at the boundary. Anchoring to it would
+  // reintroduce the very freeze this comment describes, because state does not
+  // change on a plain rerender. Verified by test: anchoring to `utcDay` fails
+  // "re-resolves across UTC midnight on a plain rerender".
+  // (MINCRM-700, Greptile P1s on #371)
+  void utcDay;
   const { start: resolvedStart, end: resolvedEnd } = resolvePresetDates(
     preset,
     customStart,

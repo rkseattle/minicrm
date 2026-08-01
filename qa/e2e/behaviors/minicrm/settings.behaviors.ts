@@ -4,6 +4,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { AdminSettingsTab } from '@pages/minicrm/AdminSettingsPage.js';
@@ -195,7 +196,7 @@ export async function navigateToUrl(
   url: string,
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto(url, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, url);
 }
 
 /**
@@ -205,7 +206,7 @@ export async function navigateToUrl(
 export async function navigateToAdminSettingsCustomisation(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=pipelines', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/admin/settings?tab=pipelines');
 }
 
 /**
@@ -215,7 +216,7 @@ export async function navigateToAdminSettingsCustomisation(
 export async function navigateToAdminSettingsGeneral(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=workspace', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/admin/settings?tab=workspace');
 }
 
 // ---------------------------------------------------------------------------
@@ -453,6 +454,11 @@ export async function ensureSystemDefaults(restClient: RestClient): Promise<void
 /**
  * Navigates to the login page and waits for network idle.
  * Used by SSO tests that need to verify the login page as an unauthenticated user.
+ *
+ * Deliberately NOT routed through gotoAndSettle: the login route is
+ * unauthenticated and never issues GET /api/v1/feature-flags/me, so waiting on
+ * that response would burn the full timeout on every call. There are no
+ * flag-gated subtrees here, so networkidle is an adequate signal. (MINCRM-700)
  */
 export async function navigateToLoginPageForSso(
   context: AdminSettingsBehaviorContext,
@@ -471,7 +477,7 @@ export async function navigateToLoginPageForSso(
 export async function navigateToAdminSettingsIntegrations(
   context: AdminSettingsBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=integrations', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/admin/settings?tab=integrations');
 }
 
 // ---------------------------------------------------------------------------
@@ -495,7 +501,7 @@ export async function navigateToAdminSettingsCurrency(
   // overwriting any selectOption() call made in between. waitUntil:'networkidle'
   // after the first response ensures both the initial fetch and any background
   // refetch have landed before the caller interacts with the form. (MINCRM-418)
-  await context.page.goto('/admin/settings?tab=workspace', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/admin/settings?tab=workspace');
   // Settle any pending re-renders after the network quietens.
   await context.page.waitForFunction(
     `document.querySelector('[data-testid="home-currency-select"]') !== null`,
