@@ -1063,13 +1063,13 @@ jobs:
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
           # Same, for the query/ingestion routers (MINCRM-685). Load-bearing in this
-          # job specifically: coverage-health.spec.ts is NOT @serial, so it runs here,
-          # and COVH-01 asserts the health report's routers block equals
-          # {pipeline: true, mapping: true, reporting: true} — which only holds because
-          # these are set. Dropping any of them fails that spec, not just the routes.
-          # coverage-mapping.spec.ts/coverage-pipeline.spec.ts are still @serial and run
-          # in e2e-serial, which sets these independently — read that job's own comment
-          # before assuming either job can drop them.
+          # job specifically, in two ways: coverage-health.spec.ts's COVH-01 asserts
+          # the health report's routers block equals
+          # {pipeline: true, mapping: true, reporting: true}, which only holds because
+          # these are set; and coverage-mapping.spec.ts/coverage-pipeline.spec.ts moved
+          # into this job when MINCRM-685 dropped their @serial tags, so their calls to
+          # /admin/coverage/mapping/* and /admin/coverage/pipeline/ingest now depend on
+          # these too. Dropping any of them fails those specs, not just the routes.
           COVERAGE_MAPPING_QUERY: "true"
           COVERAGE_REPORTING_QUERY: "true"
           COVERAGE_PIPELINE_INGESTION: "true"
@@ -1428,21 +1428,29 @@ jobs:
           APP_URL: http://localhost:5173
           # Coverage/TIA control API and session management routes are
           # registered only when these are 'true' at process boot
-          # (MINCRM-663). coverage-instrumentation.spec.ts/coverage-sessions.spec.ts
-          # were moved OFF @serial (they run in e2e-functional now), but
-          # coverage-mapping.spec.ts/coverage-pipeline.spec.ts are still
-          # @serial and independently call /admin/coverage/dump and
-          # /admin/coverage/pipeline/ingest (both mounted on the same
-          # gated router) — this job needs the vars too, not just
-          # e2e-functional. Found via a real CI failure (404s on COVM-01/
-          # COVP-01) after a prior fix removed these assuming no @serial
-          # spec still depended on them; it did not check every @serial
-          # spec, only the two being actively edited.
+          # (MINCRM-663, MINCRM-685). No @serial spec depends on these any more:
+          # coverage-instrumentation/coverage-sessions moved off @serial earlier,
+          # and MINCRM-685 moved coverage-mapping/coverage-pipeline too, after an
+          # audit of all 25 @serial specs confirmed none of the rest reads a
+          # coverage route or the coverage database.
+          #
+          # The first two are NOT optional regardless: apps/minicrm/fixtures.ts
+          # calls startCoverageSession and POST /admin/coverage/dump for EVERY
+          # test (E2E_COVERAGE_PER_TEST defaults on, and nothing here sets
+          # E2E_COVERAGE_GRANULARITY). Those calls are .catch()-swallowed, so
+          # removing the vars would not fail a test — it would silently blank
+          # per-test coverage attribution, which is worse.
+          #
+          # The other three are KEPT deliberately too. ci.yml has already been
+          # burned once here:
+          # a prior fix removed these vars assuming no @serial spec needed them,
+          # having checked only the two specs it was editing, and CI failed with
+          # 404s on COVM-01/COVP-01. The cost of keeping five env vars on a job
+          # that may not need them is zero; the cost of being wrong is a red
+          # build whose cause is a 404 three layers from the change. Remove them
+          # only alongside a fresh audit, not on the strength of this comment.
           COVERAGE_INSTRUMENTATION: "true"
           COVERAGE_SESSION_MANAGEMENT: "true"
-          # Same, for the query/ingestion routers (MINCRM-685) — the two @serial
-          # coverage specs above call /admin/coverage/mapping/* and
-          # /admin/coverage/pipeline/ingest, which these gate at boot.
           COVERAGE_MAPPING_QUERY: "true"
           COVERAGE_REPORTING_QUERY: "true"
           COVERAGE_PIPELINE_INGESTION: "true"
