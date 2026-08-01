@@ -43,7 +43,7 @@ let defaultPipelineId: string;
 
 /** Returns today's date string in YYYY-MM-DD format (for test data) */
 function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return utcDayOffset(new Date(), 0);
 }
 
 /**

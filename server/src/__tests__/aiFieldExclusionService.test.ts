@@ -16,11 +16,11 @@ import {
 } from '../services/aiFieldExclusionService.js';
 import { invalidateFieldExclusionCache } from '../ai/piiFilter.js';
 
-// A per-file actor, NOT the all-zeros SYSTEM_ACTOR: audit assertions below scope
-// by changed_by_id, and the system UUID is shared with every other SYSTEM_ACTOR
-// write in the repo, so it would isolate nothing. changed_by_id has no FK, so
-// this needs no users row. (MINCRM-693)
-const SYSTEM_ACTOR = { id: randomUUID(), name: 'AI Field Exclusion Svc Test' };
+// A per-file actor, NOT the all-zeros SYSTEM_ACTOR this file used to pass: the
+// audit assertion below scopes by changed_by_id, and the system UUID is shared
+// with every other SYSTEM_ACTOR write in the repo, so it would isolate nothing.
+// changed_by_id has no FK, so this needs no users row. (MINCRM-693)
+const FILE_ACTOR = { id: randomUUID(), name: 'AI Field Exclusion Svc Test' };
 
 beforeEach(async () => {
   await pool.query('DELETE FROM ai_field_exclusions');
@@ -46,7 +46,7 @@ describe('getEffectiveExclusionList', () => {
   });
 
   it('reflects an admin override in the standard_fields list', async () => {
-    await setFieldExclusion('contact', 'department', true, SYSTEM_ACTOR);
+    await setFieldExclusion('contact', 'department', true, FILE_ACTOR);
     const list = await getEffectiveExclusionList();
     const dept = list.standard_fields.find(
       (f) => f.entity_type === 'contact' && f.field_name === 'department',
@@ -65,7 +65,7 @@ describe('getEffectiveExclusionList', () => {
 
 describe('setFieldExclusion', () => {
   it('persists a new exclusion override', async () => {
-    await setFieldExclusion('account', 'website', true, SYSTEM_ACTOR);
+    await setFieldExclusion('account', 'website', true, FILE_ACTOR);
     const row = await pool.query<{ excluded: boolean }>(
       `SELECT excluded FROM ai_field_exclusions WHERE entity_type = 'account' AND field_name = 'website'`,
     );
@@ -73,8 +73,8 @@ describe('setFieldExclusion', () => {
   });
 
   it('toggles an existing override back off', async () => {
-    await setFieldExclusion('account', 'website', true, SYSTEM_ACTOR);
-    await setFieldExclusion('account', 'website', false, SYSTEM_ACTOR);
+    await setFieldExclusion('account', 'website', true, FILE_ACTOR);
+    await setFieldExclusion('account', 'website', false, FILE_ACTOR);
     const row = await pool.query<{ excluded: boolean }>(
       `SELECT excluded FROM ai_field_exclusions WHERE entity_type = 'account' AND field_name = 'website'`,
     );
@@ -82,7 +82,7 @@ describe('setFieldExclusion', () => {
   });
 
   it('writes an audit entry recording the change', async () => {
-    await setFieldExclusion('deal', 'loss_reason', true, SYSTEM_ACTOR);
+    await setFieldExclusion('deal', 'loss_reason', true, FILE_ACTOR);
     const row = await pool.query<{ old_value: string; new_value: string; record_name: string }>(
       // changed_by_id scoping: record_type + record_name + field_name are all
       // shared with aiFieldExclusionController.test.ts. (MINCRM-693)
@@ -90,7 +90,7 @@ describe('setFieldExclusion', () => {
        WHERE record_type = 'ai_field_exclusion' AND field_name = 'excluded'
          AND record_name = 'deal.loss_reason' AND changed_by_id = $1
        ORDER BY id DESC LIMIT 1`,
-      [SYSTEM_ACTOR.id],
+      [FILE_ACTOR.id],
     );
     expect(row.rows).toHaveLength(1);
     expect(row.rows[0].old_value).toBe('false');
@@ -99,12 +99,12 @@ describe('setFieldExclusion', () => {
 
   it('rejects an unknown field name for a known entity type', async () => {
     await expect(
-      setFieldExclusion('contact', 'not_a_real_field', true, SYSTEM_ACTOR),
+      setFieldExclusion('contact', 'not_a_real_field', true, FILE_ACTOR),
     ).rejects.toMatchObject({ code: 'UNKNOWN_FIELD' });
   });
 
   it('rejects an unknown entity type', async () => {
-    await expect(setFieldExclusion('widget', 'name', true, SYSTEM_ACTOR)).rejects.toMatchObject({
+    await expect(setFieldExclusion('widget', 'name', true, FILE_ACTOR)).rejects.toMatchObject({
       code: 'UNKNOWN_FIELD',
     });
   });

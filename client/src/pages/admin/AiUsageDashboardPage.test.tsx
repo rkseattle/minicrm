@@ -199,6 +199,29 @@ describe('AiUsageDashboardPage — date range selector', () => {
     expect(screen.getByTestId('ai-usage-custom-start-input')).toBeInTheDocument();
     expect(screen.getByTestId('ai-usage-custom-end-input')).toBeInTheDocument();
   });
+
+  it('seeds the custom range with start on or before end', async () => {
+    // Pins the PAGE's wiring, not just the helpers: customStart/customEnd are
+    // seeded from firstOfMonthIso()/todayIso() at module scope. Mixing a local
+    // month start with a UTC "today" inverts the range near month end for a
+    // UTC-ahead viewer, and the API rejects an inverted range with a 400 — an
+    // error on first open. utcDate.test.ts covers the helpers; nothing else
+    // stops this component from constructing the dates inline again.
+    // CI runs TZ=Pacific/Auckland, where the two constructions differ.
+    // (MINCRM-700)
+    renderWithProviders(<AiUsageDashboardPage />);
+    await waitFor(() => screen.getByTestId('ai-usage-range-custom'));
+
+    fireEvent.click(screen.getByTestId('ai-usage-range-custom'));
+
+    const start = screen.getByTestId('ai-usage-custom-start-input') as HTMLInputElement;
+    const end = screen.getByTestId('ai-usage-custom-end-input') as HTMLInputElement;
+
+    expect(start.value).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(end.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // ISO date strings compare correctly as plain strings.
+    expect(start.value <= end.value).toBe(true);
+  });
 });
 
 describe('AiUsageDashboardPage — CSV export', () => {

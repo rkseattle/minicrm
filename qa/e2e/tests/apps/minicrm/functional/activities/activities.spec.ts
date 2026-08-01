@@ -91,11 +91,20 @@ test.beforeEach(async ({ restClient, testData, page }) => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns a date string N days from today in YYYY-MM-DD format. */
+/**
+ * Returns the UTC calendar day N days from today, as YYYY-MM-DD.
+ *
+ * Anchored to UTC midnight rather than shifting the local instant: across a DST
+ * transition a local setDate(n) moves the wall clock 24h per day but the instant
+ * 23h or 25h, so the UTC-serialized day can land off by one. due_date is a
+ * timezone-naive date column the server resolves in UTC. Mirrors
+ * server/src/utils/utcDate.ts's utcDayOffset, which qa/ cannot import.
+ * (MINCRM-700)
+ */
 function daysFromToday(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const now = new Date();
+  const shifted = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + n));
+  return shifted.toISOString().slice(0, 10);
 }
 
 // ---------------------------------------------------------------------------
