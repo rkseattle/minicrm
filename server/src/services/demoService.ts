@@ -6,6 +6,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import { utcDayOffset } from '../utils/utcDate.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
@@ -283,9 +284,7 @@ const DEMO_CONTACT_ADDRESSES = [
  * @param offsetDays - Positive = future, negative = past.
  */
 function relativeDate(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return utcDayOffset(new Date(), offsetDays);
 }
 
 /**
@@ -295,9 +294,14 @@ function relativeDate(offsetDays: number): string {
  * @param monthsAhead - Number of months ahead of today.
  */
 function futureMonths(monthsAhead: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() + monthsAhead);
-  return d.toISOString().slice(0, 10);
+  const now = new Date();
+  // Same UTC day, `monthsAhead` months on. Date.UTC normalizes an overflowing
+  // day-of-month (Jan 31 + 1 month) into early the following month, matching
+  // what setMonth did.
+  const shifted = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthsAhead, now.getUTCDate()),
+  );
+  return shifted.toISOString().slice(0, 10);
 }
 
 // pipeline: 'enterprise' deals are assigned to the Enterprise B2B demo pipeline (MINCRM-408).

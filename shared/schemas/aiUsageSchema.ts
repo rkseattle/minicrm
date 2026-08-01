@@ -36,25 +36,38 @@ export const usageDateRangePresetSchema = z.enum(['current_month', 'last_month',
 export type UsageDateRangePreset = z.infer<typeof usageDateRangePresetSchema>;
 
 /**
+ * Accepts either a date-only `YYYY-MM-DD` (what the client's date pickers send)
+ * or a full ISO 8601 timestamp (what the OpenAPI spec has always advertised as
+ * `format: date-time`, and what any non-first-party consumer may be sending).
+ *
+ * Deliberately permissive on the date-time form rather than date-only: before
+ * boundary validation existed, these params reached `new Date(value)` directly,
+ * so every parseable timestamp was accepted. Narrowing to date-only here would
+ * have been a silent breaking change for existing API consumers. (MINCRM-700)
+ */
+const usageDateParamSchema = z
+  .string()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/,
+    'must be a YYYY-MM-DD date or an ISO 8601 timestamp',
+  )
+  .refine((value) => !isNaN(new Date(value).getTime()), {
+    message: 'must be a valid calendar date',
+  });
+
+/**
  * Query params for the usage summary/daily/export endpoints. Validated in the
  * controller before the service is called, per the boundary-validation rule.
  *
  * Every field is optional and the shape is permissive on purpose: which
  * combinations are legal (start and end together; preset alone; neither, which
  * defaults to current_month) is calendar logic, resolved by resolveDateRange.
- * This schema's job is only to reject values that are not strings of the right
- * form before they reach it. `start`/`end` are date-only strings from the
- * client's date pickers, never full ISO timestamps.
+ * This schema's job is only to reject values that are not of the right form
+ * before they reach it.
  */
 export const usageDateRangeParamsSchema = z.object({
-  start: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'start must be a YYYY-MM-DD date')
-    .optional(),
-  end: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'end must be a YYYY-MM-DD date')
-    .optional(),
+  start: usageDateParamSchema.optional(),
+  end: usageDateParamSchema.optional(),
   preset: usageDateRangePresetSchema.optional(),
 });
 export type UsageDateRangeParams = z.infer<typeof usageDateRangeParamsSchema>;

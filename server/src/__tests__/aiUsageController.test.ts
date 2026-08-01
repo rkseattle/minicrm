@@ -102,13 +102,32 @@ describe('GET /admin/ai/usage/summary', () => {
   });
 
   it('accepts an explicit start/end range', async () => {
-    // start/end are date-only strings from the client's date pickers (see
-    // resolveDateRange's doc comment) — not full ISO datetimes.
+    // Date-only strings are what the client's date pickers send.
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/summary')
       .query({ start: '2026-01-01', end: '2026-01-31' })
       .set('Cookie', adminCookie);
     expect(res.status).toBe(200);
+  });
+
+  it('still accepts full ISO timestamps, as the OpenAPI spec advertises', async () => {
+    // routes/ai.ts declares start/end as `format: date-time`, and before
+    // boundary validation existed these reached `new Date(value)` directly, so
+    // any parseable timestamp worked. Narrowing to date-only would have been a
+    // silent break for non-first-party API consumers. MINCRM-700.
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ start: '2026-01-01T00:00:00Z', end: '2026-01-31T23:59:59Z' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 for a malformed date that no format accepts', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/summary')
+      .query({ start: '2026-13-45', end: '2026-01-31' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
   });
 
   it('treats the end date as inclusive — usage recorded on the end date itself is included', async () => {
@@ -241,9 +260,9 @@ describe('GET /admin/ai/usage/export', () => {
   });
 
   // The export handlers share resolveAiUsageExportData rather than the summary/
-  // daily path, so they need their own coverage that the query is Zod-validated
-  // at the boundary. Without it, an unknown preset silently fell back to
-  // current_month here and returned 200 with the wrong data. MINCRM-700.
+  // daily path, so the boundary validation needs its own coverage here — the
+  // summary tests above exercise a different call path and would stay green if
+  // the export path stopped validating. MINCRM-700.
   it('returns 400 for an unknown preset', async () => {
     const res = await request(app)
       .get('/api/v1/admin/ai/usage/export')

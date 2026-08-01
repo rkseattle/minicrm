@@ -19,6 +19,19 @@ import { createUser } from '../services/userService.js';
 import pool from '../db.js';
 import { utcDayOffset } from '../utils/utcDate.js';
 
+/**
+ * A due date guaranteed to be in the past relative to the database's UTC today,
+ * for seeding overdue tasks.
+ *
+ * utcDayOffset, not a local setDate(-1): across a DST transition the local shift
+ * moves the wall clock 24h but the instant 23h or 25h, so the UTC-serialized day
+ * can come back as today — and the task stops being overdue. CI runs
+ * TZ=Pacific/Auckland, which transitions twice a year. (MINCRM-700)
+ */
+function overdueDueDate(): string {
+  return utcDayOffset(new Date(), -1);
+}
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const FILE_PREFIX = 'notif-svc';
@@ -103,10 +116,7 @@ afterAll(async () => {
 describe('sendOverdueDigests', () => {
   it('inserts dedup rows for newly-overdue tasks', async () => {
     // Create an overdue open task (due yesterday)
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     const { rows } = await pool.query<{ id: string }>(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
@@ -126,10 +136,7 @@ describe('sendOverdueDigests', () => {
   });
 
   it('does not re-notify for already-notified tasks', async () => {
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     const { rows } = await pool.query<{ id: string }>(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
@@ -159,10 +166,7 @@ describe('sendOverdueDigests', () => {
       `UPDATE system_settings SET value = 'false' WHERE key = 'email_notifications_enabled'`,
     );
 
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     await pool.query(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
@@ -182,10 +186,7 @@ describe('sendOverdueDigests', () => {
   it('does not notify a user who has opted out of overdue task notifications', async () => {
     await pool.query('UPDATE users SET notify_overdue_tasks = false WHERE id = $1', [ownerId]);
 
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     await pool.query(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
@@ -202,10 +203,7 @@ describe('sendOverdueDigests', () => {
   });
 
   it('does not notify for non-Task activities', async () => {
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     await pool.query(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
@@ -222,10 +220,7 @@ describe('sendOverdueDigests', () => {
   });
 
   it('does not notify for complete tasks', async () => {
-    // utcDayOffset, not local setDate(-1): across a DST transition the local
-    // shift shifts the instant 23h/25h, so the UTC-serialized day can come back
-    // as today. CI runs TZ=Pacific/Auckland. (MINCRM-700)
-    const dueDateStr = utcDayOffset(new Date(), -1);
+    const dueDateStr = overdueDueDate();
 
     await pool.query(
       `INSERT INTO activities (type, subject, status, due_date, owner_id, contact_id)
