@@ -43,19 +43,12 @@ let ownerId: string;
 let otherOwnerId: string;
 
 /** Counts this file's own config audit rows. See countAuditRowsFor. (MINCRM-693) */
-function countConfigAuditRowsOn(
-  queryable: { query: typeof pool.query },
-  actorId: string,
-): Promise<number> {
-  return countAuditRowsFor(queryable, {
+function countConfigAuditRows(actorId: string): Promise<number> {
+  return countAuditRowsFor(pool, {
     recordType: 'ai_settings',
     recordName: DATA_HYGIENE_CONFIG_RECORD_NAME,
     actorId,
   });
-}
-
-function countConfigAuditRows(actorId: string): Promise<number> {
-  return countConfigAuditRowsOn(pool, actorId);
 }
 
 async function cleanup(): Promise<void> {

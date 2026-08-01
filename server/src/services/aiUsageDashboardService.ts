@@ -132,6 +132,12 @@ export function resolveDateRange(
     case 'last_3_months':
       return { start: utcMonthStart(now, -3), end: startOfNextMonth };
   }
+
+  // Unreachable for a Zod-parsed query, and the switch above is exhaustive over
+  // UsageDateRangePreset. Explicit rather than an implicit undefined: the
+  // declared return type is `DateRange | null`, and tsconfig does not enable
+  // noImplicitReturns, so falling off the end would silently violate it.
+  return null;
 }
 
 /**

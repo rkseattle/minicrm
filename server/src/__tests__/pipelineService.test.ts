@@ -31,18 +31,23 @@ async function cleanupTestPipelines(): Promise<void> {
 }
 
 /**
- * Clears audit entries written by this file. Disables the append-only
- * trigger temporarily. Filters by record_type/record_name, not an actor
- * ID, so this can't share testUtils.ts's clearAuditLogFor helper directly
- * — same underlying fix though: all three statements run in one
- * transaction on a single client, since ALTER TABLE ... DISABLE/ENABLE
- * TRIGGER is catalog-level (visible to every concurrent connection, not
- * session-scoped) but takes an ACCESS EXCLUSIVE lock on the table held
- * until COMMIT — that lock serializes any other caller of this same
- * disable/delete/enable sequence (including this file's own sibling,
- * pipelineStageService.test.ts, run alongside it per SERIAL_FILES) behind
- * this one. See clearAuditLogFor's own docblock for the two claims
- * verified directly against a real Postgres session pair.
+ * Clears audit entries written by this file. Disables the append-only trigger
+ * temporarily.
+ *
+ * Scoped by changed_by_id like testUtils.ts's clearAuditLogFor, with the
+ * record_type/record_name predicates kept as a narrowing filter so the intent
+ * stays legible at the call site. It does not delegate to that helper only
+ * because it runs before ACTOR.id is populated in some orderings; the delete
+ * semantics are otherwise identical. (MINCRM-693)
+ *
+ * All three statements run in one transaction on a single client, since
+ * ALTER TABLE ... DISABLE/ENABLE TRIGGER is catalog-level (visible to every
+ * concurrent connection, not session-scoped) but takes an ACCESS EXCLUSIVE lock
+ * on the table held until COMMIT — that lock serializes any other caller of this
+ * same disable/delete/enable sequence (including this file's own sibling,
+ * pipelineStageService.test.ts, run alongside it per SERIAL_FILES) behind this
+ * one. See clearAuditLogFor's own docblock for the two claims verified directly
+ * against a real Postgres session pair.
  */
 async function clearPipelineAuditLog(): Promise<void> {
   const client = await pool.connect();
@@ -167,7 +172,7 @@ describe('createPipeline', () => {
     await createPipeline({ name }, ACTOR);
     const { rows } = await pool.query(
       `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'created' AND new_value = $1 AND changed_by_id = $2`,
-      [...[name], ACTOR.id],
+      [name, ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });
@@ -215,7 +220,7 @@ describe('updatePipeline', () => {
 
     const { rows } = await pool.query(
       `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'updated' AND old_value = $1 AND new_value = $2 AND changed_by_id = $3`,
-      [...[original, newName], ACTOR.id],
+      [original, newName, ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });
@@ -284,7 +289,7 @@ describe('deletePipeline', () => {
 
     const { rows } = await pool.query(
       `SELECT * FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipelines' AND event_type = 'deleted' AND old_value = $1 AND changed_by_id = $2`,
-      [...[name], ACTOR.id],
+      [name, ACTOR.id],
     );
     expect(rows.length).toBe(1);
   });

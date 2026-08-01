@@ -13,6 +13,7 @@ import { getDashboardSummary } from '../services/dashboardService.js';
 import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { utcDayOffset } from '../utils/utcDate.js';
 
 const FILE_PREFIX = 'dash-svc';
 
@@ -45,11 +46,17 @@ function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Returns yesterday's date string in YYYY-MM-DD format (for overdue tasks) */
+/**
+ * Returns yesterday's UTC date string in YYYY-MM-DD format (for overdue tasks).
+ *
+ * Uses utcDayOffset rather than local setDate(-1): across a DST transition the
+ * local shift moves the wall clock 24h but the instant 23h or 25h, so the
+ * UTC-serialized day can come back unchanged — yielding TODAY where yesterday
+ * was meant, and an overdue task that is not overdue. CI runs
+ * TZ=Pacific/Auckland, which has two such transitions a year. (MINCRM-700)
+ */
 function yesterdayString(): string {
-  const date = new Date();
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().slice(0, 10);
+  return utcDayOffset(new Date(), -1);
 }
 
 beforeAll(async () => {

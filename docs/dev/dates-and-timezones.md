@@ -29,7 +29,7 @@ const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 
 Bind an explicit `YYYY-MM-DD` string against a `date` column rather than a `Date` object.
 node-postgres infers the wire type from the target column and serializes `date` params
 using the JS Date's **local** calendar fields, so a bare `Date` shifts by a day off-UTC.
-`aiUsageDashboardService.ts`'s `toDateString` exists for exactly this.
+`server/src/utils/utcDate.ts`'s `toUtcDateString` exists for exactly this.
 
 Where "today" only needs to reach SQL, prefer pushing it into the query — `CURRENT_DATE`
 resolves in the database's timezone by construction. `notificationService.ts:181`
@@ -114,12 +114,13 @@ Every calendar helper in `client/src/hooks/useReportFilters.ts` — nine of them
 serialization. Treat the whole file as affected rather than working from this line list.
 
 Measured at `2026-08-31T23:30Z` under `TZ=Pacific/Auckland`: `endOfCurrentMonth()`
-returns `2026-08-30` where UTC gives `2026-08-31`; `startOfCurrentWeek()` returns
+returns `2026-09-29` where UTC gives `2026-08-31` — a month off, not a day; `startOfCurrentWeek()` returns
 `2026-08-30` vs `2026-08-31`; `endOfLastQuarter()` returns `2026-06-29` vs `2026-06-30`.
 The defect appears for viewers **ahead** of UTC — UTC-behind zones such as
 `America/Los_Angeles` serialize to the correct day, so testing there will not reproduce
 it.
 
+Note `today()` at `:39-41` is already UTC-correct — do not blanket-rewrite the file.
+
 These feed report queries that filter `deals.close_date`. Out of scope for MINCRM-700,
-which covered AI usage. **No ticket tracks this yet** — file one rather than assuming
-this note is a substitute.
+which covered AI usage. Tracked as **MINCRM-701**.
