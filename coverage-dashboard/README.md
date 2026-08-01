@@ -35,7 +35,7 @@ architecture (data model, mapping engine, TIA test selection).
    COVERAGE_SESSION_MANAGEMENT=true
    ```
 
-   Both default off — this is developer tooling, meant to stay off in production. They
+   All three default off — this is developer tooling, meant to stay off in production. They
    gate route **registration** at process boot (MINCRM-663 for
    `COVERAGE_SESSION_MANAGEMENT`, MINCRM-685 for the other two), so a server missing
    one answers **`404`** on every request to that router: the routes do not exist. That is not

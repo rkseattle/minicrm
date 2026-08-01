@@ -177,7 +177,7 @@ describe('coverage reporting API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-636
   // The boot gate itself is covered by coverageRouteGating.test.ts; the bypass
   // predicate's own scope is covered by coverageAccessGate.test.ts.
 
-  it('never bypasses auth when NODE_ENV=production, regardless of the flag — the hard safety rail a copied .env file could not defeat', async () => {
+  it('never bypasses auth when NODE_ENV=production, regardless of COVERAGE_DASHBOARD_NO_AUTH — the hard safety rail a copied .env file could not defeat', async () => {
     process.env.NODE_ENV = 'production';
     const res = await request(app)
       .get('/api/v1/admin/coverage/reporting/summary')

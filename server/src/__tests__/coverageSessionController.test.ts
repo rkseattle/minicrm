@@ -170,7 +170,7 @@ describe('coverage session control API — COVERAGE_DASHBOARD_NO_AUTH=true (MINC
     );
   });
 
-  it('never bypasses auth when NODE_ENV=production, regardless of the flag — the hard safety rail a copied .env file could not defeat', async () => {
+  it('never bypasses auth when NODE_ENV=production, regardless of COVERAGE_DASHBOARD_NO_AUTH — the hard safety rail a copied .env file could not defeat', async () => {
     process.env.NODE_ENV = 'production';
     const res = await request(app)
       .post('/api/v1/admin/coverage/sessions')

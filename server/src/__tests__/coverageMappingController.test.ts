@@ -150,7 +150,7 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
     process.env.NODE_ENV = originalNodeEnv;
   });
 
-  it('serves an unauthenticated request when the flag is on', async () => {
+  it('serves an unauthenticated request when the bypass is on', async () => {
     const res = await request(app)
       .get('/api/v1/admin/coverage/mapping/tests-for-unit')
       .query({ commitSha: 'abc', unitKey: 'render#123' });
@@ -169,7 +169,7 @@ describe('coverage mapping API — COVERAGE_DASHBOARD_NO_AUTH=true (MINCRM-694)'
   // the gate, which is coarser but harder to defeat, and the bypass still
   // requires NODE_ENV !== 'production'.
 
-  it('never bypasses auth when NODE_ENV=production, regardless of the flag', async () => {
+  it('never bypasses auth when NODE_ENV=production, regardless of COVERAGE_DASHBOARD_NO_AUTH', async () => {
     // The hard safety rail a copied .env file could not defeat. Mirrors the
     // same case in coverageReportingController and coverageSessionController —
     // worth pinning per router because buildCoverageAccessGate now makes one
