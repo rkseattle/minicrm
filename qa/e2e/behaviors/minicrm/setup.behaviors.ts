@@ -11,6 +11,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { SetupChecklistPage } from '@pages/minicrm/SetupChecklistPage.js';
 import { AutomationPage } from '@pages/minicrm/AutomationPage.js';
@@ -452,7 +453,7 @@ export interface OnboardingBehaviorContext {
 export async function navigateToDashboardAndWait(
   context: OnboardingBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/');
 }
 
 /**

@@ -12,6 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { gotoAndSettle, navigateAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { ReportsPage } from '@pages/minicrm/ReportsPage.js';
 
@@ -366,21 +367,23 @@ export async function getReportsWinRateText(
  * Navigates to the win/loss report page and waits for network idle.
  */
 export async function navigateToWinLossReport(context: ReportsBehaviorContext): Promise<void> {
-  await context.page.goto('/reports?view=win-loss', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/reports?view=win-loss');
 }
 
 /**
  * Navigates to the pipeline stage trend report page and waits for network idle.
  */
 export async function navigateToStageTrendReport(context: ReportsBehaviorContext): Promise<void> {
-  await context.page.goto('/reports?view=pipeline-stage', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/reports?view=pipeline-stage');
 }
 
 /**
  * Reloads the current page and waits for network idle.
  */
 export async function reloadPage(context: ReportsBehaviorContext): Promise<void> {
-  await context.page.reload({ waitUntil: 'networkidle' });
+  await navigateAndSettle(context.page, () =>
+    context.page.reload({ waitUntil: 'domcontentloaded' }),
+  );
 }
 
 // ── Custom Reports behaviors (MINCRM-402) ────────────────────────────────────
@@ -389,7 +392,7 @@ export async function reloadPage(context: ReportsBehaviorContext): Promise<void>
  * Navigates to the Custom Reports tab on the reports page.
  */
 export async function navigateToCustomReports(context: ReportsBehaviorContext): Promise<void> {
-  await context.page.goto('/reports?view=custom-reports', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/reports?view=custom-reports');
 }
 
 /**
@@ -536,7 +539,7 @@ export async function getReportsEntityTypeSelectValue(
  * Navigates to the main reports page (no specific view) and waits for network idle.
  */
 export async function navigateToReportsPage(context: ReportsBehaviorContext): Promise<void> {
-  await context.page.goto('/reports', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/reports');
 }
 
 // ---------------------------------------------------------------------------

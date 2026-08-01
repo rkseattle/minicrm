@@ -200,27 +200,39 @@ describe('AiUsageDashboardPage — date range selector', () => {
     expect(screen.getByTestId('ai-usage-custom-end-input')).toBeInTheDocument();
   });
 
-  it('seeds the custom range with start on or before end', async () => {
-    // Pins the PAGE's wiring, not just the helpers: customStart/customEnd are
-    // seeded from firstOfMonthIso()/todayIso() at module scope. Mixing a local
-    // month start with a UTC "today" inverts the range near month end for a
-    // UTC-ahead viewer, and the API rejects an inverted range with a 400 — an
-    // error on first open. utcDate.test.ts covers the helpers; nothing else
-    // stops this component from constructing the dates inline again.
-    // CI runs TZ=Pacific/Auckland, where the two constructions differ.
-    // (MINCRM-700)
-    renderWithProviders(<AiUsageDashboardPage />);
-    await waitFor(() => screen.getByTestId('ai-usage-range-custom'));
+  it('seeds the custom range from the clock at selection time, not at mount', async () => {
+    // Two properties in one test, because start <= end alone is worthless here:
+    // it holds for ANY pair of stale values and would pass with the clock frozen
+    // a year ago.
+    //
+    // 1. The seeds are UTC-derived. Mixing a local month start with a UTC
+    //    "today" inverts the range near month end for a UTC-ahead viewer, and
+    //    the API rejects an inverted range with a 400 on first open.
+    // 2. They are read when the user selects "custom", NOT at mount. `range` is
+    //    derived synchronously and the queries carry no `enabled` gate, so the
+    //    render that first shows these inputs also fires the request — a
+    //    mount-time capture on a dashboard left open for days would silently
+    //    fetch and export the wrong period. (MINCRM-700)
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));
+      renderWithProviders(<AiUsageDashboardPage />);
+      await vi.waitFor(() => screen.getByTestId('ai-usage-range-custom'));
 
-    fireEvent.click(screen.getByTestId('ai-usage-range-custom'));
+      // Days pass with the page still open, then the user drills in.
+      vi.setSystemTime(new Date('2026-09-03T09:00:00.000Z'));
+      fireEvent.click(screen.getByTestId('ai-usage-range-custom'));
 
-    const start = screen.getByTestId('ai-usage-custom-start-input') as HTMLInputElement;
-    const end = screen.getByTestId('ai-usage-custom-end-input') as HTMLInputElement;
+      const start = screen.getByTestId('ai-usage-custom-start-input') as HTMLInputElement;
+      const end = screen.getByTestId('ai-usage-custom-end-input') as HTMLInputElement;
 
-    expect(start.value).toMatch(/^\d{4}-\d{2}-01$/);
-    expect(end.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // ISO date strings compare correctly as plain strings.
-    expect(start.value <= end.value).toBe(true);
+      // September, not the August the page mounted in.
+      expect(start.value).toBe('2026-09-01');
+      expect(end.value).toBe('2026-09-03');
+      expect(start.value <= end.value).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

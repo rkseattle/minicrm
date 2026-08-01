@@ -383,6 +383,25 @@ const SERIAL_FILES = [
   // class of cross-file interference the two entries above are serialized for,
   // reached by mocking rather than by cache invalidation. (MINCRM-694)
   'src/__tests__/middleware.test.ts',
+  // coverageDumpService.test.ts and coverageIngestionService.test.ts both build
+  // an agent against COVERAGE_DUMPS_ROOT — a single process-external directory
+  // derived from process.cwd(), not a per-test tmpdir — and both recursively
+  // delete it in afterEach. Run in parallel, one file's rm races the other's
+  // in-progress writes.
+  //
+  // The loud symptom is `ENOTEMPTY: directory not empty, rmdir
+  // server/coverage-dumps`, observed once in a full run. The quiet one is
+  // worse: a write can return success and then lose its payload, meta, or
+  // index.jsonl to the sibling's delete. DumpIndex.append caches the entry in
+  // memory, so findCoverageDump later hits its catch, logs "meta file missing
+  // or unparseable", and returns undefined — an assertion fails claiming disk
+  // corruption and points the next investigator at a storage bug that does not
+  // exist.
+  //
+  // NodeV8CoverageAgent.test.ts is deliberately NOT listed: it mkdtemp's its
+  // own root under os.tmpdir() and cannot collide. (MINCRM-700)
+  'src/__tests__/coverageDumpService.test.ts',
+  'src/__tests__/coverageIngestionService.test.ts',
 ];
 
 const sharedResolve = {

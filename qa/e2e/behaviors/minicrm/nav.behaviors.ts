@@ -12,6 +12,7 @@
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
+import { gotoAndSettle, navigateAndSettle } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { NavPage } from '@pages/minicrm/NavPage.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
@@ -598,7 +599,9 @@ export async function getDesktopLanguageSelectLocator(context: NavBehaviorContex
  * Reloads the current page and waits for network idle.
  */
 export async function reloadCurrentPage(context: NavBehaviorContext): Promise<void> {
-  await context.page.reload({ waitUntil: 'networkidle' });
+  await navigateAndSettle(context.page, () =>
+    context.page.reload({ waitUntil: 'domcontentloaded' }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -617,7 +620,9 @@ export interface BrowserHistoryNavigationResult {
 export async function navigateBack(
   context: NavBehaviorContext,
 ): Promise<BrowserHistoryNavigationResult> {
-  await context.page.goBack({ waitUntil: 'networkidle' });
+  await navigateAndSettle(context.page, () =>
+    context.page.goBack({ waitUntil: 'domcontentloaded' }),
+  );
   return { pathname: new URL(context.page.url()).pathname };
 }
 
@@ -627,7 +632,9 @@ export async function navigateBack(
 export async function navigateForward(
   context: NavBehaviorContext,
 ): Promise<BrowserHistoryNavigationResult> {
-  await context.page.goForward({ waitUntil: 'networkidle' });
+  await navigateAndSettle(context.page, () =>
+    context.page.goForward({ waitUntil: 'domcontentloaded' }),
+  );
   return { pathname: new URL(context.page.url()).pathname };
 }
 
@@ -676,7 +683,7 @@ export async function navigateToUrlAndWait(
   url: string,
   context: NavBehaviorContext,
 ): Promise<void> {
-  await context.page.goto(url, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, url);
 }
 
 // ---------------------------------------------------------------------------

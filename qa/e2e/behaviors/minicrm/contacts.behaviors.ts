@@ -12,6 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -1372,7 +1373,7 @@ export async function fillContactDetailField(
  * relying on the owner-filter UI controls loading first.
  */
 export async function navigateToContactsOwnedByMe(context: ContactsBehaviorContext): Promise<void> {
-  await context.page.goto('/contacts?owner=me', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/contacts?owner=me');
 }
 
 // ---------------------------------------------------------------------------
@@ -1567,7 +1568,7 @@ export async function navigateToContactsWithOwnerFilter(
   owner: 'me' | 'my_team' | 'all',
 ): Promise<void> {
   const param = owner === 'all' ? '' : `?owner=${owner}`;
-  await context.page.goto(`/contacts${param}`, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, `/contacts${param}`);
 }
 
 /**

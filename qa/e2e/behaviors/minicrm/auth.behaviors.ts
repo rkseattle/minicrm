@@ -12,6 +12,7 @@
  */
 
 import type { PageFacade } from '@framework/fixtures/index.js';
+import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
@@ -428,7 +429,7 @@ export async function navigateToProtectedPage(
   // we inspect the URL. Without this, waitForURL below can resolve while the
   // browser is still on `path` (the SPA mounted but hasn't yet received the
   // 401 from the auth check and re-rendered with <Navigate to="/login" />).
-  await context.page.goto(path, { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, path);
 
   // After networkidle the auth check has returned. If the user is
   // unauthenticated, ProtectedRoute will have already dispatched the React
@@ -655,6 +656,11 @@ export async function navigateToLoginWithSessionExpired(
   next: string,
   context: AuthBehaviorContext,
 ): Promise<void> {
+  // Deliberately NOT routed through gotoAndSettle: this is the unauthenticated
+  // login route, which never issues GET /api/v1/feature-flags/me, so waiting on
+  // that response would simply burn the full timeout on every call. The page has
+  // no flag-gated subtrees, so networkidle is an adequate signal here.
+  // (MINCRM-700)
   const encoded = encodeURIComponent(next);
   await context.page.goto(`/login?reason=session_expired&next=${encoded}`, {
     waitUntil: 'networkidle',
@@ -1131,7 +1137,7 @@ export async function loginWithRecoveryCode(
 export async function navigateToAdminSettingsGeneralPage(
   context: AuthBehaviorContext,
 ): Promise<void> {
-  await context.page.goto('/admin/settings?tab=security', { waitUntil: 'networkidle' });
+  await gotoAndSettle(context.page, '/admin/settings?tab=security');
 }
 
 /** Waits for the MFA enforcement checkbox to become visible, with an optional timeout (ms). */
