@@ -58,7 +58,11 @@ Body:
 - Per-ticket acceptance criteria and how each is satisfied
 - Testing performed, including the E2E scope and the counts read from `results.xml`
 - Migrations, feature flags, and any manual deployment step
-- Anything deliberately deferred, with the reason
+- Anything deliberately deferred, with the reason. Every entry here must already have
+  cleared the deferral procedure in `deliver`'s invariants — `commit-adversary` on the
+  benign claim, then Rob's explicit agreement. The PR body records a decision already
+  made; it is not where a deferral gets decided, and "listed in the PR" is not a
+  substitute for fixing.
 
 ## Step 5 — Jira
 

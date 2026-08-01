@@ -75,7 +75,9 @@ Then, in this order:
 
 1. **Fix the code first.** Never reply to a comment before the fix exists. Each fix
    goes through `ci-failure-adversary` the same way a CI failure does — root cause,
-   pattern spread, then commit.
+   pattern spread, then commit. Replying "good catch, filed as MINCRM-N" is a deferral:
+   it needs the procedure in `deliver`'s invariants first — `commit-adversary` on the
+   benign claim, then Rob's explicit agreement — before any ticket exists to cite.
 2. **Reply to every inline thread**, naming what changed and in which commit:
    ```bash
    gh api repos/rkseattle/minicrm/pulls/<pr>/comments/<id>/replies \

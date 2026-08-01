@@ -132,6 +132,17 @@ Never the simplest, quickest, or easiest solution. If you catch yourself writing
 "actually", or "let me look at this differently" more than once, stop and think it
 through rather than iterating in the open.
 
+**Scope exclusions are decided here, with Rob, not later on your own.** If exploration
+finds instances of a root cause the plan otherwise fixes, the plan's "What explicitly
+does not ship" must list each one and justify it as **benign in context** — it cannot
+produce a wrong result for any user or any test. A different feature, page, or workspace
+is not a justification. `design-adversary` will evaluate each exclusion on that bar.
+
+This is the right moment to split work: if covering every instance would make one branch
+too large to review, propose sequenced tickets in the plan and let Rob choose. Do not
+create those tickets yet — deciding mid-implementation to file a follow-up instead of
+fixing is the failure this exists to prevent.
+
 ## Step 5 — Adversarial design review
 
 Launch the `design-adversary` subagent.

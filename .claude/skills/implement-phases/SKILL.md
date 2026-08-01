@@ -53,7 +53,11 @@ have bitten this repo before.
 
 When a grep reveals a class of problem rather than a single instance, fix every
 instance in that pass. "Only these are failing CI" is not the same as "only these are
-bugs." Exclude an instance only when it is genuinely exempt, and say why.
+bugs." Exclude an instance only when it is **benign in its context** — it cannot produce
+a wrong result for any user or any test. A different feature, workspace, or ticket owner
+is not benign. Before deferring, and before creating any work item, follow the deferral
+procedure in `deliver`'s invariants: `commit-adversary` on the benign claim, then ask
+Rob, then file.
 
 ### 2b. Refactor before staging
 

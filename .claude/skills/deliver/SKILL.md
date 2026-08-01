@@ -65,6 +65,35 @@ Follow in-repo precedent where it exists; justify every departure in writing.
 failure, CI failure, PR comment — gets root-caused, and the codebase gets grepped for
 other instances of that same cause. Fix all live instances in the same pass.
 
+**Fixing is the default; deferring is the exception that needs permission.** An instance
+of a root cause this work already fixes is excluded only when it is **benign in its
+context** — it cannot produce a wrong result for any user or any test. "It's a different
+feature", "it's a different workspace", "it's a big diff", "it deserves its own review
+surface" are _not_ benign — they describe every pattern-spread fix ever made. State the
+exclusion in benign terms or fix it.
+
+**Never create a Jira work item without asking first.** Filing a ticket feels like
+handling the problem and is not; a ticket you file when you could have fixed the thing is
+deferral with extra steps. Before creating any issue, follow this order:
+
+1. **Test the deferral adversarially.** Launch `commit-adversary` with only: the file and
+   line, the root cause, and your one-sentence benign claim. No branch context, no
+   rationale, no mention that you would rather not do the work. If it disagrees, fix the
+   instance and do not file anything.
+2. **If it agrees, ask Rob** — the finding, why it is benign, the cost of fixing it now
+   versus later, and your recommendation. Wait for an explicit answer.
+3. **Only then create the ticket**, with Acceptance Criteria per CLAUDE.md.
+
+This applies to every stage and to tickets of any kind — follow-ups, spin-offs, "while we
+were in there" observations. Recording a finding in the PR body or in chat needs no
+permission; creating a work item does.
+
+**Deleting or closing someone else's work item needs permission too**, and for the
+opposite reason: it is not reversible from here, and a ticket you delete is a decision
+someone else can no longer see. Ask, and say what happens to the work it tracked. Moving
+a ticket through its normal workflow states — In Progress, In Review — is a routine step
+and needs no permission.
+
 **No failure is ever a known flake.** Not pre-existing, not unrelated, not flaky. A
 rerun that passes is not a resolution. If the root cause is undeterminable, say so and
 ask.
