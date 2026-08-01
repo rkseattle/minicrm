@@ -9,6 +9,7 @@
  */
 
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import {
   listPipelineStages,
   getStageNames,
@@ -21,40 +22,55 @@ import {
 } from '../services/pipelineStageService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { clearAuditLogFor, countAuditRowsFor } from './testUtils.js';
 
 const FILE_PREFIX = 'pipeline-stage-svc';
 
 /**
- * Clears audit_log rows written by this test file. Temporarily disables the
- * append-only trigger so test cleanup can delete entries. Filters by
- * record_type/record_name, not an actor ID, so this can't share
- * testUtils.ts's clearAuditLogFor helper directly — same underlying fix
- * though: all three statements run in one transaction on a single client,
- * since ALTER TABLE ... DISABLE/ENABLE TRIGGER is catalog-level (visible to
- * every concurrent connection, not session-scoped) but takes an ACCESS
- * EXCLUSIVE lock on the table held until COMMIT — that lock serializes any
- * other caller of this same disable/delete/enable sequence (including a
- * different test file's own copy, run concurrently by Vitest against the
- * shared test database) behind this one. See clearAuditLogFor's own
- * docblock for the two claims verified directly against a real Postgres
- * session pair.
+ * The record_name pipelineStageService writes its audit rows under. Every
+ * caller of the service writes under it, so it cannot scope an assertion on its
+ * own — every read below is additionally scoped by ACTOR.id. (MINCRM-693)
  */
-async function clearPipelineStageAuditLog(): Promise<void> {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('ALTER TABLE audit_log DISABLE TRIGGER audit_log_no_modify');
-    await client.query(
-      `DELETE FROM audit_log WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'`,
-    );
-    await client.query('ALTER TABLE audit_log ENABLE TRIGGER audit_log_no_modify');
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+const PIPELINE_STAGES_RECORD_NAME = 'pipeline_stages';
+
+/**
+ * File-scoped actor for every write under test here.
+ *
+ * pipelineStageService's create/update/delete/reorder functions all default to
+ * SYSTEM_ACTOR (the all-zeros UUID) when no actor is passed. That UUID is shared
+ * with every other SYSTEM_ACTOR write in the repo, so it isolates nothing —
+ * passing a per-file actor is what makes changed_by_id a usable scoping
+ * dimension for the audit assertions below. (MINCRM-693)
+ */
+const ACTOR = { id: randomUUID(), name: 'Pipeline Stage Svc Test' };
+
+/**
+ * Counts audit rows for this file's own writes. Scoped by changed_by_id because
+ * record_type + record_name are shared with every other writer of
+ * `system_settings`/`pipeline_stages` — including the controller path. See
+ * countAuditRowsFor. (MINCRM-693)
+ */
+function countStageAuditRows(): Promise<number> {
+  return countAuditRowsFor(pool, {
+    recordType: 'system_settings',
+    recordName: PIPELINE_STAGES_RECORD_NAME,
+    actorId: ACTOR.id,
+  });
+}
+
+/**
+ * Clears audit_log rows written by this test file.
+ *
+ * This was a private copy of testUtils.ts's clearAuditLogFor, justified by
+ * filtering on record_type/record_name rather than an actor id. Now that every
+ * write in this file passes ACTOR, that justification is gone and the shared
+ * helper does exactly this — including the single-transaction
+ * DISABLE/DELETE/ENABLE sequence whose ACCESS EXCLUSIVE lock serializes
+ * concurrent copies. ACTOR.id is a per-file randomUUID, so scoping by it alone
+ * cannot over-delete. (MINCRM-693)
+ */
+function clearPipelineStageAuditLog(): Promise<void> {
+  return clearAuditLogFor(ACTOR.id);
 }
 
 /** Re-seeds the six default pipeline stages before each test */
@@ -171,7 +187,7 @@ describe('getTerminalStageNames', () => {
 
 describe('createPipelineStage', () => {
   it('inserts a new non-terminal stage and returns it', async () => {
-    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 });
+    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 }, ACTOR);
     expect(stage.id).toBeTruthy();
     expect(stage.name).toBe('Discovery');
     expect(stage.probability).toBe(15);
@@ -181,35 +197,38 @@ describe('createPipelineStage', () => {
 
   it('auto-assigns sort_order as MAX(all stages) + 10', async () => {
     // Seed has max sort_order 60 (Closed Lost); new stage should get 70
-    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 });
+    const stage = await createPipelineStage({ name: 'Discovery', probability: 15 }, ACTOR);
     expect(stage.sort_order).toBe(70);
   });
 
   it('appears in listPipelineStages after creation', async () => {
-    await createPipelineStage({ name: 'POC', probability: 40 });
+    await createPipelineStage({ name: 'POC', probability: 40 }, ACTOR);
     const names = await getStageNames();
     expect(names).toContain('POC');
   });
 
   it('throws STAGE_NAME_CONFLICT for a duplicate name (case-insensitive)', async () => {
-    await createPipelineStage({ name: 'Demo', probability: 20 });
-    await expect(createPipelineStage({ name: 'DEMO', probability: 20 })).rejects.toMatchObject({
+    await createPipelineStage({ name: 'Demo', probability: 20 }, ACTOR);
+    await expect(
+      createPipelineStage({ name: 'DEMO', probability: 20 }, ACTOR),
+    ).rejects.toMatchObject({
       code: 'STAGE_NAME_CONFLICT',
     });
   });
 
   it('defaults probability to 0 when set to 0', async () => {
-    const stage = await createPipelineStage({ name: 'Scoping', probability: 0 });
+    const stage = await createPipelineStage({ name: 'Scoping', probability: 0 }, ACTOR);
     expect(stage.probability).toBe(0);
   });
 
   it('writes a created audit entry in the same transaction', async () => {
-    await createPipelineStage({ name: 'AuditCheck', probability: 5 });
+    await createPipelineStage({ name: 'AuditCheck', probability: 5 }, ACTOR);
 
     const result = await pool.query<{ event_type: string; new_value: string; record_name: string }>(
       `SELECT event_type, new_value, record_name FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'
+       WHERE record_type = 'system_settings' AND record_name = $1 AND changed_by_id = $2
        ORDER BY created_at DESC LIMIT 1`,
+      [PIPELINE_STAGES_RECORD_NAME, ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].event_type).toBe('created');
@@ -220,9 +239,9 @@ describe('createPipelineStage', () => {
     // Force audit failure by temporarily disabling the audit_log table write
     // via a unique constraint violation on a duplicate name — the 23505 fires
     // during INSERT and the ROLLBACK must leave audit_log untouched.
-    await createPipelineStage({ name: 'WillConflict', probability: 0 });
+    await createPipelineStage({ name: 'WillConflict', probability: 0 }, ACTOR);
     await expect(
-      createPipelineStage({ name: 'WillConflict', probability: 0 }),
+      createPipelineStage({ name: 'WillConflict', probability: 0 }, ACTOR),
     ).rejects.toMatchObject({ code: 'STAGE_NAME_CONFLICT' });
 
     // Only one pipeline stage with that name should exist
@@ -239,7 +258,7 @@ describe('updatePipelineStage', () => {
   it('renames a non-fixed stage', async () => {
     const stages = await listPipelineStages();
     const prospecting = stages.find((s) => s.name === 'Prospecting')!;
-    const updated = await updatePipelineStage(prospecting.id, { name: 'Outreach' });
+    const updated = await updatePipelineStage(prospecting.id, { name: 'Outreach' }, ACTOR);
     expect(updated?.name).toBe('Outreach');
   });
 
@@ -262,7 +281,7 @@ describe('updatePipelineStage', () => {
       [ownerId, proposal.pipeline_id, proposal.id],
     );
 
-    await updatePipelineStage(proposal.id, { name: 'Solution Review' });
+    await updatePipelineStage(proposal.id, { name: 'Solution Review' }, ACTOR);
 
     const dealResult = await pool.query<{ stage: string }>(
       `SELECT stage FROM deals WHERE owner_id = $1`,
@@ -278,7 +297,7 @@ describe('updatePipelineStage', () => {
   it('updates probability without changing name', async () => {
     const stages = await listPipelineStages();
     const qualification = stages.find((s) => s.name === 'Qualification')!;
-    const updated = await updatePipelineStage(qualification.id, { probability: 30 });
+    const updated = await updatePipelineStage(qualification.id, { probability: 30 }, ACTOR);
     expect(updated?.name).toBe('Qualification');
     expect(updated?.probability).toBe(30);
   });
@@ -286,7 +305,7 @@ describe('updatePipelineStage', () => {
   it('throws STAGE_FIXED when attempting to rename a fixed stage', async () => {
     const stages = await listPipelineStages();
     const closedWon = stages.find((s) => s.name === 'Closed Won')!;
-    await expect(updatePipelineStage(closedWon.id, { name: 'Won' })).rejects.toMatchObject({
+    await expect(updatePipelineStage(closedWon.id, { name: 'Won' }, ACTOR)).rejects.toMatchObject({
       code: 'STAGE_FIXED',
     });
   });
@@ -294,7 +313,7 @@ describe('updatePipelineStage', () => {
   it('allows updating probability on a fixed stage', async () => {
     const stages = await listPipelineStages();
     const closedWon = stages.find((s) => s.name === 'Closed Won')!;
-    const updated = await updatePipelineStage(closedWon.id, { probability: 99 });
+    const updated = await updatePipelineStage(closedWon.id, { probability: 99 }, ACTOR);
     expect(updated?.probability).toBe(99);
     expect(updated?.name).toBe('Closed Won');
   });
@@ -303,26 +322,29 @@ describe('updatePipelineStage', () => {
     const stages = await listPipelineStages();
     const prospecting = stages.find((s) => s.name === 'Prospecting')!;
     await expect(
-      updatePipelineStage(prospecting.id, { name: 'Negotiation' }),
+      updatePipelineStage(prospecting.id, { name: 'Negotiation' }, ACTOR),
     ).rejects.toMatchObject({ code: 'STAGE_NAME_CONFLICT' });
   });
 
   it('returns null for a non-existent stage id', async () => {
-    const result = await updatePipelineStage('00000000-0000-0000-0000-000000000000', {
-      probability: 50,
-    });
+    const result = await updatePipelineStage(
+      '00000000-0000-0000-0000-000000000000',
+      { probability: 50 },
+      ACTOR,
+    );
     expect(result).toBeNull();
   });
 
   it('writes a per-field updated audit entry for a rename', async () => {
     const stages = await listPipelineStages();
     const prospecting = stages.find((s) => s.name === 'Prospecting')!;
-    await updatePipelineStage(prospecting.id, { name: 'Outreach' });
+    await updatePipelineStage(prospecting.id, { name: 'Outreach' }, ACTOR);
 
     const result = await pool.query<{ field_name: string; old_value: string; new_value: string }>(
       `SELECT field_name, old_value, new_value FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'
+       WHERE record_type = 'system_settings' AND record_name = $1 AND changed_by_id = $2
          AND event_type = 'updated' AND field_name = 'name'`,
+      [PIPELINE_STAGES_RECORD_NAME, ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].field_name).toBe('name');
@@ -333,12 +355,13 @@ describe('updatePipelineStage', () => {
   it('writes a probability audit entry when only probability changes', async () => {
     const stages = await listPipelineStages();
     const qualification = stages.find((s) => s.name === 'Qualification')!;
-    await updatePipelineStage(qualification.id, { probability: 30 });
+    await updatePipelineStage(qualification.id, { probability: 30 }, ACTOR);
 
     const result = await pool.query<{ field_name: string; old_value: string; new_value: string }>(
       `SELECT field_name, old_value, new_value FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'
+       WHERE record_type = 'system_settings' AND record_name = $1 AND changed_by_id = $2
          AND event_type = 'updated' AND field_name = 'probability'`,
+      [PIPELINE_STAGES_RECORD_NAME, ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].field_name).toBe('probability');
@@ -350,13 +373,9 @@ describe('updatePipelineStage', () => {
     const stages = await listPipelineStages();
     const proposal = stages.find((s) => s.name === 'Proposal')!;
     // Submit the same name and probability — nothing changes
-    await updatePipelineStage(proposal.id, { name: 'Proposal', probability: 50 });
+    await updatePipelineStage(proposal.id, { name: 'Proposal', probability: 50 }, ACTOR);
 
-    const result = await pool.query(
-      `SELECT COUNT(*) AS count FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'`,
-    );
-    expect(parseInt(result.rows[0].count, 10)).toBe(0);
+    expect(await countStageAuditRows()).toBe(0);
   });
 
   it('throws STAGE_SORT_ORDER_CONFLICT when updating to an already-used sort_order', async () => {
@@ -365,7 +384,7 @@ describe('updatePipelineStage', () => {
     const qualification = stages.find((s) => s.name === 'Qualification')!;
     // Prospecting has sort_order 10; try to give Qualification the same sort_order
     await expect(
-      updatePipelineStage(qualification.id, { sort_order: prospecting.sort_order }),
+      updatePipelineStage(qualification.id, { sort_order: prospecting.sort_order }, ACTOR),
     ).rejects.toMatchObject({ code: 'STAGE_SORT_ORDER_CONFLICT' });
   });
 });
@@ -378,7 +397,7 @@ describe('reorderPipelineStages', () => {
     // Reverse the order of all stages
     const reversedIds = [...before].reverse().map((s) => s.id);
 
-    const after = await reorderPipelineStages({ stages: reversedIds });
+    const after = await reorderPipelineStages({ stages: reversedIds }, ACTOR);
 
     expect(after.map((s) => s.id)).toEqual(reversedIds);
     expect(after.map((s) => s.sort_order)).toEqual(reversedIds.map((_, i) => i + 1));
@@ -390,7 +409,7 @@ describe('reorderPipelineStages', () => {
     // Include a non-existent UUID to force a rollback
     const badIds = [...ids, '00000000-0000-0000-0000-000000000099'];
 
-    await expect(reorderPipelineStages({ stages: badIds })).rejects.toMatchObject({
+    await expect(reorderPipelineStages({ stages: badIds }, ACTOR)).rejects.toMatchObject({
       code: 'STAGE_NOT_FOUND',
     });
 
@@ -401,7 +420,7 @@ describe('reorderPipelineStages', () => {
 
   it('throws STAGE_NOT_FOUND when a supplied ID does not exist', async () => {
     await expect(
-      reorderPipelineStages({ stages: ['00000000-0000-0000-0000-000000000000'] }),
+      reorderPipelineStages({ stages: ['00000000-0000-0000-0000-000000000000'] }, ACTOR),
     ).rejects.toMatchObject({ code: 'STAGE_NOT_FOUND' });
   });
 
@@ -410,7 +429,7 @@ describe('reorderPipelineStages', () => {
     // Move the first stage to the end
     const reordered = [...before.slice(1), before[0]].map((s) => s.id);
 
-    await reorderPipelineStages({ stages: reordered });
+    await reorderPipelineStages({ stages: reordered }, ACTOR);
 
     const after = await listPipelineStages();
     expect(after.map((s) => s.id)).toEqual(reordered);
@@ -420,12 +439,13 @@ describe('reorderPipelineStages', () => {
     const before = await listPipelineStages();
     const reversedIds = [...before].reverse().map((s) => s.id);
 
-    await reorderPipelineStages({ stages: reversedIds });
+    await reorderPipelineStages({ stages: reversedIds }, ACTOR);
 
     const result = await pool.query<{ event_type: string; field_name: string; new_value: string }>(
       `SELECT event_type, field_name, new_value FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'
+       WHERE record_type = 'system_settings' AND record_name = $1 AND changed_by_id = $2
        ORDER BY created_at DESC LIMIT 1`,
+      [PIPELINE_STAGES_RECORD_NAME, ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].event_type).toBe('updated');
@@ -438,8 +458,8 @@ describe('reorderPipelineStages', () => {
 
 describe('deletePipelineStage', () => {
   it('deletes a custom stage with no open deals', async () => {
-    const created = await createPipelineStage({ name: 'ToDelete', probability: 0 });
-    const deleted = await deletePipelineStage(created.id);
+    const created = await createPipelineStage({ name: 'ToDelete', probability: 0 }, ACTOR);
+    const deleted = await deletePipelineStage(created.id, ACTOR);
     expect(deleted?.name).toBe('ToDelete');
     const found = await findPipelineStageById(created.id);
     expect(found).toBeNull();
@@ -448,7 +468,7 @@ describe('deletePipelineStage', () => {
   it('throws STAGE_FIXED when deleting a fixed stage', async () => {
     const stages = await listPipelineStages();
     const closedLost = stages.find((s) => s.name === 'Closed Lost')!;
-    await expect(deletePipelineStage(closedLost.id)).rejects.toMatchObject({
+    await expect(deletePipelineStage(closedLost.id, ACTOR)).rejects.toMatchObject({
       code: 'STAGE_FIXED',
     });
   });
@@ -471,7 +491,7 @@ describe('deletePipelineStage', () => {
 
     let thrownError: (Error & { code?: string; dealCount?: number }) | null = null;
     try {
-      await deletePipelineStage(negotiation.id);
+      await deletePipelineStage(negotiation.id, ACTOR);
     } catch (err) {
       thrownError = err as Error & { code?: string; dealCount?: number };
     }
@@ -512,7 +532,7 @@ describe('deletePipelineStage', () => {
 
     let thrownError: (Error & { code?: string; dealCount?: number }) | null = null;
     try {
-      await deletePipelineStage(terminalStageId);
+      await deletePipelineStage(terminalStageId, ACTOR);
     } catch (err) {
       thrownError = err as Error & { code?: string; dealCount?: number };
     }
@@ -526,20 +546,21 @@ describe('deletePipelineStage', () => {
   });
 
   it('returns null for a non-existent stage id', async () => {
-    const result = await deletePipelineStage('00000000-0000-0000-0000-000000000000');
+    const result = await deletePipelineStage('00000000-0000-0000-0000-000000000000', ACTOR);
     expect(result).toBeNull();
   });
 
   it('writes a deleted audit entry in the same transaction', async () => {
-    const created = await createPipelineStage({ name: 'AuditDelete', probability: 0 });
+    const created = await createPipelineStage({ name: 'AuditDelete', probability: 0 }, ACTOR);
     await clearPipelineStageAuditLog();
 
-    await deletePipelineStage(created.id);
+    await deletePipelineStage(created.id, ACTOR);
 
     const result = await pool.query<{ event_type: string; old_value: string }>(
       `SELECT event_type, old_value FROM audit_log
-       WHERE record_type = 'system_settings' AND record_name = 'pipeline_stages'
+       WHERE record_type = 'system_settings' AND record_name = $1 AND changed_by_id = $2
        ORDER BY created_at DESC LIMIT 1`,
+      [PIPELINE_STAGES_RECORD_NAME, ACTOR.id],
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0].event_type).toBe('deleted');

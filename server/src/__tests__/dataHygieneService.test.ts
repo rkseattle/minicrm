@@ -17,7 +17,8 @@ import { createContact, updateContact, findContactById } from '../services/conta
 import { createAccount } from '../services/accountService.js';
 import { createDeal, updateDeal } from '../services/dealService.js';
 import { createActivity } from '../services/activityService.js';
-import { uid } from './testUtils.js';
+import { randomUUID } from 'node:crypto';
+import { uid, countAuditRowsFor, expectActorScopingIsolatesForeignRows } from './testUtils.js';
 import {
   runDataHygieneScan,
   listHygieneFindings,
@@ -31,8 +32,31 @@ import {
 const FILE_PREFIX = 'hygiene-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
+/**
+ * The record_name setDataHygieneConfig writes its audit rows under. Shared with
+ * dataHygieneController.test.ts, which is why it cannot scope an assertion on
+ * its own — see the audit-count tests below. (MINCRM-693)
+ */
+const DATA_HYGIENE_CONFIG_RECORD_NAME = 'Data Hygiene Assistant Configuration';
+
 let ownerId: string;
 let otherOwnerId: string;
+
+/** Counts this file's own config audit rows. See countAuditRowsFor. (MINCRM-693) */
+function countConfigAuditRowsOn(
+  queryable: { query: typeof pool.query },
+  actorId: string,
+): Promise<number> {
+  return countAuditRowsFor(queryable, {
+    recordType: 'ai_settings',
+    recordName: DATA_HYGIENE_CONFIG_RECORD_NAME,
+    actorId,
+  });
+}
+
+function countConfigAuditRows(actorId: string): Promise<number> {
+  return countConfigAuditRowsOn(pool, actorId);
+}
 
 async function cleanup(): Promise<void> {
   await pool.query(
@@ -665,7 +689,21 @@ describe('getDataHygieneConfig / setDataHygieneConfig', () => {
   });
 
   it('writes an audit entry only for fields that actually changed', async () => {
-    const startedAt = new Date();
+    // Scoped by changed_by_id, not by a time window. audit_log is a shared table
+    // and dataHygieneController.test.ts writes rows under the IDENTICAL
+    // record_type + record_name, so those two dimensions cannot isolate
+    // anything — a window only narrows the race, it never closes it. (Both
+    // files are in SERIAL_FILES, so they don't run concurrently with each
+    // other; the exposure is to the parallel project, which runs alongside the
+    // serial one.) That file's writes also go through
+    // writeAuditEntryBestEffort (void, unawaited), so a row can land after its
+    // own test finished and fall inside any window chosen here.
+    //
+    // ownerId is created in beforeAll with this file's own email prefix, so no
+    // concurrently running file can write a row carrying it. Compare before vs
+    // after rather than asserting an absolute '0'. (MINCRM-693)
+    const before = await countConfigAuditRows(ownerId);
+
     await setDataHygieneConfig(
       {
         contact_inactivity_days: 365,
@@ -677,12 +715,45 @@ describe('getDataHygieneConfig / setDataHygieneConfig', () => {
       },
       { id: ownerId, name: 'Hygiene Owner' },
     );
-    const after = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM audit_log
-       WHERE record_type = 'ai_settings' AND record_name = 'Data Hygiene Assistant Configuration'
-         AND created_at >= $1`,
-      [startedAt],
+
+    expect(await countConfigAuditRows(ownerId)).toBe(before);
+  });
+
+  it("counts this file's real config writes while ignoring another actor's", async () => {
+    // Demonstrates the fix holds rather than merely observing it pass once
+    // (MINCRM-693 AC 3). Both halves matter: a REAL setDataHygieneConfig write
+    // under this file's actor IS counted (so the scoping cannot pass by matching
+    // nothing), and a row under a different actor carrying the identical
+    // record_type and record_name a concurrent controller test writes is NOT.
+    const before = await countConfigAuditRows(ownerId);
+
+    // A real changed field, so the service actually writes an audit row.
+    await setDataHygieneConfig(
+      {
+        contact_inactivity_days: 200,
+        account_inactivity_days: 365,
+        title_staleness_days: 1095,
+        opportunity_inactivity_days: 30,
+        dismiss_suppression_days: 90,
+        weekly_digest_enabled: false,
+      },
+      { id: ownerId, name: 'Hygiene Owner' },
     );
-    expect(after.rows[0].count).toBe('0');
+    expect(await countConfigAuditRows(ownerId)).toBeGreaterThan(before);
+
+    // Now a row from a different actor carrying the identical record_type and
+    // record_name a concurrent controller test writes. randomUUID rather than
+    // this file's own otherOwnerId: the point is a foreign writer, and
+    // changed_by_id has no FK, so an arbitrary UUID models it exactly.
+    await expectActorScopingIsolatesForeignRows(
+      {
+        recordType: 'ai_settings',
+        recordName: DATA_HYGIENE_CONFIG_RECORD_NAME,
+        actorId: ownerId,
+        fieldName: 'contact_inactivity_days',
+      },
+      randomUUID(),
+      expect,
+    );
   });
 });

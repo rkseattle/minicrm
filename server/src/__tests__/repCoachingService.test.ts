@@ -8,6 +8,8 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
+import { randomUUID } from 'node:crypto';
+import { countAuditRowsFor, expectActorScopingIsolatesForeignRows } from './testUtils.js';
 import { createUser } from '../services/userService.js';
 import { createAccount } from '../services/accountService.js';
 import { createDeal, updateDeal } from '../services/dealService.js';
@@ -24,8 +26,31 @@ import {
 const FILE_PREFIX = 'rep-coaching-svc';
 const ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
 
+/**
+ * The record_name setRepCoachingConfig writes its audit rows under. Shared with
+ * repCoachingController.test.ts, which is precisely why it cannot scope an
+ * assertion on its own — see the audit-count tests below. (MINCRM-693)
+ */
+const REP_COACHING_CONFIG_RECORD_NAME = 'Rep Coaching Insights Configuration';
+
 let repAId: string;
 let repBId: string;
+
+/** Counts this file's own config audit rows. See countAuditRowsFor. (MINCRM-693) */
+function countConfigAuditRowsOn(
+  queryable: { query: typeof pool.query },
+  actorId: string,
+): Promise<number> {
+  return countAuditRowsFor(queryable, {
+    recordType: 'ai_settings',
+    recordName: REP_COACHING_CONFIG_RECORD_NAME,
+    actorId,
+  });
+}
+
+function countConfigAuditRows(actorId: string): Promise<number> {
+  return countConfigAuditRowsOn(pool, actorId);
+}
 
 async function cleanup(): Promise<void> {
   await pool.query(
@@ -279,11 +304,23 @@ describe('getRepCoachingConfig / setRepCoachingConfig', () => {
   });
 
   it('writes an audit entry only for fields that actually changed', async () => {
-    // Scoped to this feature's own record_name AND a changed_at window starting
-    // just before this call — audit_log is a real shared table other test files
-    // (e.g. repCoachingController.test.ts) write to concurrently in a different
-    // vitest worker, so an unscoped or unwindowed count would be flaky.
-    const startedAt = new Date();
+    // Scoped by changed_by_id, not by a time window. audit_log is a shared table
+    // and repCoachingController.test.ts writes rows under the IDENTICAL
+    // record_type + record_name, so those two dimensions cannot isolate
+    // anything — a window only narrows the race, it never closes it. (Both
+    // files are in SERIAL_FILES, so they don't run concurrently with each
+    // other; the exposure is to the parallel project, which runs alongside the
+    // serial one.) Worse, that file's writes go through
+    // writeAuditEntryBestEffort (void, unawaited), so a row can land after its
+    // own test finished and fall inside any window chosen here.
+    //
+    // repAId is created in beforeAll with this file's own email prefix, so no
+    // concurrently running file can write a row carrying it. Compare before vs
+    // after rather than asserting an absolute '0', which would additionally
+    // assert that nothing earlier in this file wrote under the same actor.
+    // (MINCRM-693)
+    const before = await countConfigAuditRows(repAId);
+
     await setRepCoachingConfig(
       {
         min_closed_deals: 10,
@@ -294,13 +331,48 @@ describe('getRepCoachingConfig / setRepCoachingConfig', () => {
       },
       { id: repAId, name: 'Rep A' },
     );
+
     // Values are identical to the seeded defaults — no audit entries should be written.
-    const after = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM audit_log
-       WHERE record_type = 'ai_settings' AND record_name = 'Rep Coaching Insights Configuration'
-         AND created_at >= $1`,
-      [startedAt],
+    expect(await countConfigAuditRows(repAId)).toBe(before);
+  });
+
+  it("counts this file's real config writes while ignoring another actor's", async () => {
+    // Demonstrates the fix holds rather than merely observing it pass once
+    // (MINCRM-693 AC 3). Both halves matter:
+    //   1. A REAL setRepCoachingConfig write under this file's actor IS counted
+    //      — so the scoping cannot pass by matching nothing at all.
+    //   2. A row under a different actor, carrying the identical record_type and
+    //      record_name a concurrent controller test writes, is NOT counted.
+    // An unscoped count sees both, which is exactly why the original
+    // record_name + time-window assertion raced.
+    const before = await countConfigAuditRows(repAId);
+
+    // A real changed field, so the service actually writes an audit row.
+    await setRepCoachingConfig(
+      {
+        min_closed_deals: 12,
+        stage_time_outlier_ratio: 1.5,
+        activity_frequency_outlier_ratio: 0.5,
+        response_time_outlier_hours: 48,
+        win_rate_outlier_delta: 0.15,
+      },
+      { id: repAId, name: 'Rep A' },
     );
-    expect(after.rows[0].count).toBe('0');
+    expect(await countConfigAuditRows(repAId)).toBeGreaterThan(before);
+
+    // Now a row from a different actor carrying the identical record_type and
+    // record_name a concurrent controller test writes. randomUUID rather than
+    // this file's own repBId: the point is a foreign writer, and changed_by_id
+    // has no FK, so an arbitrary UUID models it exactly.
+    await expectActorScopingIsolatesForeignRows(
+      {
+        recordType: 'ai_settings',
+        recordName: REP_COACHING_CONFIG_RECORD_NAME,
+        actorId: repAId,
+        fieldName: 'min_closed_deals',
+      },
+      randomUUID(),
+      expect,
+    );
   });
 });

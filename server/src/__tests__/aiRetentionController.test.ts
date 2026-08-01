@@ -23,6 +23,7 @@ const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
 const REP_EMAIL = `${FILE_PREFIX}-rep@example.com`;
 
 let adminCookie: string;
+let adminId: string;
 let repCookie: string;
 let repId: string;
 
@@ -36,6 +37,7 @@ beforeAll(async () => {
     passwordHash: '$2b$12$placeholder',
     status: 'active',
   });
+  adminId = admin.id;
   adminCookie = makeAuthCookie({
     id: admin.id,
     email: admin.email,
@@ -126,9 +128,13 @@ describe('POST /admin/ai/retention/purge', () => {
     let found = false;
     for (let attempt = 0; attempt < 10 && !found; attempt++) {
       const row = await pool.query<{ changed_by_name: string }>(
+        // changed_by_id scoping: record_type + field_name are shared with the
+        // service-level retention tests. (MINCRM-693)
         `SELECT changed_by_name FROM audit_log
          WHERE record_type = 'ai_settings' AND field_name = 'manual_purge_triggered'
+           AND changed_by_id = $1
          ORDER BY id DESC LIMIT 1`,
+        [adminId],
       );
       if (row.rows.length > 0) {
         found = true;

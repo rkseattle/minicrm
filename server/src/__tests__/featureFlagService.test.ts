@@ -908,11 +908,15 @@ describe('rollout bucketing', () => {
     expect(flag?.rollout_percentage).toBe(30);
 
     const auditRow = await pool.query(
+      // changed_by_id scoping: record_name + field_name are shared with any
+      // other file advancing this org-wide flag. (MINCRM-693)
       `SELECT * FROM audit_log
        WHERE record_name = 'Mobile Access'
          AND field_name = 'rollout_percentage'
          AND new_value = '30'
+         AND changed_by_id = $1
        ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
     );
     expect(auditRow.rows.length).toBeGreaterThan(0);
   });

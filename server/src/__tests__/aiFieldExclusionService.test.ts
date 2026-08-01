@@ -7,6 +7,7 @@
  */
 
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import pool from '../db.js';
 import { createDefinition } from '../services/customFieldService.js';
 import {
@@ -15,7 +16,11 @@ import {
 } from '../services/aiFieldExclusionService.js';
 import { invalidateFieldExclusionCache } from '../ai/piiFilter.js';
 
-const SYSTEM_ACTOR = { id: '00000000-0000-0000-0000-000000000000', name: 'System' };
+// A per-file actor, NOT the all-zeros SYSTEM_ACTOR: audit assertions below scope
+// by changed_by_id, and the system UUID is shared with every other SYSTEM_ACTOR
+// write in the repo, so it would isolate nothing. changed_by_id has no FK, so
+// this needs no users row. (MINCRM-693)
+const SYSTEM_ACTOR = { id: randomUUID(), name: 'AI Field Exclusion Svc Test' };
 
 beforeEach(async () => {
   await pool.query('DELETE FROM ai_field_exclusions');
@@ -79,9 +84,13 @@ describe('setFieldExclusion', () => {
   it('writes an audit entry recording the change', async () => {
     await setFieldExclusion('deal', 'loss_reason', true, SYSTEM_ACTOR);
     const row = await pool.query<{ old_value: string; new_value: string; record_name: string }>(
+      // changed_by_id scoping: record_type + record_name + field_name are all
+      // shared with aiFieldExclusionController.test.ts. (MINCRM-693)
       `SELECT old_value, new_value, record_name FROM audit_log
-       WHERE record_type = 'ai_field_exclusion' AND field_name = 'excluded' AND record_name = 'deal.loss_reason'
+       WHERE record_type = 'ai_field_exclusion' AND field_name = 'excluded'
+         AND record_name = 'deal.loss_reason' AND changed_by_id = $1
        ORDER BY id DESC LIMIT 1`,
+      [SYSTEM_ACTOR.id],
     );
     expect(row.rows).toHaveLength(1);
     expect(row.rows[0].old_value).toBe('false');
