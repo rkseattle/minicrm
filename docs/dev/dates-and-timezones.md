@@ -38,15 +38,19 @@ comment at `:166` explains the choice.
 
 ## Canonical implementations
 
-| Helper                        | Location                      | Purpose                               |
-| ----------------------------- | ----------------------------- | ------------------------------------- |
-| `toUtcDateString()`           | `server/src/utils/utcDate.ts` | `Date` → UTC `YYYY-MM-DD` for binding |
-| `utcDayOffset()`              | `server/src/utils/utcDate.ts` | `YYYY-MM-DD` N days from UTC midnight |
-| `utcMonthStart()`             | `server/src/utils/utcDate.ts` | Month boundary at a month offset, UTC |
-| `todayIso()`                  | `client/src/utils/utcDate.ts` | Today's UTC day, client side          |
-| `firstOfMonthIso()`           | `client/src/utils/utcDate.ts` | First of the UTC month, client side   |
-| `currentYearMonth()`          | `aiTokenBudgetService.ts:60`  | Current month as `YYYY-MM`, UTC       |
-| `rangeIncludesCurrentMonth()` | `aiUsageDashboardService.ts`  | UTC month-overlap test                |
+| Helper                                  | Location                      | Purpose                               |
+| --------------------------------------- | ----------------------------- | ------------------------------------- |
+| `toUtcDateString()`                     | `server/src/utils/utcDate.ts` | `Date` → UTC `YYYY-MM-DD` for binding |
+| `utcDayOffset()`                        | `server/src/utils/utcDate.ts` | `YYYY-MM-DD` N days from UTC midnight |
+| `utcMonthStart()`                       | `server/src/utils/utcDate.ts` | Month boundary at a month offset, UTC |
+| `todayIso()`                            | `client/src/utils/utcDate.ts` | Today's UTC day, client side          |
+| `firstOfMonthIso()`                     | `client/src/utils/utcDate.ts` | First of the UTC month, client side   |
+| `dayOffsetIso()`                        | `client/src/utils/utcDate.ts` | UTC day N days out, client side       |
+| `monthStartIso()` / `monthEndIso()`     | `client/src/utils/utcDate.ts` | UTC month bounds at an offset         |
+| `quarterStartIso()` / `quarterEndIso()` | `client/src/utils/utcDate.ts` | UTC quarter bounds at an offset       |
+| `weekStartIso()`                        | `client/src/utils/utcDate.ts` | Monday of the UTC week                |
+| `currentYearMonth()`                    | `aiTokenBudgetService.ts:60`  | Current month as `YYYY-MM`, UTC       |
+| `rangeIncludesCurrentMonth()`           | `aiUsageDashboardService.ts`  | UTC month-overlap test                |
 
 Shared helpers live in `server/src/utils/utcDate.ts` and `client/src/utils/utcDate.ts` —
 one per workspace, since the two cannot import across the boundary. Import from there
@@ -124,18 +128,12 @@ transition — exactly what its own docblock says must not happen.
 
 ## Known unfixed
 
-Every calendar helper in `client/src/hooks/useReportFilters.ts` — nine of them, at
-`:36, 45, 50, 56, 62, 69, 75, 84, 93` — mixes local calendar fields with UTC
-serialization. Treat the whole file as affected rather than working from this line list.
+No known local-boundary-vs-UTC-column **defects** remain.
+`client/src/hooks/useReportFilters.ts` was the last one: its nine local-calendar helpers
+now use the shared `client/src/utils/utcDate.ts` primitives (`monthStartIso`,
+`monthEndIso`, `quarterStartIso`, `quarterEndIso`, `weekStartIso`, `dayOffsetIso`), each
+covered by boundary tests at pinned instants.
 
-Measured at `2026-08-31T23:30Z` under `TZ=Pacific/Auckland`: `endOfCurrentMonth()`
-returns `2026-09-29` where UTC gives `2026-08-31` — a month off, not a day; `startOfCurrentWeek()` returns
-`2026-08-30` vs `2026-08-31`; `endOfLastQuarter()` returns `2026-06-29` vs `2026-06-30`.
-The defect appears for viewers **ahead** of UTC — UTC-behind zones such as
-`America/Los_Angeles` serialize to the correct day, so testing there will not reproduce
-it.
-
-Note `today()` at `:39-41` is already UTC-correct — do not blanket-rewrite the file.
-
-These feed report queries that filter `deals.close_date`. Out of scope for MINCRM-700,
-which covered AI usage. Tracked as **MINCRM-701**.
+That is narrower than "nothing left to do" — see the convention note above for the
+already-correct-but-un-consolidated copies, including the two pairs that must agree with
+each other and are not enforced.

@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useReportFilters } from './useReportFilters.js';
+import type { DatePreset } from './useReportFilters.js';
 
 const mockUser = { id: 'admin-1', role: 'admin', name: 'Admin' };
 
@@ -65,6 +66,36 @@ describe('useReportFilters', () => {
       result.current.setSelectedOwnerId('');
     });
     expect(result.current.effectiveOwnerId).toBeUndefined();
+  });
+
+  it('resolves every built-in preset to a UTC range at a month-end instant', () => {
+    // The hook seeds one `now` per mount and threads it through every boundary,
+    // so pinning the system clock here pins the whole hook — not just the
+    // primitives utcDate.test.ts covers. 23:30 UTC on the last day of August is
+    // already September for a viewer in UTC+13, which is where the old
+    // local-calendar helpers diverged: endOfCurrentMonth returned 2026-09-29,
+    // a month late. Fake timers are safe in this file — it does no DB or
+    // network I/O, and the hook reads the clock once at mount. (MINCRM-700)
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));
+
+      const expected = {
+        thisWeek: ['2026-08-31', '2026-08-31'],
+        currentMonth: ['2026-08-01', '2026-08-31'],
+        lastMonth: ['2026-07-01', '2026-07-31'],
+        currentQuarter: ['2026-07-01', '2026-09-30'],
+        lastQuarter: ['2026-04-01', '2026-06-30'],
+      } as const;
+
+      for (const [preset, [start, end]] of Object.entries(expected)) {
+        const { result } = renderHook(() => useReportFilters(preset as DatePreset));
+        expect(result.current.resolvedStart, `${preset} start`).toBe(start);
+        expect(result.current.resolvedEnd, `${preset} end`).toBe(end);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('custom preset uses customStart/customEnd for resolved dates', () => {

@@ -12,107 +12,59 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth.js';
 import { listActiveUsers, ACTIVE_USERS_QUERY_KEY } from '@/api/users.js';
 import type { ActiveUser } from '@/api/users.js';
+import {
+  todayIso,
+  monthStartIso,
+  monthEndIso,
+  quarterStartIso,
+  quarterEndIso,
+  weekStartIso,
+} from '@/utils/utcDate.js';
 
 /** Date range preset identifier */
 export type DatePreset =
-  | 'thisWeek'
-  | 'currentMonth'
-  | 'lastMonth'
-  | 'currentQuarter'
-  | 'lastQuarter'
-  | 'custom';
+  'thisWeek' | 'currentMonth' | 'lastMonth' | 'currentQuarter' | 'lastQuarter' | 'custom';
 
 /** View mode for the admin toggle */
 export type ViewMode = 'team' | 'my';
 
 // ── Date helper functions ────────────────────────────────────────────────────
 
-function startOfCurrentWeek(): string {
-  const now = new Date();
-  const day = now.getDay(); // 0 = Sunday
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMonday);
-  return monday.toISOString().slice(0, 10);
-}
-
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function startOfCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-}
-
-function endOfCurrentMonth(): string {
-  const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return lastDay.toISOString().slice(0, 10);
-}
-
-function startOfLastMonth(): string {
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return first.toISOString().slice(0, 10);
-}
-
-function endOfLastMonth(): string {
-  const now = new Date();
-  const last = new Date(now.getFullYear(), now.getMonth(), 0);
-  return last.toISOString().slice(0, 10);
-}
-
-function startOfCurrentQuarter(): string {
-  const now = new Date();
-  const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-  return `${now.getFullYear()}-${String(quarterStartMonth + 1).padStart(2, '0')}-01`;
-}
-
-function endOfCurrentQuarter(): string {
-  const now = new Date();
-  const quarterEndMonth = Math.floor(now.getMonth() / 3) * 3 + 2;
-  const lastDay = new Date(now.getFullYear(), quarterEndMonth + 1, 0);
-  return lastDay.toISOString().slice(0, 10);
-}
-
-function startOfLastQuarter(): string {
-  const now = new Date();
-  const quarterStart = Math.floor(now.getMonth() / 3) * 3 - 3;
-  const year = quarterStart < 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const month = ((quarterStart % 12) + 12) % 12;
-  return `${year}-${String(month + 1).padStart(2, '0')}-01`;
-}
-
-function endOfLastQuarter(): string {
-  const now = new Date();
-  const quarterEndMonth = Math.floor(now.getMonth() / 3) * 3 - 1;
-  const year = quarterEndMonth < 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const month = ((quarterEndMonth % 12) + 12) % 12;
-  const lastDay = new Date(year, month + 1, 0);
-  return lastDay.toISOString().slice(0, 10);
-}
-
+/**
+ * Every boundary below resolves in UTC.
+ *
+ * These strings are sent to the reports API, which filters `deals.close_date` —
+ * a timezone-naive `date` column written under a UTC Postgres session. Deriving
+ * a boundary from the browser's LOCAL calendar fields and then serializing with
+ * `toISOString()` names a different day than the server does for any viewer not
+ * in UTC. It was worst for viewers ahead of UTC: `new Date(y, m + 1, 0)` at
+ * local midnight serialized into the *following* month, so "this month" reported
+ * a range ending a month late. (MINCRM-700)
+ *
+ * `now` is threaded through rather than read per-helper so every boundary in one
+ * render resolves from a single instant. See docs/dev/dates-and-timezones.md.
+ */
 function resolvePresetDates(
   preset: DatePreset,
   customStart: string,
   customEnd: string,
+  now: Date = new Date(),
 ): { start: string; end: string } {
   switch (preset) {
     case 'thisWeek':
-      return { start: startOfCurrentWeek(), end: today() };
+      return { start: weekStartIso(now), end: todayIso(now) };
     case 'currentMonth':
-      return { start: startOfCurrentMonth(), end: endOfCurrentMonth() };
+      return { start: monthStartIso(now), end: monthEndIso(now) };
     case 'lastMonth':
-      return { start: startOfLastMonth(), end: endOfLastMonth() };
+      return { start: monthStartIso(now, -1), end: monthEndIso(now, -1) };
     case 'currentQuarter':
-      return { start: startOfCurrentQuarter(), end: endOfCurrentQuarter() };
+      return { start: quarterStartIso(now), end: quarterEndIso(now) };
     case 'lastQuarter':
-      return { start: startOfLastQuarter(), end: endOfLastQuarter() };
+      return { start: quarterStartIso(now, -1), end: quarterEndIso(now, -1) };
     case 'custom':
       return { start: customStart, end: customEnd };
     default:
-      return { start: startOfCurrentMonth(), end: endOfCurrentMonth() };
+      return { start: monthStartIso(now), end: monthEndIso(now) };
   }
 }
 
@@ -150,16 +102,21 @@ export function useReportFilters(initialPreset: DatePreset = 'currentMonth'): Re
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
+  // One instant for every boundary this hook resolves, so a render that spans
+  // UTC midnight cannot mix two different "today"s across the seeds and the
+  // resolved range. Also the seam tests pin. (MINCRM-700)
+  const [now] = useState<Date>(() => new Date());
+
   const [preset, setPreset] = useState<DatePreset>(initialPreset);
-  const [customStart, setCustomStart] = useState<string>(startOfCurrentMonth);
-  const [customEnd, setCustomEnd] = useState<string>(endOfCurrentMonth);
+  const [customStart, setCustomStart] = useState<string>(() => monthStartIso(now));
+  const [customEnd, setCustomEnd] = useState<string>(() => monthEndIso(now));
   const [viewMode, setViewMode] = useState<ViewMode>('team');
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>('');
 
   const { resolvedStart, resolvedEnd } = useMemo(() => {
-    const { start, end } = resolvePresetDates(preset, customStart, customEnd);
+    const { start, end } = resolvePresetDates(preset, customStart, customEnd, now);
     return { resolvedStart: start, resolvedEnd: end };
-  }, [preset, customStart, customEnd]);
+  }, [preset, customStart, customEnd, now]);
 
   const { data: activeUsersData } = useQuery({
     queryKey: ACTIVE_USERS_QUERY_KEY,
