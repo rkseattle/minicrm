@@ -26,6 +26,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 import request from 'supertest';
 import app from '../app.js';
 import pool from '../db.js';
+import { utcDayOffset } from '../utils/utcDate.js';
 import { createUser } from '../services/userService.js';
 import { createContact } from '../services/contactService.js';
 import { createActivity } from '../services/activityService.js';
@@ -133,15 +134,17 @@ async function createTestActivity(): Promise<string> {
   // due_date must be present and today-or-future — the brief generation
   // endpoint enforces the same future-dated Call/Meeting eligibility gate the
   // UI applies (see ActivityTimeline's BRIEF_ELIGIBLE_TYPES). (MINCRM-465 self-review)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // utcDayOffset, not local setDate(+1): a DST transition makes the local shift
+  // land on the same UTC day, so "tomorrow" would not be in the future.
+  // CI runs TZ=Pacific/Auckland. (MINCRM-700)
+  const tomorrowUtc = utcDayOffset(new Date(), 1);
   const activity = await createActivity(
     {
       type: 'Call',
       subject: 'Upcoming call',
       contact_id: contact.id,
       owner_id: repId,
-      due_date: tomorrow.toISOString().slice(0, 10),
+      due_date: tomorrowUtc,
     },
     { id: repId, name: 'Meeting Brief Rep' },
   );

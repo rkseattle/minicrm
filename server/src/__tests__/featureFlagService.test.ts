@@ -1033,10 +1033,15 @@ describe('user overrides', () => {
   it('upsertUserOverride writes an audit entry', async () => {
     await upsertUserOverride('mobile_access', targetUserId, 'force_enabled', 'audit test', ACTOR());
     const auditRow = await pool.query(
+      // changed_by_id scoping: record_name + field_name are shared with
+      // featureFlagController.test.ts, which PUTs mobile_access overrides. With
+      // LIMIT 1 a foreign row would take the slot. (MINCRM-693)
       `SELECT * FROM audit_log
        WHERE record_name LIKE '%Mobile%'
          AND field_name = 'user_override'
+         AND changed_by_id = $1
        ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
     );
     expect(auditRow.rows.length).toBeGreaterThan(0);
     expect(auditRow.rows[0].new_value).toContain('force_enabled');
@@ -1046,11 +1051,14 @@ describe('user overrides', () => {
     await upsertUserOverride('mobile_access', targetUserId, 'force_disabled', null, ACTOR());
     await deleteUserOverride('mobile_access', targetUserId, ACTOR());
     const auditRow = await pool.query(
+      // See above — same shared record_name/field_name. (MINCRM-693)
       `SELECT * FROM audit_log
        WHERE record_name LIKE '%Mobile%'
          AND field_name = 'user_override'
          AND new_value = 'null'
+         AND changed_by_id = $1
        ORDER BY created_at DESC LIMIT 1`,
+      [actorId],
     );
     expect(auditRow.rows.length).toBeGreaterThan(0);
   });

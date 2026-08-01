@@ -13,6 +13,7 @@
  */
 
 import pool from '../db.js';
+import { utcMonthStart } from '../utils/utcDate.js';
 import logger from '../logger.js';
 
 /** Number of zero-padded digits in the month component of partition names. */
@@ -26,14 +27,6 @@ export function auditPartitionName(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(MONTH_PAD_LENGTH, '0');
   return `audit_log_y${year}m${month}`;
-}
-
-/**
- * Returns the UTC start of the month that is `offsetMonths` after `date`.
- * Always returns day=1 at 00:00:00Z, so the result is always a month-start boundary.
- */
-function addMonths(date: Date, offsetMonths: number): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offsetMonths, 1));
 }
 
 /**
@@ -54,8 +47,8 @@ export async function ensureAuditLogPartitions(monthsAhead: number = 3): Promise
 
   for (let i = 0; i <= monthsAhead; i++) {
     // addMonths already returns UTC month-start (day=1, 00:00:00Z).
-    const start = addMonths(now, i);
-    const end = addMonths(start, 1);
+    const start = utcMonthStart(now, i);
+    const end = utcMonthStart(start, 1);
     const name = auditPartitionName(start);
 
     // DDL statements do not support bound parameters — CREATE TABLE cannot accept
