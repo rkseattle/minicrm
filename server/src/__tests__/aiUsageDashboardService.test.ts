@@ -11,7 +11,11 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
-import { getUsageSummary, getDailyUsageSeries } from '../services/aiUsageDashboardService.js';
+import {
+  getUsageSummary,
+  getDailyUsageSeries,
+  resolveDateRange,
+} from '../services/aiUsageDashboardService.js';
 
 const FILE_PREFIX = 'usage-dash-svc';
 
@@ -41,12 +45,6 @@ beforeEach(async () => {
   );
 });
 
-function todayMinus(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
 // UTC-based to match aiTokenBudgetService.ts's currentYearMonth() and
 // aiUsageDashboardService.ts's rangeIncludesCurrentMonth() — using local
 // time here would drift from the DB's own UTC "today" and could flake near
@@ -66,9 +64,7 @@ function currentMonthUtcRange(): { start: Date; end: Date } {
 
 describe('getUsageSummary', () => {
   it('returns zeroed totals for a range with no usage', async () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const summary = await getUsageSummary({ start, end });
 
@@ -86,9 +82,7 @@ describe('getUsageSummary', () => {
       [userId],
     );
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const summary = await getUsageSummary({ start, end });
 
@@ -105,9 +99,7 @@ describe('getUsageSummary', () => {
       [userId],
     );
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const summary = await getUsageSummary({ start, end });
 
@@ -120,8 +112,9 @@ describe('getUsageSummary', () => {
 
   it('computes budget_percentage against the actual current month, not range.end', async () => {
     // range.end for 'current_month' is an exclusive start-of-next-month boundary
-    // (per resolveDateRange in aiUsageController.ts) — this regression-tests that
-    // budget_percentage is derived from the real current month, not range.end's month.
+    // (per resolveDateRange in aiUsageDashboardService.ts) — this regression-tests
+    // that budget_percentage is derived from the real current month, not
+    // range.end's month.
     await pool.query(
       `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens)
        VALUES ($1, CURRENT_DATE, 'nli_chat', 500, 100)`,
@@ -182,9 +175,7 @@ describe('getUsageSummary', () => {
       [userId],
     );
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const summary = await getUsageSummary({ start, end });
 
@@ -195,23 +186,25 @@ describe('getUsageSummary', () => {
   });
 
   it('computes the prior-period total for trend comparison', async () => {
-    // Use an explicit 10-day range so the prior 10-day range is unambiguous and
-    // both fall entirely within seeded rows at todayMinus(5) and todayMinus(15).
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 10);
+    // Fixed UTC dates rather than offsets from "now": the range and the seeded
+    // rows must agree on which calendar day each falls on, and deriving both
+    // from the wall clock made that agreement depend on when the suite ran.
+    // The 10-day range 2026-03-11..2026-03-21 contains only the 03-16 row; the
+    // prior 10-day window (2026-03-01..2026-03-11) contains only the 03-06 row.
+    const start = new Date(Date.UTC(2026, 2, 11));
+    const end = new Date(Date.UTC(2026, 2, 21));
 
     await pool.query(
       `INSERT INTO ai_token_usage_daily (user_id, usage_date, feature, input_tokens, output_tokens)
-       VALUES ($1, $2::date, 'nli_chat', 100, 0), ($1, $3::date, 'nli_chat', 400, 0)`,
-      [userId, todayMinus(5), todayMinus(15)],
+       VALUES ($1, '2026-03-16'::date, 'nli_chat', 100, 0), ($1, '2026-03-06'::date, 'nli_chat', 400, 0)`,
+      [userId],
     );
 
     const summary = await getUsageSummary({ start, end });
 
-    // Current range (last 10 days) should include the todayMinus(5) row only.
+    // The current range should include the 2026-03-16 row only.
     expect(summary.input_tokens).toBe(100);
-    // Prior period (10-20 days ago) should include the todayMinus(15) row.
+    // The prior period should include the 2026-03-06 row.
     // 400 input tokens @ 300 cents/million = 0.12 cents, rounds to 0.
     expect(summary.prior_period_estimated_cost_cents).toBeGreaterThanOrEqual(0);
   });
@@ -225,24 +218,112 @@ describe('getDailyUsageSeries', () => {
       [userId],
     );
 
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const series = await getDailyUsageSeries({ start, end });
 
-    const todayPoint = series.points.find((p) => p.date === new Date().toISOString().slice(0, 10));
+    // Ask the database which day CURRENT_DATE resolved to rather than deriving
+    // it from the Node clock — the row above was stamped by Postgres, so the
+    // database is the only authority on which calendar day to look for.
+    const { rows } = await pool.query<{ today: string }>(
+      `SELECT to_char(CURRENT_DATE, 'YYYY-MM-DD') AS today`,
+    );
+    const todayPoint = series.points.find((p) => p.date === rows[0].today);
     expect(todayPoint).toBeDefined();
     expect(todayPoint!.input_tokens).toBe(100);
     expect(todayPoint!.output_tokens).toBe(50);
   });
 
   it('returns no points for a range with no usage', async () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const { start, end } = currentMonthUtcRange();
 
     const series = await getDailyUsageSeries({ start, end });
     expect(series.points).toEqual([]);
   });
+});
+
+describe('resolveDateRange', () => {
+  // 22:30 UTC on the last day of July 2026. Every timezone ahead of UTC by more
+  // than 90 minutes is already on 2026-08-01 at this instant, so a boundary
+  // built from local calendar fields resolves to a different month than the
+  // UTC-resolved usage_date column it is compared against. MINCRM-700.
+  const MONTH_END_UTC = new Date('2026-07-31T22:30:00.000Z');
+
+  // The absolute-instant assertions further down are necessary but not
+  // sufficient alone: under TZ=UTC a local-time constructor yields the very
+  // same values, so they would stay green on a revert if CI ran UTC. This one
+  // states the property directly — a UTC month boundary is UTC midnight on the
+  // 1st, in every process timezone — and CI now runs Pacific/Auckland, where
+  // the local and UTC constructions genuinely disagree. (ci.yml, MINCRM-700)
+  it('builds month bounds from UTC fields, not the process timezone', () => {
+    const range = resolveDateRange({ preset: 'current_month' }, MONTH_END_UTC);
+
+    expect(range!.start.getUTCDate()).toBe(1);
+    expect(range!.start.getUTCHours()).toBe(0);
+    expect(range!.start.getUTCMinutes()).toBe(0);
+    expect(range!.start.getUTCMonth()).toBe(MONTH_END_UTC.getUTCMonth());
+  });
+
+  const iso = (d: Date): string => d.toISOString();
+
+  it('resolves current_month to UTC month bounds regardless of process timezone', () => {
+    const range = resolveDateRange({ preset: 'current_month' }, MONTH_END_UTC);
+
+    expect(range).not.toBeNull();
+    expect(iso(range!.start)).toBe('2026-07-01T00:00:00.000Z');
+    expect(iso(range!.end)).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('resolves last_month to the preceding UTC month', () => {
+    const range = resolveDateRange({ preset: 'last_month' }, MONTH_END_UTC);
+
+    expect(iso(range!.start)).toBe('2026-06-01T00:00:00.000Z');
+    expect(iso(range!.end)).toBe('2026-07-01T00:00:00.000Z');
+  });
+
+  it('resolves last_3_months across the full window', () => {
+    const range = resolveDateRange({ preset: 'last_3_months' }, MONTH_END_UTC);
+
+    expect(iso(range!.start)).toBe('2026-04-01T00:00:00.000Z');
+    expect(iso(range!.end)).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('defaults to current_month when no preset is supplied', () => {
+    const range = resolveDateRange({}, MONTH_END_UTC);
+
+    expect(iso(range!.start)).toBe('2026-07-01T00:00:00.000Z');
+    expect(iso(range!.end)).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('normalizes a month offset that crosses a year boundary', () => {
+    // January minus three months is October of the previous year — Date.UTC
+    // handles the underflow, so no branch in resolveDateRange has to.
+    const range = resolveDateRange(
+      { preset: 'last_3_months' },
+      new Date('2026-01-15T12:00:00.000Z'),
+    );
+
+    expect(iso(range!.start)).toBe('2025-10-01T00:00:00.000Z');
+    expect(iso(range!.end)).toBe('2026-02-01T00:00:00.000Z');
+  });
+
+  it('treats an explicit end date as an inclusive calendar day', () => {
+    const range = resolveDateRange({ start: '2026-03-01', end: '2026-03-31' }, MONTH_END_UTC);
+
+    expect(iso(range!.start)).toBe('2026-03-01T00:00:00.000Z');
+    // Advanced one day so the caller's final day is inside the exclusive bound.
+    expect(iso(range!.end)).toBe('2026-04-01T00:00:00.000Z');
+  });
+
+  it('returns null for a lone start or end, an unparsable date, and an inverted range', () => {
+    expect(resolveDateRange({ start: '2026-03-01' }, MONTH_END_UTC)).toBeNull();
+    expect(resolveDateRange({ end: '2026-03-31' }, MONTH_END_UTC)).toBeNull();
+    expect(resolveDateRange({ start: 'nonsense', end: '2026-03-31' }, MONTH_END_UTC)).toBeNull();
+    expect(resolveDateRange({ start: '2026-03-31', end: '2026-03-01' }, MONTH_END_UTC)).toBeNull();
+  });
+
+  // An unrecognized preset can no longer reach this function — the controller
+  // Zod-parses the query first (usageDateRangeQuerySchema), and the narrowed
+  // type makes `preset: 'last_decade'` a compile error here. The rejection is
+  // covered at the HTTP boundary in aiUsageController.test.ts instead.
 });

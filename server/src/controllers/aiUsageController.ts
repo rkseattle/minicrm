@@ -5,13 +5,14 @@
  */
 
 import type { Request, Response } from 'express';
-import { usageDateRangePresetSchema } from '@minicrm/shared/schemas/aiUsageSchema.js';
+import { usageDateRangeParamsSchema } from '@minicrm/shared/schemas/aiUsageSchema.js';
 import {
   getUsageSummary,
   getDailyUsageSeries,
   getUsageExportRows,
+  resolveDateRange,
+  type DateRange,
 } from '../services/aiUsageDashboardService.js';
-import type { DateRange } from '../services/aiUsageDashboardService.js';
 import { serializeToCsv, csvFilename } from '../utils/csvUtils.js';
 import { getBranding } from '../services/brandingService.js';
 import {
@@ -22,65 +23,18 @@ import {
   type PdfTableRow,
 } from '../services/pdfExportService.js';
 
-/** One day in milliseconds, used to convert an inclusive calendar-day `end` param into the exclusive boundary every query in aiUsageDashboardService.ts filters against. */
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
- * Resolves the requested date range from query params. Supports either a
- * `preset` (current_month | last_month | last_3_months) or an explicit
- * `start`/`end` pair (ISO date strings). `start` and `end` are both treated
- * as inclusive calendar days — `end` is advanced by one day internally to
- * produce the exclusive boundary every query filters against, so a caller
- * asking for `end=2026-07-01` sees that day's data (matching what a date
- * picker labeled "End date" implies), not "up to but excluding" it.
- *
- * Both `start` and `end` must be supplied together — a lone one returns null
- * rather than silently falling back to the preset path.
- *
- * Returns null if the query params are invalid, so the caller can respond 400.
+ * Validates the date-range query params at the HTTP boundary, then resolves
+ * them to a concrete range. Two distinct failures both surface as null (and so
+ * as one 400): a query param that isn't the right shape, and a combination the
+ * calendar can't turn into a range (a lone start or end, an inverted range).
  */
-function resolveDateRange(query: Request['query']): DateRange | null {
-  const startParam = typeof query['start'] === 'string' ? query['start'] : undefined;
-  const endParam = typeof query['end'] === 'string' ? query['end'] : undefined;
-
-  if (startParam || endParam) {
-    if (!startParam || !endParam) {
-      return null;
-    }
-    const start = new Date(startParam);
-    const inclusiveEnd = new Date(endParam);
-    if (isNaN(start.getTime()) || isNaN(inclusiveEnd.getTime())) {
-      return null;
-    }
-    const end = new Date(inclusiveEnd.getTime() + ONE_DAY_MS);
-    if (start >= end) {
-      return null;
-    }
-    return { start, end };
-  }
-
-  const presetParam = typeof query['preset'] === 'string' ? query['preset'] : 'current_month';
-  const parsedPreset = usageDateRangePresetSchema.safeParse(presetParam);
-  if (!parsedPreset.success) {
+function parseDateRangeQuery(req: Request): DateRange | null {
+  const parsed = usageDateRangeParamsSchema.safeParse(req.query);
+  if (!parsed.success) {
     return null;
   }
-
-  const now = new Date();
-  const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-  switch (parsedPreset.data) {
-    case 'current_month':
-      return { start: startOfCurrentMonth, end: startOfNextMonth };
-    case 'last_month': {
-      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      return { start, end: startOfCurrentMonth };
-    }
-    case 'last_3_months': {
-      const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-      return { start, end: startOfNextMonth };
-    }
-  }
+  return resolveDateRange(parsed.data);
 }
 
 /** Sends the shared 400 response for an invalid/unparsable date range query. */
@@ -94,7 +48,7 @@ function sendInvalidDateRangeError(res: Response): void {
 }
 
 export async function getAiUsageSummaryHandler(req: Request, res: Response): Promise<void> {
-  const range = resolveDateRange(req.query);
+  const range = parseDateRangeQuery(req);
   if (!range) {
     sendInvalidDateRangeError(res);
     return;
@@ -105,7 +59,7 @@ export async function getAiUsageSummaryHandler(req: Request, res: Response): Pro
 }
 
 export async function getAiUsageDailyHandler(req: Request, res: Response): Promise<void> {
-  const range = resolveDateRange(req.query);
+  const range = parseDateRangeQuery(req);
   if (!range) {
     sendInvalidDateRangeError(res);
     return;
@@ -139,7 +93,7 @@ async function resolveAiUsageExportData(
   req: Request,
   res: Response,
 ): Promise<Record<string, string | number>[] | null> {
-  const range = resolveDateRange(req.query);
+  const range = parseDateRangeQuery(req);
   if (!range) {
     sendInvalidDateRangeError(res);
     return null;

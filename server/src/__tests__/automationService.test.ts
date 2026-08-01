@@ -398,6 +398,35 @@ describe('fireAutomationTrigger — create_task action', () => {
     expect(tasks.rows[0].owner_id).toBe(adminId); // assignee_type = 'owner'
   });
 
+  it('offsets due_date from the database UTC day, not the local one', async () => {
+    // due_date is a timezone-naive `date` column, and notificationService
+    // compares it against CURRENT_DATE (UTC) to decide what is overdue. Deriving
+    // the day from the Node process's local calendar fields lands the task a day
+    // off for any non-UTC deployment. Asking Postgres for the expected value
+    // rather than computing it in Node keeps the assertion honest about which
+    // authority the column answers to. BASE_RULE uses an offset of 1 day.
+    // MINCRM-700.
+    await createAutomationRule({ ...BASE_RULE, created_by: adminId });
+
+    await fireAutomationTrigger('deal_created', {
+      recordId: dealId,
+      recordType: 'deal',
+      ownerId: adminId,
+    });
+
+    const { rows: expected } = await pool.query<{ due_date: string }>(
+      `SELECT to_char(CURRENT_DATE + 1, 'YYYY-MM-DD') AS due_date`,
+    );
+    const tasks = await pool.query<{ due_date: string }>(
+      `SELECT to_char(due_date, 'YYYY-MM-DD') AS due_date
+       FROM activities WHERE deal_id = $1 AND type = 'Task'`,
+      [dealId],
+    );
+
+    expect(tasks.rows).toHaveLength(1);
+    expect(tasks.rows[0].due_date).toBe(expected[0].due_date);
+  });
+
   it('assigns to a specific user when assignee_type is specific', async () => {
     await createAutomationRule({
       ...BASE_RULE,

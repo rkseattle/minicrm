@@ -200,6 +200,23 @@ describe('GET /admin/ai/usage/daily', () => {
     const res = await request(app).get('/api/v1/admin/ai/usage/daily');
     expect(res.status).toBe(401);
   });
+
+  it('resolves preset ranges to UTC midnight boundaries', async () => {
+    // Pins the controller→service wiring: the boundaries reaching the client
+    // must be UTC-midnight instants, not local-midnight ones. A local-time
+    // constructor would emit a non-midnight UTC instant (e.g.
+    // 2026-08-01T07:00:00.000Z from PDT), shifting the chart's day bucketing
+    // for every deployment whose process timezone isn't UTC. MINCRM-700.
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/daily')
+      .query({ preset: 'current_month' })
+      .set('Cookie', adminCookie);
+
+    expect(res.status).toBe(200);
+    // A UTC month boundary is always midnight on the first of the month.
+    expect(res.body.range_start).toMatch(/-01T00:00:00\.000Z$/);
+    expect(res.body.range_end).toMatch(/-01T00:00:00\.000Z$/);
+  });
 });
 
 describe('GET /admin/ai/usage/export', () => {
@@ -222,6 +239,26 @@ describe('GET /admin/ai/usage/export', () => {
     const res = await request(app).get('/api/v1/admin/ai/usage/export');
     expect(res.status).toBe(401);
   });
+
+  // The export handlers share resolveAiUsageExportData rather than the summary/
+  // daily path, so they need their own coverage that the query is Zod-validated
+  // at the boundary. Without it, an unknown preset silently fell back to
+  // current_month here and returned 200 with the wrong data. MINCRM-700.
+  it('returns 400 for an unknown preset', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export')
+      .query({ preset: 'not_a_preset' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for a malformed start date', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export')
+      .query({ start: 'not-a-date', end: '2026-01-31' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
+  });
 });
 
 // ── GET /admin/ai/usage/export.pdf ────────────────────────────────────────── (MINCRM-601)
@@ -243,6 +280,14 @@ describe('GET /admin/ai/usage/export.pdf', () => {
     expect(res.headers['content-disposition']).toMatch(/attachment/);
     expect(Buffer.isBuffer(res.body)).toBe(true);
     expect((res.body as Buffer).subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('returns 400 for an unknown preset', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/ai/usage/export.pdf')
+      .query({ preset: 'not_a_preset' })
+      .set('Cookie', adminCookie);
+    expect(res.status).toBe(400);
   });
 
   it('returns 400 when start is after end', async () => {
