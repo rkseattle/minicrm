@@ -8,10 +8,11 @@
  * settings keys, which the framework-purity check forbids in framework/.
  *
  * Seeded from a direct audit of every file matching `@serial` under
- * qa/e2e/tests/apps/minicrm/functional/ (2026-07-23). Three files matched
- * the string `@serial` only inside a comment (no test actually tagged) and
- * are intentionally excluded: insights/coaching.spec.ts,
- * data-hygiene/data-hygiene.spec.ts, leads/lead-routing.spec.ts.
+ * qa/e2e/tests/apps/minicrm/functional/ (2026-07-23; re-audited 2026-07-31 for
+ * MINCRM-685). Some files match the string `@serial` only inside a comment,
+ * with no test actually tagged, and are intentionally excluded — see
+ * KNOWN_COMMENT_ONLY_FILES in resource-registry.spec.ts, which is the list that
+ * is actually consulted. Do not maintain a second copy of it here.
  *
  * Several files are only PARTIALLY @serial — most tests in the file are
  * plain @functional and only specific tests mutate shared state. Where
@@ -36,8 +37,6 @@ export type ResourceKey =
   | 'settings.ai_session_retention'
   | 'settings.default_language'
   | 'settings.email_notifications_enabled'
-  | 'coverage_db.coverage_units'
-  | 'coverage_db.coverage_test_links'
   | 'feature_flags.notes'
   | 'feature_flags.tags'
   | 'feature_flags.ai_features'
@@ -62,8 +61,11 @@ export interface ResourceRegistryEntry extends ResourceTouch {
 
 /**
  * Ground-truth resource touches for every currently `@serial`-tagged test
- * (27 files; 3 additional files matched the bare string `@serial` only in a
- * comment and are correctly excluded — see module doc).
+ * resource-registry.spec.ts enforces the invariant in both directions: every
+ * @serial spec has an entry, and every entry names a file that still has one.
+ * Deliberately no file count here — the previous one drifted to 27 against a
+ * real 26, and a number nothing asserts is worth less than the maintenance it
+ * costs.
  */
 export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
   {
@@ -103,16 +105,6 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     ],
   },
   {
-    // MINCRM-685: was the coverage_pipeline_ingestion feature_flags row, which no
-    // longer exists (the router gates on COVERAGE_PIPELINE_INGESTION at boot).
-    // The remaining shared resource is the coverage database this spec ingests
-    // into — see the coverage-mapping entry below for the full rationale and its
-    // caveat.
-    file: 'qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts',
-    reads: ['coverage_db.coverage_units'],
-    writes: ['coverage_db.coverage_units'],
-  },
-  {
     file: 'qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts',
     reads: ['settings.nav_layout'],
     writes: ['settings.nav_layout'],
@@ -132,23 +124,6 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // resetAiSettings()'s master-toggle-off cascades to disable ai_features too.
       'feature_flags.ai_features',
     ],
-  },
-  {
-    // MINCRM-685: was the coverage_pipeline_ingestion/coverage_mapping_query
-    // feature_flags rows, both deleted in favour of boot-time env vars. The
-    // remaining shared resource is the coverage database itself — COVM-01
-    // ingests a dump and links it to a test, writing the same tables
-    // coverage-pipeline.spec.ts writes.
-    //
-    // Honest caveat: each spec scopes its assertions to its own dumpId/testId
-    // and its own source file, so neither can currently OBSERVE the other's
-    // rows. This entry is therefore conservative rather than demonstrably
-    // load-bearing — it keeps the two files apart because they mutate a shared
-    // store whose isolation rests on per-test naming discipline, not on any
-    // enforced boundary. If that discipline is ever formalised, revisit.
-    file: 'qa/e2e/tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts',
-    reads: ['coverage_db.coverage_units', 'coverage_db.coverage_test_links'],
-    writes: ['coverage_db.coverage_units', 'coverage_db.coverage_test_links'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts',

@@ -28,13 +28,23 @@
  * CI sets both env vars 'true' for every job that runs this spec, so nothing
  * here needs to arrange access at all.
  *
- * test.describe.serial and the @serial tags are retained, but NOT because the
- * remaining tests depend on each other — COVP-03 posts a hardcoded unknown
- * dumpId and shares no state with COVP-01. They are retained because COVP-01
- * writes coverage_units rows in the shared coverage database, which
- * coverage-mapping.spec.ts also reads and writes; see this file's entry in
- * qa/e2e/apps/minicrm/resource-registry.ts, which now declares that contention
- * directly instead of the feature-flag rows it used to.
+ * NOT @serial (MINCRM-685). The tag was justified by this file mutating the
+ * shared coverage_pipeline_ingestion feature_flags row over REST; that row is
+ * gone, and an audit of all 25 @serial specs confirmed nothing else here needs
+ * the isolation.
+ *
+ * This file does write coverage_units rows in the shared coverage database.
+ * What keeps that safe is the row identity, not the tag:
+ * coverage_units_identity_idx is (commit_sha, file_path, unit_key, branch_id),
+ * and this spec's file_path is src/App.tsx where coverage-mapping's is
+ * src/MappingSpecWidget.tsx — different rows entirely. COVP-01 additionally
+ * asserts only against the dumpId it just created (unitCount is per-dump, not a
+ * global count), and COVP-03 posts a hardcoded unknown UUID.
+ *
+ * test.describe.configure({ mode: 'serial' }) is retained and is a different
+ * thing: it orders tests WITHIN this file. Dropping the tag moves the file from
+ * the e2e-serial job to the sharded e2e-functional job; it does not make these
+ * tests run concurrently with each other.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -56,7 +66,7 @@ test.beforeEach(async ({ restClient }) => {
 // COVP-01 — ingest succeeds, then a retry reports the idempotent no-op
 // ---------------------------------------------------------------------------
 
-test('@functional @serial COVP-01: ingesting a browser-origin dump succeeds, then retry is idempotent', async ({
+test('@functional COVP-01: ingesting a browser-origin dump succeeds, then retry is idempotent', async ({
   restClient,
 }) => {
   const dumpRes = await restClient.post<{ dump: Record<string, unknown> }>(
@@ -113,7 +123,7 @@ test('@functional @serial COVP-01: ingesting a browser-origin dump succeeds, the
 // COVP-03 — unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND
 // ---------------------------------------------------------------------------
 
-test('@functional @serial COVP-03: ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND', async ({
+test('@functional COVP-03: ingesting an unknown dumpId returns 404 COVERAGE_DUMP_NOT_FOUND', async ({
   restClient,
 }) => {
   try {

@@ -30,14 +30,28 @@
  * CI sets all four env vars 'true' for every job that runs this spec, so
  * nothing here needs to arrange access at all.
  *
- * test.describe.serial and the @serial tags are retained, but NOT because the
- * remaining tests depend on each other — COVM-03 deliberately queries a commit
- * and unit key that COVM-01 does not create, and asserts an empty array. They
- * are retained because COVM-01 writes coverage_units/coverage_test_links rows
- * in the shared coverage database, which coverage-pipeline.spec.ts also reads
- * and writes; see this file's entry in qa/e2e/apps/minicrm/resource-registry.ts,
- * which now declares that contention directly instead of the feature-flag rows
- * it used to.
+ * NOT @serial (MINCRM-685). The tag was justified by this file mutating shared
+ * feature_flags rows over REST; those rows are gone, and an audit of all 25
+ * @serial specs confirmed nothing else here needs the isolation.
+ *
+ * This file does write coverage_units/coverage_test_links rows in the shared
+ * coverage database. What keeps that safe is the row identity, not the tag:
+ * coverage_units_identity_idx is (commit_sha, file_path, unit_key, branch_id),
+ * and this spec's file_path is src/MappingSpecWidget.tsx where
+ * coverage-pipeline's is src/App.tsx — different rows entirely. Note commitSha
+ * does NOT contribute isolation: coverageConfig resolves it once per server
+ * process from GIT_COMMIT_SHA/GITHUB_SHA, so every test in the job shares it.
+ * Re-running against the same identity upserts (ON CONFLICT DO UPDATE in
+ * coverageMappingService) rather than duplicating, and every assertion here is
+ * further narrowed to this spec's own hardcoded testId. A future reader
+ * tightening an assertion to an exact row count should know that last part is
+ * doing the work.
+ *
+ * test.describe.configure({ mode: 'serial' }) is retained and is a different
+ * thing: it orders tests WITHIN this file, which matters because COVM-01
+ * ingests the data its own later assertions read. Dropping the tag moves the
+ * file from the e2e-serial job to the sharded e2e-functional job; it does not
+ * make these tests run concurrently with each other.
  *
  * Framework conventions (MINCRM-42):
  *   - All tests tagged @functional
@@ -69,7 +83,7 @@ test.beforeEach(async ({ restClient }) => {
 // COVM-01 — full round trip: dump -> session attribution -> ingest -> query
 // ---------------------------------------------------------------------------
 
-test('@functional @serial COVM-01: an ingested dump with test attribution is queryable both directions, with confidence attached', async ({
+test('@functional COVM-01: an ingested dump with test attribution is queryable both directions, with confidence attached', async ({
   restClient,
 }) => {
   const session = await startCoverageSession(restClient, {
@@ -174,7 +188,7 @@ test('@functional @serial COVM-01: an ingested dump with test attribution is que
 // COVM-03 — a unit no test covers returns an empty results array, not an error
 // ---------------------------------------------------------------------------
 
-test('@functional @serial COVM-03: querying a unit no test covers returns an empty results array', async ({
+test('@functional COVM-03: querying a unit no test covers returns an empty results array', async ({
   restClient,
 }) => {
   const results = await findTestsForUnit(restClient, {

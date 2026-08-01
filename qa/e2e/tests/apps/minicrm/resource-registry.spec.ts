@@ -34,6 +34,11 @@ const KNOWN_COMMENT_ONLY_FILES = [
   'qa/e2e/tests/apps/minicrm/functional/insights/coaching.spec.ts',
   'qa/e2e/tests/apps/minicrm/functional/data-hygiene/data-hygiene.spec.ts',
   'qa/e2e/tests/apps/minicrm/functional/leads/lead-routing.spec.ts',
+  // De-tagged by MINCRM-685; their docblocks still explain why they are no
+  // longer @serial, so the bare string survives in prose.
+  'qa/e2e/tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts',
+  'qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts',
+  'qa/e2e/tests/apps/minicrm/functional/coverage-health/coverage-health.spec.ts',
 ];
 
 function discoverSpecFiles(dir: string): string[] {

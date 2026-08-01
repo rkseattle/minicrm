@@ -188,24 +188,25 @@ array is what Playwright's filter API uses. Always include both.
 
 The authoritative list is `RESOURCE_REGISTRY` in
 `qa/e2e/apps/minicrm/resource-registry.ts` — this doc previously
-hand-maintained a table here that went stale (it listed 9 files; the actual
-`@serial` population was 27+). Do not hand-maintain a duplicate list; read
+hand-maintained a table here that went stale (it listed 9 files against a much
+larger real population). No count is given here for the same reason — the one in
+the registry itself drifted too. Do not hand-maintain a duplicate list; read
 the registry directly, or run
 `npx tsx qa/e2e/scripts/build-conflict-graph.ts` for a full report of every
 tracked file, its resource(s), and its computed conflict groups. A
 representative sample of resource keys in use, as of MINCRM-661:
 
-| Resource key                             | Example file                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `settings.nav_layout`                    | `navigation/navigation.spec.ts`                                                             |
-| `settings.default_language`              | `i18n/i18n.spec.ts`                                                                         |
-| `settings.currencies`                    | `settings/settings.spec.ts`                                                                 |
-| `settings.branding`                      | `branding/branding.spec.ts`                                                                 |
-| `settings.sso`                           | `sso/sso.spec.ts`                                                                           |
-| `settings.visibility_policy`             | `visibility/visibility.spec.ts`                                                             |
-| `settings.ai_configuration_enabled`      | `ai/ai.spec.ts` (and 8 other `ai/*.spec.ts` files)                                          |
-| `settings.ai_cost_rates`                 | `ai/ai-usage-dashboard.spec.ts` (F-AI-UD-6 only — distinct from `ai_configuration_enabled`) |
-| `feature_flags.coverage_instrumentation` | `coverage-instrumentation/coverage-instrumentation.spec.ts`                                 |
+| Resource key                        | Example file                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| `settings.nav_layout`               | `navigation/navigation.spec.ts`                                                             |
+| `settings.default_language`         | `i18n/i18n.spec.ts`                                                                         |
+| `settings.currencies`               | `settings/settings.spec.ts`                                                                 |
+| `settings.branding`                 | `branding/branding.spec.ts`                                                                 |
+| `settings.sso`                      | `sso/sso.spec.ts`                                                                           |
+| `settings.visibility_policy`        | `visibility/visibility.spec.ts`                                                             |
+| `settings.ai_configuration_enabled` | `ai/ai.spec.ts` (and 8 other `ai/*.spec.ts` files)                                          |
+| `settings.ai_cost_rates`            | `ai/ai-usage-dashboard.spec.ts` (F-AI-UD-6 only — distinct from `ai_configuration_enabled`) |
+| `feature_flags.mobile_access`       | `feature-flags/feature-flags.spec.ts`                                                       |
 
 **Note on `test.describe.serial` vs `@serial` tag:** `onboarding.spec.ts` uses
 `test.describe.serial(...)` at the describe level to serialize tests within the
