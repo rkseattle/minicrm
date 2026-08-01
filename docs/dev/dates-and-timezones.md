@@ -53,6 +53,17 @@ one per workspace, since the two cannot import across the boundary. Import from 
 rather than writing another local copy; three divergent implementations of "N days from
 UTC midnight" is what prompted the extraction.
 
+**This is the target convention, not yet the state of the repo.** MINCRM-700 consolidated
+the call sites it touched. Several already-correct local copies of `toISOString().slice(0, 10)`
+survive elsewhere — `aiTokenBudgetService.ts`'s `currentDate`, `dealController.ts`,
+`meetingBriefController.ts`, `taskSuggestionService.ts`, `activitySummaryService.ts`, and
+on the client `MyTasksPage.tsx`, `DealDetailPage.tsx`, `ActivityTimeline.tsx`. None is a
+live defect. Two pairs are worth folding in when they are next touched, because each pair
+has to agree and nothing enforces it: `ActivityTimeline.tsx` / `meetingBriefController.ts`
+(the same brief-eligibility gate) and `MyTasksPage.tsx` / `dashboardService.ts` (the same
+overdue rule). `qa/` cannot import from either workspace, so its specs carry a documented
+local mirror instead.
+
 No date library is used: `date-fns`, `dayjs`, and `luxon` are all deliberately absent
 from `server/package.json`. `Date.UTC` plus the `getUTC*` accessors covers every case
 here.
@@ -99,8 +110,13 @@ within a few hours of UTC midnight. Audited under MINCRM-700 and left as-is:
 - `reportService.ts:604` — the values built here never reach a SQL predicate at all. The
   query uses `NOW() - ($1 || ' days')::interval`; these strings are returned only as
   response metadata describing the window.
-- `demoService.ts:287,299` — seed data for the demo dataset, never compared against a
-  stored boundary.
+- `demoService.ts:287,299` — `relativeDate`/`futureMonths` DO reach a compared column:
+  they write `activities.due_date` (`:979`, `:990`, `:1001`), which
+  `notificationService.ts:181` tests against `CURRENT_DATE`. Safe only because the
+  offsets are large relative to the drift — the "overdue" rows use -4 and -2 days and
+  the future row +1 month, so a one-day shift never crosses the boundary that decides
+  whether a demo task reads as overdue. Seed data with a ±1-day offset would not be
+  safe; use `utcDayOffset` if one is ever added.
 
 Fixed under MINCRM-700 rather than filed as safe: `automationService.ts` (wrote
 `activities.due_date`, which `notificationService.ts:181` compares against `CURRENT_DATE`

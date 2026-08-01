@@ -89,11 +89,17 @@ describe('purgeAiSessions', () => {
     // Deliberately NOT scoped by changed_by_id, unlike the other audit
     // assertions hardened under MINCRM-693: purgeAiSessions always writes as
     // SYSTEM_ACTOR (retentionService.ts:123), so changed_by_id carries the
-    // shared all-zeros UUID and isolates nothing. record_name is likewise fixed
-    // in the service. The assertion is safe because aiRetentionController's own
-    // purge test asserts on field_name = 'manual_purge_triggered', a different
-    // row shape, so the two cannot take each other's LIMIT 1 slot. Documented
-    // as safe rather than fixed (MINCRM-693 AC 2).
+    // shared all-zeros UUID and isolates nothing.
+    //
+    // aiRetentionController.ts:48 DOES write this exact row shape — it calls
+    // purgeAiSessions() fire-and-forget — so the LIMIT 1 slot is genuinely
+    // contestable. What makes this safe is that both files are in SERIAL_FILES
+    // (vitest.config.ts), so they never run concurrently with each other. Note
+    // the residual exposure the sibling comments in repCoachingService.test.ts
+    // and dataHygieneService.test.ts describe: the serial project still runs
+    // alongside the parallel one, so this holds only while no parallel-project
+    // file purges AI sessions. Documented as safe rather than fixed, per
+    // MINCRM-693 AC 2.
     const row = await pool.query<{ new_value: string }>(
       `SELECT new_value FROM audit_log
        WHERE record_type = 'ai_sessions' AND event_type = 'deleted'

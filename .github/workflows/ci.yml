@@ -637,8 +637,10 @@ jobs:
         env:
           # See the server-tests job for the full rationale: a UTC runner is the
           # one timezone where a local-vs-UTC date defect is invisible, so the
-          # MINCRM-700 guards here (AiUsageDashboardPage's default range) would
-          # pass under UTC while the bug shipped.
+          # MINCRM-700 guards here would pass under UTC while the bug shipped.
+          # The guards this makes live are in client/src/utils/utcDate.test.ts —
+          # verified: reverting firstOfMonthIso to local calendar fields fails 4
+          # tests under this zone and 0 under UTC.
           TZ: Pacific/Auckland
 
       - name: Guard against empty client test results

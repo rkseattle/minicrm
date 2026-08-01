@@ -41,16 +41,31 @@ test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAs(restClient, rep.email, rep.password);
 });
 
+/**
+ * The UTC calendar day `dayOffset` days from today, as YYYY-MM-DD.
+ *
+ * Anchored to UTC midnight rather than shifting the local instant: across a DST
+ * transition a local setDate(+/-1) moves the wall clock 24h but the instant 23h
+ * or 25h, so the UTC-serialized day can come back unchanged — "tomorrow" would
+ * not be in the future, and the brief-eligibility gate this feeds would not
+ * fire. due_date is a timezone-naive date column resolved in UTC by the server.
+ * Mirrors server/src/utils/utcDate.ts's utcDayOffset, which qa/ cannot import.
+ * (MINCRM-700)
+ */
+function utcDayOffset(dayOffset: number): string {
+  const now = new Date();
+  const shifted = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + dayOffset),
+  );
+  return shifted.toISOString().slice(0, 10);
+}
+
 function tomorrowDateString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return utcDayOffset(1);
 }
 
 function yesterdayDateString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return utcDayOffset(-1);
 }
 
 // ---------------------------------------------------------------------------

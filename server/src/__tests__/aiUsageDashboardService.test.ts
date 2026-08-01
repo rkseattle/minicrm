@@ -323,7 +323,7 @@ describe('resolveDateRange', () => {
   });
 
   // An unrecognized preset can no longer reach this function — the controller
-  // Zod-parses the query first (usageDateRangeQuerySchema), and the narrowed
+  // Zod-parses the query first (usageDateRangeParamsSchema), and the narrowed
   // type makes `preset: 'last_decade'` a compile error here. The rejection is
   // covered at the HTTP boundary in aiUsageController.test.ts instead.
 });
