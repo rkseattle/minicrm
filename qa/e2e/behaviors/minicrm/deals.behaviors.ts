@@ -1136,7 +1136,17 @@ export async function isObjectionCategoryBadgeVisible(
   return detail.isObjectionCategoryBadgeVisible(activityId);
 }
 
-/** Waits for the given activity's card to be visible in the timeline. */
+/**
+ * Waits for the given activity's card to be visible in the timeline.
+ *
+ * `timeout` is threaded into the locator's own probe budget, not just into the
+ * visibility assertion. Without it the healing locator falls back to its 2s
+ * default per strategy and throws StrategyExhaustedError before the assertion
+ * below is ever reached — so the declared 10s was never the real ceiling, it
+ * was 2s x 2 strategies. That mattered here because the timeline is gated on
+ * the `feature-flags/me` query, which has been measured at 2.9s under CI worker
+ * contention: the element simply was not attached yet. (MINCRM-700)
+ */
 export async function waitForActivityItem(
   context: DealsBehaviorContext,
   activityId: string,
@@ -1144,7 +1154,7 @@ export async function waitForActivityItem(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.activityItemLocator(activityId);
+  const locator = await detail.activityItemLocator(activityId, timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 

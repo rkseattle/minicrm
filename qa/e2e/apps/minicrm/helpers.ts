@@ -39,15 +39,6 @@ import {
 } from '@behaviors/minicrm/users.behaviors.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 
-// ---------------------------------------------------------------------------
-// Shared types
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal representation of a MiniCRM contact as returned by POST /api/contacts.
- * Field names match the server's snake_case ContactRow shape.
- * Extend as more fields are needed by tests.
- */
 /**
  * The UTC calendar day `dayOffset` days from today, as YYYY-MM-DD.
  *
@@ -68,6 +59,15 @@ export function utcDayOffset(dayOffset: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal representation of a MiniCRM contact as returned by POST /api/contacts.
+ * Field names match the server's snake_case ContactRow shape.
+ * Extend as more fields are needed by tests.
+ */
 export interface TestContact {
   id: string;
   first_name: string;

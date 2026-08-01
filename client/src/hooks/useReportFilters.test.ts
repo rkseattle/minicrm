@@ -98,6 +98,38 @@ describe('useReportFilters', () => {
     }
   });
 
+  it('re-resolves across UTC midnight on a plain rerender, with no preset change', () => {
+    // Regression test for the Greptile P1 on #371. The reported scenario is a
+    // report that stays MOUNTED across a UTC calendar boundary — so the test
+    // must not change the preset, which would mask the bug by forcing a
+    // dependency change. Two earlier revisions both failed this: capturing
+    // `now` in a useState initializer, and moving it into a useMemo whose
+    // dependency array holds no time-varying value. (MINCRM-700)
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-31T23:30:00.000Z'));
+      const { result, rerender } = renderHook(() => useReportFilters('currentMonth'));
+      expect(result.current.resolvedStart).toBe('2026-08-01');
+      expect(result.current.resolvedEnd).toBe('2026-08-31');
+
+      vi.setSystemTime(new Date('2026-09-01T00:30:00.000Z'));
+
+      // A plain rerender — no preset change, no dependency change.
+      rerender();
+      expect(result.current.resolvedStart).toBe('2026-09-01');
+      expect(result.current.resolvedEnd).toBe('2026-09-30');
+
+      // And an unrelated state change must not resurrect the stale range.
+      act(() => {
+        result.current.setViewMode('my');
+      });
+      expect(result.current.resolvedStart).toBe('2026-09-01');
+      expect(result.current.resolvedEnd).toBe('2026-09-30');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('custom preset uses customStart/customEnd for resolved dates', () => {
     const { result } = renderHook(() => useReportFilters());
     act(() => {
