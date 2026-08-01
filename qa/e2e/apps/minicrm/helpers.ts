@@ -48,6 +48,26 @@ import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
  * Field names match the server's snake_case ContactRow shape.
  * Extend as more fields are needed by tests.
  */
+/**
+ * The UTC calendar day `dayOffset` days from today, as YYYY-MM-DD.
+ *
+ * Anchored to UTC midnight rather than shifting the local instant: across a DST
+ * transition a local setDate(n) moves the wall clock 24h per day but the instant
+ * 23h or 25h, so the UTC-serialized day can land off by one — "tomorrow" is not
+ * in the future, and a due-date gate that depends on it does not fire. due_date
+ * and close_date are timezone-naive date columns the server resolves in UTC.
+ *
+ * Mirrors server/src/utils/utcDate.ts's utcDayOffset, which qa/ cannot import
+ * (see docs/dev/dates-and-timezones.md). (MINCRM-700)
+ */
+export function utcDayOffset(dayOffset: number): string {
+  const now = new Date();
+  const shifted = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + dayOffset),
+  );
+  return shifted.toISOString().slice(0, 10);
+}
+
 export interface TestContact {
   id: string;
   first_name: string;
@@ -201,12 +221,7 @@ export async function createTestAccount(
 
 /** Pipeline stages accepted by the server. */
 export type DealStage =
-  | 'Prospecting'
-  | 'Qualification'
-  | 'Proposal'
-  | 'Negotiation'
-  | 'Closed Won'
-  | 'Closed Lost';
+  'Prospecting' | 'Qualification' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
 
 /**
  * Minimal representation of a MiniCRM deal as returned by POST /api/deals.

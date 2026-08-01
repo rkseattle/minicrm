@@ -110,18 +110,17 @@ within a few hours of UTC midnight. Audited under MINCRM-700 and left as-is:
 - `reportService.ts:604` — the values built here never reach a SQL predicate at all. The
   query uses `NOW() - ($1 || ' days')::interval`; these strings are returned only as
   response metadata describing the window.
-- `demoService.ts:287,299` — `relativeDate`/`futureMonths` DO reach a compared column:
-  they write `activities.due_date` (`:979`, `:990`, `:1001`), which
-  `notificationService.ts:181` tests against `CURRENT_DATE`. Safe only because the
-  offsets are large relative to the drift — the "overdue" rows use -4 and -2 days and
-  the future row +1 month, so a one-day shift never crosses the boundary that decides
-  whether a demo task reads as overdue. Seed data with a ±1-day offset would not be
-  safe; use `utcDayOffset` if one is ever added.
 
 Fixed under MINCRM-700 rather than filed as safe: `automationService.ts` (wrote
-`activities.due_date`, which `notificationService.ts:181` compares against `CURRENT_DATE`
-— a day's drift moves whether a task reads as overdue) and `ai/toolExecutor.ts`'s
-`thirtyDaysAgo` (reaches `deals.close_date` filters via the NLI report tools).
+`activities.due_date`, which `notificationService.ts:181` compares against
+`CURRENT_DATE` — a day's drift moves whether a task reads as overdue),
+`ai/toolExecutor.ts`'s `thirtyDaysAgo` (reaches `deals.close_date` filters via the NLI
+report tools), and `demoService.ts`'s `relativeDate`/`futureMonths`, which reach
+`activities.due_date`, `deals.close_date`, and a "Contract Signed Date" custom field.
+That last one was initially filed as safe on an offset-magnitude argument; the argument
+was wrong, because the drift mechanism is DST rather than the UTC offset. Under
+`TZ=Pacific/Auckland`, `relativeDate(-4)` crossed a **month** boundary at the 2026-04-05
+transition — exactly what its own docblock says must not happen.
 
 ## Known unfixed
 
