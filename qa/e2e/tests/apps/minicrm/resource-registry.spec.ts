@@ -29,16 +29,18 @@ const REPO_ROOT = path.resolve(__dirname, '../../../../..');
 const FUNCTIONAL_TESTS_DIR = path.join(REPO_ROOT, 'qa/e2e/tests/apps/minicrm/functional');
 
 /** Files where the string "@serial" appears only inside a comment, not an
- *  actual test tag — intentionally excluded from the registry. */
+ *  actual test tag — intentionally excluded from the registry.
+ *
+ *  NOT a completeness requirement, and not the mechanism that excludes such
+ *  files: findTaggedTestTitles matches only `test('...')` titles, so prose
+ *  never registers as a tag in the first place. This list exists solely for the
+ *  negative assertion below (a comment-only file must not have a registry
+ *  entry). Adding a file here changes nothing about whether it is treated as
+ *  @serial — several comment-only files are deliberately absent. */
 const KNOWN_COMMENT_ONLY_FILES = [
   'qa/e2e/tests/apps/minicrm/functional/insights/coaching.spec.ts',
   'qa/e2e/tests/apps/minicrm/functional/data-hygiene/data-hygiene.spec.ts',
   'qa/e2e/tests/apps/minicrm/functional/leads/lead-routing.spec.ts',
-  // De-tagged by MINCRM-685; their docblocks still explain why they are no
-  // longer @serial, so the bare string survives in prose.
-  'qa/e2e/tests/apps/minicrm/functional/coverage-mapping/coverage-mapping.spec.ts',
-  'qa/e2e/tests/apps/minicrm/functional/coverage-pipeline/coverage-pipeline.spec.ts',
-  'qa/e2e/tests/apps/minicrm/functional/coverage-health/coverage-health.spec.ts',
 ];
 
 function discoverSpecFiles(dir: string): string[] {

@@ -124,14 +124,22 @@ export const coverageAccessGate: RequestHandler = async (
  * only true of two of the three opted-in routers. coverageReporting.ts and
  * coverageMapping.ts are read-only. coverageSessions.ts is NOT — it exposes
  * POST /sessions, POST /:sessionId/end, and POST /:sessionId/dumps, so under
- * the bypass those writes are unauthenticated too. That predates this change
- * (MINCRM-694 passed `null` for sessions, which was already checkless) and is
- * accepted for the same reason the rest of the bypass is: isDashboardNoAuthEnabled
- * requires NODE_ENV !== 'production', the routers only register at all when
- * their own boot-time env var is set, and the data behind them is CI/dev
- * coverage output rather than product data. It is called out here rather than
- * left implicit so the next reader does not infer a read-only guarantee this
- * gate does not provide.
+ * the bypass those writes are unauthenticated.
+ *
+ * That is PRE-EXISTING, not introduced by MINCRM-685. MINCRM-694 passed `null`
+ * as this router's flag key precisely because it had no feature_flags row, and
+ * a null key already meant no check on either path — verified against main
+ * before this branch: buildCoverageAccessGate(null) called next() with no
+ * arguments for an unauthenticated request. What MINCRM-685 changed is that the
+ * OTHER two routers now behave the same way, having lost the org-wide flag
+ * check that was their last per-request gate.
+ *
+ * Accepted for the same reasons the rest of the bypass is: isDashboardNoAuthEnabled
+ * requires NODE_ENV !== 'production', each router only registers at all when its
+ * own boot-time env var is set, and the data behind them is CI/dev coverage
+ * output rather than product data. Called out explicitly so the next reader does
+ * not infer a read-only guarantee this gate does not provide — and so that
+ * anyone tightening it knows the sessions router is where the write surface is.
  *
  * MINCRM-685 removed this builder's feature-flag step, along with the
  * `flagKey` parameter and the `CoverageRouterFlagKey` union that typed it.

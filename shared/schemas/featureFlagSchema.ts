@@ -23,7 +23,7 @@ import { z } from 'zod';
  * deleted all five, because internal CI/dev test infrastructure has no business
  * being discoverable or toggleable through the product's own admin Settings
  * page. Each of those routers now gates its route registration on a boot-time
- * env var instead (server/src/routes/coverageBootGate.ts). Two of the keys
+ * env var instead (server/src/coverageAgent/coverageBootGate.ts). Two of the keys
  * outlived their rows in this array until MINCRM-685 — GET /me/feature-flags
  * resolved them against a table that no longer had them, reporting `false`
  * silently, which is why nobody noticed.
