@@ -184,11 +184,24 @@ jobs:
             # `qa` would also close the gap but appears in eight job conditions,
             # including the full e2e-functional matrix and e2e-serial — a one-line
             # edit to gen-shards.ts would boot Postgres, MinIO, Mailhog and every
-            # E2E shard. These files want lint/typecheck and the framework-purity
-            # checks, nothing more, so this output is OR'd into exactly those two
-            # jobs. Both gate on `needs: changes` alone, so neither needs the
-            # always() + upstream-result form that attestation-docs requires for
-            # server-tests. (MINCRM-696)
+            # E2E shard. So this output is OR'd into exactly the two jobs that
+            # READ these files:
+            #
+            #   - lint-and-typecheck — they are inside qa/tsconfig.json's include
+            #   - e2e-framework-specs — runs shard-script-args.spec.ts, which
+            #     pins their `=`-preserving arg split. This one is the
+            #     bidirectional half: without it the guard is silent on exactly
+            #     the edit it exists to catch.
+            #
+            # Deliberately NOT e2e-framework-purity: its six checks scan
+            # e2e/framework, e2e/tests, e2e/behaviors and three named files, none
+            # of which is qa/e2e/scripts — adding it there would be a no-op that
+            # reads like coverage.
+            #
+            # Neither job needs the always() + upstream-result form that
+            # attestation-docs requires for server-tests: e2e-framework-specs
+            # needs lint-and-typecheck, which is itself gated on this output, so
+            # it cannot be skipped out from under it. (MINCRM-696)
             qa-e2e-scripts:
               - 'qa/e2e/scripts/**/*.ts'
 
@@ -778,7 +791,7 @@ jobs:
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
     needs: changes
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
+    if: needs.changes.outputs.qa == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -804,7 +817,14 @@ jobs:
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests
     needs: [lint-and-typecheck, changes]
-    if: needs.changes.outputs.qa == 'true'
+    # qa-e2e-scripts is load-bearing here, not merely additive: this is the job
+    # that runs shard-script-args.spec.ts, which pins gen-shards.ts's and
+    # gen-shard-config.ts's `=`-preserving arg split. Without it a PR that
+    # "simplifies" that split back runs lint and the purity checks — neither of
+    # which reads those files — and never runs the test that would fail, which
+    # is the exact silent-guard failure CLAUDE.md's bidirectional-invariant rule
+    # describes. (MINCRM-696)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
