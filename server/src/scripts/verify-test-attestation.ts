@@ -28,7 +28,11 @@
  *     JUnit XML alone, which carries no commit SHA to bind against) is a
  *     SUPERSET of the set select-tests.ts's selection output required for
  *     this diff. Running MORE than required passes; running FEWER fails,
- *     naming the missing tests.
+ *     naming the missing tests. A --selection given but unreadable is
+ *     itself a failure ('selection-file-unreadable'), NOT a silent skip:
+ *     the caller asked for this reconciliation, so degrading to "no
+ *     reconciliation requested" would answer a question nobody asked.
+ *     (MINCRM-695)
  *
  * Anti-cheat / staleness: the results artifact must be bound to the exact
  * commit SHA under test (via coverage_sessions.build_sha, resolved
@@ -138,6 +142,8 @@ export type AttestationFailureReason =
   /** The reporter's own <testsuites skipped="N"> disagrees with what this parser could extract — rows were dropped, so the results file cannot be trusted either way. (MINCRM-687) */
   | 'results-file-unparseable'
   | 'no-session-attribution'
+  /** A --selection path was given but could not be read as a requirement list — missing, unreadable, malformed JSON, or a specFiles that is not an array of strings. Distinct from "no selection requested": the caller ASKED for reconciliation and did not get it. (MINCRM-695) */
+  | 'selection-file-unreadable'
   | 'missing-required-tests';
 
 export interface AttestationResult {
@@ -150,37 +156,85 @@ export interface AttestationResult {
   failedTests: Array<{ classname: string; name: string; message: string | null }>;
   /** Tests skipped in EVERY project they were selected for — they never ran an assertion anywhere, so they cannot satisfy an ALL-PASS gate even though they carry no failure/error of their own. A test skipped under one project but passing under another is attested and absent from this list (MINCRM-687). */
   skippedTests: Array<{ classname: string; name: string }>;
-  /** Populated only when a --selection file was given: required-but-not-run tests, by testFile. */
+  /** Populated only when a --selection file was given AND could be read: required-but-not-run tests, by testFile. An unreadable selection yields [] here and reports 'selection-file-unreadable' instead — the two are mutually exclusive. (MINCRM-695) */
   missingRequiredFiles: string[];
+  /** Why the --selection file could not be read, when 'selection-file-unreadable' fired; null otherwise. Carried on the result so formatFailureOutput can name the actual cause — a reason an operator cannot act on is only half a report. (MINCRM-695) */
+  selectionUnreadableReason: string | null;
   ranFileCount: number;
 }
 
 /**
- * Exported for direct unit testing (MINCRM-691, AC 4). Its `full-suite`
- * short-circuit and its catch-all fallback are both decision points of the gate
- * — a null return silently disables the run-vs-selection reconciliation with no
- * entry in `reasons` — so they are verified here rather than only inferred from
- * verifyAttestation's output.
+ * What a `--selection` argument resolved to.
+ *
+ * A three-way union rather than `string[] | null`, because `null` was doing
+ * three incompatible jobs at once and only two of them were benign: "none
+ * requested", "full-suite, nothing targeted to reconcile", and "the caller asked
+ * for reconciliation and this gate could not read the file". The third collapsed
+ * into the first, so a typo'd --selection path produced a PASS with no entry in
+ * `reasons` — the one path where this gate stopped gating without saying so.
+ * (MINCRM-695)
+ *
+ * `unreadable` is kept distinct for the same reason qa/scripts/container-commit-sha.ts's
+ * ContainerCommitSha keeps `empty` distinct from `unreadable`: collapsing the
+ * failure into the benign value hides precisely the condition worth reporting.
+ *
+ * `why` is a plain string, not a second enum. The union exists so the GATE can
+ * decide differently; `why` only explains to a human reading CI output. A second
+ * enum would need its own Record, its own docs list and its own parity test to
+ * stay honest — machinery for a value nothing branches on.
  */
-export function readSelectionFiles(selectionPath: string | undefined): string[] | null {
-  if (!selectionPath) return null;
+export type SelectionRequirement =
+  { kind: 'none' } | { kind: 'files'; files: string[] } | { kind: 'unreadable'; why: string };
+
+/**
+ * Exported for direct unit testing (MINCRM-691 AC 4, MINCRM-695 AC 5). Every arm
+ * is a decision point of the gate: `none` disables run-vs-selection
+ * reconciliation legitimately, `files` enables it (including for an EMPTY
+ * requirement list, which is a real if trivially-satisfied requirement and not
+ * the same as `none`), and `unreadable` is a failure in its own right.
+ */
+export function readSelectionFiles(selectionPath: string | undefined): SelectionRequirement {
+  if (!selectionPath) return { kind: 'none' };
+
+  let raw: string;
   try {
-    const raw = readFileSync(selectionPath, 'utf-8');
-    const parsed = JSON.parse(raw) as { specFiles?: unknown; mode?: unknown };
-    if (parsed.mode === 'full-suite') {
-      // Full-suite mode has no targeted requirement to reconcile against —
-      // every file is implicitly required, which this gate can't enumerate
-      // without re-discovering the suite itself. Treated as "no
-      // reconciliation requested" rather than a failure.
-      return null;
-    }
-    if (Array.isArray(parsed.specFiles) && parsed.specFiles.every((f) => typeof f === 'string')) {
-      return parsed.specFiles as string[];
-    }
-    return null;
-  } catch {
-    return null;
+    raw = readFileSync(selectionPath, 'utf-8');
+  } catch (err) {
+    return {
+      kind: 'unreadable',
+      why: `could not be read (${err instanceof Error ? err.message : String(err)})`,
+    };
   }
+
+  let parsed: { specFiles?: unknown; mode?: unknown };
+  try {
+    parsed = JSON.parse(raw) as { specFiles?: unknown; mode?: unknown };
+  } catch (err) {
+    return {
+      kind: 'unreadable',
+      why: `is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
+    };
+  }
+
+  if (parsed.mode === 'full-suite') {
+    // Full-suite mode has no targeted requirement to reconcile against —
+    // every file is implicitly required, which this gate can't enumerate
+    // without re-discovering the suite itself. Treated as "no
+    // reconciliation requested" rather than a failure.
+    //
+    // Ordered BEFORE the specFiles check on purpose: full-suite means "nothing
+    // targeted", whatever specFiles happens to hold.
+    return { kind: 'none' };
+  }
+
+  if (Array.isArray(parsed.specFiles) && parsed.specFiles.every((f) => typeof f === 'string')) {
+    return { kind: 'files', files: parsed.specFiles as string[] };
+  }
+
+  return {
+    kind: 'unreadable',
+    why: 'has no `specFiles` array of strings',
+  };
 }
 
 export async function verifyAttestation(args: CliArgs): Promise<AttestationResult> {
@@ -195,6 +249,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
       failedTests: [],
       skippedTests: [],
       missingRequiredFiles: [],
+      selectionUnreadableReason: null,
       ranFileCount: 0,
     };
   }
@@ -279,8 +334,17 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     attributedDumps.map((d) => d.testFile).filter((f): f is string => f !== null),
   );
 
-  const requiredFiles = readSelectionFiles(args.selectionPath);
-  const missingRequiredFiles = requiredFiles ? requiredFiles.filter((f) => !ranFiles.has(f)) : [];
+  // An unreadable selection and a shortfall against a readable one are mutually
+  // exclusive by construction: with no requirement list there is nothing to diff
+  // against, so missingRequiredFiles stays empty. Inventing a requirement list
+  // for the unreadable case would be a second wrong answer on top of the first.
+  // (MINCRM-695)
+  const selection = readSelectionFiles(args.selectionPath);
+  if (selection.kind === 'unreadable') {
+    reasons.push('selection-file-unreadable');
+  }
+  const missingRequiredFiles =
+    selection.kind === 'files' ? selection.files.filter((f) => !ranFiles.has(f)) : [];
   if (missingRequiredFiles.length > 0) {
     reasons.push('missing-required-tests');
   }
@@ -293,6 +357,7 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     failedTests,
     skippedTests,
     missingRequiredFiles,
+    selectionUnreadableReason: selection.kind === 'unreadable' ? selection.why : null,
     ranFileCount: ranFiles.size,
   };
 }
@@ -345,6 +410,12 @@ const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationRes
     ],
     'no-session-attribution': () => [
       'No coverage session attribution found for this commit SHA — cannot verify which tests actually ran against it. Ensure COVERAGE_SESSION_MANAGEMENT is enabled for this run.',
+    ],
+    'selection-file-unreadable': (result) => [
+      `A --selection file was given but ${result.selectionUnreadableReason ?? 'could not be read as a requirement list'}, ` +
+        'so run-vs-selection reconciliation did not happen. ' +
+        'This is an INPUT failure, NOT a test outcome — the required tests may or may not have run, and this gate cannot tell which. ' +
+        'Check the --selection path and that the file is JSON with a `specFiles` array of strings.',
     ],
     'missing-required-tests': (result) => [
       `${result.missingRequiredFiles.length} required test file(s) did not run:`,
