@@ -63,6 +63,15 @@ test.describe('gen-shards parseGenShardsArgs', () => {
     expect(parseGenShardsArgs(argv('--workers=0')).error).toContain('positive integer');
     expect(parseGenShardsArgs(argv('--workers=abc')).error).toContain('positive integer');
   });
+
+  // parseInt's partial parse, the defect MINCRM-696 is titled for. parseInt('8x')
+  // → 8 and parseInt('2.9') → 2 both pass a range check, so a typo'd worker count
+  // silently shards differently than asked rather than erroring.
+  for (const value of ['8x', '2.9', '-2', ' 4', '']) {
+    test(`rejects the non-integer workers value "${value}" rather than coercing it`, () => {
+      expect(parseGenShardsArgs(argv(`--workers=${value}`)).error).toContain('positive integer');
+    });
+  }
 });
 
 test.describe('gen-shard-config parseGenShardConfigArgs', () => {
@@ -92,18 +101,43 @@ test.describe('gen-shard-config parseGenShardConfigArgs', () => {
 
   // The bound that matters: an index equal to the total addresses a shard that
   // does not exist, which would generate a config matching no specs at all.
-  test('rejects a shard index outside 0..(totalShards-1)', () => {
+  // (A NEGATIVE index is rejected earlier, by the integer check — see the
+  // non-integer cases below, where '-1' fails /^\d+$/ before reaching here.)
+  test('rejects a shard index equal to totalShards', () => {
     expect(parseGenShardConfigArgs(argv('--shard-index=4', '--total-shards=4')).error).toContain(
       'shardIndex must be',
     );
-    expect(parseGenShardConfigArgs(argv('--shard-index=-1', '--total-shards=4')).error).toContain(
+  });
+
+  test('rejects a totalShards of zero', () => {
+    expect(parseGenShardConfigArgs(argv('--shard-index=0', '--total-shards=0')).error).toContain(
       'shardIndex must be',
     );
   });
 
   test('rejects a non-numeric shard index', () => {
     expect(parseGenShardConfigArgs(argv('--shard-index=x', '--total-shards=4')).error).toContain(
-      'shardIndex must be',
+      'non-negative integers',
     );
   });
+
+  // The highest-consequence case in this file. parseInt('2x') → 2 passes every
+  // range check and produces a REAL config for shard 2 — so the specs in the
+  // shard actually asked for never run, and nothing reports it. CI invokes this
+  // script in a loop, one call per shard index. (MINCRM-696)
+  const NON_INTEGER_CASES: ReadonlyArray<[label: string, index: string, total: string]> = [
+    ['a partially-numeric index', '2x', '4'],
+    ['a fractional index', '1.9', '4'],
+    ['a partially-numeric total', '0', '4x'],
+    ['a fractional total', '0', '4.9'],
+    ['a negative index', '-1', '4'],
+  ];
+
+  for (const [label, index, total] of NON_INTEGER_CASES) {
+    test(`rejects ${label} rather than coercing it`, () => {
+      expect(
+        parseGenShardConfigArgs(argv(`--shard-index=${index}`, `--total-shards=${total}`)).error,
+      ).toContain('non-negative integers');
+    });
+  }
 });

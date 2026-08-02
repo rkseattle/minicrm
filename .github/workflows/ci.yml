@@ -184,8 +184,8 @@ jobs:
             # `qa` would also close the gap but appears in eight job conditions,
             # including the full e2e-functional matrix and e2e-serial — a one-line
             # edit to gen-shards.ts would boot Postgres, MinIO, Mailhog and every
-            # E2E shard. So this output is OR'd into exactly the two jobs that
-            # READ these files:
+            # E2E shard. So this output is OR'd into the two jobs that STATICALLY
+            # ANALYSE these files:
             #
             #   - lint-and-typecheck — they are inside qa/tsconfig.json's include
             #   - e2e-framework-specs — runs shard-script-args.spec.ts, which
@@ -197,6 +197,16 @@ jobs:
             # e2e/framework, e2e/tests, e2e/behaviors and three named files, none
             # of which is qa/e2e/scripts — adding it there would be a no-op that
             # reads like coverage.
+            #
+            # Also deliberately NOT the jobs that merely EXECUTE a script here:
+            # e2e-functional runs gen-shard-config.ts and e2e-serial runs
+            # gen-conflict-group-configs.ts. Those jobs exercise the scripts as a
+            # side effect of running the suite; they do not verify them, and
+            # gating on them would boot the whole E2E stack for a one-line edit.
+            # The invariants that CAN fail silently — the arg parsers — are
+            # covered by shard-script-args.spec.ts under e2e-framework-specs
+            # instead. gen-conflict-group-configs.ts takes no CLI arguments, so
+            # it carries none of that class of defect.
             #
             # Neither job needs the always() + upstream-result form that
             # attestation-docs requires for server-tests: e2e-framework-specs

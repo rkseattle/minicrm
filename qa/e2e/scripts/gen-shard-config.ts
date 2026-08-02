@@ -68,16 +68,25 @@ export function parseGenShardConfigArgs(
     };
   }
 
-  const shardIndex = parseInt(idxArg.split('=')[1] ?? '', 10);
-  const totalShards = parseInt(totalArg.split('=')[1] ?? '', 10);
+  // /^\d+$/ before parseInt, not isNaN after it. parseInt('2x') → 2 and
+  // parseInt('4.9') → 4, both of which pass every range check below and produce
+  // a REAL config for the wrong shard — so a typo'd index silently runs a
+  // different set of specs than the one asked for, and the specs in the
+  // intended shard never run at all. Same reject-don't-coerce rule as
+  // verify-test-attestation.ts's --max-age-minutes and
+  // qa/scripts/merge-junit-results.ts's --expected-files. (MINCRM-696)
+  const idxRaw = idxArg.split('=').slice(1).join('=');
+  const totalRaw = totalArg.split('=').slice(1).join('=');
+  if (!/^\d+$/.test(idxRaw) || !/^\d+$/.test(totalRaw)) {
+    return {
+      error: `[gen-shard-config] Invalid args: --shard-index and --total-shards require non-negative integers, got "${idxRaw}" and "${totalRaw}".`,
+    };
+  }
 
-  if (
-    isNaN(shardIndex) ||
-    isNaN(totalShards) ||
-    shardIndex < 0 ||
-    totalShards < 1 ||
-    shardIndex >= totalShards
-  ) {
+  const shardIndex = Number(idxRaw);
+  const totalShards = Number(totalRaw);
+
+  if (totalShards < 1 || shardIndex >= totalShards) {
     return { error: '[gen-shard-config] Invalid args: shardIndex must be 0..(totalShards-1).' };
   }
 
