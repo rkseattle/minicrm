@@ -39,7 +39,15 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
   const visibleLinks = NAV_LINKS.filter((link) => {
     if (!link.adminOnly || user?.role === 'admin') {
       // role check passes — now check feature flag
-      if (link.featureFlag && flags?.[link.featureFlag] === false) return false;
+      // Affirmative confirmation required once the flags have RESOLVED: an
+      // errored or absent map previously kept every gated link visible, showing
+      // users features they may not have.
+      //
+      // While still loading the link is kept in the list on purpose, so the
+      // skeleton branch below can render in its place — filtering it out here
+      // would make that skeleton unreachable and collapse the nav on first
+      // paint. (MINCRM-701)
+      if (link.featureFlag && !flagsLoading && flags?.[link.featureFlag] !== true) return false;
       return true;
     }
     return false;

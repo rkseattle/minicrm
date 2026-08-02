@@ -13,8 +13,10 @@ const FLAGS_STALE_TIME = 60_000;
 
 /**
  * Returns the full resolved feature flag map for the current user.
- * While loading, all flags default to `true` so UI doesn't flash-hide features
- * that are about to be confirmed enabled.
+ *
+ * `flags` is undefined until the query resolves. Callers must treat that as
+ * "no feature is confirmed enabled" rather than as "everything is on" — see
+ * useFeatureFlag below for why that direction is the safe one.
  */
 export function useFeatureFlags(): {
   flags: MyFeatureFlagsResponse | undefined;
@@ -30,12 +32,43 @@ export function useFeatureFlags(): {
 
 /**
  * Returns the resolved enabled state for a single feature flag.
- * `isLoading` is true while the initial fetch is in flight — callers should
- * show a skeleton rather than hiding or showing the feature optimistically.
+ *
+ * **A feature is hidden until its flag is affirmatively confirmed on.** Unknown
+ * is not "on": while the query is in flight, after it errors, and when the
+ * server's map does not carry the key at all, `enabled` is `false`.
+ *
+ * This inverts the hook's original behavior, which returned `true` while loading
+ * (so features would not "flash-hide") and `true` for an absent map or missing
+ * key. Three problems with that, in increasing order of severity:
+ *
+ *  1. **It renders features the operator switched off.** Every flag-gated panel
+ *     appeared on first paint regardless of its flag, then disappeared once the
+ *     map arrived. The flash went in the wrong direction: users saw features
+ *     they do not have, including ones deliberately disabled for their role.
+ *  2. **It fails OPEN on error.** A failed or aborted flag request left `flags`
+ *     undefined, which resolved to `true` — so a control whose entire job is
+ *     keeping a feature hidden defaulted to showing it exactly when it could not
+ *     verify anything. `?? true` on a missing key did the same for a flag the
+ *     server has never heard of.
+ *  3. **It made "unknown" and "on" indistinguishable in the DOM**, so nothing
+ *     outside the app could tell them apart. That is what made F7-DH3 fail
+ *     intermittently in CI under --workers=4 (run 30751352481): the deal-health
+ *     panel rendered during the pre-resolution window and the assertion could
+ *     not tell that from the flag genuinely being on. Three separate E2E wait
+ *     strategies were attempted against it and none could work, because no wait
+ *     can distinguish two states that produce identical output.
+ *
+ * Defaulting off makes all three go away at once, and it is the correct default
+ * on its own merits: a feature flag is permission to show something, and absence
+ * of permission is not permission.
+ *
+ * `isLoading` is still returned so callers that want a skeleton — rather than
+ * the feature simply appearing when confirmed — can render one. Callers that
+ * ignore it now get the safe behavior by default instead of the unsafe one.
+ * (MINCRM-701)
  */
 export function useFeatureFlag(key: FeatureFlagKey): { enabled: boolean; isLoading: boolean } {
   const { flags, isLoading } = useFeatureFlags();
-  // While loading, treat as enabled so content doesn't flash-disappear on load
-  const enabled = isLoading ? true : (flags?.[key] ?? true);
+  const enabled = flags?.[key] === true;
   return { enabled, isLoading };
 }

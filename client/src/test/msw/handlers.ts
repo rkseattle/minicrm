@@ -2912,6 +2912,10 @@ export const handlers = [
   }),
 
   // ── Feature flags (MINCRM-463) ────────────────────────────────────────────────
+  //
+  // See allFlagsEnabled() at the bottom of this file: a test overriding one flag
+  // must spread it over the full map rather than returning a single-key object,
+  // because flags now default OFF when absent. (MINCRM-701)
 
   /**
    * Feature flags: GET /api/feature-flags/me — returns resolved flag map for the calling user.
@@ -2919,11 +2923,7 @@ export const handlers = [
    * Exceptions: demo_data and mobile_access default to false (matching migration 066 seed).
    */
   http.get('/api/v1/feature-flags/me', () => {
-    const FLAGS_OFF_BY_DEFAULT = new Set<string>(['demo_data', 'mobile_access']);
-    const flags = Object.fromEntries(
-      FEATURE_FLAG_KEYS.map((key) => [key, !FLAGS_OFF_BY_DEFAULT.has(key)]),
-    ) as Record<string, boolean>;
-    return HttpResponse.json({ flags });
+    return HttpResponse.json({ flags: allFlagsEnabled() });
   }),
 
   /** Feature flags: GET /api/admin/feature-flags — returns fixture flags list */
@@ -3566,3 +3566,23 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 ];
+
+/**
+ * The full resolved flag map with every flag enabled, matching what the default
+ * MSW handler serves.
+ *
+ * Exported so a test overriding ONE flag can spread this and change just that
+ * key. Since MINCRM-701 an absent flag resolves to OFF (a feature is hidden
+ * until affirmatively confirmed on), so `HttpResponse.json({ flags: { one: false } })`
+ * no longer means "everything as usual except `one`" — it means "`one` is off and
+ * every other feature is too", which silently removes the very UI a test is
+ * trying to make an assertion about.
+ *
+ * Exceptions match migration 066's seed: demo_data and mobile_access ship off.
+ */
+export function allFlagsEnabled(): Record<string, boolean> {
+  const FLAGS_OFF_BY_DEFAULT = new Set<string>(['demo_data', 'mobile_access']);
+  return Object.fromEntries(
+    FEATURE_FLAG_KEYS.map((key) => [key, !FLAGS_OFF_BY_DEFAULT.has(key)]),
+  ) as Record<string, boolean>;
+}
