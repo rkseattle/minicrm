@@ -52,11 +52,9 @@ const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional')
  * by construction, which is why the `=`-preserving split below went unpinned
  * for as long as it did. `main()` does the exiting. (MINCRM-696)
  */
-export function parseGenShardsArgs(argv: readonly string[]): {
-  workers: number;
-  selectedFilesPath: string | undefined;
-  error: string | null;
-} {
+export function parseGenShardsArgs(
+  argv: readonly string[],
+): { workers: number; selectedFilesPath: string | undefined; error: null } | { error: string } {
   // /^\d+$/ before Number, not isNaN after parseInt. parseInt('8x') → 8 and
   // parseInt('2.9') → 2, both of which pass the range check below — so a typo'd
   // worker count silently shards differently than asked. Same reject-don't-coerce
@@ -72,23 +70,27 @@ export function parseGenShardsArgs(argv: readonly string[]): {
   // not what the operator asked for. (MINCRM-696)
   const selectedFilesPath = selectedFilesArg?.split('=').slice(1).join('=');
 
-  return {
-    workers,
-    selectedFilesPath,
-    error:
-      !workersValid || workers < 1
-        ? `[gen-shards] Invalid --workers value; must be a positive integer, got "${workersRaw}".`
-        : null,
-  };
+  // Discriminated union, matching gen-shard-config.ts's parser: on the error
+  // arm the invalid value is UNREACHABLE rather than merely accompanied by an
+  // error string. A flat `{ workers, error }` would hand a caller that ignored
+  // `error` a NaN or a 2.9 to shard on — re-enabling one call frame away the
+  // exact silent-coercion this validation exists to prevent. (MINCRM-696)
+  if (!workersValid || workers < 1) {
+    return {
+      error: `[gen-shards] Invalid --workers value; must be a positive integer, got "${workersRaw}".`,
+    };
+  }
+
+  return { workers, selectedFilesPath, error: null };
 }
 
 function parseArgs(): { workers: number; selectedFilesPath: string | undefined } {
-  const { workers, selectedFilesPath, error } = parseGenShardsArgs(process.argv);
-  if (error) {
-    process.stderr.write(`${error}\n`);
+  const parsed = parseGenShardsArgs(process.argv);
+  if (parsed.error !== null) {
+    process.stderr.write(`${parsed.error}\n`);
     process.exit(1);
   }
-  return { workers, selectedFilesPath };
+  return parsed;
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -160,7 +162,10 @@ function main(): void {
   );
 }
 
-// Direct-invocation guard, matching server/src/scripts/{select-tests,load-coverage-map}.ts.
+// Direct-invocation guard, matching verify-test-attestation.ts's endsWith form
+// (the sibling server scripts use exact __filename equality, which needs
+// fileURLToPath — unavailable here, since Playwright transpiles these specs to
+// CJS where import.meta is a syntax error).
 // Without it, importing this module to unit-test parseGenShardsArgs RUNS the
 // whole script — it discovers specs, reads the timing baseline and writes to
 // stdout at import time. (MINCRM-696)

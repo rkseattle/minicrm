@@ -28,35 +28,47 @@ function argv(...flags: string[]): string[] {
   return ['/usr/bin/node', '/repo/qa/e2e/scripts/script.ts', ...flags];
 }
 
+/**
+ * Narrows the success arm of parseGenShardsArgs' discriminated union, failing
+ * the test if the parser reported an error. The union deliberately makes the
+ * parsed values UNREACHABLE on the error arm — a caller cannot read a NaN
+ * worker count without narrowing first — so tests about parsed values must
+ * narrow too rather than reaching past the discriminant.
+ */
+function shardsOk(result: ReturnType<typeof parseGenShardsArgs>): {
+  workers: number;
+  selectedFilesPath: string | undefined;
+} {
+  expect(result.error).toBeNull();
+  if (result.error !== null) throw new Error(result.error);
+  return result;
+}
+
 test.describe('gen-shards parseGenShardsArgs', () => {
   test('preserves an "=" in the selected-files path', () => {
-    const { selectedFilesPath, error } = parseGenShardsArgs(
-      argv('--selected-files=/tmp/build=1/selected.json'),
+    const parsed = shardsOk(
+      parseGenShardsArgs(argv('--selected-files=/tmp/build=1/selected.json')),
     );
 
-    expect(error).toBeNull();
-    expect(selectedFilesPath).toBe('/tmp/build=1/selected.json');
+    expect(parsed.selectedFilesPath).toBe('/tmp/build=1/selected.json');
   });
 
   test('preserves several "=" in one path', () => {
-    expect(parseGenShardsArgs(argv('--selected-files=/a=b=c/x.json')).selectedFilesPath).toBe(
-      '/a=b=c/x.json',
-    );
+    expect(
+      shardsOk(parseGenShardsArgs(argv('--selected-files=/a=b=c/x.json'))).selectedFilesPath,
+    ).toBe('/a=b=c/x.json');
   });
 
   test('leaves selected-files undefined when the flag is absent', () => {
-    expect(parseGenShardsArgs(argv()).selectedFilesPath).toBeUndefined();
+    expect(shardsOk(parseGenShardsArgs(argv())).selectedFilesPath).toBeUndefined();
   });
 
   test('defaults workers to 4 and reports no error', () => {
-    const { workers, error } = parseGenShardsArgs(argv());
-
-    expect(workers).toBe(4);
-    expect(error).toBeNull();
+    expect(shardsOk(parseGenShardsArgs(argv())).workers).toBe(4);
   });
 
   test('reads a valid workers value', () => {
-    expect(parseGenShardsArgs(argv('--workers=8')).workers).toBe(8);
+    expect(shardsOk(parseGenShardsArgs(argv('--workers=8'))).workers).toBe(8);
   });
 
   test('reports an error for a non-positive or non-numeric workers value', () => {
