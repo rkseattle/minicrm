@@ -2677,6 +2677,16 @@ jobs:
       - client-tests
       - coverage-dashboard-tests
       - e2e-framework-purity
+      # e2e-framework-specs was absent here, so every framework unit spec could
+      # fail without blocking a merge — including two guards CLAUDE.md documents
+      # as load-bearing: merge-junit-results.spec.ts (MINCRM-689's JUnit CDATA
+      # redaction parity) and coverage-session-control-client.spec.ts
+      # (MINCRM-688's SHA-pattern parity). Note the asymmetry that made this easy
+      # to miss: e2e-framework-purity runs check-sha-pattern-parity.sh and WAS
+      # gated, so one half of the MINCRM-688 invariant blocked while the other
+      # did not. MINCRM-696 added shard-script-args.spec.ts to this job and
+      # depends on it failing a merge, which is what surfaced the gap.
+      - e2e-framework-specs
       - lint-docs
       - e2e-aggregate
       - e2e-all-shards-passed
@@ -2694,6 +2704,7 @@ jobs:
             "${{ needs.client-tests.result }}" \
             "${{ needs.coverage-dashboard-tests.result }}" \
             "${{ needs.e2e-framework-purity.result }}" \
+            "${{ needs.e2e-framework-specs.result }}" \
             "${{ needs.lint-docs.result }}" \
             "${{ needs.e2e-aggregate.result }}" \
             "${{ needs.e2e-all-shards-passed.result }}" \

@@ -65,7 +65,7 @@ vi.mock('../coverageDb.js', () => ({
 
 import { mkdtemp, rm, writeFile, utimes, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve as resolvePath } from 'node:path';
+import { join, resolve as resolvePath, isAbsolute, dirname } from 'node:path';
 
 // Imports from junitXml.ts, not verify-test-attestation.ts, which pulls in
 // coverageDb (a pg.Pool plus dotenv/config at module load). These are
@@ -2093,16 +2093,38 @@ describe('verify-test-attestation.ts', () => {
     // AC 7. Both path flags resolve against the same base. The asymmetry this
     // replaces meant two relative paths in one invocation resolved differently.
     describe('path resolution', () => {
+      // isAbsolute, not toBe(resolvePath(...)): comparing against the same
+      // path.resolve the implementation calls is tautological — it stays green
+      // if resolvePath is deleted from BOTH branches, which is the regression
+      // this is meant to catch. Asserting the PROPERTY (absolute, ends with the
+      // relative input) constrains the implementation instead of restating it.
       it('resolves a relative --results to an absolute path', () => {
-        expect(parseArgs(['--results=rel/results.xml', '--sha=x']).resultsPath).toBe(
-          resolvePath('rel/results.xml'),
-        );
+        const { resultsPath } = parseArgs(['--results=rel/results.xml', '--sha=x']);
+
+        expect(isAbsolute(resultsPath)).toBe(true);
+        expect(resultsPath.endsWith('/rel/results.xml')).toBe(true);
       });
 
-      it('resolves a relative --selection on the same base as --results', () => {
-        const args = parseArgs([...REQUIRED, '--selection=rel/selection.json']);
+      it('resolves a relative --selection to an absolute path', () => {
+        const { selectionPath } = parseArgs([...REQUIRED, '--selection=rel/selection.json']);
 
-        expect(args.selectionPath).toBe(resolvePath('rel/selection.json'));
+        expect(selectionPath && isAbsolute(selectionPath)).toBe(true);
+        expect(selectionPath?.endsWith('/rel/selection.json')).toBe(true);
+      });
+
+      // AC 7 proper: the two flags resolve against the SAME base. The asymmetry
+      // this replaces meant two relative paths given in one invocation resolved
+      // differently — so the property to pin is that their common prefix is
+      // identical, which is false under the old code and cannot be satisfied by
+      // deleting resolvePath from both.
+      it('resolves --results and --selection against the same base', () => {
+        const { resultsPath, selectionPath } = parseArgs([
+          '--results=rel/results.xml',
+          '--sha=x',
+          '--selection=rel/selection.json',
+        ]);
+
+        expect(dirname(resultsPath)).toBe(dirname(selectionPath ?? ''));
       });
 
       it('leaves an absolute path unchanged', () => {

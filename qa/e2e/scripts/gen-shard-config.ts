@@ -205,7 +205,8 @@ function main(): void {
   );
 }
 
-// Direct-invocation guard — see gen-shards.ts's copy for why. Without it,
+// Direct-invocation guard — see gen-shards.ts's copy for why, including why
+// this uses the endsWith form rather than the server scripts' exact equality. Without it,
 // importing this module to unit-test parseGenShardConfigArgs runs main(), which
 // process.exit(1)s on the absent --shard-index and kills the test worker.
 // (MINCRM-696)

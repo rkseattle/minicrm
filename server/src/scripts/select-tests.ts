@@ -95,7 +95,7 @@ export interface SelectTestsResult {
   headSha: string;
 }
 
-export interface CliArgs {
+interface CliArgs {
   baseRef: string;
   headRef: string;
   forceFullSuite: boolean;
