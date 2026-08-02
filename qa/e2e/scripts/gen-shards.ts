@@ -44,15 +44,44 @@ const FUNCTIONAL_TESTS_DIR = path.join(E2E_DIR, 'tests/apps/minicrm/functional')
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { workers: number; selectedFilesPath: string | undefined } {
-  const workersArg = process.argv.find((a) => a.startsWith('--workers='));
+/**
+ * Splits argv into this script's options.
+ *
+ * Takes argv as a parameter and returns errors rather than reading
+ * `process.argv` and calling `process.exit` inline — the latter is untestable
+ * by construction, which is why the `=`-preserving split below went unpinned
+ * for as long as it did. `main()` does the exiting. (MINCRM-696)
+ */
+export function parseGenShardsArgs(argv: readonly string[]): {
+  workers: number;
+  selectedFilesPath: string | undefined;
+  error: string | null;
+} {
+  const workersArg = argv.find((a) => a.startsWith('--workers='));
   const workers = workersArg ? parseInt(workersArg.split('=')[1] ?? '4', 10) : 4;
-  if (isNaN(workers) || workers < 1) {
-    process.stderr.write(`[gen-shards] Invalid --workers value; must be a positive integer.\n`);
+  const selectedFilesArg = argv.find((a) => a.startsWith('--selected-files='));
+  // .slice(1).join('=') rather than [1], so a path containing '=' survives —
+  // POSIX paths admit it freely. A truncated path is unreadable, and the caller
+  // below then warns and widens to the full suite: the safe direction, but still
+  // not what the operator asked for. (MINCRM-696)
+  const selectedFilesPath = selectedFilesArg?.split('=').slice(1).join('=');
+
+  return {
+    workers,
+    selectedFilesPath,
+    error:
+      isNaN(workers) || workers < 1
+        ? '[gen-shards] Invalid --workers value; must be a positive integer.'
+        : null,
+  };
+}
+
+function parseArgs(): { workers: number; selectedFilesPath: string | undefined } {
+  const { workers, selectedFilesPath, error } = parseGenShardsArgs(process.argv);
+  if (error) {
+    process.stderr.write(`${error}\n`);
     process.exit(1);
   }
-  const selectedFilesArg = process.argv.find((a) => a.startsWith('--selected-files='));
-  const selectedFilesPath = selectedFilesArg?.split('=')[1];
   return { workers, selectedFilesPath };
 }
 
@@ -125,4 +154,10 @@ function main(): void {
   );
 }
 
-main();
+// Direct-invocation guard, matching server/src/scripts/{select-tests,load-coverage-map}.ts.
+// Without it, importing this module to unit-test parseGenShardsArgs RUNS the
+// whole script — it discovers specs, reads the timing baseline and writes to
+// stdout at import time. (MINCRM-696)
+if (process.argv[1] && path.resolve(process.argv[1]).endsWith('gen-shards.ts')) {
+  main();
+}

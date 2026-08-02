@@ -1092,6 +1092,17 @@ it stats the results file's mtime, written when the suite _finishes_, and the ga
 seconds later. It guards against a stale results file left from an earlier run of the same
 commit, not against a long job.
 
+A **malformed flag value fails the gate outright** rather than falling back to a default
+(MINCRM-696). `--max-age-minutes` requires a non-negative integer: `abc`, `5x`, `2.9`, `-5`
+and a bare `--max-age-minutes=` are all rejected. Previously each of these silently
+resolved to the 120-minute default — so an operator _narrowing_ the window who typo'd the
+value got the widest one instead, with no signal. A bare `--selection=` is rejected the
+same way. Note what this looks like in a red job: argument parsing happens before the gate
+runs, so there is **no JSON on stdout and no `reasons` array** — just a non-zero exit and
+an `InvalidArgError`/`MissingArgsError` on stderr naming the flag and the value it read.
+The local pre-push hook surfaces that as its own synthetic `attestation-script-error`
+rather than one of the reasons below, so if you see that string, read the stderr above it.
+
 ### Reading a failed run
 
 - `results-file-missing` / the zero-test guard → the suite never ran; check the env block.

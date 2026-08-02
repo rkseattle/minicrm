@@ -48,9 +48,20 @@ interface CoverageMapFile {
   entries: CoverageTestLinkExportEntry[];
 }
 
-function parseArgs(argv: readonly string[]): { sha: string } {
+/**
+ * Exported for direct unit testing (MINCRM-696). The `=`-preserving split below
+ * is a correctness property, not a style choice, and it was previously unpinned
+ * in every copy of this idiom in the repo.
+ */
+export function parseArgs(argv: readonly string[]): { sha: string } {
   const shaArg = argv.find((a) => a.startsWith('--sha='));
-  const sha = shaArg?.split('=')[1];
+  // .slice(1).join('=') rather than [1]: --sha is not always a 40-hex SHA.
+  // pre-push-tia.ts's resolveMainSha falls back to the literal symbolic ref
+  // `main`, and a ref may contain '=' (`git check-ref-format
+  // 'refs/heads/foo=bar'` exits 0). Truncating at the first '=' would key
+  // coverage_test_links to a DIFFERENT commit, silently narrowing the selection
+  // that mapping feeds. (MINCRM-696)
+  const sha = shaArg?.split('=').slice(1).join('=');
   if (!sha) {
     throw new Error('Usage: --sha=<commit-sha>');
   }

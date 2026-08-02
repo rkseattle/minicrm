@@ -66,6 +66,7 @@ jobs:
       ai:                ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
+      qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,7 +113,7 @@ jobs:
               # turns out to be unusable. Without this entry a server-only edit
               # to that pattern would not re-run the parity test. (MINCRM-688)
               - 'server/src/coverageAgent/coverageConfig.ts'
-              # check-sha-pattern-parity.sh (in the qa-static-checks job) reads
+              # check-sha-pattern-parity.sh (in the e2e-framework-purity job) reads
               # the coverage build-SHA accept-set out of all THREE files that
               # hold it. The other two are already matched by the globs above
               # and the coverageConfig.ts entry; this is the third. Without it a
@@ -170,6 +171,27 @@ jobs:
             attestation-docs:
               - 'docs/dev/coverage.md'
 
+            # Single-purpose filter, deliberately NOT folded into `qa`.
+            #
+            # qa/e2e/SCRIPTS is distinct from qa/scripts, and is matched by NO
+            # existing filter: 'qa/e2e/*.ts' is single-level and does not descend,
+            # and 'qa/scripts/**' is a different directory. So a PR touching only
+            # qa/e2e/scripts/*.ts ran ZERO jobs — despite CI itself executing
+            # gen-shard-config.ts, and despite those files sitting inside
+            # qa/tsconfig.json's include (they are typechecked whenever the job
+            # runs; the job simply never ran for an edit to them).
+            #
+            # `qa` would also close the gap but appears in eight job conditions,
+            # including the full e2e-functional matrix and e2e-serial — a one-line
+            # edit to gen-shards.ts would boot Postgres, MinIO, Mailhog and every
+            # E2E shard. These files want lint/typecheck and the framework-purity
+            # checks, nothing more, so this output is OR'd into exactly those two
+            # jobs. Both gate on `needs: changes` alone, so neither needs the
+            # always() + upstream-result form that attestation-docs requires for
+            # server-tests. (MINCRM-696)
+            qa-e2e-scripts:
+              - 'qa/e2e/scripts/**/*.ts'
+
       - name: Clear stale functional test comment
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
@@ -193,7 +215,7 @@ jobs:
   lint-and-typecheck:
     name: Phase 1 - Lint & Typecheck
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true'
+    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.qa == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -756,7 +778,7 @@ jobs:
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
     needs: changes
-    if: needs.changes.outputs.qa == 'true'
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

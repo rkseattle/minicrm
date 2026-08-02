@@ -50,7 +50,14 @@
  *
  * Exit code 0 = attestation passed. Non-zero = failed (see stdout JSON's
  * `reasons` for why — test failures, missing required tests, staleness,
- * or no session attribution found for this SHA at all).
+ * an unreadable selection file, or no session attribution found for this
+ * SHA at all).
+ *
+ * A malformed flag value is a non-zero exit with NO stdout JSON — parseArgs
+ * throws before verifyAttestation runs. Both callers already treat that as a
+ * failure (pre-push-tia.ts finds no parseable stdout and blocks the push;
+ * record mode reads the step outcome), so the gate fails CLOSED on bad input
+ * rather than falling back to a default window. (MINCRM-696)
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -88,14 +95,49 @@ export interface CliArgs {
   maxAgeMinutes: number;
 }
 
-class MissingArgsError extends Error {
+/**
+ * Exported for direct unit testing (MINCRM-696, AC 5) — the thrown TYPE is the
+ * assertion, so a test that could only check message text would keep passing if
+ * this were downgraded to a bare Error.
+ */
+export class MissingArgsError extends Error {
   constructor() {
     super('Usage: --results=<path> --sha=<commit-sha> [--selection=<path>] [--max-age-minutes=N]');
     this.name = 'MissingArgsError';
   }
 }
 
-function parseArgs(argv: readonly string[]): CliArgs {
+/**
+ * Thrown when a flag is PRESENT but its value cannot be used. Distinct from
+ * MissingArgsError, which reports an ABSENT required flag: the operator's fix
+ * differs (supply the flag vs. correct the value), and conflating them would
+ * print a usage string at someone who already read it. (MINCRM-696)
+ *
+ * Exported for the same reason as MissingArgsError — the type is the assertion.
+ */
+export class InvalidArgError extends Error {
+  constructor(flag: string, value: string, requirement: string) {
+    super(`--${flag} ${requirement}, got "${value}".`);
+    this.name = 'InvalidArgError';
+  }
+}
+
+/**
+ * Exported for direct unit testing (MINCRM-696, AC 1). It was the last untested
+ * decision point in this file after MINCRM-691, and not trivial glue: it decides
+ * the anti-cheat staleness window, and its `=`-preserving split is a correctness
+ * property that a plausible "simplification" would silently break.
+ *
+ * Follows qa/scripts/merge-junit-results.ts:310's parseArgs — the repo's
+ * exported, unit-tested arg parser — including its `/^\d+$/` validation idiom
+ * and its named-error-subclass shape.
+ */
+export function parseArgs(argv: readonly string[]): CliArgs {
+  // .slice(1).join('=') rather than [1], so a value containing '=' survives
+  // intact. Paths and refs may both contain it — `git check-ref-format
+  // 'refs/heads/foo=bar'` exits 0 — and truncating one yields a DIFFERENT,
+  // usually nonexistent, path or ref rather than an error. Pinned by test
+  // (MINCRM-696 AC 6) so it cannot be "simplified" back.
   const get = (flag: string): string | undefined =>
     argv
       .find((a) => a.startsWith(`--${flag}=`))
@@ -103,21 +145,71 @@ function parseArgs(argv: readonly string[]): CliArgs {
       .slice(1)
       .join('=');
 
+  // Ordered BEFORE the max-age validation on purpose: an invocation missing
+  // --sha AND carrying a malformed --max-age-minutes reports the missing flag,
+  // because that is the more fundamental error and the one whose usage string
+  // helps. (MINCRM-696 AC 5)
   const resultsPath = get('results');
   const sha = get('sha');
   if (!resultsPath || !sha) {
     throw new MissingArgsError();
   }
 
+  // `!== undefined`, NOT truthiness: a bare `--max-age-minutes=` yields '',
+  // which is falsy, so a truthiness check would send an explicitly-supplied
+  // empty value down the default path — the exact silent-widening shape this
+  // ticket exists to close, one flag over.
   const maxAgeArg = get('max-age-minutes');
-  const maxAgeMinutes = maxAgeArg ? parseInt(maxAgeArg, 10) : DEFAULT_MAX_AGE_MINUTES;
+  let maxAgeMinutes = DEFAULT_MAX_AGE_MINUTES;
+  if (maxAgeArg !== undefined) {
+    // Reject rather than coerce. parseInt('abc') → NaN fell back to the WIDEST
+    // window, and parseInt('5x') → 5 accepted partial garbage silently — both
+    // the wrong direction for an anti-cheat control, and both invisible to an
+    // operator who was trying to NARROW the window. /^\d+$/ also excludes
+    // fractions and negatives, matching merge-junit-results.ts:337.
+    // Zero is accepted: `ageMinutes > maxAgeMinutes` is strict, so 0 means
+    // "written this instant" — vanishingly strict but coherent, and not
+    // malformed input. (MINCRM-696 AC 2, AC 4)
+    if (!/^\d+$/.test(maxAgeArg)) {
+      throw new InvalidArgError('max-age-minutes', maxAgeArg, 'requires a non-negative integer');
+    }
+    maxAgeMinutes = Number(maxAgeArg);
+  }
 
   return {
     resultsPath: resolvePath(resultsPath),
-    selectionPath: get('selection'),
+    // Resolved on the same base as resultsPath. The asymmetry this replaces was
+    // undocumented and had no reading under which it was desirable: it meant two
+    // relative paths given in one invocation resolved against different bases.
+    // Inert for the one live --selection caller, which passes an absolute
+    // mkdtemp path. (MINCRM-696 AC 7)
+    selectionPath: selectionPathOf(get('selection')),
     sha,
-    maxAgeMinutes: isNaN(maxAgeMinutes) ? DEFAULT_MAX_AGE_MINUTES : maxAgeMinutes,
+    maxAgeMinutes,
   };
+}
+
+/**
+ * resolvePath for --selection, preserving "not supplied".
+ *
+ * Two non-obvious cases, both decided rather than inherited:
+ *
+ *  - `undefined` (flag absent) stays `undefined`. resolvePath('') would yield
+ *    the CWD, silently turning "no reconciliation requested" into a directory
+ *    path — which since MINCRM-695 is a HARD gate failure (EISDIR), so the
+ *    difference is a blocked push rather than a cosmetic one.
+ *  - `''` (a bare `--selection=`) is rejected outright. The flag was supplied,
+ *    so treating it as absent repeats this file's original sin — silently
+ *    ignoring an input the caller explicitly provided. Rejecting it names the
+ *    mistake instead of failing later with an incidental EISDIR from the CWD.
+ *    (MINCRM-696)
+ */
+function selectionPathOf(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === '') {
+    throw new InvalidArgError('selection', raw, 'requires a path when supplied');
+  }
+  return resolvePath(raw);
 }
 
 // No re-export of junitXml.js's surface here. An earlier version of this split

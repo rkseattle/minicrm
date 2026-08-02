@@ -46,15 +46,26 @@ interface CliArgs {
   selectedFilesPath: string | undefined;
 }
 
-function parseArgs(): CliArgs {
-  const idxArg = process.argv.find((a) => a.startsWith('--shard-index='));
-  const totalArg = process.argv.find((a) => a.startsWith('--total-shards='));
+/**
+ * Splits argv into this script's options.
+ *
+ * Takes argv as a parameter and returns errors rather than reading
+ * `process.argv` and calling `process.exit` inline — the latter is untestable
+ * by construction, which is why the `=`-preserving split below went unpinned
+ * for as long as it did. `main()` does the exiting. (MINCRM-696)
+ */
+export function parseGenShardConfigArgs(
+  argv: readonly string[],
+):
+  | { shardIndex: number; totalShards: number; selectedFilesPath: string | undefined; error: null }
+  | { error: string } {
+  const idxArg = argv.find((a) => a.startsWith('--shard-index='));
+  const totalArg = argv.find((a) => a.startsWith('--total-shards='));
 
   if (!idxArg || !totalArg) {
-    process.stderr.write(
-      `[gen-shard-config] Usage: gen-shard-config.ts --shard-index=N --total-shards=M\n`,
-    );
-    process.exit(1);
+    return {
+      error: '[gen-shard-config] Usage: gen-shard-config.ts --shard-index=N --total-shards=M',
+    };
   }
 
   const shardIndex = parseInt(idxArg.split('=')[1] ?? '', 10);
@@ -67,16 +78,24 @@ function parseArgs(): CliArgs {
     totalShards < 1 ||
     shardIndex >= totalShards
   ) {
-    process.stderr.write(
-      `[gen-shard-config] Invalid args: shardIndex must be 0..(totalShards-1).\n`,
-    );
-    process.exit(1);
+    return { error: '[gen-shard-config] Invalid args: shardIndex must be 0..(totalShards-1).' };
   }
 
-  const selectedFilesArg = process.argv.find((a) => a.startsWith('--selected-files='));
-  const selectedFilesPath = selectedFilesArg?.split('=')[1];
+  const selectedFilesArg = argv.find((a) => a.startsWith('--selected-files='));
+  // .slice(1).join('=') rather than [1], so a path containing '=' survives.
+  // Same reasoning as gen-shards.ts's copy of this flag. (MINCRM-696)
+  const selectedFilesPath = selectedFilesArg?.split('=').slice(1).join('=');
 
-  return { shardIndex, totalShards, selectedFilesPath };
+  return { shardIndex, totalShards, selectedFilesPath, error: null };
+}
+
+function parseArgs(): CliArgs {
+  const parsed = parseGenShardConfigArgs(process.argv);
+  if (parsed.error !== null) {
+    process.stderr.write(`${parsed.error}\n`);
+    process.exit(1);
+  }
+  return parsed;
 }
 
 // ── Config file generation ────────────────────────────────────────────────────
@@ -177,4 +196,10 @@ function main(): void {
   );
 }
 
-main();
+// Direct-invocation guard — see gen-shards.ts's copy for why. Without it,
+// importing this module to unit-test parseGenShardConfigArgs runs main(), which
+// process.exit(1)s on the absent --shard-index and kills the test worker.
+// (MINCRM-696)
+if (process.argv[1] && path.resolve(process.argv[1]).endsWith('gen-shard-config.ts')) {
+  main();
+}

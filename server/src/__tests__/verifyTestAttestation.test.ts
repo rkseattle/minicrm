@@ -91,6 +91,9 @@ import {
   verifyAttestation,
   formatFailureOutput,
   readSelectionFiles,
+  parseArgs,
+  MissingArgsError,
+  InvalidArgError,
   ATTESTATION_FAILURE_REASONS,
   type AttestationResult,
   type CliArgs,
@@ -1957,6 +1960,186 @@ describe('verify-test-attestation.ts', () => {
 
       expect(result.kind).toBe('unreadable');
       expect(result).toMatchObject({ why: expect.stringContaining('EISDIR') });
+    });
+  });
+
+  // MINCRM-696. parseArgs was the last untested decision point in this file after
+  // MINCRM-691, and not trivial glue: it sets the anti-cheat staleness window,
+  // and two of its behaviors degraded OPEN on bad input — the wrong direction for
+  // a gate.
+  describe('parseArgs', () => {
+    /** The two required flags, so each test states only what it is actually about. */
+    const REQUIRED = ['--results=results.xml', '--sha=deadbeef'] as const;
+
+    describe('--max-age-minutes', () => {
+      it('defaults to 120 when the flag is absent', () => {
+        expect(parseArgs([...REQUIRED]).maxAgeMinutes).toBe(120);
+      });
+
+      it('honors a valid narrowed window', () => {
+        expect(parseArgs([...REQUIRED, '--max-age-minutes=5']).maxAgeMinutes).toBe(5);
+      });
+
+      // Zero is a VALID non-negative integer, not malformed input. The staleness
+      // check is `ageMinutes > maxAgeMinutes`, strictly, so 0 means "written this
+      // instant" — vanishingly strict but coherent. Accepting it matches
+      // merge-junit-results.ts's /^\d+$/ contract. (MINCRM-696 AC 4)
+      it('accepts zero rather than treating it as malformed', () => {
+        expect(parseArgs([...REQUIRED, '--max-age-minutes=0']).maxAgeMinutes).toBe(0);
+      });
+
+      // The defect this ticket is named for. Each of these previously resolved to
+      // the WIDEST window (120) with no signal, so an operator narrowing the
+      // window and typoing the value got the opposite of what they asked for.
+      // 'abc' → NaN → 120; '5x' → 5 silently; '' → falsy → 120.
+      it.each([
+        ['non-numeric', 'abc'],
+        ['partially numeric', '5x'],
+        ['a leading-numeric decimal', '2.9'],
+        ['negative', '-5'],
+        ['empty', ''],
+        ['whitespace', ' 5'],
+      ])('throws InvalidArgError for a %s value', (_label, value) => {
+        expect(() => parseArgs([...REQUIRED, `--max-age-minutes=${value}`])).toThrow(
+          InvalidArgError,
+        );
+      });
+
+      // The message must name the flag AND the offending value — an operator who
+      // typo'd needs to see what was read, not just that something was wrong.
+      it('names the flag and the rejected value in the error', () => {
+        expect(() => parseArgs([...REQUIRED, '--max-age-minutes=abc'])).toThrow(
+          /--max-age-minutes.*non-negative integer.*"abc"/,
+        );
+      });
+
+      // Fails CLOSED end to end: the parsed narrow window actually reaches the
+      // staleness check. parseArgs tested in isolation proves the throw but not
+      // that a valid narrowing is honored — and "the operator narrows the window
+      // and silently does not get it" is this ticket's entire framing.
+      it('feeds a narrowed window through to results-file-stale', async () => {
+        attestedDumps();
+        const path = await writeResults(PASSING_XML);
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60_000);
+        await utimes(path, tenMinutesAgo, tenMinutesAgo);
+
+        const args = parseArgs([`--results=${path}`, '--sha=deadbeefcafe', '--max-age-minutes=1']);
+        const result = await attest(args);
+
+        expect(args.maxAgeMinutes).toBe(1);
+        expect(result.reasons).toEqual(['results-file-stale']);
+      });
+    });
+
+    // AC 5. The TYPE is asserted, not the message text: a downgrade to a bare
+    // Error would keep any message-only assertion green.
+    describe('required flags', () => {
+      it('throws MissingArgsError when --results is absent', () => {
+        expect(() => parseArgs(['--sha=deadbeef'])).toThrow(MissingArgsError);
+      });
+
+      it('throws MissingArgsError when --sha is absent', () => {
+        expect(() => parseArgs(['--results=results.xml'])).toThrow(MissingArgsError);
+      });
+
+      it('throws MissingArgsError when both are absent', () => {
+        expect(() => parseArgs([])).toThrow(MissingArgsError);
+      });
+
+      // A present-but-empty required flag is as unusable as an absent one, and
+      // both forms of `get` return '' for it.
+      it('throws MissingArgsError for a bare --sha=', () => {
+        expect(() => parseArgs(['--results=results.xml', '--sha='])).toThrow(MissingArgsError);
+      });
+
+      // Ordering: the missing-flag check runs BEFORE max-age validation, so an
+      // invocation wrong in both ways reports the more fundamental error. Without
+      // this, moving the numeric validation earlier would silently change which
+      // error AC 5's tests see.
+      it('reports a missing --sha ahead of a malformed --max-age-minutes', () => {
+        expect(() => parseArgs(['--results=r.xml', '--max-age-minutes=abc'])).toThrow(
+          MissingArgsError,
+        );
+      });
+    });
+
+    // AC 6. The reason .split('=').slice(1).join('=') exists. A "simplification"
+    // to .split('=')[1] truncates at the first '=', which for a path or a ref
+    // yields a DIFFERENT, usually nonexistent one rather than an error.
+    describe('values containing "="', () => {
+      it('preserves an "=" in the results path', () => {
+        const args = parseArgs(['--results=/tmp/build=1/results.xml', '--sha=deadbeef']);
+
+        expect(args.resultsPath).toBe(resolvePath('/tmp/build=1/results.xml'));
+      });
+
+      it('preserves an "=" in the sha', () => {
+        expect(parseArgs(['--results=r.xml', '--sha=refs/heads/foo=bar']).sha).toBe(
+          'refs/heads/foo=bar',
+        );
+      });
+
+      it('preserves an "=" in the selection path', () => {
+        const args = parseArgs([...REQUIRED, '--selection=/tmp/a=b/selection.json']);
+
+        expect(args.selectionPath).toBe(resolvePath('/tmp/a=b/selection.json'));
+      });
+
+      it('preserves several "=" in one value', () => {
+        expect(parseArgs(['--results=r.xml', '--sha=a=b=c']).sha).toBe('a=b=c');
+      });
+    });
+
+    // AC 7. Both path flags resolve against the same base. The asymmetry this
+    // replaces meant two relative paths in one invocation resolved differently.
+    describe('path resolution', () => {
+      it('resolves a relative --results to an absolute path', () => {
+        expect(parseArgs(['--results=rel/results.xml', '--sha=x']).resultsPath).toBe(
+          resolvePath('rel/results.xml'),
+        );
+      });
+
+      it('resolves a relative --selection on the same base as --results', () => {
+        const args = parseArgs([...REQUIRED, '--selection=rel/selection.json']);
+
+        expect(args.selectionPath).toBe(resolvePath('rel/selection.json'));
+      });
+
+      it('leaves an absolute path unchanged', () => {
+        const args = parseArgs([
+          '--results=/abs/results.xml',
+          '--sha=x',
+          '--selection=/abs/s.json',
+        ]);
+
+        expect(args.resultsPath).toBe('/abs/results.xml');
+        expect(args.selectionPath).toBe('/abs/s.json');
+      });
+
+      // An absent --selection must stay undefined, NOT become the CWD — which is
+      // what a bare resolvePath(undefined-as-'') would produce, silently turning
+      // "no reconciliation requested" into an unreadable directory path and, since
+      // MINCRM-695, a hard gate failure.
+      it('leaves an absent --selection undefined rather than resolving it to the CWD', () => {
+        expect(parseArgs([...REQUIRED]).selectionPath).toBeUndefined();
+      });
+
+      // A bare `--selection=` is SUPPLIED-but-empty, which is the same shape as
+      // the --max-age-minutes empty case above and gets the same treatment:
+      // rejected, not silently reinterpreted. Treating it as "absent" would
+      // repeat this file's original defect — ignoring an input the caller
+      // explicitly provided — and letting it through to resolvePath('') would
+      // fail later with an incidental EISDIR from the CWD, naming the wrong
+      // problem. (MINCRM-696)
+      it('throws InvalidArgError for a bare --selection= rather than treating it as absent', () => {
+        expect(() => parseArgs([...REQUIRED, '--selection='])).toThrow(InvalidArgError);
+      });
+
+      it('names --selection in the bare-value error', () => {
+        expect(() => parseArgs([...REQUIRED, '--selection='])).toThrow(
+          /--selection requires a path/,
+        );
+      });
     });
   });
 });
