@@ -719,11 +719,24 @@ export async function navigateAndSettle(
   page: SafePage,
   navigate: () => Promise<unknown>,
 ): Promise<void> {
+  // Waits on `requestfinished`, NOT waitForResponse.
+  //
+  // withFlags installs a route interceptor that calls `route.fetch()` and then
+  // `route.fulfill()` with the overridden flags. `route.fetch()` issues its own
+  // request to the real endpoint, and waitForResponse matches THAT — resolving
+  // before fulfill() has delivered the override, so navigation proceeds while
+  // the page still holds the real flag values. F7-DH3 caught this: it asserts a
+  // panel is hidden with the flag off, and saw it visible.
+  //
+  // `requestfinished` fires when the page's own request completes, which for an
+  // intercepted route is after fulfill() — so it observes the value the app
+  // actually receives rather than the one the interceptor was about to rewrite.
+  // (MINCRM-700)
   const flagsSettled = page
-    .waitForResponse(
-      (response) => response.url().includes('/api/v1/feature-flags/me') && response.ok(),
-      { timeout: FLAG_QUERY_TIMEOUT_MS },
-    )
+    .waitForEvent('requestfinished', {
+      predicate: (request) => request.url().includes('/api/v1/feature-flags/me'),
+      timeout: FLAG_QUERY_TIMEOUT_MS,
+    })
     .catch(() => undefined);
 
   await navigate();
