@@ -810,7 +810,26 @@ export async function withFlags(
       };
       await route.fulfill({ json: merged });
     } catch {
-      // Context closed before the route could be fulfilled — safe to ignore.
+      // The inner route.fetch() failed. Two situations reach here and they need
+      // different handling:
+      //
+      //  - The page/context was torn down mid-flight (afterEach cleanup).
+      //    Nothing can be done and nothing needs to be: the test is over.
+      //  - The fetch failed while the test is still running. Returning without
+      //    fulfilling leaves the browser's request PENDING FOREVER — which is
+      //    what the F7-DH3 trace recorded (two flag requests, status -1, never
+      //    completed). A hung request is the worst outcome: the query never
+      //    settles, so a test waiting for flag-gated content waits out its full
+      //    timeout with no diagnosable cause.
+      //
+      // abort() terminates the request so the query settles into an error state
+      // instead of hanging. Since MINCRM-701 an unresolved flag map means every
+      // feature reads as OFF, so a negative-direction assertion still gets the
+      // right answer, and a positive-direction one fails fast and legibly rather
+      // than timing out. (MINCRM-701)
+      if (!route.request().frame().page().isClosed()) {
+        await route.abort().catch(() => undefined);
+      }
     }
   });
 }

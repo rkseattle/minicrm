@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import LeadScoreBadge from './LeadScoreBadge.js';
 import { renderWithProviders } from '../test/renderWithProviders.js';
+import { allFlagsEnabled } from '../test/msw/handlers.js';
 import { server } from '../test/setup.js';
 
 describe('LeadScoreBadge', () => {
@@ -140,8 +141,12 @@ describe('LeadScoreBadge', () => {
 
     it('hides the "Why this score?" button when the narrative flag is disabled', async () => {
       server.use(
+        // Full map with ONE flag overridden, not a single-key map. Flags now
+        // default OFF when absent, so a partial map would also switch off
+        // ai_lead_scoring and the badge this test needs in order to assert the
+        // narrative button's absence. (MINCRM-701)
         http.get('/api/v1/feature-flags/me', () =>
-          HttpResponse.json({ flags: { ai_lead_score_narrative: false } }),
+          HttpResponse.json({ flags: { ...allFlagsEnabled(), ai_lead_score_narrative: false } }),
         ),
         http.get('/api/v1/leads/:id/score', () =>
           HttpResponse.json({ score: 62, factors: [], insufficient_data: false }),

@@ -234,13 +234,16 @@ describe('ActivityForm', () => {
 
   // MINCRM-436: AI call/note summarizer
   describe('AI summarizer', () => {
-    it('shows the Summarize button for Note, Call, and Meeting types but not Email or Task', () => {
+    // async: the Summarize button is feature-flag gated, and flag-gated UI now
+    // appears once the flag query confirms it rather than rendering optimistically
+    // on first paint, so its presence must be awaited. (MINCRM-701)
+    it('shows the Summarize button for Note, Call, and Meeting types but not Email or Task', async () => {
       renderWithProviders(
         <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
       );
 
       // Default type is Note
-      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+      expect(await screen.findByTestId('activity-summarize-button')).toBeInTheDocument();
 
       fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Email' } });
       expect(screen.queryByTestId('activity-summarize-button')).not.toBeInTheDocument();
@@ -249,12 +252,12 @@ describe('ActivityForm', () => {
       expect(screen.queryByTestId('activity-summarize-button')).not.toBeInTheDocument();
 
       fireEvent.change(screen.getByTestId('activity-type-select'), { target: { value: 'Call' } });
-      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+      expect(await screen.findByTestId('activity-summarize-button')).toBeInTheDocument();
 
       fireEvent.change(screen.getByTestId('activity-type-select'), {
         target: { value: 'Meeting' },
       });
-      expect(screen.getByTestId('activity-summarize-button')).toBeInTheDocument();
+      expect(await screen.findByTestId('activity-summarize-button')).toBeInTheDocument();
     });
 
     it('summarizes pasted text, populates notes, and reports accepted tasks on apply', async () => {
@@ -283,7 +286,7 @@ describe('ActivityForm', () => {
         />,
       );
 
-      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.click(await screen.findByTestId('activity-summarize-button'));
       await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
       await user.click(screen.getByTestId('activity-summary-submit'));
 
@@ -353,7 +356,7 @@ describe('ActivityForm', () => {
         />,
       );
 
-      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.click(await screen.findByTestId('activity-summarize-button'));
       await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
       await user.click(screen.getByTestId('activity-summary-submit'));
 
@@ -388,7 +391,7 @@ describe('ActivityForm', () => {
         <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
       );
 
-      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.click(await screen.findByTestId('activity-summarize-button'));
       await user.type(screen.getByTestId('activity-summary-input'), 'Raw call transcript text');
       await user.click(screen.getByTestId('activity-summary-submit'));
 
@@ -403,7 +406,7 @@ describe('ActivityForm', () => {
         <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,
       );
 
-      await user.click(screen.getByTestId('activity-summarize-button'));
+      await user.click(await screen.findByTestId('activity-summarize-button'));
       expect(screen.getByTestId('activity-summary-modal')).toBeInTheDocument();
 
       await user.click(screen.getByTestId('activity-summary-cancel'));

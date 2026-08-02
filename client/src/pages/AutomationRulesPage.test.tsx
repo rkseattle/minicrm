@@ -11,9 +11,17 @@ import { http, HttpResponse } from 'msw';
 import AutomationRulesPage from './AutomationRulesPage.js';
 
 // Resolve feature flags synchronously so the page's own loading/error/empty states are testable.
+// `flags` must carry the keys this page's nav actually gates on, not `{}`.
+// Since MINCRM-701 an absent flag resolves to OFF (a feature is hidden until
+// affirmatively confirmed on), so an empty map means "every feature disabled"
+// and the gated nav links are filtered out. It previously read as "nothing
+// disabled" because the filter tested `!== false`.
 vi.mock('@/hooks/useFeatureFlag.js', () => ({
   useFeatureFlag: () => ({ enabled: true, isLoading: false }),
-  useFeatureFlags: () => ({ flags: {}, isLoading: false }),
+  useFeatureFlags: () => ({
+    flags: { automation_rules: true, sequencing: true },
+    isLoading: false,
+  }),
 }));
 import { renderWithProviders } from '../test/renderWithProviders.js';
 import { AUTOMATION_RULE_1, AUTOMATION_LOG_1 } from '../test/msw/handlers.js';
