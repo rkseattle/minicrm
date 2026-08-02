@@ -95,13 +95,27 @@ export interface SelectTestsResult {
   headSha: string;
 }
 
-interface CliArgs {
+export interface CliArgs {
   baseRef: string;
   headRef: string;
   forceFullSuite: boolean;
 }
 
-function parseArgs(argv: readonly string[]): CliArgs {
+/**
+ * Exported for direct unit testing (MINCRM-696, AC 6).
+ *
+ * The `=`-preserving split below is a correctness property, not a style choice:
+ * a truncated ref is a DIFFERENT ref, which resolveShaForRef may resolve
+ * successfully, silently narrowing the selected test set. That is the largest
+ * blast radius of the four sites carrying this idiom, and it was the last one
+ * left unpinned — a revert to `.split('=')[1]` passed the entire suite.
+ *
+ * The env-var fallback chains are covered too, because they interact with the
+ * split: both forms yield '' for a bare `--base=`, and '' is not nullish, so
+ * `??` keeps it rather than falling through. That is unchanged by this fix and
+ * worth pinning so it stays that way.
+ */
+export function parseArgs(argv: readonly string[]): CliArgs {
   const baseArg = argv.find((a) => a.startsWith('--base='));
   const headArg = argv.find((a) => a.startsWith('--head='));
   const forceFullSuite = argv.includes('--force-full-suite');
