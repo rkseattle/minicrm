@@ -11,7 +11,10 @@
  *  2. **verifyAttestation's reason assembly** (verify-test-attestation.ts) —
  *     which predicate maps to which AttestationFailureReason, plus
  *     formatFailureOutput's operator-facing text and readSelectionFiles'
- *     short-circuit and fallbacks. Added by MINCRM-691; before that the gate's
+ *     three-way SelectionRequirement union (MINCRM-695 replaced its
+ *     `string[] | null` return, under which an unreadable --selection was
+ *     indistinguishable from no --selection and silently passed the gate).
+ *     Added by MINCRM-691; before that the gate's
  *     own decision logic was verified only through the pure helpers it
  *     delegates to, so a change that stopped CALLING one of them left the suite
  *     green. (An older version of this docblock claimed an E2E functional spec
@@ -197,17 +200,23 @@ async function writeSelection(raw: string): Promise<string> {
 }
 
 /**
- * Builds the one input that provokes every reason except results-file-missing:
- * a stale results file that is simultaneously failing, skipping, under-parsed
- * (9 declared vs 2 recovered) and unattributed, with a selection naming a spec
- * that never ran. Returns the selection path.
+ * Writes the results half of the "every reason at once" fixture: a stale results
+ * file that is simultaneously failing, skipping, under-parsed (9 declared vs 2
+ * recovered) and — via the beforeEach baseline of no attributed dumps —
+ * unattributed.
  *
- * Named rather than inlined because the interesting part of the consuming test
- * is its assertion, not the twelve lines of XML and utimes needed to provoke
- * every reason at once — and because a second consumer would otherwise copy the
- * block rather than share it. (MINCRM-691)
+ * Named rather than inlined because the interesting part of a consuming test is
+ * its assertion, not the twelve lines of XML and utimes needed to provoke every
+ * reason at once. (MINCRM-691)
+ *
+ * Deliberately does NOT write the selection file, and returns nothing.
+ * MINCRM-695 added a reason that is mutually exclusive with
+ * missing-required-tests, so the two maximal-reason tests need DIFFERENT
+ * selections — one readable and unsatisfied, one unreadable. An earlier version
+ * of this helper returned the selection path it wrote, which made it unusable
+ * for the second case (whose whole point is a path with no file at it).
  */
-async function writeEveryReasonFixture(): Promise<string> {
+async function writeEveryReasonResults(): Promise<void> {
   const path =
     await writeResults(`<testsuites id="" name="" tests="9" failures="1" skipped="1" errors="0" time="0.1">
 <testsuite name="a.spec.ts" hostname="desktop" tests="9" failures="1" skipped="1" errors="0" time="0.1">
@@ -222,7 +231,6 @@ async function writeEveryReasonFixture(): Promise<string> {
 </testsuites>`);
   const staleTime = new Date(Date.now() - 500 * 60_000);
   await utimes(path, staleTime, staleTime);
-  return writeSelection(JSON.stringify({ mode: 'targeted', specFiles: ['never-ran.spec.ts'] }));
 }
 
 /**
@@ -1027,6 +1035,9 @@ describe('verify-test-attestation.ts', () => {
           failedTests: [],
           skippedTests: [],
           missingRequiredFiles: [],
+          // Null, not a cause: this return happens before the selection is read
+          // at all, so there is nothing to report about it. (MINCRM-695)
+          selectionUnreadableReason: null,
           ranFileCount: 0,
         });
       });
@@ -1395,6 +1406,117 @@ describe('verify-test-attestation.ts', () => {
         expect(result.reasons).toEqual([]);
         expect(result.missingRequiredFiles).toEqual([]);
       });
+
+      // An EMPTY targeted selection reconciles and trivially passes — it is a
+      // real requirement list, so unlike 'none' it keeps mechanism 2 switched on.
+      // Indistinguishable from 'none' in `reasons` (both empty), which is exactly
+      // why the distinction is pinned at the helper too. (MINCRM-695 AC 4)
+      it('reconciles an empty targeted selection and passes', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath = await writeSelection(
+          JSON.stringify({ mode: 'targeted', specFiles: [] }),
+        );
+
+        const result = await attest(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.missingRequiredFiles).toEqual([]);
+      });
+    });
+
+    // MINCRM-695 (AC 1, AC 2). The defect this ticket exists for: before it, every
+    // input below produced a PASS with an empty `reasons`, silently disabling
+    // mechanism 2 of the gate. Each is asserted to fire the reason AND to sink
+    // `passed`, because passing-with-no-reconciliation was the actual bug.
+    describe('selection-file-unreadable', () => {
+      it.each([
+        ['a nonexistent path', undefined],
+        ['malformed JSON', '{ not valid json'],
+        ['a payload with no specFiles', JSON.stringify({ mode: 'targeted' })],
+        [
+          'a specFiles containing a non-string',
+          JSON.stringify({ mode: 'targeted', specFiles: ['a.spec.ts', 42] }),
+        ],
+        [
+          'a specFiles that is not an array',
+          JSON.stringify({ mode: 'targeted', specFiles: 'a.spec.ts' }),
+        ],
+      ])('fails the gate for %s', async (_label, raw) => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath =
+          raw === undefined
+            ? join(attestationDir, 'no-such-selection.json')
+            : await writeSelection(raw);
+
+        const result = await attest(attestArgs({ selectionPath }));
+
+        // The whole run is otherwise healthy — all-passing, fresh, attributed.
+        // The unreadable selection alone is decisive, which is the behavior
+        // change: this used to be `[]`.
+        expect(result.reasons).toEqual(['selection-file-unreadable']);
+        expect(result.passed).toBe(false);
+        expect(result.selectionUnreadableReason).toEqual(expect.any(String));
+      });
+
+      // The negative direction, per MINCRM-691's AC 1 discipline: each legitimate
+      // "nothing to reconcile" input must NOT produce this reason. These are the
+      // cases a naive fix would over-catch.
+      it.each([
+        ['no selection was given', undefined],
+        ['the selection is full-suite', JSON.stringify({ mode: 'full-suite', specFiles: [] })],
+        [
+          'the selection is targeted and satisfied',
+          JSON.stringify({ mode: 'targeted', specFiles: ['ran.spec.ts'] }),
+        ],
+        [
+          'the selection is targeted and empty',
+          JSON.stringify({ mode: 'targeted', specFiles: [] }),
+        ],
+      ])('does not fire when %s', async (_label, raw) => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+        const selectionPath = raw === undefined ? undefined : await writeSelection(raw);
+
+        const result = await attest(attestArgs({ selectionPath }));
+
+        expect(result.reasons).toEqual([]);
+        expect(result.selectionUnreadableReason).toBeNull();
+      });
+
+      // Mutual exclusivity, asserted directly rather than left as a property of
+      // the maximal-set tests: an unreadable selection cannot also be a shortfall,
+      // because there is no requirement list to fall short of.
+      it('never co-occurs with missing-required-tests', async () => {
+        attestedDumps('ran.spec.ts');
+        await writeResults(PASSING_XML);
+
+        const result = await attest(
+          attestArgs({ selectionPath: join(attestationDir, 'absent.json') }),
+        );
+
+        expect(result.reasons).toContain('selection-file-unreadable');
+        expect(result.reasons).not.toContain('missing-required-tests');
+        expect(result.missingRequiredFiles).toEqual([]);
+      });
+
+      // The documented exception to this branch's own fail-closed rule: the
+      // results-file-missing early return fires BEFORE the selection is read, so
+      // a run missing both reports only the primary input's failure. Pinned so a
+      // later refactor that moves the selection read earlier has to face the
+      // choice deliberately. (MINCRM-695)
+      it('is not reported when the results file is missing, which returns first', async () => {
+        const result = await attest(
+          attestArgs({
+            resultsPath: join(attestationDir, 'absent.xml'),
+            selectionPath: join(attestationDir, 'also-absent.json'),
+          }),
+        );
+
+        expect(result.reasons).toEqual(['results-file-missing']);
+        expect(result.selectionUnreadableReason).toBeNull();
+      });
     });
 
     // AC 2: passed === true only when reasons is empty, driven end to end through
@@ -1440,19 +1562,54 @@ describe('verify-test-attestation.ts', () => {
     // This also pins the EMISSION ORDER: FAILURE_MESSAGES' docblock declares its
     // key order to be the order reasons are pushed, and formatFailureOutput
     // derives its section order from that, so the two must not drift.
+    // Two reasons can never join this set, for two DIFFERENT structural
+    // reasons, and stating both is the point of the pair below:
+    //
+    //  - results-file-missing returns early, before any other check runs.
+    //  - selection-file-unreadable is mutually exclusive with
+    //    missing-required-tests: an unreadable selection yields no requirement
+    //    list, so missingRequiredFiles is [] and the shortfall cannot fire.
+    //    (MINCRM-695)
+    //
+    // So "every reason at once" is really two maximal sets, one per horn of that
+    // exclusivity. Both are asserted, and between them every reason appears in a
+    // co-occurrence context.
     it('accumulates every applicable reason, in the order FAILURE_MESSAGES declares', async () => {
-      const selectionPath = await writeEveryReasonFixture();
+      await writeEveryReasonResults();
+      const selectionPath = await writeSelection(
+        JSON.stringify({ mode: 'targeted', specFiles: ['never-ran.spec.ts'] }),
+      );
 
       const result = await attest(attestArgs({ selectionPath }));
 
-      // Every reason except results-file-missing, which returns early and so can
-      // never co-occur. Derived from the source's own list rather than hardcoded:
-      // a literal here would be exactly the drift-prone second copy that
+      // Derived from the source's own list rather than hardcoded: a literal here
+      // would be exactly the drift-prone second copy that
       // ATTESTATION_FAILURE_REASONS exists to eliminate.
       expect(result.reasons).toEqual(
-        ATTESTATION_FAILURE_REASONS.filter((reason) => reason !== 'results-file-missing'),
+        ATTESTATION_FAILURE_REASONS.filter(
+          (reason) => reason !== 'results-file-missing' && reason !== 'selection-file-unreadable',
+        ),
       );
       expect(result.passed).toBe(false);
+    });
+
+    // The other horn: same maximally-broken results file, but the selection is
+    // unreadable rather than merely unsatisfied. missing-required-tests drops
+    // out and selection-file-unreadable takes its place. (MINCRM-695)
+    it('accumulates every applicable reason when the selection itself is unreadable', async () => {
+      await writeEveryReasonResults();
+
+      const result = await attest(
+        attestArgs({ selectionPath: join(attestationDir, 'no-such-selection.json') }),
+      );
+
+      expect(result.reasons).toEqual(
+        ATTESTATION_FAILURE_REASONS.filter(
+          (reason) => reason !== 'results-file-missing' && reason !== 'missing-required-tests',
+        ),
+      );
+      expect(result.passed).toBe(false);
+      expect(result.missingRequiredFiles).toEqual([]);
     });
 
     // The ordering property has to be checked against a PROPER SUBSET too. In
@@ -1493,6 +1650,7 @@ describe('verify-test-attestation.ts', () => {
         failedTests: [{ classname: 'a.spec.ts', name: 'a test', message: 'boom' }],
         skippedTests: [{ classname: 'a.spec.ts', name: 'never runs' }],
         missingRequiredFiles: ['never-ran.spec.ts'],
+        selectionUnreadableReason: 'is not valid JSON (Unexpected token)',
         ranFileCount: 0,
         ...overrides,
       };
@@ -1570,6 +1728,38 @@ describe('verify-test-attestation.ts', () => {
 
       expect(output).toContain('No coverage session attribution found');
       expect(output).toContain('COVERAGE_SESSION_MANAGEMENT');
+    });
+
+    // The `why` is the actionable part — "could not be read" without saying what
+    // was wrong sends an operator to check a path that may be fine. Also
+    // disclaims a test outcome, matching results-file-unparseable's treatment of
+    // the same class of failure. (MINCRM-695 AC 2)
+    it('names the specific cause and disclaims a test outcome for an unreadable selection', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['selection-file-unreadable'],
+          selectionUnreadableReason: 'has no `specFiles` array of strings',
+        }),
+      );
+
+      expect(output).toContain('has no `specFiles` array of strings');
+      expect(output).toContain('NOT a test outcome');
+    });
+
+    // The renderer must stay total: formatFailureOutput is exported and takes an
+    // arbitrary AttestationResult, so a caller can hand it the reason without the
+    // detail. It falls back to generic text rather than printing "undefined".
+    it('falls back to generic text when the unreadable cause is absent', () => {
+      const output = formatFailureOutput(
+        failedResult({
+          reasons: ['selection-file-unreadable'],
+          selectionUnreadableReason: null,
+        }),
+      );
+
+      expect(output).toContain('could not be read as a requirement list');
+      expect(output).not.toContain('undefined');
+      expect(output).not.toContain('null');
     });
 
     it('enumerates each required file that did not run', () => {
@@ -1669,12 +1859,14 @@ describe('verify-test-attestation.ts', () => {
     });
   });
 
-  // MINCRM-691 (AC 4). Every path but one returns null, and a null return
-  // silently disables the gate's run-vs-selection reconciliation with NO entry in
-  // `reasons` — so which inputs produce null is a decision worth pinning.
+  // MINCRM-691 (AC 4), rewritten for MINCRM-695 (AC 1, 3, 4, 5). Before
+  // MINCRM-695 every path but one returned null, so "no reconciliation requested"
+  // and "the caller asked for reconciliation and this gate could not read the
+  // file" were the same value — and the second silently passed the gate. These
+  // now pin the three-way union, which is what makes the two distinguishable.
   describe('readSelectionFiles', () => {
-    it('returns null when no selection path was given', () => {
-      expect(readSelectionFiles(undefined)).toBeNull();
+    it('reports no requirement when no selection path was given', () => {
+      expect(readSelectionFiles(undefined)).toEqual({ kind: 'none' });
     });
 
     it('returns the spec files of a targeted selection', async () => {
@@ -1682,60 +1874,89 @@ describe('verify-test-attestation.ts', () => {
         JSON.stringify({ mode: 'targeted', specFiles: ['a.spec.ts', 'b.spec.ts'] }),
       );
 
-      expect(readSelectionFiles(path)).toEqual(['a.spec.ts', 'b.spec.ts']);
+      expect(readSelectionFiles(path)).toEqual({
+        kind: 'files',
+        files: ['a.spec.ts', 'b.spec.ts'],
+      });
     });
 
     // The short-circuit is ordered BEFORE the array check: full-suite mode means
     // "no targeted requirement to reconcile", even though select-tests.ts always
     // writes specFiles: [] in that mode. A non-empty specFiles here proves the
-    // ordering rather than coincidence.
+    // ordering rather than coincidence. (MINCRM-695 AC 3 — this must stay 'none',
+    // NOT become a failure.)
     it('short-circuits full-suite mode even when specFiles is populated', async () => {
       const path = await writeSelection(
         JSON.stringify({ mode: 'full-suite', specFiles: ['a.spec.ts'] }),
       );
 
-      expect(readSelectionFiles(path)).toBeNull();
+      expect(readSelectionFiles(path)).toEqual({ kind: 'none' });
     });
 
-    // Distinct from the null cases: an empty array IS a requirement list (an empty
-    // one), so reconciliation stays enabled and trivially passes. Null would mean
-    // "don't reconcile at all". The two are indistinguishable in `reasons` today.
-    it('returns an empty array — not null — for an empty targeted selection', async () => {
+    // MINCRM-695 AC 4. An empty array IS a requirement list (an empty one), so
+    // reconciliation stays ENABLED and trivially passes — materially different
+    // from 'none' ("do not reconcile at all") and from 'unreadable' ("could not
+    // tell"). Before the union all three were the same value.
+    it('reports an empty targeted selection as a real, empty requirement list', async () => {
       const path = await writeSelection(JSON.stringify({ mode: 'targeted', specFiles: [] }));
 
-      expect(readSelectionFiles(path)).toEqual([]);
+      expect(readSelectionFiles(path)).toEqual({ kind: 'files', files: [] });
     });
 
-    it('returns null for malformed JSON', async () => {
+    // Each unreadable input carries a distinct `why`, because a reason an
+    // operator cannot act on is only half a report.
+    //
+    // These assert on text ONLY THE INTERPOLATED err.message can produce — the
+    // errno, the parser's position report — never on the wrapper prefix the
+    // source hardcodes beside it. Asserting "could not be read" would pass
+    // against `why: 'could not be read'` with the cause dropped entirely
+    // (verified by mutation: both of these stayed green against gutted
+    // templates). The wrapper is not the evidence; the cause is.
+    it('reports malformed JSON as unreadable, naming the parse failure', async () => {
       const path = await writeSelection('{ not valid json');
 
-      expect(readSelectionFiles(path)).toBeNull();
+      const result = readSelectionFiles(path);
+
+      expect(result.kind).toBe('unreadable');
+      // Node's SyntaxError text varies by version; "position" is the stable part
+      // and is present only because err.message was interpolated.
+      expect(result).toMatchObject({ why: expect.stringContaining('position') });
     });
 
-    it('returns null for a nonexistent selection file', () => {
-      expect(readSelectionFiles(join(attestationDir, 'no-such-file.json'))).toBeNull();
+    it('reports a nonexistent selection file as unreadable, naming the errno', () => {
+      const result = readSelectionFiles(join(attestationDir, 'no-such-file.json'));
+
+      expect(result.kind).toBe('unreadable');
+      expect(result).toMatchObject({ why: expect.stringContaining('ENOENT') });
     });
 
-    it('returns null when specFiles is absent', async () => {
-      const path = await writeSelection(JSON.stringify({ mode: 'targeted' }));
+    // The three shape failures share one `why` — the caller's fix is the same in
+    // all three cases, so distinguishing them would add words without adding an
+    // action.
+    it.each([
+      ['specFiles is absent', { mode: 'targeted' }],
+      ['specFiles contains a non-string', { mode: 'targeted', specFiles: ['a.spec.ts', 42] }],
+      ['specFiles is not an array', { mode: 'targeted', specFiles: 'a.spec.ts' }],
+    ])('reports unreadable when %s', async (_label, payload) => {
+      const path = await writeSelection(JSON.stringify(payload));
 
-      expect(readSelectionFiles(path)).toBeNull();
+      const result = readSelectionFiles(path);
+
+      expect(result.kind).toBe('unreadable');
+      expect(result).toMatchObject({ why: expect.stringContaining('specFiles') });
     });
 
-    it('returns null when specFiles contains a non-string', async () => {
-      const path = await writeSelection(
-        JSON.stringify({ mode: 'targeted', specFiles: ['a.spec.ts', 42] }),
-      );
+    // A directory is readable-as-a-path but not as a file: readFileSync throws
+    // EISDIR rather than ENOENT. Same arm, different errno — and the errno is
+    // asserted, because that is the ONLY thing distinguishing this case from the
+    // ENOENT test above. Without it, a catch narrowed to `err.code === 'ENOENT'`
+    // that reported every other errno as "file not found" would leave this green
+    // while the stated invariant went unguarded.
+    it('reports a directory given as the selection path as unreadable, naming the errno', () => {
+      const result = readSelectionFiles(attestationDir);
 
-      expect(readSelectionFiles(path)).toBeNull();
-    });
-
-    it('returns null when specFiles is not an array', async () => {
-      const path = await writeSelection(
-        JSON.stringify({ mode: 'targeted', specFiles: 'a.spec.ts' }),
-      );
-
-      expect(readSelectionFiles(path)).toBeNull();
+      expect(result.kind).toBe('unreadable');
+      expect(result).toMatchObject({ why: expect.stringContaining('EISDIR') });
     });
   });
 });

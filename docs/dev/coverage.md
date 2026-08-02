@@ -1112,9 +1112,18 @@ commit, not against a long job.
   from the invocation.
 - `results-file-unparseable` → the results file could not be fully read. This is a
   parser/reporter disagreement, _not_ a test outcome — do not infer pass or fail from it.
-- `missing-required-tests` → a `--selection` file was supplied and the run did not cover
-  every spec it required. Only the local pre-push hook passes `--selection`; record mode
-  runs the full suite and has nothing to reconcile against.
+- `selection-file-unreadable` → a `--selection` file was supplied but could not be read as
+  a requirement list, so run-vs-selection reconciliation did not happen. The message names
+  the specific cause: a missing path, an unreadable file, malformed JSON, or no `specFiles`
+  array of strings. Like `results-file-unparseable` this is an _input_ failure, not a test
+  outcome — the required tests may or may not have run. A `--selection` naming
+  `mode: 'full-suite'`, or no `--selection` at all, is _not_ this reason: both legitimately
+  mean "nothing targeted to reconcile".
+- `missing-required-tests` → a `--selection` file was supplied and readable, and the run
+  did not cover every spec it required. Only the local pre-push hook passes `--selection`;
+  record mode runs the full suite and has nothing to reconcile against. Mutually exclusive
+  with `selection-file-unreadable` — an unreadable selection yields no requirement list to
+  fall short of.
 
 This list must name every member of `AttestationFailureReason`, and that is **enforced**,
 not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
