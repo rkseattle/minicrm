@@ -57,8 +57,14 @@ export function parseGenShardsArgs(argv: readonly string[]): {
   selectedFilesPath: string | undefined;
   error: string | null;
 } {
+  // /^\d+$/ before Number, not isNaN after parseInt. parseInt('8x') → 8 and
+  // parseInt('2.9') → 2, both of which pass the range check below — so a typo'd
+  // worker count silently shards differently than asked. Same reject-don't-coerce
+  // rule as gen-shard-config.ts's --shard-index. (MINCRM-696)
   const workersArg = argv.find((a) => a.startsWith('--workers='));
-  const workers = workersArg ? parseInt(workersArg.split('=')[1] ?? '4', 10) : 4;
+  const workersRaw = workersArg?.split('=').slice(1).join('=');
+  const workersValid = workersRaw === undefined || /^\d+$/.test(workersRaw);
+  const workers = workersRaw === undefined ? 4 : Number(workersRaw);
   const selectedFilesArg = argv.find((a) => a.startsWith('--selected-files='));
   // .slice(1).join('=') rather than [1], so a path containing '=' survives —
   // POSIX paths admit it freely. A truncated path is unreadable, and the caller
@@ -70,8 +76,8 @@ export function parseGenShardsArgs(argv: readonly string[]): {
     workers,
     selectedFilesPath,
     error:
-      isNaN(workers) || workers < 1
-        ? '[gen-shards] Invalid --workers value; must be a positive integer.'
+      !workersValid || workers < 1
+        ? `[gen-shards] Invalid --workers value; must be a positive integer, got "${workersRaw}".`
         : null,
   };
 }
