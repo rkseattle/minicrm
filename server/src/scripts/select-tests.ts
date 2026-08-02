@@ -106,7 +106,15 @@ function parseArgs(argv: readonly string[]): CliArgs {
   const headArg = argv.find((a) => a.startsWith('--head='));
   const forceFullSuite = argv.includes('--force-full-suite');
 
-  const baseRef = baseArg?.split('=')[1] ?? process.env.GITHUB_BASE_REF ?? 'origin/main';
+  // .slice(1).join('=') rather than [1], so a ref containing '=' survives —
+  // `git check-ref-format 'refs/heads/foo=bar'` exits 0, and assertSafeGitRef
+  // rejects only a leading '-'. Truncating yields a DIFFERENT ref, which
+  // resolveShaForRef either misresolves or throws on, and parseGitDiff then
+  // diffs the wrong range — narrowing the selection. The `?? ` fallback chain is
+  // unaffected: both forms yield '' for a bare `--base=`, which is not nullish.
+  // (MINCRM-696)
+  const baseRef =
+    baseArg?.split('=').slice(1).join('=') ?? process.env.GITHUB_BASE_REF ?? 'origin/main';
 
   // Caller audit (MINCRM-688). The GIT_COMMIT_SHA/GITHUB_SHA links in this
   // chain are UNREACHABLE from every committed caller — all three pass
@@ -142,8 +150,12 @@ function parseArgs(argv: readonly string[]): CliArgs {
   //
   // Call sites named rather than cited by line: same-file line references rot
   // on the next edit to this file — including the one that added this comment.
+  // Same `=`-preserving split as baseRef above, for the same reason. (MINCRM-696)
   const headRef =
-    headArg?.split('=')[1] ?? process.env.GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'HEAD';
+    headArg?.split('=').slice(1).join('=') ??
+    process.env.GIT_COMMIT_SHA ??
+    process.env.GITHUB_SHA ??
+    'HEAD';
 
   return { baseRef, headRef, forceFullSuite };
 }
