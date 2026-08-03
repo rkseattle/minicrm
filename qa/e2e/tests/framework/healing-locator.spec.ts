@@ -29,12 +29,17 @@ import { HealingRegistry } from '../../framework/healing/healing-registry.js';
  * depending on the `resolves` flag. Includes `.first()` returning itself so
  * probeLocator (which calls `locator.first().waitFor(...)`) works correctly.
  */
-function mockLocator(resolves: boolean): Locator {
+function mockLocator(resolves: boolean, matchCount = 1): Locator {
   const locator: Locator = {
     waitFor: resolves
       ? () => Promise.resolve()
       : () => Promise.reject(new Error('Timeout waiting for locator')),
     first: () => locator,
+    // count() is consulted for fallback strategies, which must uniquely identify
+    // their target — a fallback matching several elements has found a category,
+    // not the element. Defaults to 1 so existing single-match cases are
+    // unaffected. (MINCRM-695, MINCRM-696)
+    count: () => Promise.resolve(matchCount),
   } as unknown as Locator;
   return locator;
 }
@@ -145,6 +150,68 @@ test.describe('HealingLocator', () => {
 
     expect(locator).toBeDefined();
     expect(HealingRegistry.instance.count).toBe(1);
+  });
+
+  // A fallback that matches several elements has not identified the target — it
+  // has identified a category the target belongs to. Selecting it returns a
+  // locator that throws a Playwright strict-mode violation the moment the caller
+  // uses it, blaming the behavior rather than the page object whose fallback was
+  // too loose. Rejecting it here surfaces StrategyExhaustedError instead, which
+  // names every strategy tried.
+  //
+  // This is the shape that broke CI: an unscoped `role: 'list'` fallback beside a
+  // precise testId primary stayed accidentally unique only while the page
+  // rendered sparsely, then matched two lists once a sibling appeared.
+  // (MINCRM-695, MINCRM-696)
+  test('rejects a fallback that matches multiple elements', async () => {
+    let callIndex = 0;
+    const page = {
+      // Primary (testId) fails; the fallback attaches but matches 2 elements.
+      getByTestId: () => mockLocator(callIndex++ === 0 ? false : true, 2),
+      getByRole: () => mockLocator(true, 2),
+      getByLabel: () => mockLocator(true, 2),
+      getByText: () => mockLocator(true, 2),
+      locator: () => mockLocator(true, 2),
+    } as unknown as Page;
+
+    await expect(
+      new HealingLocator(
+        page,
+        [
+          { type: 'testId', value: 'attachments-list' },
+          { type: 'role', value: 'list' },
+        ],
+        { fallbackTimeout: 100 },
+      ).resolve('ambiguous fallback test'),
+    ).rejects.toThrow(StrategyExhaustedError);
+
+    // No heal recorded: an ambiguous match is not a successful heal.
+    expect(HealingRegistry.instance.count).toBe(0);
+  });
+
+  // The primary is deliberately exempt: a shared test id across a dual-render
+  // mobile/desktop layout legitimately matches twice, and those are copies of
+  // the same element rather than different ones. (MINCRM-695, MINCRM-696)
+  test('accepts a primary that matches multiple elements', async () => {
+    const page = {
+      getByTestId: () => mockLocator(true, 2),
+      getByRole: () => mockLocator(true, 2),
+      getByLabel: () => mockLocator(true, 2),
+      getByText: () => mockLocator(true, 2),
+      locator: () => mockLocator(true, 2),
+    } as unknown as Page;
+
+    const locator = await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'global-search-input' },
+        { type: 'css', value: '.search' },
+      ],
+      { fallbackTimeout: 100 },
+    ).resolve('dual-render primary test');
+
+    expect(locator).toBeDefined();
+    expect(HealingRegistry.instance.count).toBe(0);
   });
 
   test('heal event records original and healed strategy correctly', async () => {

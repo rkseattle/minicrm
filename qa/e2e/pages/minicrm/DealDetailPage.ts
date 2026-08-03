@@ -384,14 +384,11 @@ export class DealDetailPage {
    * Returns null if not present.
    */
   async attachmentsListLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'attachments-list' },
-          { type: 'role', value: 'list' },
-        ],
-        { intent: 'list of uploaded attachments on deal detail page' },
-      )
+      .locate([{ type: 'testId', value: 'attachments-list' }], {
+        intent: 'list of uploaded attachments on deal detail page',
+      })
       .resolve()
       .catch(() => null);
   }

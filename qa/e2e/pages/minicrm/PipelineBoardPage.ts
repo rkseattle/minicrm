@@ -638,14 +638,11 @@ export class PipelineBoardPage {
    * Returns a resolved locator for the mobile single-column stage name heading.
    */
   async mobileStageNameLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- role:heading is unscoped and matches every heading on the board
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'pipeline-mobile-stage-name' },
-          { type: 'role', value: 'heading' },
-        ],
-        { intent: 'mobile single-column stage name heading' },
-      )
+      .locate([{ type: 'testId', value: 'pipeline-mobile-stage-name' }], {
+        intent: 'mobile single-column stage name heading',
+      })
       .resolve();
   }
 

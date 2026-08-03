@@ -37,14 +37,24 @@ type MockLocator = Locator & {
   fill: (value: string) => Promise<void>;
 };
 
-function mockLocator(resolves: boolean): MockLocator {
+function mockLocator(resolves: boolean, matchCount?: number): MockLocator {
+  // matchCount defaults to 1 — a locator that identifies exactly one element.
+  //
+  // It used to be 3 for every resolving mock, which was incidental (only the
+  // healPage.count() describe asserts the value) until fallback strategies began
+  // requiring a UNIQUE match: a fallback matching several elements has found a
+  // category rather than the target. With the old blanket 3, every
+  // primary-fails-fallback-resolves test looked ambiguous and failed. The
+  // count() tests still pass 3 explicitly, where the number is the point.
+  // (MINCRM-695, MINCRM-696)
+  const matches = matchCount ?? 1;
   const loc = {
     _resolves: resolves,
     waitFor: (_opts?: { state?: string; timeout?: number }) =>
       resolves ? Promise.resolve() : Promise.reject(new Error('Timeout')),
     textContent: () => Promise.resolve(resolves ? 'hello' : null),
     getAttribute: (_name: string) => Promise.resolve(resolves ? 'attr-value' : null),
-    count: () => Promise.resolve(resolves ? 3 : 0),
+    count: () => Promise.resolve(resolves ? matches : 0),
     selectOption: (_value: string) => Promise.resolve(['selected']),
     check: () => Promise.resolve(),
     uncheck: () => Promise.resolve(),
@@ -57,12 +67,12 @@ function mockLocator(resolves: boolean): MockLocator {
   return loc;
 }
 
-function mockPage(resolveMap: boolean[]): Page {
+function mockPage(resolveMap: boolean[], matchCount?: number): Page {
   let callIndex = 0;
   const factory = () => {
     const resolves = resolveMap[callIndex] ?? false;
     callIndex++;
-    return mockLocator(resolves);
+    return mockLocator(resolves, matchCount);
   };
   return {
     getByTestId: factory,
@@ -218,7 +228,7 @@ test.describe('healPage.count()', () => {
   });
 
   test('primary resolves — returns count, no heal event', async () => {
-    const page = mockPage([true]);
+    const page = mockPage([true], 3);
     const hp = buildHealPage(page, 'count primary');
 
     const n = await hp.count([{ type: 'testId', value: 'el' }], { fallbackTimeout: 100 });

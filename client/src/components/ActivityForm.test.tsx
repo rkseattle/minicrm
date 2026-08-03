@@ -236,7 +236,7 @@ describe('ActivityForm', () => {
   describe('AI summarizer', () => {
     // async: the Summarize button is feature-flag gated, and flag-gated UI now
     // appears once the flag query confirms it rather than rendering optimistically
-    // on first paint, so its presence must be awaited. (MINCRM-701)
+    // on first paint, so its presence must be awaited. (MINCRM-695, MINCRM-696)
     it('shows the Summarize button for Note, Call, and Meeting types but not Email or Task', async () => {
       renderWithProviders(
         <ActivityForm onSubmit={noop} onCancel={noop} isSubmitting={false} submitLabel="Save" />,

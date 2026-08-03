@@ -300,7 +300,7 @@ describe('ContactForm', () => {
       const user = userEvent.setup();
       renderWithProviders(<ContactForm onSubmit={noop} />);
 
-      // Flag-gated: appears once the flag query confirms it, so await it. (MINCRM-701)
+      // Flag-gated: appears once the flag query confirms it, so await it. (MINCRM-695, MINCRM-696)
       await user.click(await screen.findByTestId('contact-enrich-from-text-button'));
       await user.type(screen.getByTestId('contact-enrichment-input'), 'Jane Doe, VP Sales');
       await user.click(screen.getByTestId('contact-enrichment-submit'));

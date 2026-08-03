@@ -40,14 +40,11 @@ export class DataHygienePage {
 
   /** Returns a resolved locator for the page heading. */
   async headingLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- role:heading is unscoped and matches every heading on the page
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'data-hygiene-heading' },
-          { type: 'role', value: 'heading' },
-        ],
-        { intent: 'data hygiene queue page main heading' },
-      )
+      .locate([{ type: 'testId', value: 'data-hygiene-heading' }], {
+        intent: 'data hygiene queue page main heading',
+      })
       .resolve();
   }
 

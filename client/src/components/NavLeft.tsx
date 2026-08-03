@@ -46,7 +46,7 @@ export default function NavLeft({ children }: { children: React.ReactNode }) {
       // While still loading the link is kept in the list on purpose, so the
       // skeleton branch below can render in its place — filtering it out here
       // would make that skeleton unreachable and collapse the nav on first
-      // paint. (MINCRM-701)
+      // paint. (MINCRM-695, MINCRM-696)
       if (link.featureFlag && !flagsLoading && flags?.[link.featureFlag] !== true) return false;
       return true;
     }
