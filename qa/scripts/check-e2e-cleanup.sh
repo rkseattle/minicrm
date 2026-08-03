@@ -237,6 +237,11 @@ while IFS= read -r -d '' spec_file; do
       # left behind during debugging would otherwise satisfy the check while
       # registering nothing.
       #
+      # Template literals are blanked too — the delete PATH is a template
+      # literal, and a nested path like `/api/v1/accounts/${account.id}/deals/...`
+      # would otherwise let a leaked PARENT satisfy the guard through its child's
+      # registration.
+      #
       # Quoted strings are then blanked, so the entity-type label cannot stand in
       # for a binding name — `testData.register('contact', deal.id, ...)` must
       # not satisfy a leaked binding that happens to be called `contact`.
@@ -248,7 +253,7 @@ while IFS= read -r -d '' spec_file; do
           inside { print }
           inside && /\);[[:space:]]*$/ { inside = 0 }
         ' |
-        sed -E "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g" || true)"
+        sed -E "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g; s/\`[^\`]*\`/\`\`/g" || true)"
 
       if [ -n "$register_lines" ]; then
         all_registered=1
