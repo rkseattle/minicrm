@@ -36,8 +36,7 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, navigateViaMobileNavLink } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToDashboardAndWait } from '@behaviors/minicrm/setup.behaviors.js';
-import { withFlags } from '@apps/minicrm/helpers.js';
-import { createTestRep } from '@apps/minicrm/helpers.js';
+import { createTestRep, registerAdminTeardown, withFlags } from '@apps/minicrm/helpers.js';
 import {
   E2E_STUB,
   navigateToAiPage,
@@ -185,7 +184,18 @@ test(
     // the top of `ORDER BY updated_at DESC` — where a later spec's page
     // auto-selects it and reads an empty thread. (MINCRM-686)
     const newSessionId = await clickNewSessionButton({ page });
-    testData.register('ai_session', newSessionId, `/api/v1/ai/sessions/${newSessionId}`);
+    // registerAdminTeardown, not a plain register(): the afterEach sweep above
+    // runs BEFORE fixture teardown and already deletes this session, so the
+    // registered DELETE 404s on every green run — which a plain entry records as
+    // `success: false` and logs as "teardown failed". Registration still earns
+    // its place by covering the path where the sweep does not run. (MINCRM-686)
+    registerAdminTeardown(
+      testData,
+      restClient,
+      'ai_session',
+      newSessionId,
+      `/api/v1/ai/sessions/${newSessionId}`,
+    );
     // Wait for the empty state to appear after the new session is created
     await waitForAiEmptyState({ page });
     expect(await isAiEmptyStateVisible({ page })).toBe(true);
