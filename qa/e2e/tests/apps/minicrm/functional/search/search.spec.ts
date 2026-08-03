@@ -635,6 +635,7 @@ test('@functional @search F9-NT1: searching note body text returns the parent co
       { type: 'paragraph', content: [{ type: 'text', text: `F9NT1UniqueNoteBody-${suffix}` }] },
     ],
   });
+  // MINCRM-686-ok: soft delete only (noteService.ts:682); parent contact is registered.
   await createNoteViaApi(restClient, contact.id, { body: noteBody, visibility: 'team' });
 
   await navigateToDashboard(page);

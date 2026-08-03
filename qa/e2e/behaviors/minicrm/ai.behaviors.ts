@@ -348,16 +348,50 @@ export async function getAssistantMessageText(context: AiBehaviorContext): Promi
 /**
  * Clicks the New Session button to start a fresh conversation.
  *
+ * Waits for the create POST to come back before returning. The empty state this
+ * click produces can render from client cache alone (AiPage seeds the new
+ * session's messages via setQueryData in onSuccess), so a DOM-only wait is not
+ * proof the row exists server-side. Callers that clean up afterwards —
+ * deleteAllAiSessionsViaApi lists sessions once and deletes what that snapshot
+ * returned — would otherwise race the commit and silently leave the session
+ * behind, where it sorts to the top of `ORDER BY updated_at DESC` and becomes
+ * the session a later spec's page auto-selects. (MINCRM-686)
+ *
  * @param context - Playwright fixture context.
+ * @returns The created session's id.
  */
-export async function clickNewSessionButton(context: AiBehaviorContext): Promise<void> {
+export async function clickNewSessionButton(context: AiBehaviorContext): Promise<string> {
   const aiPage = new AiPage(context);
   const isMobile = (context.page.viewportSize()?.width ?? 1280) < 768;
   const btn = isMobile
     ? await aiPage.newSessionButtonMobileLocator()
     : await aiPage.newSessionButtonLocator();
   await btn.waitFor({ state: 'visible' });
+
+  const responsePromise = context.page.waitForResponse(
+    (res) =>
+      /\/api\/v1\/ai\/sessions$/.test(new URL(res.url()).pathname) &&
+      res.request().method() === 'POST',
+  );
   await aiPage.clickNewSession();
+  const response = await responsePromise;
+  if (!response.ok()) {
+    throw new Error(
+      `[clickNewSessionButton] POST /api/v1/ai/sessions returned ${response.status()}`,
+    );
+  }
+  const body = (await response.json()) as { session?: { id?: string }; id?: string };
+  const sessionId = body.session?.id ?? body.id;
+  if (!sessionId) {
+    // Throw rather than returning '' — a silent empty id would skip the
+    // caller's teardown registration and leave the session behind while the
+    // test still passed, which is the exact silent-leak mode MINCRM-686 closes.
+    throw new Error(
+      '[clickNewSessionButton] create response carried no session id; ' +
+        'the endpoint response shape changed and teardown registration would silently no-op',
+    );
+  }
+  return sessionId;
 }
 
 // ---------------------------------------------------------------------------

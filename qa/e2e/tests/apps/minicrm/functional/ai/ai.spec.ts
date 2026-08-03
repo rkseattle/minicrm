@@ -84,6 +84,13 @@ test.beforeEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
 });
 
+// beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
+// file would leave its own behind for the rest of the run. Mirrors
+// ai-context.spec.ts, which pairs both hooks. (MINCRM-686)
+test.afterEach(async ({ restClient }) => {
+  await deleteAllAiSessionsViaApi(restClient);
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test(
@@ -139,7 +146,7 @@ test(
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
     // Create a fresh session with no messages so the empty state is guaranteed
-    await createAiSessionViaApi(restClient);
+    await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
     // Wait for the query to resolve and the empty state to mount
@@ -152,9 +159,9 @@ test(
 test(
   'F-AI4 — New Session button creates a fresh conversation @functional @serial',
   { tag: ['@functional', '@serial'] },
-  async ({ page, restClient }) => {
+  async ({ page, restClient, testData }) => {
     // Create a session that already has a message so the empty state is hidden
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await sendAiMessageViaApi(restClient, sessionId, 'Hello from test');
 
     await navigateToAiPage({ page });
@@ -164,7 +171,13 @@ test(
     await waitForAiThreadText({ page }, 'Hello from test');
     expect(await isAiEmptyStateVisible({ page })).toBe(false);
 
-    await clickNewSessionButton({ page });
+    // Register the UI-created session explicitly rather than relying on the
+    // afterEach sweep: this row is created by the browser, so it is invisible to
+    // check-e2e-cleanup.sh, and an unnamed empty session that survives sorts to
+    // the top of `ORDER BY updated_at DESC` — where a later spec's page
+    // auto-selects it and reads an empty thread. (MINCRM-686)
+    const newSessionId = await clickNewSessionButton({ page });
+    testData.register('ai_session', newSessionId, `/api/v1/ai/sessions/${newSessionId}`);
     // Wait for the empty state to appear after the new session is created
     await waitForAiEmptyState({ page });
     expect(await isAiEmptyStateVisible({ page })).toBe(true);
@@ -221,8 +234,8 @@ test(
     );
 
     // Create two sessions with distinct messages via API
-    const sessionA = await createAiSessionViaApi(restClient);
-    const sessionB = await createAiSessionViaApi(restClient);
+    const sessionA = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
+    const sessionB = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await sendAiMessageViaApi(restClient, sessionA, 'Session A message');
     await sendAiMessageViaApi(restClient, sessionB, 'Session B message');
 
@@ -253,7 +266,7 @@ test(
       'F-AI8: session deletion via sidebar is desktop-only',
     );
 
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await sendAiMessageViaApi(restClient, sessionId, 'Message to delete');
 
     await navigateToAiPage({ page });
@@ -281,7 +294,7 @@ test(
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient, testData }) => {
     // beforeEach authenticates as admin — create a session for the admin
-    const adminSessionId = await createAiSessionViaApi(restClient);
+    const adminSessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     // Switch the REST client to a different user (a new rep)
     const rep = await createTestRep(testData, restClient);

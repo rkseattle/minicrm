@@ -317,7 +317,53 @@ bash qa/scripts/check-framework-purity.sh   # no app-domain strings in framework
 bash qa/scripts/check-behavior-layer.sh     # no @pages/* imports in specs
 bash qa/scripts/check-settings-mutations.sh # @serial + ensureSystemDefaults enforced
 bash qa/scripts/check-networkidle.sh        # no networkidle in spec files
+bash qa/scripts/check-sha-pattern-parity.sh # coverage build-SHA accept-set parity
+bash qa/scripts/check-e2e-cleanup.sh        # created records registered for teardown
 ```
 
-All four must pass before pushing. They also run in the `e2e-framework-purity`
-CI job on every PR.
+All of these must pass before pushing. They run in the `e2e-framework-purity` CI
+job on every PR, alongside `check-compose-isolation.sh`, which is conditional on
+a `docker-compose*.yml` change. `check-env-example-parity.sh` and
+`check-e2e-beforeall.sh` are local-only and run in no CI job today.
+
+---
+
+## Cleaning up what a test creates
+
+`TestDataManager` deletes only what a test registers — it never truncates and never
+issues a bulk delete. A record created by a `create*ViaApi` behavior helper and not
+registered stays in the database for the rest of the run.
+
+Prefer the `createTest*` helpers in `qa/e2e/apps/minicrm/helpers.ts`, which create and
+register in one call:
+
+```ts
+const contact = await createTestContact(testData, restClient, { first_name: 'Ada' });
+```
+
+When a behavior helper is the right tool, register immediately after creating — before
+any assertion, so cleanup still runs if the test throws mid-setup:
+
+```ts
+const contact = await createContactViaApi(restClient, { first_name: 'Ada' });
+testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
+```
+
+**If the test re-authenticates `restClient` as a non-admin at any point, use
+`registerAdminTeardown()` instead.** Teardown runs with the client in whatever auth
+state the test left it, and a rep deleting another user's record gets a 403 that
+`TestDataManager` logs and swallows — so the record leaks while the run still reports
+success:
+
+```ts
+registerAdminTeardown(testData, restClient, 'contact', c.id, `/api/v1/contacts/${c.id}`);
+```
+
+Register a record even when the test deletes it itself through the UI: registration is
+what covers the path where the test fails before reaching its own delete.
+`TestDataManager` tolerates the resulting 404 on the happy path.
+
+A record that is deliberately left behind, or is already cleaned up by other means,
+opts out with a `// MINCRM-686-ok: <reason>` marker on the create line or in a comment
+directly above it. The reason is required — it is what makes a deliberate exception
+distinguishable from an oversight.

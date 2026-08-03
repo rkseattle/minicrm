@@ -14,6 +14,7 @@
     "lint:framework-purity": "bash scripts/check-framework-purity.sh",
     "lint:behavior-layer": "bash scripts/check-behavior-layer.sh",
     "lint:beforeall": "bash scripts/check-e2e-beforeall.sh",
+    "lint:e2e-cleanup": "bash scripts/check-e2e-cleanup.sh",
     "typecheck": "tsc --noEmit",
     "migrate:coverage": "node-pg-migrate -m migrations up --no-check-order",
     "migrate:coverage:down": "node-pg-migrate -m migrations down --no-check-order",

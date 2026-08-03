@@ -26,7 +26,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestRep, loginAndVerify } from '@apps/minicrm/helpers.js';
+import { createTestRep, loginAndVerify, registerAdminTeardown } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   createContactViaApi,
@@ -63,6 +63,13 @@ test('@functional F-OWN1: owner=me filter returns only the authenticated user co
     last_name: 'Contact',
     email: `own1-contact-a-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactA.id,
+    `/api/v1/contacts/${contactA.id}`,
+  );
 
   await loginAndVerify(restClient, repB.email, repB.password);
   const contactB = await createContactViaApi(restClient, {
@@ -70,6 +77,13 @@ test('@functional F-OWN1: owner=me filter returns only the authenticated user co
     last_name: 'Contact',
     email: `own1-contact-b-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactB.id,
+    `/api/v1/contacts/${contactB.id}`,
+  );
 
   // repA with ?owner=me sees their own contact but not repB's
   await loginAndVerify(restClient, repA.email, repA.password);
@@ -116,10 +130,7 @@ test('@functional F-OWN2: owner=my_team filter returns contacts owned by team co
     user_id: repB.userId,
     role: 'member',
   });
-  testData.registerCustomTeardown(`delete-team-own2-${teamId}`, async () => {
-    await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
-  });
+  registerAdminTeardown(testData, restClient, 'team', teamId, `/api/v1/teams/${teamId}`);
 
   // repB creates a contact
   await loginAndVerify(restClient, repB.email, repB.password);
@@ -128,6 +139,13 @@ test('@functional F-OWN2: owner=my_team filter returns contacts owned by team co
     last_name: 'TeamMember',
     email: `own2-contact-b-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactByB.id,
+    `/api/v1/contacts/${contactByB.id}`,
+  );
 
   // repA with ?owner=my_team should see repB's contact
   await loginAndVerify(restClient, repA.email, repA.password);
@@ -169,10 +187,7 @@ test('@functional F-OWN3: owner=my_team filter excludes contacts owned by users 
     user_id: repA.userId,
     role: 'member',
   });
-  testData.registerCustomTeardown(`delete-team-own3-${teamId}`, async () => {
-    await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
-  });
+  registerAdminTeardown(testData, restClient, 'team', teamId, `/api/v1/teams/${teamId}`);
 
   // outsider creates a contact
   await loginAndVerify(restClient, outsider.email, outsider.password);
@@ -181,6 +196,13 @@ test('@functional F-OWN3: owner=my_team filter excludes contacts owned by users 
     last_name: 'sider',
     email: `own3-outsider-contact-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    outsiderContact.id,
+    `/api/v1/contacts/${outsiderContact.id}`,
+  );
 
   // repA with ?owner=my_team should NOT see the outsider's contact
   await loginAndVerify(restClient, repA.email, repA.password);
@@ -214,6 +236,13 @@ test('@functional F-OWN4: owner=my_team with no team memberships returns only ow
     last_name: 'Contact',
     email: `own4-solo-contact-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    soloContact.id,
+    `/api/v1/contacts/${soloContact.id}`,
+  );
 
   await loginAndVerify(restClient, repOther.email, repOther.password);
   const otherContact = await createContactViaApi(restClient, {
@@ -221,6 +250,13 @@ test('@functional F-OWN4: owner=my_team with no team memberships returns only ow
     last_name: 'Contact',
     email: `own4-other-contact-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    otherContact.id,
+    `/api/v1/contacts/${otherContact.id}`,
+  );
 
   // repSolo has no team memberships — My Team should return only their own contacts
   await loginAndVerify(restClient, repSolo.email, repSolo.password);

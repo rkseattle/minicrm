@@ -27,7 +27,12 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { createTestAdmin, createTestRep, loginAndVerify } from '@apps/minicrm/helpers.js';
+import {
+  createTestAdmin,
+  createTestRep,
+  loginAndVerify,
+  registerAdminTeardown,
+} from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   inviteUserViaApi,
@@ -134,6 +139,13 @@ test('@functional @serial F-VIS3: rep with org policy can list contacts owned by
     last_name: 'Visible',
     email: `org-visible-${Date.now()}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contact.id,
+    `/api/v1/contacts/${contact.id}`,
+  );
 
   // Rep B should see it — use large limit + newest-first so the just-created contact is in the first page
   await loginAndVerify(restClient, repB.email, repB.password);
@@ -167,6 +179,13 @@ test('@functional @serial F-VIS4: rep with private policy cannot see contacts ow
     last_name: 'Contact',
     email: `priv-contact-${Date.now()}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactOwnedByA.id,
+    `/api/v1/contacts/${contactOwnedByA.id}`,
+  );
 
   // Rep B creates their own contact
   await loginAndVerify(restClient, repB.email, repB.password);
@@ -175,6 +194,13 @@ test('@functional @serial F-VIS4: rep with private policy cannot see contacts ow
     last_name: 'Own',
     email: `repb-own-${Date.now()}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    repBContact.id,
+    `/api/v1/contacts/${repBContact.id}`,
+  );
 
   // Set private policy as admin, then verify as repB
   await loginAsAdmin(restClient);
@@ -249,10 +275,7 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
     user_id: memberUser.id,
     role: 'member',
   });
-  testData.registerCustomTeardown(`delete-team-vis5-${teamId}`, async () => {
-    await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
-  });
+  registerAdminTeardown(testData, restClient, 'team', teamId, `/api/v1/teams/${teamId}`);
 
   // Member creates a contact
   await loginAndVerify(restClient, memberEmail, memberPassword);
@@ -261,6 +284,13 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
     last_name: 'Contact',
     email: `member-contact-vis5-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    memberContact.id,
+    `/api/v1/contacts/${memberContact.id}`,
+  );
 
   // Outsider creates a contact
   await loginAndVerify(restClient, outsider.email, outsider.password);
@@ -269,6 +299,13 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
     last_name: 'Contact',
     email: `outsider-contact-vis5-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    outsiderContact.id,
+    `/api/v1/contacts/${outsiderContact.id}`,
+  );
 
   // Manager should see member's contact but NOT outsider's contact — use large limit + newest-first
   await loginAndVerify(restClient, managerEmail, managerPassword);
@@ -333,10 +370,7 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
     user_id: memberUser.id,
     role: 'member',
   });
-  testData.registerCustomTeardown(`delete-team-vis6-${teamId}`, async () => {
-    await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
-  });
+  registerAdminTeardown(testData, restClient, 'team', teamId, `/api/v1/teams/${teamId}`);
 
   // Manager creates a contact owned by themselves
   await loginAndVerify(restClient, managerEmail, managerPassword);
@@ -345,6 +379,13 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
     last_name: 'Contact',
     email: `reassign-vis6-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contact.id,
+    `/api/v1/contacts/${contact.id}`,
+  );
 
   // Manager reassigns the contact to the team member — should succeed
   const updated = await restClient.patch<{ contact: { owner_id: string } }>(
@@ -387,10 +428,7 @@ test('@functional @serial F-VIS7: manager gets 403 when reassigning a contact to
     manager_id: managerUser.id,
   });
   const teamId = teamRes.body.team.id;
-  testData.registerCustomTeardown(`delete-team-vis7-${teamId}`, async () => {
-    await loginAsAdmin(restClient);
-    await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => undefined);
-  });
+  registerAdminTeardown(testData, restClient, 'team', teamId, `/api/v1/teams/${teamId}`);
 
   // Create an outsider rep
   const outsider = await createTestRep(testData, restClient, {
@@ -404,6 +442,13 @@ test('@functional @serial F-VIS7: manager gets 403 when reassigning a contact to
     last_name: 'Contact',
     email: `locked-vis7-${uniqueSuffix}@example.com`,
   });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contact.id,
+    `/api/v1/contacts/${contact.id}`,
+  );
 
   // Attempt to reassign to outsider — should fail with 403
   let caughtStatus: number | undefined;
@@ -459,6 +504,15 @@ test('@functional @serial F-VIS9: rep with private account policy cannot read an
     name: `VIS9-Account-${Date.now()}`,
     owner_id: repA.userId,
   });
+  // Admin-authenticated teardown: the client is re-authenticated as repB below,
+  // and account deletion is owner-or-admin gated.
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'account',
+    account.id,
+    `/api/v1/accounts/${account.id}`,
+  );
   await restClient.put('/api/v1/settings/visibility', { account: 'private' });
 
   await loginAndVerify(restClient, repB.email, repB.password);

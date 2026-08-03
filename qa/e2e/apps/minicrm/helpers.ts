@@ -132,6 +132,56 @@ export interface CreateAccountOverrides {
 // ---------------------------------------------------------------------------
 
 /**
+ * Registers an entity for teardown that must be deleted as an admin, even though
+ * the test created it while `restClient` was authenticated as someone else.
+ *
+ * `TestDataManager.teardown()` issues its DELETEs with the fixture `restClient`
+ * in whatever auth state the test left it. Tests that re-authenticate that shared
+ * client as a rep — the owner-scoped visibility and owner-filter suites do this
+ * between every create — would therefore delete as that rep, and
+ * `deleteContactHandler` answers 403 for a non-owner non-admin
+ * (`contactController.ts:608-609`). Teardown logs the failure and continues
+ * (`test-data-manager.ts:171-176`), so the record leaks while the run still
+ * reports success — the silent-failure mode MINCRM-686 exists to close.
+ *
+ * Use this instead of `testData.register()` whenever the client may not be an
+ * admin at teardown time. It mirrors `createTestRep`'s deactivation callback,
+ * which re-authenticates for the same reason (MINCRM-415).
+ *
+ * **Side effect:** this leaves `restClient` authenticated as the admin. Teardown
+ * runs in reverse registration order, so every entry registered BEFORE this one
+ * also runs as admin. That is the safe direction — admin can delete anything a
+ * rep could — and it is why the auth state is deliberately not restored: putting
+ * a rep's session back would re-break the plain `register()` entries below it.
+ * Do not rely on the client's auth state after teardown begins.
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - The fixture RestClient, in any auth state.
+ * @param entityType - Log label for the entity, e.g. `'contact'`.
+ * @param id - The created entity's id.
+ * @param deletePath - Full REST path that deletes it, e.g. `/api/v1/contacts/<id>`.
+ */
+export function registerAdminTeardown(
+  testData: TestDataManager,
+  restClient: RestClient,
+  entityType: string,
+  id: string,
+  deletePath: string,
+): void {
+  testData.registerCustomTeardown(`delete-${entityType}-${id}`, async () => {
+    await loginAsAdmin(restClient);
+    // Swallow the delete's own error, matching the hand-rolled team/contact
+    // teardown callbacks this helper replaces (owner-filter.spec.ts,
+    // visibility.spec.ts). A 404 is the EXPECTED outcome whenever the test
+    // already deleted the record itself, and a custom entry surfaces any throw
+    // as a logged "custom teardown failed" — which would turn every such test
+    // into a noisy false alarm. A genuine failure still leaks, exactly as it
+    // would for a plain register() entry, which also logs and continues.
+    await restClient.delete(deletePath).catch(() => undefined);
+  });
+}
+
+/**
  * Creates a contact via the REST API, registers it with TestDataManager, and
  * returns the created contact.
  *

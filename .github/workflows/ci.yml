@@ -824,6 +824,9 @@ jobs:
       - name: Check the coverage build-SHA accept-set has not drifted (MINCRM-688)
         run: bash qa/scripts/check-sha-pattern-parity.sh
 
+      - name: Check specs register created records for teardown (MINCRM-686)
+        run: bash qa/scripts/check-e2e-cleanup.sh
+
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests
     needs: [lint-and-typecheck, changes]

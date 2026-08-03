@@ -41,6 +41,12 @@ test.beforeEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
 });
 
+// beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
+// file would leave its own behind for the rest of the run. (MINCRM-686)
+test.afterEach(async ({ restClient }) => {
+  await deleteAllAiSessionsViaApi(restClient);
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test(
