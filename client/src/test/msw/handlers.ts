@@ -2915,7 +2915,7 @@ export const handlers = [
   //
   // See allFlagsEnabled() at the bottom of this file: a test overriding one flag
   // must spread it over the full map rather than returning a single-key object,
-  // because flags now default OFF when absent. (MINCRM-701)
+  // because flags now default OFF when absent. (MINCRM-695, MINCRM-696)
 
   /**
    * Feature flags: GET /api/feature-flags/me — returns resolved flag map for the calling user.
@@ -3572,7 +3572,7 @@ export const handlers = [
  * MSW handler serves.
  *
  * Exported so a test overriding ONE flag can spread this and change just that
- * key. Since MINCRM-701 an absent flag resolves to OFF (a feature is hidden
+ * key. Since MINCRM-695/696 an absent flag resolves to OFF (a feature is hidden
  * until affirmatively confirmed on), so `HttpResponse.json({ flags: { one: false } })`
  * no longer means "everything as usual except `one`" — it means "`one` is off and
  * every other feature is too", which silently removes the very UI a test is

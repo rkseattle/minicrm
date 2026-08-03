@@ -823,10 +823,10 @@ export async function withFlags(
       //    timeout with no diagnosable cause.
       //
       // abort() terminates the request so the query settles into an error state
-      // instead of hanging. Since MINCRM-701 an unresolved flag map means every
+      // instead of hanging. Since MINCRM-695/696 an unresolved flag map means every
       // feature reads as OFF, so a negative-direction assertion still gets the
       // right answer, and a positive-direction one fails fast and legibly rather
-      // than timing out. (MINCRM-701)
+      // than timing out. (MINCRM-695, MINCRM-696)
       if (!route.request().frame().page().isClosed()) {
         await route.abort().catch(() => undefined);
       }

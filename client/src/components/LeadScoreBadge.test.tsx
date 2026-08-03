@@ -144,7 +144,7 @@ describe('LeadScoreBadge', () => {
         // Full map with ONE flag overridden, not a single-key map. Flags now
         // default OFF when absent, so a partial map would also switch off
         // ai_lead_scoring and the badge this test needs in order to assert the
-        // narrative button's absence. (MINCRM-701)
+        // narrative button's absence. (MINCRM-695, MINCRM-696)
         http.get('/api/v1/feature-flags/me', () =>
           HttpResponse.json({ flags: { ...allFlagsEnabled(), ai_lead_score_narrative: false } }),
         ),

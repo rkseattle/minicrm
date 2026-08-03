@@ -136,14 +136,11 @@ export class AdminSettingsPage {
    * Returns a resolved locator for the default currency settings section.
    */
   async currencySectionLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'currency-section' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'default currency settings section on admin settings page' },
-      )
+      .locate([{ type: 'testId', value: 'currency-section' }], {
+        intent: 'default currency settings section on admin settings page',
+      })
       .resolve();
   }
 
@@ -151,14 +148,11 @@ export class AdminSettingsPage {
    * Returns a resolved locator for the email notifications section container.
    */
   async emailNotificationsSectionLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'email-notifications-section' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'email notifications section on admin settings page' },
-      )
+      .locate([{ type: 'testId', value: 'email-notifications-section' }], {
+        intent: 'email notifications section on admin settings page',
+      })
       .resolve();
   }
 
@@ -1179,14 +1173,11 @@ export class AdminSettingsPage {
 
   /** Returns a resolved locator for the AI settings panel container. */
   async aiSettingsPanelLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'ai-settings-panel' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'main panel containing the AI provider and model configuration form' },
-      )
+      .locate([{ type: 'testId', value: 'ai-settings-panel' }], {
+        intent: 'main panel containing the AI provider and model configuration form',
+      })
       .resolve();
   }
 
@@ -1431,14 +1422,11 @@ export class AdminSettingsPage {
 
   /** Returns a resolved locator for the visibility settings panel container. */
   async visibilitySettingsPanelLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'visibility-settings-panel' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'main panel for per-object data visibility policy configuration' },
-      )
+      .locate([{ type: 'testId', value: 'visibility-settings-panel' }], {
+        intent: 'main panel for per-object data visibility policy configuration',
+      })
       .resolve();
   }
 

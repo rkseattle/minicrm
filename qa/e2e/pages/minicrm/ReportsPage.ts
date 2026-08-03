@@ -307,14 +307,11 @@ export class ReportsPage {
    * Returns a resolved locator for the stat cards container.
    */
   async statCardsLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- container has no accessible name; role:region matches unrelated landmarks
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'report-stat-cards' },
-          { type: 'role', value: 'region' },
-        ],
-        { intent: 'container holding the Won/Lost stat card metrics' },
-      )
+      .locate([{ type: 'testId', value: 'report-stat-cards' }], {
+        intent: 'container holding the Won/Lost stat card metrics',
+      })
       .resolve();
   }
 

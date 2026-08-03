@@ -169,14 +169,40 @@ export function buildLocator(page: Page, strategy: LocatorStrategy): Locator {
  * layout with mobile and desktop copies). The probe only checks presence;
  * callers that need a specific copy (e.g. the visible one) use `.filter()`
  * on the returned locator.
+ *
+ * `requireUnique` exists because probing with `.first()` and then RETURNING the
+ * unfiltered locator is only sound when the multiple matches are copies of the
+ * same thing. For a FALLBACK strategy they are usually not: a fallback is a
+ * looser query, and a looser query matching two elements means it cannot tell
+ * which one it was meant to find. Accepting it there hands the caller a locator
+ * that throws a strict-mode violation on first use — reported at the call site,
+ * far from the page object that chose the bad strategy. See resolve().
  */
-async function probeLocator(locator: Locator, timeoutMs: number): Promise<boolean> {
+async function probeLocator(
+  locator: Locator,
+  timeoutMs: number,
+  requireUnique = false,
+): Promise<boolean> {
   try {
     await locator.first().waitFor({ state: 'attached', timeout: timeoutMs });
-    return true;
   } catch {
     return false;
   }
+
+  if (requireUnique) {
+    // Counted separately from the attach wait, and failing OPEN on error: the
+    // element is already known to be attached at this point, so a count() that
+    // throws (a detached handle mid-navigation, say) is not evidence of
+    // ambiguity. Rejecting on it would turn a transient read into a spurious
+    // StrategyExhaustedError.
+    try {
+      if ((await locator.count()) > 1) return false;
+    } catch {
+      return true;
+    }
+  }
+
+  return true;
 }
 
 /** Converts a LocatorStrategy to the serializable record stored in HealingRegistry. */
@@ -267,9 +293,27 @@ export class HealingLocator {
     attempted.push(toRecord(primary));
 
     // Try each fallback in order.
+    //
+    // requireUnique: a fallback that matches MORE THAN ONE element has not
+    // identified the target — it has identified a category the target happens to
+    // belong to. Selecting it returns a locator that throws a strict-mode
+    // violation the moment the caller uses it, blaming the behavior rather than
+    // the page object whose fallback was too loose.
+    //
+    // This is not hypothetical: an unscoped role fallback (role:list, role:region)
+    // paired with a precise testId primary stays silently unique only while the
+    // page renders sparsely. As soon as a sibling of the same role appears, the
+    // fallback matches both and the caller sees a confusing strict-mode error,
+    // while the real fault is a fallback that never uniquely identified anything.
+    // Rejecting the ambiguous match here turns that into StrategyExhaustedError,
+    // which names every strategy tried and points at the page object.
+    //
+    // The primary above is deliberately NOT held to this: a shared test id across
+    // a dual-render mobile/desktop layout legitimately matches twice, and those
+    // are copies of the same element rather than different ones.
     for (const fallback of fallbacks) {
       const fallbackLocator = buildLocator(this.page, fallback);
-      const resolved = await probeLocator(fallbackLocator, this.fallbackTimeout);
+      const resolved = await probeLocator(fallbackLocator, this.fallbackTimeout, true);
 
       if (resolved) {
         // Record the heal event.
@@ -295,7 +339,10 @@ export class HealingLocator {
       if (aiResult !== null) {
         const aiStrategy: LocatorStrategy = { type: aiResult.type, value: aiResult.value };
         const aiLocator = buildLocator(this.page, aiStrategy);
-        const aiResolved = await probeLocator(aiLocator, this.fallbackTimeout);
+        // Same uniqueness bar as the static fallbacks: an AI-proposed selector
+        // that matches several elements has not found the target either, and it
+        // is the one strategy nobody reviewed before it ran.
+        const aiResolved = await probeLocator(aiLocator, this.fallbackTimeout, true);
 
         if (aiResolved) {
           HealingRegistry.instance.record(

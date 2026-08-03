@@ -144,14 +144,11 @@ export class AuditLogPage {
    * Returns a resolved locator for the audit log entry list.
    */
   async listLocator() {
+    // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
-      .locate(
-        [
-          { type: 'testId', value: 'audit-log-list' },
-          { type: 'role', value: 'list' },
-        ],
-        { intent: 'audit log entry list container' },
-      )
+      .locate([{ type: 'testId', value: 'audit-log-list' }], {
+        intent: 'audit log entry list container',
+      })
       .resolve();
   }
 
