@@ -242,6 +242,17 @@ test('@functional F10-D1: Download link for an uploaded file returns a non-error
     },
   );
 
+  // Wait for the uploaded row to render before resolving the download link.
+  //
+  // uploadContactAttachment only calls setInputFiles and returns — it does not
+  // wait for the POST to finish or the list to re-render. The download link's
+  // locator is single-strategy with a 2s probe budget, so under CI concurrency
+  // it could be probed before the row existed and fail with
+  // StrategyExhaustedError rather than a legible "upload did not appear".
+  // F10-X1 below already waits this way after ITS upload; this test did not,
+  // which is the whole difference. (MINCRM-695, MINCRM-696)
+  await waitForContactAttachmentsList({ page }, 10_000);
+
   const href = await waitForAttachmentDownloadLinkAndGetHref({ page }, 10_000);
 
   // Register for teardown

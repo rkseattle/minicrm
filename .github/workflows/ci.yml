@@ -1980,6 +1980,34 @@ jobs:
           echo "Suggestions written to $SUGGESTIONS_OUT"
           cat "$SUGGESTIONS_OUT"
 
+      # Posted BEFORE the shard-failure gate below, so a per-project result is
+      # visible as soon as this project's shards are merged.
+      #
+      # The combined comment (e2e-functional-report) needs e2e-serial, which runs
+      # after the whole functional matrix — so on a red functional run the
+      # combined comment was blocked for ~30 minutes while the placeholder said
+      # only "in progress…". A reader checking why CI is red got nothing, at the
+      # one moment the results mattered most. This interim comment closes that
+      # window; the combined one still overwrites it with the fuller table
+      # (functional + serial + evals) when it lands.
+      #
+      # Its own sticky header, so it never races the combined comment for the
+      # same slot. (MINCRM-695, MINCRM-696)
+      - name: Post interim per-project functional results
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: playwright-results-${{ matrix.project }}
+          message: |
+            ## Functional Test Results — `${{ matrix.project }}` (interim)
+
+            **Shards**: ${{ needs.e2e-functional.result }} · **Run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Merged results for this project are attached as the
+            `e2e-merged-${{ matrix.project }}` artifact. The combined table
+            (functional + serial + AI evals) replaces the summary comment above
+            once `e2e-serial` finishes.
+
       - name: Check for shard failures
         if: always()
         run: |
@@ -2209,7 +2237,14 @@ jobs:
           # is visible in the Actions workflow run summary tab.
           cat /tmp/e2e-comment-body.md >> "$GITHUB_STEP_SUMMARY"
 
+      # always(): without it a failure in any earlier step of this job — a
+      # missing artifact, a parse error — leaves the sticky comment showing the
+      # "in progress…" placeholder posted at run start, so a red run reports
+      # nothing at all. The comment is most valuable precisely when something
+      # failed, so posting it must not itself be conditional on success.
+      # (MINCRM-695, MINCRM-696)
       - name: Post combined summary comment (MINCRM-135)
+        if: always()
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: playwright-results-functional
