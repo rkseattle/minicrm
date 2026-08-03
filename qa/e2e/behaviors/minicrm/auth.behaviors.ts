@@ -11,6 +11,7 @@
  * MINCRM-130, MINCRM-110, MINCRM-137, MINCRM-357
  */
 
+import { request as playwrightRequest } from '@playwright/test';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -1023,15 +1024,31 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
   }
 
   const browserContext = context.page.context();
-  const res = await browserContext.request.post(`${apiUrl}/api/v1/auth/login`, {
-    data: { email, password },
-  });
-  if (!res.ok()) {
-    throw new Error(`[refreshAdminBrowserSession] login failed with status ${res.status()}`);
+
+  // Mint the token on a THROWAWAY request context, not `browserContext.request`.
+  // A login issued through the browser context's own request object is tracked
+  // by that context, and Playwright must settle it when disposing the context at
+  // test end — which under a long serial run surfaced as
+  // `Tearing down "context" exceeded the test timeout` on a spec that takes
+  // under a second in isolation. Disposing our own context here keeps the
+  // browser context's teardown exactly as fast as it was before. This mirrors
+  // the isolated `newContext()` the coverage-session client already uses in
+  // apps/minicrm/fixtures.ts, and for the same class of reason. (MINCRM-697)
+  const loginContext = await playwrightRequest.newContext();
+  let setCookie: string;
+  try {
+    const res = await loginContext.post(`${apiUrl}/api/v1/auth/login`, {
+      data: { email, password },
+    });
+    if (!res.ok()) {
+      throw new Error(`[refreshAdminBrowserSession] login failed with status ${res.status()}`);
+    }
+    setCookie = res.headers()['set-cookie'] ?? '';
+  } finally {
+    await loginContext.dispose();
   }
 
   const cookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
-  const setCookie = res.headers()['set-cookie'] ?? '';
   const value = new RegExp(`${cookieName}=([^;]+)`).exec(setCookie)?.[1];
   if (!value) {
     throw new Error(

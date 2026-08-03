@@ -53,7 +53,7 @@ import {
   clickLeadExportPdfAndAwaitResponse,
 } from '@behaviors/minicrm/index.js';
 import { loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestRep } from '@apps/minicrm/helpers.js';
+import { createTestRep, registerAdminTeardown } from '@apps/minicrm/helpers.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -338,8 +338,11 @@ test('@functional F9-D1: deleting a lead removes it from the list', async ({
   const created = await createLeadViaApi(restClient, { first_name: 'F9D1', email });
   // Registered even though the test deletes it through the UI below: if that step
   // or any assertion before it fails, teardown is the only thing that cleans up.
-  // TestDataManager tolerates the 404 when the UI delete did succeed.
-  testData.register('lead', created.id, `/api/v1/leads/${created.id}`);
+  // registerAdminTeardown rather than a plain register() because on the HAPPY
+  // path the record is already gone and the DELETE 404s — a plain entry reports
+  // that as `success: false` and logs "teardown failed" to stderr on every green
+  // run, training readers to ignore a line that should mean something.
+  registerAdminTeardown(testData, restClient, 'lead', created.id, `/api/v1/leads/${created.id}`);
   const leadId = created.id;
 
   const result = await deleteLead(leadId, { page });

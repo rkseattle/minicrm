@@ -51,7 +51,7 @@ import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, refreshAdminBrowserSession } from '@behaviors/minicrm/auth.behaviors.js';
 import './locale.js';
 
 /**
@@ -114,6 +114,44 @@ export interface MinicrmFixtures {
 // Extended test object
 // ---------------------------------------------------------------------------
 
+/**
+ * Fraction of a token's remaining life below which it is refreshed.
+ *
+ * The session JWT has a 30-minute sliding idle expiry, so a third of its life is
+ * a 10-minute floor — comfortably longer than any single test, and short enough
+ * that the refresh almost never fires in a normal-length run.
+ */
+const TOKEN_REFRESH_THRESHOLD = 1 / 3;
+
+/**
+ * Returns true when a JWT is inside the last third of its lifetime, or when its
+ * expiry cannot be read.
+ *
+ * Unreadable is treated as nearing expiry deliberately: a token this cannot
+ * parse is one it cannot vouch for, and a needless refresh is far cheaper than a
+ * test that silently runs against the login page. (MINCRM-697)
+ *
+ * @param token - The raw JWT from the auth cookie.
+ * @returns Whether the token should be refreshed before the test runs.
+ */
+function isTokenNearingExpiry(token: string): boolean {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return true;
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
+      iat?: number;
+      exp?: number;
+    };
+    if (typeof claims.exp !== 'number' || typeof claims.iat !== 'number') return true;
+    const lifetimeSeconds = claims.exp - claims.iat;
+    if (lifetimeSeconds <= 0) return true;
+    const remainingSeconds = claims.exp - Math.floor(Date.now() / 1000);
+    return remainingSeconds < lifetimeSeconds * TOKEN_REFRESH_THRESHOLD;
+  } catch {
+    return true;
+  }
+}
+
 const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // Override the framework's `page` fixture to wire in page-object path
   // segments for automatic heal-event attribution. Without this, every
@@ -122,6 +160,60 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // where the app's page objects live.
   page: async ({ page: rawPage }: { page: Page }, use, testInfo) => {
     const facade = createPageFacade(rawPage, testInfo.title, PAGE_OBJECT_PATH_SEGMENTS);
+
+    // Refresh the shared admin cookie before the test body runs.
+    //
+    // The project-level storageState (.auth/admin.json, playwright.config.ts) is
+    // minted ONCE by globalSetup at suite start, and its JWT carries a 30-minute
+    // SLIDING IDLE expiry (JWT_IDLE_EXPIRY_SECONDS, authController.ts) — the "8
+    // hours" in the docs is the absolute cap enforced via the login_at claim, not
+    // the token's lifetime. Idle refresh only happens on a context that is
+    // actually making requests, so any spec whose first navigation lands more
+    // than 30 minutes into a run loads a dead cookie and renders /login. Every
+    // locator for app content then fails as "all strategies exhausted", which
+    // reads as selector drift rather than an expired session.
+    //
+    // MINCRM-697: in tia-record-mode.yml (~1300 tests, unsharded, two projects)
+    // the mobile-web AI specs first navigated ~1 hour in and did exactly that.
+    // ci.yml's e2e-serial job never saw it — it is --project=desktop only and
+    // finishes inside the 30-minute window.
+    //
+    // Fixed HERE rather than per-spec so it covers the class: every spec that
+    // inherits the project storageState is protected, including ones added
+    // later, and the guarantee does not depend on each author remembering. Specs
+    // that opt out via test.use({ storageState: { cookies: [], origins: [] } })
+    // are unaffected — they have no shared cookie to refresh and authenticate
+    // themselves.
+    //
+    // Runs BEFORE the coverage session opens below, deliberately: under record
+    // mode a login inside the session would attribute the auth endpoint to
+    // whichever test is running and pollute the coverage map this refresh exists
+    // to make obtainable. Best-effort — a spec that manages its own auth must not
+    // fail because this could not reach the server.
+    //
+    // Gated on the context ALREADY carrying the auth cookie. The ~88 specs using
+    // test.use({ storageState: { cookies: [], origins: [] } }) start with an empty
+    // jar precisely because they need an unauthenticated browser (auth.spec.ts,
+    // password-reset.spec.ts, invite.spec.ts …); injecting an admin cookie into
+    // those would silently defeat what they assert. Refreshing a cookie that is
+    // already present cannot change which user a test runs as — it only replaces
+    // an aging token for the same admin.
+    // Only when the existing token is actually close to expiring. Logging in on
+    // EVERY test would add a bcrypt hash per test to a single-threaded server —
+    // ~20s across a 300-test run at idle, and worse under load, where a bcrypt
+    // stall is already the documented cause of the ECONNRESET that loginAsAdmin
+    // retries for. Refreshing only inside the last third of the token's life
+    // keeps the cost near zero for normal runs while still guaranteeing no test
+    // ever starts with a cookie about to die.
+    const cookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+    const existingCookies = await facade
+      .context()
+      .cookies()
+      .catch(() => []);
+    const authCookie = existingCookies.find((c) => c.name === cookieName);
+    if (authCookie && isTokenNearingExpiry(authCookie.value)) {
+      await refreshAdminBrowserSession({ page: facade }).catch(() => undefined);
+    }
 
     // Dedicated admin-authenticated client for coverage-session control
     // calls, on its OWN isolated APIRequestContext (its own cookie jar) —

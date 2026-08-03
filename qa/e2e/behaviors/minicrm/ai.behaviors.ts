@@ -380,8 +380,12 @@ export async function clickNewSessionButton(context: AiBehaviorContext): Promise
       `[clickNewSessionButton] POST /api/v1/ai/sessions returned ${response.status()}`,
     );
   }
-  const body = (await response.json()) as { session?: { id?: string }; id?: string };
-  const sessionId = body.session?.id ?? body.id;
+  // The endpoint returns the bare session object (aiSessionController.ts:39),
+  // not an envelope. Read only that shape: accepting a `{ session: ... }`
+  // wrapper too would silently absorb exactly the response-shape change the
+  // throw below exists to catch.
+  const body = (await response.json()) as { id?: string };
+  const sessionId = body.id;
   if (!sessionId) {
     // Throw rather than returning '' — a silent empty id would skip the
     // caller's teardown registration and leave the session behind while the
