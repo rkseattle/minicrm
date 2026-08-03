@@ -227,12 +227,28 @@ while IFS= read -r -d '' spec_file; do
       # `createDealViaApi(restClient, { account_id: account.id })`, which is the
       # dominant shape in this suite, so a leaked parent would pass while its
       # child was registered.
+      # Each register STATEMENT, from its opening call to the line closing it —
+      # not a fixed number of following lines. A fixed span bleeds past the
+      # statement, so the next line of the test (`expect(acct.id)...`, or a
+      # subsequent create taking `acct.id` as an argument) lands inside the
+      # window and satisfies a binding that was never registered.
+      #
       # Commented-out lines are stripped first: a `// testData.register(...)`
       # left behind during debugging would otherwise satisfy the check while
       # registering nothing.
+      #
+      # Quoted strings are then blanked, so the entity-type label cannot stand in
+      # for a binding name — `testData.register('contact', deal.id, ...)` must
+      # not satisfy a leaked binding that happens to be called `contact`.
       register_lines="$(printf '%s' "$window_text" | tail -n +2 |
         grep -vE '^[[:space:]]*(//|\*|/\*)' |
-        grep -A "$REGISTER_ARG_SPAN" -E "$REGISTER_PATTERN" || true)"
+        awk '
+          index($0, "testData.register(") || index($0, "testData.registerCustomTeardown(") ||
+            index($0, "registerAdminTeardown(") { inside = 1 }
+          inside { print }
+          inside && /\);[[:space:]]*$/ { inside = 0 }
+        ' |
+        sed -E "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g" || true)"
 
       if [ -n "$register_lines" ]; then
         all_registered=1
