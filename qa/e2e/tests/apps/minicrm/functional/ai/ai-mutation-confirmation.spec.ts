@@ -74,6 +74,12 @@ test.beforeEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
 });
 
+// beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
+// file would leave its own behind for the rest of the run. (MINCRM-686)
+test.afterEach(async ({ restClient }) => {
+  await deleteAllAiSessionsViaApi(restClient);
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test(
@@ -152,7 +158,7 @@ test(
   'F-AI-C5 — Confirm sends the exact confirm phrase and clears pending_action @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
@@ -186,7 +192,7 @@ test(
   'F-AI-C6 — Cancel sends the exact cancel phrase and clears pending_action @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });

@@ -33,7 +33,9 @@ import {
   waitForAiConversationPanel,
   sendE2eStubMessageExpectingErrorViaUI,
   getAiSendErrorText,
+  deleteAllAiSessionsViaApi,
 } from '@behaviors/minicrm/ai.behaviors.js';
+import { loginAndVerify } from '@apps/minicrm/helpers.js';
 
 // Serial mode required: beforeEach flips the AI master toggle, a shared
 // system_settings row, matching every other AI spec file's convention.
@@ -42,6 +44,18 @@ test.describe.configure({ mode: 'serial' });
 test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   await setAiEnabled(restClient, true);
+});
+
+// The tests below drive /ai as an ephemeral REP in the browser, and AiPage
+// creates a session for that user on load. Those rows are owned by the rep, not
+// the admin, so no admin-side sweep can see them — and because the browser
+// creates them, no create*ViaApi call site exists for check-e2e-cleanup.sh to
+// flag. Clean up as the rep, then restore admin auth for the next test's
+// beforeEach. (MINCRM-686)
+test.afterEach(async ({ restClient, ephemeralRep }) => {
+  await loginAndVerify(restClient, ephemeralRep.email, ephemeralRep.password);
+  await deleteAllAiSessionsViaApi(restClient);
+  await loginAsAdmin(restClient);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

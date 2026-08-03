@@ -130,7 +130,7 @@ test(
   'F-AI-CTX-4 — Context entry created via API appears in the panel @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const entryId = await createContextEntryViaApi(restClient, 'high-value', 'deals over $50k');
+    const entryId = await createContextEntryViaApi(restClient, 'high-value', 'deals over $50k'); // MINCRM-686-ok: cleared by deleteAllContextEntriesViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
@@ -173,7 +173,7 @@ test(
   'F-AI-CTX-6 — Editing a context entry via the panel updates it @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const entryId = await createContextEntryViaApi(restClient, 'original-key', 'original value');
+    const entryId = await createContextEntryViaApi(restClient, 'original-key', 'original value'); // MINCRM-686-ok: cleared by deleteAllContextEntriesViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
@@ -200,7 +200,7 @@ test(
   'F-AI-CTX-7 — Deleting a context entry via the panel removes it @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const entryId = await createContextEntryViaApi(restClient, 'to-delete', 'value to delete');
+    const entryId = await createContextEntryViaApi(restClient, 'to-delete', 'value to delete'); // MINCRM-686-ok: cleared by deleteAllContextEntriesViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });

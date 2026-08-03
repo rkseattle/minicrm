@@ -149,10 +149,14 @@ test(
 test(
   'F-P3: admin can delete an empty non-default pipeline in the settings UI',
   { tag: ['@functional'] },
-  async ({ restClient, page }) => {
+  async ({ restClient, page, testData }) => {
     const pipelineName = `E2E-Delete-Empty-${Date.now()}`;
     const pipeline = await createPipelineViaApi(restClient, pipelineName);
-    // No testData.register — we expect the test itself to delete it
+    // The test deletes this through the UI below, but registering it anyway is
+    // what covers the failure path: if the UI step or any assertion before it
+    // throws, teardown is the only cleanup. TestDataManager tolerates the 404
+    // on the happy path where the UI delete already removed it. (MINCRM-686)
+    testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
 
     await navigateToAdminSettings({ page }, 'pipelines');
 

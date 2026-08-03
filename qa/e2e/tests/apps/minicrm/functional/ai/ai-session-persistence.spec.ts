@@ -38,6 +38,12 @@ test.beforeEach(async ({ restClient }) => {
   await deleteAllAiSessionsViaApi(restClient);
 });
 
+// beforeEach alone cleans the PREVIOUS test's sessions, so the last test in the
+// file would leave its own behind for the rest of the run. (MINCRM-686)
+test.afterEach(async ({ restClient }) => {
+  await deleteAllAiSessionsViaApi(restClient);
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test(
@@ -49,7 +55,7 @@ test(
     // explicit switch is needed (and switchToAiSession requires the
     // desktop-only sidebar, which would hang on mobile viewports where it's
     // hidden — this test must pass on both).
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await sendAiMessageViaApi(restClient, sessionId, 'What deals are closing this month?');
 
     await navigateToAiPage({ page });
@@ -75,8 +81,8 @@ test(
       'F-AI-PERSIST2: session switching via sidebar is desktop-only',
     );
 
-    const sessionA = await createAiSessionViaApi(restClient);
-    const sessionB = await createAiSessionViaApi(restClient);
+    const sessionA = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
+    const sessionB = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
     await sendAiMessageViaApi(restClient, sessionA, 'Session A persisted message');
     await sendAiMessageViaApi(restClient, sessionB, 'Session B persisted message');
 

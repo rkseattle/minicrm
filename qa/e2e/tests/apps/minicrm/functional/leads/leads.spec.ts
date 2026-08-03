@@ -330,11 +330,16 @@ test('@functional F9-V2: Converted lead shows badge in list view', async ({
 test('@functional F9-D1: deleting a lead removes it from the list', async ({
   page,
   restClient,
+  testData,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const email = `f9d1-${uniqueSuffix}@example.com`;
   const created = await createLeadViaApi(restClient, { first_name: 'F9D1', email });
+  // Registered even though the test deletes it through the UI below: if that step
+  // or any assertion before it fails, teardown is the only thing that cleans up.
+  // TestDataManager tolerates the 404 when the UI delete did succeed.
+  testData.register('lead', created.id, `/api/v1/leads/${created.id}`);
   const leadId = created.id;
 
   const result = await deleteLead(leadId, { page });

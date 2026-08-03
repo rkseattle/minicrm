@@ -58,6 +58,12 @@ test.beforeEach(async ({ restClient }) => {
 });
 
 test.afterEach(async ({ restClient }) => {
+  // Sessions as well as context entries: beforeEach alone cleans the PREVIOUS
+  // test's records, so the last test in the file would leave its session behind
+  // for the rest of the run, where it sorts to the top of
+  // `ORDER BY updated_at DESC` and becomes the session a later spec's page
+  // auto-selects. (MINCRM-686)
+  await deleteAllAiSessionsViaApi(restClient);
   await deleteAllContextEntriesViaApi(restClient);
 });
 
@@ -67,7 +73,7 @@ test(
   'F-AI-PROP1 — ambiguous-query reply surfaces interpretation and a proposal chip @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
@@ -92,7 +98,7 @@ test(
   'F-AI-PROP2 — accepting a proposal saves it to the context panel @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });
@@ -121,7 +127,7 @@ test(
   'F-AI-PROP3 — dismissing a proposal does not save it and is not re-proposed in the session @functional @serial',
   { tag: ['@functional', '@serial'] },
   async ({ page, restClient }) => {
-    const sessionId = await createAiSessionViaApi(restClient);
+    const sessionId = await createAiSessionViaApi(restClient); // MINCRM-686-ok: cleared by deleteAllAiSessionsViaApi in beforeEach/afterEach
 
     await navigateToAiPage({ page });
     await waitForAiConversationPanel({ page });

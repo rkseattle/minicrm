@@ -22,6 +22,7 @@ bash qa/scripts/check-behavior-layer.sh
 bash qa/scripts/check-settings-mutations.sh
 bash qa/scripts/check-networkidle.sh
 bash qa/scripts/check-sha-pattern-parity.sh
+bash qa/scripts/check-e2e-cleanup.sh
 ```
 
 Steps 1–5 run before every commit. **E2E does not gate individual commits** — see
@@ -29,7 +30,7 @@ Steps 1–5 run before every commit. **E2E does not gate individual commits** �
 
 ## Conditional gates
 
-**Any file under `qa/e2e/` in the diff** — all four QA static checks above are
+**Any file under `qa/e2e/` in the diff** — every QA static check in step 5 above is
 mandatory for that commit, not deferred to push time.
 
 **Files under `qa/e2e/framework/` in the diff** — additionally:

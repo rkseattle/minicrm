@@ -173,6 +173,8 @@ test('@functional F14-E1: Edit a note title — updated title is shown in the ca
   const contact = await createTestContact(testData, restClient);
 
   // Create via API to get the ID
+  // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+  // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
   const note = await createNoteViaApi(restClient, contact.id, {
     body: JSON.stringify({
       type: 'doc',
@@ -220,6 +222,8 @@ test('@functional F14-D1: Delete a note — card disappears and API returns 404'
 }) => {
   const contact = await createTestContact(testData, restClient);
 
+  // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+  // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
   const note = await createNoteViaApi(restClient, contact.id, {
     body: JSON.stringify({
       type: 'doc',
@@ -283,6 +287,8 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
     const repAClient = restClient; // rep A's client (we re-use restClient after re-login)
     await loginAndVerify(repAClient, repA.email, REP_PASSWORD);
 
+    // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+    // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
     const note = await createNoteViaApi(repAClient, contact.id, {
       body: JSON.stringify({
         type: 'doc',
@@ -330,6 +336,8 @@ test('@functional F14-A1: Create and update a note — audit entries recorded', 
   const contact = await createTestContact(testData, restClient);
 
   // Create note via API
+  // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+  // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
   const note = await createNoteViaApi(restClient, contact.id, {
     body: JSON.stringify({
       type: 'doc',
@@ -364,6 +372,8 @@ test('@functional F14-A2: Delete a note — note_deleted audit entry recorded', 
 }) => {
   const contact = await createTestContact(testData, restClient);
 
+  // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+  // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
   const note = await createNoteViaApi(restClient, contact.id, {
     body: JSON.stringify({
       type: 'doc',
@@ -440,6 +450,8 @@ test('@functional F14-V2: Admin changes note visibility from private to team; no
     type: 'doc',
     content: [{ type: 'paragraph', content: [{ type: 'text', text: 'F14-V2 private note' }] }],
   });
+  // MINCRM-686-ok: DELETE on a note is a soft delete (noteService.ts:682) and the
+  // registered parent contact already soft-deletes its notes via softDeleteNotesByEntity.
   const note = await createNoteViaApi(restClient, contact.id, {
     body: noteBody,
     visibility: 'private',
