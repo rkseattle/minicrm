@@ -51,10 +51,21 @@ export interface AuthBehaviorContext {
  * });
  * ```
  */
-export async function loginAsAdmin(restClient: RestClient): Promise<void> {
+/**
+ * Resolves the shared admin credentials from the environment.
+ *
+ * @param caller - Function name, used to prefix the error when the password is unset.
+ * @returns The admin email and password.
+ */
+export function resolveAdminCredentials(caller: string): { email: string; password: string } {
   const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const password = process.env['E2E_ADMIN_PASSWORD'];
-  if (!password) throw new Error('[loginAsAdmin] E2E_ADMIN_PASSWORD is not set');
+  if (!password) throw new Error(`[${caller}] E2E_ADMIN_PASSWORD is not set`);
+  return { email, password };
+}
+
+export async function loginAsAdmin(restClient: RestClient): Promise<void> {
+  const { email, password } = resolveAdminCredentials('loginAsAdmin');
   // Retry once on ECONNRESET: in CI a preceding bcrypt hash on the same event
   // loop can stall the server long enough for the keep-alive connection to be
   // reset before the login POST completes. Login is idempotent so a single
@@ -968,6 +979,78 @@ export async function loginViaBrowser(
   await context.page.waitForURL((url) => new URL(url).pathname !== '/login', {
     timeout: 15_000,
   });
+}
+
+/**
+ * Refreshes the BROWSER's admin session cookie in place, without navigating.
+ *
+ * Use this in a spec's `beforeEach` when the test drives the UI as an admin and
+ * the run may be long. The project-level `storageState` (`.auth/admin.json`) is
+ * written once at suite start, and its JWT carries a 30-minute sliding idle
+ * expiry (`JWT_IDLE_EXPIRY_SECONDS`,
+ * server/src/controllers/authController.ts) — the documented "8 hours" is the
+ * absolute cap enforced via `login_at`, not the token's lifetime. Idle refresh
+ * only happens on a context that is actually making requests, so a spec that
+ * first navigates an hour into the run loads a dead cookie and lands on /login.
+ * Every locator for app content then fails as "all strategies exhausted", which
+ * reads as a drifted selector rather than an expired session.
+ *
+ * That is the MINCRM-697 root cause: in `tia-record-mode.yml` (~1300 tests,
+ * unsharded, two projects) the mobile-web AI specs ran ~1 hour after login and
+ * rendered the login page. `ci.yml`'s `e2e-serial` job never saw it — it is
+ * `--project=desktop` only and finishes inside the 30-minute window.
+ *
+ * **Deliberately mints the token over REST and injects it with `addCookies`
+ * rather than driving the login UI.** Under record mode the per-test coverage
+ * session is already open when `beforeEach` runs (the `page` fixture starts it
+ * during construction — apps/minicrm/fixtures.ts), so a UI login here would
+ * attribute LoginPage, `/api/v1/auth/login` and the whole post-login dashboard
+ * bootstrap to whichever AI test happened to be running. That would poison the
+ * coverage map this ticket exists to produce and make an edit to authController
+ * select all seven AI specs. Injecting the cookie touches no instrumented
+ * client code. (MINCRM-697)
+ *
+ * @param context - Playwright fixture context.
+ */
+export async function refreshAdminBrowserSession(context: AuthBehaviorContext): Promise<void> {
+  const { email, password } = resolveAdminCredentials('refreshAdminBrowserSession');
+
+  // No default outside CI: a silent :3001 fallback points at the DEV server and
+  // its database, the leak class MINCRM-684 closed.
+  const apiUrl = process.env['E2E_API_URL'] ?? (process.env['CI'] ? 'http://localhost:3001' : '');
+  if (!apiUrl) {
+    throw new Error('[refreshAdminBrowserSession] E2E_API_URL is not set — source qa/e2e/.env');
+  }
+
+  const browserContext = context.page.context();
+  const res = await browserContext.request.post(`${apiUrl}/api/v1/auth/login`, {
+    data: { email, password },
+  });
+  if (!res.ok()) {
+    throw new Error(`[refreshAdminBrowserSession] login failed with status ${res.status()}`);
+  }
+
+  const cookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+  const setCookie = res.headers()['set-cookie'] ?? '';
+  const value = new RegExp(`${cookieName}=([^;]+)`).exec(setCookie)?.[1];
+  if (!value) {
+    throw new Error(
+      `[refreshAdminBrowserSession] no ${cookieName} cookie in the login response headers`,
+    );
+  }
+
+  await browserContext.addCookies([
+    {
+      name: cookieName,
+      value,
+      domain: new URL(apiUrl).hostname,
+      path: '/',
+      expires: -1,
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax',
+    },
+  ]);
 }
 
 /** Result returned by loginWithMfaChallenge. */

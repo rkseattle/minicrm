@@ -33,7 +33,11 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  loginViaBrowser,
+  refreshAdminBrowserSession,
+} from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, navigateViaMobileNavLink } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToDashboardAndWait } from '@behaviors/minicrm/setup.behaviors.js';
 import { withFlags } from '@apps/minicrm/helpers.js';
@@ -74,7 +78,11 @@ test.describe.configure({ mode: 'serial' });
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
 
-test.beforeEach(async ({ restClient }) => {
+test.beforeEach(async ({ restClient, page }) => {
+  // Refresh the browser's admin cookie: the project storageState is minted
+  // once at suite start and its JWT idles out after 30 minutes, which is why
+  // these specs rendered /login an hour into record mode. (MINCRM-697)
+  await refreshAdminBrowserSession({ page });
   // Delete all admin sessions so each test starts with a clean slate.
   // Needed because serial tests share the admin account and sessions accumulate.
   await loginAsAdmin(restClient);
