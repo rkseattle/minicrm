@@ -37,6 +37,30 @@ export interface AuthBehaviorContext {
 // ---------------------------------------------------------------------------
 
 /**
+ * Name of the session auth cookie.
+ *
+ * Env-driven so the test stack can use its own name and avoid clobbering the dev
+ * stack's session in the shared localhost cookie jar (MINCRM-684). Must agree
+ * with the server's own default in server/src/middleware/auth.ts.
+ */
+export function resolveAuthCookieName(): string {
+  return process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+}
+
+/**
+ * Resolves the shared admin credentials from the environment.
+ *
+ * @param caller - Function name, used to prefix the error when the password is unset.
+ * @returns The admin email and password.
+ */
+export function resolveAdminCredentials(caller: string): { email: string; password: string } {
+  const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
+  const password = process.env['E2E_ADMIN_PASSWORD'];
+  if (!password) throw new Error(`[${caller}] E2E_ADMIN_PASSWORD is not set`);
+  return { email, password };
+}
+
+/**
  * Authenticates the given RestClient as the E2E admin user.
  *
  * Reads credentials from the E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD environment
@@ -52,19 +76,6 @@ export interface AuthBehaviorContext {
  * });
  * ```
  */
-/**
- * Resolves the shared admin credentials from the environment.
- *
- * @param caller - Function name, used to prefix the error when the password is unset.
- * @returns The admin email and password.
- */
-export function resolveAdminCredentials(caller: string): { email: string; password: string } {
-  const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-  const password = process.env['E2E_ADMIN_PASSWORD'];
-  if (!password) throw new Error(`[${caller}] E2E_ADMIN_PASSWORD is not set`);
-  return { email, password };
-}
-
 export async function loginAsAdmin(restClient: RestClient): Promise<void> {
   const { email, password } = resolveAdminCredentials('loginAsAdmin');
   // Retry once on ECONNRESET: in CI a preceding bcrypt hash on the same event
@@ -1048,7 +1059,7 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
     await loginContext.dispose();
   }
 
-  const cookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+  const cookieName = resolveAuthCookieName();
   const value = new RegExp(`${cookieName}=([^;]+)`).exec(setCookie)?.[1];
   if (!value) {
     throw new Error(

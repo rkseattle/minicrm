@@ -51,7 +51,11 @@ import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
-import { loginAsAdmin, refreshAdminBrowserSession } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  refreshAdminBrowserSession,
+  resolveAuthCookieName,
+} from '@behaviors/minicrm/auth.behaviors.js';
 import './locale.js';
 
 /**
@@ -134,7 +138,7 @@ const TOKEN_REFRESH_THRESHOLD = 1 / 3;
  * @param token - The raw JWT from the auth cookie.
  * @returns Whether the token should be refreshed before the test runs.
  */
-function isTokenNearingExpiry(token: string): boolean {
+export function isTokenNearingExpiry(token: string): boolean {
   try {
     const payload = token.split('.')[1];
     if (!payload) return true;
@@ -205,14 +209,25 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     // retries for. Refreshing only inside the last third of the token's life
     // keeps the cost near zero for normal runs while still guaranteeing no test
     // ever starts with a cookie about to die.
-    const cookieName = process.env['AUTH_COOKIE_NAME'] ?? 'minicrm_token';
+    const cookieName = resolveAuthCookieName();
     const existingCookies = await facade
       .context()
       .cookies()
       .catch(() => []);
     const authCookie = existingCookies.find((c) => c.name === cookieName);
     if (authCookie && isTokenNearingExpiry(authCookie.value)) {
-      await refreshAdminBrowserSession({ page: facade }).catch(() => undefined);
+      await refreshAdminBrowserSession({ page: facade }).catch((err: unknown) => {
+        // Best-effort, but never silent: this refresh is the only thing standing
+        // between a >30-minute run and a dead cookie, and a swallowed failure
+        // degrades straight back into MINCRM-697's symptom — every locator
+        // failing as "all strategies exhausted", which reads as selector drift.
+        // Logging makes the next occurrence diagnosable in a minute.
+        console.warn(
+          '[fixtures] admin session refresh failed; the test will run with the ' +
+            'existing cookie and may render the login page:',
+          err instanceof Error ? err.message : String(err),
+        );
+      });
     }
 
     // Dedicated admin-authenticated client for coverage-session control
