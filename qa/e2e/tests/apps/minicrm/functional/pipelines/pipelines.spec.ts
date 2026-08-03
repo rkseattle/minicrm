@@ -43,7 +43,12 @@ import {
   expectPipelineBoardContainerVisible,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { navigateToPipelineBoard, createDealViaApi } from '@behaviors/minicrm/deals.behaviors.js';
-import { createTestAccount, createTestAdmin, withFlags } from '@apps/minicrm/helpers.js';
+import {
+  createTestAccount,
+  createTestAdmin,
+  registerAdminTeardown,
+  withFlags,
+} from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -154,9 +159,17 @@ test(
     const pipeline = await createPipelineViaApi(restClient, pipelineName);
     // The test deletes this through the UI below, but registering it anyway is
     // what covers the failure path: if the UI step or any assertion before it
-    // throws, teardown is the only cleanup. TestDataManager tolerates the 404
-    // on the happy path where the UI delete already removed it. (MINCRM-686)
-    testData.register('pipeline', pipeline.id, `/api/v1/pipelines/${pipeline.id}`);
+    // throws, teardown is the only cleanup. registerAdminTeardown rather than a
+    // plain register() because on the HAPPY path the record is already gone and
+    // the DELETE 404s — a plain entry reports that as `success: false` and logs
+    // "teardown failed" on every green run. (MINCRM-686)
+    registerAdminTeardown(
+      testData,
+      restClient,
+      'pipeline',
+      pipeline.id,
+      `/api/v1/pipelines/${pipeline.id}`,
+    );
 
     await navigateToAdminSettings({ page }, 'pipelines');
 

@@ -322,9 +322,10 @@ bash qa/scripts/check-e2e-cleanup.sh        # created records registered for tea
 ```
 
 All of these must pass before pushing. They run in the `e2e-framework-purity` CI
-job on every PR, alongside `check-compose-isolation.sh`, which is conditional on
-a `docker-compose*.yml` change. `check-env-example-parity.sh` and
-`check-e2e-beforeall.sh` are local-only and run in no CI job today.
+job, alongside `check-compose-isolation.sh` — the job is gated on the `qa` paths
+filter, which includes `docker-compose*.yml`, so a compose-only change still
+triggers it. `check-env-example-parity.sh` and `check-e2e-beforeall.sh` are
+local-only and run in no CI job today.
 
 ---
 
@@ -360,8 +361,10 @@ registerAdminTeardown(testData, restClient, 'contact', c.id, `/api/v1/contacts/$
 ```
 
 Register a record even when the test deletes it itself through the UI: registration is
-what covers the path where the test fails before reaching its own delete.
-`TestDataManager` tolerates the resulting 404 on the happy path.
+what covers the path where the test fails before reaching its own delete. Use
+`registerAdminTeardown` for these — on the happy path the record is already gone and the
+DELETE 404s, and a plain `register()` entry records that as `success: false` and logs
+"teardown failed" to stderr on every green run.
 
 A record that is deliberately left behind, or is already cleaned up by other means,
 opts out with a `// MINCRM-686-ok: <reason>` marker on the create line or in a comment

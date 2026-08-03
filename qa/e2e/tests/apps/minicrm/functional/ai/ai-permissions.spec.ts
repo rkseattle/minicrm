@@ -46,12 +46,12 @@ test.beforeEach(async ({ restClient }) => {
   await setAiEnabled(restClient, true);
 });
 
-// The tests below drive /ai as an ephemeral REP in the browser, and AiPage
-// creates a session for that user on load. Those rows are owned by the rep, not
-// the admin, so no admin-side sweep can see them — and because the browser
-// creates them, no create*ViaApi call site exists for check-e2e-cleanup.sh to
-// flag. Clean up as the rep, then restore admin auth for the next test's
-// beforeEach. (MINCRM-686)
+// The tests below drive /ai as an ephemeral REP in the browser and send a
+// message, and AiPage creates a session on send when none is active
+// (AiPage.tsx's handleSend). Those rows are owned by the rep, not the admin, so
+// no admin-side sweep can see them — and because the browser creates them, no
+// create*ViaApi call site exists for check-e2e-cleanup.sh to flag. Clean up as
+// the rep, then restore admin auth for the next test's beforeEach. (MINCRM-686)
 test.afterEach(async ({ restClient, ephemeralRep }) => {
   await loginAndVerify(restClient, ephemeralRep.email, ephemeralRep.password);
   await deleteAllAiSessionsViaApi(restClient);

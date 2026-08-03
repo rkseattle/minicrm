@@ -33,11 +33,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import {
-  loginAsAdmin,
-  loginViaBrowser,
-  refreshAdminBrowserSession,
-} from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import { navigateViaNavLink, navigateViaMobileNavLink } from '@behaviors/minicrm/nav.behaviors.js';
 import { navigateToDashboardAndWait } from '@behaviors/minicrm/setup.behaviors.js';
 import { withFlags } from '@apps/minicrm/helpers.js';
@@ -78,11 +74,7 @@ test.describe.configure({ mode: 'serial' });
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
 
-test.beforeEach(async ({ restClient, page }) => {
-  // Refresh the browser's admin cookie: the project storageState is minted
-  // once at suite start and its JWT idles out after 30 minutes, which is why
-  // these specs rendered /login an hour into record mode. (MINCRM-697)
-  await refreshAdminBrowserSession({ page });
+test.beforeEach(async ({ restClient }) => {
   // Delete all admin sessions so each test starts with a clean slate.
   // Needed because serial tests share the admin account and sessions accumulate.
   await loginAsAdmin(restClient);
@@ -96,6 +88,14 @@ test.beforeEach(async ({ restClient, page }) => {
 // file would leave its own behind for the rest of the run. Mirrors
 // ai-context.spec.ts, which pairs both hooks. (MINCRM-686)
 test.afterEach(async ({ restClient }) => {
+  // Re-authenticate first: F-AI10 switches restClient to an ephemeral rep and
+  // only restores admin near the end, so an assertion failing in between would
+  // leave this hook sweeping the REP's sessions while the admin session it was
+  // meant to clear survives — and an unnamed surviving session sorts to the top
+  // of `ORDER BY updated_at DESC`, becoming the one a later spec's page
+  // auto-selects. deleteAllAiSessionsViaApi only ever sees the authenticated
+  // user's own sessions. (MINCRM-686)
+  await loginAsAdmin(restClient);
   await deleteAllAiSessionsViaApi(restClient);
 });
 

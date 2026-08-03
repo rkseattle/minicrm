@@ -131,14 +131,38 @@ while IFS= read -r -d '' spec_file; do
 
     window_end=$((line_no + REGISTRATION_WINDOW))
 
+    # Never look past the end of the current test — a register() in the NEXT
+    # test cannot clean up a record created in this one.
+    next_test="$(awk -v s="$((line_no + 1))" 'NR >= s && /^[[:space:]]*(test|test\.describe)\(/ { print NR; exit }' "$spec_file")"
+    if [ -n "$next_test" ] && [ "$next_test" -le "$window_end" ]; then
+      window_end=$((next_test - 1))
+    fi
+
     # The opt-out marker may sit on the create line, just after it, or in a
     # comment block immediately above it — a multi-line reason reads better
     # above the call than trailing it, so look both ways.
-    marker_start=$((line_no - OPT_OUT_LOOKBACK))
-    [ "$marker_start" -lt 1 ] && marker_start=1
-    if sed -n "${marker_start},${window_end}p" "$spec_file" | grep -qE "$OPT_OUT_WITH_REASON"; then
-      continue
+    # The marker must annotate THIS create: either trailing on its own line, or
+    # in the contiguous comment block directly above it with no intervening
+    # non-comment line. Scanning a fixed range instead would let one marker
+    # silence every create within it — a spec could opt out an AI session and
+    # silently leak the contact and deal created two lines below.
+    marker_found=0
+    if sed -n "${line_no}p" "$spec_file" | grep -qE "$OPT_OUT_WITH_REASON"; then
+      marker_found=1
+    else
+      probe=$((line_no - 1))
+      while [ "$probe" -ge 1 ] && [ $((line_no - probe)) -le "$OPT_OUT_LOOKBACK" ]; do
+        probe_line="$(sed -n "${probe}p" "$spec_file")"
+        # Stop at the first line that is not a comment — the block has ended.
+        printf '%s' "$probe_line" | grep -qE '^[[:space:]]*(//|\*|/\*)' || break
+        if printf '%s' "$probe_line" | grep -qE "$OPT_OUT_WITH_REASON"; then
+          marker_found=1
+          break
+        fi
+        probe=$((probe - 1))
+      done
     fi
+    [ "$marker_found" -eq 1 ] && continue
 
     # Bind the registration to the identifier this call assigned to, so a
     # register() for a DIFFERENT entity cannot satisfy this one. Without this,
@@ -163,6 +187,7 @@ while IFS= read -r -d '' spec_file; do
       # the account leaks. convertLeadViaApi creates three records per call, so
       # this is the highest-leakage shape in the suite.
       convert_window="$(sed -n "${line_no},${convert_end}p" "$spec_file" | tail -n +2 |
+        grep -vE '^[[:space:]]*(//|\*|/\*)' |
         grep -A "$REGISTER_ARG_SPAN" -E "$REGISTER_PATTERN" || true)"
       missing_ids=""
       for id_field in contact_id account_id deal_id; do
@@ -202,7 +227,11 @@ while IFS= read -r -d '' spec_file; do
       # `createDealViaApi(restClient, { account_id: account.id })`, which is the
       # dominant shape in this suite, so a leaked parent would pass while its
       # child was registered.
+      # Commented-out lines are stripped first: a `// testData.register(...)`
+      # left behind during debugging would otherwise satisfy the check while
+      # registering nothing.
       register_lines="$(printf '%s' "$window_text" | tail -n +2 |
+        grep -vE '^[[:space:]]*(//|\*|/\*)' |
         grep -A "$REGISTER_ARG_SPAN" -E "$REGISTER_PATTERN" || true)"
 
       if [ -n "$register_lines" ]; then

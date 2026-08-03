@@ -19,7 +19,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAsAdmin, refreshAdminBrowserSession } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
 import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   navigateToAiPage,
@@ -35,11 +35,7 @@ import { E2E_STUB_READ_QUERY_CONTACT } from '@minicrm/shared/schemas/aiE2eStub.j
 // every other AI spec file.
 test.describe.configure({ mode: 'serial' });
 
-test.beforeEach(async ({ restClient, page }) => {
-  // Refresh the browser's admin cookie: the project storageState is minted
-  // once at suite start and its JWT idles out after 30 minutes, which is why
-  // these specs rendered /login an hour into record mode. (MINCRM-697)
-  await refreshAdminBrowserSession({ page });
+test.beforeEach(async ({ restClient }) => {
   await loginAsAdmin(restClient);
   await setAiEnabled(restClient, true);
   await deleteAllAiSessionsViaApi(restClient);
