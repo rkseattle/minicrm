@@ -40,11 +40,25 @@ export class DataHygienePage {
 
   /** Returns a resolved locator for the page heading. */
   async headingLocator() {
-    // eslint-disable-next-line local/require-locator-fallback -- role:heading is unscoped and matches every heading on the page
     return this.page
-      .locate([{ type: 'testId', value: 'data-hygiene-heading' }], {
-        intent: 'data hygiene queue page main heading',
-      })
+      .locate(
+        [
+          { type: 'testId', value: 'data-hygiene-heading' },
+          // Anchored to the heading's own accessible name, NOT a bare
+          // role:heading. Both locale strings for this page end in "Data Hygiene
+          // Queue" (adminHeading / myHeading), so this identifies THIS heading
+          // and nothing else — a real second route to the same element.
+          //
+          // A bare role:heading here matched the NavBar heading instead, which
+          // meant the test proceeded against a page that had not rendered: this
+          // page returns a skeleton while its feature flag resolves
+          // (DataHygienePage.tsx's featureFlagLoading branch), so the real
+          // heading genuinely does not exist yet. The fallback was hiding that
+          // rather than recovering from it. (MINCRM-695, MINCRM-696)
+          { type: 'role', value: 'heading', options: { name: /data hygiene queue$/i } },
+        ],
+        { intent: 'data hygiene queue page main heading' },
+      )
       .resolve();
   }
 
