@@ -319,9 +319,51 @@ jobs:
       #     callable function directly; 5.x exports an object with an `.expand()`
       #     method) — forcing 5.0.8 under minimatch@3.1.5's `require('brace-expansion')(...)`
       #     call site throws at runtime, breaking ESLint's own glob matching entirely.
+      #
+      # MINCRM-702: the entries below arrived through advisory-database DRIFT, not
+      # through any dependency change — they reproduce on an unmodified lockfile, so
+      # main fails this audit identically. `npm audit fix` was tried and rejected: it
+      # resolves these but introduces a different, larger set of unallowlisted
+      # advisories. A root `overrides` pin was also tried and does not take effect in
+      # this workspace layout (the generated lockfile records no `overrides` at all,
+      # including the pre-existing sharp/@hono pins) — that is itself unexplained and
+      # is part of what MINCRM-702 must resolve. Every entry here is provisional and
+      # should be removed as upstream patches land.
+      #   GHSA-rgw5-rvv9-x895 (brace-expansion, second DoS bypassing the CVE-2026-14257
+      #     mitigation) — same package, same dev-tooling-only exposure as
+      #     GHSA-mh99-v99m-4gvg above, which already documents why the fix is blocked.
+      #   GHSA-4cwx-7wf7-3272 / GHSA-8xcm-r25x-g524 / GHSA-jr45-8vmc-qm54 /
+      #     GHSA-m8rv-5g2x-5cg5 / GHSA-v3r7-h72x-cjcm (undici, cache-directive and
+      #     cookie/CRLF issues) — undici reaches this tree only through jsdom (client
+      #     test env), promptfoo (qa-only eval CLI) and @connectrpc/connect-node, which
+      #     pins `^5.28.4` and is not satisfied by the 7.29.0 fix. The server's own HTTP
+      #     surface is Express, not undici; no request path here is driven by untrusted
+      #     cache-control or set-cookie input.
+      #   GHSA-7p8r-x3mc-p8w7 (fast-uri, host confusion via backslash authority) —
+      #     transitive under ajv only (swagger-parser, MCP SDK, ajv-formats, promptfoo).
+      #     Used for JSON-Schema `$ref`/format resolution over developer-authored
+      #     schemas, never to resolve a user-supplied URL.
+      #   GHSA-mwp4-54f8-5fhr / GHSA-22jq-vg5j-6vgg / GHSA-4xrf-jv44-h6hh (ip-address,
+      #     SSRF and trust-boundary bypasses) — the only production path is
+      #     express-rate-limit's IP keying. Verified no direct use: `ip-address`,
+      #     `Address4` and `Address6` appear nowhere in server/src. Worst case is a
+      #     mis-bucketed rate-limit key, not a trust decision; this app makes no
+      #     outbound request to a user-supplied address.
+      #   GHSA-8j4g-w8fx-2239 (hono, ReDoS in CORS middleware) — hono is transitive
+      #     under @hono/node-server and the MCP SDK. This app serves no hono routes and
+      #     runs no hono CORS middleware; Express handles CORS.
+      #   GHSA-fxqj-rqcc-2cmp (postcss, arbitrary .map read when `from` is unset) —
+      #     build-time only, under tailwindcss/vite/autoprefixer. Inputs are this repo's
+      #     own stylesheets; nothing is compiled from untrusted CSS at runtime.
       - name: Audit dependencies for high/critical vulnerabilities
         run: |
-          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5 GHSA-mh99-v99m-4gvg"
+          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5 GHSA-mh99-v99m-4gvg \
+            GHSA-rgw5-rvv9-x895 \
+            GHSA-4cwx-7wf7-3272 GHSA-8xcm-r25x-g524 GHSA-jr45-8vmc-qm54 GHSA-m8rv-5g2x-5cg5 GHSA-v3r7-h72x-cjcm \
+            GHSA-7p8r-x3mc-p8w7 \
+            GHSA-mwp4-54f8-5fhr GHSA-22jq-vg5j-6vgg GHSA-4xrf-jv44-h6hh \
+            GHSA-8j4g-w8fx-2239 \
+            GHSA-fxqj-rqcc-2cmp"
 
           AUDIT_JSON=$(npm audit --audit-level=high --json || true)
 
