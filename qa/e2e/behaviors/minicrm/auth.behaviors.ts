@@ -15,6 +15,7 @@ import { request as playwrightRequest } from '@playwright/test';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { gotoAndSettle } from '@apps/minicrm/helpers.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { RestClientError } from '@framework/clients/rest-client.js';
 import { LoginPage } from '@pages/minicrm/LoginPage.js';
 import { ChangePasswordPage } from '@pages/minicrm/ChangePasswordPage.js';
 import { ForgotPasswordPage } from '@pages/minicrm/ForgotPasswordPage.js';
@@ -1079,6 +1080,50 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
       sameSite: 'Lax',
     },
   ]);
+}
+
+/**
+ * Refreshes a REST client's admin session in place — the counterpart to
+ * `refreshAdminBrowserSession` for callers that have no browser.
+ *
+ * Any long-lived REST caller needs this for the same reason the browser does:
+ * the session JWT's 30-minute idle expiry slides only when a client explicitly
+ * calls the refresh endpoint. `authenticate`
+ * (server/src/middleware/auth.ts) verifies the token without ever re-issuing
+ * the cookie, so a script that keeps making authenticated requests still dies
+ * at exactly 30 minutes from login. That is what killed the coverage-dump
+ * ingest loop mid-run once the dump count pushed it past the window.
+ *
+ * **Prefers `POST /auth/refresh` over a fresh login.** Refresh is the
+ * purpose-built path: it needs only the existing cookie, skips bcrypt entirely,
+ * and preserves `login_at` so the 8-hour absolute cap still applies. Across a
+ * loop of ~1000 iterations on a single-threaded server that difference is
+ * material — a bcrypt hash per refresh is exactly the stall that makes
+ * `loginAsAdmin` retry on ECONNRESET.
+ *
+ * **Falls back to a full login on ANY 401, not on a specific error code.**
+ * `/auth/refresh` sits behind `authenticate`, so a token that has *already*
+ * expired is rejected by the middleware before `refreshSession` ever runs and
+ * never produces the absolute-timeout code. Keying the fallback to that one
+ * code would leave it dead precisely when the proactive check has missed —
+ * clock skew, or one unusually slow iteration. Any 401 means the session is
+ * unusable, and a fresh login is the right answer to all of them; a genuinely
+ * revoked admin then fails loudly at login rather than looping. (MINCRM-703)
+ *
+ * @param restClient - The client whose underlying context holds the session
+ *   cookie. The refreshed cookie lands in that same context.
+ */
+export async function refreshAdminRestSession(restClient: RestClient): Promise<void> {
+  try {
+    await restClient.post('/api/v1/auth/refresh', {});
+    return;
+  } catch (err) {
+    if (!(err instanceof RestClientError) || err.status !== 401) {
+      throw err;
+    }
+  }
+  // The session could not be slid forward — mint a new one from credentials.
+  await loginAsAdmin(restClient);
 }
 
 /** Result returned by loginWithMfaChallenge. */

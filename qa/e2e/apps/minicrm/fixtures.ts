@@ -47,6 +47,7 @@ import {
   CORRELATION_ID_HEADER,
 } from '@framework/coverageAgent/coverage-session-control-client.js';
 import { RestClient } from '@framework/clients/rest-client.js';
+import { isTokenNearingExpiry } from '@framework/auth/token-expiry.js';
 import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
@@ -118,43 +119,10 @@ export interface MinicrmFixtures {
 // Extended test object
 // ---------------------------------------------------------------------------
 
-/**
- * Fraction of a token's remaining life below which it is refreshed.
- *
- * The session JWT has a 30-minute sliding idle expiry, so a third of its life is
- * a 10-minute floor — comfortably longer than any single test, and short enough
- * that the refresh almost never fires in a normal-length run.
- */
-const TOKEN_REFRESH_THRESHOLD = 1 / 3;
-
-/**
- * Returns true when a JWT is inside the last third of its lifetime, or when its
- * expiry cannot be read.
- *
- * Unreadable is treated as nearing expiry deliberately: a token this cannot
- * parse is one it cannot vouch for, and a needless refresh is far cheaper than a
- * test that silently runs against the login page. (MINCRM-697)
- *
- * @param token - The raw JWT from the auth cookie.
- * @returns Whether the token should be refreshed before the test runs.
- */
-export function isTokenNearingExpiry(token: string): boolean {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return true;
-    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
-      iat?: number;
-      exp?: number;
-    };
-    if (typeof claims.exp !== 'number' || typeof claims.iat !== 'number') return true;
-    const lifetimeSeconds = claims.exp - claims.iat;
-    if (lifetimeSeconds <= 0) return true;
-    const remainingSeconds = claims.exp - Math.floor(Date.now() / 1000);
-    return remainingSeconds < lifetimeSeconds * TOKEN_REFRESH_THRESHOLD;
-  } catch {
-    return true;
-  }
-}
+// isTokenNearingExpiry moved to @framework/auth/token-expiry.js (MINCRM-703),
+// where standalone scripts can reuse it without importing this module and
+// constructing the whole Playwright fixture graph as a side effect. Imported
+// above; no re-export here, so there is exactly one import path to it.
 
 const testWithPage = baseTest.extend<{ page: PageFacade }>({
   // Override the framework's `page` fixture to wire in page-object path

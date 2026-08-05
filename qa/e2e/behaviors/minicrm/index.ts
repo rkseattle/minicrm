@@ -14,6 +14,7 @@ export {
   navigateToProtectedPage,
   setPassword,
   loginAsAdmin,
+  refreshAdminRestSession,
   loginAs,
   getCurrentUser,
   logoutViaApi,

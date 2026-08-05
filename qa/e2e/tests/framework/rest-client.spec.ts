@@ -623,3 +623,47 @@ test.describe('RestClient Zod schema validation (MINCRM-229)', () => {
     expect(restErr.validationError).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// getCookie
+// ---------------------------------------------------------------------------
+
+test.describe('RestClient.getCookie', () => {
+  /**
+   * Builds a mock context whose storageState() returns the given cookies.
+   *
+   * @param cookies - Cookie name/value pairs the jar should report.
+   * @returns Mock APIRequestContext.
+   */
+  function storageStateContext(cookies: { name: string; value: string }[]): APIRequestContext {
+    return {
+      storageState: () => Promise.resolve({ cookies, origins: [] }),
+    } as unknown as APIRequestContext;
+  }
+
+  test('returns the value of a cookie present in the jar', async () => {
+    const ctx = storageStateContext([
+      { name: 'other', value: 'ignored' },
+      { name: 'session_token', value: 'header.payload.signature' },
+    ]);
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    expect(await client.getCookie('session_token')).toBe('header.payload.signature');
+  });
+
+  test('returns null when the named cookie is absent', async () => {
+    const ctx = storageStateContext([{ name: 'other', value: 'ignored' }]);
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    // Null rather than undefined or a throw: callers branch on "is there a
+    // session to inspect", and an empty jar is an ordinary state, not an error.
+    expect(await client.getCookie('session_token')).toBeNull();
+  });
+
+  test('returns null when the jar is empty', async () => {
+    const ctx = storageStateContext([]);
+    const client = new RestClient(ctx, { baseUrl: 'http://localhost:5173' });
+
+    expect(await client.getCookie('session_token')).toBeNull();
+  });
+});
