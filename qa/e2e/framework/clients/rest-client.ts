@@ -235,6 +235,23 @@ export class RestClient {
     delete this.defaultHeaders[name];
   }
 
+  /**
+   * Reads a cookie's current value from the underlying request context.
+   *
+   * This client has no cookie jar of its own — it delegates every call to the
+   * injected APIRequestContext, whose jar is the authoritative one. Callers
+   * that need to inspect session state (to decide whether a token is nearing
+   * expiry, say) have no other route to it, since the context itself is
+   * private. `storageState()` is the supported accessor.
+   *
+   * @param name - Cookie name to look up.
+   * @returns The cookie's value, or null when the jar holds no such cookie.
+   */
+  async getCookie(name: string): Promise<string | null> {
+    const state = await this.request.storageState();
+    return state.cookies.find((cookie) => cookie.name === name)?.value ?? null;
+  }
+
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------

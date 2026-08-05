@@ -24,7 +24,11 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { isTokenNearingExpiry } from '@apps/minicrm/fixtures.js';
+import {
+  isTokenNearingExpiry,
+  EXPECTED_TOKEN_LIFETIME_SECONDS,
+  TOKEN_CHECK_INTERVAL_SECONDS,
+} from '@framework/auth/token-expiry.js';
 
 /**
  * Builds a JWT-shaped string whose payload carries the given claims.
@@ -40,8 +44,14 @@ function makeToken(claims: Record<string, unknown>): string {
   return `header.${payload}.signature`;
 }
 
-/** Seconds in the 30-minute sliding idle window the server issues. */
-const TOKEN_LIFETIME_SECONDS = 30 * 60;
+/**
+ * Seconds in the sliding idle window the server issues.
+ *
+ * Imported rather than re-declared: a local copy here would drift from the
+ * value the production code actually plans its refresh cadence around, and
+ * these specs would keep passing while doing so. (MINCRM-703)
+ */
+const TOKEN_LIFETIME_SECONDS = EXPECTED_TOKEN_LIFETIME_SECONDS;
 
 /**
  * Builds a token issued `ageSeconds` ago with the server's real lifetime.
@@ -96,5 +106,35 @@ test.describe('isTokenNearingExpiry', () => {
     const now = Math.floor(Date.now() / 1000);
     expect(isTokenNearingExpiry(makeToken({ iat: now, exp: now }))).toBe(true);
     expect(isTokenNearingExpiry(makeToken({ iat: now, exp: now - 60 }))).toBe(true);
+  });
+});
+
+test.describe('TOKEN_CHECK_INTERVAL_SECONDS', () => {
+  test('a token is never both un-refreshable now and expired one interval later', () => {
+    // The guarantee the batch cadence rests on, stated as the property that can
+    // actually fail rather than as a restatement of the definition: for every
+    // token age, if the predicate says "not yet" then the token still has life
+    // left one full check-interval later. A caller checking on that interval
+    // therefore never steps from "healthy" straight to "expired". Widening
+    // TOKEN_REFRESH_THRESHOLD or the interval independently breaks this.
+    // Every second, not a coarser step: this property fails only at the exact
+    // threshold boundary, and a stride that steps over it reports a pass.
+    for (let age = 0; age < EXPECTED_TOKEN_LIFETIME_SECONDS; age += 1) {
+      if (isTokenNearingExpiry(tokenAged(age))) continue;
+      const remainingAfterNextCheck =
+        EXPECTED_TOKEN_LIFETIME_SECONDS - age - TOKEN_CHECK_INTERVAL_SECONDS;
+      expect(remainingAfterNextCheck).toBeGreaterThan(0);
+    }
+  });
+
+  test('a token with one interval or less remaining is already refreshable', () => {
+    // The cadence guarantee in concrete terms: by the time a token has only one
+    // check-interval of life left, the predicate already wants it refreshed —
+    // so a caller checking on that interval always acts before expiry, never
+    // after.
+    const oneIntervalLeft = tokenAged(
+      EXPECTED_TOKEN_LIFETIME_SECONDS - TOKEN_CHECK_INTERVAL_SECONDS,
+    );
+    expect(isTokenNearingExpiry(oneIntervalLeft)).toBe(true);
   });
 });
