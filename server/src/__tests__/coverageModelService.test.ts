@@ -385,7 +385,7 @@ describe('coverageModelService', () => {
 
     it('does not delete a coverage_test_links row that has no coverage_units row at all, regardless of the link being stale (MINCRM-637)', async () => {
       // Mirrors loadCoverageTestLinksForCommit's real shape: a committed
-      // qa/coverage-map.json load writes coverage_test_links rows with NO
+      // qa/coverage-map.jsonl load writes coverage_test_links rows with NO
       // corresponding coverage_units rows, ever — that's the normal, only
       // way select-tests.ts gets a coverage index in CI and via
       // pre-push-tia.ts locally. This cleanup is scoped to "matches a unit
@@ -440,7 +440,7 @@ describe('coverageModelService', () => {
       );
 
       // The real reload path: same commitSha, same entries — mirrors
-      // load-coverage-map.ts re-running against an unchanged qa/coverage-map.json.
+      // load-coverage-map.ts re-running against an unchanged qa/coverage-map.jsonl.
       await loadCoverageTestLinksForCommit(commitSha, [
         {
           unitKey: unit.unitKey,

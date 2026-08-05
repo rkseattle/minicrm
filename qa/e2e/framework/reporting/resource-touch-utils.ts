@@ -9,6 +9,7 @@
  */
 
 import fs from 'node:fs';
+import { readJsonlRecords } from './worker-artifact-utils.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,26 +62,11 @@ export function appendResourceTouchRecord(filePath: string, record: ResourceTouc
 
 /**
  * Reads and parses all valid JSON lines from a JSONL file.
- * Invalid lines are silently skipped so a single corrupt record cannot
- * prevent the rest of the history from being read.
+ *
+ * Malformed lines are skipped so a single corrupt record cannot make the whole
+ * accumulated history unreadable — but the skip COUNT is reported, so silently
+ * dropping records is distinguishable from a clean file.
  */
 export function readResourceTouchRecords(filePath: string): ResourceTouchRecord[] {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(filePath, 'utf-8');
-  } catch {
-    return [];
-  }
-
-  const records: ResourceTouchRecord[] = [];
-  for (const line of raw.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      records.push(JSON.parse(trimmed) as ResourceTouchRecord);
-    } catch {
-      // Skip malformed lines
-    }
-  }
-  return records;
+  return readJsonlRecords<ResourceTouchRecord>(filePath, 'resource-touch');
 }

@@ -430,7 +430,7 @@ jobs:
       # coverageMappingService.ts's own "Committed-map load/export"
       # docblock) — this is the ONE place coverage_test_links reflects a
       # genuine, freshly-ingested full-suite run. Exports it to
-      # qa/coverage-map.json and commits back to main, the same pattern
+      # qa/coverage-map.jsonl and commits back to main, the same pattern
       # update-timing-baseline.yml already establishes for
       # test-timing-baseline.json. Every other job (ci.yml's tia-selection,
       # the local pre-push hook) re-loads FROM this committed file — see
@@ -446,6 +446,7 @@ jobs:
       # actually passed. Ingestion succeeding is necessary (there must be
       # something to export) but not sufficient.
       - name: Export coverage map
+        id: export-map
         if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
         run: npm run dump:coverage-map --workspace=minicrm-server
         env:
@@ -454,6 +455,16 @@ jobs:
           DB_NAME: minicrm_e2e
           DB_HOST: localhost
           DB_PORT: 5432
+      - name: Report coverage-map size and collapse ratio
+        if: always() && steps.export-map.outcome == 'success'
+        run: npm run --workspace=minicrm-server --silent report:coverage-map-size >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DB_USER: minicrm
+          DB_PASSWORD: password
+          DB_NAME: minicrm_e2e
+          DB_HOST: localhost
+          DB_PORT: 5432
+
 
       # Only main's map is authoritative, so only a run that actually checked
       # out main may commit one. A validation dispatch against a branch (see
@@ -499,7 +510,7 @@ jobs:
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add qa/coverage-map.json
+          git add qa/coverage-map.jsonl
           if git diff --cached --quiet; then
             echo "Coverage map unchanged — nothing to commit."
           else
@@ -508,7 +519,7 @@ jobs:
             # for over two hours, so main has often moved since checkout; a
             # plain push would then be rejected as non-fast-forward and the
             # map would be lost after a full suite run. The commit touches
-            # only qa/coverage-map.json, which nothing else writes, so the
+            # only qa/coverage-map.jsonl, which nothing else writes, so the
             # rebase is conflict-free in practice.
             git rebase origin/main
             # Explicit destination: HEAD may be detached (a SHA dispatch), where
@@ -526,6 +537,24 @@ jobs:
           path: |
             qa/e2e/test-results/
             qa/e2e/playwright-report/
+          retention-days: 30
+
+      # Measures what the export actually produced, so the size question is
+      # answered from data rather than estimated. GitHub rejects a push
+      # containing any file over 100MB, and streaming removes the crash without
+      # guaranteeing the result is committable — this reports the numbers before
+      # the commit step attempts it. (MINCRM-703)
+      # The map itself, separate from the report. The commit step above only
+      # runs on main, so on a workflow_dispatch validation run against a branch
+      # the exported map was previously produced and then discarded with the
+      # runner — leaving no way to inspect it before merging. This is what makes
+      # a pre-merge check of the format and size possible at all. (MINCRM-703)
+      - name: Upload exported coverage map
+        if: always() && steps.export-map.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-map-${{ github.run_id }}
+          path: qa/coverage-map.jsonl
           retention-days: 30
 
       # MINCRM-634: "a post-merge full-suite failure triggers a clear

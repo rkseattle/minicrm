@@ -315,7 +315,7 @@ function runCreateCoverageDb(): void {
 
 /**
  * Runs server/src/scripts/load-coverage-map.ts (pr-tia-8) — re-populates
- * coverage_test_links from the committed qa/coverage-map.json before
+ * coverage_test_links from the committed qa/coverage-map.jsonl before
  * selection queries it. A fresh checkout's local coverageDb has nothing in
  * it; an established dev machine's already has real accumulated data, but
  * re-loading is a harmless, idempotent refresh either way (see

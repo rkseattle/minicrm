@@ -9,6 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { readJsonlRecords } from './worker-artifact-utils.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,28 +81,13 @@ export function appendTimingRecord(filePath: string, record: TimingRecord): void
 
 /**
  * Reads and parses all valid JSON lines from a JSONL file.
- * Invalid lines are silently skipped so a single corrupt record cannot
- * prevent the rest of the history from being read.
+ *
+ * Malformed lines are skipped so a single corrupt record cannot make the whole
+ * accumulated history unreadable — but the skip COUNT is reported, so silently
+ * dropping records is distinguishable from a clean file.
  */
 export function readTimingRecords(filePath: string): TimingRecord[] {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(filePath, 'utf-8');
-  } catch {
-    return [];
-  }
-
-  const records: TimingRecord[] = [];
-  for (const line of raw.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    try {
-      records.push(JSON.parse(trimmed) as TimingRecord);
-    } catch {
-      // Skip malformed lines
-    }
-  }
-  return records;
+  return readJsonlRecords<TimingRecord>(filePath, 'timing');
 }
 
 // ── Baseline helpers ──────────────────────────────────────────────────────────
@@ -114,14 +100,31 @@ export function writeTimingBaseline(filePath: string, baseline: TimingBaseline):
 }
 
 /**
- * Reads and parses test-timing-baseline.json.
- * Returns null if the file does not exist or cannot be parsed.
+ * Reads and parses the timing baseline.
+ *
+ * Returns null when the file is absent — a legitimate state, and callers fall
+ * back to unweighted sharding. A file that EXISTS but cannot be read or parsed
+ * also returns null so shard generation still succeeds, but says so loudly
+ * first: the two were previously indistinguishable, and a corrupt committed
+ * baseline degraded every later run to unbalanced shards with no signal at all.
+ * Diagnosing that from the symptom alone is expensive; naming it costs one
+ * line. Deliberately not a throw — these callers generate the CI shard matrix,
+ * and turning a degradation into an outage would be worse than the bug.
+ *
+ * @param filePath - Path to the baseline file.
+ * @returns The parsed baseline, or null when absent or unreadable.
  */
 export function readTimingBaseline(filePath: string): TimingBaseline | null {
+  if (!fs.existsSync(filePath)) return null;
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(raw) as TimingBaseline;
-  } catch {
+  } catch (err) {
+    process.stderr.write(
+      `[timing-utils] ${filePath} exists but could not be read or parsed ` +
+        `(${err instanceof Error ? err.message : String(err)}) — falling back to ` +
+        `unweighted sharding. Shard balance will be worse until this is fixed.\n`,
+    );
     return null;
   }
 }

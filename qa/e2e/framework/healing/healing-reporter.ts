@@ -29,6 +29,7 @@ import { generatePatchSuggestions } from './patch-suggester.js';
 import type { PatchSuggestion } from './patch-suggester.js';
 import { readTrends, mergeTrends, writeTrends, quarantineCandidates } from './heal-trends.js';
 import type { HealTrendEntry } from './heal-trends.js';
+import { readWorkerArtifact } from '../reporting/worker-artifact-utils.js';
 
 const OUTPUT_DIR = 'test-results';
 // Matches both the original format (healing-0.json) and the shard-aware format
@@ -77,13 +78,7 @@ export function buildSuggestionsMarkdown(suggestions: PatchSuggestion[]): string
  * Returns an empty array if the file is missing or malformed.
  */
 function readWorkerFile(filePath: string): HealEvent[] {
-  try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as { events?: HealEvent[] };
-    return Array.isArray(parsed.events) ? parsed.events : [];
-  } catch {
-    return [];
-  }
+  return readWorkerArtifact<HealEvent>(filePath, 'events', 'HealingReporter');
 }
 
 /**
