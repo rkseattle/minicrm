@@ -67,6 +67,7 @@ jobs:
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
+      auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -140,6 +141,18 @@ jobs:
               - 'qa/e2e/snapshots/**'
             migrations:
               - 'db/migrations/**'
+            # Single-purpose output for check-token-refresh-parity.sh, which pins
+            # the token lifetime assumed by the E2E suite AND by the browser
+            # client against the server's real one. The invariant is
+            # bidirectional — it breaks by editing any side — and the QA half is
+            # already covered by the `qa` filter, so the server and client files
+            # need their own entries. Deliberately NOT folded into `qa` or
+            # `client`: those gate many jobs including the full E2E matrix, and
+            # a session-lifetime edit has no business booting all of it.
+            # (MINCRM-703)
+            auth-token-expiry:
+              - 'server/src/auth/sessionCookie.ts'
+              - 'client/src/hooks/useSessionRefresh.ts'
             ai:
               - 'server/src/ai/**'
               - 'qa/evals/**'
@@ -843,7 +856,15 @@ jobs:
   e2e-framework-purity:
     name: Phase 1 - E2E Framework Purity
     needs: changes
-    if: needs.changes.outputs.qa == 'true'
+    # No always() here, deliberately. CLAUDE.md mandates it when an upstream job
+    # can be SKIPPED, because GitHub auto-skips the dependent before evaluating
+    # `if:`. This job's only dependency is `changes`, which is unconditional and
+    # so never skipped — matching the other changes-only jobs above, which all
+    # use a plain condition. Adding always() would be actively harmful: if
+    # `changes` FAILED, every output would read as empty, the OR would be false,
+    # and this job would report `skipped` rather than blocking — quietly
+    # dropping the whole purity suite from a green build. (MINCRM-703)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -868,6 +889,9 @@ jobs:
 
       - name: Check specs register created records for teardown (MINCRM-686)
         run: bash qa/scripts/check-e2e-cleanup.sh
+
+      - name: Check the QA token lifetime matches the server's (MINCRM-703)
+        run: bash qa/scripts/check-token-refresh-parity.sh
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests

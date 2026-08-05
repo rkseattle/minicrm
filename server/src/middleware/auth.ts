@@ -15,16 +15,17 @@ import { findUserById, findUserByApiToken } from '../services/userService.js';
 import { runWithRequestContext } from '../utils/requestContext.js';
 
 /**
- * Name of the cookie that holds the JWT.
- *
- * Overridable via AUTH_COOKIE_NAME so two stacks on the same host can hold independent
- * sessions. Cookies are scoped by domain, NOT by port, so the dev stack (localhost:5173)
- * and the test stack (localhost:5175) otherwise share one jar: logging into either
- * overwrites the other's token, and the victim sees "your session has expired" because
- * the surviving token names a user that exists only in the other stack's database.
- * Defaults to the historical value, so unset changes nothing. (MINCRM-684)
+ * Session-cookie policy — name, lifetime, and attributes — lives in
+ * auth/sessionCookie.ts, alongside the helpers that write and clear the cookie.
+ * Re-exported here because callers have long imported the name from this
+ * module. (MINCRM-703)
  */
-export const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'minicrm_token';
+import { AUTH_COOKIE_NAME, ABSOLUTE_SESSION_CAP_SECONDS } from '../auth/sessionCookie.js';
+
+// Only AUTH_COOKIE_NAME is re-exported: six callers import it from this module
+// and predate the policy split. The session cap has no such callers, so
+// re-exporting it would just give one constant two importable identities.
+export { AUTH_COOKIE_NAME };
 
 /**
  * Express middleware that validates the JWT from the httpOnly cookie and
@@ -85,7 +86,6 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   // login_at is embedded at original login and preserved through every refresh.
   // A missing login_at means the token predates this feature — allow it through
   // so existing sessions are not abruptly invalidated on deploy.
-  const ABSOLUTE_SESSION_CAP_SECONDS = 8 * 60 * 60;
   if (decoded.login_at !== undefined && decoded.iat !== undefined) {
     const sessionAgeSeconds = decoded.iat - decoded.login_at;
     if (sessionAgeSeconds >= ABSOLUTE_SESSION_CAP_SECONDS) {

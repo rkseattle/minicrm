@@ -49,12 +49,6 @@ export function resolveAuthCookieName(): string {
 }
 
 /**
- * Resolves the shared admin credentials from the environment.
- *
- * @param caller - Function name, used to prefix the error when the password is unset.
- * @returns The admin email and password.
- */
-/**
  * Resolves the API origin for out-of-band auth calls.
  *
  * No default outside CI: a silent :3001 fallback points at the DEV server and
@@ -71,6 +65,12 @@ export function resolveE2eApiUrl(caller: string): string {
   return apiUrl;
 }
 
+/**
+ * Resolves the shared admin credentials from the environment.
+ *
+ * @param caller - Function name, used to prefix the error when the password is unset.
+ * @returns The admin email and password.
+ */
 export function resolveAdminCredentials(caller: string): { email: string; password: string } {
   const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const password = process.env['E2E_ADMIN_PASSWORD'];
@@ -1018,7 +1018,7 @@ export async function loginViaBrowser(
  * the run may be long. The project-level `storageState` (`.auth/admin.json`) is
  * written once at suite start, and its JWT carries a 30-minute sliding idle
  * expiry (`JWT_IDLE_EXPIRY_SECONDS`,
- * server/src/controllers/authController.ts) — the documented "8 hours" is the
+ * server/src/auth/sessionCookie.ts) — the documented "8 hours" is the
  * absolute cap enforced via `login_at`, not the token's lifetime. Idle refresh
  * only happens on a context that is actually making requests, so a spec that
  * first navigates an hour into the run loads a dead cookie and lands on /login.

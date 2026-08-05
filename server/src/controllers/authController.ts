@@ -14,7 +14,12 @@ import {
 } from '@minicrm/shared/schemas/userSchema.js';
 import * as userService from '../services/userService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
-import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
+import {
+  JWT_IDLE_EXPIRY_SECONDS,
+  ABSOLUTE_SESSION_CAP_SECONDS,
+  setSessionCookie,
+  clearSessionCookie,
+} from '../auth/sessionCookie.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import {
@@ -28,17 +33,11 @@ import { getMfaRequired } from '../services/settingsService.js';
 import { isSsoBoundUser } from '../services/ssoService.js';
 import logger from '../logger.js';
 
-/**
- * JWT idle-expiry window — 30 minutes (MINCRM-365).
- * The token is refreshed by the client on activity, so the expiry slides with use.
- */
-const JWT_IDLE_EXPIRY_SECONDS = 30 * 60;
-
-/** Cookie max-age in milliseconds for idle-expiry tokens */
-const COOKIE_MAX_AGE_MS = JWT_IDLE_EXPIRY_SECONDS * 1000;
-
-/** Absolute session cap — 8 hours from original login (MINCRM-365) */
-export const ABSOLUTE_SESSION_CAP_SECONDS = 8 * 60 * 60;
+// Session lifetime and cookie policy live in auth/sessionCookie.ts — one
+// definition shared by every login path, rather than a copy per controller kept
+// honest by a comment. Imported above, not re-exported: a re-export would give
+// the same constant a second importable identity, which is the thing this
+// consolidation set out to remove. (MINCRM-703)
 
 /**
  * POST /api/auth/login
@@ -154,12 +153,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
-  res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  setSessionCookie(res, token);
 
   res.status(200).json({
     user: sanitizeUser(user),
@@ -185,11 +179,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 export async function logout(req: Request, res: Response): Promise<void> {
   const user = req.user!;
 
-  res.clearCookie(AUTH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
+  clearSessionCookie(res);
   res.status(200).json({ message: 'Logged out successfully' });
 
   // Fire-and-forget: audit logout event — failure must not block the response (MINCRM-170)
@@ -359,12 +349,7 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
-  res.cookie(AUTH_COOKIE_NAME, sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  setSessionCookie(res, sessionToken);
 
   res.status(200).json({ user: sanitizeUser(user) });
 }
@@ -412,12 +397,7 @@ export async function refreshSession(req: Request, res: Response): Promise<void>
     expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
-  res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  setSessionCookie(res, token);
 
   res.status(200).json({ ok: true });
 }
