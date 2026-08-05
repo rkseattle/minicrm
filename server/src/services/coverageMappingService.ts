@@ -543,7 +543,7 @@ export async function findUnitsForTestWithConfidence(
 // (see docs/dev/coverage.md's "Coverage Database" section: the ONE
 // long-lived instance is a developer's own local docker-compose db
 // service, never present in GitHub Actions). The map therefore has to
-// round-trip through a committed file (qa/coverage-map.json), the same
+// round-trip through a committed file (qa/coverage-map.jsonl), the same
 // pattern test-timing-baseline.json already establishes for LPT shard
 // timing data. exportCoverageTestLinks reads the live table (called once,
 // at the end of tia-record-mode.yml, which has real freshly-ingested
@@ -568,9 +568,84 @@ export interface CoverageTestLinkExportEntry {
   hitCount: number;
 }
 
-/** Reads every coverage_test_links row, for exporting to qa/coverage-map.json. Not scoped to a single commit_sha — the export always represents "every mapping this database currently knows," matching test-timing-baseline.json's own "latest known" (not per-commit) semantics. */
-export async function exportAllCoverageTestLinks(): Promise<CoverageTestLinkExportEntry[]> {
-  const result = await coverageDb.query<{
+/** Rows per keyset page when streaming the export. Large enough that page overhead is negligible, small enough that a page is never a memory concern. */
+const EXPORT_PAGE_SIZE = 5000;
+
+/**
+ * The collapsed projection of coverage_test_links, shared by the count and the
+ * paginated read so the two can never describe different row sets.
+ *
+ * COMMIT-AGNOSTIC BY DESIGN. The table accumulates a row per (mapping,
+ * commit_sha) forever, but loadCoverageTestLinksForCommit re-keys every entry
+ * to one caller-supplied SHA and its ON CONFLICT target collapses duplicates —
+ * so N historical SHAs of the same logical mapping become exactly one row on
+ * load. The per-commit copies in the export are therefore pure duplication with
+ * no consumer, and grouping them away here is lossless while removing the only
+ * unbounded axis. Verified: every other reader of this table filters by a
+ * single commit_sha.
+ *
+ * hit_count uses MAX, not SUM: ingestion already accumulates it across dumps at
+ * the same commit, so summing across commits would multiply it by the number of
+ * commits and grow without limit — relocating the unbounded axis into the value
+ * instead of removing it. MAX means "the most this mapping was ever seen hit at
+ * one commit". No consumer ranks on it (selection uses confidence_score); the
+ * only readers are the query API's result shape and presence filters, which MAX
+ * preserves exactly.
+ *
+ * test_name and test_file both take the most recent NON-NULL value. Both are
+ * nullable, and ingestion fills them in only when the dump carried them, so a
+ * newer NULL winning would erase a known value — which the load path cannot
+ * restore, since it sets test_file only via a follow-up UPDATE guarded on the
+ * value being present. commit_sha is the tiebreaker on equal last_seen_at
+ * (now() at insert, so ties are real), making the output byte-stable across
+ * runs and the committed file diffable.
+ */
+const COLLAPSED_EXPORT_PROJECTION = `
+  SELECT unit_key,
+         branch_id,
+         file_path,
+         test_id,
+         MAX(hit_count) AS hit_count,
+         (array_agg(test_name ORDER BY last_seen_at DESC, commit_sha)
+            FILTER (WHERE test_name IS NOT NULL))[1] AS test_name,
+         (array_agg(test_file ORDER BY last_seen_at DESC, commit_sha)
+            FILTER (WHERE test_file IS NOT NULL))[1] AS test_file
+  FROM coverage_test_links
+`;
+
+const COLLAPSED_EXPORT_GROUP_BY = `
+  GROUP BY unit_key, COALESCE(branch_id, ''), branch_id, file_path, test_id
+`;
+
+/** A page of export entries plus the cursor needed to fetch the next one. */
+interface ExportPage {
+  entries: CoverageTestLinkExportEntry[];
+  cursor: { unitKey: string; branchId: string; filePath: string; testId: string } | null;
+}
+
+/**
+ * Reads one keyset page of the collapsed export.
+ *
+ * The seek tuple is all four grouping columns, with branch_id coalesced exactly
+ * as the GROUP BY does. Omitting branch_id from the cursor would let two rows
+ * differing only by branch share a cursor value, and the `>` predicate would
+ * silently skip one of them at every page boundary — a non-deterministic loss
+ * of mappings, which is the failure this whole change exists to prevent.
+ *
+ * @param client - Client holding the export's REPEATABLE READ snapshot.
+ * @param after - Cursor from the previous page, or null for the first page.
+ * @returns The page's entries and the cursor to continue from.
+ */
+async function readCollapsedExportPage(
+  client: PoolClient,
+  after: ExportPage['cursor'],
+): Promise<ExportPage> {
+  const where = after
+    ? `WHERE (unit_key, COALESCE(branch_id, ''), file_path, test_id) > ($1, $2, $3, $4)`
+    : '';
+  const params = after ? [after.unitKey, after.branchId, after.filePath, after.testId] : [];
+
+  const result = await client.query<{
     unit_key: string;
     branch_id: string | null;
     file_path: string;
@@ -579,11 +654,15 @@ export async function exportAllCoverageTestLinks(): Promise<CoverageTestLinkExpo
     test_file: string | null;
     hit_count: number;
   }>(
-    `SELECT unit_key, branch_id, file_path, test_id, test_name, test_file, hit_count
-     FROM coverage_test_links
-     ORDER BY unit_key, file_path, test_id`,
+    `${COLLAPSED_EXPORT_PROJECTION}
+     ${where}
+     ${COLLAPSED_EXPORT_GROUP_BY}
+     ORDER BY unit_key, COALESCE(branch_id, ''), file_path, test_id
+     LIMIT ${EXPORT_PAGE_SIZE}`,
+    params,
   );
-  return result.rows.map((row) => ({
+
+  const entries = result.rows.map((row) => ({
     unitKey: row.unit_key,
     branchId: row.branch_id,
     filePath: row.file_path,
@@ -592,6 +671,67 @@ export async function exportAllCoverageTestLinks(): Promise<CoverageTestLinkExpo
     testFile: row.test_file,
     hitCount: row.hit_count,
   }));
+
+  const last = result.rows[result.rows.length - 1];
+  return {
+    entries,
+    cursor:
+      result.rows.length < EXPORT_PAGE_SIZE || !last
+        ? null
+        : {
+            unitKey: last.unit_key,
+            branchId: last.branch_id ?? '',
+            filePath: last.file_path,
+            testId: last.test_id,
+          },
+  };
+}
+
+/**
+ * Streams every coverage mapping this database knows, collapsed to one entry
+ * per logical mapping, without ever holding the full set in memory.
+ *
+ * Replaces a buffering export that materialized the whole table, mapped it into
+ * a second array, and handed it to JSON.stringify — which died on V8's 512MB
+ * max string length once the table grew past it, permanently.
+ *
+ * The count and every page run on ONE client inside a REPEATABLE READ
+ * transaction. Under the pool's default READ COMMITTED each page would be its
+ * own snapshot, so a concurrent ingest between pages could make the reported
+ * total disagree with the rows actually emitted — and the reader's completeness
+ * check would then reject a perfectly good file.
+ *
+ * @param onBatch - Receives each page in key order. Awaited, so a slow consumer
+ *   (writing to disk) applies backpressure rather than queuing pages in memory.
+ * @returns The total number of entries emitted.
+ */
+export async function streamAllCoverageTestLinks(
+  onBatch: (entries: CoverageTestLinkExportEntry[]) => Promise<void>,
+): Promise<number> {
+  const client = await coverageDb.connect();
+  let emitted = 0;
+  try {
+    await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+
+    let cursor: ExportPage['cursor'] = null;
+    for (;;) {
+      const page: ExportPage = await readCollapsedExportPage(client, cursor);
+      if (page.entries.length > 0) {
+        emitted += page.entries.length;
+        await onBatch(page.entries);
+      }
+      if (!page.cursor) break;
+      cursor = page.cursor;
+    }
+
+    await client.query('COMMIT');
+    return emitted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -619,51 +759,7 @@ export async function loadCoverageTestLinksForCommit(
     await client.query('BEGIN');
     await client.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [commitSha]);
 
-    for (let start = 0; start < entries.length; start += MAX_EXPORT_ROWS_PER_INSERT_BATCH) {
-      const batch = entries.slice(start, start + MAX_EXPORT_ROWS_PER_INSERT_BATCH);
-      if (batch.length === 0) continue;
-
-      const values: unknown[] = [];
-      const rowPlaceholders = batch.map((entry, index) => {
-        const base = index * TEST_LINK_EXPORT_COLUMN_COUNT;
-        values.push(
-          commitSha,
-          entry.unitKey,
-          entry.branchId,
-          entry.filePath,
-          entry.testId,
-          entry.testName,
-          entry.hitCount,
-        );
-        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`;
-      });
-
-      await client.query(
-        `INSERT INTO coverage_test_links
-           (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
-         VALUES ${rowPlaceholders.join(', ')}
-         ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''), test_id)
-         DO UPDATE SET
-           test_name = EXCLUDED.test_name,
-           hit_count = EXCLUDED.hit_count,
-           last_seen_at = now()`,
-        values,
-      );
-
-      // test_file, like test_name in insertTestLinkBatch, sits outside the
-      // conflict target — a second pass per batch, only for entries that
-      // actually carry one.
-      const withTestFile = batch.filter((entry) => entry.testFile !== null);
-      for (const entry of withTestFile) {
-        await client.query(
-          `UPDATE coverage_test_links
-           SET test_file = $1
-           WHERE commit_sha = $2 AND file_path = $3 AND unit_key = $4 AND COALESCE(branch_id, '') = COALESCE($5, '') AND test_id = $6`,
-          [entry.testFile, commitSha, entry.filePath, entry.unitKey, entry.branchId, entry.testId],
-        );
-      }
-    }
-
+    await appendCoverageTestLinkBatches(client, commitSha, entries);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -671,6 +767,163 @@ export async function loadCoverageTestLinksForCommit(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Inserts entries for one commit on an already-open transaction, in
+ * parameter-limit-sized batches.
+ *
+ * Split out so both the one-shot load above and the streaming session below
+ * share exactly one implementation of the insert, the ON CONFLICT target, and
+ * the test_file follow-up.
+ *
+ * @param client - Client inside an open transaction.
+ * @param commitSha - SHA every entry is re-keyed to.
+ * @param entries - Entries to insert.
+ */
+async function appendCoverageTestLinkBatches(
+  client: PoolClient,
+  commitSha: string,
+  entries: readonly CoverageTestLinkExportEntry[],
+): Promise<void> {
+  for (let start = 0; start < entries.length; start += MAX_EXPORT_ROWS_PER_INSERT_BATCH) {
+    const batch = entries.slice(start, start + MAX_EXPORT_ROWS_PER_INSERT_BATCH);
+    if (batch.length === 0) continue;
+
+    const values: unknown[] = [];
+    const rowPlaceholders = batch.map((entry, index) => {
+      const base = index * TEST_LINK_EXPORT_COLUMN_COUNT;
+      values.push(
+        commitSha,
+        entry.unitKey,
+        entry.branchId,
+        entry.filePath,
+        entry.testId,
+        entry.testName,
+        entry.hitCount,
+      );
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`;
+    });
+
+    await client.query(
+      `INSERT INTO coverage_test_links
+         (commit_sha, unit_key, branch_id, file_path, test_id, test_name, hit_count)
+       VALUES ${rowPlaceholders.join(', ')}
+       ON CONFLICT (commit_sha, file_path, unit_key, COALESCE(branch_id, ''), test_id)
+       DO UPDATE SET
+         test_name = EXCLUDED.test_name,
+         hit_count = EXCLUDED.hit_count,
+         last_seen_at = now()`,
+      values,
+    );
+
+    // test_file sits outside the conflict target, so it needs its own pass.
+    // ONE statement per batch via UPDATE ... FROM (VALUES ...), not one per
+    // entry: the per-entry loop this replaces issued a round trip for every
+    // row with a test_file, linear in map size and dominating the load it was
+    // attached to. Mirrors linkCoverageUnitsToTest's own batched update.
+    const withTestFile = batch.filter((entry) => entry.testFile !== null);
+    if (withTestFile.length > 0) {
+      const TEST_FILE_UPDATE_COLUMN_COUNT = 6;
+      const updateValues: unknown[] = [];
+      const updateRows = withTestFile.map((entry, index) => {
+        const base = index * TEST_FILE_UPDATE_COLUMN_COUNT;
+        updateValues.push(
+          entry.testFile,
+          entry.filePath,
+          entry.unitKey,
+          entry.branchId ?? '',
+          entry.testId,
+          commitSha,
+        );
+        return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`;
+      });
+
+      await client.query(
+        `UPDATE coverage_test_links l
+         SET test_file = v.test_file
+         FROM (VALUES ${updateRows.join(', ')})
+           AS v(test_file, file_path, unit_key, branch_key, test_id, commit_sha)
+         WHERE l.commit_sha = v.commit_sha
+           AND l.file_path = v.file_path
+           AND l.unit_key = v.unit_key
+           AND COALESCE(l.branch_id, '') = v.branch_key
+           AND l.test_id = v.test_id`,
+        updateValues,
+      );
+    }
+  }
+}
+
+/** A load in progress: batches may be appended until commit or rollback. */
+export interface CoverageMapLoadSession {
+  /** Inserts one batch into the open transaction. */
+  appendBatch(entries: readonly CoverageTestLinkExportEntry[]): Promise<void>;
+  /** Commits the replace and releases the connection. */
+  commit(): Promise<void>;
+  /** Discards everything written and releases the connection. */
+  rollback(): Promise<void>;
+}
+
+/**
+ * Begins a streamed replace of one commit's mappings.
+ *
+ * loadCoverageTestLinksForCommit cannot be called once per streamed batch: it
+ * opens its own transaction and starts by deleting the target SHA's rows, so
+ * batch N+1 would erase batch N and only the last would survive. It also takes
+ * a fully materialized array, which is the thing being eliminated.
+ *
+ * The whole load stays ONE transaction, preserving the all-or-nothing replace:
+ * a failure mid-stream rolls back to the pre-load state rather than leaving a
+ * half-replaced map. The caller owns the boundary but never the connection —
+ * both commit() and rollback() release it, so no client can leak past this
+ * layer.
+ *
+ * @param commitSha - SHA whose mappings are being replaced.
+ * @returns A session accepting batches until commit or rollback.
+ */
+export async function beginCoverageMapLoad(commitSha: string): Promise<CoverageMapLoadSession> {
+  const client = await coverageDb.connect();
+  try {
+    await client.query('BEGIN');
+    // Bounds the pathological case without capping a legitimately long load:
+    // this transaction holds row locks from the DELETE below and one of a small
+    // pool of connections, and it also runs from the pre-push hook against a
+    // developer's shared local database. A load that stalls or is abandoned
+    // releases both rather than holding them indefinitely. A load that is
+    // merely slow is never idle, so it is unaffected.
+    await client.query(`SET LOCAL idle_in_transaction_session_timeout = '60s'`);
+    await client.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [commitSha]);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    client.release();
+    throw error;
+  }
+
+  let settled = false;
+  return {
+    async appendBatch(entries) {
+      await appendCoverageTestLinkBatches(client, commitSha, entries);
+    },
+    async commit() {
+      if (settled) return;
+      settled = true;
+      try {
+        await client.query('COMMIT');
+      } finally {
+        client.release();
+      }
+    },
+    async rollback() {
+      if (settled) return;
+      settled = true;
+      try {
+        await client.query('ROLLBACK');
+      } finally {
+        client.release();
+      }
+    },
+  };
 }
 
 /** One typeahead match — testName included for display since testId alone (a Playwright-generated hash) is not human-readable. */

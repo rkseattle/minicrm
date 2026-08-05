@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { HealEvent } from '../e2e/framework/healing/healing-registry.js';
 import type { HealingReport } from '../e2e/framework/healing/healing-reporter.js';
+import { readWorkerArtifact } from '../e2e/framework/reporting/worker-artifact-utils.js';
 
 export const HEALING_FILE_PATTERN = /^healing-.*\.json$/;
 
@@ -43,13 +44,7 @@ export function findFiles(dir: string, pattern: RegExp): string[] {
 
 /** Read events from a single healing artifact file. Returns [] on error. */
 export function readWorkerFile(filePath: string): HealEvent[] {
-  try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as { events?: HealEvent[] };
-    return Array.isArray(parsed.events) ? parsed.events : [];
-  } catch {
-    return [];
-  }
+  return readWorkerArtifact<HealEvent>(filePath, 'events', 'merge-healing-artifacts');
 }
 
 /** Deduplicate events by testName + originalStrategy.type + originalStrategy.value. */

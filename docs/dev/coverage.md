@@ -1012,7 +1012,7 @@ structurally (a source-text scan asserting `safetyNetPolicy.ts` contains no refe
 
 `.github/workflows/tia-record-mode.yml` runs the full `@functional` suite with coverage
 instrumentation on every push to `main` and nightly at 03:00 UTC, ingests every dump it
-produces, and — only if the run is clean — exports `qa/coverage-map.json` and commits it
+produces, and — only if the run is clean — exports `qa/coverage-map.jsonl` and commits it
 back to `main`. It is the **authoritative** signal the PR-time gating defers to;
 `ci.yml`'s own `tia-selection` job is fast, advisory feedback only.
 
@@ -1155,7 +1155,7 @@ two different times. They are consumed by different things, so they fail differe
 | ----------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Resolved in       | the Playwright harness, on the **host**                           | the test server, in the **container**                                |
 | Reads             | `GIT_COMMIT_SHA` from the harness's own environment, at test time | `GIT_COMMIT_SHA` from Compose, at **`docker compose up` time**       |
-| Consumed by       | the attestation gate (`--sha`)                                    | `dump:coverage-map` → the committed `qa/coverage-map.json`           |
+| Consumed by       | the attestation gate (`--sha`)                                    | `dump:coverage-map` → the committed `qa/coverage-map.jsonl`          |
 | Wrong value means | the gate fails with `no-session-attribution`                      | the gate is fine, but the generated map is keyed to the wrong commit |
 
 Both resolve `GIT_COMMIT_SHA`, then `GITHUB_SHA`, then degrade — each variable tested
@@ -1181,7 +1181,7 @@ unusable; see [the dashboard README](../../coverage-dashboard/README.md).
 > in one place means checking the other — MINCRM-687's missing SMTP seeding was caused by
 > exactly that drift.
 
-`qa/coverage-map.json` is the artifact this workflow produces. It is loaded into a fresh
+`qa/coverage-map.jsonl` is the artifact this workflow produces. It is loaded into a fresh
 database by `npm run load:coverage-map --workspace=minicrm-server`, which is how CI — having no persistent coverage
 database — restores the committed map before a selection run.
 
@@ -1190,6 +1190,46 @@ single-project run would produce: `testInfo.testId` is project-scoped, so the sa
 contributes one row per project. Selection is unaffected — `select-tests.ts` resolves
 through `testFile`, and both testIds converge on the same file — but expect the committed
 map to be about twice the size of a desktop-only one.
+
+### Map format (MINCRM-703)
+
+Line-delimited JSON, not a single JSON object:
+
+```text
+{"generatedAt":"2026-08-05T16:08:07.403Z"}     ← header
+{"unitKey":"…","branchId":null,"filePath":"…"} ← one entry per line, compact
+…
+{"entryCount":12001}                            ← trailer
+```
+
+Both ends stream it, so neither ever holds the whole map in memory. The previous
+single-object format was buffered and pretty-printed, and died permanently on
+`RangeError: Invalid string length` once the serialized form crossed V8's 512MB
+maximum string length — with the reader hitting the identical wall.
+
+**The trailer is a completeness check, not decoration.** A streaming writer can be
+killed mid-file, leaving a valid header and valid entries but no trailer. The reader
+treats a missing or mismatched trailer as a hard failure, because loading a truncated
+map would silently narrow every later test selection.
+
+**Entries are commit-agnostic.** The table accumulates a row per (mapping,
+`commit_sha`) forever, but the load re-keys every entry to one caller-supplied SHA and
+merges duplicates — so the per-commit copies have no consumer and are collapsed away on
+export. `hit_count` is the MAX across commits rather than the sum: ingestion already
+accumulates it within a commit, so summing across commits would grow it without bound.
+
+### Reading a failed load
+
+| Symptom                                                   | Meaning                                                                                             |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `No committed map at …` (exit 0)                          | No map has been committed yet. Legitimate; selection falls back to the unmapped-changes safety net. |
+| `… is present but unusable: no entry-count trailer`       | The export was interrupted. The file is truncated — re-run record mode.                             |
+| `… entry-count mismatch`                                  | The file was modified after export, or the write was partial.                                       |
+| `… line N is not valid JSON` / `missing a required field` | The file is corrupt at that line.                                                                   |
+
+Only the first is survivable. Every other case exits non-zero rather than degrading
+silently, which is the behaviour this replaced: a bare `catch` previously turned all of
+them into "no map found" and exit 0.
 
 ## Deferred to later phases
 

@@ -119,7 +119,7 @@ services:
       # `git rev-parse HEAD` fails — which it always does in this container, since only
       # ./server and ./shared are mounted, never .git. Without this, every coverage dump
       # is tagged commitSha "unknown" and can never match a real branch SHA, making a
-      # locally generated qa/coverage-map.json useless. Export
+      # locally generated qa/coverage-map.jsonl useless. Export
       # GIT_COMMIT_SHA=$(git rev-parse HEAD) before `up`. See .claude/gates/e2e-run.md.
       #
       # Read ONCE, at `up` time — nothing re-reads it afterwards. A stack left running

@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PerfRegistry } from './perf-registry.js';
 import type { PerfSample } from './perf-metrics.js';
+import { readWorkerArtifact } from '../reporting/worker-artifact-utils.js';
 
 const OUTPUT_DIR = 'test-results';
 const WORKER_FILE_PATTERN = /^perf-(shard\d+-worker\d+|\d+)\.json$/;
@@ -29,13 +30,7 @@ export interface PerfReport {
 }
 
 function readWorkerFile(filePath: string): PerfSample[] {
-  try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as { samples?: PerfSample[] };
-    return Array.isArray(parsed.samples) ? parsed.samples : [];
-  } catch {
-    return [];
-  }
+  return readWorkerArtifact<PerfSample>(filePath, 'samples', 'PerfReporter');
 }
 
 export class PerfReporter implements Reporter {

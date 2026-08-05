@@ -56,14 +56,22 @@ function parseArgs(): { thresholdMultiplier: number } {
  * the pattern used throughout the minicrm E2E suite. Nested describes inside
  * other describes are indented and are not counted.
  *
- * Returns 0 if the file cannot be read.
+ * Returns 0 if the file cannot be read, and says so on stderr — a silent 0
+ * is indistinguishable from a file that genuinely has no describes.
  */
 function countTopLevelDescribes(filePath: string): number {
   const absPath = path.resolve(process.cwd(), filePath);
   let source: string;
   try {
     source = fs.readFileSync(absPath, 'utf-8');
-  } catch {
+  } catch (err) {
+    // Says so rather than silently contributing zero: an unreadable spec
+    // under-reports the very hotspots this tool exists to surface, and a
+    // count of 0 is indistinguishable from a file that genuinely has none.
+    process.stderr.write(
+      `[find-hotspots] could not read ${filePath} ` +
+        `(${err instanceof Error ? err.message : String(err)}) — counting 0 describes for it.\n`,
+    );
     return 0;
   }
 

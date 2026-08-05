@@ -68,6 +68,7 @@ jobs:
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
+      coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -141,6 +142,15 @@ jobs:
               - 'qa/e2e/snapshots/**'
             migrations:
               - 'db/migrations/**'
+            # The COVERAGE database's migrations, which live in qa/migrations/
+            # rather than db/migrations/ and were matched by no filter at all —
+            # the `qa` output enumerates qa/e2e/** and qa/scripts/**, never this
+            # directory. A PR touching only a coverage migration therefore ran
+            # ZERO jobs, despite the migration executing at every server boot via
+            # runCoverageMigrations() and the coverage-map export depending on
+            # the index one of them creates. (MINCRM-703)
+            coverage-migrations:
+              - 'qa/migrations/**'
             # Single-purpose output for check-token-refresh-parity.sh, which pins
             # the token lifetime assumed by the E2E suite AND by the browser
             # client against the server's real one. The invariant is
@@ -463,7 +473,7 @@ jobs:
       # "database minicrm_coverage_test does not exist" — Load committed
       # coverage map's own file-not-found fallback masked this, since it
       # short-circuits before ever touching the database when
-      # qa/coverage-map.json is absent, but Run TIA selection's direct query
+      # qa/coverage-map.jsonl is absent, but Run TIA selection's direct query
       # has no such fallback.
       - name: Provision coverage database
         run: npm run --workspace=minicrm-server --silent create:coverage-db
@@ -477,7 +487,7 @@ jobs:
       # pr-tia-8: CI has no persistent database — this job's coverageDb is a
       # fresh, empty Postgres service container every run (see
       # coverageMappingService.ts's own "Committed-map load/export" docblock).
-      # Re-populates coverage_test_links from the committed qa/coverage-map.json
+      # Re-populates coverage_test_links from the committed qa/coverage-map.jsonl
       # (produced by tia-record-mode.yml's dump-coverage-map.ts step) before
       # selection queries it below. A missing/absent map degrades to the
       # existing unmapped-changes safety-net fallback, not a hard failure.
@@ -573,6 +583,11 @@ jobs:
     # assertion. Scoped to this job rather than widening `server`, which gates
     # the E2E matrix too.
     #
+    # coverage-migrations likewise: qa/migrations/** matched no filter at all,
+    # so a coverage-migration-only PR ran nothing. These tests exercise the
+    # coverage database those migrations define — including the index the map
+    # export's keyset pagination depends on. (MINCRM-703)
+    #
     # always() is required, not decorative: on a docs-only change
     # lint-and-typecheck is itself skipped (its gate is client/server/qa/config/
     # coverage-dashboard, none of which match a .md), and GitHub auto-skips any
@@ -584,7 +599,7 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true')
+      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true')
     runs-on: ubuntu-latest
 
     services:

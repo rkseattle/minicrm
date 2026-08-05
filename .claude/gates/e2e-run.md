@@ -42,7 +42,7 @@ point an E2E run at the dev stack's 5432/3001. `E2E_API_URL=http://localhost:300
 > `E2E_BASE_URL` is unset outside CI rather than defaulting to 5173, so pointing a run
 > at the dev frontend now fails loudly instead of silently mutating the dev database.
 
-Regenerating `qa/coverage-map.json` locally requires frontend coverage
+Regenerating `qa/coverage-map.jsonl` locally requires frontend coverage
 instrumentation, which is off by default: start the client with
 `COVERAGE=true npm run e2e:client` instead. Without it, `window.__coverage__`
 never exists in the browser and every per-test frontend coverage
@@ -121,9 +121,24 @@ DB_USER=minicrm DB_PASSWORD=password DB_NAME=minicrm_e2e DB_HOST=localhost \
   npm run dump:coverage-map --workspace=minicrm-server
 ```
 
-Verify `qa/coverage-map.json` has substantially more than a handful of
+Verify `qa/coverage-map.jsonl` has substantially more than a handful of
 entries and covers real application files, not just one self-testing spec,
 before committing it.
+
+The file is line-delimited JSON: a `generatedAt` header, one compact entry
+per line, and an `{"entryCount":N}` trailer. Sanity-check it with
+
+```bash
+head -1 qa/coverage-map.jsonl   # header
+tail -1 qa/coverage-map.jsonl   # trailer — its N must equal the entry count
+wc -l < qa/coverage-map.jsonl   # N + 2
+```
+
+**A missing trailer means the export was interrupted**, and the loader will
+reject the file rather than load a truncated map. That is distinct from the
+partial-coverage limitation below: a locally-generated map is legitimately
+_incomplete_ (frontend units unresolved) but must still be structurally
+_complete_. Incomplete is expected here; truncated is a real failure.
 
 **Known local limitation:** the E2E harness runs Vite directly on the host
 while the test server runs the backend in a container — every frontend
@@ -133,7 +148,7 @@ local run land as `resolved: false` (raw, unportable absolute `filePath`,
 excluded from `coverage_test_links`) — this is expected here, not a bug to
 chase further. Backend (V8) units resolve correctly, since the container's
 own cwd already is the repo root. Do NOT commit a locally-generated
-`qa/coverage-map.json` as the authoritative map — `tia-record-mode.yml`'s
+`qa/coverage-map.jsonl` as the authoritative map — `tia-record-mode.yml`'s
 CI run is the only environment where both agents share one filesystem
 namespace and produce a fully portable map; that workflow commits it back
 to `main` on its own. Local generation here is for diagnosing/validating

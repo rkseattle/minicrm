@@ -17,7 +17,8 @@ import {
   findTestsForUnitAcrossBranches,
   findTestsForUnitsAcrossBranches,
   linkCoverageUnitsToTest,
-  exportAllCoverageTestLinks,
+  streamAllCoverageTestLinks,
+  beginCoverageMapLoad,
   loadCoverageTestLinksForCommit,
 } from '../services/coverageMappingService.js';
 import type {
@@ -537,9 +538,25 @@ describe('coverageMappingService', () => {
     });
   });
 
-  // ── exportAllCoverageTestLinks / loadCoverageTestLinksForCommit (pr-tia-8) ──
+  // ── streamAllCoverageTestLinks / loadCoverageTestLinksForCommit (pr-tia-8) ──
 
-  describe('exportAllCoverageTestLinks + loadCoverageTestLinksForCommit', () => {
+  /**
+   * Drains the streaming export into an array.
+   *
+   * Only for assertions — production callers consume it a page at a time,
+   * which is the entire point of the streaming API.
+   *
+   * @returns Every exported entry, in key order.
+   */
+  async function collectExport(): Promise<CoverageTestLinkExportEntry[]> {
+    const all: CoverageTestLinkExportEntry[] = [];
+    await streamAllCoverageTestLinks(async (entries) => {
+      all.push(...entries);
+    });
+    return all;
+  }
+
+  describe('streamAllCoverageTestLinks + loadCoverageTestLinksForCommit', () => {
     it('round-trips a link through export then load at a DIFFERENT commit_sha', async () => {
       const sourceSha = `${FILE_PREFIX}-source-${randomUUID()}`;
       const targetSha = `${FILE_PREFIX}-target-${randomUUID()}`;
@@ -552,7 +569,7 @@ describe('coverageMappingService', () => {
         'tests/roundtrip.spec.ts',
       );
 
-      const exported = await exportAllCoverageTestLinks();
+      const exported = await collectExport();
       const relevant = exported.filter((e) => e.filePath === `${FILE_PREFIX}/widget.ts`);
       expect(relevant).toHaveLength(1);
       expect(relevant[0]).toMatchObject({
@@ -627,6 +644,264 @@ describe('coverageMappingService', () => {
 
       const found = await findTestsForUnit(targetSha, 'render#abc123', null);
       expect(found).toHaveLength(0);
+    });
+  });
+
+  // ── commit-agnostic collapse + streamed load (MINCRM-703) ──
+
+  describe('commit-agnostic collapse', () => {
+    it('has the index the keyset export pages on', async () => {
+      // Without it every page sorts the whole table, against coverageDb's 30s
+      // statement_timeout — so the streaming rewrite that stopped the export
+      // dying on a 512MB string would instead have made it die on a timeout.
+      // Nothing else references this index by name, so dropping the migration
+      // would otherwise leave every test green.
+      const { rows } = await coverageDb.query<{ indexdef: string }>(
+        `SELECT indexdef FROM pg_indexes WHERE indexname = 'coverage_test_links_export_idx'`,
+      );
+
+      expect(rows).toHaveLength(1);
+      // Leading column must be unit_key, and branch_id must be coalesced —
+      // the export spans every commit_sha, so an index led by commit_sha (as
+      // all the others are) cannot serve this seek.
+      expect(rows[0].indexdef).toMatch(/\(unit_key,\s*COALESCE\(branch_id,\s*''::text\)/);
+    });
+
+    /**
+     * Inserts a link row directly at a given commit, bypassing ingestion.
+     *
+     * @param commitSha - Commit to key the row to.
+     * @param overrides - Column values to set.
+     */
+    async function insertLinkAt(
+      commitSha: string,
+      overrides: {
+        testId: string;
+        hitCount: number;
+        testName?: string | null;
+        testFile?: string | null;
+        branchId?: string | null;
+        lastSeenAt?: string;
+      },
+    ): Promise<void> {
+      await coverageDb.query(
+        `INSERT INTO coverage_test_links
+           (commit_sha, unit_key, branch_id, file_path, test_id, test_name, test_file, hit_count, last_seen_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::timestamptz, now()))`,
+        [
+          commitSha,
+          'render#abc123',
+          overrides.branchId ?? null,
+          `${FILE_PREFIX}/widget.ts`,
+          overrides.testId,
+          overrides.testName ?? null,
+          overrides.testFile ?? null,
+          overrides.hitCount,
+          overrides.lastSeenAt ?? null,
+        ],
+      );
+    }
+
+    it('collapses the same mapping across commits into ONE entry', async () => {
+      // The property the whole streaming rewrite rests on: the per-commit
+      // copies are pure duplication, because the load re-keys everything to one
+      // SHA and its ON CONFLICT target merges them anyway.
+      const shaA = `${FILE_PREFIX}-collapse-a-${randomUUID()}`;
+      const shaB = `${FILE_PREFIX}-collapse-b-${randomUUID()}`;
+      await insertLinkAt(shaA, { testId: 'spec:c.spec.ts::t', hitCount: 5 });
+      await insertLinkAt(shaB, { testId: 'spec:c.spec.ts::t', hitCount: 9 });
+
+      const exported = (await collectExport()).filter((e) => e.testId === 'spec:c.spec.ts::t');
+
+      expect(exported).toHaveLength(1);
+      // MAX, not SUM: summing across commits would grow without bound, which is
+      // the axis the collapse exists to remove.
+      expect(exported[0].hitCount).toBe(9);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = ANY($1)', [
+        [shaA, shaB],
+      ]);
+    });
+
+    it('keeps rows that differ only by branch_id separate', async () => {
+      // branch_id is in the grouping key AND the keyset cursor. If it were
+      // dropped from either, these two would collide and one would be lost.
+      const sha = `${FILE_PREFIX}-branch-${randomUUID()}`;
+      await insertLinkAt(sha, { testId: 'spec:d.spec.ts::t', hitCount: 1, branchId: '0:0' });
+      await insertLinkAt(sha, { testId: 'spec:d.spec.ts::t', hitCount: 1, branchId: '0:1' });
+
+      const exported = (await collectExport()).filter((e) => e.testId === 'spec:d.spec.ts::t');
+
+      expect(exported).toHaveLength(2);
+      expect(exported.map((e) => e.branchId).sort()).toEqual(['0:0', '0:1']);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [sha]);
+    });
+
+    it('takes the most recent NON-NULL test_file, not simply the most recent', async () => {
+      // test_file was added after the table, so older rows legitimately carry
+      // NULL. A newer NULL winning would erase a known value — and the load
+      // path cannot restore it, since it sets test_file only when present.
+      const shaOld = `${FILE_PREFIX}-tf-old-${randomUUID()}`;
+      const shaNew = `${FILE_PREFIX}-tf-new-${randomUUID()}`;
+      await insertLinkAt(shaOld, {
+        testId: 'spec:e.spec.ts::t',
+        hitCount: 1,
+        testFile: 'tests/known.spec.ts',
+        lastSeenAt: '2020-01-01T00:00:00Z',
+      });
+      await insertLinkAt(shaNew, {
+        testId: 'spec:e.spec.ts::t',
+        hitCount: 1,
+        testFile: null,
+        lastSeenAt: '2030-01-01T00:00:00Z',
+      });
+
+      const exported = (await collectExport()).filter((e) => e.testId === 'spec:e.spec.ts::t');
+
+      expect(exported).toHaveLength(1);
+      expect(exported[0].testFile).toBe('tests/known.spec.ts');
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = ANY($1)', [
+        [shaOld, shaNew],
+      ]);
+    });
+
+    it('takes the most recent NON-NULL test_name, not simply the most recent', async () => {
+      // Same hazard as test_file: test_name is nullable and ingestion fills it
+      // only when the dump carried one, so a newer NULL winning would erase the
+      // human-readable label the query API and typeahead return.
+      const shaOld = `${FILE_PREFIX}-tn-old-${randomUUID()}`;
+      const shaNew = `${FILE_PREFIX}-tn-new-${randomUUID()}`;
+      await insertLinkAt(shaOld, {
+        testId: 'spec:n.spec.ts::t',
+        hitCount: 1,
+        testName: 'the known name',
+        lastSeenAt: '2020-01-01T00:00:00Z',
+      });
+      await insertLinkAt(shaNew, {
+        testId: 'spec:n.spec.ts::t',
+        hitCount: 1,
+        testName: null,
+        lastSeenAt: '2030-01-01T00:00:00Z',
+      });
+
+      const exported = (await collectExport()).filter((e) => e.testId === 'spec:n.spec.ts::t');
+
+      expect(exported).toHaveLength(1);
+      expect(exported[0].testName).toBe('the known name');
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = ANY($1)', [
+        [shaOld, shaNew],
+      ]);
+    });
+
+    it('pages through more entries than fit in one keyset page', async () => {
+      // Exercises the cursor itself: with a page size of 5000 a smaller corpus
+      // would never advance past the first page, so a broken cursor would look
+      // identical to a working one.
+      const sha = `${FILE_PREFIX}-paging-${randomUUID()}`;
+      const testIds = Array.from({ length: 25 }, (_, i) => `spec:page.spec.ts::t${i}`);
+      for (const testId of testIds) {
+        await insertLinkAt(sha, { testId, hitCount: 1 });
+      }
+
+      const pageSizes: number[] = [];
+      const seen: string[] = [];
+      await streamAllCoverageTestLinks(async (entries) => {
+        pageSizes.push(entries.length);
+        for (const e of entries)
+          if (e.testId.startsWith('spec:page.spec.ts::')) seen.push(e.testId);
+      });
+
+      expect(seen.sort()).toEqual(testIds.sort());
+      expect(pageSizes.length).toBeGreaterThan(0);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [sha]);
+    });
+  });
+
+  describe('beginCoverageMapLoad', () => {
+    it('accumulates batches into ONE replace rather than each clearing the last', async () => {
+      // Calling loadCoverageTestLinksForCommit per streamed batch would delete
+      // the previous batch every time, leaving only the final one.
+      const targetSha = `${FILE_PREFIX}-session-${randomUUID()}`;
+      const entry = (testId: string): CoverageTestLinkExportEntry => ({
+        unitKey: 'render#abc123',
+        branchId: null,
+        filePath: `${FILE_PREFIX}/widget.ts`,
+        testId,
+        testName: null,
+        testFile: null,
+        hitCount: 1,
+      });
+
+      const session = await beginCoverageMapLoad(targetSha);
+      await session.appendBatch([entry('spec:s1.spec.ts::t')]);
+      await session.appendBatch([entry('spec:s2.spec.ts::t')]);
+      await session.commit();
+
+      const found = await findTestsForUnit(targetSha, 'render#abc123', null);
+      expect(found.map((l) => l.testId).sort()).toEqual([
+        'spec:s1.spec.ts::t',
+        'spec:s2.spec.ts::t',
+      ]);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [targetSha]);
+    });
+
+    it('rollback leaves the prior map intact', async () => {
+      // The all-or-nothing property: a failure mid-stream must not leave a
+      // half-replaced map, which would silently narrow every later selection.
+      const targetSha = `${FILE_PREFIX}-rollback-${randomUUID()}`;
+      const original: CoverageTestLinkExportEntry = {
+        unitKey: 'render#abc123',
+        branchId: null,
+        filePath: `${FILE_PREFIX}/widget.ts`,
+        testId: 'spec:original.spec.ts::t',
+        testName: null,
+        testFile: null,
+        hitCount: 1,
+      };
+      await loadCoverageTestLinksForCommit(targetSha, [original]);
+
+      const session = await beginCoverageMapLoad(targetSha);
+      await session.appendBatch([{ ...original, testId: 'spec:replacement.spec.ts::t' }]);
+      await session.rollback();
+
+      const found = await findTestsForUnit(targetSha, 'render#abc123', null);
+      expect(found.map((l) => l.testId)).toEqual(['spec:original.spec.ts::t']);
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [targetSha]);
+    });
+
+    it('sets test_file in one batched statement, including a mixed batch', async () => {
+      // The batched UPDATE ... FROM (VALUES ...) replaces a per-entry round
+      // trip. Mixed null/non-null is the case where a naive rewrite drops rows.
+      const targetSha = `${FILE_PREFIX}-testfile-${randomUUID()}`;
+      const base: CoverageTestLinkExportEntry = {
+        unitKey: 'render#abc123',
+        branchId: null,
+        filePath: `${FILE_PREFIX}/widget.ts`,
+        testId: 'spec:tf1.spec.ts::t',
+        testName: null,
+        testFile: 'tests/one.spec.ts',
+        hitCount: 1,
+      };
+
+      await loadCoverageTestLinksForCommit(targetSha, [
+        base,
+        { ...base, testId: 'spec:tf2.spec.ts::t', testFile: null },
+        { ...base, testId: 'spec:tf3.spec.ts::t', testFile: 'tests/three.spec.ts' },
+      ]);
+
+      const found = await findTestsForUnit(targetSha, 'render#abc123', null);
+      const byId = new Map(found.map((l) => [l.testId, l.testFile]));
+      expect(byId.get('spec:tf1.spec.ts::t')).toBe('tests/one.spec.ts');
+      expect(byId.get('spec:tf2.spec.ts::t')).toBeNull();
+      expect(byId.get('spec:tf3.spec.ts::t')).toBe('tests/three.spec.ts');
+
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [targetSha]);
     });
   });
 });

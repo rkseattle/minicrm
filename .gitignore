@@ -122,3 +122,9 @@ e2e-merged-*/
 # working notes for a single ticket, not repo documentation, and committing them
 # would put process narrative in the history. (MINCRM-689)
 docs/plans/
+
+# In-flight coverage-map exports. The dumper writes to a PID-scoped temp path
+# and renames on success, so a killed export can leave one behind — it must
+# never show up as an untracked file or be mistaken for the map itself.
+# (MINCRM-703)
+qa/coverage-map.jsonl.*.tmp
