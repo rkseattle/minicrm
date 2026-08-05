@@ -34,7 +34,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { request as playwrightRequest } from '@playwright/test';
 import { RestClient } from '../framework/clients/rest-client.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import {
+  loginAsAdmin,
+  refreshAdminRestSession,
+  resolveAuthCookieName,
+} from '@behaviors/minicrm/auth.behaviors.js';
+import { applySessionUpkeep, type SessionUpkeep } from '../framework/auth/token-expiry.js';
 import { ingestCoverageDump } from '../framework/coverageAgent/coverage-pipeline-client.js';
 
 interface DumpIndexEntry {
@@ -70,6 +75,10 @@ async function main(): Promise<void> {
   const context = await playwrightRequest.newContext();
   try {
     const restClient = new RestClient(context);
+    // Kept even though the loop's own expiry check would mint a session on its
+    // first iteration: this fails fast on bad or missing credentials before any
+    // dump is touched, rather than surfacing the same error partway through a
+    // run that has already reported progress.
     await loginAsAdmin(restClient);
     // No feature flag to switch on first (MINCRM-685): the ingestion route is
     // gated by COVERAGE_PIPELINE_INGESTION at process boot, which the server
@@ -81,8 +90,47 @@ async function main(): Promise<void> {
     let ingested = 0;
     let alreadyIngested = 0;
     let failed = 0;
+    let refreshed = 0;
+
+    const sessionUpkeep: SessionUpkeep<RestClient> = {
+      cookieName: resolveAuthCookieName(),
+      refresh: refreshAdminRestSession,
+    };
 
     for (const entry of entries) {
+      // Renew the session BEFORE it can expire, not after a 401 comes back.
+      //
+      // The token minted by loginAsAdmin above carries a 30-minute sliding
+      // idle expiry, and sliding is client-initiated: the server's
+      // authenticate middleware verifies the cookie without ever re-issuing
+      // it, so making requests does not keep the session alive. This loop runs
+      // ~1000 dumps at roughly 2s each, which crosses that window well before
+      // it finishes — every dump after the crossing 401s, and the run reports
+      // a partial map as a hard failure.
+      //
+      // A retry inside the catch below would be the wrong shape: it cannot
+      // tell an expired token from a revoked admin, so it would retry a
+      // permanently-failing call once per remaining dump. Checking the token's
+      // own claims costs a local base64 decode and is exact.
+      //
+      // Shares the fixture's upkeep helper rather than repeating the check —
+      // one implementation, and this path inherits its unit tests. Imported
+      // from the auth module, not the fixture module: the latter calls
+      // test.extend() at import time and would build a Playwright fixture graph
+      // as a side effect of running this script.
+      //
+      // throwOnFailure, unlike the per-test fixture: if the session cannot be
+      // renewed then every remaining dump is guaranteed to 401, so continuing
+      // would turn one clear error into hundreds of misleading ones and report
+      // a partial map as though the refresh had worked. Propagates to main()'s
+      // catch, which exits non-zero.
+      const upkeep = await applySessionUpkeep(restClient, sessionUpkeep, {
+        throwOnFailure: true,
+      });
+      if (upkeep.refreshed) {
+        refreshed++;
+      }
+
       try {
         const result = await ingestCoverageDump(restClient, entry.dumpId);
         if (result.alreadyIngested) {
@@ -101,7 +149,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      `[ingest-coverage-dumps] ${entries.length} dump(s) found: ${ingested} newly ingested, ${alreadyIngested} already ingested, ${failed} failed.`,
+      `[ingest-coverage-dumps] ${entries.length} dump(s) found: ${ingested} newly ingested, ${alreadyIngested} already ingested, ${failed} failed, ${refreshed} session refresh(es).`,
     );
 
     if (failed > 0) {

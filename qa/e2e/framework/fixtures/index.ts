@@ -25,7 +25,7 @@ export const test = mergeTests(healPageTest, restClientTest, grpcClientTest);
 export { expect } from '@playwright/test';
 
 export type { HealPage, HealMethods, LocateOptions } from './heal-methods.js';
-export type { RestClientFixtures } from './rest-client.fixture.js';
+export type { RestClientFixtures, RestClientSessionRefresh } from './rest-client.fixture.js';
 export type { GrpcClientFixtures } from './grpc-client.fixture.js';
 export type { SafePage } from '../types/safe-page.js';
 export type { SafeContext } from '../types/safe-context.js';

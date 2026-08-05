@@ -54,6 +54,23 @@ export function resolveAuthCookieName(): string {
  * @param caller - Function name, used to prefix the error when the password is unset.
  * @returns The admin email and password.
  */
+/**
+ * Resolves the API origin for out-of-band auth calls.
+ *
+ * No default outside CI: a silent :3001 fallback points at the DEV server and
+ * its database, the leak class MINCRM-684 closed.
+ *
+ * @param caller - Name used in the error message when the variable is unset.
+ * @returns The API base URL.
+ */
+export function resolveE2eApiUrl(caller: string): string {
+  const apiUrl = process.env['E2E_API_URL'] ?? (process.env['CI'] ? 'http://localhost:3001' : '');
+  if (!apiUrl) {
+    throw new Error(`[${caller}] E2E_API_URL is not set — source qa/e2e/.env`);
+  }
+  return apiUrl;
+}
+
 export function resolveAdminCredentials(caller: string): { email: string; password: string } {
   const email = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
   const password = process.env['E2E_ADMIN_PASSWORD'];
@@ -1026,15 +1043,6 @@ export async function loginViaBrowser(
  * @param context - Playwright fixture context.
  */
 export async function refreshAdminBrowserSession(context: AuthBehaviorContext): Promise<void> {
-  const { email, password } = resolveAdminCredentials('refreshAdminBrowserSession');
-
-  // No default outside CI: a silent :3001 fallback points at the DEV server and
-  // its database, the leak class MINCRM-684 closed.
-  const apiUrl = process.env['E2E_API_URL'] ?? (process.env['CI'] ? 'http://localhost:3001' : '');
-  if (!apiUrl) {
-    throw new Error('[refreshAdminBrowserSession] E2E_API_URL is not set — source qa/e2e/.env');
-  }
-
   const browserContext = context.page.context();
 
   // Mint the token on a THROWAWAY request context, not `browserContext.request`.
@@ -1042,31 +1050,17 @@ export async function refreshAdminBrowserSession(context: AuthBehaviorContext): 
   // by that context, and Playwright must settle it when disposing the context at
   // test end — which under a long serial run surfaced as
   // `Tearing down "context" exceeded the test timeout` on a spec that takes
-  // under a second in isolation. Disposing our own context here keeps the
-  // browser context's teardown exactly as fast as it was before. This mirrors
-  // the isolated `newContext()` the coverage-session client already uses in
+  // under a second in isolation. Disposing our own context keeps the browser
+  // context's teardown exactly as fast as it was before. This mirrors the
+  // isolated `newContext()` the coverage-session client already uses in
   // apps/minicrm/fixtures.ts, and for the same class of reason. (MINCRM-697)
-  const loginContext = await playwrightRequest.newContext();
-  let setCookie: string;
-  try {
-    const res = await loginContext.post(`${apiUrl}/api/v1/auth/login`, {
-      data: { email, password },
-    });
-    if (!res.ok()) {
-      throw new Error(`[refreshAdminBrowserSession] login failed with status ${res.status()}`);
-    }
-    setCookie = res.headers()['set-cookie'] ?? '';
-  } finally {
-    await loginContext.dispose();
-  }
-
+  //
+  // The minting itself lives in mintAdminSessionCookie so this and any other
+  // caller needing an out-of-band admin cookie share one implementation of the
+  // login, the API-URL guard, and the set-cookie extraction. (MINCRM-703)
+  const value = await mintAdminSessionCookie();
   const cookieName = resolveAuthCookieName();
-  const value = new RegExp(`${cookieName}=([^;]+)`).exec(setCookie)?.[1];
-  if (!value) {
-    throw new Error(
-      `[refreshAdminBrowserSession] no ${cookieName} cookie in the login response headers`,
-    );
-  }
+  const apiUrl = resolveE2eApiUrl('refreshAdminBrowserSession');
 
   await browserContext.addCookies([
     {
@@ -1124,6 +1118,51 @@ export async function refreshAdminRestSession(restClient: RestClient): Promise<v
   }
   // The session could not be slid forward — mint a new one from credentials.
   await loginAsAdmin(restClient);
+}
+
+/**
+ * Mints a fresh admin session cookie WITHOUT touching the caller's context.
+ *
+ * Same technique, and same reason, as refreshAdminBrowserSession: under record
+ * mode a per-test coverage session may already be open by the time an upkeep
+ * check runs — Playwright builds fixtures in the order a test destructures
+ * them, and most specs take `page` (which opens the session) before
+ * `restClient`. Authenticating on the caller's own context would then attribute
+ * the auth endpoints to whichever unrelated test is running, poisoning the very
+ * coverage map this work exists to produce and making any edit to the auth
+ * controller select nearly the whole suite.
+ *
+ * Minting on a throwaway context keeps the login off every instrumented path.
+ * The caller injects the returned value wherever it needs to live.
+ *
+ * @returns The fresh session cookie's value.
+ */
+export async function mintAdminSessionCookie(): Promise<string> {
+  const { email, password } = resolveAdminCredentials('mintAdminSessionCookie');
+  const apiUrl = resolveE2eApiUrl('mintAdminSessionCookie');
+
+  const loginContext = await playwrightRequest.newContext();
+  let setCookie: string;
+  try {
+    const res = await loginContext.post(`${apiUrl}/api/v1/auth/login`, {
+      data: { email, password },
+    });
+    if (!res.ok()) {
+      throw new Error(`[mintAdminSessionCookie] login failed with status ${res.status()}`);
+    }
+    setCookie = res.headers()['set-cookie'] ?? '';
+  } finally {
+    await loginContext.dispose();
+  }
+
+  const cookieName = resolveAuthCookieName();
+  const value = new RegExp(`${cookieName}=([^;]+)`).exec(setCookie)?.[1];
+  if (!value) {
+    throw new Error(
+      `[mintAdminSessionCookie] no ${cookieName} cookie in the login response headers`,
+    );
+  }
+  return value;
 }
 
 /** Result returned by loginWithMfaChallenge. */
