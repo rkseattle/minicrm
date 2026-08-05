@@ -15,6 +15,7 @@ export {
   setPassword,
   loginAsAdmin,
   refreshAdminRestSession,
+  mintAdminSessionCookie,
   loginAs,
   getCurrentUser,
   logoutViaApi,

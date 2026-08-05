@@ -32,7 +32,9 @@
  */
 
 import path from 'node:path';
+import fs from 'node:fs';
 import { test as baseTest, expect } from '@framework/fixtures/index.js';
+import { ADMIN_STORAGE_STATE } from '../../globalSetup.js';
 import type { Page } from '@playwright/test';
 import { HealingRegistry } from '@framework/healing/index.js';
 import { createPageFacade } from '@framework/types/page-facade.js';
@@ -47,7 +49,7 @@ import {
   CORRELATION_ID_HEADER,
 } from '@framework/coverageAgent/coverage-session-control-client.js';
 import { RestClient } from '@framework/clients/rest-client.js';
-import { isTokenNearingExpiry } from '@framework/auth/token-expiry.js';
+import { applySessionUpkeep } from '@framework/auth/token-expiry.js';
 import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
@@ -55,6 +57,7 @@ import type { EphemeralUserCredentials } from './helpers.js';
 import {
   loginAsAdmin,
   refreshAdminBrowserSession,
+  refreshAdminRestSession,
   resolveAuthCookieName,
 } from '@behaviors/minicrm/auth.behaviors.js';
 import './locale.js';
@@ -124,7 +127,72 @@ export interface MinicrmFixtures {
 // constructing the whole Playwright fixture graph as a side effect. Imported
 // above; no re-export here, so there is exactly one import path to it.
 
+/**
+ * Writes a freshly refreshed session cookie back to the shared storageState
+ * file, so one refresh serves every later test instead of each paying its own.
+ *
+ * Playwright re-seeds both the `request` context and the browser context from
+ * this file for EVERY test — a refresh that lives only in the current test's
+ * context is discarded the moment that test ends. Without this write-back, the
+ * first test past the refresh threshold refreshes, the next test re-reads the
+ * same stale token and refreshes again, and so on: a login per test on a
+ * single-threaded server, which is the exact cost the threshold exists to
+ * avoid. Persisting turns it back into once per token lifetime.
+ *
+ * Best-effort. A failed write means later tests refresh again — wasteful, not
+ * wrong — so it must not fail the test that got a working session. (MINCRM-703)
+ *
+ * @param cookieName - Name of the session cookie to persist.
+ * @param value - The freshly minted token value.
+ */
+function persistAdminSessionCookie(cookieName: string, value: string): void {
+  const raw = fs.readFileSync(ADMIN_STORAGE_STATE, 'utf-8');
+  const state = JSON.parse(raw) as {
+    cookies: { name: string; value: string }[];
+    origins: unknown[];
+  };
+  const existing = state.cookies.find((c) => c.name === cookieName);
+  if (!existing) return;
+  existing.value = value;
+  // Write via a temp file and rename: workers refresh concurrently, and a
+  // reader hitting a half-written file would see invalid JSON and start the
+  // run unauthenticated. Rename is atomic within a filesystem.
+  const tempPath = `${ADMIN_STORAGE_STATE}.${process.pid}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(state, null, 2));
+  fs.renameSync(tempPath, ADMIN_STORAGE_STATE);
+}
+
 const testWithPage = baseTest.extend<{ page: PageFacade }>({
+  // Supply the framework's restClient fixture with this app's session upkeep,
+  // closing the asymmetry left when only the browser half got a refresh: the
+  // `page` fixture below already refreshes a nearing-expiry cookie, and any
+  // spec holding an authenticated restClient past the 30-minute idle window
+  // hit the identical 401. The framework layer owns the WHEN (the expiry
+  // check); this supplies the WHAT (which cookie, how to mint one), since
+  // neither the cookie name nor the credentials may live in framework/.
+  // (MINCRM-703)
+  // Plain value, not [value, { option: true }] — `option: true` belongs only on
+  // the declaration in the framework fixture; downstream layers override the
+  // option's value.
+  restClientSessionRefresh: {
+    cookieName: resolveAuthCookieName(),
+    // Renews the session on the test's OWN client. APIRequestContext exposes no
+    // addCookies, so the only way its jar receives the new cookie is an
+    // authenticated request made through it — which is exactly what
+    // refreshAdminRestSession does, preferring the bcrypt-free /auth/refresh.
+    refresh: refreshAdminRestSession,
+    // Then share it, so the next test does not repeat the work: Playwright
+    // re-seeds every context from the storageState file, so a cookie living
+    // only in this test's jar dies with the test and every later test past the
+    // threshold would refresh all over again — a login per test rather than
+    // per token lifetime.
+    onRefreshed: async (client) => {
+      const cookieName = resolveAuthCookieName();
+      const value = await client.getCookie(cookieName);
+      if (value) persistAdminSessionCookie(cookieName, value);
+    },
+  },
+
   // Override the framework's `page` fixture to wire in page-object path
   // segments for automatic heal-event attribution. Without this, every
   // heal event produced by page objects in pages/minicrm/ is attributed
@@ -177,26 +245,33 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
     // retries for. Refreshing only inside the last third of the token's life
     // keeps the cost near zero for normal runs while still guaranteeing no test
     // ever starts with a cookie about to die.
-    const cookieName = resolveAuthCookieName();
-    const existingCookies = await facade
-      .context()
-      .cookies()
-      .catch(() => []);
-    const authCookie = existingCookies.find((c) => c.name === cookieName);
-    if (authCookie && isTokenNearingExpiry(authCookie.value)) {
-      await refreshAdminBrowserSession({ page: facade }).catch((err: unknown) => {
-        // Best-effort, but never silent: this refresh is the only thing standing
-        // between a >30-minute run and a dead cookie, and a swallowed failure
-        // degrades straight back into MINCRM-697's symptom — every locator
-        // failing as "all strategies exhausted", which reads as selector drift.
-        // Logging makes the next occurrence diagnosable in a minute.
-        console.warn(
-          '[fixtures] admin session refresh failed; the test will run with the ' +
-            'existing cookie and may render the login page:',
-          err instanceof Error ? err.message : String(err),
-        );
-      });
-    }
+    //
+    // Routed through the same applySessionUpkeep the restClient fixture and the
+    // ingest script use, via a thin adapter: a PageFacade reads cookies from
+    // its BrowserContext rather than exposing getCookie, but the decision — is
+    // there a token, is it stale, refresh it, never fail the test over it — is
+    // identical, and three hand-written copies of it would drift. (MINCRM-703)
+    const browserSessionClient = {
+      getCookie: async (name: string) => {
+        const cookies = await facade
+          .context()
+          .cookies()
+          .catch(() => []);
+        return cookies.find((c) => c.name === name)?.value ?? null;
+      },
+    };
+    await applySessionUpkeep(browserSessionClient, {
+      cookieName: resolveAuthCookieName(),
+      refresh: () => refreshAdminBrowserSession({ page: facade }),
+      // Persist for the same reason the REST half does: the browser context is
+      // also re-seeded from the storageState file every test, so without this
+      // every test past the threshold pays its own login.
+      onRefreshed: async (client) => {
+        const cookieName = resolveAuthCookieName();
+        const value = await client.getCookie(cookieName);
+        if (value) persistAdminSessionCookie(cookieName, value);
+      },
+    });
 
     // Dedicated admin-authenticated client for coverage-session control
     // calls, on its OWN isolated APIRequestContext (its own cookie jar) —
