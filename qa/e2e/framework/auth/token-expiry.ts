@@ -28,10 +28,11 @@ export const TOKEN_REFRESH_THRESHOLD = 1 / 3;
 /**
  * The token lifetime this test suite expects the server to issue, in seconds.
  *
- * Must equal the server's own idle-expiry constant, which is redeclared in
- * three controllers. A parity check enforcing that lands alongside the batch
- * caller that depends on this cadence; until then the coupling is by
- * convention, not by gate.
+ * Must equal the server's own idle-expiry constant, which lives in
+ * server/src/auth/sessionCookie.ts. The two cannot share a definition — this
+ * workspace must not import server modules at runtime — so the coupling is
+ * enforced by qa/scripts/check-token-refresh-parity.sh, which fails CI if
+ * either side moves without the other.
  *
  * It cannot be derived at runtime where it is needed: callers reason about the
  * cadence of their own expiry checks against it, and the specs construct tokens

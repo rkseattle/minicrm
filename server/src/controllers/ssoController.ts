@@ -10,7 +10,6 @@
 
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import {
   initiateSamlLogin,
   initiateOidcLogin,
@@ -22,10 +21,11 @@ import {
 import { getSsoConfigInternal } from '../services/ssoSettingsService.js';
 import { writeAuditEntryBestEffort } from '../services/auditService.js';
 import logger from '../logger.js';
-
-/** JWT idle-expiry — kept in sync with authController (MINCRM-365) */
-const JWT_IDLE_EXPIRY_SECONDS = 30 * 60;
-const COOKIE_MAX_AGE_MS = JWT_IDLE_EXPIRY_SECONDS * 1000;
+import {
+  JWT_IDLE_EXPIRY_SECONDS,
+  setSessionCookie,
+  AUTH_COOKIE_ATTRIBUTES,
+} from '../auth/sessionCookie.js';
 
 /** App base URL for post-SSO redirect */
 const APP_BASE_URL = process.env.APP_BASE_URL ?? 'http://localhost:5173';
@@ -75,9 +75,7 @@ export async function initiateSsoLogin(req: Request, res: Response): Promise<voi
 
   // Store relay state in a signed httpOnly cookie for CSRF validation on callback.
   res.cookie(RELAY_STATE_COOKIE, result.relayState, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    ...AUTH_COOKIE_ATTRIBUTES,
     maxAge: RELAY_STATE_MAX_AGE_MS,
   });
 
@@ -164,11 +162,9 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
   }
 
   // Clear relay-state cookie — single use.
-  res.clearCookie(RELAY_STATE_COOKIE, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
+  // Same attribute set it was written with — a clearCookie whose attributes
+  // differ leaves this single-use CSRF value in the jar, available for replay.
+  res.clearCookie(RELAY_STATE_COOKIE, AUTH_COOKIE_ATTRIBUTES);
 
   let user: Awaited<ReturnType<typeof findOrProvisionSsoUser>>;
   try {
@@ -200,12 +196,7 @@ export async function handleSsoCallback(req: Request, res: Response): Promise<vo
     expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
 
-  res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  setSessionCookie(res, token);
 
   void writeAuditEntryBestEffort({
     recordType: 'user',

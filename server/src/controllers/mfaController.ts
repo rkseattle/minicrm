@@ -7,7 +7,6 @@ import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import * as mfaService from '../services/mfaService.js';
 import * as userService from '../services/userService.js';
-import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import { sanitizeUser } from '../utils/userUtils.js';
 import {
   mfaVerifySetupSchema,
@@ -16,12 +15,7 @@ import {
   mfaRecoveryLoginSchema,
 } from '@minicrm/shared/schemas/mfaSchema.js';
 import logger from '../logger.js';
-
-/** 30-minute idle expiry — must match authController constant (MINCRM-365) */
-const JWT_IDLE_EXPIRY_SECONDS = 30 * 60;
-
-/** Cookie max-age in ms for idle-expiry tokens */
-const COOKIE_MAX_AGE_MS = JWT_IDLE_EXPIRY_SECONDS * 1000;
+import { JWT_IDLE_EXPIRY_SECONDS, setSessionCookie } from '../auth/sessionCookie.js';
 
 /**
  * GET /api/v1/auth/mfa/status
@@ -255,10 +249,5 @@ function issueSessionCookie(
   const token = jwt.sign(tokenPayload, process.env.JWT_SECRET ?? '', {
     expiresIn: JWT_IDLE_EXPIRY_SECONDS,
   });
-  res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: COOKIE_MAX_AGE_MS,
-  });
+  setSessionCookie(res, token);
 }
