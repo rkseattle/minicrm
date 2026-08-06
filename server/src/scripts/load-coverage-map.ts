@@ -304,12 +304,42 @@ export async function loadCoverageMap(
       const record = parsed as Record<string, unknown>;
 
       // Dictionary lines define references; link lines consume them.
+      //
+      // Validated, not cast. A cast lets `{"t":0}` through with testId
+      // undefined, which reaches the INSERT as NULL against a NOT NULL column —
+      // surfacing as a raw pg error rather than CoverageMapUnreadableError. That
+      // matters beyond tidiness: the exit code would then be 1 rather than
+      // EXIT_MAP_UNREADABLE, and pre-push-tia.ts branches on exactly that code,
+      // so a genuinely corrupt map would be reclassified as a local
+      // infrastructure blip and the push would proceed.
       if (typeof record['t'] === 'number') {
-        tests.set(record['t'], record as unknown as TestDictLine);
+        if (typeof record['testId'] !== 'string') {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} defines test ${record['t']} without a string testId`,
+            mapPath,
+          );
+        }
+        tests.set(record['t'], {
+          t: record['t'],
+          testId: record['testId'],
+          testName: typeof record['testName'] === 'string' ? record['testName'] : null,
+          testFile: typeof record['testFile'] === 'string' ? record['testFile'] : null,
+        });
         continue;
       }
       if (typeof record['u'] === 'number') {
-        units.set(record['u'], record as unknown as UnitDictLine);
+        if (typeof record['filePath'] !== 'string' || typeof record['unitKey'] !== 'string') {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} defines unit ${record['u']} without a string filePath and unitKey`,
+            mapPath,
+          );
+        }
+        units.set(record['u'], {
+          u: record['u'],
+          filePath: record['filePath'],
+          unitKey: record['unitKey'],
+          branchId: typeof record['branchId'] === 'string' ? record['branchId'] : null,
+        });
         continue;
       }
       if (!('l' in record)) {

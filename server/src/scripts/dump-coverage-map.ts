@@ -156,7 +156,25 @@ export async function writeCoverageMap(
       // Racing against 'error' too, or a failed stream never drains and this
       // waits forever.
       if (stream.writableNeedDrain) {
-        await Promise.race([once(stream, 'drain'), once(stream, 'error')]);
+        // AbortController, not a bare Promise.race over two once() promises:
+        // race settles on the first, but never detaches the loser's listener,
+        // and once() only detaches on resolution. Backpressure fires on
+        // essentially every page at real export size, so that pattern leaks one
+        // permanent 'error' listener per page — hundreds by the end, plus a
+        // MaxListenersExceededWarning in the log of the run that is supposed to
+        // prove this export works.
+        const drained = new AbortController();
+        try {
+          await Promise.race([
+            once(stream, 'drain', { signal: drained.signal }),
+            once(stream, 'error', { signal: drained.signal }),
+          ]);
+        } catch (err) {
+          // An abort from our own finally is not a failure; anything else is.
+          if (!drained.signal.aborted) throw err;
+        } finally {
+          drained.abort();
+        }
         throwIfStreamFailed();
       }
     });
@@ -164,7 +182,18 @@ export async function writeCoverageMap(
     throwIfStreamFailed();
     stream.write(JSON.stringify({ entryCount: total }) + '\n');
     stream.end();
-    await Promise.race([once(stream, 'finish'), once(stream, 'error')]);
+    // Runs exactly once per export, so no listener accumulates here.
+    const finished = new AbortController();
+    try {
+      await Promise.race([
+        once(stream, 'finish', { signal: finished.signal }),
+        once(stream, 'error', { signal: finished.signal }),
+      ]);
+    } catch (err) {
+      if (!finished.signal.aborted) throw err;
+    } finally {
+      finished.abort();
+    }
     throwIfStreamFailed();
 
     // Only a fully-written file is ever renamed into place, so a failed export

@@ -455,6 +455,12 @@ jobs:
           DB_NAME: minicrm_e2e
           DB_HOST: localhost
           DB_PORT: 5432
+
+      # Measures what the export actually produced, so the size question is
+      # answered from data rather than estimated. GitHub rejects a push
+      # containing any file over 100MB, and streaming removes the crash without
+      # guaranteeing the result is committable — this reports the numbers, and
+      # fails, BEFORE the commit step below tries to push. (MINCRM-703)
       - name: Report coverage-map size and collapse ratio
         id: size-report
         if: always() && steps.export-map.outcome == 'success'
@@ -465,7 +471,6 @@ jobs:
           DB_NAME: minicrm_e2e
           DB_HOST: localhost
           DB_PORT: 5432
-
 
       # Only main's map is authoritative, so only a run that actually checked
       # out main may commit one. A validation dispatch against a branch (see
@@ -545,11 +550,6 @@ jobs:
             qa/e2e/playwright-report/
           retention-days: 30
 
-      # Measures what the export actually produced, so the size question is
-      # answered from data rather than estimated. GitHub rejects a push
-      # containing any file over 100MB, and streaming removes the crash without
-      # guaranteeing the result is committable — this reports the numbers before
-      # the commit step attempts it. (MINCRM-703)
       # The map itself, separate from the report. The commit step above only
       # runs on main, so on a workflow_dispatch validation run against a branch
       # the exported map was previously produced and then discarded with the
