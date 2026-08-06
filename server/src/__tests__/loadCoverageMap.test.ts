@@ -22,6 +22,7 @@
  * documents the same property at length for the sibling script.)
  */
 
+import { vi } from 'vitest';
 import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join as joinPath, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -32,6 +33,7 @@ import {
   CoverageMapUnreadableError,
 } from '../scripts/load-coverage-map.js';
 import coverageDb from '../coverageDb.js';
+import * as coverageMappingService from '../services/coverageMappingService.js';
 
 describe('load-coverage-map parseArgs', () => {
   it('reads a plain commit SHA', () => {
@@ -181,6 +183,40 @@ describe('load-coverage-map file handling', () => {
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/after the entry-count/);
   });
 
+  it('still reports a corrupt map as unreadable when the rollback itself fails', async () => {
+    // Without a .catch on rollback(), a failing ROLLBACK REPLACES the error
+    // being propagated. Downstream classification is by error type, so the exit
+    // code would drop from EXIT_MAP_UNREADABLE to 1 — and pre-push-tia.ts
+    // branches on exactly that, reclassifying a corrupt shared artifact as a
+    // local infrastructure blip and letting the push proceed. A dead connection
+    // is itself a leading cause of reaching this path.
+    const spy = vi.spyOn(coverageMappingService, 'beginCoverageMapLoad').mockResolvedValue({
+      appendBatch: () => Promise.resolve(),
+      commit: () => Promise.resolve(),
+      rollback: () => Promise.reject(new Error('connection terminated unexpectedly')),
+    });
+
+    try {
+      // LOAD_BATCH_SIZE + 1 links, so the session is genuinely opened by a
+      // flush BEFORE the trailer mismatch rejects the file. With a single entry
+      // nothing is ever flushed, rollback() is never called, and the test
+      // passes whether or not the guard exists.
+      const links = Array.from({ length: 5001 }, () => JSON.stringify(entry()));
+      writeMap([
+        JSON.stringify({ generatedAt: 'now', format: 2 }),
+        ...dictLines(),
+        ...links,
+        JSON.stringify({ entryCount: 99 }),
+      ]);
+
+      await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+        CoverageMapUnreadableError,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('rejects a test dictionary line missing its testId', async () => {
     // A bare cast would let this through with testId undefined, which reaches
     // the INSERT as NULL and surfaces as a raw pg error — exit code 1 rather
@@ -209,6 +245,74 @@ describe('load-coverage-map file handling', () => {
 
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
       /without a string filePath and unitKey/,
+    );
+  });
+
+  it('rejects the legacy denormalized layout rather than misparsing it', async () => {
+    // A version-1 header has no `format` key at all, so it defaults to 1. This
+    // branch is the only thing stopping an old map from being read line-by-line
+    // as though its entries were dictionaries.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now' }),
+      JSON.stringify({ unitKey: 'u', filePath: 'f', testId: 't', hitCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/format 1/);
+  });
+
+  it('rejects a format from the future', async () => {
+    writeMap([JSON.stringify({ generatedAt: 'now', format: 99 })]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/format 99/);
+  });
+
+  it('rejects a link that is not a triple', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify({ l: [0, 0] }),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/not a \[testRef/);
+  });
+
+  it('rejects a link with a non-numeric member', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify({ l: [0, 0, 'lots'] }),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/non-numeric member/);
+  });
+
+  it('rejects a link naming a test no earlier line defines', async () => {
+    // Forward references are a real error, not a declaration: the reader
+    // resolves as it streams, which is what keeps its memory bounded.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify({ l: [7, 0, 1] }),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+      /references test 7, which no earlier line defines/,
+    );
+  });
+
+  it('rejects a link naming a unit no earlier line defines', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify({ l: [0, 7, 1] }),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+      /references unit 7, which no earlier line defines/,
     );
   });
 

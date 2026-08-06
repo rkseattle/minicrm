@@ -174,6 +174,12 @@ export async function applySessionUpkeep<TClient extends CookieReadableClient>(
     // dying token while reporting success, and every request it then makes
     // fails as unauthorized. Verifying here is what makes `refreshed`
     // meaningful to the caller and to the counters built on it.
+    // Compares the raw cookie because a renewed token is a different string in
+    // every case this can reach: the guard only runs on a token already inside
+    // the refresh threshold, i.e. minutes old, so the new one always carries a
+    // later iat. Two signings within the same whole second WOULD be
+    // byte-identical — the payload has no nonce — but that requires refreshing
+    // a token issued moments ago, which the threshold check makes unreachable.
     const renewedToken = await client.getCookie(upkeep.cookieName).catch(() => null);
     if (renewedToken === token) {
       throw new Error(

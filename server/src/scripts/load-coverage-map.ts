@@ -360,8 +360,10 @@ export async function loadCoverageMap(
     if (generatedAt === null) {
       throw new CoverageMapUnreadableError('the file is empty', mapPath);
     }
-    // Validate completeness BEFORE writing the tail batch, so a truncated file
-    // is rejected without a transaction ever being opened.
+    // Validate completeness before the tail batch is written. For a map under
+    // LOAD_BATCH_SIZE that means no transaction is opened at all; for a larger
+    // one the session is already open and the rejection rolls it back, leaving
+    // the previous map intact either way.
     const pendingCount = loaded + batch.length;
     // No trailer means the writer never finished — a job killed mid-export.
     // Loading what is there would silently narrow every later selection.
@@ -391,7 +393,16 @@ export async function loadCoverageMap(
     );
     return loaded;
   } catch (error) {
-    await session?.rollback();
+    // .catch, so a failing rollback cannot REPLACE the error being propagated.
+    // The classification downstream is by error type — main() maps
+    // CoverageMapUnreadableError to EXIT_MAP_UNREADABLE and everything else to
+    // 1 — and pre-push-tia.ts branches on that code. A rollback that throws
+    // would therefore turn "the committed map is corrupt" into a generic
+    // failure, which the pre-push hook reclassifies as a local infrastructure
+    // blip and pushes anyway. The connection being dead is itself a leading
+    // cause of reaching this path, so this is the likely case, not the exotic
+    // one. Matches beginCoverageMapLoad's own construction-failure path.
+    await session?.rollback().catch(() => undefined);
     throw error;
   } finally {
     reader.close();

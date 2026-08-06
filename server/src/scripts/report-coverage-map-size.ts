@@ -33,6 +33,67 @@ import { COVERAGE_MAP_PATH } from './coverageMapPath.js';
 /** GitHub rejects a push containing any file larger than this. */
 const GITHUB_MAX_FILE_BYTES = 100 * 1024 * 1024;
 
+/** Counts describing what the export drew from and produced. */
+export interface CoverageMapSizeStats {
+  rawRows: number;
+  distinctShas: number;
+  collapsedEntries: number;
+  distinctTests: number;
+  distinctUnits: number;
+}
+
+/** The rendered report, and whether the map may be committed. */
+export interface CoverageMapSizeReport {
+  markdown: string;
+  overLimit: boolean;
+}
+
+/**
+ * Renders the size report and decides whether the map is committable.
+ *
+ * Separated from the database read so the gating decision — the thing the
+ * workflow's commit step depends on — is testable without a database and
+ * without a 100MB fixture.
+ *
+ * @param stats - Counts from coverage_test_links.
+ * @param bytes - Size of the exported map, 0 when it is absent.
+ * @returns The Markdown summary and the over-limit verdict.
+ */
+export function buildCoverageMapSizeReport(
+  stats: CoverageMapSizeStats,
+  bytes: number,
+): CoverageMapSizeReport {
+  const megabytes = (bytes / (1024 * 1024)).toFixed(1);
+  const headroom = ((bytes / GITHUB_MAX_FILE_BYTES) * 100).toFixed(1);
+  const overLimit = bytes > GITHUB_MAX_FILE_BYTES;
+
+  const lines = [
+    '### Coverage map',
+    '',
+    '| Metric | Value |',
+    '| --- | --- |',
+    `| Rows in coverage_test_links | ${stats.rawRows} |`,
+    `| Distinct commit SHAs | ${stats.distinctShas} |`,
+    `| Entries after collapse | ${stats.collapsedEntries} |`,
+    `| Distinct test IDs | ${stats.distinctTests} |`,
+    `| Distinct code units | ${stats.distinctUnits} |`,
+    `| Map size | ${megabytes} MB |`,
+    `| Of GitHub's 100MB per-file limit | ${headroom}% |`,
+    '',
+  ];
+
+  if (overLimit) {
+    lines.push(
+      "> **The map exceeds GitHub's per-file limit and cannot be committed.**",
+      '> Collapsing alone is not enough at this volume — the map needs',
+      '> normalizing further, or genuine retention.',
+      '',
+    );
+  }
+
+  return { markdown: lines.join('\n') + '\n', overLimit };
+}
+
 async function main(): Promise<void> {
   try {
     const { rows } = await coverageDb.query<{
@@ -51,46 +112,30 @@ async function main(): Promise<void> {
        FROM coverage_test_links`,
     );
 
-    const stats = rows[0];
+    const row = rows[0];
     const bytes = existsSync(COVERAGE_MAP_PATH) ? statSync(COVERAGE_MAP_PATH).size : 0;
-    const megabytes = (bytes / (1024 * 1024)).toFixed(1);
-    const headroom = ((bytes / GITHUB_MAX_FILE_BYTES) * 100).toFixed(1);
+    const { markdown, overLimit } = buildCoverageMapSizeReport(
+      {
+        rawRows: Number(row.raw_rows),
+        distinctShas: Number(row.distinct_shas),
+        collapsedEntries: Number(row.collapsed_entries),
+        distinctTests: Number(row.distinct_tests),
+        distinctUnits: Number(row.distinct_units),
+      },
+      bytes,
+    );
 
-    const lines = [
-      '### Coverage map',
-      '',
-      '| Metric | Value |',
-      '| --- | --- |',
-      `| Rows in coverage_test_links | ${stats.raw_rows} |`,
-      `| Distinct commit SHAs | ${stats.distinct_shas} |`,
-      `| Entries after collapse | ${stats.collapsed_entries} |`,
-      `| Distinct test IDs | ${stats.distinct_tests} |`,
-      `| Distinct code units | ${stats.distinct_units} |`,
-      `| Map size | ${megabytes} MB |`,
-      `| Of GitHub's 100MB per-file limit | ${headroom}% |`,
-      '',
-    ];
-
-    const overLimit = bytes > GITHUB_MAX_FILE_BYTES;
-    if (overLimit) {
-      lines.push(
-        "> **The map exceeds GitHub's per-file limit and cannot be committed.**",
-        '> Collapsing alone is not enough at this volume — the map needs',
-        '> normalizing into linked files, or genuine retention.',
-        '',
-      );
-    }
-
-    process.stdout.write(lines.join('\n') + '\n');
+    process.stdout.write(markdown);
 
     // Fail rather than merely report. A measurement nothing acts on is not a
-    // guard: the commit step that follows would push the oversized file and be
-    // rejected by GitHub at the last step of a multi-hour run — the exact
-    // outcome this exists to convert into an early, legible failure.
+    // guard: the commit step gates on this step's outcome, so without a
+    // non-zero exit it would push the oversized file and be rejected by GitHub
+    // at the last step of a multi-hour run.
     if (overLimit) {
       process.stderr.write(
-        `[report-coverage-map-size] ${COVERAGE_MAP_PATH} is ${megabytes} MB, over ` +
-          `GitHub's ${GITHUB_MAX_FILE_BYTES / (1024 * 1024)} MB per-file limit — ` +
+        `[report-coverage-map-size] ${COVERAGE_MAP_PATH} is ` +
+          `${(bytes / (1024 * 1024)).toFixed(1)} MB, over GitHub's ` +
+          `${GITHUB_MAX_FILE_BYTES / (1024 * 1024)} MB per-file limit — ` +
           `refusing to continue to the commit step.\n`,
       );
       process.exitCode = 1;
