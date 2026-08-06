@@ -22,7 +22,7 @@ import { runWithRequestContext } from '../utils/requestContext.js';
  */
 import { AUTH_COOKIE_NAME, ABSOLUTE_SESSION_CAP_SECONDS } from '../auth/sessionCookie.js';
 
-// Only AUTH_COOKIE_NAME is re-exported: six callers import it from this module
+// Only AUTH_COOKIE_NAME is re-exported: several callers import it from this module
 // and predate the policy split. The session cap has no such callers, so
 // re-exporting it would just give one constant two importable identities.
 export { AUTH_COOKIE_NAME };
