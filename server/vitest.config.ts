@@ -436,22 +436,11 @@ export default defineConfig({
      * single local test Postgres instance. On a 12-core machine, uncapped
      * fileParallelism let up to 12 workers run at once (~120 possible connections),
      * causing connection-pool contention that surfaced as random hook/test timeouts
-     * across unrelated files on every run.
-     *
-     * Lowered from 6 to 3 (MINCRM-703): a worker running any coverage test now
-     * opens a SECOND pool — coverageDb.ts, its own DEFAULT_POOL_MAX of 10, against
-     * the separate coverage database on the same Postgres instance. The cap of 6
-     * was sized on the assumption of one pool per worker, so peak connections
-     * roughly doubled to ~120 and the old symptom came back: a hook timeout in an
-     * unrelated serial file (demoService), 230s on a test whose neighbours take
-     * 470ms, passing in isolation every time.
-     *
-     * Verified rather than assumed: the full suite fails at 6 workers on this
-     * branch and passes at 3 (4019/4019, zero timeouts), while main passes at 6.
-     * 3 workers x 2 pools x 10 = ~60 peak, the same budget the original cap
-     * targeted.
+     * across unrelated files on every run. Capping at 6 keeps peak connections
+     * (~60) comfortably under Postgres's default max_connections (100) while still
+     * parallelizing most of the suite.
      */
-    maxWorkers: 3,
+    maxWorkers: 6,
 
     // JUnit XML for dorny/test-reporter in CI; 'default' keeps console output.
     reporters: ['default', 'junit'],

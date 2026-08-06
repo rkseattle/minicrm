@@ -75,6 +75,10 @@ describe('load-coverage-map file handling', () => {
   // regenerate — and that stub would pass every validation here, because it is
   // structurally complete.
   let mapPath: string;
+  // Tracked and cleaned in afterEach, not inline after the assertion: an inline
+  // DELETE is skipped when the assertion above it fails, leaking rows into the
+  // shared coverage database for every later test to trip over.
+  const createdShas: string[] = [];
 
   /**
    * Writes a map file for the test.
@@ -89,8 +93,13 @@ describe('load-coverage-map file handling', () => {
     mapPath = joinPath(mkdtempSync(joinPath(tmpdir(), 'coverage-map-')), 'coverage-map.jsonl');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     rmSync(dirname(mapPath), { recursive: true, force: true });
+    if (createdShas.length > 0) {
+      await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = ANY($1)', [
+        createdShas.splice(0),
+      ]);
+    }
   });
 
   it('returns null when the map is absent, rather than failing', async () => {
@@ -172,10 +181,42 @@ describe('load-coverage-map file handling', () => {
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/after the entry-count/);
   });
 
+  it('rejects a test dictionary line missing its testId', async () => {
+    // A bare cast would let this through with testId undefined, which reaches
+    // the INSERT as NULL and surfaces as a raw pg error — exit code 1 rather
+    // than EXIT_MAP_UNREADABLE, which pre-push-tia.ts then reclassifies as a
+    // local infrastructure blip and pushes anyway.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0 }),
+      JSON.stringify({ u: 0, filePath: 'f', unitKey: 'u', branchId: null }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(CoverageMapUnreadableError);
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/without a string testId/);
+  });
+
+  it('rejects a unit dictionary line missing its filePath', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 't', testName: null, testFile: null }),
+      JSON.stringify({ u: 0, unitKey: 'u' }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+      /without a string filePath and unitKey/,
+    );
+  });
+
   it('recognizes a re-serialized trailer, not just the exact byte prefix', async () => {
     // The runbook tells operators to inspect the trailer by hand; a
     // pretty-printed round trip must not be read as a malformed entry.
     const sha = `load-map-test-${randomUUID()}`;
+    createdShas.push(sha);
     writeMap([
       JSON.stringify({ generatedAt: 'now', format: 2 }),
       ...dictLines(),
@@ -184,12 +225,11 @@ describe('load-coverage-map file handling', () => {
     ]);
 
     await expect(loadCoverageMap(sha, mapPath)).resolves.toBe(1);
-
-    await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [sha]);
   });
 
   it('loads a complete file and reports the entry count', async () => {
     const sha = `load-map-test-${randomUUID()}`;
+    createdShas.push(sha);
     writeMap([
       JSON.stringify({ generatedAt: 'now', format: 2 }),
       ...dictLines(),
@@ -198,25 +238,22 @@ describe('load-coverage-map file handling', () => {
     ]);
 
     await expect(loadCoverageMap(sha, mapPath)).resolves.toBe(1);
-
-    await coverageDb.query('DELETE FROM coverage_test_links WHERE commit_sha = $1', [sha]);
   });
 });
 
 /**
- * Builds a minimal valid entry.
+ * Builds a minimal valid link line.
  *
- * @param testId - Test identifier.
- * @returns An export entry.
+ * @returns A link line referencing dictionary entries 0 and 0.
  */
 function entry(): Record<string, unknown> {
   return { l: [0, 0, 1] };
 }
 
 /** The dictionary lines a link line needs before it can resolve. */
-function dictLines(testId = 'load-map-test::t'): string[] {
+function dictLines(): string[] {
   return [
-    JSON.stringify({ t: 0, testId, testName: null, testFile: null }),
+    JSON.stringify({ t: 0, testId: 'load-map-test::t', testName: null, testFile: null }),
     JSON.stringify({
       u: 0,
       filePath: 'load-map-test/f.ts',
