@@ -33,7 +33,7 @@ import {
   type CoverageTestLinkExportEntry,
 } from '../services/coverageMappingService.js';
 import coverageDb from '../coverageDb.js';
-import { COVERAGE_MAP_PATH } from './coverageMapPath.js';
+import { COVERAGE_MAP_PATH, COVERAGE_MAP_FORMAT } from './coverageMapPath.js';
 
 /** Entries buffered before being flushed to the open transaction. */
 const LOAD_BATCH_SIZE = 5000;
@@ -58,6 +58,18 @@ export function parseArgs(argv: readonly string[]): { sha: string } {
   return { sha };
 }
 
+/**
+ * Exit code used when the committed map itself is corrupt, as distinct from an
+ * infrastructure failure (database unreachable, missing credentials).
+ *
+ * Callers that treat a load as best-effort still need to tell the two apart: a
+ * corrupt committed artifact is a real defect somebody must fix, while a local
+ * database being down is a routine environment problem. Without a distinct
+ * code the only option is to swallow both, which is the conflation this script
+ * exists to remove. (MINCRM-703)
+ */
+export const EXIT_MAP_UNREADABLE = 2;
+
 /** Raised when the map exists but cannot be used. Always fatal. */
 export class CoverageMapUnreadableError extends Error {
   constructor(reason: string, mapPath: string = COVERAGE_MAP_PATH) {
@@ -66,54 +78,82 @@ export class CoverageMapUnreadableError extends Error {
   }
 }
 
+/** A test dictionary line: identity plus display metadata, written once. */
+interface TestDictLine {
+  t: number;
+  testId: string;
+  testName: string | null;
+  testFile: string | null;
+}
+
+/** A unit dictionary line: the covered code unit's identity, written once. */
+interface UnitDictLine {
+  u: number;
+  filePath: string;
+  unitKey: string;
+  branchId: string | null;
+}
+
 /**
- * Parses one entry line, rejecting anything that would not survive the insert.
+ * Resolves one link line against the dictionaries seen so far.
  *
- * Validated rather than cast: the previous implementation cast the parsed file
- * to its expected type and checked only that `entries` was an array, so a
- * malformed entry passed the gate and failed later inside the SQL insert, with
- * an error naming a constraint rather than the file.
+ * References are resolved as the file streams rather than after a full pass,
+ * which is what keeps the reader's memory bounded by entity count. It also
+ * means a link naming a reference that has not been defined yet is a real
+ * error, not a forward declaration — the writer emits each dictionary line
+ * before any link that uses it.
  *
- * @param line - Raw JSONL line.
+ * @param link - The `l` tuple: [testRef, unitRef, hitCount].
+ * @param tests - Test dictionary accumulated so far.
+ * @param units - Unit dictionary accumulated so far.
  * @param lineNumber - 1-based line number, for the error message.
- * @returns The parsed entry.
+ * @param mapPath - File being read, for the error message.
+ * @returns The reassembled entry.
  */
-function parseEntryLine(
-  line: string,
+function resolveLink(
+  link: unknown,
+  tests: Map<number, TestDictLine>,
+  units: Map<number, UnitDictLine>,
   lineNumber: number,
   mapPath: string,
 ): CoverageTestLinkExportEntry {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(line);
-  } catch (err) {
+  if (!Array.isArray(link) || link.length !== 3) {
     throw new CoverageMapUnreadableError(
-      `line ${lineNumber} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
+      `line ${lineNumber}'s link is not a [testRef, unitRef, hitCount] triple`,
+      mapPath,
+    );
+  }
+  const [testRef, unitRef, hitCount] = link as [unknown, unknown, unknown];
+  if (typeof testRef !== 'number' || typeof unitRef !== 'number' || typeof hitCount !== 'number') {
+    throw new CoverageMapUnreadableError(
+      `line ${lineNumber}'s link has a non-numeric member`,
       mapPath,
     );
   }
 
-  const entry = parsed as Partial<CoverageTestLinkExportEntry>;
-  if (
-    typeof entry.unitKey !== 'string' ||
-    typeof entry.filePath !== 'string' ||
-    typeof entry.testId !== 'string' ||
-    typeof entry.hitCount !== 'number'
-  ) {
+  const test = tests.get(testRef);
+  if (!test) {
     throw new CoverageMapUnreadableError(
-      `line ${lineNumber} is missing a required field (unitKey, filePath, testId, hitCount)`,
+      `line ${lineNumber} references test ${testRef}, which no earlier line defines`,
+      mapPath,
+    );
+  }
+  const unit = units.get(unitRef);
+  if (!unit) {
+    throw new CoverageMapUnreadableError(
+      `line ${lineNumber} references unit ${unitRef}, which no earlier line defines`,
       mapPath,
     );
   }
 
   return {
-    unitKey: entry.unitKey,
-    branchId: entry.branchId ?? null,
-    filePath: entry.filePath,
-    testId: entry.testId,
-    testName: entry.testName ?? null,
-    testFile: entry.testFile ?? null,
-    hitCount: entry.hitCount,
+    unitKey: unit.unitKey,
+    branchId: unit.branchId,
+    filePath: unit.filePath,
+    testId: test.testId,
+    testName: test.testName,
+    testFile: test.testFile,
+    hitCount,
   };
 }
 
@@ -177,6 +217,10 @@ export async function loadCoverageMap(
 
   let generatedAt: string | null = null;
   let declaredCount: number | null = null;
+  // Bounded by entity count — tests and code units — not by the link count,
+  // which is the product of the two and the thing that must never be resident.
+  const tests = new Map<number, TestDictLine>();
+  const units = new Map<number, UnitDictLine>();
   let loaded = 0;
   let lineNumber = 0;
   // Counts non-blank lines, so a leading blank line does not shift the header
@@ -219,6 +263,17 @@ export async function loadCoverageMap(
             mapPath,
           );
         }
+        // Reject an unrecognized layout rather than misparse it. The
+        // denormalized version had no marker, so a file written by an older
+        // exporter reports itself as version 1 by omission.
+        const format = (header as { format?: unknown }).format ?? 1;
+        if (format !== COVERAGE_MAP_FORMAT) {
+          throw new CoverageMapUnreadableError(
+            `it declares format ${String(format)}, but this reader understands ` +
+              `only format ${COVERAGE_MAP_FORMAT} — regenerate it with the current exporter`,
+            mapPath,
+          );
+        }
         generatedAt = header.generatedAt;
         continue;
       }
@@ -234,7 +289,37 @@ export async function loadCoverageMap(
         continue;
       }
 
-      batch.push(parseEntryLine(line, lineNumber, mapPath));
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch (err) {
+        throw new CoverageMapUnreadableError(
+          `line ${lineNumber} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
+          mapPath,
+        );
+      }
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new CoverageMapUnreadableError(`line ${lineNumber} is not an object`, mapPath);
+      }
+      const record = parsed as Record<string, unknown>;
+
+      // Dictionary lines define references; link lines consume them.
+      if (typeof record['t'] === 'number') {
+        tests.set(record['t'], record as unknown as TestDictLine);
+        continue;
+      }
+      if (typeof record['u'] === 'number') {
+        units.set(record['u'], record as unknown as UnitDictLine);
+        continue;
+      }
+      if (!('l' in record)) {
+        throw new CoverageMapUnreadableError(
+          `line ${lineNumber} is neither a test, a unit, nor a link`,
+          mapPath,
+        );
+      }
+
+      batch.push(resolveLink(record['l'], tests, units, lineNumber, mapPath));
       if (batch.length >= LOAD_BATCH_SIZE) {
         await (await openSession()).appendBatch(batch);
         loaded += batch.length;
@@ -305,6 +390,6 @@ if (process.argv[1] && __filename === resolvePath(process.argv[1])) {
     process.stderr.write(
       `[load-coverage-map] fatal: ${err instanceof Error ? err.stack : String(err)}\n`,
     );
-    process.exitCode = 1;
+    process.exitCode = err instanceof CoverageMapUnreadableError ? EXIT_MAP_UNREADABLE : 1;
   });
 }

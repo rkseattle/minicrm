@@ -1193,14 +1193,32 @@ map to be about twice the size of a desktop-only one.
 
 ### Map format (MINCRM-703)
 
-Line-delimited JSON, not a single JSON object:
+Line-delimited JSON, normalized into three sections:
 
 ```text
-{"generatedAt":"2026-08-05T16:08:07.403Z"}     ← header
-{"unitKey":"…","branchId":null,"filePath":"…"} ← one entry per line, compact
+{"generatedAt":"…","format":2}                      ← header
+{"t":0,"testId":"…","testName":"…","testFile":"…"}  ← one per test
+{"u":0,"filePath":"…","unitKey":"…","branchId":…}   ← one per code unit
+{"l":[0,0,7]}                                        ← one per link: [test, unit, hits]
 …
-{"entryCount":12001}                            ← trailer
+{"entryCount":24001}                                 ← trailer
 ```
+
+**Why normalized.** A denormalized entry repeats its test's name, its test's
+file path, and the covered file's path — none of which vary per entry for a
+given test or unit. Measured on a realistic corpus (600 tests × 40 units drawn
+from a 1500-unit pool): 308 bytes per link denormalized versus **30.7
+normalized, a 10× reduction**. That matters because the map must fit under
+GitHub's 100MB per-file push limit or it cannot be committed at all — 3.4M links
+fit at the normalized size, against ~340k before.
+
+Both dictionaries are bounded by _entity_ count; only the link lines scale with
+the product. Section order is load-bearing: the reader resolves references as it
+streams, so a dictionary line must precede any link naming it.
+
+`format` lets the reader reject a layout it does not understand rather than
+misparse one. A file with no `format` key is version 1, the denormalized
+layout.
 
 Both ends stream it, so neither ever holds the whole map in memory. The previous
 single-object format was buffered and pretty-printed, and died permanently on

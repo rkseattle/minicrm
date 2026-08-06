@@ -69,6 +69,7 @@ jobs:
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
+      coverage-map-exit-code: ${{ steps.filter.outputs.coverage-map-exit-code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,6 +164,14 @@ jobs:
             auth-token-expiry:
               - 'server/src/auth/sessionCookie.ts'
               - 'client/src/hooks/useSessionRefresh.ts'
+            # Single-purpose output for check-coverage-map-exit-code-parity.sh.
+            # The two files it pins live outside qa/, so without this a change to
+            # either would not re-run the guard — the bidirectional-invariant
+            # rule in CLAUDE.md. Deliberately not folded into `server`, which
+            # gates the whole E2E matrix. (MINCRM-703)
+            coverage-map-exit-code:
+              - 'server/src/scripts/load-coverage-map.ts'
+              - 'scripts/pre-push-tia.ts'
             ai:
               - 'server/src/ai/**'
               - 'qa/evals/**'
@@ -879,7 +888,7 @@ jobs:
     # `changes` FAILED, every output would read as empty, the OR would be false,
     # and this job would report `skipped` rather than blocking — quietly
     # dropping the whole purity suite from a green build. (MINCRM-703)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true'
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -907,6 +916,9 @@ jobs:
 
       - name: Check the QA token lifetime matches the server's (MINCRM-703)
         run: bash qa/scripts/check-token-refresh-parity.sh
+
+      - name: Check the corrupt-map exit code has not drifted (MINCRM-703)
+        run: bash qa/scripts/check-coverage-map-exit-code-parity.sh
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests
