@@ -102,18 +102,20 @@ describe('load-coverage-map file handling', () => {
   it('throws when a line is not valid JSON', async () => {
     // Previously a bare `catch {}` turned this into "no map found" and exit 0,
     // silently degrading TIA to the full-suite fallback.
-    writeMap([JSON.stringify({ generatedAt: 'now' }), 'not json at all']);
+    writeMap([JSON.stringify({ generatedAt: 'now', format: 2 }), 'not json at all']);
 
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(CoverageMapUnreadableError);
   });
 
   it('throws when an entry is missing a required field', async () => {
     writeMap([
-      JSON.stringify({ generatedAt: 'now' }),
-      JSON.stringify({ unitKey: 'u', filePath: 'f' }),
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ nonsense: true }),
     ]);
 
-    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/missing a required field/);
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+      /neither a test, a unit, nor a link/,
+    );
   });
 
   it('throws when the first line is not a header', async () => {
@@ -135,15 +137,20 @@ describe('load-coverage-map file handling', () => {
     // A file truncated by a killed export has a valid header and valid entries
     // but no trailer. Loading it would silently narrow every later selection,
     // which is the exact class of failure this change removes.
-    writeMap([JSON.stringify({ generatedAt: 'now' }), JSON.stringify(entry('t'))]);
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify(entry()),
+    ]);
 
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/truncated/);
   });
 
   it('throws when the trailer count disagrees with the entries read', async () => {
     writeMap([
-      JSON.stringify({ generatedAt: 'now' }),
-      JSON.stringify(entry('t')),
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify(entry()),
       JSON.stringify({ entryCount: 99 }),
     ]);
 
@@ -155,10 +162,11 @@ describe('load-coverage-map file handling', () => {
     // file appended to after export, or two interleaved writers, would load
     // whenever the counts happened to reconcile.
     writeMap([
-      JSON.stringify({ generatedAt: 'now' }),
-      JSON.stringify(entry('t1')),
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify(entry()),
       JSON.stringify({ entryCount: 1 }),
-      JSON.stringify(entry('t2')),
+      JSON.stringify(entry()),
     ]);
 
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/after the entry-count/);
@@ -169,8 +177,9 @@ describe('load-coverage-map file handling', () => {
     // pretty-printed round trip must not be read as a malformed entry.
     const sha = `load-map-test-${randomUUID()}`;
     writeMap([
-      JSON.stringify({ generatedAt: 'now' }),
-      JSON.stringify(entry('load-map-test::t')),
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify(entry()),
       '{ "entryCount": 1 }',
     ]);
 
@@ -182,8 +191,9 @@ describe('load-coverage-map file handling', () => {
   it('loads a complete file and reports the entry count', async () => {
     const sha = `load-map-test-${randomUUID()}`;
     writeMap([
-      JSON.stringify({ generatedAt: 'now' }),
-      JSON.stringify(entry('load-map-test::t')),
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      ...dictLines(),
+      JSON.stringify(entry()),
       JSON.stringify({ entryCount: 1 }),
     ]);
 
@@ -199,14 +209,19 @@ describe('load-coverage-map file handling', () => {
  * @param testId - Test identifier.
  * @returns An export entry.
  */
-function entry(testId: string): Record<string, unknown> {
-  return {
-    unitKey: 'load-map-test#u',
-    branchId: null,
-    filePath: 'load-map-test/f.ts',
-    testId,
-    testName: null,
-    testFile: null,
-    hitCount: 1,
-  };
+function entry(): Record<string, unknown> {
+  return { l: [0, 0, 1] };
+}
+
+/** The dictionary lines a link line needs before it can resolve. */
+function dictLines(testId = 'load-map-test::t'): string[] {
+  return [
+    JSON.stringify({ t: 0, testId, testName: null, testFile: null }),
+    JSON.stringify({
+      u: 0,
+      filePath: 'load-map-test/f.ts',
+      unitKey: 'load-map-test#u',
+      branchId: null,
+    }),
+  ];
 }

@@ -456,6 +456,7 @@ jobs:
           DB_HOST: localhost
           DB_PORT: 5432
       - name: Report coverage-map size and collapse ratio
+        id: size-report
         if: always() && steps.export-map.outcome == 'success'
         run: npm run --workspace=minicrm-server --silent report:coverage-map-size >> "$GITHUB_STEP_SUMMARY"
         env:
@@ -474,7 +475,12 @@ jobs:
       # instead, and say so: the export step above still ran, so the artifact
       # is inspectable in the uploaded report.
       - name: Commit updated coverage map
-        if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success'
+        # size-report is OR'd for 'skipped' only so this keeps its existing
+        # behaviour when the export did not run. When the report DID run and
+        # failed, the map is over GitHub's per-file limit and pushing it would
+        # be rejected at the last step of a multi-hour run — better to stop here
+        # with the diagnostic table already in the job summary. (MINCRM-703)
+        if: always() && steps.run-suite.outcome == 'success' && steps.verify-ran.outcome == 'success' && steps.attest.outcome == 'success' && (steps.size-report.outcome == 'success' || steps.size-report.outcome == 'skipped')
         run: |
           # Ask git what was actually checked out rather than string-matching
           # the `ref` input. That input is a user-supplied label and takes

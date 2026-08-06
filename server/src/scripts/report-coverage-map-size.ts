@@ -71,7 +71,8 @@ async function main(): Promise<void> {
       '',
     ];
 
-    if (bytes > GITHUB_MAX_FILE_BYTES) {
+    const overLimit = bytes > GITHUB_MAX_FILE_BYTES;
+    if (overLimit) {
       lines.push(
         "> **The map exceeds GitHub's per-file limit and cannot be committed.**",
         '> Collapsing alone is not enough at this volume — the map needs',
@@ -81,6 +82,19 @@ async function main(): Promise<void> {
     }
 
     process.stdout.write(lines.join('\n') + '\n');
+
+    // Fail rather than merely report. A measurement nothing acts on is not a
+    // guard: the commit step that follows would push the oversized file and be
+    // rejected by GitHub at the last step of a multi-hour run — the exact
+    // outcome this exists to convert into an early, legible failure.
+    if (overLimit) {
+      process.stderr.write(
+        `[report-coverage-map-size] ${COVERAGE_MAP_PATH} is ${megabytes} MB, over ` +
+          `GitHub's ${GITHUB_MAX_FILE_BYTES / (1024 * 1024)} MB per-file limit — ` +
+          `refusing to continue to the commit step.\n`,
+      );
+      process.exitCode = 1;
+    }
   } finally {
     await coverageDb.end();
   }

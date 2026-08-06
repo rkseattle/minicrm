@@ -125,13 +125,15 @@ Verify `qa/coverage-map.jsonl` has substantially more than a handful of
 entries and covers real application files, not just one self-testing spec,
 before committing it.
 
-The file is line-delimited JSON: a `generatedAt` header, one compact entry
-per line, and an `{"entryCount":N}` trailer. Sanity-check it with
+The file is line-delimited JSON, normalized: a `generatedAt` header, then
+interned `{"t":…}` test and `{"u":…}` unit lines, then `{"l":[test,unit,hits]}`
+link lines, then an `{"entryCount":N}` trailer where N counts the LINKS.
+Sanity-check it with
 
 ```bash
-head -1 qa/coverage-map.jsonl   # header
-tail -1 qa/coverage-map.jsonl   # trailer — its N must equal the entry count
-wc -l < qa/coverage-map.jsonl   # N + 2
+head -1 qa/coverage-map.jsonl                  # header, must carry "format":2
+tail -1 qa/coverage-map.jsonl                  # trailer
+grep -c '^{"l":' qa/coverage-map.jsonl         # link count — must equal the trailer's N
 ```
 
 **A missing trailer means the export was interrupted**, and the loader will

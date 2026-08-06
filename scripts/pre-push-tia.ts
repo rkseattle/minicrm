@@ -320,10 +320,27 @@ function runCreateCoverageDb(): void {
  * it; an established dev machine's already has real accumulated data, but
  * re-loading is a harmless, idempotent refresh either way (see
  * loadCoverageTestLinksForCommit's own "replace, not upsert" semantics).
- * Best-effort: a failed load must not block the push — it just means
- * selection falls back to whatever the local DB already had (possibly
- * nothing, which itself degrades to the unmapped-changes safety net).
+ * Best-effort for INFRASTRUCTURE failures — a local database that is down must
+ * not block a push, since selection just falls back to whatever the local DB
+ * already had (possibly nothing, which degrades to the unmapped-changes safety
+ * net).
+ *
+ * NOT best-effort for a corrupt committed map. That is a real defect in a
+ * shared artifact, and silently continuing is exactly the swallow this ticket
+ * removed one layer down: the developer would push having selected tests from
+ * data they never noticed was unusable. The loader signals the difference with
+ * a distinct exit code so the two can be told apart. (MINCRM-703)
  */
+/**
+ * Exit code load-coverage-map.ts uses for a corrupt committed map, as opposed
+ * to an infrastructure failure.
+ *
+ * Declared here rather than imported: this root script would otherwise pull a
+ * module that imports a pg.Pool just to read one integer. The value is pinned
+ * against its definition by check-coverage-map-exit-code-parity.sh.
+ */
+const EXIT_MAP_UNREADABLE = 2;
+
 function runLoadCoverageMap(sha: string): void {
   try {
     execFileSync('npx', ['tsx', 'src/scripts/load-coverage-map.ts', `--sha=${sha}`], {
@@ -332,6 +349,17 @@ function runLoadCoverageMap(sha: string): void {
       stdio: ['ignore', 'inherit', 'inherit'],
     });
   } catch (err) {
+    const status = (err as { status?: number }).status;
+    if (status === EXIT_MAP_UNREADABLE) {
+      // Loud, and blocking: the committed map is corrupt or truncated for
+      // everyone, not just this machine. The loader has already printed which
+      // line and why.
+      throw new Error(
+        'The committed coverage map is present but unusable (see the error above). ' +
+          'This is a defect in a shared artifact — re-run tia-record-mode.yml to ' +
+          'regenerate it rather than pushing against unusable mapping data.',
+      );
+    }
     console.error(
       `[pre-push-tia] WARN: loading the committed coverage map failed (${err instanceof Error ? err.message : String(err)}) — continuing with whatever local data is already present.`,
     );

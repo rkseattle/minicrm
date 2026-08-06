@@ -23,8 +23,15 @@ const REPO_ROOT = resolvePath(__dirname, '../../..');
 export const COVERAGE_MAP_PATH = resolvePath(REPO_ROOT, 'qa/coverage-map.jsonl');
 
 /**
- * Where the export writes before renaming into place.
+ * Version of the committed map's layout.
  *
- * PID-scoped so concurrent writers cannot collide on it.
+ * 2 is the normalized layout: interned test and unit dictionaries followed by
+ * compact link rows. 1 was the denormalized one, where every entry repeated its
+ * test name and both file paths — most of the file at real scale, and enough to
+ * push it past GitHub's 100MB per-file push limit.
+ *
+ * Present so a reader can reject a file it does not understand rather than
+ * misparse one. Version 1 had no marker at all, so the only symptom of reading
+ * the wrong layout was that every line failed validation. (MINCRM-703)
  */
-export const COVERAGE_MAP_TEMP_PATH = `${COVERAGE_MAP_PATH}.${process.pid}.tmp`;
+export const COVERAGE_MAP_FORMAT = 2;
