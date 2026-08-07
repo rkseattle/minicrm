@@ -124,7 +124,7 @@ export class DealDetailPage {
   /**
    * Returns a resolved locator for the deal name input on the deal form.
    */
-  async nameInputLocator() {
+  async nameInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -133,13 +133,13 @@ export class DealDetailPage {
         ],
         { intent: 'deal name text input field on deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the deal stage select on the deal form.
    */
-  async stageSelectLocator() {
+  async stageSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -148,13 +148,13 @@ export class DealDetailPage {
         ],
         { intent: 'deal pipeline stage selector on deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the deal value input on the deal form.
    */
-  async valueInputLocator() {
+  async valueInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -163,13 +163,13 @@ export class DealDetailPage {
         ],
         { intent: 'deal monetary value input field on deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the deal close date input on the deal form.
    */
-  async closeDateInputLocator() {
+  async closeDateInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -178,13 +178,13 @@ export class DealDetailPage {
         ],
         { intent: 'deal expected close date input on deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the deal account select on the deal form.
    */
-  async accountSelectLocator() {
+  async accountSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -193,13 +193,13 @@ export class DealDetailPage {
         ],
         { intent: 'account selector on the deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the deal form submit button.
    */
-  async submitLocator() {
+  async submitLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -208,7 +208,7 @@ export class DealDetailPage {
         ],
         { intent: 'submit button on the deal form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -223,7 +223,7 @@ export class DealDetailPage {
    * the other fixes of this bug class) isn't viable here; level: 1 alone is
    * sufficient since this page has exactly one h1.
    */
-  async dealNameLocator() {
+  async dealNameLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -235,13 +235,13 @@ export class DealDetailPage {
         // can land just after the 2 s default window under load. (heal-trends)
         { intent: 'deal name heading on the deal detail page', fallbackTimeout: 8_000 },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Export PDF button on the deal detail page.
    */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -250,13 +250,13 @@ export class DealDetailPage {
         ],
         { intent: 'button to export this deal as a single-record PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the linked contacts section heading.
    */
-  async linkedContactsHeadingLocator() {
+  async linkedContactsHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -265,13 +265,13 @@ export class DealDetailPage {
         ],
         { intent: 'linked contacts section heading on deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the contact link select dropdown.
    */
-  async linkContactSelectLocator() {
+  async linkContactSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -280,13 +280,13 @@ export class DealDetailPage {
         ],
         { intent: 'dropdown to select a contact to link to the deal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the link contact button.
    */
-  async linkContactButtonLocator() {
+  async linkContactButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -295,7 +295,7 @@ export class DealDetailPage {
         ],
         { intent: 'button to confirm linking the selected contact to the deal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -335,7 +335,7 @@ export class DealDetailPage {
   /**
    * Returns a resolved locator for the empty state when no contacts are linked.
    */
-  async linkedContactsEmptyLocator() {
+  async linkedContactsEmptyLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -344,14 +344,14 @@ export class DealDetailPage {
         ],
         { intent: 'empty state message when no contacts are linked to the deal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments section container.
    * Returns null if not present.
    */
-  async attachmentsSectionLocator() {
+  async attachmentsSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -360,14 +360,14 @@ export class DealDetailPage {
         ],
         { intent: 'attachments section container on deal detail page' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /**
    * Returns a resolved locator for the attachments file input.
    */
-  async attachmentsFileInputLocator() {
+  async attachmentsFileInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -376,20 +376,20 @@ export class DealDetailPage {
         ],
         { intent: 'file input for uploading attachments on deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments list container.
    * Returns null if not present.
    */
-  async attachmentsListLocator() {
+  async attachmentsListLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
       .locate([{ type: 'testId', value: 'attachments-list' }], {
         intent: 'list of uploaded attachments on deal detail page',
       })
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -397,7 +397,7 @@ export class DealDetailPage {
    * Returns a resolved locator for the attachments upload error message.
    * Returns null if not present.
    */
-  async attachmentsUploadErrorLocator() {
+  async attachmentsUploadErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -406,7 +406,7 @@ export class DealDetailPage {
         ],
         { intent: 'upload error message when attachment is rejected on deal detail page' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -414,7 +414,7 @@ export class DealDetailPage {
    * Returns a resolved locator for the not-found alert paragraph shown when
    * navigating to a deal ID that does not exist.
    */
-  async notFoundAlertLocator() {
+  async notFoundAlertLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -423,13 +423,13 @@ export class DealDetailPage {
         ],
         { intent: 'not-found message on the deal detail page for an invalid id' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the back-to-deals link on the not-found page.
    */
-  async notFoundBackLinkLocator() {
+  async notFoundBackLinkLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -438,7 +438,7 @@ export class DealDetailPage {
         ],
         { intent: 'back to deals navigation link on the not-found page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -453,7 +453,7 @@ export class DealDetailPage {
   /**
    * Returns a resolved locator for the deal health section heading.
    */
-  async healthCheckHeadingLocator() {
+  async healthCheckHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -462,7 +462,7 @@ export class DealDetailPage {
         ],
         { intent: 'heading for the AI deal health section on the deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the deal health section heading is currently visible. */
@@ -477,7 +477,7 @@ export class DealDetailPage {
    * CSS fallback scopes to the deal health section to avoid matching unrelated
    * empty-state text elsewhere on the page.
    */
-  async healthCheckEmptyStateLocator() {
+  async healthCheckEmptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -490,13 +490,13 @@ export class DealDetailPage {
         ],
         { intent: 'empty state message shown before a deal health check has been run' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the "Check health" action button.
    */
-  async runHealthCheckButtonLocator() {
+  async runHealthCheckButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -505,7 +505,7 @@ export class DealDetailPage {
         ],
         { intent: 'button to run the AI deal health check on the deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -514,7 +514,7 @@ export class DealDetailPage {
    * health section, since the result container has no accessible role or
    * text that is stable independent of the AI-generated content.
    */
-  async healthCheckResultLocator() {
+  async healthCheckResultLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -530,7 +530,7 @@ export class DealDetailPage {
             'container for the AI deal health check result — status badge, narrative, next actions',
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the deal health check result container is currently visible. */
@@ -546,7 +546,7 @@ export class DealDetailPage {
    * alone would be ambiguous since several other error banners on this page
    * also use role="alert".
    */
-  async healthCheckErrorLocator() {
+  async healthCheckErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -558,7 +558,7 @@ export class DealDetailPage {
         ],
         { intent: 'error message shown when the AI deal health check request fails' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ── AI stage advancement suggestion (MINCRM-443) ───────────────────────────────
@@ -566,7 +566,7 @@ export class DealDetailPage {
   /**
    * Returns a resolved locator for the "Ready to advance?" indicator button.
    */
-  async stageAdvancementIndicatorLocator() {
+  async stageAdvancementIndicatorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -575,7 +575,7 @@ export class DealDetailPage {
         ],
         { intent: 'AI stage advancement indicator on the deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the stage advancement indicator is currently visible. */
@@ -634,7 +634,7 @@ export class DealDetailPage {
   // ── AI proposal draft generation (MINCRM-473) ───────────────────────────────────
 
   /** Returns a resolved locator for the "Generate Proposal Draft" button. */
-  async generateProposalDraftButtonLocator() {
+  async generateProposalDraftButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -643,7 +643,7 @@ export class DealDetailPage {
         ],
         { intent: 'button to generate an AI proposal draft on the deal detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the "Generate Proposal Draft" button is currently visible. */
@@ -654,7 +654,7 @@ export class DealDetailPage {
   }
 
   /** Returns a resolved locator for the full-screen proposal draft editor. */
-  async proposalDraftEditorLocator() {
+  async proposalDraftEditorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -663,11 +663,11 @@ export class DealDetailPage {
         ],
         { intent: 'full-screen AI proposal draft editor panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the proposal draft editor's dismiss button. */
-  async proposalDraftDismissButtonLocator() {
+  async proposalDraftDismissButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -680,6 +680,6 @@ export class DealDetailPage {
         ],
         { intent: 'button to dismiss the AI proposal draft editor without exporting' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

@@ -46,7 +46,7 @@ export class ChurnExpansionInsightsPage {
    * returned as the resolved locator — see AutomationPage.headingLocator()
    * for the identical failure mode and fix.
    */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -59,7 +59,7 @@ export class ChurnExpansionInsightsPage {
         ],
         { intent: 'churn/expansion insights page heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -80,7 +80,7 @@ export class ChurnExpansionInsightsPage {
   }
 
   /** Returns a resolved locator for the at-risk accounts empty state. */
-  async atRiskEmptyStateLocator() {
+  async atRiskEmptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -89,6 +89,6 @@ export class ChurnExpansionInsightsPage {
         ],
         { intent: 'empty state message when no accounts are at risk' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

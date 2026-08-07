@@ -128,7 +128,7 @@ export class AuditLogPage {
   /**
    * Returns a resolved locator for the audit log page heading.
    */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -137,26 +137,26 @@ export class AuditLogPage {
         ],
         { intent: 'audit log page heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the audit log entry list.
    */
-  async listLocator() {
+  async listLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
       .locate([{ type: 'testId', value: 'audit-log-list' }], {
         intent: 'audit log entry list container',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the pagination navigation.
    * Throws if not found — the audit log must have enough entries to paginate.
    */
-  async paginationLocator() {
+  async paginationLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -165,13 +165,13 @@ export class AuditLogPage {
         ],
         { intent: 'pagination navigation on audit log page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the "previous page" pagination button.
    */
-  async paginationPrevLocator() {
+  async paginationPrevLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -180,7 +180,7 @@ export class AuditLogPage {
         ],
         { intent: 'previous page button in audit log pagination' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

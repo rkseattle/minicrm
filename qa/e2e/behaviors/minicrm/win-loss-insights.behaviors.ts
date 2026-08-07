@@ -28,7 +28,7 @@ export async function waitForWinLossInsightsHeading(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new WinLossInsightsPage(context);
-  const locator = await insightsPage.headingLocator();
+  const locator = await insightsPage.headingLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -39,7 +39,7 @@ export async function waitForWinLossInsufficientData(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new WinLossInsightsPage(context);
-  const locator = await insightsPage.insufficientDataLocator();
+  const locator = await insightsPage.insufficientDataLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 

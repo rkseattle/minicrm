@@ -29,7 +29,7 @@ export class NotesPage {
   }
 
   /** Returns the notes section container. */
-  async sectionLocator() {
+  async sectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -38,11 +38,11 @@ export class NotesPage {
         ],
         { intent: 'notes section container on entity detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the Add Note button (only visible when composer is closed). */
-  async addButtonLocator() {
+  async addButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -51,7 +51,7 @@ export class NotesPage {
         ],
         { intent: 'add note button to open composer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the Add Note button to open the composer. */
@@ -66,7 +66,7 @@ export class NotesPage {
   }
 
   /** Returns the composer container (only present when it is open). */
-  async composerLocator() {
+  async composerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -75,12 +75,12 @@ export class NotesPage {
         ],
         { intent: 'note composer form container' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /** Returns the title input inside the composer. */
-  async composerTitleInputLocator() {
+  async composerTitleInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -89,7 +89,7 @@ export class NotesPage {
         ],
         { intent: 'title input field inside the note composer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Fills the title input in the composer. */
@@ -105,7 +105,7 @@ export class NotesPage {
   }
 
   /** Returns the composer body editor container. */
-  async composerBodyLocator() {
+  async composerBodyLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -114,7 +114,7 @@ export class NotesPage {
         ],
         { intent: 'rich text editor body area in the note composer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -133,7 +133,7 @@ export class NotesPage {
   }
 
   /** Returns the visibility select inside the composer. */
-  async visibilitySelectLocator() {
+  async visibilitySelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -142,7 +142,7 @@ export class NotesPage {
         ],
         { intent: 'visibility selector dropdown inside the note composer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Selects a visibility option in the composer. */
@@ -196,7 +196,7 @@ export class NotesPage {
   }
 
   /** Returns the empty state element. Null if not present. */
-  async emptyStateLocator() {
+  async emptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -205,12 +205,12 @@ export class NotesPage {
         ],
         { intent: 'empty state message when no notes exist' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /** Returns the notes list container. Null if not present. */
-  async notesListLocator() {
+  async notesListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -219,7 +219,7 @@ export class NotesPage {
         ],
         { intent: 'container holding the list of rendered note cards' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 

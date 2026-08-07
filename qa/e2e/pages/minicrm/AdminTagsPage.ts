@@ -250,7 +250,7 @@ export class AdminTagsPage {
    * isLoaded()) before calling this — Pagination only mounts once the tags
    * query has resolved (PipelinesAndFieldsSettings.tsx TagManagementSection).
    */
-  async paginationLocator() {
+  async paginationLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -259,7 +259,7 @@ export class AdminTagsPage {
         ],
         { intent: 'pagination navigation on admin tags page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

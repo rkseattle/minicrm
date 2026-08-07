@@ -311,6 +311,6 @@ export async function expectAdminTagsPaginationVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminTagsPage(context).paginationLocator();
+  const locator = await new AdminTagsPage(context).paginationLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

@@ -36,7 +36,7 @@ export async function waitForDataHygieneHeading(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const hygienePage = new DataHygienePage(context);
-  const locator = await hygienePage.headingLocator();
+  const locator = await hygienePage.headingLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 

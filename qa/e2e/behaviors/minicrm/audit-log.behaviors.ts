@@ -139,7 +139,7 @@ export async function expectAuditLogListVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = new AuditLogPage(context).listLocator();
+  const locator = new AuditLogPage(context).listLocator(timeout);
   await expect(await locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -149,7 +149,7 @@ export async function expectAuditLogPaginationVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = new AuditLogPage(context).paginationLocator();
+  const locator = new AuditLogPage(context).paginationLocator(timeout);
   await expect(await locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 

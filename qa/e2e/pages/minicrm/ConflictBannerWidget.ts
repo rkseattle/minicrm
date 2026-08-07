@@ -32,7 +32,7 @@ export class ConflictBannerWidget {
    * Returns a resolved locator for the modal container.
    * Throws StrategyExhaustedError if the modal is not present.
    */
-  async modalLocator() {
+  async modalLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -41,7 +41,7 @@ export class ConflictBannerWidget {
         ],
         { intent: 'conflict resolution merge modal dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -55,7 +55,7 @@ export class ConflictBannerWidget {
    * doesn't currently crash since its only caller uses non-strict
    * isVisible(), but an unscoped match can silently check the wrong element).
    */
-  async titleLocator() {
+  async titleLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -69,13 +69,13 @@ export class ConflictBannerWidget {
         ],
         { intent: 'title heading inside the conflict resolution modal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the "Save resolved" button.
    */
-  async saveResolvedButtonLocator() {
+  async saveResolvedButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -84,13 +84,13 @@ export class ConflictBannerWidget {
         ],
         { intent: 'save resolved button to confirm conflict resolution choices' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the "Discard my changes" button.
    */
-  async discardButtonLocator() {
+  async discardButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -99,7 +99,7 @@ export class ConflictBannerWidget {
         ],
         { intent: 'discard button to abandon pending changes and accept server state' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

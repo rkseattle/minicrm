@@ -109,7 +109,7 @@ export class NavPage {
    * Returns a resolved locator for the desktop logout button.
    * Returns null if the button is not in the DOM.
    */
-  async desktopLogoutLocator() {
+  async desktopLogoutLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -118,7 +118,7 @@ export class NavPage {
         ],
         { intent: 'desktop logout button in navigation chrome' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -142,7 +142,7 @@ export class NavPage {
    * Use in behavior-layer code for conditional presence checks.
    * In spec files where the drawer must be present, use `requireHamburgerDrawerLocator`.
    */
-  async hamburgerDrawerLocator() {
+  async hamburgerDrawerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -151,7 +151,7 @@ export class NavPage {
         ],
         { intent: 'hamburger nav drawer overlay' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -159,7 +159,7 @@ export class NavPage {
    * Returns a resolved locator for the hamburger drawer element.
    * Throws if the drawer is not found — call only after opening the drawer.
    */
-  async requireHamburgerDrawerLocator() {
+  async requireHamburgerDrawerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -168,7 +168,7 @@ export class NavPage {
         ],
         { intent: 'hamburger nav drawer overlay' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -178,7 +178,7 @@ export class NavPage {
    * Use in behavior-layer code for conditional presence checks.
    * In spec files where the drawer must be present, use `requireMobileNavDrawerLocator`.
    */
-  async mobileNavDrawerLocator() {
+  async mobileNavDrawerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -187,7 +187,7 @@ export class NavPage {
         ],
         { intent: 'mobile nav drawer overlay' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -195,7 +195,7 @@ export class NavPage {
    * Returns a resolved locator for the mobile nav drawer element.
    * Throws if the drawer is not found — call only after opening the drawer.
    */
-  async requireMobileNavDrawerLocator() {
+  async requireMobileNavDrawerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -204,13 +204,13 @@ export class NavPage {
         ],
         { intent: 'mobile nav drawer overlay' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the desktop language select in the nav header.
    */
-  async desktopLanguageSelectLocator() {
+  async desktopLanguageSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -219,13 +219,13 @@ export class NavPage {
         ],
         { intent: 'language selector in the desktop nav header' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the mobile language select in the nav drawer.
    */
-  async mobileLanguageSelectLocator() {
+  async mobileLanguageSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -234,13 +234,13 @@ export class NavPage {
         ],
         { intent: 'language selector in the mobile nav drawer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the mobile logout button.
    */
-  async mobileLogoutButtonLocator() {
+  async mobileLogoutButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -249,7 +249,7 @@ export class NavPage {
         ],
         { intent: 'logout button in the mobile nav drawer' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -279,7 +279,7 @@ export class NavPage {
    * Returns a resolved locator for the hamburger menu toggle button.
    * Throws StrategyExhaustedError if the toggle is not in the DOM.
    */
-  async menuToggleLocator() {
+  async menuToggleLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -288,7 +288,7 @@ export class NavPage {
         ],
         { intent: 'hamburger or mobile menu toggle button in navigation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

@@ -380,7 +380,7 @@ export async function expectSetupChecklistWidgetVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new SetupChecklistPage(context).widgetLocator();
+  const locator = await new SetupChecklistPage(context).widgetLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -390,7 +390,7 @@ export async function expectSetupChecklistPillVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new SetupChecklistPage(context).pillLocator();
+  const locator = await new SetupChecklistPage(context).pillLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -433,7 +433,7 @@ export async function expectAutomationPaginationVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AutomationPage(context).paginationLocator();
+  const locator = await new AutomationPage(context).paginationLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 

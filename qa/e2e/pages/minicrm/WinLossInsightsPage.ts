@@ -34,7 +34,7 @@ export class WinLossInsightsPage {
   }
 
   /** Returns a resolved locator for the page heading. */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -43,11 +43,11 @@ export class WinLossInsightsPage {
         ],
         { intent: 'win/loss pattern insights page heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the insufficient-data message. */
-  async insufficientDataLocator() {
+  async insufficientDataLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -56,11 +56,11 @@ export class WinLossInsightsPage {
         ],
         { intent: 'message shown when there is not enough closed deal history for patterns' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the win patterns section heading. */
-  async winPatternsHeadingLocator() {
+  async winPatternsHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -69,7 +69,7 @@ export class WinLossInsightsPage {
         ],
         { intent: 'win patterns section heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -89,7 +89,7 @@ export class WinLossInsightsPage {
   }
 
   /** Returns a resolved locator for the loss reason trends section heading. */
-  async lossReasonTrendsHeadingLocator() {
+  async lossReasonTrendsHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -98,7 +98,7 @@ export class WinLossInsightsPage {
         ],
         { intent: 'loss reason trends section heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Opens the Export menu, revealing the CSV/PDF items. (MINCRM-652) */
@@ -113,7 +113,7 @@ export class WinLossInsightsPage {
   }
 
   /** Returns a resolved locator for the Export CSV button. */
-  async exportCsvButtonLocator() {
+  async exportCsvButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -122,11 +122,11 @@ export class WinLossInsightsPage {
         ],
         { intent: 'button to export win/loss insights as CSV' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Export PDF button. */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -135,6 +135,6 @@ export class WinLossInsightsPage {
         ],
         { intent: 'button to export win/loss insights as PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

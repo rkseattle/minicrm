@@ -275,13 +275,18 @@ export class HealingLocator {
    * @param testName - Name of the currently running test (used in heal records).
    * @returns A resolved SafeLocator (child-locator factories omitted to prevent healing escapes).
    */
-  async resolve(testName: string): Promise<SafeLocator> {
+  async resolve(testName: string, timeout?: number): Promise<SafeLocator> {
+    // A per-call budget overrides the instance default. Without this, an
+    // element that is legitimately slow — a feature flag still resolving, an
+    // upload still in flight — exhausts every strategy inside the default 2s
+    // and reports selector drift.
+    const probeTimeout = timeout ?? this.fallbackTimeout;
     const attempted: LocatorStrategyRecord[] = [];
     const [primary, ...fallbacks] = this.strategies;
 
     // Try the primary strategy first.
     const primaryLocator = buildLocator(this.page, primary);
-    const primaryResolved = await probeLocator(primaryLocator, this.fallbackTimeout);
+    const primaryResolved = await probeLocator(primaryLocator, probeTimeout);
 
     if (primaryResolved) {
       // Cast: buildLocator returns a raw Locator (framework-internal). The real
@@ -313,7 +318,7 @@ export class HealingLocator {
     // are copies of the same element rather than different ones.
     for (const fallback of fallbacks) {
       const fallbackLocator = buildLocator(this.page, fallback);
-      const resolved = await probeLocator(fallbackLocator, this.fallbackTimeout, true);
+      const resolved = await probeLocator(fallbackLocator, probeTimeout, true);
 
       if (resolved) {
         // Record the heal event.
@@ -342,7 +347,7 @@ export class HealingLocator {
         // Same uniqueness bar as the static fallbacks: an AI-proposed selector
         // that matches several elements has not found the target either, and it
         // is the one strategy nobody reviewed before it ran.
-        const aiResolved = await probeLocator(aiLocator, this.fallbackTimeout, true);
+        const aiResolved = await probeLocator(aiLocator, probeTimeout, true);
 
         if (aiResolved) {
           HealingRegistry.instance.record(

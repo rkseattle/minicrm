@@ -621,7 +621,7 @@ export async function waitForAccountAttachmentsList(
   context: AccountsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new AccountDetailPage(context).attachmentsListLocator();
+  const locator = await new AccountDetailPage(context).attachmentsListLocator(timeout);
   await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 

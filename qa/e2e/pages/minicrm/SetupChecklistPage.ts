@@ -36,7 +36,7 @@ export class SetupChecklistPage {
    * Returns a resolved locator for the expanded setup checklist widget.
    * Throws if the widget is not found — use `page.isNotVisible` to assert absence.
    */
-  async widgetLocator() {
+  async widgetLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -45,14 +45,14 @@ export class SetupChecklistPage {
         ],
         { intent: 'expanded setup checklist widget container', fallbackTimeout: 10_000 },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the collapsed pill.
    * Throws if the pill is not found.
    */
-  async pillLocator() {
+  async pillLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -64,7 +64,7 @@ export class SetupChecklistPage {
           fallbackTimeout: 10_000,
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------

@@ -484,7 +484,7 @@ export class LeadsPage {
   }
 
   /** Returns a resolved locator for the routing suggestion panel. */
-  async routingSuggestionPanelLocator() {
+  async routingSuggestionPanelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -493,7 +493,7 @@ export class LeadsPage {
         ],
         { intent: 'AI routing suggestion panel shown while filling out a new lead' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

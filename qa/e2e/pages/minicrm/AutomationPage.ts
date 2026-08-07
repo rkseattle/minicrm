@@ -50,7 +50,7 @@ export class AutomationPage {
    * (e.g. under CI load) and this fallback gets returned as the resolved
    * locator. Exact match keeps the fallback unambiguous in that scenario.
    */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -59,14 +59,14 @@ export class AutomationPage {
         ],
         { intent: 'automation rules page heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the pagination controls bar.
    * Returns null if pagination is not present (fewer records than page size).
    */
-  async paginationLocator() {
+  async paginationLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -75,7 +75,7 @@ export class AutomationPage {
         ],
         { intent: 'pagination bar showing record count and page controls' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

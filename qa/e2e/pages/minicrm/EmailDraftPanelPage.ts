@@ -28,7 +28,7 @@ export class EmailDraftPanelPage {
   }
 
   /** Returns a resolved locator for the panel container. */
-  async panelLocator() {
+  async panelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -37,11 +37,11 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'AI email draft sidebar panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the editable subject input. */
-  async subjectInputLocator() {
+  async subjectInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -50,11 +50,11 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'editable subject line of the AI-generated email draft' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the editable body textarea. */
-  async bodyInputLocator() {
+  async bodyInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -63,11 +63,11 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'editable body of the AI-generated email draft' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the tone selector. */
-  async toneSelectLocator() {
+  async toneSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -76,7 +76,7 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'tone selector for regenerating the AI email draft' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Selects the given tone, triggering a regeneration. */
@@ -86,7 +86,7 @@ export class EmailDraftPanelPage {
   }
 
   /** Returns a resolved locator for the copy-to-clipboard button. */
-  async copyButtonLocator() {
+  async copyButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -95,7 +95,7 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'button that copies the email draft to the clipboard' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the copy-to-clipboard button. */
@@ -105,7 +105,7 @@ export class EmailDraftPanelPage {
   }
 
   /** Returns a resolved locator for the dismiss button. */
-  async dismissButtonLocator() {
+  async dismissButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -114,7 +114,7 @@ export class EmailDraftPanelPage {
         ],
         { intent: 'button that dismisses the AI email draft panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the dismiss button. */

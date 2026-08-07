@@ -83,7 +83,7 @@ export async function expectReportsHeadingVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.headingLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.headingLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -95,7 +95,7 @@ export async function expectReportsTabListVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.tabListLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.tabListLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -184,7 +184,7 @@ export async function expectReportsWinLossHeadingVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.winLossHeadingLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.winLossHeadingLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -196,7 +196,7 @@ export async function expectReportsActivityVolumeHeadingVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.activityVolumeHeadingLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.activityVolumeHeadingLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -208,7 +208,7 @@ export async function expectReportsStageTrendHeadingVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.stageTrendHeadingLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.stageTrendHeadingLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -219,7 +219,7 @@ export async function waitForReportsLoadingHidden(
   timeout = 15_000,
 ): Promise<void> {
   const reportsPage = new ReportsPage(context);
-  const locator = await reportsPage.loadingLocator();
+  const locator = await reportsPage.loadingLocator(timeout);
   await locator?.waitFor({ state: 'hidden', timeout }).catch(() => null);
 }
 
@@ -314,7 +314,7 @@ export async function expectReportsStatCardsVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const reportsPage = new ReportsPage(context);
-  await expect(await reportsPage.statCardsLocator()).toBeVisible({ timeout });
+  await expect(await reportsPage.statCardsLocator(timeout)).toBeVisible({ timeout });
 }
 
 /**
@@ -438,7 +438,7 @@ export async function runCustomReport(
   timeout = 30_000,
 ): Promise<boolean> {
   const reportsPage = new ReportsPage(context);
-  const runBtn = await reportsPage.runReportButtonLocator();
+  const runBtn = await reportsPage.runReportButtonLocator(timeout);
   await runBtn.click();
   return reportsPage.waitForResultsVisible(timeout);
 }
