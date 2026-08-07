@@ -1,8 +1,13 @@
 name: Security Audit
 
 # Runs daily at 08:00 UTC on main to catch newly-disclosed CVEs in dependencies
-# that haven't been touched recently. The CI security-audit job only runs when
-# package*.json changes, so this schedule closes the gap.
+# that haven't been touched recently.
+#
+# MINCRM-703: the CI security-audit job is now unconditional, so this no longer
+# closes a "only runs when package*.json changes" gap — that gap is gone. It still
+# earns its place: advisories are published against a lockfile that is not moving,
+# so main can go from clean to vulnerable with no commit at all. This surfaces that
+# on a schedule instead of on whichever PR happens to open next.
 on:
   schedule:
     - cron: '0 8 * * *'
