@@ -266,6 +266,35 @@ describe('load-coverage-map file handling', () => {
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/format 99/);
   });
 
+  it('rejects a duplicate test definition rather than overwriting it', async () => {
+    // Overwriting would silently re-point every LATER link at a different test:
+    // a wrong result reported as a successful load, which is precisely what
+    // this reader exists to make impossible.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 'first', testName: null, testFile: null }),
+      JSON.stringify({ t: 0, testId: 'second', testName: null, testFile: null }),
+      JSON.stringify({ u: 0, filePath: 'f', unitKey: 'u', branchId: null }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/redefines test 0/);
+  });
+
+  it('rejects a duplicate unit definition rather than overwriting it', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 't', testName: null, testFile: null }),
+      JSON.stringify({ u: 0, filePath: 'a.ts', unitKey: 'u', branchId: null }),
+      JSON.stringify({ u: 0, filePath: 'b.ts', unitKey: 'u', branchId: null }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/redefines unit 0/);
+  });
+
   it('rejects a link that is not a triple', async () => {
     writeMap([
       JSON.stringify({ generatedAt: 'now', format: 2 }),
