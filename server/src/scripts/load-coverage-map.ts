@@ -319,6 +319,16 @@ export async function loadCoverageMap(
             mapPath,
           );
         }
+        // Reject a redefinition rather than overwrite it. A duplicate id in a
+        // corrupt file would otherwise silently re-point every LATER link at a
+        // different test — a wrong result presented as a successful load, which
+        // is the exact failure class this reader exists to eliminate.
+        if (tests.has(record['t'])) {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} redefines test ${record['t']}, already defined earlier`,
+            mapPath,
+          );
+        }
         tests.set(record['t'], {
           t: record['t'],
           testId: record['testId'],
@@ -331,6 +341,12 @@ export async function loadCoverageMap(
         if (typeof record['filePath'] !== 'string' || typeof record['unitKey'] !== 'string') {
           throw new CoverageMapUnreadableError(
             `line ${lineNumber} defines unit ${record['u']} without a string filePath and unitKey`,
+            mapPath,
+          );
+        }
+        if (units.has(record['u'])) {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} redefines unit ${record['u']}, already defined earlier`,
             mapPath,
           );
         }
