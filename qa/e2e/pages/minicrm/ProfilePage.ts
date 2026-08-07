@@ -29,9 +29,7 @@ export interface ProfilePageContext {
 
 /** Keys for the three notification preference checkboxes on the profile page. */
 export type NotificationPreferenceKey =
-  | 'notify_overdue_tasks'
-  | 'notify_assignments'
-  | 'notify_deal_stage_changes';
+  'notify_overdue_tasks' | 'notify_assignments' | 'notify_deal_stage_changes';
 
 // ---------------------------------------------------------------------------
 // ProfilePage
@@ -195,7 +193,7 @@ export class ProfilePage {
         ],
         { intent: 'success message after saving profile preferences' },
       )
-      .resolve()
+      .resolve(timeout)
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
   }
@@ -456,7 +454,7 @@ export class ProfilePage {
         ],
         { intent: 'recovery codes modal shown after successful MFA setup' },
       )
-      .resolve()
+      .resolve(timeout)
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
   }
@@ -537,7 +535,7 @@ export class ProfilePage {
         ],
         { intent: 'Next button in the MFA setup QR code step (waiting for QR to load)' },
       )
-      .resolve();
+      .resolve(timeout);
     await nextBtn.waitFor({ state: 'visible', timeout });
   }
 }

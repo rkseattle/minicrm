@@ -12,7 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle } from '@apps/minicrm/helpers.js';
+import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -1734,7 +1734,7 @@ export async function draftEmailFromContactDetail(
     (res) => res.request().method() === 'POST' && res.url().includes('/email-draft'),
     { timeout: 30_000 },
   );
-  await detail.clickDraftEmail();
+  await detail.clickDraftEmail(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
 
   return { status: response.status() };
@@ -1776,7 +1776,7 @@ export async function selectEmailDraftTone(
 /** Clicks the copy-to-clipboard button in the email draft panel. */
 export async function copyEmailDraftToClipboard(context: ContactsBehaviorContext): Promise<void> {
   const panel = new EmailDraftPanelPage(context);
-  await panel.clickCopyToClipboard();
+  await panel.clickCopyToClipboard(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /** Reads the current clipboard text via the browser's Clipboard API. */
@@ -1787,7 +1787,7 @@ export async function readClipboardText(context: ContactsBehaviorContext): Promi
 /** Clicks the dismiss button in the email draft panel. */
 export async function dismissEmailDraftPanel(context: ContactsBehaviorContext): Promise<void> {
   const panel = new EmailDraftPanelPage(context);
-  await panel.clickDismiss();
+  await panel.clickDismiss(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /** Returns true when the email draft panel is currently visible. */
@@ -1818,15 +1818,15 @@ export async function enrichContactFromTextViaUI(
   const contactsPage = new ContactsPage(context);
   await contactsPage.navigate();
   await contactsPage.clickNewContact();
-  await contactsPage.clickEnrichFromText();
+  await contactsPage.clickEnrichFromText(FIRST_INTERACTION_TIMEOUT_MS);
   await contactsPage.fillEnrichmentInput(rawText);
-  await contactsPage.clickEnrichmentSubmit();
+  await contactsPage.clickEnrichmentSubmit(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /** Applies the extracted fields shown in the enrichment modal to the contact form. */
 export async function applyContactEnrichment(context: ContactsBehaviorContext): Promise<void> {
   const contactsPage = new ContactsPage(context);
-  await contactsPage.clickEnrichmentApply();
+  await contactsPage.clickEnrichmentApply(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /** Returns the current value of the create form's first name field. */
@@ -1861,7 +1861,7 @@ export async function explainContactDuplicate(
     (res) => res.request().method() === 'POST' && res.url().includes('/duplicates/explain'),
     { timeout: 30_000 },
   );
-  await contactsPage.clickDuplicateExplain();
+  await contactsPage.clickDuplicateExplain(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
 
   return { status: response.status() };

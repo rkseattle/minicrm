@@ -251,7 +251,7 @@ export class AccountsPage {
           ],
           { intent: 'new account button confirming account was created successfully' },
         )
-        .resolve();
+        .resolve(timeout);
       await el.waitFor({ state: 'visible', timeout });
       return true;
     } catch {

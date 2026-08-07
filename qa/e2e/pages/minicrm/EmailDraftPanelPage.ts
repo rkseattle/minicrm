@@ -99,8 +99,8 @@ export class EmailDraftPanelPage {
   }
 
   /** Clicks the copy-to-clipboard button. */
-  async clickCopyToClipboard(): Promise<void> {
-    const locator = await this.copyButtonLocator();
+  async clickCopyToClipboard(timeout?: number): Promise<void> {
+    const locator = await this.copyButtonLocator(timeout);
     await locator.click();
   }
 
@@ -118,8 +118,8 @@ export class EmailDraftPanelPage {
   }
 
   /** Clicks the dismiss button. */
-  async clickDismiss(): Promise<void> {
-    const locator = await this.dismissButtonLocator();
+  async clickDismiss(timeout?: number): Promise<void> {
+    const locator = await this.dismissButtonLocator(timeout);
     await locator.click();
   }
 }

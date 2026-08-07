@@ -96,6 +96,11 @@ jobs:
               - 'qa/e2e/*.ts'
               - 'qa/scripts/**/*.sh'
               - 'qa/scripts/**/*.ts'
+              # .mjs is not decorative: check-locator-timeout-forwarding.mjs is a
+              # static guard, so without this entry a PR editing only the guard
+              # never runs it — the exact silent-guard failure this repo's
+              # paths-filter rule exists to prevent. (MINCRM-703)
+              - 'qa/scripts/**/*.mjs'
               # qa/e2e/tests/framework/merge-junit-results.spec.ts asserts that
               # qa/scripts/junit-xml.ts and server/src/scripts/junitXml.ts redact
               # the same JUnit payload regions. That rule deliberately exists in
@@ -906,6 +911,12 @@ jobs:
 
       - name: Check the corrupt-map exit code has not drifted (MINCRM-703)
         run: bash qa/scripts/check-coverage-map-exit-code-parity.sh
+
+      - name: Check the locator-timeout guard itself is correct (MINCRM-703)
+        run: node qa/scripts/check-locator-timeout-forwarding.mjs --self-test
+
+      - name: Check page objects forward their caller's timeout (MINCRM-703)
+        run: node qa/scripts/check-locator-timeout-forwarding.mjs
 
   e2e-framework-specs:
     name: Phase 2 - E2E Framework Unit Tests

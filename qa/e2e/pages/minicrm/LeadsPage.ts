@@ -241,7 +241,7 @@ export class LeadsPage {
         ],
         { intent: 'lead status badge to poll until expected text appears' },
       )
-      .resolve();
+      .resolve(timeout);
     // Poll until the text matches — avoids snapshot racing the React re-render.
     await resolved.waitFor({ state: 'visible', timeout });
     const deadline = Date.now() + timeout;

@@ -485,14 +485,14 @@ export class AiPage {
   }
 
   /** Clicks the Confirm button in the confirmation block. */
-  async clickConfirmButton(): Promise<void> {
-    const btn = await this.confirmButtonLocator();
+  async clickConfirmButton(timeout?: number): Promise<void> {
+    const btn = await this.confirmButtonLocator(timeout);
     await btn.click();
   }
 
   /** Clicks the Cancel button in the confirmation block. */
-  async clickCancelButton(): Promise<void> {
-    const btn = await this.cancelButtonLocator();
+  async clickCancelButton(timeout?: number): Promise<void> {
+    const btn = await this.cancelButtonLocator(timeout);
     await btn.click();
   }
 

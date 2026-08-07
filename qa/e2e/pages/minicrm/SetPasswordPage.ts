@@ -156,7 +156,7 @@ export class SetPasswordPage {
         ],
         { intent: 'error alert on set password form' },
       )
-      .resolve()
+      .resolve(timeout)
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
   }

@@ -369,7 +369,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success message after saving email notification setting' },
       )
-      .resolve()
+      .resolve(timeout)
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
   }

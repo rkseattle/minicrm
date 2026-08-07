@@ -68,8 +68,8 @@ export class ActivityTimelinePage {
   }
 
   /** Clicks the "Log activity" button to open the create form. */
-  async clickAddActivity(): Promise<void> {
-    const locator = await this.addActivityButtonLocator();
+  async clickAddActivity(timeout?: number): Promise<void> {
+    const locator = await this.addActivityButtonLocator(timeout);
     await locator.click();
   }
 
@@ -106,8 +106,8 @@ export class ActivityTimelinePage {
   }
 
   /** Clicks the "Summarize" action inside the activity form. */
-  async clickSummarize(): Promise<void> {
-    const locator = await this.summarizeButtonLocator();
+  async clickSummarize(timeout?: number): Promise<void> {
+    const locator = await this.summarizeButtonLocator(timeout);
     await locator.click();
   }
 
@@ -144,8 +144,8 @@ export class ActivityTimelinePage {
   }
 
   /** Clicks the submit button inside the summarizer modal. */
-  async clickSummarySubmit(): Promise<void> {
-    const locator = await this.summarySubmitButtonLocator();
+  async clickSummarySubmit(timeout?: number): Promise<void> {
+    const locator = await this.summarySubmitButtonLocator(timeout);
     await locator.click();
   }
 
@@ -208,8 +208,8 @@ export class ActivityTimelinePage {
   }
 
   /** Clicks "Apply to activity" to close the modal and populate the notes field. */
-  async clickApplySummary(): Promise<void> {
-    const locator = await this.applySummaryButtonLocator();
+  async clickApplySummary(timeout?: number): Promise<void> {
+    const locator = await this.applySummaryButtonLocator(timeout);
     await locator.click();
   }
 
@@ -240,8 +240,8 @@ export class ActivityTimelinePage {
   }
 
   /** Submits the activity form. */
-  async clickFormSubmit(): Promise<void> {
-    const locator = await this.formSubmitButtonLocator();
+  async clickFormSubmit(timeout?: number): Promise<void> {
+    const locator = await this.formSubmitButtonLocator(timeout);
     await locator.click();
   }
 

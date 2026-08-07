@@ -100,7 +100,7 @@ export class ForgotPasswordPage {
         ],
         { intent: 'success message after submitting forgot password form' },
       )
-      .resolve()
+      .resolve(timeout)
       .then((el) => el.waitFor({ state: 'visible', timeout }))
       .catch(() => null);
   }

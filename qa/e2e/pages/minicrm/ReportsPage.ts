@@ -558,7 +558,7 @@ export class ReportsPage {
         ],
         { intent: `saved report button with name "${name}" in the sidebar list` },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

@@ -182,7 +182,7 @@ export class ContactsPage {
         ],
         { fallbackTimeout: timeout, intent: 'bulk select checkbox for contact row' },
       )
-      .resolve();
+      .resolve(timeout);
     await locator.waitFor({ state: 'visible', timeout });
   }
 
@@ -741,8 +741,8 @@ export class ContactsPage {
   }
 
   /** Clicks the "Enrich from text" button. (MINCRM-439) */
-  async clickEnrichFromText(): Promise<void> {
-    const locator = await this.enrichFromTextButtonLocator();
+  async clickEnrichFromText(timeout?: number): Promise<void> {
+    const locator = await this.enrichFromTextButtonLocator(timeout);
     await locator.click();
   }
 
@@ -779,8 +779,8 @@ export class ContactsPage {
   }
 
   /** Clicks the submit button in the enrichment modal. */
-  async clickEnrichmentSubmit(): Promise<void> {
-    const locator = await this.enrichmentSubmitButtonLocator();
+  async clickEnrichmentSubmit(timeout?: number): Promise<void> {
+    const locator = await this.enrichmentSubmitButtonLocator(timeout);
     await locator.click();
   }
 
@@ -798,8 +798,8 @@ export class ContactsPage {
   }
 
   /** Clicks "Apply to form" in the enrichment modal. */
-  async clickEnrichmentApply(): Promise<void> {
-    const locator = await this.enrichmentApplyButtonLocator();
+  async clickEnrichmentApply(timeout?: number): Promise<void> {
+    const locator = await this.enrichmentApplyButtonLocator(timeout);
     await locator.click();
   }
 
@@ -817,8 +817,8 @@ export class ContactsPage {
   }
 
   /** Clicks the "Explain" button in the duplicate warning. */
-  async clickDuplicateExplain(): Promise<void> {
-    const locator = await this.duplicateExplainButtonLocator();
+  async clickDuplicateExplain(timeout?: number): Promise<void> {
+    const locator = await this.duplicateExplainButtonLocator(timeout);
     await locator.click();
   }
 

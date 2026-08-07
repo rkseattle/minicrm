@@ -291,8 +291,8 @@ export class LeadDetailPage {
   }
 
   /** Clicks the "Why this score?" button. */
-  async clickScoreWhy(): Promise<void> {
-    const locator = await this.scoreWhyButtonLocator();
+  async clickScoreWhy(timeout?: number): Promise<void> {
+    const locator = await this.scoreWhyButtonLocator(timeout);
     await locator.click();
   }
 
