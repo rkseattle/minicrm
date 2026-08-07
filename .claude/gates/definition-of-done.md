@@ -12,8 +12,13 @@ npm run lint
 
 # 3. Audit — unconditional. Advisories land against versions already in the lockfile,
 #    so "no dependencies changed" is not a reason to skip it; that is precisely when
-#    drift goes unnoticed until CI is red. Compare what it reports against ci.yml's
-#    ALLOWED_ADVISORIES: anything outside that list has to be fixed or justified.
+#    drift goes unnoticed until CI is red. The bar is ZERO high/critical — there is no
+#    allowlist. To fix: pin the patched version in the root package.json "overrides",
+#    then re-resolve with `rm -rf node_modules package-lock.json && npm install` and
+#    COMMIT the regenerated lockfile. An incremental install will not reconsider
+#    overrides for transitive deps and makes a fixable advisory look unfixable. The
+#    re-resolve is only for changing overrides — `npm ci` installs a committed
+#    lockfile verbatim — see .claude/gates/pre-push.md (MINCRM-703).
 npm audit
 
 # 4. Unit tests — sequential; never run the two workspaces in parallel

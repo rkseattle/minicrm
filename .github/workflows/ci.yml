@@ -306,10 +306,17 @@ jobs:
   # MINCRM-203: npm audit runs in a separate parallel job so it does not delay
   # Phase 2 (server + client tests). Runs alongside Phase 1.
   # MINCRM-282: job is now blocking — continue-on-error removed.
+  # MINCRM-703: unconditional — never gated on changed paths. Advisories are
+  # published against versions ALREADY in the lockfile, so the runs that most need
+  # this job are exactly the ones that touch no dependency file. Gating it on
+  # `client || server || config` meant a docs- or qa-only PR reported a green CI
+  # while carrying known-vulnerable dependencies, and drift was first discovered
+  # from an unrelated branch. `always()` is required because GitHub auto-skips a
+  # job whose `needs` was skipped BEFORE evaluating `if:`.
   security-audit:
     name: Phase 1 - Security Audit
     needs: changes
-    if: needs.changes.outputs.client == 'true' || needs.changes.outputs.server == 'true' || needs.changes.outputs.config == 'true' || needs.changes.outputs.coverage-dashboard == 'true'
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -322,110 +329,78 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # MINCRM-666: three high-severity advisories have no non-breaking fix today and
-      # are allowlisted below (with justification); everything else still fails the
-      # build. Revisit and remove entries from ALLOWED_ADVISORIES as upstream patches
-      # ship — see MINCRM-666.
-      #   GHSA-qwww-vcr4-c8h2 (react-router, RSC-mode CSRF bypass) — not exploitable:
-      #     this app is a client-side SPA using plain BrowserRouter (client/src/main.tsx),
-      #     no RouterProvider, no RSC/server-component APIs. The only "fix" available
-      #     (react-router-dom@7.11.0) falls into a different, far worse vulnerable range
-      #     (6.0.0 - 7.17.0, 14 advisories including an RCE) — a strict regression.
-      #   GHSA-pm4m-ph32-ghv5 (js-yaml, DoS via exponential parse time) — transitive
-      #     dependency of promptfoo (qa/-only devDependency, AI eval CLI; already on the
-      #     latest promptfoo release, which still vendors this js-yaml version). Its
-      #     js-yaml usage parses developer-authored eval config files in this repo, not
-      #     untrusted external input.
-      #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS via unbounded expansion length) —
-      #     dev-tooling-only: every vulnerable instance is nested under ESLint's own
-      #     transitive minimatch@3.1.5 (eslint, eslint-plugin-react, eslint-plugin-jsx-a11y,
-      #     rimraf), never shipped to production and never exposed to untrusted input
-      #     (glob patterns here are developer-authored lint config, not external data).
-      #     `npm audit fix` already applied and bumped the one instance it could
-      #     (@typescript-eslint/parser's own minimatch@10.x chain, brace-expansion
-      #     5.0.7 -> 5.0.8) — the remaining instances require a major downgrade
-      #     (eslint-plugin-jsx-a11y@6.4.1 / eslint-plugin-react@7.22.0, both years-old
-      #     releases) that would itself reintroduce older, unrelated CVEs and break
-      #     current lint rule coverage. A package.json `overrides` pin was evaluated and
-      #     rejected: brace-expansion 5.x changed its export shape (1.x exports a
-      #     callable function directly; 5.x exports an object with an `.expand()`
-      #     method) — forcing 5.0.8 under minimatch@3.1.5's `require('brace-expansion')(...)`
-      #     call site throws at runtime, breaking ESLint's own glob matching entirely.
+      # MINCRM-703: the allowlist is GONE, and so are all 16 entries that used to be
+      # here. Every one of them resolved once the dependency tree was actually
+      # re-resolved rather than reasoned about.
       #
-      # MINCRM-702: the entries below arrived through advisory-database DRIFT, not
-      # through any dependency change — they reproduce on an unmodified lockfile, so
-      # main fails this audit identically. `npm audit fix` was tried and rejected: it
-      # resolves these but introduces a different, larger set of unallowlisted
-      # advisories. A root `overrides` pin was also tried and does not take effect in
-      # this workspace layout (the generated lockfile records no `overrides` at all,
-      # including the pre-existing sharp/@hono pins) — that is itself unexplained and
-      # is part of what MINCRM-702 must resolve. Every entry here is provisional and
-      # should be removed as upstream patches land.
-      #   GHSA-rgw5-rvv9-x895 (brace-expansion, second DoS bypassing the CVE-2026-14257
-      #     mitigation) — same package, same dev-tooling-only exposure as
-      #     GHSA-mh99-v99m-4gvg above, which already documents why the fix is blocked.
-      #   GHSA-4cwx-7wf7-3272 / GHSA-8xcm-r25x-g524 / GHSA-jr45-8vmc-qm54 /
-      #     GHSA-m8rv-5g2x-5cg5 / GHSA-v3r7-h72x-cjcm (undici, cache-directive and
-      #     cookie/CRLF issues) — undici reaches this tree only through jsdom (client
-      #     test env), promptfoo (qa-only eval CLI) and @connectrpc/connect-node, which
-      #     pins `^5.28.4` and is not satisfied by the 7.29.0 fix. The server's own HTTP
-      #     surface is Express, not undici; no request path here is driven by untrusted
-      #     cache-control or set-cookie input.
-      #   GHSA-7p8r-x3mc-p8w7 (fast-uri, host confusion via backslash authority) —
-      #     transitive under ajv only (swagger-parser, MCP SDK, ajv-formats, promptfoo).
-      #     Used for JSON-Schema `$ref`/format resolution over developer-authored
-      #     schemas, never to resolve a user-supplied URL.
-      #   GHSA-mwp4-54f8-5fhr / GHSA-22jq-vg5j-6vgg / GHSA-4xrf-jv44-h6hh (ip-address,
-      #     SSRF and trust-boundary bypasses) — the only production path is
-      #     express-rate-limit's IP keying. Verified no direct use: `ip-address`,
-      #     `Address4` and `Address6` appear nowhere in server/src. Worst case is a
-      #     mis-bucketed rate-limit key, not a trust decision; this app makes no
-      #     outbound request to a user-supplied address.
-      #   GHSA-8j4g-w8fx-2239 (hono, ReDoS in CORS middleware) — hono is transitive
-      #     under @hono/node-server and the MCP SDK. This app serves no hono routes and
-      #     runs no hono CORS middleware; Express handles CORS.
-      #   GHSA-fxqj-rqcc-2cmp (postcss, arbitrary .map read when `from` is unset) —
-      #     build-time only, under tailwindcss/vite/autoprefixer. Inputs are this repo's
-      #     own stylesheets; nothing is compiled from untrusted CSS at runtime.
-      #   GHSA-5p4m-2wfm-xmqj / GHSA-6g55-p6wh-862q (js-yaml, quadratic CPU in !!omap
-      #     resolution) — same drift class as the entries above: both appeared against
-      #     versions already in the lockfile, and main fails this audit identically with
-      #     no dependency change on either side. js-yaml reaches this tree ONLY through
-      #     dev tooling — markdownlint-cli2, promptfoo, and @istanbuljs/load-nyc-config
-      #     — and no file under server/src or client/src imports it, so no production
-      #     request path parses YAML at all; the inputs are this repo's own .md and
-      #     eval files. `npm audit fix` was tried and rejected for the same reason
-      #     MINCRM-702 records: it resolves one of these two and introduces ELEVEN new
-      #     unallowlisted advisories, which is strictly worse. Provisional, like every
-      #     entry here — remove when upstream patches land. (MINCRM-703)
+      # What was really happening: npm treats an existing node_modules + lockfile pair
+      # as already-satisfying and will not reconsider `overrides` for a transitive dep
+      # on an incremental install — `npm install`, `npm install --package-lock-only`,
+      # and even deleting the lockfile alone all silently left undici at 7.28.0 and
+      # hono at 4.12.31. Only a full `rm -rf node_modules package-lock.json` re-resolve
+      # applied the pins. MINCRM-702 concluded from the same symptom that overrides
+      # "do not take effect in this workspace layout"; that was wrong. A clean-room
+      # repro of the identical chain (root overrides -> workspace -> promptfoo ->
+      # optional @modelcontextprotocol/sdk -> hono) honors the override correctly.
+      # The lockfile not recording an `overrides` key is a lockfileVersion 3 cosmetic
+      # detail, not evidence the pins were ignored.
+      #
+      # Result: 19 advisories -> 0. Pins live in the root package.json `overrides`.
+      #
+      # One override knowingly violates a declared range: @connectrpc/connect-node
+      # asks for undici `^5.28.4`, so `npm ls undici` reports `invalid`. That
+      # violation is PRE-EXISTING — main already served it a hoisted v7 (7.28.0) and
+      # reported the same `invalid`; this pin moves 7.28.0 -> 7.29.0 within an
+      # already-violated range, it does not create the violation. It is safe because
+      # connect-node's ONLY undici usage is dist/cjs/node-headers-polyfill.js, which
+      # reads `undici.Headers` solely under `if (major < 18)` — dead code on Node 20
+      # (CI) and Node 22, and undici v7 exports `Headers` regardless. Verified by
+      # loading @connectrpc/connect-node against 7.29.0. Recheck this if connect-node
+      # is upgraded or its undici surface grows beyond that polyfill.
+      #
+      # Keep this job at zero. If a future advisory genuinely has no fix, add an
+      # allowlist back with a written justification and a re-resolve actually
+      # attempted first — not a reasoned argument for why the fix cannot work.
       - name: Audit dependencies for high/critical vulnerabilities
         run: |
-          ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5 GHSA-mh99-v99m-4gvg \
-            GHSA-rgw5-rvv9-x895 \
-            GHSA-4cwx-7wf7-3272 GHSA-8xcm-r25x-g524 GHSA-jr45-8vmc-qm54 GHSA-m8rv-5g2x-5cg5 GHSA-v3r7-h72x-cjcm \
-            GHSA-7p8r-x3mc-p8w7 \
-            GHSA-mwp4-54f8-5fhr GHSA-22jq-vg5j-6vgg GHSA-4xrf-jv44-h6hh \
-            GHSA-8j4g-w8fx-2239 \
-            GHSA-fxqj-rqcc-2cmp \
-            GHSA-5p4m-2wfm-xmqj GHSA-6g55-p6wh-862q"
+          # npm audit exits non-zero BOTH when it finds advisories and when it fails
+          # to run at all, so the exit code alone cannot distinguish "clean" from
+          # "never produced a verdict". Capture output and status separately, then
+          # require a well-formed report before trusting any conclusion — otherwise a
+          # registry outage, a proxy error, or an npm crash yields empty output that
+          # scrapes to zero advisories and reports a green security gate. (MINCRM-703)
+          set +e
+          npm audit --audit-level=high --json > "${RUNNER_TEMP}/audit.json"
+          AUDIT_STATUS=$?
+          set -e
 
-          AUDIT_JSON=$(npm audit --audit-level=high --json || true)
-
-          UNALLOWED=$(echo "$AUDIT_JSON" | jq -r --arg allowed "$ALLOWED_ADVISORIES" '
-            (.vulnerabilities // {}) | to_entries[] | .value.via[]
-            | select(type == "object")
-            | .url | split("/")[-1]
-            | select(. as $id | ($allowed | split(" ") | index($id)) | not)
-          ')
-
-          if [ -n "$UNALLOWED" ]; then
-            echo "::error::npm audit found high/critical advisories not on the allowlist:"
-            echo "$UNALLOWED"
-            echo "$AUDIT_JSON" | jq '.vulnerabilities'
+          if ! jq -e '(.metadata.vulnerabilities | type) == "object"' "${RUNNER_TEMP}/audit.json" > /dev/null 2>&1; then
+            echo "::error::npm audit did not produce a usable report (exit ${AUDIT_STATUS})."
+            echo "Treating this as a failure: an unreadable audit is not a clean audit."
+            head -c 4000 "${RUNNER_TEMP}/audit.json" || true
             exit 1
           fi
 
-          echo "All high/critical advisories are on the documented allowlist (MINCRM-666)."
+          HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' "${RUNNER_TEMP}/audit.json")
+          CRITICAL=$(jq -r '.metadata.vulnerabilities.critical // 0' "${RUNNER_TEMP}/audit.json")
+
+          if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::npm audit found ${CRITICAL} critical and ${HIGH} high advisories:"
+            jq -r '
+              (.vulnerabilities // {}) | to_entries[] | .value.via[]
+              | select(type == "object")
+              | "\(.url | split("/")[-1])  \(.severity)  \(.name)"
+            ' "${RUNNER_TEMP}/audit.json" | sort -u
+            jq '.vulnerabilities' "${RUNNER_TEMP}/audit.json"
+            echo ""
+            echo "Before allowlisting anything, try a full re-resolve — an incremental"
+            echo "npm install will NOT reconsider overrides for transitive deps:"
+            echo "  rm -rf node_modules package-lock.json && npm install"
+            echo "Pin the fixed version in the root package.json \"overrides\" block."
+            exit 1
+          fi
+
+          echo "No high/critical advisories (MINCRM-703)."
 
   # MINCRM-633: PR select mode — runs the existing change-to-test selection
   # pipeline (server/src/scripts/select-tests.ts, pr-tia-6/MINCRM-623-627)

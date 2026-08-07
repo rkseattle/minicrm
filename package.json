@@ -53,16 +53,19 @@
     ]
   },
   "overrides": {
-    "undici": "7.28.0",
+    "undici": "7.29.0",
     "markdownlint-cli2": {
-      "js-yaml": "4.3.0",
+      "js-yaml": "4.3.1",
       "markdown-it": "14.2.0"
     },
     "onnxruntime-node": {
       "adm-zip": "0.6.0"
     },
     "sharp": "0.35.3",
-    "@hono/node-server": "2.0.11"
+    "@hono/node-server": "2.0.11",
+    "promptfoo": {
+      "hono": "4.12.34"
+    }
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",

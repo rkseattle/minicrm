@@ -13,8 +13,30 @@ In order, all green, before every `git push`:
    that was clean yesterday fails today because the advisory database moved, not because
    anything in the repo did. Skipping this on a branch that touched no `package.json`
    is how a red CI audit job first gets discovered from CI instead of locally
-   (MINCRM-703 did exactly that). Zero high or critical, or every remaining advisory
-   already in `ci.yml`'s `ALLOWED_ADVISORIES` with a written justification.
+   (MINCRM-703 did exactly that). **The bar is zero** — there is no allowlist.
+
+   When something is reported, pin the fixed version in the root `package.json`
+   `overrides` block and then **re-resolve from scratch**:
+
+   ```bash
+   rm -rf node_modules package-lock.json && npm install
+   ```
+
+   This step is not optional and not a formality. npm treats an existing
+   `node_modules` + lockfile pair as already-satisfying and will **not** reconsider an
+   override for a transitive dependency on an incremental install — plain
+   `npm install`, `--package-lock-only`, and deleting only the lockfile all silently
+   leave the vulnerable version in place and make a working fix look impossible.
+   Reasoning about why a fix "cannot work" before running the clean re-resolve is how
+   16 advisories stayed allowlisted while every one of them was already fixable
+   (MINCRM-703).
+
+   **This applies to changing `overrides`, not to installing.** Once the re-resolved
+   `package-lock.json` is committed, `npm ci` installs it verbatim and reproduces the
+   pinned tree exactly — which is why CI's `npm ci` is authoritative and does not need
+   the clean re-resolve. Commit the regenerated lockfile alongside the
+   `package.json` change, or CI will install the old tree.
+
 5. E2E per `.claude/gates/e2e-run.md`
 6. `git status` — scan for tracked files with local modifications that are **not** part
    of the intended commit set. Restore artifacts (`qa/e2e/heal-trends.json`, test
