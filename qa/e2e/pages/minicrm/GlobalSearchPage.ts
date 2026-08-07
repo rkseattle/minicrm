@@ -212,7 +212,7 @@ export class GlobalSearchPage {
           ],
           { intent: 'global search results dropdown panel' },
         )
-        .resolve();
+        .resolve(timeout);
       await panel.waitFor({ state: 'hidden', timeout });
     } catch {
       // Panel was not present or already hidden — proceed.
@@ -254,7 +254,7 @@ export class GlobalSearchPage {
           ],
           { intent: 'global search results dropdown panel' },
         )
-        .resolve();
+        .resolve(timeout);
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -283,7 +283,7 @@ export class GlobalSearchPage {
           ],
           { intent: `search result entry for ${entity} record` },
         )
-        .resolve();
+        .resolve(timeout);
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -306,7 +306,7 @@ export class GlobalSearchPage {
           ],
           { intent: 'empty state message in search results panel' },
         )
-        .resolve();
+        .resolve(timeout);
       await resolved.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
@@ -373,7 +373,7 @@ export class GlobalSearchPage {
           ],
           { intent: 'hint shown when search query is too short' },
         )
-        .resolve();
+        .resolve(timeout);
       await resolved.waitFor({ state: 'hidden', timeout });
     } catch {
       // Element absent or timed out — treat as already hidden.

@@ -732,6 +732,30 @@ export async function loginAndVerify(
 const FLAG_QUERY_TIMEOUT_MS = 15_000;
 
 /**
+ * Probe budget for the FIRST interaction with a control that renders only after
+ * an async gate resolves. (MINCRM-703)
+ *
+ * The healing locator probes each strategy for 2s by default, which is right for
+ * an element already on the page and wrong for the first click after a
+ * navigation. `navigateAndSettle` waits on `requestfinished` for the flags query,
+ * which fires when the HTTP response lands — NOT when React has re-rendered the
+ * subtree that response unblocks. `EntityDetailSidebar` renders `<ActivityTimeline>`
+ * only under `!activitiesLoading && activitiesEnabled`, so between the response
+ * and the commit the control is genuinely absent from the DOM, and under CI's four
+ * concurrent workers that gap can outlast a 2s probe. The probe then gives up
+ * before the element can exist, and reports StrategyExhaustedError — which reads
+ * as selector drift. That is how F-AS2 failed on `add-activity-button` while
+ * three sibling shards passed.
+ *
+ * So the budget covers render latency after a settled request, not a second
+ * unwaited fetch. Deliberately equal to FLAG_QUERY_TIMEOUT_MS above: both absorb
+ * the same contended-server tail. Pass it explicitly at the racy call site rather
+ * than raising DEFAULT_FALLBACK_TIMEOUT_MS, so genuine selector drift still fails
+ * in 2s everywhere else instead of stalling a 50-minute suite.
+ */
+export const FIRST_INTERACTION_TIMEOUT_MS = 15_000;
+
+/**
  * Navigates and then waits for the app to be genuinely ready to query, rather
  * than for the network to fall quiet.
  *

@@ -15,6 +15,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { MyTasksPage } from '@pages/minicrm/MyTasksPage.js';
 import { ActivityTimelinePage } from '@pages/minicrm/ActivityTimelinePage.js';
+import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // API data types (MINCRM-357)
@@ -218,15 +219,15 @@ export async function summarizeActivityNotes(
   context: ActivitiesBehaviorContext,
 ): Promise<SummarizeActivityNotesResult> {
   const timeline = new ActivityTimelinePage(context);
-  await timeline.clickAddActivity();
-  await timeline.clickSummarize();
+  await timeline.clickAddActivity(FIRST_INTERACTION_TIMEOUT_MS);
+  await timeline.clickSummarize(FIRST_INTERACTION_TIMEOUT_MS);
   await timeline.fillSummaryInput(rawText);
 
   const responseReceived = context.page.waitForResponse(
     (res) => res.request().method() === 'POST' && res.url().includes('/activities/summarize'),
     { timeout: 30_000 },
   );
-  await timeline.clickSummarySubmit();
+  await timeline.clickSummarySubmit(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
 
   return { status: response.status() };
@@ -250,7 +251,7 @@ export async function dismissSuggestedTask(
  */
 export async function applyActivitySummary(context: ActivitiesBehaviorContext): Promise<void> {
   const timeline = new ActivityTimelinePage(context);
-  await timeline.clickApplySummary();
+  await timeline.clickApplySummary(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /**
@@ -258,7 +259,7 @@ export async function applyActivitySummary(context: ActivitiesBehaviorContext): 
  */
 export async function saveActivityForm(context: ActivitiesBehaviorContext): Promise<void> {
   const timeline = new ActivityTimelinePage(context);
-  await timeline.clickFormSubmit();
+  await timeline.clickFormSubmit(FIRST_INTERACTION_TIMEOUT_MS);
 }
 
 /**
@@ -307,7 +308,7 @@ export async function openActivityFormWithType(
   context: ActivitiesBehaviorContext,
 ): Promise<void> {
   const timeline = new ActivityTimelinePage(context);
-  await timeline.clickAddActivity();
+  await timeline.clickAddActivity(FIRST_INTERACTION_TIMEOUT_MS);
   await timeline.selectType(activityType);
 }
 

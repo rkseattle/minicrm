@@ -15,6 +15,7 @@ import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { LeadsPage } from '@pages/minicrm/LeadsPage.js';
 import { LeadDetailPage } from '@pages/minicrm/LeadDetailPage.js';
+import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -734,7 +735,7 @@ export async function requestLeadScoreNarrative(
     (res) => res.request().method() === 'POST' && res.url().includes('/score-narrative'),
     { timeout: 30_000 },
   );
-  await detailPage.clickScoreWhy();
+  await detailPage.clickScoreWhy(FIRST_INTERACTION_TIMEOUT_MS);
   const response = await responseReceived;
 
   return { status: response.status() };

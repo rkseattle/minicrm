@@ -31,6 +31,7 @@ bash qa/scripts/check-settings-mutations.sh
 bash qa/scripts/check-networkidle.sh
 bash qa/scripts/check-sha-pattern-parity.sh
 bash qa/scripts/check-e2e-cleanup.sh
+node qa/scripts/check-locator-timeout-forwarding.mjs
 ```
 
 Steps 1–5 run before every commit. **E2E does not gate individual commits** — see

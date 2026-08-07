@@ -458,7 +458,7 @@ export class ContactDetailPage {
           intent: 'not-found message on the contact detail page for an invalid id',
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -664,8 +664,8 @@ export class ContactDetailPage {
   }
 
   /** Clicks the "Draft Email" button. (MINCRM-437) */
-  async clickDraftEmail(): Promise<void> {
-    const locator = await this.draftEmailButtonLocator();
+  async clickDraftEmail(timeout?: number): Promise<void> {
+    const locator = await this.draftEmailButtonLocator(timeout);
     await locator.click();
   }
 

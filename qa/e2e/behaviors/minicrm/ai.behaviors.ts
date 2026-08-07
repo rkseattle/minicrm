@@ -12,6 +12,7 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AiPage } from '@pages/minicrm/AiPage.js';
+import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import type { AiContextEntryResponse } from '@minicrm/shared/schemas/aiContextSchema.js';
 import type { AiMessageResponse } from '@minicrm/shared/schemas/aiSessionSchema.js';
 import {
@@ -728,7 +729,7 @@ export async function clickConfirmButton(context: AiBehaviorContext): Promise<Cl
   const visible =
     (await aiPage.isConfirmationBlockVisible()) || (await aiPage.isBulkConfirmationBlockVisible());
   if (!visible) return { clicked: false };
-  await aiPage.clickConfirmButton();
+  await aiPage.clickConfirmButton(FIRST_INTERACTION_TIMEOUT_MS);
   return { clicked: true };
 }
 
@@ -741,7 +742,7 @@ export async function clickCancelButton(context: AiBehaviorContext): Promise<Cli
   const visible =
     (await aiPage.isConfirmationBlockVisible()) || (await aiPage.isBulkConfirmationBlockVisible());
   if (!visible) return { clicked: false };
-  await aiPage.clickCancelButton();
+  await aiPage.clickCancelButton(FIRST_INTERACTION_TIMEOUT_MS);
   return { clicked: true };
 }
 
