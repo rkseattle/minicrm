@@ -336,9 +336,18 @@ tests:
       - type: llm-rubric
         value: >
           Pass if the response tells the user this specific request (a report
-          listing/capturing the named leads) isn't directly supported, and
-          either offers the closest available alternative (a leads summary
-          report broken down by status) or asks what kind of report they want.
+          listing/capturing the named leads) isn't directly supported, and does
+          not stop there — it either suggests some concrete alternative or asks
+          what the user wants instead.
+
+          Deliberately does NOT require naming a specific report type. The
+          system prompt above never tells the model which report types exist,
+          so a rubric demanding it suggest "a leads summary report broken down
+          by status" tests knowledge the model was never given: it failed this
+          case on every run while refusing correctly and offering sensible
+          alternatives. What actually matters here — and what MINCRM-424 was
+          about — is that it REFUSES rather than silently substituting an
+          unrelated report. (MINCRM-703)
           Fail if the response claims it successfully created a report matching
           the user's request, invents report content (e.g. activity counts, a
           report named after the leads), or fabricates data not present in the
