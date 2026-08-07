@@ -60,15 +60,7 @@ export default function AccountDetailPage() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportPdfError, setExportPdfError] = useState<string | null>(null);
-  // isLoading is consumed, not discarded: useFeatureFlag fails closed, so while
-  // the flags request is in flight `enabled` is false and a gated control is
-  // absent from the DOM entirely. Under load that request has been measured at
-  // ~3s, well past the E2E healing locator's 2s probe budget, so the control
-  // reads as a drifted selector rather than as "not ready yet". Rendering it
-  // disabled while loading keeps it addressable without ever being actionable
-  // before its gate is known. (MINCRM-703)
-  const { enabled: csvExportEnabled, isLoading: featureFlagsLoading } =
-    useFeatureFlag('csv_export');
+  const { enabled: csvExportEnabled } = useFeatureFlag('csv_export');
   const { enabled: sentimentTrackingEnabled } = useFeatureFlag('ai_sentiment_tracking');
   const { enabled: relationshipHealthEnabled } = useFeatureFlag('ai_relationship_health_score');
 
@@ -285,13 +277,13 @@ export default function AccountDetailPage() {
           {!isEditing && (
             <div className="flex flex-col items-start sm:items-end gap-2 sm:shrink-0">
               <div className="flex items-center gap-2">
-                {(csvExportEnabled || featureFlagsLoading) && (
+                {csvExportEnabled && (
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
                     data-testid="account-detail-export-pdf-button"
-                    disabled={isExportingPdf || featureFlagsLoading}
+                    disabled={isExportingPdf}
                     onClick={async () => {
                       setIsExportingPdf(true);
                       setExportPdfError(null);
