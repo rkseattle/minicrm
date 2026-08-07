@@ -50,7 +50,7 @@ export class ReportsPage {
    * (the shell heading's fixed text) never varies, so exact match is safe here
    * — see AutomationPage.headingLocator() for the identical failure mode.
    */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -59,13 +59,13 @@ export class ReportsPage {
         ],
         { intent: 'main heading on the reports page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the tab list / sub-navigation container.
    */
-  async tabListLocator() {
+  async tabListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -74,14 +74,14 @@ export class ReportsPage {
         ],
         { intent: 'tab list or sub-navigation on the reports page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the mobile tab select dropdown.
    * Throws if not found — only present on mobile viewports.
    */
-  async tabListSelectLocator() {
+  async tabListSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -90,13 +90,13 @@ export class ReportsPage {
         ],
         { intent: 'mobile sub-navigation dropdown for selecting report view' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Win/Loss tab button (desktop only).
    */
-  async winLossTabLocator() {
+  async winLossTabLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -105,13 +105,13 @@ export class ReportsPage {
         ],
         { intent: 'Win/Loss report tab button in reports navigation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Activity Volume tab button (desktop only).
    */
-  async activityTabLocator() {
+  async activityTabLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -120,13 +120,13 @@ export class ReportsPage {
         ],
         { intent: 'Activity Volume report tab button in reports navigation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Pipeline Stage tab button (desktop only).
    */
-  async stageTrendTabLocator() {
+  async stageTrendTabLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -135,13 +135,13 @@ export class ReportsPage {
         ],
         { intent: 'Pipeline Stage report tab button in reports navigation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Win/Loss report heading.
    */
-  async winLossHeadingLocator() {
+  async winLossHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -150,13 +150,13 @@ export class ReportsPage {
         ],
         { intent: 'Win/Loss report section heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Activity Volume report heading.
    */
-  async activityVolumeHeadingLocator() {
+  async activityVolumeHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -165,7 +165,7 @@ export class ReportsPage {
         ],
         { intent: 'Activity Volume report section heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -176,7 +176,7 @@ export class ReportsPage {
    * regex once the report has data — see AutomationPage.headingLocator() for
    * the identical failure mode.
    */
-  async stageTrendHeadingLocator() {
+  async stageTrendHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -189,14 +189,14 @@ export class ReportsPage {
         ],
         { intent: 'Pipeline Stage Trend report section heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the loading indicator.
    * Returns null if not in the DOM (report already loaded).
    */
-  async loadingLocator() {
+  async loadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -205,7 +205,7 @@ export class ReportsPage {
         ],
         { intent: 'loading indicator while report data is being fetched' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -213,7 +213,7 @@ export class ReportsPage {
    * Returns a resolved locator for the stage trend data table.
    * Returns null if not present (empty state).
    */
-  async stageTrendTableLocator() {
+  async stageTrendTableLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -222,7 +222,7 @@ export class ReportsPage {
         ],
         { intent: 'stage trend data table on pipeline stage report' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -230,7 +230,7 @@ export class ReportsPage {
    * Returns a resolved locator for the stage trend empty state.
    * Returns null if not present (table is shown).
    */
-  async stageTrendEmptyLocator() {
+  async stageTrendEmptyLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -239,14 +239,14 @@ export class ReportsPage {
         ],
         { intent: 'empty state on pipeline stage report when no data exists' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /**
    * Returns a resolved locator for the days-range select on the stage trend report.
    */
-  async daysSelectLocator() {
+  async daysSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -255,13 +255,13 @@ export class ReportsPage {
         ],
         { intent: 'date range selector on stage trend report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the date preset select on the win-loss report.
    */
-  async datePresetSelectLocator() {
+  async datePresetSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -270,13 +270,13 @@ export class ReportsPage {
         ],
         { intent: 'date range preset selector dropdown on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the custom date range start input.
    */
-  async customStartInputLocator() {
+  async customStartInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -285,13 +285,13 @@ export class ReportsPage {
         ],
         { intent: 'custom date range start date input on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the custom date range end input.
    */
-  async customEndInputLocator() {
+  async customEndInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -300,25 +300,25 @@ export class ReportsPage {
         ],
         { intent: 'custom date range end date input on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the stat cards container.
    */
-  async statCardsLocator() {
+  async statCardsLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- container has no accessible name; role:region matches unrelated landmarks
     return this.page
       .locate([{ type: 'testId', value: 'report-stat-cards' }], {
         intent: 'container holding the Won/Lost stat card metrics',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the won count stat value.
    */
-  async wonCountValueLocator() {
+  async wonCountValueLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -327,13 +327,13 @@ export class ReportsPage {
         ],
         { intent: 'displayed count of Closed Won deals on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the lost count stat value.
    */
-  async lostCountValueLocator() {
+  async lostCountValueLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -342,13 +342,13 @@ export class ReportsPage {
         ],
         { intent: 'displayed count of Closed Lost deals on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the win rate stat value.
    */
-  async winRateValueLocator() {
+  async winRateValueLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -357,13 +357,13 @@ export class ReportsPage {
         ],
         { intent: 'displayed win rate percentage on win/loss report' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Custom Reports tab button. (MINCRM-402)
    */
-  async customReportsTabLocator() {
+  async customReportsTabLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -372,13 +372,13 @@ export class ReportsPage {
         ],
         { intent: 'Custom Reports tab button in reports navigation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the custom report builder container. (MINCRM-402)
    */
-  async customReportBuilderLocator() {
+  async customReportBuilderLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -387,13 +387,13 @@ export class ReportsPage {
         ],
         { intent: 'custom report builder form and results area' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the run-report button. (MINCRM-402)
    */
-  async runReportButtonLocator() {
+  async runReportButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -402,13 +402,13 @@ export class ReportsPage {
         ],
         { intent: 'button to execute the custom report query' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the save-report button. (MINCRM-402)
    */
-  async saveReportButtonLocator() {
+  async saveReportButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -417,13 +417,13 @@ export class ReportsPage {
         ],
         { intent: 'button to open the save report dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the save-report name input inside the dialog. (MINCRM-402)
    */
-  async saveReportNameInputLocator() {
+  async saveReportNameInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -432,13 +432,13 @@ export class ReportsPage {
         ],
         { intent: 'text input for the report name in the save dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the save-report confirm button inside the dialog. (MINCRM-402)
    */
-  async saveReportConfirmLocator() {
+  async saveReportConfirmLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -447,14 +447,14 @@ export class ReportsPage {
         ],
         { intent: 'confirm button to submit the save report dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the results table. (MINCRM-402)
    * Returns null if not present (empty or not yet run).
    */
-  async resultsTableLocator() {
+  async resultsTableLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -463,7 +463,7 @@ export class ReportsPage {
         ],
         { intent: 'results table displaying custom report rows' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -471,7 +471,7 @@ export class ReportsPage {
    * Returns a resolved locator for the results empty state. (MINCRM-402)
    * Returns null if not present.
    */
-  async resultsEmptyLocator() {
+  async resultsEmptyLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -480,7 +480,7 @@ export class ReportsPage {
         ],
         { intent: 'empty state message when custom report returns no rows' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -505,7 +505,7 @@ export class ReportsPage {
   /**
    * Returns a resolved locator for the entity-type selector in the builder. (MINCRM-402)
    */
-  async entityTypeSelectLocator() {
+  async entityTypeSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -514,13 +514,13 @@ export class ReportsPage {
         ],
         { intent: 'entity type selector in the custom report builder' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the saved-reports list sidebar. (MINCRM-402)
    */
-  async savedReportsListLocator() {
+  async savedReportsListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -529,7 +529,7 @@ export class ReportsPage {
         ],
         { intent: 'list of saved custom reports in the sidebar' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -607,7 +607,7 @@ export class ReportsPage {
   }
 
   /** Returns a resolved locator for the Activity Volume Export CSV button. */
-  async activityVolumeExportCsvButtonLocator() {
+  async activityVolumeExportCsvButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -616,11 +616,11 @@ export class ReportsPage {
         ],
         { intent: 'control to export the activity volume report as CSV' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Activity Volume Export PDF button. */
-  async activityVolumeExportPdfButtonLocator() {
+  async activityVolumeExportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -629,7 +629,7 @@ export class ReportsPage {
         ],
         { intent: 'control to export the activity volume report as PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Opens the Custom Report Builder's Export menu. (MINCRM-652) */
@@ -647,7 +647,7 @@ export class ReportsPage {
    * Returns a resolved locator for the Custom Report Builder's Export CSV
    * control — a plain `<a href download>` anchor (role "link"), not a button.
    */
-  async customReportExportCsvButtonLocator() {
+  async customReportExportCsvButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -656,14 +656,14 @@ export class ReportsPage {
         ],
         { intent: 'control to export the current custom report as CSV' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Custom Report Builder's Export PDF
    * control — a plain `<a href download>` anchor (role "link"), not a button.
    */
-  async customReportExportPdfButtonLocator() {
+  async customReportExportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -672,6 +672,6 @@ export class ReportsPage {
         ],
         { intent: 'control to export the current custom report as PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

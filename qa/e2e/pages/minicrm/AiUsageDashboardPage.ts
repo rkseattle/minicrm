@@ -42,7 +42,7 @@ export class AiUsageDashboardPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the total-tokens summary card. */
-  async totalTokensCardLocator() {
+  async totalTokensCardLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -51,11 +51,11 @@ export class AiUsageDashboardPage {
         ],
         { intent: 'summary card showing total input+output tokens for the selected range' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the per-user usage table. */
-  async perUserTableLocator() {
+  async perUserTableLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -64,7 +64,7 @@ export class AiUsageDashboardPage {
         ],
         { intent: 'per-user AI usage/cost breakdown table' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks a date range preset button (e.g. 'last_month', 'custom'). */

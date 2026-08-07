@@ -53,7 +53,7 @@ export class AccountDetailPage {
   /**
    * Returns a resolved locator for the Export PDF button on the account detail page.
    */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -62,7 +62,7 @@ export class AccountDetailPage {
         ],
         { intent: 'button to export this account as a single-record PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -194,7 +194,7 @@ export class AccountDetailPage {
    * Returns a resolved locator for the empty state when no contacts are linked.
    * Throws if not found — call when the account has zero linked contacts.
    */
-  async linkedContactsEmptyLocator() {
+  async linkedContactsEmptyLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -203,14 +203,14 @@ export class AccountDetailPage {
         ],
         { intent: 'empty state message when no contacts are linked to account' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments section container.
    * Returns null if not present.
    */
-  async attachmentsSectionLocator() {
+  async attachmentsSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -219,14 +219,14 @@ export class AccountDetailPage {
         ],
         { intent: 'attachments section container on account detail page' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /**
    * Returns a resolved locator for the attachments file input.
    */
-  async attachmentsFileInputLocator() {
+  async attachmentsFileInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -235,20 +235,20 @@ export class AccountDetailPage {
         ],
         { intent: 'file input for uploading attachments on account detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments list container.
    * Returns null if not present.
    */
-  async attachmentsListLocator() {
+  async attachmentsListLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
       .locate([{ type: 'testId', value: 'attachments-list' }], {
         intent: 'list of uploaded attachments on account detail page',
       })
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -262,7 +262,7 @@ export class AccountDetailPage {
   // ── AI churn/expansion signal banner (MINCRM-469) ───────────────────────────────
 
   /** Returns a resolved locator for the churn-risk banner. */
-  async churnRiskBannerLocator() {
+  async churnRiskBannerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -271,7 +271,7 @@ export class AccountDetailPage {
         ],
         { intent: 'AI churn risk banner on the account detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -291,7 +291,7 @@ export class AccountDetailPage {
   }
 
   /** Returns a resolved locator for the expansion signal banner. */
-  async expansionSignalBannerLocator() {
+  async expansionSignalBannerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -300,7 +300,7 @@ export class AccountDetailPage {
         ],
         { intent: 'AI expansion signal banner on the account detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

@@ -41,7 +41,7 @@ export class ContactDetailPage {
    * Returns a resolved locator for the Edit button (visible in read mode only).
    * Use to confirm the detail page has finished loading before snapshotting.
    */
-  async editButtonLocator() {
+  async editButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -50,13 +50,13 @@ export class ContactDetailPage {
         ],
         { intent: 'edit button confirming contact detail page is fully loaded' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the Export PDF button on the contact detail page.
    */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -65,7 +65,7 @@ export class ContactDetailPage {
         ],
         { intent: 'button to export this contact as a single-record PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -267,7 +267,7 @@ export class ContactDetailPage {
    * Returns a resolved locator for the send email button.
    * Throws if not found — contact must have an email address for this button to appear.
    */
-  async sendEmailButtonLocator() {
+  async sendEmailButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -276,14 +276,14 @@ export class ContactDetailPage {
         ],
         { intent: 'send email button on contact detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the send email compose modal.
    * Throws if not found — call after `clickSendEmail`.
    */
-  async sendEmailModalLocator() {
+  async sendEmailModalLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -292,14 +292,14 @@ export class ContactDetailPage {
         ],
         { intent: 'send email compose modal dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the send email success message.
    * Throws if not found — call after `submitSendEmail`.
    */
-  async sendEmailSuccessLocator() {
+  async sendEmailSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -308,14 +308,14 @@ export class ContactDetailPage {
         ],
         { intent: 'success message after sending email from contact detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the account link on the contact detail page.
    * Throws if not found — contact must be linked to an account.
    */
-  async accountLinkLocator() {
+  async accountLinkLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -324,14 +324,14 @@ export class ContactDetailPage {
         ],
         { intent: 'account link on contact detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments section container.
    * Returns null if not present.
    */
-  async attachmentsSectionLocator() {
+  async attachmentsSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -340,14 +340,14 @@ export class ContactDetailPage {
         ],
         { intent: 'attachments section container on detail page' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /**
    * Returns a resolved locator for the attachments file input.
    */
-  async attachmentsFileInputLocator() {
+  async attachmentsFileInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -356,27 +356,27 @@ export class ContactDetailPage {
         ],
         { intent: 'file input for uploading attachments' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments list container.
    * Throws if not found — call after a successful upload.
    */
-  async attachmentsListLocator() {
+  async attachmentsListLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- unnamed <ul> with no accessible name; role:list matches every list on the page
     return this.page
       .locate([{ type: 'testId', value: 'attachments-list' }], {
         intent: 'list of uploaded attachments',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the attachments upload error message.
    * Throws if not found — call after uploading a disallowed file type or oversized file.
    */
-  async attachmentsUploadErrorLocator() {
+  async attachmentsUploadErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -385,7 +385,7 @@ export class ContactDetailPage {
         ],
         { intent: 'upload error message when attachment is rejected' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -409,7 +409,7 @@ export class ContactDetailPage {
    * Returns a resolved locator for the custom fields edit grid container.
    * Visible when the contact is in edit mode.
    */
-  async customFieldsEditGridLocator() {
+  async customFieldsEditGridLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -418,7 +418,7 @@ export class ContactDetailPage {
         ],
         { intent: 'custom fields edit grid container in contact edit form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -426,7 +426,7 @@ export class ContactDetailPage {
    * Visible when the contact is in read mode and has at least one custom field value.
    * Returns null when the grid is not present (e.g. after all definitions are deleted).
    */
-  async customFieldsReadGridLocator() {
+  async customFieldsReadGridLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -435,7 +435,7 @@ export class ContactDetailPage {
         ],
         { intent: 'custom fields read grid container on contact detail page' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -464,7 +464,7 @@ export class ContactDetailPage {
   /**
    * Returns a resolved locator for the back-to-contacts link on the not-found page.
    */
-  async notFoundBackLinkLocator() {
+  async notFoundBackLinkLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -473,7 +473,7 @@ export class ContactDetailPage {
         ],
         { intent: 'back to contacts navigation link on the not-found page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -487,7 +487,7 @@ export class ContactDetailPage {
    * (used for the other fixes of this bug class) isn't viable here;
    * level: 1 alone is sufficient since this page has exactly one h1.
    */
-  async contactNameLocator() {
+  async contactNameLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -496,7 +496,7 @@ export class ContactDetailPage {
         ],
         { intent: 'contact name heading on the contact detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -638,7 +638,7 @@ export class ContactDetailPage {
   }
 
   /** Returns a resolved locator for the no-warm-path-found empty state message. */
-  async warmPathEmptyMessageLocator() {
+  async warmPathEmptyMessageLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -647,11 +647,11 @@ export class ContactDetailPage {
         ],
         { intent: 'no-warm-path-found message on the contact detail page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the "Draft Email" button. (MINCRM-437) */
-  async draftEmailButtonLocator() {
+  async draftEmailButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -660,7 +660,7 @@ export class ContactDetailPage {
         ],
         { intent: 'button that generates an AI email draft for this contact' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Draft Email" button. (MINCRM-437) */

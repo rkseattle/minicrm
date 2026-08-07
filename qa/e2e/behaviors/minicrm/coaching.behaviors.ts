@@ -28,7 +28,7 @@ export async function waitForCoachingInsightsHeading(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new CoachingInsightsPage(context);
-  const locator = await insightsPage.headingLocator();
+  const locator = await insightsPage.headingLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -60,7 +60,7 @@ export async function waitForCoachingInsufficientData(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new CoachingInsightsPage(context);
-  const locator = await insightsPage.insufficientDataLocator();
+  const locator = await insightsPage.insufficientDataLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -78,7 +78,7 @@ export async function waitForCoachingListOrEmptyState(
   while (Date.now() < deadline) {
     if (await insightsPage.hasAtLeastOneInsightRow(250)) return 'list';
     const emptyVisible = await insightsPage
-      .emptyInsightsLocator()
+      .emptyInsightsLocator(timeout)
       .then((locator) => locator.isVisible())
       .catch(() => false);
     if (emptyVisible) return 'empty';

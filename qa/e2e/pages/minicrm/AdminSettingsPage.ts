@@ -101,7 +101,7 @@ export class AdminSettingsPage {
    * is active too — see AutomationPage.headingLocator() for the identical
    * failure mode.
    */
-  async settingsHeadingLocator() {
+  async settingsHeadingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -114,13 +114,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'admin settings page heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the settings save button (general tab).
    */
-  async settingsSaveLocator() {
+  async settingsSaveLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -129,37 +129,37 @@ export class AdminSettingsPage {
         ],
         { intent: 'save button on admin settings general tab' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the default currency settings section.
    */
-  async currencySectionLocator() {
+  async currencySectionLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
       .locate([{ type: 'testId', value: 'currency-section' }], {
         intent: 'default currency settings section on admin settings page',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the email notifications section container.
    */
-  async emailNotificationsSectionLocator() {
+  async emailNotificationsSectionLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
       .locate([{ type: 'testId', value: 'email-notifications-section' }], {
         intent: 'email notifications section on admin settings page',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the webhook settings section container.
    */
-  async webhookSectionLocator() {
+  async webhookSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -168,13 +168,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'webhook subscriptions section on admin settings integrations tab' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the webhook URL input field.
    */
-  async webhookUrlInputLocator() {
+  async webhookUrlInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -183,13 +183,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'URL input field in the add webhook subscription form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the webhook secret reveal modal.
    */
-  async webhookSecretRevealLocator() {
+  async webhookSecretRevealLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -198,13 +198,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'modal that reveals the webhook signing secret after creation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the webhook secret value input.
    */
-  async webhookSecretValueLocator() {
+  async webhookSecretValueLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -213,7 +213,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'read-only input displaying the webhook signing secret' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -236,7 +236,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the webhook delete confirmation dialog.
    */
-  async webhookDeleteConfirmLocator() {
+  async webhookDeleteConfirmLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -245,7 +245,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirmation dialog shown before deleting a webhook subscription' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -466,7 +466,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the exchange rates section container.
    */
-  async exchangeRatesSectionLocator() {
+  async exchangeRatesSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -475,13 +475,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'exchange rates configuration section on admin settings page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the home currency select dropdown.
    */
-  async homeCurrencySelectLocator() {
+  async homeCurrencySelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -490,13 +490,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'home currency select dropdown on exchange rates section' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the add currency form.
    */
-  async addCurrencyFormLocator() {
+  async addCurrencyFormLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -505,13 +505,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'inline form for adding a new exchange rate currency row' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the currency code select in the add-currency form.
    */
-  async addCurrencyCodeSelectLocator() {
+  async addCurrencyCodeSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -520,13 +520,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'currency code dropdown in the add-currency inline form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the exchange rate input in the add-currency form.
    */
-  async addCurrencyRateInputLocator() {
+  async addCurrencyRateInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -535,13 +535,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'exchange rate numeric input in the add-currency inline form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the save-exchange-rates success message.
    */
-  async exchangeRateSaveSuccessLocator() {
+  async exchangeRateSaveSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -550,7 +550,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success message after saving exchange rate configuration' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -577,7 +577,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the custom fields section container.
    */
-  async customFieldsSectionLocator() {
+  async customFieldsSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -586,13 +586,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'custom fields configuration section on admin settings page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the custom fields entity select dropdown.
    */
-  async customFieldsEntitySelectLocator() {
+  async customFieldsEntitySelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -601,13 +601,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'entity type selector for custom fields on admin settings page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the add-field inline form.
    */
-  async addFieldFormLocator() {
+  async addFieldFormLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -616,13 +616,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'inline form for adding a new custom field definition' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the field name input in the add-field form.
    */
-  async addFieldNameInputLocator() {
+  async addFieldNameInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -631,13 +631,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'field name text input in the add-custom-field inline form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the custom fields feedback / success message.
    */
-  async customFieldsFeedbackLocator() {
+  async customFieldsFeedbackLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -646,7 +646,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'feedback message after adding or removing a custom field' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -707,7 +707,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the confirm button in the delete-field dialog.
    */
-  async deleteFieldConfirmLocator() {
+  async deleteFieldConfirmLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -716,7 +716,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirm button in the custom field delete confirmation dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -840,7 +840,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the branding form.
    */
-  async brandingFormLocator() {
+  async brandingFormLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -849,13 +849,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'custom branding configuration form on admin settings page' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding company name input.
    */
-  async brandingCompanyNameLocator() {
+  async brandingCompanyNameLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -864,13 +864,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'company name text input in the branding settings form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding primary colour hex text input.
    */
-  async brandingColorTextLocator() {
+  async brandingColorTextLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -879,13 +879,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'hex colour text input in the branding settings form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding font family select dropdown.
    */
-  async brandingFontSelectLocator() {
+  async brandingFontSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -894,13 +894,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'font family dropdown in the branding settings form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding Save button.
    */
-  async brandingSaveLocator() {
+  async brandingSaveLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -909,13 +909,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'save button for the branding configuration form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding save success message.
    */
-  async brandingSaveSuccessLocator() {
+  async brandingSaveSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -927,13 +927,13 @@ export class AdminSettingsPage {
           fallbackTimeout: 8_000,
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding reset button.
    */
-  async brandingResetButtonLocator() {
+  async brandingResetButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -942,13 +942,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'reset to defaults button in the branding settings panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding reset confirm button.
    */
-  async brandingResetConfirmLocator() {
+  async brandingResetConfirmLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -957,13 +957,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirm button in the branding reset confirmation dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the branding reset success message.
    */
-  async brandingResetSuccessLocator() {
+  async brandingResetSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -972,7 +972,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success message after resetting branding to defaults', fallbackTimeout: 8_000 },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -982,7 +982,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the pipeline stages table.
    */
-  async pipelineStagesTableLocator() {
+  async pipelineStagesTableLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -991,7 +991,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'table listing all pipeline stages on the customisation tab' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -1031,7 +1031,7 @@ export class AdminSettingsPage {
   /**
    * Returns a resolved locator for the pipeline stages feedback status message.
    */
-  async pipelineStagesFeedbackLocator() {
+  async pipelineStagesFeedbackLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1040,13 +1040,13 @@ export class AdminSettingsPage {
         ],
         { intent: 'success or error feedback message in the pipeline stages section' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ── SSO locators (MINCRM-399) ─────────────────────────────────────────────
 
   /** Returns a resolved locator for the SSO section panel. */
-  async ssoSectionLocator() {
+  async ssoSectionLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1055,11 +1055,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'SSO configuration section on the integrations settings tab' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO protocol selector. */
-  async ssoProtocolSelectLocator() {
+  async ssoProtocolSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1068,11 +1068,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'dropdown for selecting SAML or OIDC as the SSO protocol' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO IdP metadata URL input. */
-  async ssoIdpMetadataUrlInputLocator() {
+  async ssoIdpMetadataUrlInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1081,11 +1081,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'input field for the identity provider metadata URL' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO entity ID / client ID input. */
-  async ssoEntityIdInputLocator() {
+  async ssoEntityIdInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1094,11 +1094,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'input field for the SP entity ID or OIDC client ID' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO save button. */
-  async ssoSaveButtonLocator() {
+  async ssoSaveButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1107,11 +1107,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button to save the SSO configuration' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO enabled badge. */
-  async ssoEnabledBadgeLocator() {
+  async ssoEnabledBadgeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1125,11 +1125,11 @@ export class AdminSettingsPage {
           fallbackTimeout: 5_000,
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO disable button. */
-  async ssoDisableButtonLocator() {
+  async ssoDisableButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1138,11 +1138,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button to initiate SSO disable with confirmation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO disable confirmation button. */
-  async ssoDisableConfirmButtonLocator() {
+  async ssoDisableConfirmButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1151,11 +1151,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button to confirm disabling SSO after the confirmation prompt appears' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the SSO save success message. */
-  async ssoSaveSuccessLocator() {
+  async ssoSaveSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1164,7 +1164,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success message shown after SSO configuration is saved' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -1172,13 +1172,13 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the AI settings panel container. */
-  async aiSettingsPanelLocator() {
+  async aiSettingsPanelLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
       .locate([{ type: 'testId', value: 'ai-settings-panel' }], {
         intent: 'main panel containing the AI provider and model configuration form',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -1219,7 +1219,7 @@ export class AdminSettingsPage {
   }
 
   /** Returns a resolved locator for the AI master toggle switch. */
-  async aiMasterToggleLocator() {
+  async aiMasterToggleLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1228,11 +1228,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'toggle switch to enable or disable all AI features globally' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI toggle confirmation dialog. */
-  async aiToggleConfirmDialogLocator() {
+  async aiToggleConfirmDialogLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1241,11 +1241,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirmation dialog shown before enabling or disabling AI globally' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Confirm button inside the AI toggle dialog. */
-  async aiToggleConfirmButtonLocator() {
+  async aiToggleConfirmButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1254,11 +1254,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirm button inside the AI toggle confirmation dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Cancel button inside the AI toggle dialog. */
-  async aiToggleCancelButtonLocator() {
+  async aiToggleCancelButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1267,11 +1267,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'cancel button inside the AI toggle confirmation dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI provider select. */
-  async aiProviderSelectLocator() {
+  async aiProviderSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1280,11 +1280,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'select input for choosing the AI provider' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI model select. */
-  async aiModelSelectLocator() {
+  async aiModelSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1293,11 +1293,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'select input for choosing the AI model' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI API key input field. */
-  async aiApiKeyInputLocator() {
+  async aiApiKeyInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1306,11 +1306,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'input field for entering the AI provider API key' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the masked API key display. */
-  async aiApiKeyMaskedLocator() {
+  async aiApiKeyMaskedLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1319,11 +1319,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'masked display showing that an API key is stored without revealing its value' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Test Connection button. */
-  async aiTestConnectionButtonLocator() {
+  async aiTestConnectionButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1332,11 +1332,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button to test the AI provider API key and model connectivity' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the test connection result message. */
-  async aiTestConnectionResultLocator() {
+  async aiTestConnectionResultLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1345,11 +1345,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'message showing the result of the test connection attempt' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI DPA acknowledgment checkbox. */
-  async aiDpaCheckboxLocator() {
+  async aiDpaCheckboxLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1358,11 +1358,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'checkbox to acknowledge the data processing agreement with the AI provider' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the DPA warning banner. */
-  async aiDpaWarningBannerLocator() {
+  async aiDpaWarningBannerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1374,11 +1374,11 @@ export class AdminSettingsPage {
             'warning banner shown when the data processing agreement has not been acknowledged',
         },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the data posture badge. */
-  async aiDataPostureBadgeLocator() {
+  async aiDataPostureBadgeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1387,11 +1387,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'badge showing the current data posture classification for AI usage' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Save button in the AI configuration section. */
-  async aiSaveButtonLocator() {
+  async aiSaveButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1400,11 +1400,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button to save the AI provider and model configuration' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI DPA status badge. */
-  async aiDpaStatusBadgeLocator() {
+  async aiDpaStatusBadgeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1413,7 +1413,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'badge showing the current DPA acknowledgment status' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -1421,17 +1421,17 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the visibility settings panel container. */
-  async visibilitySettingsPanelLocator() {
+  async visibilitySettingsPanelLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- panel has no accessible name; role:region matches every settings panel
     return this.page
       .locate([{ type: 'testId', value: 'visibility-settings-panel' }], {
         intent: 'main panel for per-object data visibility policy configuration',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the contacts visibility select element. */
-  async visibilityContactsSelectLocator() {
+  async visibilityContactsSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1440,11 +1440,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'select for choosing the contacts visibility policy (private, team, or org)' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the deals visibility select element. */
-  async visibilityDealsSelectLocator() {
+  async visibilityDealsSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1453,11 +1453,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'select for choosing the deals visibility policy (private, team, or org)' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the accounts visibility select element. */
-  async visibilityAccountsSelectLocator() {
+  async visibilityAccountsSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1466,11 +1466,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'select for choosing the accounts visibility policy (private, team, or org)' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the save button in visibility settings. */
-  async visibilitySaveButtonLocator() {
+  async visibilitySaveButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1479,11 +1479,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'button that saves the visibility policy changes' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the visibility save success message. */
-  async visibilitySaveSuccessLocator() {
+  async visibilitySaveSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1492,7 +1492,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success message confirming the visibility settings were saved' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -1532,7 +1532,7 @@ export class AdminSettingsPage {
   }
 
   /** Returns a resolved locator for the read-only capability list inside an expanded panel. */
-  async roleCapabilityReadOnlyListLocator() {
+  async roleCapabilityReadOnlyListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1541,7 +1541,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'grouped read-only capability list with disabled checkboxes' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -1572,7 +1572,7 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the AI session retention days input. */
-  async aiSessionRetentionDaysInputLocator() {
+  async aiSessionRetentionDaysInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1581,7 +1581,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'AI session retention days numeric input on the AI settings tab' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Fills the AI session retention days input with the given value. */
@@ -1601,7 +1601,7 @@ export class AdminSettingsPage {
   }
 
   /** Returns a resolved locator for the AI session retention validation error element. */
-  async aiSessionRetentionValidationErrorLocator() {
+  async aiSessionRetentionValidationErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1610,11 +1610,11 @@ export class AdminSettingsPage {
         ],
         { intent: 'client-side validation error below the retention days input' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the AI session retention save-success indicator. */
-  async aiSessionRetentionSaveSuccessLocator() {
+  async aiSessionRetentionSaveSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1623,7 +1623,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'success confirmation message after saving the retention window' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -1631,7 +1631,7 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the retention stats summary text. */
-  async aiRetentionStatsLocator() {
+  async aiRetentionStatsLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1640,7 +1640,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'session/message counts summary on the AI session retention section' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Purge now" button, opening the manual purge confirmation dialog. */
@@ -1660,7 +1660,7 @@ export class AdminSettingsPage {
   }
 
   /** Returns a resolved locator for the manual purge "accepted" confirmation message. */
-  async aiPurgeAcceptedLocator() {
+  async aiPurgeAcceptedLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1669,7 +1669,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirmation message shown after the manual AI session purge is accepted' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -1677,7 +1677,7 @@ export class AdminSettingsPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the always-excluded fields list container. */
-  async aiAlwaysExcludedFieldsLocator() {
+  async aiAlwaysExcludedFieldsLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1686,7 +1686,7 @@ export class AdminSettingsPage {
         ],
         { intent: 'container listing the immutable always-excluded AI field names' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the standard-field exclusion toggle for the given entity type and field name. */
@@ -1722,7 +1722,7 @@ export class AdminSettingsPage {
   }
 
   /** Returns a resolved locator for the data hygiene "run accepted" confirmation message. (MINCRM-476) */
-  async dataHygieneRunAcceptedLocator() {
+  async dataHygieneRunAcceptedLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -1731,6 +1731,6 @@ export class AdminSettingsPage {
         ],
         { intent: 'confirmation message shown after a manual data hygiene scan is accepted' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

@@ -387,6 +387,17 @@ jobs:
       #   GHSA-fxqj-rqcc-2cmp (postcss, arbitrary .map read when `from` is unset) —
       #     build-time only, under tailwindcss/vite/autoprefixer. Inputs are this repo's
       #     own stylesheets; nothing is compiled from untrusted CSS at runtime.
+      #   GHSA-5p4m-2wfm-xmqj / GHSA-6g55-p6wh-862q (js-yaml, quadratic CPU in !!omap
+      #     resolution) — same drift class as the entries above: both appeared against
+      #     versions already in the lockfile, and main fails this audit identically with
+      #     no dependency change on either side. js-yaml reaches this tree ONLY through
+      #     dev tooling — markdownlint-cli2, promptfoo, and @istanbuljs/load-nyc-config
+      #     — and no file under server/src or client/src imports it, so no production
+      #     request path parses YAML at all; the inputs are this repo's own .md and
+      #     eval files. `npm audit fix` was tried and rejected for the same reason
+      #     MINCRM-702 records: it resolves one of these two and introduces ELEVEN new
+      #     unallowlisted advisories, which is strictly worse. Provisional, like every
+      #     entry here — remove when upstream patches land. (MINCRM-703)
       - name: Audit dependencies for high/critical vulnerabilities
         run: |
           ALLOWED_ADVISORIES="GHSA-qwww-vcr4-c8h2 GHSA-pm4m-ph32-ghv5 GHSA-mh99-v99m-4gvg \
@@ -395,7 +406,8 @@ jobs:
             GHSA-7p8r-x3mc-p8w7 \
             GHSA-mwp4-54f8-5fhr GHSA-22jq-vg5j-6vgg GHSA-4xrf-jv44-h6hh \
             GHSA-8j4g-w8fx-2239 \
-            GHSA-fxqj-rqcc-2cmp"
+            GHSA-fxqj-rqcc-2cmp \
+            GHSA-5p4m-2wfm-xmqj GHSA-6g55-p6wh-862q"
 
           AUDIT_JSON=$(npm audit --audit-level=high --json || true)
 

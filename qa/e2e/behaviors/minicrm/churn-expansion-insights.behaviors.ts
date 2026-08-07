@@ -28,7 +28,7 @@ export async function waitForChurnExpansionInsightsHeading(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new ChurnExpansionInsightsPage(context);
-  const locator = await insightsPage.headingLocator();
+  const locator = await insightsPage.headingLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -39,7 +39,7 @@ export async function waitForAtRiskEmptyState(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const insightsPage = new ChurnExpansionInsightsPage(context);
-  const locator = await insightsPage.atRiskEmptyStateLocator();
+  const locator = await insightsPage.atRiskEmptyStateLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 

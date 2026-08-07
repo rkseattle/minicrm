@@ -142,7 +142,7 @@ export class LoginPage {
    * Returns a resolved locator for the login error alert, or null if absent.
    * Used by behaviors to wait for the alert in a Promise.race with navigation.
    */
-  async alertLocator() {
+  async alertLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -151,7 +151,7 @@ export class LoginPage {
         ],
         { intent: 'error alert message on login form' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 

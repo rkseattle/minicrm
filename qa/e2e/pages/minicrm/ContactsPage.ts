@@ -653,7 +653,7 @@ export class ContactsPage {
    * Returns a resolved locator for the bulk action bar that appears when
    * one or more contacts are selected.
    */
-  async bulkActionBarLocator() {
+  async bulkActionBarLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -662,14 +662,14 @@ export class ContactsPage {
         ],
         { intent: 'bulk action bar that appears when contacts are selected' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the pagination controls bar.
    * Throws if not found — the contacts list must exceed the page size.
    */
-  async paginationLocator() {
+  async paginationLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -678,14 +678,14 @@ export class ContactsPage {
         ],
         { intent: 'pagination bar showing record count and page controls' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the contacts list loading indicator.
    * The indicator is an aria-busy paragraph shown while the list request is in-flight.
    */
-  async loadingIndicatorLocator() {
+  async loadingIndicatorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -694,13 +694,13 @@ export class ContactsPage {
         ],
         { intent: 'loading indicator visible while the contacts list request is in-flight' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the contact creation form container.
    */
-  async createFormLocator() {
+  async createFormLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -709,13 +709,13 @@ export class ContactsPage {
         ],
         { intent: 'contact creation form that should remain open after a server error' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the first name input on the create form.
    */
-  async firstNameInputLocator() {
+  async firstNameInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -724,11 +724,11 @@ export class ContactsPage {
         ],
         { intent: 'first name input on the contact creation form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the "Enrich from text" button. (MINCRM-439) */
-  async enrichFromTextButtonLocator() {
+  async enrichFromTextButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -737,7 +737,7 @@ export class ContactsPage {
         ],
         { intent: 'button that opens the AI contact-enrichment modal on the create form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Enrich from text" button. (MINCRM-439) */
@@ -747,7 +747,7 @@ export class ContactsPage {
   }
 
   /** Returns a resolved locator for the pasted-text input in the enrichment modal. */
-  async enrichmentInputLocator() {
+  async enrichmentInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -756,7 +756,7 @@ export class ContactsPage {
         ],
         { intent: 'textarea for pasting freeform text to extract contact fields from' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Fills the pasted-text input in the enrichment modal. */
@@ -766,7 +766,7 @@ export class ContactsPage {
   }
 
   /** Returns a resolved locator for the submit button in the enrichment modal. */
-  async enrichmentSubmitButtonLocator() {
+  async enrichmentSubmitButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -775,7 +775,7 @@ export class ContactsPage {
         ],
         { intent: 'button that submits pasted text for AI field extraction' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the submit button in the enrichment modal. */
@@ -785,7 +785,7 @@ export class ContactsPage {
   }
 
   /** Returns a resolved locator for the "Apply to form" button in the enrichment modal. */
-  async enrichmentApplyButtonLocator() {
+  async enrichmentApplyButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -794,7 +794,7 @@ export class ContactsPage {
         ],
         { intent: 'button that applies extracted fields to the contact form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks "Apply to form" in the enrichment modal. */
@@ -804,7 +804,7 @@ export class ContactsPage {
   }
 
   /** Returns a resolved locator for the "Explain" button in the duplicate warning. (MINCRM-440) */
-  async duplicateExplainButtonLocator() {
+  async duplicateExplainButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -813,7 +813,7 @@ export class ContactsPage {
         ],
         { intent: 'button that explains why the flagged records look like duplicates' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Explain" button in the duplicate warning. */
@@ -823,7 +823,7 @@ export class ContactsPage {
   }
 
   /** Returns a resolved locator for the inline AI duplicate explanation text. */
-  async duplicateExplanationTextLocator() {
+  async duplicateExplanationTextLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -832,13 +832,13 @@ export class ContactsPage {
         ],
         { intent: 'inline AI-generated explanation of why records look like duplicates' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the bulk operation error message.
    */
-  async bulkErrorLocator() {
+  async bulkErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -847,7 +847,7 @@ export class ContactsPage {
         ],
         { intent: 'error message shown after a failed bulk operation' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -868,7 +868,7 @@ export class ContactsPage {
   /**
    * Returns a resolved locator for the confirm-delete modal.
    */
-  async confirmDeleteModalLocator() {
+  async confirmDeleteModalLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -877,13 +877,13 @@ export class ContactsPage {
         ],
         { intent: 'confirm delete modal dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the bulk reassign modal.
    */
-  async bulkReassignModalLocator() {
+  async bulkReassignModalLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -892,7 +892,7 @@ export class ContactsPage {
         ],
         { intent: 'bulk reassign modal dialog' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

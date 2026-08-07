@@ -568,3 +568,97 @@ test.describe('HealingLocator', () => {
     ).rejects.toThrow(StrategyExhaustedError);
   });
 });
+
+// ── per-call probe timeout (MINCRM-703) ──────────────────────────────────────
+
+test.describe('resolve(testName, timeout)', () => {
+  /**
+   * Builds a locator recording the timeout each probe was given.
+   *
+   * @param seen - Array the mock appends every observed timeout to.
+   * @returns A locator that always attaches.
+   */
+  function timeoutRecordingLocator(seen: number[]): Locator {
+    const locator: Locator = {
+      waitFor: (opts?: { timeout?: number }) => {
+        seen.push(opts?.timeout ?? -1);
+        return Promise.resolve();
+      },
+      first: () => locator,
+      count: () => Promise.resolve(1),
+    } as unknown as Locator;
+    return locator;
+  }
+
+  test('uses the instance default when no timeout is passed', async () => {
+    const seen: number[] = [];
+    const page = { getByTestId: () => timeoutRecordingLocator(seen) } as unknown as Page;
+
+    await new HealingLocator(page, [{ type: 'testId', value: 'x' }], {
+      fallbackTimeout: 250,
+    }).resolve('default test');
+
+    expect(seen[0]).toBe(250);
+  });
+
+  test('a per-call timeout overrides the instance default', async () => {
+    // The property this exists for: a caller that knows an element is slow to
+    // appear — a feature flag still resolving, an upload still in flight — must
+    // be able to extend the PROBE, not just a waitFor that runs after it.
+    // Without this, resolution exhausts inside the default budget and raises
+    // StrategyExhaustedError, which reads as selector drift rather than "not
+    // rendered yet".
+    const seen: number[] = [];
+    const page = { getByTestId: () => timeoutRecordingLocator(seen) } as unknown as Page;
+
+    await new HealingLocator(page, [{ type: 'testId', value: 'x' }], {
+      fallbackTimeout: 250,
+    }).resolve('override test', 9_000);
+
+    expect(seen[0]).toBe(9_000);
+  });
+
+  test('the override applies to fallback strategies too', async () => {
+    // A fallback probed at the default while the primary got the override would
+    // reintroduce the same failure one strategy later.
+    const seen: number[] = [];
+    let call = 0;
+    const page = {
+      getByTestId: () => {
+        call++;
+        // Primary misses so resolution moves to the fallback.
+        const l: Locator = {
+          waitFor: (opts?: { timeout?: number }) => {
+            seen.push(opts?.timeout ?? -1);
+            return call === 1 ? Promise.reject(new Error('miss')) : Promise.resolve();
+          },
+          first: () => l,
+          count: () => Promise.resolve(1),
+        } as unknown as Locator;
+        return l;
+      },
+      getByRole: () => {
+        const l: Locator = {
+          waitFor: (opts?: { timeout?: number }) => {
+            seen.push(opts?.timeout ?? -1);
+            return Promise.resolve();
+          },
+          first: () => l,
+          count: () => Promise.resolve(1),
+        } as unknown as Locator;
+        return l;
+      },
+    } as unknown as Page;
+
+    await new HealingLocator(
+      page,
+      [
+        { type: 'testId', value: 'x' },
+        { type: 'role', value: 'button' },
+      ],
+      { fallbackTimeout: 250 },
+    ).resolve('fallback override test', 9_000);
+
+    expect(seen.every((t) => t === 9_000)).toBe(true);
+  });
+});

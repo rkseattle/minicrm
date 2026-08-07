@@ -29,7 +29,7 @@ export class AiPage {
   }
 
   /** Returns the main conversation panel. */
-  async conversationPanelLocator() {
+  async conversationPanelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -38,11 +38,11 @@ export class AiPage {
         ],
         { intent: 'main AI conversation thread panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the context sidebar panel. */
-  async contextPanelLocator() {
+  async contextPanelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -51,11 +51,11 @@ export class AiPage {
         ],
         { intent: 'AI context/suggestions sidebar panel' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the message input textarea. */
-  async messageInputLocator() {
+  async messageInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -64,11 +64,11 @@ export class AiPage {
         ],
         { intent: 'AI message composition textarea' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the Send button. */
-  async sendButtonLocator() {
+  async sendButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -77,11 +77,11 @@ export class AiPage {
         ],
         { intent: 'AI send message button' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the message send error banner. */
-  async sendErrorLocator() {
+  async sendErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -90,11 +90,11 @@ export class AiPage {
         ],
         { intent: 'AI message send error banner' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the Add Context button in the context sidebar. */
-  async addContextButtonLocator() {
+  async addContextButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -103,11 +103,11 @@ export class AiPage {
         ],
         { intent: 'AI add context button in context sidebar' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the empty-state message element. Null if not present. */
-  async emptyStateLocator() {
+  async emptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -116,12 +116,12 @@ export class AiPage {
         ],
         { intent: 'AI conversation empty-state message when no messages exist' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /** Returns the New Session button (desktop sidebar). */
-  async newSessionButtonLocator() {
+  async newSessionButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -130,11 +130,11 @@ export class AiPage {
         ],
         { intent: 'AI new conversation session button' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the mobile New Session button (shown in the conversation header on narrow viewports). */
-  async newSessionButtonMobileLocator() {
+  async newSessionButtonMobileLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -143,11 +143,11 @@ export class AiPage {
         ],
         { intent: 'AI new conversation session button (mobile header)' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the session sidebar container. */
-  async sessionSidebarLocator() {
+  async sessionSidebarLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -156,7 +156,7 @@ export class AiPage {
         ],
         { intent: 'AI session list sidebar' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Waits until the session sidebar contains the given text. */
@@ -165,7 +165,7 @@ export class AiPage {
   }
 
   /** Returns the message thread container. */
-  async messageThreadLocator() {
+  async messageThreadLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -174,7 +174,7 @@ export class AiPage {
         ],
         { intent: 'AI message thread scrollable container' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Waits until the message thread contains the given text. */
@@ -183,7 +183,7 @@ export class AiPage {
   }
 
   /** Returns the first visible user message bubble. */
-  async userMessageLocator() {
+  async userMessageLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -192,11 +192,11 @@ export class AiPage {
         ],
         { intent: 'AI user turn message bubble' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the first visible assistant message bubble. */
-  async assistantMessageLocator() {
+  async assistantMessageLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -205,7 +205,7 @@ export class AiPage {
         ],
         { intent: 'AI assistant reply message bubble' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the number of assistant message bubbles currently in the thread. */
@@ -277,7 +277,7 @@ export class AiPage {
   }
 
   /** Returns the confirm button inside the delete modal. */
-  async deleteConfirmButtonLocator() {
+  async deleteConfirmButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -286,11 +286,11 @@ export class AiPage {
         ],
         { intent: 'AI delete confirmation confirm button' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the nav link for the AI page. Null if not present (flag disabled or mobile layout). */
-  async navLinkLocator() {
+  async navLinkLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -299,7 +299,7 @@ export class AiPage {
         ],
         { intent: 'AI assistant navigation link in top nav' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
@@ -352,7 +352,7 @@ export class AiPage {
   // ── Mutation confirmation block locators (MINCRM-425, MINCRM-426) ─────────
 
   /** Locates the standard mutation confirmation block. */
-  async confirmationBlockLocator() {
+  async confirmationBlockLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -361,11 +361,11 @@ export class AiPage {
         ],
         { intent: 'AI mutation confirmation block for pending write action' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Locates the bulk-delete confirmation block. */
-  async bulkConfirmationBlockLocator() {
+  async bulkConfirmationBlockLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -374,11 +374,11 @@ export class AiPage {
         ],
         { intent: 'AI bulk delete confirmation block with double-confirm gate' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Locates the Confirm button inside either confirmation block. */
-  async confirmButtonLocator() {
+  async confirmButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -387,11 +387,11 @@ export class AiPage {
         ],
         { intent: 'Confirm button in AI mutation confirmation block' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Locates the Cancel button inside either confirmation block. */
-  async cancelButtonLocator() {
+  async cancelButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -400,11 +400,11 @@ export class AiPage {
         ],
         { intent: 'Cancel button in AI mutation confirmation block' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Locates the bulk-delete text input. */
-  async bulkDeleteConfirmInputLocator() {
+  async bulkDeleteConfirmInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -413,7 +413,7 @@ export class AiPage {
         ],
         { intent: 'Bulk delete double-confirm text input in AI confirmation block' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -505,7 +505,7 @@ export class AiPage {
   // ── Context panel interactions (MINCRM-427, MINCRM-428) ───────────────────
 
   /** Returns the context panel empty-state message. */
-  async contextEmptyStateLocator() {
+  async contextEmptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -514,11 +514,11 @@ export class AiPage {
         ],
         { intent: 'context panel empty state message' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the context entry list container. */
-  async contextListLocator() {
+  async contextListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -527,7 +527,7 @@ export class AiPage {
         ],
         { intent: 'context panel list of entries' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a specific context entry row by its server-assigned ID. */
@@ -544,7 +544,7 @@ export class AiPage {
   }
 
   /** Returns the add form key input. */
-  async contextAddKeyInputLocator() {
+  async contextAddKeyInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -553,11 +553,11 @@ export class AiPage {
         ],
         { intent: 'context add form key input' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the add form value input. */
-  async contextAddValueInputLocator() {
+  async contextAddValueInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -566,11 +566,11 @@ export class AiPage {
         ],
         { intent: 'context add form value input' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the add form save button. */
-  async contextAddSaveButtonLocator() {
+  async contextAddSaveButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -579,11 +579,11 @@ export class AiPage {
         ],
         { intent: 'context add form save button' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the add form cancel button. */
-  async contextAddCancelButtonLocator() {
+  async contextAddCancelButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -592,7 +592,7 @@ export class AiPage {
         ],
         { intent: 'context add form cancel button' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the edit button for a specific context entry. */
@@ -673,7 +673,7 @@ export class AiPage {
   // ── NLI result rendering (MINCRM-423, MINCRM-431, MINCRM-435) ─────────────
 
   /** Returns the native CRM result block rendered under an assistant turn. */
-  async nliResultBlockLocator() {
+  async nliResultBlockLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -682,7 +682,7 @@ export class AiPage {
         ],
         { intent: 'native CRM result block rendered from AI tool results' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns the rendered result card for a specific contact ID. */

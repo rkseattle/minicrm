@@ -150,7 +150,7 @@ export async function expectSsoEnabledBadgeVisible(
   timeout = 5_000,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator();
+  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -160,7 +160,7 @@ export async function expectSsoEnabledBadgeNotVisible(
   timeout = 8_000,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator();
+  const locator = await new AdminSettingsPage(context).ssoEnabledBadgeLocator(timeout);
   await expect(locator).not.toBeVisible({ timeout });
 }
 
@@ -170,7 +170,7 @@ export async function expectSsoDisableConfirmVisible(
   timeout = 5_000,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).ssoDisableConfirmButtonLocator();
+  const locator = await new AdminSettingsPage(context).ssoDisableConfirmButtonLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -708,7 +708,7 @@ export async function expectAdminSettingsHeadingVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).settingsHeadingLocator();
+  const locator = await new AdminSettingsPage(context).settingsHeadingLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -718,7 +718,7 @@ export async function expectAdminSettingsSaveVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).settingsSaveLocator();
+  const locator = await new AdminSettingsPage(context).settingsSaveLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -728,7 +728,7 @@ export async function expectAdminSettingsWebhookSectionVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).webhookSectionLocator();
+  const locator = await new AdminSettingsPage(context).webhookSectionLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -747,7 +747,7 @@ export async function expectAdminSettingsWebhookSecretRevealVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).webhookSecretRevealLocator();
+  const locator = await new AdminSettingsPage(context).webhookSecretRevealLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -764,7 +764,7 @@ export async function expectAdminSettingsWebhookDeleteConfirmVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).webhookDeleteConfirmLocator();
+  const locator = await new AdminSettingsPage(context).webhookDeleteConfirmLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -774,7 +774,7 @@ export async function expectAdminSettingsExchangeRatesSectionVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).exchangeRatesSectionLocator();
+  const locator = await new AdminSettingsPage(context).exchangeRatesSectionLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -794,7 +794,7 @@ export async function expectAdminSettingsAddCurrencyFormVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).addCurrencyFormLocator();
+  const locator = await new AdminSettingsPage(context).addCurrencyFormLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -820,7 +820,7 @@ export async function expectAdminSettingsExchangeRateSaveSuccessVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).exchangeRateSaveSuccessLocator();
+  const locator = await new AdminSettingsPage(context).exchangeRateSaveSuccessLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -841,7 +841,7 @@ export async function expectAdminSettingsCustomFieldsSectionVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).customFieldsSectionLocator();
+  const locator = await new AdminSettingsPage(context).customFieldsSectionLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -861,7 +861,7 @@ export async function expectAdminSettingsAddFieldFormVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).addFieldFormLocator();
+  const locator = await new AdminSettingsPage(context).addFieldFormLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -879,7 +879,7 @@ export async function expectAdminSettingsCustomFieldsFeedbackVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).customFieldsFeedbackLocator();
+  const locator = await new AdminSettingsPage(context).customFieldsFeedbackLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -889,7 +889,7 @@ export async function expectAdminSettingsDeleteFieldConfirmVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).deleteFieldConfirmLocator();
+  const locator = await new AdminSettingsPage(context).deleteFieldConfirmLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -906,7 +906,7 @@ export async function expectAdminSettingsBrandingFormVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).brandingFormLocator();
+  const locator = await new AdminSettingsPage(context).brandingFormLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -947,7 +947,7 @@ export async function expectAdminSettingsBrandingSaveSuccessVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).brandingSaveSuccessLocator();
+  const locator = await new AdminSettingsPage(context).brandingSaveSuccessLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -971,7 +971,7 @@ export async function expectAdminSettingsBrandingResetSuccessVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).brandingResetSuccessLocator();
+  const locator = await new AdminSettingsPage(context).brandingResetSuccessLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -981,7 +981,7 @@ export async function expectPipelineStagesTableVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).pipelineStagesTableLocator();
+  const locator = await new AdminSettingsPage(context).pipelineStagesTableLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -991,7 +991,7 @@ export async function expectSsoSectionVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).ssoSectionLocator();
+  const locator = await new AdminSettingsPage(context).ssoSectionLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1025,7 +1025,7 @@ export async function expectSsoSaveSuccessVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).ssoSaveSuccessLocator();
+  const locator = await new AdminSettingsPage(context).ssoSaveSuccessLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1153,7 +1153,7 @@ export async function expectAiDataPostureBadgeVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiDataPostureBadgeLocator();
+  const locator = await new AdminSettingsPage(context).aiDataPostureBadgeLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1163,7 +1163,7 @@ export async function expectAiTestConnectionResultVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiTestConnectionResultLocator();
+  const locator = await new AdminSettingsPage(context).aiTestConnectionResultLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1173,7 +1173,7 @@ export async function expectRoleCapabilityReadOnlyListVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).roleCapabilityReadOnlyListLocator();
+  const locator = await new AdminSettingsPage(context).roleCapabilityReadOnlyListLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1433,7 +1433,7 @@ export async function expectVisibilitySettingsPanelVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).visibilitySettingsPanelLocator();
+  const locator = await new AdminSettingsPage(context).visibilitySettingsPanelLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1443,7 +1443,7 @@ export async function expectVisibilityContactsSelectVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).visibilityContactsSelectLocator();
+  const locator = await new AdminSettingsPage(context).visibilityContactsSelectLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1463,7 +1463,7 @@ export async function expectVisibilityAccountsSelectVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).visibilityAccountsSelectLocator();
+  const locator = await new AdminSettingsPage(context).visibilityAccountsSelectLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1490,7 +1490,7 @@ export async function expectVisibilitySaveSuccessVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).visibilitySaveSuccessLocator();
+  const locator = await new AdminSettingsPage(context).visibilitySaveSuccessLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1720,7 +1720,7 @@ export async function expectAiSettingsPanelVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiSettingsPanelLocator();
+  const locator = await new AdminSettingsPage(context).aiSettingsPanelLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1755,7 +1755,7 @@ export async function expectAiMasterToggleVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1770,7 +1770,7 @@ export async function expectAiMasterToggleUnchecked(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator(timeout);
   await expect(locator).toHaveAttribute(
     'aria-checked',
     'false',
@@ -1784,7 +1784,7 @@ export async function expectAiMasterToggleChecked(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator();
+  const locator = await new AdminSettingsPage(context).aiMasterToggleLocator(timeout);
   await expect(locator).toHaveAttribute(
     'aria-checked',
     'true',
@@ -1803,7 +1803,7 @@ export async function expectAiToggleConfirmDialogVisible(
   // element to enter the DOM before we attempt healing-locator resolution.
   await context.page.waitForPresent('[data-testid="ai-toggle-confirm-dialog"]', timeout);
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiToggleConfirmDialogLocator();
+  const locator = await new AdminSettingsPage(context).aiToggleConfirmDialogLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -1824,7 +1824,7 @@ export async function expectAiDpaCheckboxVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiDpaCheckboxLocator();
+  const locator = await new AdminSettingsPage(context).aiDpaCheckboxLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1874,7 +1874,7 @@ export async function expectAiDpaWarningBannerVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiDpaWarningBannerLocator();
+  const locator = await new AdminSettingsPage(context).aiDpaWarningBannerLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1885,7 +1885,7 @@ export async function expectAiDpaWarningBannerNotVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const locator = await new AdminSettingsPage(context)
-    .aiDpaWarningBannerLocator()
+    .aiDpaWarningBannerLocator(timeout)
     .catch(() => null);
   if (locator) {
     await expect(locator).not.toBeVisible(timeout !== undefined ? { timeout } : undefined);
@@ -1898,7 +1898,7 @@ export async function expectAiModelSelectVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiModelSelectLocator();
+  const locator = await new AdminSettingsPage(context).aiModelSelectLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -1922,7 +1922,7 @@ export async function expectAiTestConnectionButtonVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).aiTestConnectionButtonLocator();
+  const locator = await new AdminSettingsPage(context).aiTestConnectionButtonLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -2130,7 +2130,7 @@ export async function expectAdminSettingsCurrencySectionVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).currencySectionLocator();
+  const locator = await new AdminSettingsPage(context).currencySectionLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
 
@@ -2935,6 +2935,6 @@ export async function expectDataHygieneRunAcceptedVisible(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new AdminSettingsPage(context).dataHygieneRunAcceptedLocator();
+  const locator = await new AdminSettingsPage(context).dataHygieneRunAcceptedLocator(timeout);
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }

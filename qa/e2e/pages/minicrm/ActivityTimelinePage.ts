@@ -55,7 +55,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the "Log activity" button that opens the create form. */
-  async addActivityButtonLocator() {
+  async addActivityButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -64,7 +64,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'button to open the inline activity create form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Log activity" button to open the create form. */
@@ -74,7 +74,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the activity type select in the create/edit form. */
-  async typeSelectLocator() {
+  async typeSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -83,7 +83,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'activity type select in the create/edit form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Selects the given activity type in the create/edit form. */
@@ -93,7 +93,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the "Summarize" action inside the activity form. */
-  async summarizeButtonLocator() {
+  async summarizeButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -102,7 +102,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'button that opens the AI call/note summarizer modal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Summarize" action inside the activity form. */
@@ -112,7 +112,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the pasted-text input in the summarizer modal. */
-  async summaryInputLocator() {
+  async summaryInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -121,7 +121,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'textarea for pasting call transcript or notes to summarize' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Fills the pasted-text input in the summarizer modal. */
@@ -131,7 +131,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the submit button inside the summarizer modal. */
-  async summarySubmitButtonLocator() {
+  async summarySubmitButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -140,7 +140,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'button that submits pasted text for AI summarization' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the submit button inside the summarizer modal. */
@@ -150,7 +150,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the editable summary preview textarea. */
-  async summaryPreviewLocator() {
+  async summaryPreviewLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -159,11 +159,11 @@ export class ActivityTimelinePage {
         ],
         { intent: 'editable preview of the AI-generated summary before applying' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the suggested-tasks list in the summarizer modal. */
-  async suggestedTasksListLocator() {
+  async suggestedTasksListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -172,7 +172,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'list of AI-suggested follow-up tasks in the summarizer modal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the dismiss button of the suggested task at the given index. */
@@ -195,7 +195,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the "Apply to activity" button. */
-  async applySummaryButtonLocator() {
+  async applySummaryButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -204,7 +204,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'button that applies the AI summary to the activity notes field' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks "Apply to activity" to close the modal and populate the notes field. */
@@ -214,7 +214,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the activity notes textarea in the form. */
-  async notesFieldLocator() {
+  async notesFieldLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -223,11 +223,11 @@ export class ActivityTimelinePage {
         ],
         { intent: 'activity form notes textarea' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the activity form's submit (save) button. */
-  async formSubmitButtonLocator() {
+  async formSubmitButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -236,7 +236,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'button that saves the activity form' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Submits the activity form. */
@@ -246,7 +246,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the task-suggestion panel. (MINCRM-438) */
-  async taskSuggestionPanelLocator() {
+  async taskSuggestionPanelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -255,7 +255,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'AI follow-up task suggestion panel shown after saving an activity' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the task-suggestion panel is currently visible. (MINCRM-438) */
@@ -285,7 +285,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the activity direction select (Call/Email only). */
-  async directionSelectLocator() {
+  async directionSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -294,11 +294,11 @@ export class ActivityTimelinePage {
         ],
         { intent: 'activity direction select, shown for Call and Email types' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the activity subject input. */
-  async subjectInputLocator() {
+  async subjectInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -307,7 +307,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'activity form subject input' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -355,7 +355,7 @@ export class ActivityTimelinePage {
   }
 
   /** Returns a resolved locator for the meeting brief panel. */
-  async meetingBriefPanelLocator() {
+  async meetingBriefPanelLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -364,7 +364,7 @@ export class ActivityTimelinePage {
         ],
         { intent: 'AI pre-meeting brief panel shown after generating a brief' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns true when the meeting brief panel is currently visible. */

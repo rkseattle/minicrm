@@ -124,7 +124,13 @@ export default function DealDetailPage() {
     proposalDraftResult !== null && proposalDraftResult.dealId === id
       ? proposalDraftResult.data
       : null;
-  const { enabled: dealHealthCheckEnabled } = useFeatureFlag('ai_deal_health_check');
+  // isLoading is consumed, not discarded — see AccountDetailPage for the full
+  // reasoning. In short: useFeatureFlag fails closed, so a gated control is
+  // absent from the DOM until the flags request resolves, and under load that
+  // has been measured at ~3s against the E2E healing locator's 2s probe budget.
+  // (MINCRM-703)
+  const { enabled: dealHealthCheckEnabled, isLoading: dealHealthFlagLoading } =
+    useFeatureFlag('ai_deal_health_check');
   const { enabled: stageAdvancementEnabled } = useFeatureFlag('ai_stage_advancement');
   const { enabled: championBlockerEnabled } = useFeatureFlag('ai_champion_blocker_detection');
   const { enabled: proposalDraftEnabled } = useFeatureFlag('ai_proposal_draft_generation');
@@ -646,7 +652,7 @@ export default function DealDetailPage() {
             {id && <CustomFieldsSection entityType="deal" recordId={id} isEditing={false} />}
 
             {/* AI deal health check (MINCRM-442) */}
-            {id && dealHealthCheckEnabled && (
+            {id && (dealHealthCheckEnabled || dealHealthFlagLoading) && (
               <section className="mt-8" aria-labelledby="deal-health-heading">
                 <h2
                   id="deal-health-heading"
@@ -661,7 +667,7 @@ export default function DealDetailPage() {
                     variant="secondary"
                     size="sm"
                     data-testid="run-deal-health-check-button"
-                    disabled={dealHealthMutation.isPending}
+                    disabled={dealHealthMutation.isPending || dealHealthFlagLoading}
                     onClick={() => {
                       setDealHealthError(null);
                       dealHealthMutation.mutate();

@@ -522,7 +522,7 @@ export class PipelineBoardPage {
    * Returns a resolved locator for the close deal modal dialog.
    * Returns null if the modal is not in the DOM.
    */
-  async closeDealModalLocator() {
+  async closeDealModalLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -531,14 +531,14 @@ export class PipelineBoardPage {
         ],
         { intent: 'modal dialog that appears when closing a deal as Won or Lost' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 
   /**
    * Returns a resolved locator for the close date input inside the close deal modal.
    */
-  async closeDealDateInputLocator() {
+  async closeDealDateInputLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -547,7 +547,7 @@ export class PipelineBoardPage {
         ],
         { intent: 'date input field inside the close deal confirmation modal' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -582,7 +582,7 @@ export class PipelineBoardPage {
   /**
    * Returns a resolved locator for the pipeline kanban board container.
    */
-  async boardLocator() {
+  async boardLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -591,7 +591,7 @@ export class PipelineBoardPage {
         ],
         { intent: 'main pipeline kanban board container' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -637,20 +637,20 @@ export class PipelineBoardPage {
   /**
    * Returns a resolved locator for the mobile single-column stage name heading.
    */
-  async mobileStageNameLocator() {
+  async mobileStageNameLocator(timeout?: number) {
     // eslint-disable-next-line local/require-locator-fallback -- role:heading is unscoped and matches every heading on the board
     return this.page
       .locate([{ type: 'testId', value: 'pipeline-mobile-stage-name' }], {
         intent: 'mobile single-column stage name heading',
       })
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
    * Returns a resolved locator for the stage-update error banner.
    * Shown when a deal stage PATCH fails.
    */
-  async stageUpdateErrorLocator() {
+  async stageUpdateErrorLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -659,7 +659,7 @@ export class PipelineBoardPage {
         ],
         { intent: 'error banner shown when a stage update fails' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

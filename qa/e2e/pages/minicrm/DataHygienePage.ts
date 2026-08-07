@@ -39,7 +39,7 @@ export class DataHygienePage {
   }
 
   /** Returns a resolved locator for the page heading. */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -59,11 +59,11 @@ export class DataHygienePage {
         ],
         { intent: 'data hygiene queue page main heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the findings list container. */
-  async findingsListLocator() {
+  async findingsListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -72,11 +72,11 @@ export class DataHygienePage {
         ],
         { intent: 'list of current data hygiene findings' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the empty-state message. */
-  async emptyStateLocator() {
+  async emptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -85,7 +85,7 @@ export class DataHygienePage {
         ],
         { intent: 'empty state shown when there are no current hygiene findings' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

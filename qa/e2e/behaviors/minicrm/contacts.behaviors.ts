@@ -1027,7 +1027,7 @@ export async function waitForContactsBulkActionBar(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new ContactsPage(context).bulkActionBarLocator();
+  const locator = await new ContactsPage(context).bulkActionBarLocator(timeout);
   await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
@@ -1037,7 +1037,7 @@ export async function waitForContactsBulkError(
   timeout?: number,
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
-  const locator = await new ContactsPage(context).bulkErrorLocator();
+  const locator = await new ContactsPage(context).bulkErrorLocator(timeout);
   await locator.waitFor({ state: 'attached', ...(timeout !== undefined ? { timeout } : {}) });
   await expect(locator).toBeVisible(timeout !== undefined ? { timeout } : undefined);
 }
@@ -1076,7 +1076,7 @@ export async function waitForContactSendEmailButton(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new ContactDetailPage(context).sendEmailButtonLocator();
+  const locator = await new ContactDetailPage(context).sendEmailButtonLocator(timeout);
   await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
@@ -1093,7 +1093,7 @@ export async function waitForContactSendEmailModalDetached(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new ContactDetailPage(context).sendEmailModalLocator();
+  const locator = await new ContactDetailPage(context).sendEmailModalLocator(timeout);
   await locator.waitFor({ state: 'detached', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
@@ -1102,7 +1102,7 @@ export async function waitForContactSendEmailSuccessAndGetText(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<string> {
-  const locator = await new ContactDetailPage(context).sendEmailSuccessLocator();
+  const locator = await new ContactDetailPage(context).sendEmailSuccessLocator(timeout);
   await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
   return (await locator.textContent()) ?? '';
 }
@@ -1205,7 +1205,14 @@ export async function waitForContactAttachmentsList(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new ContactDetailPage(context).attachmentsListLocator();
+  // The caller's timeout has to reach the LOCATOR RESOLUTION, not just the
+  // waitFor after it. resolve() probes each strategy against the healing
+  // locator's 2s default, so a list that takes longer to appear — an upload
+  // still in flight, or a server saturated by concurrent shards — exhausts
+  // during resolution and raises StrategyExhaustedError before the generous
+  // waitFor budget below is ever consulted. That reads as selector drift when
+  // it is really "not rendered yet". (MINCRM-703)
+  const locator = await new ContactDetailPage(context).attachmentsListLocator(timeout);
   await locator?.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 
@@ -1223,7 +1230,7 @@ export async function waitForContactAttachmentsUploadError(
   context: ContactsBehaviorContext,
   timeout?: number,
 ): Promise<void> {
-  const locator = await new ContactDetailPage(context).attachmentsUploadErrorLocator();
+  const locator = await new ContactDetailPage(context).attachmentsUploadErrorLocator(timeout);
   await locator.waitFor({ state: 'visible', ...(timeout !== undefined ? { timeout } : {}) });
 }
 

@@ -480,7 +480,7 @@ export async function waitForPipelineBoard(
   timeout = 10_000,
 ): Promise<void> {
   const board = new PipelineBoardPage(context);
-  const locator = await board.boardLocator();
+  const locator = await board.boardLocator(timeout);
   await locator.waitFor({ state: 'visible', timeout });
 }
 
@@ -602,7 +602,7 @@ export async function waitForPipelineBoardStageUpdateError(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const board = new PipelineBoardPage(context);
-  const locator = await board.stageUpdateErrorLocator();
+  const locator = await board.stageUpdateErrorLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -617,7 +617,7 @@ export async function waitForPipelineBoardCloseDealModal(
   // the 2s HealingLocator probe timeout while the modal is still mounting.
   await context.page.waitForPresent('[data-testid="close-deal-modal"]', timeout);
   const board = new PipelineBoardPage(context);
-  const locator = await board.closeDealModalLocator();
+  const locator = await board.closeDealModalLocator(timeout);
   if (locator) {
     await locator.waitFor({ state: 'visible', timeout });
   }
@@ -647,7 +647,7 @@ export async function waitForPipelineMobileStageName(
   timeout = 10_000,
 ): Promise<void> {
   const board = new PipelineBoardPage(context);
-  const locator = await board.mobileStageNameLocator();
+  const locator = await board.mobileStageNameLocator(timeout);
   await locator.waitFor({ state: 'visible', timeout });
 }
 
@@ -738,7 +738,7 @@ export async function clickDealFormSubmitAndWaitForDetach(
   timeout = 15_000,
 ): Promise<void> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.submitLocator();
+  const locator = await detail.submitLocator(timeout);
   await locator.click();
   await locator.waitFor({ state: 'detached', timeout });
 }
@@ -759,7 +759,7 @@ export async function waitForDealNameHeading(
   timeout = 10_000,
 ): Promise<void> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.dealNameLocator();
+  const locator = await detail.dealNameLocator(timeout);
   await locator.waitFor({ state: 'visible', timeout });
 }
 
@@ -772,7 +772,7 @@ export async function expectDealNameHeadingVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.dealNameLocator();
+  const locator = await detail.dealNameLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -786,7 +786,7 @@ export async function expectDealNameHeadingContainsText(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.dealNameLocator();
+  const locator = await detail.dealNameLocator(timeout);
   await expect(locator).toContainText(text, { timeout });
 }
 
@@ -800,7 +800,7 @@ export async function expectDealNameHeadingHasText(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.dealNameLocator();
+  const locator = await detail.dealNameLocator(timeout);
   await expect(locator).toHaveText(text, { timeout });
 }
 
@@ -829,7 +829,7 @@ export async function waitForDealLinkedContactsHeading(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.linkedContactsHeadingLocator();
+  const locator = await detail.linkedContactsHeadingLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -889,7 +889,7 @@ export async function expectDealLinkedContactsEmptyVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.linkedContactsEmptyLocator();
+  const locator = await detail.linkedContactsEmptyLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -902,7 +902,7 @@ export async function expectDealNotFoundVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.notFoundAlertLocator();
+  const locator = await detail.notFoundAlertLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -915,7 +915,7 @@ export async function expectDealNotFoundBackLinkVisible(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.notFoundBackLinkLocator();
+  const locator = await detail.notFoundBackLinkLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -942,7 +942,7 @@ export async function waitForDealAttachmentsSection(
   timeout = 10_000,
 ): Promise<void> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.attachmentsSectionLocator();
+  const locator = await detail.attachmentsSectionLocator(timeout);
   await locator?.waitFor({ state: 'visible', timeout });
 }
 
@@ -966,7 +966,7 @@ export async function waitForDealAttachmentsList(
   timeout = 10_000,
 ): Promise<void> {
   const detail = new DealDetailPage(context);
-  const locator = await detail.attachmentsListLocator();
+  const locator = await detail.attachmentsListLocator(timeout);
   await locator?.waitFor({ state: 'visible', timeout });
 }
 
@@ -1028,7 +1028,7 @@ export async function waitForDealHealthResult(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.healthCheckResultLocator();
+  const locator = await detail.healthCheckResultLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -1042,7 +1042,7 @@ export async function waitForDealHealthError(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.healthCheckErrorLocator();
+  const locator = await detail.healthCheckErrorLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -1055,7 +1055,7 @@ export async function waitForDealHealthEmptyState(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.healthCheckEmptyStateLocator();
+  const locator = await detail.healthCheckEmptyStateLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -1089,7 +1089,7 @@ export async function waitForStageAdvancementIndicator(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.stageAdvancementIndicatorLocator();
+  const locator = await detail.stageAdvancementIndicatorLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -1184,7 +1184,7 @@ export async function waitForProposalDraftEditor(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const detail = new DealDetailPage(context);
-  const locator = await detail.proposalDraftEditorLocator();
+  const locator = await detail.proposalDraftEditorLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 

@@ -8,7 +8,13 @@ In order, all green, before every `git push`:
 2. `npm run typecheck` at repo root — covers server, client, and qa
 3. `npm test --workspace=minicrm-server` if server files changed;
    `npm test --workspace=minicrm-client` if client files changed
-4. `npm audit --audit-level=high` if dependencies changed — zero high or critical
+4. `npm audit --audit-level=high` — **always, never conditional on whether dependencies
+   changed.** Advisories are published against versions you already have: a lockfile
+   that was clean yesterday fails today because the advisory database moved, not because
+   anything in the repo did. Skipping this on a branch that touched no `package.json`
+   is how a red CI audit job first gets discovered from CI instead of locally
+   (MINCRM-703 did exactly that). Zero high or critical, or every remaining advisory
+   already in `ci.yml`'s `ALLOWED_ADVISORIES` with a written justification.
 5. E2E per `.claude/gates/e2e-run.md`
 6. `git status` — scan for tracked files with local modifications that are **not** part
    of the intended commit set. Restore artifacts (`qa/e2e/heal-trends.json`, test

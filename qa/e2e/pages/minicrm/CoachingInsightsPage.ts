@@ -33,7 +33,7 @@ export class CoachingInsightsPage {
   }
 
   /** Returns a resolved locator for the page heading. */
-  async headingLocator() {
+  async headingLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -42,11 +42,11 @@ export class CoachingInsightsPage {
         ],
         { intent: 'rep coaching insights page main heading' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the rep selector dropdown. */
-  async repSelectLocator() {
+  async repSelectLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -55,7 +55,7 @@ export class CoachingInsightsPage {
         ],
         { intent: 'rep selector dropdown to switch whose insights are shown' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -71,7 +71,7 @@ export class CoachingInsightsPage {
   }
 
   /** Returns a resolved locator for the insights list container. */
-  async insightsListLocator() {
+  async insightsListLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -80,11 +80,11 @@ export class CoachingInsightsPage {
         ],
         { intent: 'list of coaching insight rows for the selected rep' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the insufficient-data message. */
-  async insufficientDataLocator() {
+  async insufficientDataLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -93,11 +93,11 @@ export class CoachingInsightsPage {
         ],
         { intent: 'message shown when a rep has too few closed deals for coaching insights' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the no-insights (sufficient data, zero outliers) message. */
-  async emptyInsightsLocator() {
+  async emptyInsightsLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -106,7 +106,7 @@ export class CoachingInsightsPage {
         ],
         { intent: 'message shown when a rep has sufficient data but zero coaching insights' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

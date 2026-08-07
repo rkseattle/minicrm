@@ -206,7 +206,7 @@ export class UsersPage {
   /**
    * Returns a resolved locator for the reset onboarding confirmation dialog.
    */
-  async resetOnboardingDialogLocator() {
+  async resetOnboardingDialogLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -215,7 +215,7 @@ export class UsersPage {
         ],
         { intent: 'confirmation dialog for resetting a user onboarding checklist' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -248,7 +248,7 @@ export class UsersPage {
   /**
    * Returns a resolved locator for the reset onboarding success toast.
    */
-  async resetOnboardingSuccessLocator() {
+  async resetOnboardingSuccessLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -257,7 +257,7 @@ export class UsersPage {
         ],
         { intent: 'success toast shown after resetting a user onboarding checklist' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**

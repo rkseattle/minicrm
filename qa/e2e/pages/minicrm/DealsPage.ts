@@ -34,7 +34,7 @@ export class DealsPage {
   }
 
   /** Returns a resolved locator for the Export menu trigger button. (MINCRM-652) */
-  async exportMenuTriggerLocator() {
+  async exportMenuTriggerLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -43,7 +43,7 @@ export class DealsPage {
         ],
         { intent: 'trigger button that opens the deals export menu' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Opens the Export menu, revealing the CSV/PDF/Export All items. (MINCRM-652) */
@@ -53,7 +53,7 @@ export class DealsPage {
   }
 
   /** Returns a resolved locator for the Export CSV button. */
-  async exportCsvButtonLocator() {
+  async exportCsvButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -62,11 +62,11 @@ export class DealsPage {
         ],
         { intent: 'button to export the filtered deals list as CSV' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the Export PDF button. */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -75,6 +75,6 @@ export class DealsPage {
         ],
         { intent: 'button to export the filtered deals list as PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 }

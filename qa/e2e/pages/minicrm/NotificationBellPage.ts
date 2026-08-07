@@ -29,7 +29,7 @@ export class NotificationBellPage {
   }
 
   /** Returns a resolved locator for the bell button. */
-  async bellButtonLocator() {
+  async bellButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -38,11 +38,11 @@ export class NotificationBellPage {
         ],
         { intent: 'notification bell button in the nav header' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the unread-count badge. */
-  async unreadBadgeLocator() {
+  async unreadBadgeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -51,7 +51,7 @@ export class NotificationBellPage {
         ],
         { intent: 'unread notification count badge' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /**
@@ -72,7 +72,7 @@ export class NotificationBellPage {
   }
 
   /** Returns a resolved locator for the dropdown empty state. */
-  async emptyStateLocator() {
+  async emptyStateLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -81,7 +81,7 @@ export class NotificationBellPage {
         ],
         { intent: 'empty state message in the notification dropdown' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the bell button to open/close the dropdown. */

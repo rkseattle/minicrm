@@ -141,7 +141,7 @@ export class LeadDetailPage {
   /**
    * Returns a resolved locator for the Export PDF button on the lead detail page.
    */
-  async exportPdfButtonLocator() {
+  async exportPdfButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -150,7 +150,7 @@ export class LeadDetailPage {
         ],
         { intent: 'button to export this lead as a single-record PDF' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------
@@ -265,7 +265,7 @@ export class LeadDetailPage {
   // ---------------------------------------------------------------------------
 
   /** Returns a resolved locator for the lead score badge. */
-  async scoreBadgeLocator() {
+  async scoreBadgeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -274,11 +274,11 @@ export class LeadDetailPage {
         ],
         { intent: 'rule-based lead quality score badge' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Returns a resolved locator for the "Why this score?" button. */
-  async scoreWhyButtonLocator() {
+  async scoreWhyButtonLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -287,7 +287,7 @@ export class LeadDetailPage {
         ],
         { intent: 'button that generates an AI narrative explanation of the lead score' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   /** Clicks the "Why this score?" button. */
@@ -297,7 +297,7 @@ export class LeadDetailPage {
   }
 
   /** Returns a resolved locator for the inline AI score narrative text. */
-  async scoreNarrativeLocator() {
+  async scoreNarrativeLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -306,7 +306,7 @@ export class LeadDetailPage {
         ],
         { intent: 'inline AI-generated narrative explaining the lead score' },
       )
-      .resolve();
+      .resolve(timeout);
   }
 
   // ---------------------------------------------------------------------------

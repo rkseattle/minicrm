@@ -35,7 +35,7 @@ export async function waitForNotificationBell(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const bell = new NotificationBellPage(context);
-  const locator = await bell.bellButtonLocator();
+  const locator = await bell.bellButtonLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }
 
@@ -54,6 +54,6 @@ export async function waitForNotificationEmptyState(
 ): Promise<void> {
   const { expect } = await import('@playwright/test');
   const bell = new NotificationBellPage(context);
-  const locator = await bell.emptyStateLocator();
+  const locator = await bell.emptyStateLocator(timeout);
   await expect(locator).toBeVisible({ timeout });
 }

@@ -195,7 +195,7 @@ export class ChangePasswordPage {
    * Returns a resolved locator for the change-password error alert, or null if absent.
    * Used by behaviors to wait for the alert in a Promise.race with navigation.
    */
-  async alertLocator() {
+  async alertLocator(timeout?: number) {
     return this.page
       .locate(
         [
@@ -204,7 +204,7 @@ export class ChangePasswordPage {
         ],
         { intent: 'error alert message on change password form' },
       )
-      .resolve()
+      .resolve(timeout)
       .catch(() => null);
   }
 

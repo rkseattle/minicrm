@@ -10,7 +10,10 @@ npm run typecheck
 # 2. Lint (all workspaces)
 npm run lint
 
-# 3. Audit
+# 3. Audit — unconditional. Advisories land against versions already in the lockfile,
+#    so "no dependencies changed" is not a reason to skip it; that is precisely when
+#    drift goes unnoticed until CI is red. Compare what it reports against ci.yml's
+#    ALLOWED_ADVISORIES: anything outside that list has to be fixed or justified.
 npm audit
 
 # 4. Unit tests — sequential; never run the two workspaces in parallel
