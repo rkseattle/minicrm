@@ -6,6 +6,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nextProvider } from 'react-i18next';
 import './index.css';
@@ -49,6 +50,20 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 0,
       refetchOnWindowFocus: true,
+      // Never retry a 4xx. A 404 is a definitive answer — the record does not
+      // exist — and retrying it three times with exponential backoff (React
+      // Query's default) delays the not-found state by seconds while changing
+      // nothing about the outcome. Under CI load that pushed the not-found
+      // render past the 10s budget its E2E specs allow, surfacing as a timeout
+      // on a page that was working correctly, just slowly.
+      //
+      // 5xx and network errors still retry: those are genuinely transient.
+      // Mirrors the predicate useAuth.ts already applies to its own 401.
+      retry: (failureCount, error) => {
+        const status = (error as AxiosError)?.response?.status;
+        if (status !== undefined && status >= 400 && status < 500) return false;
+        return failureCount < 3;
+      },
     },
   },
 });
