@@ -221,6 +221,15 @@ export async function loadCoverageMap(
   // which is the product of the two and the thing that must never be resident.
   const tests = new Map<number, TestDictLine>();
   const units = new Map<number, UnitDictLine>();
+  // Reverse indexes, so the same LOGICAL entity cannot be defined under two
+  // different reference numbers. Guarding the numeric id alone is not enough:
+  // two `t` values carrying one testId both survive that check, then collide on
+  // the ON CONFLICT identity at insert — and which metadata or hit_count
+  // survives is decided by stream order. A corrupt map would load "successfully"
+  // with silently arbitrary contents, which is the whole failure class this
+  // reader exists to eliminate.
+  const seenTestIds = new Map<string, number>();
+  const seenUnitKeys = new Map<string, number>();
   let loaded = 0;
   let lineNumber = 0;
   // Counts non-blank lines, so a leading blank line does not shift the header
@@ -329,6 +338,15 @@ export async function loadCoverageMap(
             mapPath,
           );
         }
+        const priorTestRef = seenTestIds.get(record['testId']);
+        if (priorTestRef !== undefined) {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} defines testId ${JSON.stringify(record['testId'])} as ` +
+              `test ${record['t']}, but test ${priorTestRef} already defines it`,
+            mapPath,
+          );
+        }
+        seenTestIds.set(record['testId'], record['t']);
         tests.set(record['t'], {
           t: record['t'],
           testId: record['testId'],
@@ -350,6 +368,20 @@ export async function loadCoverageMap(
             mapPath,
           );
         }
+        // Matches the DB's own identity for a unit: file_path, unit_key and
+        // branch_id coalesced, exactly as coverage_test_links_identity_idx does.
+        const unitIdentity = `${record['filePath']}\u0000${record['unitKey']}\u0000${
+          typeof record['branchId'] === 'string' ? record['branchId'] : ''
+        }`;
+        const priorUnitRef = seenUnitKeys.get(unitIdentity);
+        if (priorUnitRef !== undefined) {
+          throw new CoverageMapUnreadableError(
+            `line ${lineNumber} defines unit ${record['u']} with the same ` +
+              `filePath/unitKey/branchId as unit ${priorUnitRef}`,
+            mapPath,
+          );
+        }
+        seenUnitKeys.set(unitIdentity, record['u']);
         units.set(record['u'], {
           u: record['u'],
           filePath: record['filePath'],

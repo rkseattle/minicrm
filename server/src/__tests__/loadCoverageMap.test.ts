@@ -295,6 +295,57 @@ describe('load-coverage-map file handling', () => {
     await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/redefines unit 0/);
   });
 
+  it('rejects the same testId defined under two reference numbers', async () => {
+    // Guarding the numeric id alone misses this: both entries survive, then
+    // collide on the ON CONFLICT identity at insert, and stream order decides
+    // which metadata wins. The load would report success with arbitrary
+    // contents.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 'same', testName: 'first', testFile: null }),
+      JSON.stringify({ t: 1, testId: 'same', testName: 'second', testFile: null }),
+      JSON.stringify({ u: 0, filePath: 'f', unitKey: 'u', branchId: null }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(/already defines it/);
+  });
+
+  it('rejects the same unit identity defined under two reference numbers', async () => {
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 't', testName: null, testFile: null }),
+      JSON.stringify({ u: 0, filePath: 'f.ts', unitKey: 'u', branchId: null }),
+      JSON.stringify({ u: 1, filePath: 'f.ts', unitKey: 'u', branchId: null }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    await expect(loadCoverageMap('deadbeef', mapPath)).rejects.toThrow(
+      /same filePath\/unitKey\/branchId/,
+    );
+  });
+
+  it('allows the same unitKey in different files, and different branches', async () => {
+    // The identity is the TRIPLE. Two files can legitimately share a structural
+    // unitKey, and two branches of one function are distinct units — rejecting
+    // either would break valid maps.
+    writeMap([
+      JSON.stringify({ generatedAt: 'now', format: 2 }),
+      JSON.stringify({ t: 0, testId: 't', testName: null, testFile: null }),
+      JSON.stringify({ u: 0, filePath: 'a.ts', unitKey: 'shared', branchId: null }),
+      JSON.stringify({ u: 1, filePath: 'b.ts', unitKey: 'shared', branchId: null }),
+      JSON.stringify({ u: 2, filePath: 'a.ts', unitKey: 'shared', branchId: '0:1' }),
+      JSON.stringify(entry()),
+      JSON.stringify({ entryCount: 1 }),
+    ]);
+
+    const sha = `load-map-test-${randomUUID()}`;
+    createdShas.push(sha);
+    await expect(loadCoverageMap(sha, mapPath)).resolves.toBe(1);
+  });
+
   it('rejects a link that is not a triple', async () => {
     writeMap([
       JSON.stringify({ generatedAt: 'now', format: 2 }),
