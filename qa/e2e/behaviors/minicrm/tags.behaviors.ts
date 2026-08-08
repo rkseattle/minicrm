@@ -16,6 +16,13 @@ import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminTagsPage } from '@pages/minicrm/AdminTagsPage.js';
 import { TagInputWidget } from '@pages/minicrm/TagInputWidget.js';
 
+/**
+ * Budget for the badge to render after the attach POST has already returned.
+ * This is React re-render latency only, not a network wait — the mutation is
+ * confirmed before this is consulted. (MINCRM-703)
+ */
+const BADGE_RENDER_TIMEOUT_MS = 10_000;
+
 // ---------------------------------------------------------------------------
 // Fixture context
 // ---------------------------------------------------------------------------
@@ -177,7 +184,12 @@ export async function attachTagViaUI(
 
   await widget.typeAndConfirm(tagName);
 
-  const badgeVisible = await widget.isBadgeVisible(tagId);
+  // typeAndConfirm has already awaited the attach POST, so the server has the
+  // tag; this budget covers only React re-rendering the badge afterwards.
+  // A bare probe returns false the instant the element is missing, which turns
+  // a render lag into `expected true, received false` with no diagnostic —
+  // how F8-TG4 failed in CI. (MINCRM-703)
+  const badgeVisible = await widget.isBadgeVisible(tagId, BADGE_RENDER_TIMEOUT_MS);
   const finalUrl = widget.url();
   return { badgeVisible, finalUrl };
 }
