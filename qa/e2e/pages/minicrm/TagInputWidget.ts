@@ -67,6 +67,24 @@ export class TagInputWidget {
    * @param tagName - Tag name to type and confirm.
    */
   async typeAndConfirm(tagName: string): Promise<void> {
+    // Register BEFORE typing so the response cannot land between the Enter
+    // keypress and the listener being attached.
+    //
+    // This replaces waitForLoadState('networkidle') (MINCRM-703). That resolves
+    // on a heuristic — 500ms with no more than two in-flight requests — not on
+    // this mutation completing, so under CI load it returned while the attach
+    // POST was still open. The caller then read `badgeVisible` before React had
+    // the tag, and F8-TG4 failed with a bare `expected true, received false`.
+    // The repo bans networkidle for exactly this reason; check-networkidle.sh
+    // only scans qa/e2e/tests/, so a page object was outside its reach.
+    //
+    // The entity segment is deliberately loose: this widget serves contacts,
+    // accounts and deals, whose endpoints differ only in that segment.
+    const attachDone = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new RegExp(`/api/v1/(contacts|accounts|deals)/${this.entityId}/tags$`).test(response.url()),
+    );
     await this.page.fill(
       tagName,
       [
@@ -76,8 +94,7 @@ export class TagInputWidget {
       { intent: 'tag input combobox for typing new tag name' },
     );
     await this.page.keyboard.press('Enter');
-    // Wait for the mutation to settle before the caller reads state.
-    await this.page.waitForLoadState('networkidle');
+    await attachDone;
   }
 
   /**
@@ -85,7 +102,7 @@ export class TagInputWidget {
    *
    * @param tagId - Tag UUID.
    */
-  async isBadgeVisible(tagId: string): Promise<boolean> {
+  async isBadgeVisible(tagId: string, timeout?: number): Promise<boolean> {
     try {
       const el = await this.page
         .locate(
@@ -95,7 +112,7 @@ export class TagInputWidget {
           ],
           { intent: 'tag badge pill showing applied tag on entity' },
         )
-        .resolve();
+        .resolve(timeout);
       return el.isVisible().catch(() => false);
     } catch {
       return false;
@@ -108,6 +125,14 @@ export class TagInputWidget {
    * @param tagId - Tag UUID.
    */
   async removeBadge(tagId: string): Promise<void> {
+    // Registered before the click for the same reason as typeAndConfirm.
+    const detachDone = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        new RegExp(`/api/v1/(contacts|accounts|deals)/${this.entityId}/tags/${tagId}$`).test(
+          response.url(),
+        ),
+    );
     await this.page.click(
       [
         { type: 'testId', value: `remove-tag-${tagId}` },
@@ -115,8 +140,8 @@ export class TagInputWidget {
       ],
       { intent: 'remove button on tag badge to detach tag from entity' },
     );
-    // Wait for the badge to leave the DOM — more reliable than networkidle for
-    // React Query optimistic removals which can re-render before network settles.
+    // Wait for the badge to leave the DOM — React Query removes it optimistically,
+    // so this can satisfy before the DELETE returns.
     await this.page.doesNotExist(
       [
         { type: 'testId', value: `tag-badge-${tagId}` },
@@ -124,7 +149,11 @@ export class TagInputWidget {
       ],
       10_000,
     );
-    await this.page.waitForLoadState('networkidle');
+    // Then wait for the server to actually confirm it. Without this the optimistic
+    // removal alone could satisfy the caller, and a DELETE that later failed would
+    // leave the tag attached while the test reported it detached. Replaces a
+    // trailing waitForLoadState('networkidle'). (MINCRM-703)
+    await detachDone;
   }
 
   /**
