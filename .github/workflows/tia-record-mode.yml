@@ -522,6 +522,40 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add qa/coverage-map.jsonl
+
+          # Discard every OTHER tracked file the suite modified, before the
+          # rebase below. (MINCRM-703)
+          #
+          # The E2E run rewrites git-tracked artifacts as a side effect —
+          # qa/e2e/heal-trends.json is rewritten on every run by the healing
+          # reporter (it is the "healed N times across runs" history), and
+          # test-timing-baseline.json is the same shape. `git add` above stages
+          # only the map, so those stay unstaged, and `git rebase` refuses to
+          # run against a dirty tree:
+          #
+          #     [main 27f8530f] chore(coverage-tia): update coverage map
+          #      1 file changed, 2262833 insertions(+)
+          #     error: cannot rebase: You have unstaged changes.
+          #
+          # That is exactly how run 31262059432 lost its map: the suite passed,
+          # the map exported, attestation and the size gate passed, the commit
+          # was created — and the push never happened, after a multi-hour run.
+          #
+          # Discarded rather than committed on purpose. These are per-run
+          # telemetry, not a deliverable: committing them would push unrelated
+          # churn to main from an automated job and would genuinely conflict
+          # between overlapping runs, which is the one thing the rebase comment
+          # below promises cannot happen. The map is what this job publishes.
+          #
+          # Scoped to tracked files only — untracked build output is left alone,
+          # since rebase does not care about it and deleting it blindly here
+          # could destroy a later step's inputs.
+          if ! git diff --quiet; then
+            echo "Discarding suite-modified tracked files so the rebase can run:"
+            git diff --name-only | sed 's/^/  /'
+            git checkout -- .
+          fi
+
           if git diff --cached --quiet; then
             echo "Coverage map unchanged — nothing to commit."
           else
