@@ -246,24 +246,42 @@ export async function isReportsStageTrendEmptyVisible(
 }
 
 /**
- * Waits until the stage trend report has painted EITHER terminal state — the
- * data table or the empty-state message. (MINCRM-703)
+ * Waits until the stage trend report has left its loading state AND painted one
+ * of its terminal states — table, empty, or error. (MINCRM-703)
  *
  * WHY THIS EXISTS
  * ---------------
  * The two detectors above resolve a healing locator and swallow a miss into
  * `false`, so on their own they ask "is it painted at this instant" and turn a
- * render still in flight into `table || empty === false`. The CI DOM snapshot
- * for the record-mode failure showed `No stage activity found for this period.`
- * present on the page: the empty state HAD rendered and the probe simply gave
- * up first, which is why the assertion complained about missing UI that the
- * screenshot plainly showed.
+ * render still in flight into `table || empty === false`.
  *
- * waitForReportsLoadingHidden does not cover this — it .catch()es its own wait,
- * so when the spinner locator never resolves it returns having waited for
+ * WHY IT WAITS ON FOUR STATES, NOT TWO
+ * ------------------------------------
+ * The first version of this waited only for table-or-empty and did NOT fix the
+ * record-mode failure. Its DOM snapshot is why: the panel had rendered its
+ * heading and the "Date range" label and then STOPPED — no table, no empty
+ * state, no error, no loading indicator, and not even the days-select the test
+ * had already successfully used moments earlier.
+ *
+ * StageTrendReportPage renders four mutually exclusive branches — isLoading,
+ * isError, report+empty, report+data — and there is a fifth, unrendered
+ * combination it does not handle. `queryKey` includes `days`, so changing the
+ * range mounts a NEW cache entry; in React Query v5 `isLoading` is
+ * `isPending && isFetching`, so while the new key is settling there is a window
+ * where isLoading is false, isError is false and `report` is still undefined.
+ * The component then renders none of its four states, which is precisely the
+ * captured DOM. A wait for table-or-empty burns its whole budget in that gap.
+ *
+ * So loading is a NEGATIVE condition — transient, and matching it would let the
+ * caller probe mid-fetch — while error is treated as settled: the page has
+ * reached a terminal state, and the caller's assertion should then fail on the
+ * missing table rather than time out here with no hint the request errored.
+ *
+ * waitForReportsLoadingHidden does not cover any of this — it .catch()es its own
+ * wait, so when the spinner locator never resolves it returns having waited for
  * nothing at all.
  *
- * ONE race, not two sequential budgets. Giving each detector its own generous
+ * ONE race, not sequential budgets. Giving each detector its own generous
  * timeout costs loading + table + empty per call, and callers run this twice in
  * a test with a 60s ceiling — that arithmetic guarantees the very timeout it is
  * meant to prevent. Measured: doing it that way took this spec from 1 failure
@@ -282,8 +300,16 @@ export async function waitForStageTrendSettled(
 ): Promise<void> {
   await context.page
     .waitForFunction(
-      `document.querySelector('[data-testid="stage-trend-table"]') !== null ||
-       document.querySelector('[data-testid="stage-trend-empty"]') !== null`,
+      `(() => {
+         const q = (id) => document.querySelector('[data-testid="' + id + '"]') !== null;
+         // Loading is TRANSIENT, so it is a negative condition, never a match:
+         // treating it as settled would let the caller probe mid-fetch.
+         if (q('report-loading')) return false;
+         // Error counts as settled. The page has finished and reached a terminal
+         // state; the caller's assertion should then fail on the missing table,
+         // not time out here with no indication the request errored.
+         return q('stage-trend-table') || q('stage-trend-empty') || q('report-error');
+       })()`,
       undefined,
       { timeout },
     )
