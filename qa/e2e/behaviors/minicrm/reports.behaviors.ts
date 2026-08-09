@@ -246,6 +246,51 @@ export async function isReportsStageTrendEmptyVisible(
 }
 
 /**
+ * Waits until the stage trend report has painted EITHER terminal state — the
+ * data table or the empty-state message. (MINCRM-703)
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * The two detectors above resolve a healing locator and swallow a miss into
+ * `false`, so on their own they ask "is it painted at this instant" and turn a
+ * render still in flight into `table || empty === false`. The CI DOM snapshot
+ * for the record-mode failure showed `No stage activity found for this period.`
+ * present on the page: the empty state HAD rendered and the probe simply gave
+ * up first, which is why the assertion complained about missing UI that the
+ * screenshot plainly showed.
+ *
+ * waitForReportsLoadingHidden does not cover this — it .catch()es its own wait,
+ * so when the spinner locator never resolves it returns having waited for
+ * nothing at all.
+ *
+ * ONE race, not two sequential budgets. Giving each detector its own generous
+ * timeout costs loading + table + empty per call, and callers run this twice in
+ * a test with a 60s ceiling — that arithmetic guarantees the very timeout it is
+ * meant to prevent. Measured: doing it that way took this spec from 1 failure
+ * to 3.
+ *
+ * Sized to match waitForReportsLoadingHidden rather than the per-test ceiling,
+ * for the same reason.
+ *
+ * Resolves rather than throws on timeout, deliberately: the caller then probes
+ * and asserts, so a genuine miss reports WHICH state was absent instead of
+ * being masked as a wait failure.
+ */
+export async function waitForStageTrendSettled(
+  context: ReportsBehaviorContext,
+  timeout = 15_000,
+): Promise<void> {
+  await context.page
+    .waitForFunction(
+      `document.querySelector('[data-testid="stage-trend-table"]') !== null ||
+       document.querySelector('[data-testid="stage-trend-empty"]') !== null`,
+      undefined,
+      { timeout },
+    )
+    .catch(() => undefined);
+}
+
+/**
  * Selects a day-range option on the stage trend report.
  */
 export async function selectReportsDays(

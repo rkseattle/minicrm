@@ -35,6 +35,7 @@ import {
   waitForReportsLoadingHidden,
   isReportsStageTrendTableVisible,
   isReportsStageTrendEmptyVisible,
+  waitForStageTrendSettled,
   selectReportsDays,
   expectReportsDaysSelectHasValue,
 } from '@behaviors/minicrm/reports.behaviors.js';
@@ -63,6 +64,7 @@ async function waitForReportLoaded(page: PageFacade): Promise<{
   emptyVisible: boolean;
 }> {
   await waitForReportsLoadingHidden({ page }, 15_000);
+  await waitForStageTrendSettled({ page });
   const tableVisible = await isReportsStageTrendTableVisible({ page });
   const emptyVisible = await isReportsStageTrendEmptyVisible({ page });
   return { tableVisible, emptyVisible };
