@@ -120,6 +120,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Deploy key, so the coverage-map push can reach protected main.
+          # (MINCRM-703)
+          #
+          # "protect main" requires a pull request and 3 status checks, and
+          # rejected the push after everything upstream had already passed:
+          #
+          #     remote: error: GH013: Repository rule violations found
+          #     remote: - Changes must be made through a pull request.
+          #     remote: - 3 of 3 required status checks are expected.
+          #
+          # The ruleset's bypass list exempts Deploy keys. It cannot exempt this
+          # workflow any other way: github-actions[bot] is not offered as a
+          # bypass actor in this repo's ruleset UI, and the existing
+          # WORKFLOW_PAT authenticates as a USER, which the bypass list does not
+          # cover — only a deploy key is both available and scoped.
+          #
+          # Supplying it here rather than at push time is deliberate: checkout
+          # writes the SSH remote and key config once, so the later `git push`
+          # needs no change and there is no second place for the auth method to
+          # drift out of sync.
+          #
+          # Narrower than the alternatives: this exempts one key that only this
+          # workflow holds, where "Repository admin"/"Write" would have exempted
+          # every human holding that role.
+          ssh-key: ${{ secrets.TIA_DEPLOY_KEY }}
           # Explicit ref removes any ambiguity for the schedule/
           # workflow_dispatch triggers, which have no natural "ref" of
           # their own — record mode runs against main's own tip by default.
