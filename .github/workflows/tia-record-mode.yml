@@ -559,7 +559,37 @@ jobs:
           if git diff --cached --quiet; then
             echo "Coverage map unchanged — nothing to commit."
           else
-            git commit -m "chore(coverage-tia): update coverage map [skip ci]"
+            # --no-verify on BOTH: the local git hooks must not run here.
+            # (MINCRM-703)
+            #
+            # .husky/pre-push runs a TIA-selected E2E suite. That is the right
+            # guard for a developer pushing source, and exactly wrong for this
+            # step: the only content is a generated qa/coverage-map.jsonl, and
+            # this job has just run the ENTIRE functional + serial suite and
+            # passed the attestation gate. Re-running any subset of it proves
+            # nothing that has not already been proven, minutes earlier, on the
+            # same commit.
+            #
+            # It also cannot pass. This step's env carries only MAIN_AT_CHECKOUT,
+            # so the hook's suite starts with no E2E_ADMIN_PASSWORD, collects
+            # `0 test(s)`, and reports failure — which is how run 31343862837
+            # died AFTER the suite, attestation, export and size gate had all
+            # gone green and `git commit` had already succeeded:
+            #
+            #     [Error]: Error: [F1-auth] E2E_ADMIN_PASSWORD is not set
+            #     [TestSuite]: Starting run with 0 test(s)
+            #     [pre-push-tia] Test run failed: ...
+            #     husky - pre-push script failed (code 1)
+            #     error: failed to push some refs
+            #
+            # The hook was unreachable until now — every earlier run failed
+            # further upstream, so this is a pre-existing trap that only became
+            # live once the map finally got this far.
+            #
+            # commit gets --no-verify for the same reason: .husky/pre-commit runs
+            # lint-staged, and a machine-generated 2M-line JSONL is not source to
+            # be linted.
+            git commit --no-verify -m "chore(coverage-tia): update coverage map [skip ci]"
             # Replay onto main's current tip before pushing. This job can run
             # for over two hours, so main has often moved since checkout; a
             # plain push would then be rejected as non-fast-forward and the
@@ -569,7 +599,7 @@ jobs:
             git rebase origin/main
             # Explicit destination: HEAD may be detached (a SHA dispatch), where
             # a bare `git push` has no upstream to infer.
-            git push origin HEAD:main
+            git push --no-verify origin HEAD:main
           fi
         env:
           MAIN_AT_CHECKOUT: ${{ steps.resolve-sha.outputs.main-at-checkout }}
