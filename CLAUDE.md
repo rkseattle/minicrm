@@ -285,8 +285,15 @@ coverage on `services/` (CI). `beforeEach` truncates tables. Required:
 lines / 80% branches (CI). Co-locate `Component.test.tsx`. Every async component tests
 loading + error + empty. Every conditional branch gets a test.
 
-Run both suites sequentially with `npm run unit_test` — never run the two workspaces in
-parallel (CPU contention causes random 5s timeouts in jsdom).
+Run the suites sequentially with `npm run unit_test` — it runs three workspaces (server,
+client, coverage-dashboard) in series. Never run them in parallel, and **run nothing else
+heavy alongside them** (a Playwright run, a second test run in another terminal). They are
+CPU-bound, so competition for cores does not slow them gracefully — it fails them, as
+timeouts in files unrelated to your change. Measured: server 153s idle vs 2924s with
+failures when oversubscribed; client 133s idle vs 1055s. Worker counts and both timeouts
+(`testTimeout` and `hookTimeout` — Vitest resolves them independently, so setting only one
+leaves the other at its default) are capped in all three workspaces' vitest configs, with
+the measurements in the comments there. Re-measure on an idle machine before changing them.
 
 Never load `.env` into a unit test run. `env $(cat .env | ...) npm test` breaks
 `NODE_ENV=test`-gated code paths such as the rate limiter — that pattern is correct for
