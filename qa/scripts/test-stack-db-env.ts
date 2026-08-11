@@ -76,12 +76,18 @@ export class DevDatabaseRefusedError extends Error {
  * numbers, so a raw string comparison against DEV_DB_PORT lets every one of them
  * reach the dev database. Callers must compare the NORMALIZED value this returns.
  *
- * Same rule as assertTestDatabasePort in
- * server/src/scripts/assertTestDatabaseTarget.ts.
+ * Shared by every dev-port refusal in the repo that can reach it:
+ * qa/scripts/create-coverage-e2e-db.ts imports it directly, and
+ * server/src/scripts/assertTestDatabaseTarget.ts applies the same
+ * normalize-then-compare rule inline (it cannot import from qa/ — that file is
+ * in the server build and its output path/module format would break; see
+ * docs/plans/MINCRM-699.md). If you change the rule here, change it there too:
+ * that guard fronts TRUNCATE and CREATE DATABASE, and a raw-string comparison
+ * there is what let `05432` reach the dev database.
  *
  * @throws Error when the value is not a plain integer in the valid TCP range.
  */
-function normalizeDbPort(port: string): number {
+export function normalizeDbPort(port: string): number {
   const portNumber = Number(port);
   if (!/^\d+$/.test(port) || portNumber === 0 || portNumber > MAX_TCP_PORT) {
     throw new Error(
@@ -140,14 +146,20 @@ export function resolveTestStackDbEnv(
   // Normalize BEFORE comparing: a raw string check passes `05432`, which every
   // spawned child then connects to as port 5432 — the dev database, reached by
   // the destructive seed and truncate scripts. (MINCRM-699)
-  if (normalizeDbPort(dbPort) === Number(DEV_DB_PORT)) {
+  //
+  // No !CI carve-out here, unlike resolveRuntimeTestStackDb: this function
+  // produces the environment for the pre-push hook's children, which only ever
+  // runs locally. The runtime resolver carves CI out because CI's Postgres
+  // service container genuinely listens on 5432; nothing reaches this one there.
+  const portNumber = normalizeDbPort(dbPort);
+  if (portNumber === Number(DEV_DB_PORT)) {
     throw new DevDatabaseRefusedError();
   }
 
   return {
     DB_HOST: exported.DB_HOST ?? fromE2eEnvFile.DB_HOST ?? 'localhost',
     // The validated spelling, so a child cannot receive `05432` or ` 5433 `.
-    DB_PORT: String(normalizeDbPort(dbPort)),
+    DB_PORT: String(portNumber),
     DB_NAME: TEST_DB_NAME,
     COVERAGE_DB_NAME: TEST_COVERAGE_DB_NAME,
     // Credentials follow the same chain, and are returned here rather than left

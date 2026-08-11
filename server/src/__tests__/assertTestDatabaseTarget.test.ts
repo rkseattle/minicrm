@@ -162,4 +162,37 @@ describe('assertTestDatabasePort', () => {
 
     expect(assertTestDatabasePort('spec')).toBe('5432');
   });
+
+  // The guard compared the RAW string to '5432', so these spellings passed it and
+  // then Number()'d back to the dev port at every call site — including the ones
+  // that run TRUNCATE ... CASCADE and CREATE DATABASE. (MINCRM-699)
+  it.each(['05432', '005432'])('throws on a leading-zero spelling of the dev port (%s)', (port) => {
+    process.env.DB_PORT = port;
+
+    expect(() => assertTestDatabasePort('spec')).toThrow(/is the dev database/);
+  });
+
+  // The invariant, not the spelling: no accepted input may resolve to the dev
+  // port off CI. Fails if the normalize-then-compare order is ever reversed.
+  it('never returns a value that resolves to the dev port off CI', () => {
+    for (const candidate of ['5432', '05432', '005432', '5433', '15433']) {
+      process.env.DB_PORT = candidate;
+
+      let returned: string | undefined;
+      try {
+        returned = assertTestDatabasePort('spec');
+      } catch {
+        continue; // Refused — the correct outcome for a dev-port spelling.
+      }
+      expect(Number(returned), `DB_PORT="${candidate}" was accepted`).not.toBe(5432);
+    }
+  });
+
+  // Callers use the returned value directly, so it must be the normalized
+  // spelling — handing `05432` onward just moves the problem downstream.
+  it('returns the normalized port spelling', () => {
+    process.env.DB_PORT = '015433';
+
+    expect(assertTestDatabasePort('spec')).toBe('15433');
+  });
 });

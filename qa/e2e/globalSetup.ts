@@ -128,7 +128,15 @@ export class StaleDataAbortError extends Error {
  *
  * Covers every invocation form: `npm run test:framework`,
  * `npm run test -- e2e/tests/framework/x.spec.ts`, CI's e2e-framework-specs job,
- * and an IDE runner — none of which have to opt in.
+ * — none of which have to opt in.
+ *
+ * KNOWN GAP: a runner that does not put a literal `test` token in argv (the
+ * Playwright VS Code extension drives the runner directly) is not recognised as
+ * framework-only, so the guard runs and an IDE-launched framework spec hard-fails
+ * when the test stack is down. That is fail-CLOSED and therefore safe, but it is a
+ * real limitation, not full coverage. Recognising it would mean parsing a shape
+ * this function has no contract for; the CLI forms above are what the npm scripts,
+ * the DoD gate and CI actually use.
  */
 function isFrameworkOnlyRun(config: FullConfig): boolean {
   // config.argv is a documented public member (FullConfig, @playwright/test
@@ -149,6 +157,28 @@ function isFrameworkOnlyRun(config: FullConfig): boolean {
  * finds no filters and makes the DB-free DoD gate connect to a database it does
  * not need.
  */
+/**
+ * Index of the `test` subcommand in a `playwright test ...` argv, or -1.
+ *
+ * The first two entries are the interpreter and the binary, so scanning starts
+ * after them; from there the first bare `test` that is not a flag's value is the
+ * subcommand. Skipping flag values is what stops `--grep test` from being read as
+ * the subcommand. (MINCRM-699)
+ */
+function findSubcommandIndex(args: readonly string[]): number {
+  const FIRST_ARGUMENT_INDEX = 2; // [node, playwright, <subcommand>, ...]
+
+  for (let i = FIRST_ARGUMENT_INDEX; i < args.length; i++) {
+    const arg = args[i]!;
+    if (arg.startsWith('-')) {
+      if (!arg.includes('=') && FLAGS_TAKING_A_VALUE.has(arg)) i++;
+      continue;
+    }
+    return arg === 'test' ? i : -1;
+  }
+  return -1;
+}
+
 export function selectsOnlyFrameworkSpecs(argv: readonly string[]): boolean {
   // Playwright does not parse args after `--`; they are passthrough. Including
   // them fails OPEN — `test -- tests/framework/x` on a full run would look
@@ -156,9 +186,14 @@ export function selectsOnlyFrameworkSpecs(argv: readonly string[]): boolean {
   const separatorIndex = argv.indexOf('--');
   const args = separatorIndex === -1 ? argv : argv.slice(0, separatorIndex);
 
-  // Start after the `test` subcommand. Scanned from the end so an interpreter or
-  // wrapper path containing a `test` segment cannot anchor the slice too early.
-  const testArgIndex = args.lastIndexOf('test');
+  // Locate the `test` SUBCOMMAND, scanning forward past the interpreter and
+  // binary entries while skipping flag values. Neither indexOf nor lastIndexOf
+  // is safe on its own: indexOf matches an interpreter path segment equal to
+  // `test`, and lastIndexOf matches a FLAG VALUE equal to `test` — verified,
+  // `test <app-spec> --grep test <framework-spec>` re-anchored past the app spec
+  // and reported framework-only, silently skipping the guard on a run that uses
+  // the database. That is the one fail-OPEN this parser must not have.
+  const testArgIndex = findSubcommandIndex(args);
   if (testArgIndex === -1) return false;
 
   const pathFilters: string[] = [];

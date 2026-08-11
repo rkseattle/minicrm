@@ -63,18 +63,29 @@ export function assertTestDatabasePort(scriptName: string): string {
     );
   }
 
+  // Compare the NORMALIZED number, not the raw string. `05432` passes the regex
+  // above, is !== '5432', and every caller then does Number() on it and connects
+  // to 5432 — the dev database, reached by the very scripts that run
+  // `TRUNCATE ... CASCADE` and `CREATE DATABASE`. Verified before the fix:
+  //   DB_PORT=5432   REFUSED
+  //   DB_PORT=05432  ACCEPTED -> returns "05432" -> Number() = 5432
+  // (MINCRM-699)
+  //
   // CI has no dev stack — its Postgres service container is the only instance, on 5432,
   // and provisioning test databases there is correct. The 5432-is-dangerous rule is a
   // local-machine property, so it applies only off CI.
-  if (port === DEV_DB_PORT && !process.env.CI) {
+  const portNumber = Number(port);
+  if (portNumber === Number(DEV_DB_PORT) && !process.env.CI) {
     throw new Error(
-      `[${scriptName}] REFUSING TO RUN: DB_PORT=${DEV_DB_PORT} is the dev database.\n` +
+      `[${scriptName}] REFUSING TO RUN: DB_PORT=${port} is the dev database.\n` +
         '  Test databases belong on the isolated test stack (5433), not alongside the\n' +
         '  dev data — see docker-compose.test.yml.',
     );
   }
 
-  return port;
+  // The normalized spelling, so a caller cannot pass `05432` onward to a
+  // connection that would resolve it back to the dev port.
+  return String(portNumber);
 }
 
 /**

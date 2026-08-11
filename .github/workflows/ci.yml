@@ -67,6 +67,7 @@ jobs:
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
+      playwright-version: ${{ steps.filter.outputs.playwright-version }}
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
@@ -222,6 +223,24 @@ jobs:
             env-example-parity:
               - '**/*.env*.example'
               - 'qa/scripts/check-env-example-parity.sh'
+
+            # Single-purpose filter, deliberately NOT folded into `qa`.
+            #
+            # global-setup-guard.spec.ts re-derives FLAGS_TAKING_A_VALUE from
+            # node_modules/playwright/lib/program.js and asserts the guard's copy
+            # covers every value-taking flag — so a Playwright upgrade that adds
+            # one whose value is path-shaped fails that test instead of silently
+            # changing which runs skip the stale-data guard. That guard is only
+            # real if an upgrade BOOTS the job running it, and nothing did: this
+            # is an npm-workspaces repo, so a Playwright bump lands in the ROOT
+            # package-lock.json, which matches only `config` — not OR'd into
+            # e2e-framework-specs. (`qa/package-lock.json` in the `qa` filter
+            # above matches nothing; the file does not exist.) The declared range
+            # in qa/package.json is included because it can move the installed
+            # version on its own. (MINCRM-699)
+            playwright-version:
+              - 'package-lock.json'
+              - 'qa/package.json'
 
             # Single-purpose filter, deliberately NOT folded into `qa`.
             #
@@ -950,7 +969,11 @@ jobs:
     # which reads those files — and never runs the test that would fail, which
     # is the exact silent-guard failure CLAUDE.md's bidirectional-invariant rule
     # describes. (MINCRM-696)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true'
+    # playwright-version is OR'd in so a Playwright upgrade runs
+    # global-setup-guard.spec.ts's flag-set parity assertion, which re-derives the
+    # guard's value-taking-flag list from node_modules. Without it that guard is
+    # silent on the exact change it exists to catch. (MINCRM-699)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -20,6 +20,7 @@ import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import { join } from 'path';
+import { normalizeDbPort } from './test-stack-db-env.js';
 
 const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
 
@@ -38,24 +39,46 @@ async function main(): Promise<void> {
   // No 5432 fallback: provisioning the coverage database on the dev Postgres recreates
   // the shared-instance setup MINCRM-684 removed.
   //
-  // Inlined rather than imported from server/src/scripts/assertTestDatabaseTarget.ts:
-  // this workspace declares no dependency on server/, and adding one for a five-line
-  // check would couple the QA workspace to the server build. The behaviour is
-  // deliberately identical: unset or non-numeric rejected, dev port rejected off CI.
-  // It is NOT unit-tested here: the qa workspace runs Playwright
-  // only, with no vitest runner, so there is nowhere to put such a test without adding
-  // test infrastructure to this workspace. The server-side copy is fully covered by
-  // server/src/__tests__/assertTestDatabaseTarget.test.ts; keep the two in sync by hand.
+  // Delegates to the shared resolver in this same workspace rather than inlining a
+  // third hand-synced copy of the rule. An earlier revision inlined it, on the
+  // grounds that the qa workspace had nowhere to unit-test such a check — that is
+  // no longer true: qa/e2e/tests/framework/test-stack-db-env.spec.ts tests this
+  // module under Playwright, with no new test infrastructure.
+  //
+  // The hand-synced copy is exactly how a defect survived here: the raw-string
+  // comparison it carried accepted `05432`, which Number()s to 5432, so this
+  // script would CREATE DATABASE on the dev Postgres. normalizeDbPort compares the
+  // normalized number. (MINCRM-699)
   const rawDbPort = process.env.DB_PORT;
-  if (!rawDbPort || !/^\d+$/.test(rawDbPort) || (rawDbPort === DEV_DB_PORT && !process.env.CI)) {
+  if (!rawDbPort) {
     throw new Error(
-      `[create-coverage-e2e-db] REFUSING TO RUN: DB_PORT is ${rawDbPort ?? 'not set'}.\n` +
+      '[create-coverage-e2e-db] REFUSING TO RUN: DB_PORT is not set.\n' +
         `  It must be set, numeric, and not the dev database (${DEV_DB_PORT}).\n` +
         '  The test stack listens on 5433:\n' +
         '    docker compose -f docker-compose.test.yml up -d',
     );
   }
-  const dbPort = Number(rawDbPort);
+
+  let dbPort: number;
+  try {
+    dbPort = normalizeDbPort(rawDbPort);
+  } catch {
+    throw new Error(
+      `[create-coverage-e2e-db] REFUSING TO RUN: DB_PORT is ${rawDbPort}.\n` +
+        `  It must be set, numeric, and not the dev database (${DEV_DB_PORT}).\n` +
+        '  The test stack listens on 5433:\n' +
+        '    docker compose -f docker-compose.test.yml up -d',
+    );
+  }
+
+  if (dbPort === Number(DEV_DB_PORT) && !process.env.CI) {
+    throw new Error(
+      `[create-coverage-e2e-db] REFUSING TO RUN: DB_PORT=${rawDbPort} is the dev database.\n` +
+        '  Provisioning the coverage database there recreates the shared-instance setup\n' +
+        '  MINCRM-684 removed. The test stack listens on 5433:\n' +
+        '    docker compose -f docker-compose.test.yml up -d',
+    );
+  }
 
   const adminClient = new pg.Client({
     user: dbUser,
