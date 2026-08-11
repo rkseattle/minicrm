@@ -66,6 +66,7 @@ jobs:
       ai:                ${{ steps.filter.outputs.ai }}
       coverage-dashboard: ${{ steps.filter.outputs.coverage-dashboard }}
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
+      env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
@@ -207,6 +208,20 @@ jobs:
             # that job's comment for why. (MINCRM-691)
             attestation-docs:
               - 'docs/dev/coverage.md'
+
+            # Single-purpose filter, deliberately NOT folded into `qa`.
+            #
+            # check-env-example-parity.sh compares each .env*.example to its local
+            # counterpart AND, since MINCRM-699, the two qa/ templates to each
+            # other — they declare themselves mirrors but nothing reconciled them,
+            # so they had already drifted. That guard is silent unless an edit to
+            # a template actually boots the job running it, and no CI job ran this
+            # script at all before now. Folding it into `qa` would boot the entire
+            # E2E matrix for a comment-only .env.example edit, which the
+            # aggregate job's own comment calls out as spurious. (MINCRM-699)
+            env-example-parity:
+              - '**/*.env*.example'
+              - 'qa/scripts/check-env-example-parity.sh'
 
             # Single-purpose filter, deliberately NOT folded into `qa`.
             #
@@ -880,13 +895,20 @@ jobs:
     # `changes` FAILED, every output would read as empty, the OR would be false,
     # and this job would report `skipped` rather than blocking — quietly
     # dropping the whole purity suite from a green build. (MINCRM-703)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true'
+    # env-example-parity is OR'd in so an edit to any .env*.example — including
+    # one in a workspace this job's other checks ignore — still runs the template
+    # mirror assertion. Scoped here rather than widening `qa`, which gates the
+    # whole E2E matrix. (MINCRM-699)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Check framework/ has no application-domain strings (MINCRM-123)
         run: bash qa/scripts/check-framework-purity.sh
+
+      - name: Check .env*.example templates match and mirror each other (MINCRM-699)
+        run: bash qa/scripts/check-env-example-parity.sh
 
       - name: Check spec files that mutate settings call ensureSystemDefaults() (MINCRM-358)
         run: bash qa/scripts/check-settings-mutations.sh

@@ -145,8 +145,8 @@ function loadEnvFile(path: string): void {
  * shells out to `npm run test` in qa/, the exact same E2E entrypoint
  * CLAUDE.md's own documented command always runs with
  * `env $(cat qa/e2e/.env ...)` sourced first (E2E_ADMIN_EMAIL/PASSWORD,
- * E2E_DATABASE_URL, etc. all live only in qa/e2e/.env, never root .env —
- * confirmed by grepping both files). Without this, a full-suite fallback
+ * E2E_API_URL, AUTH_COOKIE_NAME etc. all live only in qa/e2e/.env, never
+ * root .env — confirmed by grepping both files). Without this, a full-suite fallback
  * run from this hook silently no-ops (globalSetup skips the admin login
  * and writes an empty storageState, then Playwright reports zero tests
  * collected) instead of actually gating the push — found while verifying
