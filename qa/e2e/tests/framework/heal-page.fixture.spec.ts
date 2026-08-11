@@ -18,6 +18,9 @@
 // AC3: import test and expect from @framework/fixtures, never from @playwright/test
 import { test, expect } from '@framework/fixtures';
 import type { Locator, Page } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { HealingRegistry } from '@framework/healing';
 import { t, activeLocale, registerLocaleExtension } from '@framework/i18n';
 import { resetLocaleMapsForTesting } from '@framework/i18n/locale.js';
@@ -199,6 +202,30 @@ test.describe('healPage.isNotVisible()', () => {
 // ---------------------------------------------------------------------------
 
 test.describe.serial('healPage fixture teardown', () => {
+  // The fixture's teardown calls the REAL HealingRegistry.flush(), which writes
+  // test-results/healing-<worker>.json relative to the CURRENT WORKING DIRECTORY.
+  // HealingReporter.onEnd then merges that file into the TRACKED
+  // qa/e2e/heal-trends.json — so the synthetic testIds these tests record ('x',
+  // 'y') were landing in a committed artifact, dirtying the working tree on every
+  // framework run and reporting phantom heals on a run with zero real ones.
+  //
+  // chdir into a temp dir for the whole block so those writes are contained,
+  // matching what healing-registry.spec.ts already does for its own flush tests.
+  // (MINCRM-699)
+  let tmpDir: string;
+  let originalCwd: string;
+
+  test.beforeAll(() => {
+    originalCwd = process.cwd();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'heal-page-fixture-'));
+    process.chdir(tmpDir);
+  });
+
+  test.afterAll(() => {
+    process.chdir(originalCwd);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
   test('records a heal event during test body (teardown will reset after this)', async ({
     healPage: _hp,
   }) => {
@@ -234,7 +261,9 @@ test.describe.serial('healPage fixture teardown', () => {
   test('fixture teardown calls flush() — patching flush verifies it fires on test completion', async ({
     healPage: _hp,
   }) => {
-    // Patch flush to intercept the call the fixture teardown will make.
+    // Patch flush to intercept the call the fixture teardown will make, still
+    // delegating to the real one so this exercises the genuine write path. The
+    // describe-level chdir above keeps that write inside a temp dir. (MINCRM-699)
     let flushed = false;
     const originalFlush = HealingRegistry.instance.flush.bind(HealingRegistry.instance);
     HealingRegistry.instance.flush = () => {

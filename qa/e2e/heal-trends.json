@@ -424,15 +424,6 @@
       "firstSeenAt": "2026-06-04T17:36:58.423Z",
       "lastSeenAt": "2026-06-04T17:36:58.423Z"
     },
-    "Unknown::unknown::testId::y": {
-      "pageObject": "Unknown",
-      "method": "unknown",
-      "originalStrategyType": "testId",
-      "originalStrategyValue": "y",
-      "count": 16,
-      "firstSeenAt": "2026-06-04T18:00:51.297Z",
-      "lastSeenAt": "2026-06-06T16:29:27.266Z"
-    },
     "Unknown::unknown::testId::user-actions-26a4b86c-ad97-44a7-8a78-0722817f3706": {
       "pageObject": "Unknown",
       "method": "unknown",
