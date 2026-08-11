@@ -40,6 +40,9 @@ export interface TestDatabaseTarget {
 /** Host port of the dev/production Postgres. Test scripts must never target it. */
 const DEV_DB_PORT = '5432';
 
+/** Highest valid TCP port. Anything above it cannot be listening, whatever the config says. */
+const MAX_TCP_PORT = 65535;
+
 /**
  * Throws when DB_PORT is unset or names the dev instance.
  *
@@ -54,9 +57,14 @@ export function assertTestDatabasePort(scriptName: string): string {
   // Rejects unset AND non-numeric: `Number('abc') || 5432` at the call sites would
   // otherwise silently resolve to the dev port, which is the leak this guard exists to
   // close. Validating here means callers can use the returned value directly.
-  if (!port || !/^\d+$/.test(port)) {
+  //
+  // The range check keeps this identical to normalizeDbPort in
+  // qa/scripts/test-stack-db-env.ts, which the two files' docblocks claim of each
+  // other. Port 0 and anything above 65535 cannot be listening, so accepting them
+  // only trades a precise refusal for a confusing connect-time failure.
+  if (!port || !/^\d+$/.test(port) || Number(port) === 0 || Number(port) > MAX_TCP_PORT) {
     throw new Error(
-      `[${scriptName}] REFUSING TO RUN: DB_PORT is ${port ? `not a number ("${port}")` : 'not set'}.\n` +
+      `[${scriptName}] REFUSING TO RUN: DB_PORT is ${port ? `not a valid port number ("${port}")` : 'not set'}.\n` +
         '  This script will not fall back to a default port — a wrong default is how the\n' +
         '  dev database was destroyed. The test stack listens on 5433:\n' +
         '    docker compose -f docker-compose.test.yml up -d',

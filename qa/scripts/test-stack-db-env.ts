@@ -76,14 +76,24 @@ export class DevDatabaseRefusedError extends Error {
  * numbers, so a raw string comparison against DEV_DB_PORT lets every one of them
  * reach the dev database. Callers must compare the NORMALIZED value this returns.
  *
- * Shared by every dev-port refusal in the repo that can reach it:
- * qa/scripts/create-coverage-e2e-db.ts imports it directly, and
+ * Shared by every dev-port refusal that can reach it: qa/scripts/
+ * create-coverage-e2e-db.ts imports it directly.
+ *
  * server/src/scripts/assertTestDatabaseTarget.ts applies the same
- * normalize-then-compare rule inline (it cannot import from qa/ — that file is
- * in the server build and its output path/module format would break; see
- * docs/plans/MINCRM-699.md). If you change the rule here, change it there too:
- * that guard fronts TRUNCATE and CREATE DATABASE, and a raw-string comparison
- * there is what let `05432` reach the dev database.
+ * normalize-then-compare rule INLINE rather than importing it, and that is
+ * deliberate — importing from qa/ there breaks the server image build three ways:
+ *   1. That file is inside server/tsconfig.build.json's `include: ["src/**\/*"]`,
+ *      so it is compiled by the server build.
+ *   2. server/Dockerfile copies only server/ and shared/ into the builder stage,
+ *      so qa/ is not present and tsc fails outright.
+ *   3. Even with the source there, an extra input shifts tsc's inferred rootDir
+ *      from <repo>/server to <repo>, moving output out from under the
+ *      Dockerfile's hardcoded COPY and CMD paths.
+ * CI never builds that image, so none of it would be caught there.
+ *
+ * So: if you change the rule here, change it there too. That guard fronts
+ * TRUNCATE and CREATE DATABASE, and a raw-string comparison there is what let
+ * `05432` reach the dev database.
  *
  * @throws Error when the value is not a plain integer in the valid TCP range.
  */

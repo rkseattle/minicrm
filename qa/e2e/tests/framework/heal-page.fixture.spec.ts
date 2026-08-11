@@ -209,9 +209,15 @@ test.describe.serial('healPage fixture teardown', () => {
   // 'y') were landing in a committed artifact, dirtying the working tree on every
   // framework run and reporting phantom heals on a run with zero real ones.
   //
-  // chdir into a temp dir for the whole block so those writes are contained,
-  // matching what healing-registry.spec.ts already does for its own flush tests.
-  // (MINCRM-699)
+  // chdir into a temp dir so those writes are contained, as
+  // healing-registry.spec.ts already does for its own flush tests.
+  //
+  // Scoped to the whole block rather than around each flush(), unlike that file:
+  // the write happens in the FIXTURE TEARDOWN, after each test body has already
+  // returned, so there is no point inside a test where it could be wrapped.
+  // describe.serial plus the afterAll restore keeps process.cwd() — which is
+  // process-wide, and Playwright runs several spec files per worker — correct for
+  // anything that runs after. (MINCRM-699)
   let tmpDir: string;
   let originalCwd: string;
 

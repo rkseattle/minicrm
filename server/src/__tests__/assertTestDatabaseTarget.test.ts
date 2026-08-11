@@ -65,7 +65,7 @@ describe('assertTestDatabaseTarget', () => {
     process.env.DB_PORT = 'abc';
     process.env.DB_NAME = 'minicrm_e2e';
 
-    expect(() => assertTestDatabaseTarget('spec')).toThrow(/not a number/);
+    expect(() => assertTestDatabaseTarget('spec')).toThrow(/not a valid port number/);
   });
 
   // The destructive guard must be at least as strict about the port as the port-only
@@ -144,7 +144,7 @@ describe('assertTestDatabasePort', () => {
   it('throws when DB_PORT is non-numeric', () => {
     process.env.DB_PORT = '54a33';
 
-    expect(() => assertTestDatabasePort('spec')).toThrow(/not a number/);
+    expect(() => assertTestDatabasePort('spec')).toThrow(/not a valid port number/);
   });
 
   // Locally, 5432 is the dev instance — creating test databases there is what the
@@ -194,5 +194,15 @@ describe('assertTestDatabasePort', () => {
     process.env.DB_PORT = '015433';
 
     expect(assertTestDatabasePort('spec')).toBe('15433');
+  });
+
+  // Keeps this guard identical to normalizeDbPort in
+  // qa/scripts/test-stack-db-env.ts, which both files' docblocks claim of each
+  // other. Neither value can be listening, so refusing precisely here beats a
+  // confusing connect-time failure later.
+  it.each(['0', '65536'])('throws on a port outside the valid TCP range (%s)', (port) => {
+    process.env.DB_PORT = port;
+
+    expect(() => assertTestDatabasePort('spec')).toThrow(/not a valid port number/);
   });
 });
