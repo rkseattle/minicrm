@@ -279,10 +279,16 @@ jobs:
             # instead. gen-conflict-group-configs.ts takes no CLI arguments, so
             # it carries none of that class of defect.
             #
-            # Neither job needs the always() + upstream-result form that
-            # attestation-docs requires for server-tests: e2e-framework-specs
-            # needs lint-and-typecheck, which is itself gated on this output, so
-            # it cannot be skipped out from under it. (MINCRM-696)
+            # THIS output does not by itself need the always() + upstream-result
+            # form that attestation-docs requires for server-tests:
+            # e2e-framework-specs needs lint-and-typecheck, which is itself gated
+            # on qa-e2e-scripts, so it cannot be skipped out from under it.
+            # (MINCRM-696)
+            #
+            # That reasoning is per-OUTPUT, not per-job, and e2e-framework-specs
+            # now carries always() anyway — its playwright-version input matches
+            # `qa/package.json`, which is in NO filter lint-and-typecheck gates
+            # on. See that job's own comment. (MINCRM-699)
             qa-e2e-scripts:
               - 'qa/e2e/scripts/**/*.ts'
 
@@ -972,8 +978,21 @@ jobs:
     # playwright-version is OR'd in so a Playwright upgrade runs
     # global-setup-guard.spec.ts's flag-set parity assertion, which re-derives the
     # guard's value-taking-flag list from node_modules. Without it that guard is
-    # silent on the exact change it exists to catch. (MINCRM-699)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true'
+    # silent on the exact change it exists to catch.
+    #
+    # always() is required here, and was not before. The other two inputs (qa,
+    # qa-e2e-scripts) are both in lint-and-typecheck's own gate, so that job could
+    # never be skipped out from under this one — the note above the `changes` job
+    # says as much. playwright-version breaks that: `qa/package.json` matches NO
+    # other filter (`config` is `*.json`, root-level only), so a lockfile-free
+    # version bump skips lint-and-typecheck, and GitHub auto-skips any job whose
+    # `needs` were skipped BEFORE evaluating `if:`. The explicit result check
+    # preserves the Phase 1 gate: a real lint/typecheck failure still blocks.
+    # Same form as attestation-docs on server-tests. (MINCRM-699)
+    if: |
+      always() &&
+      (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
+      (needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

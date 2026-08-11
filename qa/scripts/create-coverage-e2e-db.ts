@@ -20,12 +20,9 @@ import 'dotenv/config';
 import pg from 'pg';
 import { runner as migrationRunner } from 'node-pg-migrate';
 import { join } from 'path';
-import { normalizeDbPort } from './test-stack-db-env.js';
+import { normalizeDbPort, DEV_DB_PORT } from './test-stack-db-env.js';
 
 const COVERAGE_E2E_DB_NAME = 'minicrm_coverage_e2e';
-
-/** Host port of the dev Postgres — never a valid target for provisioning test data. */
-const DEV_DB_PORT = '5432';
 // __dirname, not import.meta.url — the qa workspace has no "type": "module"
 // in its package.json (unlike server/), so its .ts files compile/run as
 // CommonJS, where __dirname is the natural way to resolve a path relative
