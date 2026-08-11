@@ -23,13 +23,11 @@ test.describe('HealingRegistry', () => {
   });
 
   // HealingRegistry.instance is a process-wide singleton, so a synthetic heal
-  // recorded here outlives the test that recorded it. The shard-filename tests
-  // below chdir into a temp dir for their own flush(), which contains THAT
-  // write — but the event stays in the singleton, and the next real flush
-  // persists it into the tracked qa/e2e/heal-trends.json. That is how fixture
-  // testIds ('y', 'z') accumulated real counts in a committed artifact, making
-  // every framework run look like a locator had healed. Clearing afterwards as
-  // well as before keeps the fixtures inside their own test. (MINCRM-699)
+  // recorded here outlives the test that recorded it. Clearing afterwards as
+  // well as before keeps each test's fixtures inside that test — the tests below
+  // that chdir into a temp dir for flush() are contained either way, but the
+  // recorded EVENT is not, and a later flush by any other spec would carry it.
+  // (MINCRM-699)
   test.afterEach(() => {
     HealingRegistry.instance._reset();
   });

@@ -39,15 +39,25 @@ const FRAMEWORK_SPEC_DIR = 'tests/framework';
  * e2e/playwright.config.ts` would otherwise read as a selected spec.
  *
  * Extracted from `playwright/lib/program.js`'s option definitions rather than
- * hand-listed; re-derive with:
- *   grep -oE '\-\-[a-z-]+ <[^>]+>' node_modules/playwright/lib/program.js
+ * hand-listed. BOTH spellings are required — re-derive with:
+ *   grep -oE '\-\-[a-z-]+ <[^>]+>'      node_modules/playwright/lib/program.js
+ *   grep -oE '\-[a-zA-Z], \-\-[a-z-]+'  node_modules/playwright/lib/program.js
+ *
+ * The short aliases are not optional. Omitting them made `-g tests/framework` —
+ * a FULL-suite run with a grep pattern — parse as a framework-only selection and
+ * silently skip the guard, which is the exact failure this ticket exists to
+ * remove. `-c <config>` failed the other way, making a framework-only run
+ * connect to a database it does not need.
  */
-const FLAGS_TAKING_A_VALUE = new Set([
+export const FLAGS_TAKING_A_VALUE = new Set([
   '--browser',
   '--config',
+  '-c',
   '--global-timeout',
   '--grep',
+  '-g',
   '--grep-invert',
+  '-G',
   '--host',
   '--last-failed-file',
   '--loop',
@@ -75,6 +85,12 @@ const FLAGS_TAKING_A_VALUE = new Set([
   '--ui-port',
   '--update-source-method',
   '--workers',
+  '-j',
+  // NOTE: -u/--update-snapshots is absent. Its value is OPTIONAL
+  // (`--update-snapshots [mode]`), so `-u e2e/tests/framework/` is a snapshot
+  // update OF that path, not a flag value — skipping the next token would
+  // swallow a real path filter. Snapshot modes are bare words with no '/' and
+  // no '.ts', so an actual mode value is ignored by the path-shape test below.
 ]);
 
 /**

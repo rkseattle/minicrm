@@ -20,9 +20,12 @@
 
 import { test, expect } from '@playwright/test';
 import type { FullConfig } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   assertStaleDataGuard,
   selectsOnlyFrameworkSpecs,
+  FLAGS_TAKING_A_VALUE,
   StaleDataAbortError,
 } from '../../globalSetup.js';
 import {
@@ -177,6 +180,59 @@ test.describe('selectsOnlyFrameworkSpecs — argv parsing', () => {
     expect(selectsOnlyFrameworkSpecs(pw('--grep', 'tests/framework', '--project=desktop'))).toBe(
       false,
     );
+  });
+
+  // Short aliases, which an earlier revision omitted from FLAGS_TAKING_A_VALUE.
+  // `-g tests/framework` is the dangerous one: a FULL-suite run with a grep
+  // pattern parsed as framework-only and SILENTLY SKIPPED the guard — the exact
+  // failure AC 3 exists to remove, reintroduced through a different door.
+  test('does not treat a -g grep value as a path filter', () => {
+    expect(selectsOnlyFrameworkSpecs(pw('-g', 'tests/framework'))).toBe(false);
+  });
+
+  test('does not treat a -G grep-invert value as a path filter', () => {
+    expect(selectsOnlyFrameworkSpecs(pw('-G', 'tests/framework'))).toBe(false);
+  });
+
+  // The other direction: a real framework selection behind a short config flag
+  // must still skip, or the DB-free DoD gate connects to a database.
+  test('skips the value of a -c config flag', () => {
+    expect(
+      selectsOnlyFrameworkSpecs(pw('-c', 'e2e/playwright.config.ts', 'e2e/tests/framework/')),
+    ).toBe(true);
+  });
+
+  test('skips the value of a -j workers flag', () => {
+    expect(selectsOnlyFrameworkSpecs(pw('-j', '4', 'e2e/tests/framework/'))).toBe(true);
+  });
+
+  // -u/--update-snapshots takes an OPTIONAL value, so the token after it may be
+  // a real path filter rather than a mode. Skipping it would swallow the path.
+  test('treats the token after -u as a path filter, not a flag value', () => {
+    expect(selectsOnlyFrameworkSpecs(pw('-u', 'e2e/tests/framework/'))).toBe(true);
+    expect(selectsOnlyFrameworkSpecs(pw('-u', 'e2e/tests/apps/minicrm/x.spec.ts'))).toBe(false);
+  });
+
+  // Pins the flag set against the installed Playwright rather than a snapshot of
+  // it: an upgrade that adds a value-taking flag whose value is path-shaped would
+  // otherwise silently change guard behavior. (CLAUDE.md's bidirectional rule.)
+  test('FLAGS_TAKING_A_VALUE covers every value-taking flag Playwright defines', () => {
+    const program = fs.readFileSync(
+      path.join(__dirname, '../../../../node_modules/playwright/lib/program.js'),
+      'utf8',
+    );
+
+    // Required values only: `<value>` is required, `[value]` is optional and
+    // deliberately excluded (see the -u note in globalSetup.ts).
+    const longForms = [...program.matchAll(/(--[a-z-]+) <[^>]+>/g)].map((m) => m[1]!);
+    const shortForms = [...program.matchAll(/(-[a-zA-Z]), (--[a-z-]+) <[^>]+>/g)].map((m) => m[1]!);
+
+    const missing = [...new Set([...longForms, ...shortForms])].filter(
+      // --project is variadic; Playwright itself rejects `--project x <path>`.
+      (flag) => flag !== '--project' && !FLAGS_TAKING_A_VALUE.has(flag),
+    );
+
+    expect(missing, `flags missing from FLAGS_TAKING_A_VALUE: ${missing.join(', ')}`).toEqual([]);
   });
 });
 
