@@ -148,6 +148,14 @@ cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run test 
 
 Copy `qa/e2e/.env.example` to `qa/e2e/.env` and fill in `E2E_BASE_URL`, `E2E_ADMIN_EMAIL`, and `E2E_ADMIN_PASSWORD` before running.
 
+> **Upgrading an existing clone:** `E2E_DATABASE_URL` was retired (MINCRM-699) — the
+> stale-data guard now reads `DB_HOST`/`DB_PORT` (and `DB_USER`/`DB_PASSWORD`) like every
+> other test-stack consumer, so there is one source of truth for where the test database
+> lives. The database name itself is pinned by the resolver, not read from your env. Delete the
+> `E2E_DATABASE_URL` line from your local `qa/e2e/.env` and `qa/.env`; leaving it there
+> fails `bash qa/scripts/check-env-example-parity.sh`, which the Definition of Done runs
+> for any `.env*.example` change.
+
 ## E2E Test Framework (`qa/e2e/`)
 
 The E2E suite is built on Playwright with a custom framework layer designed for long-term resilience and maintainability. All specs are tagged `@functional`; a subset is additionally tagged `@smoke`.

@@ -170,8 +170,8 @@ test.describe('parseEnvFileContents', () => {
   // Values legitimately contain '=' — a DATABASE_URL query string, a base64
   // secret. Splitting on every '=' would silently truncate them.
   test('keeps everything after the first = so a value containing = survives', () => {
-    expect(parseEnvFileContents('E2E_DATABASE_URL=postgres://u:p@h:5433/db?opt=1&x=2')).toEqual({
-      E2E_DATABASE_URL: 'postgres://u:p@h:5433/db?opt=1&x=2',
+    expect(parseEnvFileContents('DATABASE_URL=postgres://u:p@h:5433/db?opt=1&x=2')).toEqual({
+      DATABASE_URL: 'postgres://u:p@h:5433/db?opt=1&x=2',
     });
   });
 

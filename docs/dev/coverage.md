@@ -1032,7 +1032,7 @@ workflow caused by one missing variable:
 | `GIT_COMMIT_SHA`                     | Coverage sessions fall back to `GITHUB_SHA` (when it is non-empty), which for a `workflow_dispatch` against a non-`main` ref is not the SHA the job checked out — the gate then queries one SHA while sessions carry another and fails with `no-session-attribution`. With neither variable usable, sessions are tagged `unknown` and the harness emits a `[coverage-session]` warning naming the cause. |
 
 **The failure is silent, which is what made it expensive.** With `E2E_ADMIN_PASSWORD`
-absent, `globalSetup.ts:104-114` does not throw — it writes an empty `storageState` and
+absent, `globalSetup.ts`'s `!adminPassword` branch does not throw — it writes an empty `storageState` and
 returns. The run then fails three steps later at the attestation gate with
 `no-session-attribution`, which reads like a coverage-plumbing fault rather than "nothing
 ran". A zero-test guard now fails the job immediately after the suite step so the real

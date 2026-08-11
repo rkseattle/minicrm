@@ -89,10 +89,56 @@ for pair in "${PAIRS[@]}"; do
   fi
 done
 
+# ---------------------------------------------------------------------------
+# Mirror check: qa/.env.example and qa/e2e/.env.example (MINCRM-699)
+#
+# qa/e2e/.env.example declares itself a mirror of qa/.env.example in its own
+# header, but the pair loop above only ever compares a template to its OWN local
+# counterpart — never template to template. So the two could drift silently, and
+# had: AI_HEAL_COST_WARNING_THRESHOLD was documented in one and absent from the
+# other. Any edit touching one file must touch both, which is precisely the
+# "two representations, nothing reconciling them" failure this ticket removes.
+#
+# Compares DOCUMENTED names (commented entries count), because the two files
+# legitimately differ in which variables they leave commented out.
+# ---------------------------------------------------------------------------
+MIRROR_A="qa/.env.example"
+MIRROR_B="qa/e2e/.env.example"
+
+# Both are tracked, so an absent one means a rename or deletion went unnoticed —
+# fail loudly rather than skipping. A silent skip here would drop the only
+# assertion that runs in a fresh checkout, where no local .env files exist and
+# every pair above is skipped.
+if [ ! -f "$MIRROR_A" ] || [ ! -f "$MIRROR_B" ]; then
+  echo "FAIL: expected both qa template mirrors to exist:"
+  [ -f "$MIRROR_A" ] || echo "    missing: $MIRROR_A"
+  [ -f "$MIRROR_B" ] || echo "    missing: $MIRROR_B"
+  echo "  If one was renamed, update MIRROR_A/MIRROR_B in this script."
+  failures=$((failures + 1))
+else
+  missing_from_b=$(comm -23 <(documented_keys "$MIRROR_A") <(documented_keys "$MIRROR_B"))
+  missing_from_a=$(comm -13 <(documented_keys "$MIRROR_A") <(documented_keys "$MIRROR_B"))
+
+  if [ -n "$missing_from_b" ]; then
+    echo "FAIL: $MIRROR_A documents variables missing from $MIRROR_B:"
+    echo "$missing_from_b" | sed 's/^/    /'
+    echo "  These files are declared mirrors — document the variable in both."
+    failures=$((failures + 1))
+  fi
+
+  if [ -n "$missing_from_a" ]; then
+    echo "FAIL: $MIRROR_B documents variables missing from $MIRROR_A:"
+    echo "$missing_from_a" | sed 's/^/    /'
+    echo "  These files are declared mirrors — document the variable in both."
+    failures=$((failures + 1))
+  fi
+fi
+
 if [ "$failures" -gt 0 ]; then
   echo ""
   echo "check-env-example-parity: $failures mismatch(es)."
   exit 1
 fi
 
-echo "check-env-example-parity: OK — every .env*.example matches its local counterpart."
+echo "check-env-example-parity: OK — every .env*.example matches its local counterpart,"
+echo "and the qa/ template mirrors agree."
