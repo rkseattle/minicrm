@@ -24,6 +24,9 @@ export const TEST_DB_PORT = '5433';
 /** The dev stack's Postgres port (docker-compose.yml) — never a valid target for this hook. */
 export const DEV_DB_PORT = '5432';
 
+/** Highest valid TCP port. Anything above it cannot be listening, whatever the config says. */
+const MAX_TCP_PORT = 65535;
+
 /** Databases the hook's children must use. Hardcoded, never inherited: see resolveTestStackDbEnv. */
 export const TEST_DB_NAME = 'minicrm_e2e';
 export const TEST_COVERAGE_DB_NAME = 'minicrm_coverage_e2e';
@@ -62,6 +65,30 @@ export class DevDatabaseRefusedError extends Error {
     );
     this.name = 'DevDatabaseRefusedError';
   }
+}
+
+/**
+ * Validates a DB_PORT string and returns it as a number. (MINCRM-699)
+ *
+ * Shared by both resolvers so the dev-port refusal cannot be spelled around in one
+ * of them. The regex, rather than a bare `Number()`, is the point: `'05432'`,
+ * `' 5432 '` and `'5432.0'` are all `!== '5432'` as strings but all become 5432 as
+ * numbers, so a raw string comparison against DEV_DB_PORT lets every one of them
+ * reach the dev database. Callers must compare the NORMALIZED value this returns.
+ *
+ * Same rule as assertTestDatabasePort in
+ * server/src/scripts/assertTestDatabaseTarget.ts.
+ *
+ * @throws Error when the value is not a plain integer in the valid TCP range.
+ */
+function normalizeDbPort(port: string): number {
+  const portNumber = Number(port);
+  if (!/^\d+$/.test(port) || portNumber === 0 || portNumber > MAX_TCP_PORT) {
+    throw new Error(
+      `DB_PORT="${port}" is not a valid port number. The test stack listens on ${TEST_DB_PORT}.`,
+    );
+  }
+  return portNumber;
 }
 
 /**
@@ -110,13 +137,17 @@ export function resolveTestStackDbEnv(
 ): TestStackDbEnv {
   const dbPort = exported.DB_PORT ?? fromE2eEnvFile.DB_PORT ?? TEST_DB_PORT;
 
-  if (dbPort === DEV_DB_PORT) {
+  // Normalize BEFORE comparing: a raw string check passes `05432`, which every
+  // spawned child then connects to as port 5432 — the dev database, reached by
+  // the destructive seed and truncate scripts. (MINCRM-699)
+  if (normalizeDbPort(dbPort) === Number(DEV_DB_PORT)) {
     throw new DevDatabaseRefusedError();
   }
 
   return {
     DB_HOST: exported.DB_HOST ?? fromE2eEnvFile.DB_HOST ?? 'localhost',
-    DB_PORT: dbPort,
+    // The validated spelling, so a child cannot receive `05432` or ` 5433 `.
+    DB_PORT: String(normalizeDbPort(dbPort)),
     DB_NAME: TEST_DB_NAME,
     COVERAGE_DB_NAME: TEST_COVERAGE_DB_NAME,
     // Credentials follow the same chain, and are returned here rather than left
@@ -131,6 +162,89 @@ export function resolveTestStackDbEnv(
 }
 
 /**
+ * Discrete connection fields for a `pg` Client targeting the test stack.
+ *
+ * Shaped to be spread straight into `new Client({ ... })`. Discrete fields rather
+ * than a connection string on purpose: a composed URL has to escape `@ : / % ? #`
+ * in the password or it reparses into different coordinates (server/src/migrate.ts
+ * documents that hazard at its own composition sites), and a second representation
+ * of the same fact is what MINCRM-699 exists to remove.
+ */
+export interface TestStackDbConnection {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
+
+/**
+ * Resolves the coordinates a Playwright child should use to reach the test
+ * database, from the environment its parent already composed. (MINCRM-699)
+ *
+ * This is the RUNTIME half of the chain. resolveTestStackDbEnv PRODUCES the
+ * environment for spawned children; this CONSUMES the one that arrived. It takes
+ * `env` as a parameter rather than reading process.env so it is testable without
+ * leaking global state, matching the rest of this module.
+ *
+ * Reading process.env here is safe in a way it is NOT safe in the pre-push hook.
+ * The hook flattens root .env (dev coordinates) into process.env before resolving,
+ * which is the MINCRM-698 defect. qa/e2e/globalSetup.ts loads no .env files at all,
+ * so on every documented path the DB_* values it sees were composed by something
+ * that had already run the chain:
+ *   - the documented local invocation, which exports qa/e2e/.env;
+ *   - playwrightEnv(), which spreads testStackDbEnv() AFTER process.env so the
+ *     resolved coordinates win (scripts/pre-push-tia.ts).
+ * This therefore consumes the existing chain rather than becoming a second source
+ * beside it.
+ *
+ * That provenance is a property of the documented paths, not something this
+ * function can verify — a shell that sourced root .env by other means still
+ * reaches here with DB_PORT=5432. The dev-port refusal below is what makes the
+ * outcome safe regardless, which is why it is a refusal and not a default.
+ *
+ * DB_NAME is hardcoded to TEST_DB_NAME rather than read, matching
+ * resolveTestStackDbEnv. Every live producer already pins it to that value, so
+ * honoring an env-supplied name buys nothing real while giving up the invariant
+ * that a stray DB_NAME can never redirect a caller at the dev database.
+ *
+ * @throws DevDatabaseRefusedError when the resolved port is the dev port and CI is
+ *   unset. CI's Postgres service container genuinely listens on 5432, so the
+ *   dev-port rule is a local-machine property — the same carve-out
+ *   assertTestDatabasePort (server/src/scripts/assertTestDatabaseTarget.ts)
+ *   applies, and this function
+ *   stays correct on its own terms rather than depending on a caller checking CI
+ *   first. globalSetup's stale-data guard does return early under CI, so today
+ *   that branch is defensive; keeping the rule here means the next consumer
+ *   inherits it instead of rediscovering it.
+ * @throws Error when DB_PORT is set but is not a plain integer, rather than
+ *   silently coercing to NaN or a whitespace-padded value.
+ */
+export function resolveRuntimeTestStackDb(env: Readonly<NodeJS.ProcessEnv>): TestStackDbConnection {
+  // Reuses the same empty-is-absent rule the file-sourced path uses, rather than
+  // restating it: `DB_PORT=` in an env file must fall through to the default.
+  const coordinates = pickDbCoordinates(env);
+  const port = coordinates.DB_PORT ?? TEST_DB_PORT;
+
+  // Normalize FIRST, then compare the number — see normalizeDbPort. Order is
+  // load-bearing: comparing the raw string lets `05432` past the refusal below
+  // and straight to the dev database.
+  const portNumber = normalizeDbPort(port);
+
+  if (portNumber === Number(DEV_DB_PORT) && !env.CI) {
+    throw new DevDatabaseRefusedError();
+  }
+
+  return {
+    host: coordinates.DB_HOST ?? 'localhost',
+    port: portNumber,
+    database: TEST_DB_NAME,
+    user: coordinates.DB_USER ?? TEST_DB_USER,
+    password: coordinates.DB_PASSWORD ?? TEST_DB_PASSWORD,
+  };
+}
+
+/**
  * Extracts just the DB coordinates from parsed .env contents.
  *
  * Both callers (scripts/pre-push-tia.ts and scripts/e2e-setup.ts) re-read
@@ -140,7 +254,9 @@ export function resolveTestStackDbEnv(
  * the TEST stack. Absent keys are omitted rather than set to undefined, so the
  * resolver's `??` chain falls through cleanly. (MINCRM-698)
  */
-export function pickDbCoordinates(parsed: Readonly<Record<string, string>>): TestStackDbSource {
+export function pickDbCoordinates(
+  parsed: Readonly<Record<string, string | undefined>>,
+): TestStackDbSource {
   const coordinates: TestStackDbSource = {};
   if (parsed.DB_PORT) coordinates.DB_PORT = parsed.DB_PORT;
   if (parsed.DB_HOST) coordinates.DB_HOST = parsed.DB_HOST;

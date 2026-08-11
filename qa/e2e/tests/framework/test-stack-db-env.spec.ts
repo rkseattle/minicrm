@@ -20,6 +20,7 @@
 import { test, expect } from '@playwright/test';
 import {
   resolveTestStackDbEnv,
+  resolveRuntimeTestStackDb,
   applyFirstWriteWins,
   parseEnvFileContents,
   pickDbCoordinates,
@@ -55,6 +56,25 @@ test.describe('resolveTestStackDbEnv', () => {
   // the dev database (MINCRM-684) and must not be weakened by the fix.
   test('refuses an explicitly exported dev port', () => {
     expect(() => resolveTestStackDbEnv({ DB_PORT: DEV_DB_PORT })).toThrow(DevDatabaseRefusedError);
+  });
+
+  // Same normalization hole as the runtime resolver, and worse here: this function
+  // composes DB_PORT for every spawned child, including the destructive seed and
+  // truncate scripts. '05432' is !== '5432' as a string but connects as 5432.
+  // (MINCRM-699)
+  for (const spelling of ['05432', '005432']) {
+    test(`refuses a leading-zero spelling of the exported dev port (${spelling})`, () => {
+      expect(() => resolveTestStackDbEnv({ DB_PORT: spelling })).toThrow(DevDatabaseRefusedError);
+    });
+  }
+
+  test('rejects a malformed exported port rather than passing it to children', () => {
+    expect(() => resolveTestStackDbEnv({ DB_PORT: ' 5432 ' })).toThrow(/not a valid port/);
+    expect(() => resolveTestStackDbEnv({ DB_PORT: '5433.0' })).toThrow(/not a valid port/);
+  });
+
+  test('hands children the normalized port spelling', () => {
+    expect(resolveTestStackDbEnv({ DB_PORT: '015433' }).DB_PORT).toBe('15433');
   });
 
   test('honors an exported non-default port for an operator running the stack elsewhere', () => {
@@ -285,5 +305,116 @@ test.describe('pickDbCoordinates — credentials', () => {
     expect(
       pickDbCoordinates({ DB_PORT: '15433', DB_USER: 'u', DB_PASSWORD: 'p', OTHER: 'x' }),
     ).toEqual({ DB_PORT: '15433', DB_USER: 'u', DB_PASSWORD: 'p' });
+  });
+});
+
+// The runtime half of the chain (MINCRM-699). resolveTestStackDbEnv PRODUCES the
+// environment for spawned children; this CONSUMES the one that arrived, so a
+// Playwright child reaches the stack its parent resolved rather than a separately
+// composed E2E_DATABASE_URL that could disagree with it.
+test.describe('resolveRuntimeTestStackDb', () => {
+  test('defaults to the test stack when the environment carries no coordinates', () => {
+    expect(resolveRuntimeTestStackDb({})).toEqual({
+      host: 'localhost',
+      port: Number(TEST_DB_PORT),
+      database: TEST_DB_NAME,
+      user: TEST_DB_USER,
+      password: TEST_DB_PASSWORD,
+    });
+  });
+
+  test('honors each coordinate the parent composed', () => {
+    const connection = resolveRuntimeTestStackDb({
+      DB_HOST: 'db.internal',
+      DB_PORT: '15433',
+      DB_USER: 'test_user',
+      DB_PASSWORD: 'test_pw',
+    });
+
+    expect(connection.host).toBe('db.internal');
+    expect(connection.port).toBe(15433);
+    expect(connection.user).toBe('test_user');
+    expect(connection.password).toBe('test_pw');
+  });
+
+  // A stale E2E_DATABASE_URL left in the environment must not influence the
+  // result: the retired variable is not consulted, so a developer who edits
+  // DB_PORT and forgets the URL gets the stack they configured. (AC 1/AC 2)
+  test('ignores a leftover E2E_DATABASE_URL pointing somewhere else', () => {
+    const connection = resolveRuntimeTestStackDb({
+      DB_HOST: 'other-host',
+      DB_PORT: '15999',
+      E2E_DATABASE_URL: 'postgresql://minicrm:password@localhost:5432/minicrm',
+    });
+
+    expect(connection).toMatchObject({ host: 'other-host', port: 15999 });
+    expect(connection.database).toBe(TEST_DB_NAME);
+  });
+
+  // DB_NAME is pinned, matching resolveTestStackDbEnv: every live producer already
+  // sets it to this value, and hardcoding keeps a stray name from redirecting the
+  // guard at the dev database.
+  test('ignores an environment-supplied DB_NAME in favor of the test database', () => {
+    expect(resolveRuntimeTestStackDb({ DB_NAME: 'minicrm' }).database).toBe(TEST_DB_NAME);
+  });
+
+  test('refuses the dev port off CI', () => {
+    expect(() => resolveRuntimeTestStackDb({ DB_PORT: DEV_DB_PORT })).toThrow(
+      DevDatabaseRefusedError,
+    );
+  });
+
+  // The invariant, not the implementation's shape: NO input may resolve to the dev
+  // port off CI. A raw-string comparison lets '05432' through (it is !== '5432')
+  // and then Number()s to 5432 — the dev database. These fail if the format check
+  // and the port comparison are ever reordered, which a corpus of purely malformed
+  // values would not catch.
+  for (const spelling of ['05432', '005432']) {
+    test(`refuses a leading-zero spelling of the dev port (${spelling})`, () => {
+      expect(() => resolveRuntimeTestStackDb({ DB_PORT: spelling })).toThrow(
+        DevDatabaseRefusedError,
+      );
+    });
+  }
+
+  test('never resolves to the dev port off CI, for any accepted input', () => {
+    for (const candidate of ['5432', '05432', '005432', ' 5432 ', '5432.0']) {
+      let resolvedPort: number | undefined;
+      try {
+        resolvedPort = resolveRuntimeTestStackDb({ DB_PORT: candidate }).port;
+      } catch {
+        continue; // Refused or rejected as malformed — both are correct outcomes.
+      }
+      expect(resolvedPort, `DB_PORT="${candidate}" resolved to the dev port`).not.toBe(
+        Number(DEV_DB_PORT),
+      );
+    }
+  });
+
+  // CI's Postgres service container genuinely listens on 5432, so the
+  // dev-port rule is a local-machine property — the same carve-out
+  // server/src/scripts/assertTestDatabaseTarget.ts applies.
+  test('allows the dev port under CI, where 5432 is the service container', () => {
+    expect(resolveRuntimeTestStackDb({ DB_PORT: DEV_DB_PORT, CI: 'true' }).port).toBe(
+      Number(DEV_DB_PORT),
+    );
+  });
+
+  // Matches assertTestDatabaseTarget's /^\d+$/ rule. A plain Number() check would
+  // accept every one of these: ' 5432 ' and '5432.0' coerce to the DEV port, which
+  // would slip past the refusal above.
+  for (const malformed of ['not-a-port', ' 5433 ', '5433.0', '0', '-1', '5433abc', '65536']) {
+    test(`rejects a malformed DB_PORT (${JSON.stringify(malformed)})`, () => {
+      expect(() => resolveRuntimeTestStackDb({ DB_PORT: malformed })).toThrow(/not a valid port/);
+    });
+  }
+
+  // Matches pickDbCoordinates' empty-is-absent rule: `DB_PORT=` in a sourced .env
+  // must fall through to the default rather than resolving to port 0.
+  test('treats empty values as absent', () => {
+    expect(resolveRuntimeTestStackDb({ DB_HOST: '', DB_PORT: '' })).toMatchObject({
+      host: 'localhost',
+      port: Number(TEST_DB_PORT),
+    });
   });
 });
