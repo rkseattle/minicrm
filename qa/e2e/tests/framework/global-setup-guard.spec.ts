@@ -213,6 +213,30 @@ test.describe('selectsOnlyFrameworkSpecs — argv parsing', () => {
     expect(selectsOnlyFrameworkSpecs(pw('-u', 'e2e/tests/apps/minicrm/x.spec.ts'))).toBe(false);
   });
 
+  // The one fail-OPEN this parser must not have. A flag value equal to 'test'
+  // re-anchored the scan past an already-seen app spec, so a run that uses the
+  // database reported framework-only and skipped the guard silently.
+  test('does not let a flag value equal to "test" re-anchor the scan', () => {
+    expect(
+      selectsOnlyFrameworkSpecs(
+        pw('e2e/tests/apps/minicrm/x.spec.ts', '--grep', 'test', 'e2e/tests/framework/y.spec.ts'),
+      ),
+    ).toBe(false);
+  });
+
+  // The other half of the same rule: an interpreter or wrapper path with a
+  // `test` segment must not anchor the scan early either.
+  test('is not confused by an interpreter path containing a test segment', () => {
+    expect(
+      selectsOnlyFrameworkSpecs([
+        '/opt/test/bin/node',
+        '/opt/test/pw',
+        'test',
+        'e2e/tests/framework/',
+      ]),
+    ).toBe(true);
+  });
+
   // Pins the flag set against the installed Playwright rather than a snapshot of
   // it: an upgrade that adds a value-taking flag whose value is path-shaped would
   // otherwise silently change guard behavior. (CLAUDE.md's bidirectional rule.)
