@@ -7,9 +7,57 @@ import { fileURLToPath } from 'url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 /**
+ * Per-test timeout for the parallel project. 20s, not Vitest's 5s default: the
+ * default was never chosen for this project — the serial project set its own and
+ * the parallel one silently inherited 5s, which is below the cost of the work
+ * these tests do. Measured on an idle machine, bcryptjs.hash at
+ * BCRYPT_SALT_ROUNDS=12 takes ~213ms per call and bcryptjs is pure JS, so it
+ * blocks the worker's event loop rather than using libuv's threadpool.
+ * auth.test (15 hash-path calls), mfaService.test (17) and
+ * passwordComplexity.test (9) therefore spend seconds in hashing alone before
+ * any DB work. Lowering the cost factor for tests would weaken the thing under
+ * test, so the budget is what moves.
+ */
+const PARALLEL_TEST_TIMEOUT_MS = 20_000;
+
+/**
+ * Hook timeout, set explicitly alongside every testTimeout in this file.
+ *
+ * Vitest resolves hookTimeout INDEPENDENTLY of testTimeout and defaults it to
+ * 10s, so raising only testTimeout leaves hooks on the old budget. That gap is
+ * not theoretical here: most of the bcrypt cost cited above is in hooks, not
+ * test bodies — mfaService.test.ts has 9 beforeAll/beforeEach blocks and its
+ * enableMfa beforeEach hashes a whole batch of recovery codes
+ * (mfaService.ts:365). A 20s test budget with a 10s hook budget fails as
+ * "Hook timed out in 10000ms" while the test budget goes unused.
+ */
+const HOOK_TIMEOUT_MS = 30_000;
+
+/**
+ * Per-test timeout for the serial project. seedDemo() is heavy — notes, custom
+ * fields, webhooks, currencies — and the removeDemo tests call
+ * seedDemo()+removeDemo() four times in sequence; 60s allows each call ~15s.
+ * That work is itself hook work, which is why HOOK_TIMEOUT_MS applies here too.
+ */
+const SERIAL_TEST_TIMEOUT_MS = 60_000;
+
+/**
  * These test files mutate shared global tables (currencies, pipeline_stages,
  * is_demo rows, system_settings storage keys) or run team-wide aggregate queries
  * that are not owner-scoped. They must run serially to avoid cross-file interference.
+ *
+ * To be clear about what this list is: it is TEST-DESIGN DEBT, not a property of
+ * the runner or the machine. Each entry is a file that writes global state without
+ * scoping it to itself, so a sibling file reading that state mid-write sees someone
+ * else's data. Vitest parallelizes fine — the other 105 files run at 6 workers with
+ * no interference at all. But note the split: 98 serial of 203 total is roughly
+ * half the suite, not a handful of exceptions.
+ *
+ * The durable fix for any entry is to scope its writes (per-test prefixes, its own
+ * pipeline/team/settings row) rather than to add another filename here. Quarantining
+ * is the cheap fix and it compounds: every addition makes the serial project longer
+ * and the suite slower, and the serial project cannot be parallelized later without
+ * doing the scoping work anyway. Prefer fixing the file.
  */
 const SERIAL_FILES = [
   'src/__tests__/currencyService.test.ts',
@@ -431,14 +479,31 @@ export default defineConfig({
     globalSetup: './src/__tests__/globalSetup.ts',
 
     /**
-     * Caps concurrent test-file workers regardless of CPU count. Each worker opens
-     * its own pg.Pool (DEFAULT_POOL_MAX = 10 connections, see db.ts) against the
-     * single local test Postgres instance. On a 12-core machine, uncapped
-     * fileParallelism let up to 12 workers run at once (~120 possible connections),
-     * causing connection-pool contention that surfaced as random hook/test timeouts
-     * across unrelated files on every run. Capping at 6 keeps peak connections
-     * (~60) comfortably under Postgres's default max_connections (100) while still
-     * parallelizing most of the suite.
+     * Caps concurrent test-file workers regardless of CPU count.
+     *
+     * The constraint is CPU, NOT database connections. Measured peak on a full
+     * 6-worker run: 13 connections, sampled once a second from pg_stat_activity,
+     * against a max_connections of 200 — pg.Pool's `max` is a lazy ceiling, not a
+     * reservation, so 6 workers x DEFAULT_POOL_MAX (10) never materializes.
+     *
+     * Measured on a 12-core / 24 GB machine, full server suite, otherwise idle:
+     *
+     *   maxWorkers: 6   ->  153s, 203 files / 4040 tests, 0 failures
+     *   maxWorkers: 12  -> 2924s, 203 files / 4040 tests, 3 failures (19x SLOWER)
+     *
+     * Both rows ran the full 203 files, so that is a like-for-like comparison —
+     * worth stating because an oversubscribed run CAN silently under-run files
+     * (the client workspace's config documents exactly that failure).
+     *
+     * Every 12-worker failure was a starvation timeout; grep of that run found
+     * ZERO "too many connections" / "remaining connection slots" errors. The
+     * suite is CPU-bound (notably bcryptjs, which is pure JS and blocks its
+     * worker's event loop — see testTimeout on the parallel project below), so
+     * oversubscribing cores past ~half of them collapses throughput.
+     *
+     * Keep the cap; it is load-bearing. Raise it only with a measured run, and
+     * on a machine with more cores rather than on principle. DB_POOL_MAX (db.ts)
+     * is the knob if connections ever DO become the limit.
      */
     maxWorkers: 6,
 
@@ -475,6 +540,8 @@ export default defineConfig({
           include: ['src/__tests__/**/*.test.ts'],
           exclude: SERIAL_FILES,
           fileParallelism: true,
+          testTimeout: PARALLEL_TEST_TIMEOUT_MS,
+          hookTimeout: HOOK_TIMEOUT_MS,
         },
         resolve: sharedResolve,
       },
@@ -484,10 +551,8 @@ export default defineConfig({
           name: 'serial',
           include: SERIAL_FILES,
           fileParallelism: false,
-          // seedDemo() is heavier now — notes, custom fields, webhooks, currencies.
-          // removeDemo tests call seedDemo()+removeDemo() four times in sequence; 60s
-          // allows each call up to ~15s on a loaded machine.
-          testTimeout: 60000,
+          testTimeout: SERIAL_TEST_TIMEOUT_MS,
+          hookTimeout: HOOK_TIMEOUT_MS,
         },
         resolve: sharedResolve,
       },

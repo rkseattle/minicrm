@@ -95,6 +95,10 @@ export default defineConfig(({ mode }) => ({
     outputFile: { junit: 'test-results/junit.xml' },
     maxWorkers: 1,
     testTimeout: 30000,
+    // Vitest resolves hookTimeout independently of testTimeout and defaults it to
+    // 10s, so setup work is not covered by the budget above. Matches the client
+    // workspace, which has the same jsdom + single-worker shape.
+    hookTimeout: 30000,
     coverage: {
       provider: 'v8',
       include: ['src/components/**', 'src/pages/**'],
