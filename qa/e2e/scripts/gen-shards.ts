@@ -10,7 +10,7 @@
  *   2. Determine the file list: --selected-files=<path> (a TIA-selected
  *      subset, pr-tia-8) when provided and readable, else glob all
  *      functional spec files under qa/e2e/tests/apps/minicrm/functional/
- *      (nightly/post-merge full run, workflow_dispatch — unchanged from
+ *      (post-merge full run, workflow_dispatch — unchanged from
  *      before pr-tia-8).
  *   3. Files absent from the baseline receive the baseline's fallbackMs and a
  *      stderr warning.
