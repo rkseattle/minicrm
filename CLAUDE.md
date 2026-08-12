@@ -65,6 +65,20 @@ shared/schemas/  → Zod schemas used by both client and server (.ts only — .j
                    must stay free of any @minicrm/shared/schemas import; there is no
                    qa-local home that avoids the same import. See that file's own docblock.)
 
+shared/testing/  → pure rules that a SERVER-BUILT file and a qa/ file must run identically.
+                   Not Zod, not client-facing — a documented exception to the line above,
+                   and deliberately narrow. The bar is: two guards need the same rule,
+                   neither can import the other, and drift between them is dangerous
+                   rather than merely untidy. Today that is testStackDbPort.ts, the
+                   dev-port refusal fronting `TRUNCATE ... CASCADE` and `CREATE DATABASE`
+                   (MINCRM-699) — hand-synced copies had already drifted into a bypass
+                   where `05432` reached the dev database. server/src/scripts/ cannot
+                   import from qa/: server/Dockerfile copies only server/ and shared/, and
+                   an input outside those shifts tsc's inferred rootDir out from under the
+                   Dockerfile's hardcoded COPY/CMD paths — and CI never builds that image,
+                   so it would not be caught there. Keep these files dependency-free (no
+                   zod, no Node built-ins, no I/O) so every workspace can import them.
+
 db/migrations/   → sequential node-pg-migrate files (ls db/migrations/ | tail -1 to find last)
 
 qa/e2e/

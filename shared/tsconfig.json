@@ -12,6 +12,6 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["schemas/**/*"],
+  "include": ["schemas/**/*", "testing/**/*"],
   "exclude": ["node_modules", "dist"]
 }

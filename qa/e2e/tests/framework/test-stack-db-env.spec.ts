@@ -32,6 +32,56 @@ import {
   TEST_DB_USER,
   TEST_DB_PASSWORD,
 } from '../../../scripts/test-stack-db-env.js';
+// Imported at its real home, not through the qa re-export, so this pins the
+// shared module both guards actually run. (MINCRM-699)
+import {
+  normalizeDbPort,
+  isDevDatabasePort,
+  MAX_TCP_PORT,
+} from '@minicrm/shared/testing/testStackDbPort.js';
+
+// The one dev-port rule, tested directly. server/src/scripts/
+// assertTestDatabaseTarget.ts runs this same code in front of
+// `TRUNCATE ... CASCADE` and `CREATE DATABASE`; it used to be a hand-synced copy
+// that had already drifted into accepting `05432`. Its server-side callers are
+// covered by assertTestDatabaseTarget.test.ts.
+test.describe('shared testStackDbPort', () => {
+  test('normalizes a plain port', () => {
+    expect(normalizeDbPort('5433')).toBe(5433);
+  });
+
+  test('normalizes leading-zero spellings rather than passing them through', () => {
+    expect(normalizeDbPort('05432')).toBe(5432);
+    expect(normalizeDbPort('015433')).toBe(15433);
+  });
+
+  for (const malformed of ['not-a-port', ' 5433 ', '5433.0', '0', '-1', '5433abc', '65536']) {
+    test(`rejects a malformed port (${JSON.stringify(malformed)})`, () => {
+      expect(() => normalizeDbPort(malformed)).toThrow(/not a valid port/);
+    });
+  }
+
+  test('accepts the highest valid TCP port', () => {
+    expect(normalizeDbPort(String(MAX_TCP_PORT))).toBe(MAX_TCP_PORT);
+  });
+
+  // The pairing that matters: normalize FIRST, then compare. Every spelling below
+  // is !== '5432' as a string but IS the dev port as a number, which is how the
+  // destructive scripts were reachable.
+  for (const spelling of ['5432', '05432', '005432']) {
+    test(`identifies ${spelling} as the dev port off CI`, () => {
+      expect(isDevDatabasePort(normalizeDbPort(spelling), false)).toBe(true);
+    });
+  }
+
+  test('allows the dev port under CI, where 5432 is the service container', () => {
+    expect(isDevDatabasePort(normalizeDbPort('5432'), true)).toBe(false);
+  });
+
+  test('does not flag a test-stack port', () => {
+    expect(isDevDatabasePort(normalizeDbPort('5433'), false)).toBe(false);
+  });
+});
 
 test.describe('resolveTestStackDbEnv', () => {
   test('defaults to the test stack when nothing was exported', () => {

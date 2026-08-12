@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     "./schemas/*": "./schemas/*",
-    "./generated/*": "./generated/*"
+    "./generated/*": "./generated/*",
+    "./testing/*": "./testing/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"

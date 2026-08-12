@@ -10,7 +10,8 @@
     "outDir": "./dist",
     "paths": {
       "@minicrm/shared/schemas/*": ["../shared/schemas/*"],
-      "@minicrm/shared/generated/*": ["../shared/generated/*"]
+      "@minicrm/shared/generated/*": ["../shared/generated/*"],
+      "@minicrm/shared/testing/*": ["../shared/testing/*"]
     }
   },
   "include": ["src/**/*", "vitest.config.ts"],

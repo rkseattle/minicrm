@@ -68,6 +68,7 @@ jobs:
       attestation-docs:  ${{ steps.filter.outputs.attestation-docs }}
       env-example-parity: ${{ steps.filter.outputs.env-example-parity }}
       playwright-version: ${{ steps.filter.outputs.playwright-version }}
+      shared-testing: ${{ steps.filter.outputs.shared-testing }}
       qa-e2e-scripts:    ${{ steps.filter.outputs.qa-e2e-scripts }}
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
@@ -241,6 +242,20 @@ jobs:
             playwright-version:
               - 'package-lock.json'
               - 'qa/package.json'
+
+            # Single-purpose filter, deliberately NOT folded into `server` or `qa`.
+            #
+            # shared/testing/testStackDbPort.ts is the ONE dev-port refusal rule that
+            # both server/src/scripts/assertTestDatabaseTarget.ts (fronting
+            # `TRUNCATE ... CASCADE` and `CREATE DATABASE`) and
+            # qa/scripts/test-stack-db-env.ts now run. It is covered by tests in BOTH
+            # workspaces, and neither `server` ('server/src/**') nor `qa` matches
+            # shared/ — so without this, editing the rule runs neither suite, which is
+            # precisely the silent-guard failure CLAUDE.md's paths-filter rule exists to
+            # prevent. Folding it into `server` or `qa` instead would boot the whole E2E
+            # matrix for a one-line change to a pure function. (MINCRM-699)
+            shared-testing:
+              - 'shared/testing/**'
 
             # Single-purpose filter, deliberately NOT folded into `qa`.
             #
@@ -640,7 +655,7 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true')
+      (needs.changes.outputs.server == 'true' || needs.changes.outputs.attestation-docs == 'true' || needs.changes.outputs.coverage-migrations == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest
 
     services:
@@ -992,7 +1007,7 @@ jobs:
     if: |
       always() &&
       (needs.lint-and-typecheck.result == 'success' || needs.lint-and-typecheck.result == 'skipped') &&
-      (needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true')
+      (needs.changes.outputs.qa == 'true' || needs.changes.outputs.qa-e2e-scripts == 'true' || needs.changes.outputs.playwright-version == 'true' || needs.changes.outputs.shared-testing == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

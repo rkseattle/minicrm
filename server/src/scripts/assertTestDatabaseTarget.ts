@@ -23,6 +23,12 @@
  * inert there.
  */
 
+// The port rule runs the SAME code as the QA-side resolver rather than a
+// hand-synced copy. It lives in shared/ because this file is compiled into the
+// server image and cannot import from qa/ — see that module's docblock.
+// (MINCRM-699)
+import { normalizeDbPort, isDevDatabasePort } from '@minicrm/shared/testing/testStackDbPort.js';
+
 /** Databases these scripts are permitted to touch. `minicrm` and `minicrm_coverage` are deliberately absent — those are the dev/production databases. */
 const ALLOWED_TEST_DATABASES = [
   'minicrm_e2e',
@@ -37,12 +43,6 @@ export interface TestDatabaseTarget {
   database: string;
 }
 
-/** Host port of the dev/production Postgres. Test scripts must never target it. */
-const DEV_DB_PORT = '5432';
-
-/** Highest valid TCP port. Anything above it cannot be listening, whatever the config says. */
-const MAX_TCP_PORT = 65535;
-
 /**
  * Throws when DB_PORT is unset or names the dev instance.
  *
@@ -54,36 +54,35 @@ const MAX_TCP_PORT = 65535;
 export function assertTestDatabasePort(scriptName: string): string {
   const port = process.env.DB_PORT;
 
-  // Rejects unset AND non-numeric: `Number('abc') || 5432` at the call sites would
-  // otherwise silently resolve to the dev port, which is the leak this guard exists to
-  // close. Validating here means callers can use the returned value directly.
-  //
-  // The range check keeps this identical to normalizeDbPort in
-  // qa/scripts/test-stack-db-env.ts, which the two files' docblocks claim of each
-  // other. Port 0 and anything above 65535 cannot be listening, so accepting them
-  // only trades a precise refusal for a confusing connect-time failure.
-  if (!port || !/^\d+$/.test(port) || Number(port) === 0 || Number(port) > MAX_TCP_PORT) {
+  // Unset is rejected here rather than in normalizeDbPort: `Number('abc') || 5432`
+  // at the call sites would otherwise silently resolve to the dev port, which is
+  // the leak this guard exists to close.
+  if (!port) {
     throw new Error(
-      `[${scriptName}] REFUSING TO RUN: DB_PORT is ${port ? `not a valid port number ("${port}")` : 'not set'}.\n` +
+      `[${scriptName}] REFUSING TO RUN: DB_PORT is not set.\n` +
         '  This script will not fall back to a default port — a wrong default is how the\n' +
         '  dev database was destroyed. The test stack listens on 5433:\n' +
         '    docker compose -f docker-compose.test.yml up -d',
     );
   }
 
-  // Compare the NORMALIZED number, not the raw string. `05432` passes the regex
-  // above, is !== '5432', and every caller then does Number() on it and connects
-  // to 5432 — the dev database, reached by the very scripts that run
-  // `TRUNCATE ... CASCADE` and `CREATE DATABASE`. Verified before the fix:
-  //   DB_PORT=5432   REFUSED
-  //   DB_PORT=05432  ACCEPTED -> returns "05432" -> Number() = 5432
-  // (MINCRM-699)
-  //
-  // CI has no dev stack — its Postgres service container is the only instance, on 5432,
-  // and provisioning test databases there is correct. The 5432-is-dangerous rule is a
-  // local-machine property, so it applies only off CI.
-  const portNumber = Number(port);
-  if (portNumber === Number(DEV_DB_PORT) && !process.env.CI) {
+  // normalizeDbPort rejects non-numeric and out-of-range values, and returns the
+  // NORMALIZED number — which is what isDevDatabasePort must compare. A raw-string
+  // comparison accepted `05432`, which Number()s back to 5432, sending the scripts
+  // that run `TRUNCATE ... CASCADE` and `CREATE DATABASE` at the DEV database.
+  let portNumber: number;
+  try {
+    portNumber = normalizeDbPort(port);
+  } catch {
+    throw new Error(
+      `[${scriptName}] REFUSING TO RUN: DB_PORT is not a valid port number ("${port}").\n` +
+        '  This script will not fall back to a default port — a wrong default is how the\n' +
+        '  dev database was destroyed. The test stack listens on 5433:\n' +
+        '    docker compose -f docker-compose.test.yml up -d',
+    );
+  }
+
+  if (isDevDatabasePort(portNumber, Boolean(process.env.CI))) {
     throw new Error(
       `[${scriptName}] REFUSING TO RUN: DB_PORT=${port} is the dev database.\n` +
         '  Test databases belong on the isolated test stack (5433), not alongside the\n' +
