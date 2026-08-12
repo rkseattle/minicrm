@@ -1,7 +1,7 @@
 name: TIA Record Mode
 
 # MINCRM-633: record mode — the FULL functional + serial suite runs
-# post-merge (on every push to main) and nightly, with coverage
+# post-merge (on every push to main), with coverage
 # instrumentation enabled, then ingests every dump produced into
 # coverage_units/coverage_test_links so the mapping engine's map stays
 # fresh. This run's result is the AUTHORITATIVE signal MINCRM-634's PR
@@ -27,8 +27,8 @@ name: TIA Record Mode
 # main rather than trust an unenforced precondition.
 #
 # Why a separate workflow file, not a job inside ci.yml: ci.yml is
-# pull_request-only (see its own `on:` block) — a full nightly/scheduled
-# run has no PR to attach a status check to, and mixing a `schedule:`
+# pull_request-only (see its own `on:` block) — a push-triggered full run
+# has no PR to attach a status check to, and mixing a non-pull_request
 # trigger into ci.yml would make every job's `if:` conditions (many of
 # which already assume `github.event_name == 'pull_request'`, e.g. sticky
 # PR comments) need a second branch of special-casing throughout an
@@ -37,17 +37,25 @@ name: TIA Record Mode
 on:
   push:
     branches: [main]
-  schedule:
-    # 03:00 UTC nightly — recalibrates the map even on a quiet day with no
-    # merges, so a long-idle branch's PR select mode never resolves against
-    # a stale map older than this window.
-    - cron: '0 3 * * *'
+  # No `schedule:` trigger. There was a 03:00 UTC nightly cron, on the reasoning
+  # that it "recalibrates the map even on a quiet day with no merges". Removed
+  # (MINCRM-699): the map is a function of the code on main, so on a quiet day it
+  # recomputes an identical map — the push trigger above already refreshes it on
+  # every merge, which is the only event that can change the answer. Measured over
+  # the last 40 runs, the cron accounted for exactly half (17 scheduled vs 17
+  # push) of a job that runs the FULL functional + serial suite with coverage
+  # instrumentation, so it was doubling the cost of this workflow for no new
+  # information.
+  #
+  # If a genuinely time-dependent input is ever added (a dependency bump that
+  # changes coverage without a commit, say), reinstate the cron — but the
+  # justification has to be that input, not map age on its own.
   workflow_dispatch:
     inputs:
       ref:
         description: >-
-          Branch to check out. Defaults to main, which is what every scheduled
-          and post-merge run uses. Override ONLY to validate a change to this
+          Branch to check out. Defaults to main, which is what every
+          post-merge run uses. Override ONLY to validate a change to this
           workflow itself before merging it: the checkout is otherwise pinned
           to main, so dispatching a branch would run main's workflow
           definition against main's code and prove nothing about the branch.
@@ -145,9 +153,9 @@ jobs:
           # workflow holds, where "Repository admin"/"Write" would have exempted
           # every human holding that role.
           ssh-key: ${{ secrets.TIA_DEPLOY_KEY }}
-          # Explicit ref removes any ambiguity for the schedule/
-          # workflow_dispatch triggers, which have no natural "ref" of
-          # their own — record mode runs against main's own tip by default.
+          # Explicit ref removes any ambiguity for the workflow_dispatch
+          # trigger, which has no natural "ref" of its own — record mode
+          # runs against main's own tip by default.
           #
           # workflow_dispatch can be launched against ANY ref in the
           # GitHub UI, not just main — github.sha in that case resolves to
@@ -204,7 +212,7 @@ jobs:
       # ci.yml's split e2e-functional/e2e-serial jobs), and per CLAUDE.md's
       # own rule, @serial tests mutate a shared system_settings row and
       # race under concurrent workers. Slower than ci.yml's sharded run, but
-      # record mode isn't latency-sensitive — it runs post-merge/nightly,
+      # record mode isn't latency-sensitive — it runs post-merge,
       # off the PR's own critical path.
       #
       # A bare `--grep @functional` reaches the @serial tests too: every

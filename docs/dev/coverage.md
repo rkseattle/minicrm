@@ -1011,7 +1011,10 @@ structurally (a source-text scan asserting `safetyNetPolicy.ts` contains no refe
 ## Record Mode — the authoritative run (MINCRM-633/687)
 
 `.github/workflows/tia-record-mode.yml` runs the full `@functional` suite with coverage
-instrumentation on every push to `main` and nightly at 03:00 UTC, ingests every dump it
+instrumentation on every push to `main` — and only on that, plus `workflow_dispatch`. A
+nightly 03:00 UTC cron was removed (MINCRM-699): the map is a function of the code on
+`main`, so on a day with no merges it recomputed an identical map, while accounting for
+half of this workflow's runs. It ingests every dump it
 produces, and — only if the run is clean — exports `qa/coverage-map.jsonl` and commits it
 back to `main`. It is the **authoritative** signal the PR-time gating defers to;
 `ci.yml`'s own `tia-selection` job is fast, advisory feedback only.
