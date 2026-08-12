@@ -18,14 +18,20 @@
  * process control.
  */
 
-/** The test stack's Postgres port (docker-compose.test.yml). */
-export const TEST_DB_PORT = '5433';
+// The port rule itself lives in shared/ so the server-side guard on the
+// destructive scripts runs the SAME code rather than a hand-synced copy — see
+// that module's docblock for why shared/ is the only home both can reach.
+// (MINCRM-699)
+import {
+  TEST_DB_PORT,
+  DEV_DB_PORT,
+  normalizeDbPort,
+  isDevDatabasePort,
+} from '@minicrm/shared/testing/testStackDbPort.js';
 
-/** The dev stack's Postgres port (docker-compose.yml) — never a valid target for this hook. */
-export const DEV_DB_PORT = '5432';
-
-/** Highest valid TCP port. Anything above it cannot be listening, whatever the config says. */
-const MAX_TCP_PORT = 65535;
+// Re-exported so this module stays the single import site for everything about
+// the test stack's coordinates; callers do not need to know the rule was hoisted.
+export { TEST_DB_PORT, DEV_DB_PORT, normalizeDbPort, isDevDatabasePort };
 
 /** Databases the hook's children must use. Hardcoded, never inherited: see resolveTestStackDbEnv. */
 export const TEST_DB_NAME = 'minicrm_e2e';
@@ -65,46 +71,6 @@ export class DevDatabaseRefusedError extends Error {
     );
     this.name = 'DevDatabaseRefusedError';
   }
-}
-
-/**
- * Validates a DB_PORT string and returns it as a number. (MINCRM-699)
- *
- * Shared by both resolvers so the dev-port refusal cannot be spelled around in one
- * of them. The regex, rather than a bare `Number()`, is the point: `'05432'`,
- * `' 5432 '` and `'5432.0'` are all `!== '5432'` as strings but all become 5432 as
- * numbers, so a raw string comparison against DEV_DB_PORT lets every one of them
- * reach the dev database. Callers must compare the NORMALIZED value this returns.
- *
- * Shared by every dev-port refusal that can reach it: qa/scripts/
- * create-coverage-e2e-db.ts imports it directly.
- *
- * server/src/scripts/assertTestDatabaseTarget.ts applies the same
- * normalize-then-compare rule INLINE rather than importing it, and that is
- * deliberate — importing from qa/ there breaks the server image build three ways:
- *   1. That file is inside server/tsconfig.build.json's `include: ["src/**\/*"]`,
- *      so it is compiled by the server build.
- *   2. server/Dockerfile copies only server/ and shared/ into the builder stage,
- *      so qa/ is not present and tsc fails outright.
- *   3. Even with the source there, an extra input shifts tsc's inferred rootDir
- *      from <repo>/server to <repo>, moving output out from under the
- *      Dockerfile's hardcoded COPY and CMD paths.
- * CI never builds that image, so none of it would be caught there.
- *
- * So: if you change the rule here, change it there too. That guard fronts
- * TRUNCATE and CREATE DATABASE, and a raw-string comparison there is what let
- * `05432` reach the dev database.
- *
- * @throws Error when the value is not a plain integer in the valid TCP range.
- */
-export function normalizeDbPort(port: string): number {
-  const portNumber = Number(port);
-  if (!/^\d+$/.test(port) || portNumber === 0 || portNumber > MAX_TCP_PORT) {
-    throw new Error(
-      `DB_PORT="${port}" is not a valid port number. The test stack listens on ${TEST_DB_PORT}.`,
-    );
-  }
-  return portNumber;
 }
 
 /**
@@ -253,7 +219,7 @@ export function resolveRuntimeTestStackDb(env: Readonly<NodeJS.ProcessEnv>): Tes
   // and straight to the dev database.
   const portNumber = normalizeDbPort(port);
 
-  if (portNumber === Number(DEV_DB_PORT) && !env.CI) {
+  if (isDevDatabasePort(portNumber, Boolean(env.CI))) {
     throw new DevDatabaseRefusedError();
   }
 
