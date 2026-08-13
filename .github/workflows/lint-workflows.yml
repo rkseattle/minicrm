@@ -13,6 +13,10 @@ on:
       # matters more since MINCRM-704 moved the audit gate's only definition into
       # .github/actions/npm-audit/. See the validate-composite-actions job below.
       - '.github/actions/**'
+      # The validator itself. Without this, narrowing its glob or breaking its checks
+      # triggers no run of the guard it is — the same bidirectional paths-filter
+      # invariant CLAUDE.md states, applied to the guard's own source. (MINCRM-704)
+      - '.github/scripts/**'
   push:
     branches: [main]
     paths:
@@ -22,6 +26,10 @@ on:
       # matters more since MINCRM-704 moved the audit gate's only definition into
       # .github/actions/npm-audit/. See the validate-composite-actions job below.
       - '.github/actions/**'
+      # The validator itself. Without this, narrowing its glob or breaking its checks
+      # triggers no run of the guard it is — the same bidirectional paths-filter
+      # invariant CLAUDE.md states, applied to the guard's own source. (MINCRM-704)
+      - '.github/scripts/**'
 
 permissions:
   contents: read

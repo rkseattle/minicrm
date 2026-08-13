@@ -71,9 +71,15 @@ const RESET_DATABASE_REMEDY =
  * actual failure window — and it would fire on a legitimately empty fresh database.
  *
  * @param expectedAdminEmail - The calling spec's own admin fixture email.
+ * @param queryable - A pool or a checked-out client. Pass a client to assert against
+ *   uncommitted state inside a transaction — the only safe way for a test to establish a
+ *   whole-table property like "no active admin" without other connections observing it.
  */
-export async function assertResolvedAdminIs(expectedAdminEmail: string): Promise<void> {
-  const result = await pool.query<{ email: string }>(
+export async function assertResolvedAdminIs(
+  expectedAdminEmail: string,
+  queryable: { query: typeof pool.query } = pool,
+): Promise<void> {
+  const result = await queryable.query<{ email: string }>(
     `SELECT email FROM users
       WHERE role = 'admin' AND status = 'active'
       ORDER BY created_at LIMIT 1`,

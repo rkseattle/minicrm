@@ -52,9 +52,6 @@ jobs:
     needs: [security-audit]
     if: failure()
     runs-on: ubuntu-latest
-    # Serialize with close-on-success so a run that recovers cannot race a run that failed
-    # and leave the issue in the wrong state. (MINCRM-704)
-    concurrency: security-audit-notify
     # Deliberately a separate job. The audit job runs `npm ci`, which executes arbitrary
     # lifecycle scripts from the entire dependency tree; handing that job a write-scoped
     # token would put it one malicious postinstall away from writing to the repo. This job
@@ -92,7 +89,8 @@ jobs:
             ].join('\n');
 
             // listForRepo returns pull requests as well as issues, and its default ordering
-            // is not guaranteed — filter and sort explicitly rather than taking data[0].
+            // is not guaranteed — hence the explicit sort and the pull_request filter below,
+            // which together make [0] the newest genuine issue rather than an arbitrary row.
             const open = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -131,7 +129,6 @@ jobs:
     # comments on the same stale thread, so a genuine new advisory arrives as a one-line
     # URL appended to a resolved outage's history. Closing on recovery means an open
     # `security-audit` issue always describes the CURRENT state. (MINCRM-704)
-    concurrency: security-audit-notify
     permissions:
       issues: write
     steps:
@@ -151,7 +148,14 @@ jobs:
               per_page: 100,
             });
 
-            for (const item of open.filter((i) => i.pull_request === undefined)) {
+            // Only close issues this workflow opened. The label is a shared, human-writable
+            // namespace: closing a person's tracking issue and commenting "the audit is
+            // green again" would read as a resolution of THEIR issue, which it is not.
+            const ours = open.filter(
+              (i) => i.pull_request === undefined && i.user?.login === 'github-actions[bot]',
+            );
+
+            for (const item of ours) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
