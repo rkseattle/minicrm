@@ -4,6 +4,7 @@
 
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import type { UserRole, UserStatus } from '@minicrm/shared/schemas/userSchema.js';
 import { AUTH_COOKIE_NAME } from '../middleware/auth.js';
 import pool from '../db.js';
 
@@ -24,6 +25,206 @@ export function makeAuthCookie(payload: {
 }): string {
   const token = jwt.sign(payload, process.env.JWT_SECRET ?? '', { expiresIn: '1h' });
   return `${AUTH_COOKIE_NAME}=${token}`;
+}
+
+/**
+ * Default backdate applied to a fixture user's `created_at`. See ensureUser. (MINCRM-704)
+ *
+ * Callers that must win `getAdminUserId()`'s `ORDER BY created_at LIMIT 1` against another
+ * backdated fixture pass an explicit, larger value instead — a shared constant is not
+ * enough, because `now()` advances between statements and the FIRST row inserted would
+ * otherwise win regardless of which spec is running.
+ */
+const FIXTURE_CREATED_AT_BACKDATE = '100 years';
+
+/** Shared tail of the remedies below. (MINCRM-704) */
+const RESET_DATABASE_REMEDY =
+  'Reset the database:\n' +
+  '  docker exec minicrm-test-db psql -U minicrm -d postgres -c ' +
+  '"DROP DATABASE minicrm_test" -c "CREATE DATABASE minicrm_test OWNER minicrm"\n' +
+  '  (test stack is port 5433 — never 5432, which is the dev database)';
+
+/**
+ * Asserts that the admin `demoService.getAdminUserId()` will resolve is the one this spec
+ * owns, and fails with an actionable message when it is not.
+ *
+ * `getAdminUserId()` runs `WHERE role = 'admin' AND status = 'active' ORDER BY created_at
+ * LIMIT 1` — the oldest active admin in the whole shared database, not the calling spec's
+ * fixture. Two distinct states break a demo spec, and both are invisible from the symptom:
+ *
+ * 1. **No active admin at all.** `seedDemo()`/`resetDemo()` throw from deep inside the
+ *    service. Happens when a spec deletes users wholesale (`userService.test.ts` runs a
+ *    bare `DELETE FROM users`) or a prior run was interrupted before its `afterAll`.
+ * 2. **A foreign active admin sorts first.** Worse, because nothing throws: demo data is
+ *    seeded under an owner the spec does not know about, its owner-scoped `afterAll`
+ *    cleans a different id, and the orphaned rows then block a later `DELETE FROM users`
+ *    behind the `ON DELETE RESTRICT` owner FKs — surfacing as an FK violation in whatever
+ *    unrelated file deletes users next.
+ *
+ * Call from `beforeAll` AND `beforeEach`, after the spec's own `ensureUser`, passing the
+ * fixture's email. Checking after is deliberate: the assertion is not "an admin exists"
+ * (which `ensureUser` has just guaranteed and would make this dead code) but "the admin
+ * that will actually be resolved is mine".
+ *
+ * Deliberately a spec-level helper rather than a `globalSetup` check: globalSetup runs
+ * once before any worker, so it cannot observe state a later file destroys — which is the
+ * actual failure window — and it would fire on a legitimately empty fresh database.
+ *
+ * @param expectedAdminEmail - The calling spec's own admin fixture email.
+ */
+export async function assertResolvedAdminIs(expectedAdminEmail: string): Promise<void> {
+  const result = await pool.query<{ email: string }>(
+    `SELECT email FROM users
+      WHERE role = 'admin' AND status = 'active'
+      ORDER BY created_at LIMIT 1`,
+  );
+  const resolved = result.rows[0]?.email;
+  const expected = expectedAdminEmail.toLowerCase().trim();
+
+  if (!resolved) {
+    throw new Error(
+      'minicrm_test has no ACTIVE ADMIN, so seedDemo()/resetDemo() cannot resolve an ' +
+        'owner and will throw from inside getAdminUserId().\n' +
+        'This is leftover local state, not a code defect — CI provisions a fresh database ' +
+        'and never hits it.\n' +
+        'Cause: a spec deleted users wholesale (userService.test.ts runs a bare ' +
+        '`DELETE FROM users`) or a prior run was interrupted before its afterAll.\n' +
+        'Fix: call ensureUser() from beforeEach rather than creating the fixture once in ' +
+        `beforeAll. ${RESET_DATABASE_REMEDY}`,
+    );
+  }
+
+  if (resolved !== expected) {
+    throw new Error(
+      `minicrm_test holds an older active admin (${resolved}) than this spec's fixture ` +
+        `(${expected}), so seedDemo() would seed demo data owned by it and this spec's ` +
+        'owner-scoped cleanup would not remove those rows — which then blocks a later ' +
+        '`DELETE FROM users` behind the ON DELETE RESTRICT owner FKs.\n' +
+        'This should be unreachable: claimAdminResolution() backdates the caller past every ' +
+        'other active admin. Reaching it means a row was inserted with an even older ' +
+        'created_at.\n' +
+        `Fix: ${RESET_DATABASE_REMEDY}`,
+    );
+  }
+}
+
+/**
+ * Makes `expectedAdminEmail` the admin that `demoService.getAdminUserId()` resolves, by
+ * backdating it strictly further than every other active admin currently in the table,
+ * then asserts the outcome.
+ *
+ * Relative per-spec backdates are not sufficient on their own. Two demo specs each need to
+ * be the resolved admin while they run, so a fixed ordering between them makes the loser
+ * unrunnable whenever the winner's fixture survives an interrupted run — which is exactly
+ * the state AC 2 requires the next run to recover from. Claiming resolution at fixture
+ * time is self-healing instead: whichever spec runs next takes ownership, no matter what
+ * the previous run left behind.
+ *
+ * Idempotent, and safe to call from `beforeEach`. Returns the fixture's id so callers do
+ * not need a second query. (MINCRM-704)
+ *
+ * @param user - The caller's own admin fixture.
+ * @returns The fixture row's id.
+ */
+export async function claimAdminResolution(user: {
+  email: string;
+  name: string;
+  role: UserRole;
+  passwordHash: string;
+  status: UserStatus;
+}): Promise<string> {
+  const email = user.email.toLowerCase().trim();
+
+  // One year older than the current oldest active admin that is not this fixture, so the
+  // claim holds regardless of what a prior run left behind. COALESCE covers the empty case.
+  const oldest = await pool.query<{ backdate: string }>(
+    `SELECT COALESCE(
+              EXTRACT(EPOCH FROM (now() - MIN(created_at)))::bigint + 31536000,
+              3153600000
+            )::text AS backdate
+       FROM users
+      WHERE role = 'admin' AND status = 'active' AND email <> $1`,
+    [email],
+  );
+
+  const id = await ensureUser(user, `${oldest.rows[0].backdate} seconds`);
+  await assertResolvedAdminIs(email);
+  return id;
+}
+
+/**
+ * Creates a user, or fully restores the existing row when one with this email is already
+ * present, returning its id either way.
+ *
+ * Call this from `beforeEach` rather than creating fixture users once in `beforeAll`
+ * when a spec's tests cannot run without the row. `minicrm_test` is shared across the
+ * whole suite, and specs delete users wholesale — `userService.test.ts` runs a bare
+ * `DELETE FROM users` to exercise `seedDefaultAdmin()` on an empty table. Serial
+ * execution order is duration-derived, not fixed (vitest sorts failed-first, then
+ * duration-descending), so no spec can rely on running before that wipe. An interrupted
+ * run that skips `afterAll` leaves the same gap. (MINCRM-704)
+ *
+ * Uses `ON CONFLICT` rather than a read-then-create so the upsert is atomic.
+ *
+ * Three details are load-bearing:
+ *
+ * 1. **`created_at` is backdated**, by `createdAtBackdate` when given. A row re-inserted
+ *    mid-run would otherwise carry `now()` and sort last under
+ *    `demoService.getAdminUserId()`'s `ORDER BY created_at LIMIT 1`, letting a leftover
+ *    foreign admin win. Note a shared backdate is NOT sufficient on its own: `now()`
+ *    advances between statements, so among equally-backdated rows the first inserted wins.
+ *    A spec that must be the resolved admin passes a distinct, larger interval and
+ *    verifies the outcome with `assertResolvedAdminIs`.
+ * 2. **Email and name are normalized** exactly as `userService.createUser` does. The
+ *    `users_email_key` UNIQUE index is case-sensitive, so an un-normalized email that
+ *    differs only by case from a `createUser`-written row raises a duplicate-key error
+ *    instead of taking the upsert path.
+ * 3. **Auth-gating columns are reset.** A row left with `must_change_password = true`, or
+ *    with a `password_changed_at` later than a freshly-signed token's `iat`, makes
+ *    `authenticate` reject — 403 PASSWORD_CHANGE_REQUIRED or 401 — which would turn a
+ *    403-expecting RBAC assertion green for entirely the wrong reason. Both are cleared,
+ *    along with the MFA and SSO columns, so a restored fixture is fully known-state.
+ *
+ * @param user - The fixture user to create or restore.
+ * @param createdAtBackdate - Postgres interval to backdate `created_at` by. Defaults to
+ *   FIXTURE_CREATED_AT_BACKDATE; pass a larger value to win the admin-resolution ordering.
+ * @returns The row id, whether newly inserted or pre-existing.
+ */
+export async function ensureUser(
+  user: {
+    email: string;
+    name: string;
+    role: UserRole;
+    passwordHash: string;
+    status: UserStatus;
+  },
+  createdAtBackdate: string = FIXTURE_CREATED_AT_BACKDATE,
+): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO users (email, name, role, password_hash, status, created_at)
+     VALUES ($1, $2, $3, $4, $5, now() - $6::interval)
+     ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role,
+                                       status = EXCLUDED.status,
+                                       password_hash = EXCLUDED.password_hash,
+                                       created_at = EXCLUDED.created_at,
+                                       must_change_password = false,
+                                       password_changed_at = NULL,
+                                       mfa_enabled = false,
+                                       mfa_secret = NULL,
+                                       sso_provider = NULL,
+                                       sso_subject = NULL
+     RETURNING id`,
+    [
+      user.email.toLowerCase().trim(),
+      user.name.trim(),
+      user.role,
+      user.passwordHash,
+      user.status,
+      createdAtBackdate,
+    ],
+  );
+  // Safe: INSERT ... ON CONFLICT DO UPDATE always returns exactly one row.
+  return result.rows[0].id;
 }
 
 /**

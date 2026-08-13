@@ -6,17 +6,29 @@
  */
 
 import 'dotenv/config';
-import { createUser } from '../services/userService.js';
 import { getDemoStatus, seedDemo, removeDemo, resetDemo } from '../services/demoService.js';
 import pool from '../db.js';
+import { claimAdminResolution } from './testUtils.js';
+
+const FILE_PREFIX = 'demo-svc';
 
 const ADMIN_USER = {
-  email: 'demo-svc-admin@example.com',
+  email: `${FILE_PREFIX}-admin@example.com`,
   name: 'Demo Service Admin',
   role: 'admin' as const,
   passwordHash: '$2b$12$placeholder_hash',
   status: 'active' as const,
 };
+
+/**
+ * Admin id for this file's fixture, refreshed by ensureUser() in beforeEach.
+ * Not captured once in beforeAll: seedDemo() requires an active admin, and this file
+ * shares minicrm_test with specs that delete users wholesale — userService.test.ts
+ * runs a bare `DELETE FROM users`. Serial order is duration-derived rather than fixed
+ * (vitest sorts failed-first, then duration-descending), so no file can rely on running
+ * before that wipe. (MINCRM-704)
+ */
+let adminUserId: string;
 
 // Derived from DEMO_WEBHOOK_SUBSCRIPTIONS in demoService.ts
 const DEMO_WEBHOOK_URLS = [
@@ -120,15 +132,27 @@ beforeAll(async () => {
   await pool.query(`DELETE FROM notes WHERE created_by = (SELECT id FROM users WHERE email = $1)`, [
     ADMIN_USER.email,
   ]);
-  await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
-  await createUser(ADMIN_USER);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  adminUserId = await claimAdminResolution(ADMIN_USER);
 });
 
 beforeEach(async () => {
+  // Admin first, matching beforeAll's order: cleanDemoData resolves users by email and
+  // prunes owned rows behind ON DELETE RESTRICT owner FKs. Re-established every test
+  // because a sibling spec's `DELETE FROM users` or an interrupted prior run removes it,
+  // and seedDemo() has no way to recover from its absence. (MINCRM-704)
+  // Claims admin resolution rather than assuming it: seedDemo() resolves the OLDEST active
+  // admin globally, so a sibling demo spec's surviving fixture would otherwise own the
+  // seeded data while this file's owner-scoped cleanup missed it.
+  adminUserId = await claimAdminResolution(ADMIN_USER);
   await cleanDemoData();
 });
 
 afterAll(async () => {
+  // Live lookup, not the cached adminUserId: a sibling spec's `DELETE FROM users` can
+  // land between the last test and this hook, and cleaning by a stale id would run ~20
+  // owner-scoped DELETEs against a row that no longer exists while leaving the rows that
+  // do. Reading current state means an absent fixture skips the block, as before. (MINCRM-704)
   const adminResult = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
     ADMIN_USER.email,
   ]);
@@ -211,7 +235,8 @@ afterAll(async () => {
     await pool.query(`DELETE FROM contacts WHERE is_demo = true OR owner_id = $1`, [adminId]);
     await pool.query(`DELETE FROM accounts WHERE is_demo = true OR owner_id = $1`, [adminId]);
   }
-  await pool.query('DELETE FROM users WHERE email = $1', [ADMIN_USER.email]);
+  await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+  // Outside the demo-svc prefix, so the widened delete above does not cover it.
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
 });
 
@@ -558,10 +583,7 @@ describe('removeDemo', () => {
   });
 
   it('does not remove non-demo records', async () => {
-    const adminResult = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
-      ADMIN_USER.email,
-    ]);
-    const adminId = adminResult.rows[0].id;
+    const adminId = adminUserId;
     await pool.query(
       `INSERT INTO accounts (name, owner_id, is_demo) VALUES ('Real Account', $1, false)`,
       [adminId],
@@ -575,10 +597,7 @@ describe('removeDemo', () => {
   });
 
   it('preserves tags applied to real (non-demo) records', async () => {
-    const adminResult = await pool.query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [
-      ADMIN_USER.email,
-    ]);
-    const adminId = adminResult.rows[0].id;
+    const adminId = adminUserId;
 
     // Create a real account and apply the 'vip' tag to it before seeding demo data
     const realAccountResult = await pool.query<{ id: string }>(

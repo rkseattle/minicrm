@@ -74,6 +74,10 @@ const SERIAL_FILES = [
   'src/__tests__/demoService.test.ts',
   'src/__tests__/demoController.test.ts',
   'src/__tests__/demoSeed.test.ts',
+  // testUtils asserts on the OLDEST active admin across the whole users table and
+  // deliberately creates admins that win that ordering; in parallel it would both
+  // perturb and be perturbed by any other file's admin fixture. (MINCRM-704)
+  'src/__tests__/testUtils.test.ts',
   'src/__tests__/dashboardService.test.ts',
   // storageService writes file_storage_* keys to system_settings; running it
   // in parallel with attachmentController causes a race where the controller

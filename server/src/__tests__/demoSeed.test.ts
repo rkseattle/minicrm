@@ -14,9 +14,9 @@
  */
 
 import 'dotenv/config';
-import { createUser } from '../services/userService.js';
 import { getDefaultPipelineId } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { ensureUser } from './testUtils.js';
 
 const FILE_PREFIX = 'demo-seed';
 
@@ -57,12 +57,18 @@ async function cleanOwnerData(): Promise<void> {
 beforeAll(async () => {
   await cleanOwnerData();
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
-  const owner = await createUser(OWNER_USER);
-  ownerId = owner.id;
+  ownerId = await ensureUser(OWNER_USER);
   defaultPipelineId = await getDefaultPipelineId();
 });
 
 beforeEach(async () => {
+  // Owner first, matching beforeAll's order: cleanOwnerData resolves users by email
+  // prefix and prunes owned rows behind ON DELETE RESTRICT owner FKs. Re-established
+  // every test and its id refreshed because every insert here uses ownerId as a FK, and
+  // a sibling spec's `DELETE FROM users` would otherwise leave it dangling. Serial order
+  // is duration-derived, so this file cannot rely on running before that wipe.
+  // (MINCRM-704)
+  ownerId = await ensureUser(OWNER_USER);
   await cleanOwnerData();
 });
 
