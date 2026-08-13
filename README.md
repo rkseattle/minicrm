@@ -99,8 +99,15 @@ see [.claude/gates/e2e-run.md](.claude/gates/e2e-run.md) and Running Tests below
 To develop without Docker:
 
 ```bash
+nvm use          # reads .nvmrc — the Node version CI and both Docker images run
 npm install
 ```
+
+`.nvmrc` is the single source of truth for the Node version: every CI job reads it via
+`setup-node`'s `node-version-file`, and both Dockerfiles default their `ARG NODE_VERSION`
+to the same major. `engines` in the root `package.json` records the floor but is not
+enforced (no `.npmrc` sets `engine-strict`), so a mismatched Node produces warnings rather
+than an error — and can resolve the lockfile differently from CI.
 
 **Server:**
 
