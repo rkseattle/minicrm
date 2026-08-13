@@ -34,8 +34,14 @@ export function makeAuthCookie(payload: {
  * backdated fixture pass an explicit, larger value instead — a shared constant is not
  * enough, because `now()` advances between statements and the FIRST row inserted would
  * otherwise win regardless of which spec is running.
+ *
+ * Expressed in SECONDS, not `'100 years'`, so it is directly comparable with
+ * claimAdminResolution's COALESCE fallback below. Postgres resolves `'100 years'` to
+ * 36525 days (leap-aware) while 3153600000 seconds is 100x365 days — a 25-day gap in
+ * which a default-backdated fixture silently out-sorts a claim made against an empty
+ * table. Same unit on both sides removes the class. (MINCRM-704)
  */
-const FIXTURE_CREATED_AT_BACKDATE = '100 years';
+export const FIXTURE_CREATED_AT_BACKDATE = '3153600000 seconds';
 
 /** Shared tail of the remedies below. (MINCRM-704) */
 const RESET_DATABASE_REMEDY =
@@ -148,7 +154,10 @@ export async function claimAdminResolution(user: {
   const oldest = await pool.query<{ backdate: string }>(
     `SELECT COALESCE(
               EXTRACT(EPOCH FROM (now() - MIN(created_at)))::bigint + 31536000,
-              3153600000
+              -- Strictly older than FIXTURE_CREATED_AT_BACKDATE (3153600000s), so a claim
+              -- made against an empty table still wins once default-backdated fixtures
+              -- appear. Same unit on both sides. (MINCRM-704)
+              6307200000
             )::text AS backdate
        FROM users
       WHERE role = 'admin' AND status = 'active' AND email <> $1`,

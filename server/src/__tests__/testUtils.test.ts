@@ -12,7 +12,12 @@
 
 import 'dotenv/config';
 import pool from '../db.js';
-import { assertResolvedAdminIs, claimAdminResolution, ensureUser } from './testUtils.js';
+import {
+  FIXTURE_CREATED_AT_BACKDATE,
+  assertResolvedAdminIs,
+  claimAdminResolution,
+  ensureUser,
+} from './testUtils.js';
 
 const FILE_PREFIX = 'testutils-svc';
 
@@ -151,14 +156,22 @@ describe('ensureUser', () => {
   it('applies the default backdate when no explicit interval is given', async () => {
     // demoSeed.test.ts relies on the default path; without this, setting the default to
     // '0 seconds' would fail nothing.
+    //
+    // Asserts against the exported constant rather than a literal year count. The default
+    // is expressed in seconds so it is directly comparable with claimAdminResolution's
+    // fallback, and seconds do not convert to a whole number of leap-aware years — a
+    // hardcoded expectation silently pins one spelling of the constant and has to be
+    // hand-corrected whenever it changes. (MINCRM-704)
     await ensureUser(ADMIN_USER);
 
-    const row = await pool.query<{ age_years: number }>(
-      `SELECT EXTRACT(YEAR FROM age(now(), created_at))::int AS age_years
+    const row = await pool.query<{ matches_default: boolean }>(
+      `SELECT created_at BETWEEN
+                now() - $2::interval - interval '1 minute'
+                AND now() - $2::interval + interval '1 minute' AS matches_default
          FROM users WHERE email = $1`,
-      [ADMIN_USER.email],
+      [ADMIN_USER.email, FIXTURE_CREATED_AT_BACKDATE],
     );
-    expect(row.rows[0].age_years).toBe(100);
+    expect(row.rows[0].matches_default).toBe(true);
   });
 
   it('normalizes email case so the upsert matches the case-sensitive unique index', async () => {
@@ -200,7 +213,10 @@ describe('assertResolvedAdminIs', () => {
     //
     // Both problems go away by never committing the mutation. The deactivation runs
     // inside a transaction on a dedicated client and is always rolled back, so no other
-    // connection can observe it — the isolation pattern expectActorScopingIsolatesForeignRows
+    // connection can SEE it — though it does hold row locks on the admin rows until the
+    // rollback, so a concurrent writer touching one would block. Three statements, so the
+    // window is short; do not extend this transaction. Same isolation pattern as
+    // expectActorScopingIsolatesForeignRows
     // in testUtils.ts already uses for exactly this reason. assertResolvedAdminIs must
     // run on that same client to see the uncommitted state. (MINCRM-704)
     const client = await pool.connect();
