@@ -7,9 +7,8 @@
 import 'dotenv/config';
 import request from 'supertest';
 import app from '../app.js';
-import { createUser } from '../services/userService.js';
 import pool from '../db.js';
-import { makeAuthCookie } from './testUtils.js';
+import { claimAdminResolution, ensureUser, makeAuthCookie } from './testUtils.js';
 
 const FILE_PREFIX = 'demo-ctrl';
 const ADMIN_EMAIL = `${FILE_PREFIX}-admin@example.com`;
@@ -47,7 +46,21 @@ beforeAll(async () => {
   ]);
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
 
-  const admin = await createUser({
+  await ensureFixtureUsers();
+});
+
+/**
+ * Ensures both fixture users exist and re-signs their auth cookies.
+ *
+ * The cookies must be re-derived whenever the rows are, not just created once:
+ * `authenticate` resolves the user live by the token's id and returns 401 USER_INACTIVE
+ * when the row is gone (see middleware/auth.ts). So a cookie signed against a deleted
+ * row's id turns every admin assertion into a 401 and every rep 403 assertion into a
+ * 401, even once the user has been recreated under a new id. (MINCRM-704)
+ */
+async function ensureFixtureUsers(): Promise<void> {
+  // Claims admin resolution rather than assuming it — see claimAdminResolution.
+  const adminId = await claimAdminResolution({
     email: ADMIN_EMAIL,
     name: 'Demo Admin',
     role: 'admin',
@@ -55,21 +68,21 @@ beforeAll(async () => {
     status: 'active',
   });
   adminCookie = makeAuthCookie({
-    id: admin.id,
-    email: admin.email,
-    name: admin.name,
-    role: admin.role,
+    id: adminId,
+    email: ADMIN_EMAIL,
+    name: 'Demo Admin',
+    role: 'admin',
   });
 
-  const rep = await createUser({
+  const repId = await ensureUser({
     email: REP_EMAIL,
     name: 'Demo Rep',
     role: 'rep',
     passwordHash: '$2b$12$placeholder',
     status: 'active',
   });
-  repCookie = makeAuthCookie({ id: rep.id, email: rep.email, name: rep.name, role: rep.role });
-});
+  repCookie = makeAuthCookie({ id: repId, email: REP_EMAIL, name: 'Demo Rep', role: 'rep' });
+}
 
 /**
  * Removes all demo-flagged records directly via SQL before each test.
@@ -138,6 +151,12 @@ async function clearDemoData(): Promise<void> {
 }
 
 beforeEach(async () => {
+  // Fixtures first, matching beforeAll's order: clearDemoData resolves users by email and
+  // prunes owned rows, and the owner FKs are ON DELETE RESTRICT — so running it against a
+  // database whose fixtures a sibling spec wiped can fail on rows it cannot remove.
+  // Re-established every test because that wipe, or an interrupted prior run, removes
+  // them. (MINCRM-704)
+  await ensureFixtureUsers();
   await clearDemoData();
 });
 
