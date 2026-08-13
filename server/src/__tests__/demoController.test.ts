@@ -148,14 +148,17 @@ async function clearDemoData(): Promise<void> {
   await pool.query('DELETE FROM accounts WHERE is_demo = true');
   // Remove demo rep user created by insertDemoData
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
+  // The MINCRM-546 demo IAM users are also created by insertDemoData and carry no is_demo
+  // flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes it a
+  // candidate for getAdminUserId()'s ORDER BY created_at. (MINCRM-704)
+  await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
 }
 
 beforeEach(async () => {
-  // Fixtures first, matching beforeAll's order: clearDemoData resolves users by email and
-  // prunes owned rows, and the owner FKs are ON DELETE RESTRICT — so running it against a
-  // database whose fixtures a sibling spec wiped can fail on rows it cannot remove.
-  // Re-established every test because that wipe, or an interrupted prior run, removes
-  // them. (MINCRM-704)
+  // Fixtures first, matching beforeAll's order. Re-established every test because a
+  // sibling spec's bare `DELETE FROM users` or an interrupted prior run removes them, and
+  // every request below authenticates with a cookie signed against the row's id.
+  // (MINCRM-704)
   await ensureFixtureUsers();
   await clearDemoData();
 });
@@ -173,6 +176,39 @@ afterAll(async () => {
 });
 
 // ── GET /api/admin/demo/status ────────────────────────────────────────────────
+
+// ── fixture self-healing (MINCRM-704, AC 2) ───────────────────────────────────
+
+describe('fixture users survive a wholesale wipe', () => {
+  it('deletes both fixture users mid-file — the next test must still authenticate', async () => {
+    // Reproduces the state an interrupted run (SIGINT before afterAll) or a sibling's
+    // bare `DELETE FROM users` leaves behind, without needing a signal. The assertion is
+    // in the NEXT test: beforeEach must recreate both rows AND re-sign both cookies.
+    // Re-creating the rows alone is not enough — authenticate resolves the user live by
+    // the token's id (middleware/auth.ts), so a cookie signed against the old id yields
+    // 401 for the admin and 401-instead-of-403 for the rep.
+    await pool.query(
+      `DELETE FROM notes WHERE created_by IN (SELECT id FROM users WHERE email LIKE $1)`,
+      [`${FILE_PREFIX}-%`],
+    );
+    await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
+
+    const remaining = await pool.query('SELECT id FROM users WHERE email LIKE $1', [
+      `${FILE_PREFIX}-%`,
+    ]);
+    expect(remaining.rows).toHaveLength(0);
+  });
+
+  it('authenticates normally on the very next test', async () => {
+    const adminRes = await request(app).get('/api/v1/admin/demo/status').set('Cookie', adminCookie);
+    expect(adminRes.status).toBe(200);
+
+    // 403 not 401: proves the rep cookie tracks a live row too, rather than the request
+    // being rejected before role evaluation.
+    const repRes = await request(app).get('/api/v1/admin/demo/status').set('Cookie', repCookie);
+    expect(repRes.status).toBe(403);
+  });
+});
 
 describe('GET /api/admin/demo/status', () => {
   it('returns 200 with a status object', async () => {

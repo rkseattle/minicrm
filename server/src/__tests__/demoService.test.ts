@@ -124,6 +124,11 @@ async function cleanDemoData(): Promise<void> {
   await pool.query(`DELETE FROM accounts WHERE is_demo = true`);
   // Remove demo rep user — created by insertDemoData, not covered by is_demo flag (MINCRM-267)
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
+  // The MINCRM-546 demo IAM users are also created by insertDemoData and also carry no
+  // is_demo flag. admin@demo.minicrm.dev is an ACTIVE ADMIN, so leaving it resident makes
+  // it a candidate for getAdminUserId()'s ORDER BY created_at — the same leftover-fixture
+  // residue this file's other cleanup exists to prevent. (MINCRM-704)
+  await pool.query(`DELETE FROM users WHERE email LIKE '%@demo.minicrm.dev'`);
 }
 
 beforeAll(async () => {
@@ -238,6 +243,41 @@ afterAll(async () => {
   await pool.query('DELETE FROM users WHERE email LIKE $1', [`${FILE_PREFIX}-%`]);
   // Outside the demo-svc prefix, so the widened delete above does not cover it.
   await pool.query(`DELETE FROM users WHERE email = 'alex.rivera@demo.minicrm.app'`);
+});
+
+// ── no-active-admin precondition (MINCRM-704, AC 5) ───────────────────────────
+
+describe('seedDemo — no active admin', () => {
+  it('rejects with the service’s own named error when no active admin exists', async () => {
+    // Asserts getAdminUserId's throw directly, not a helper's copy of its query.
+    // assertResolvedAdminIs re-implements the same SELECT, so a test written against it
+    // would stay green if the service dropped `AND status = 'active'` or changed its
+    // ORDER BY — while every demo spec silently seeded under the wrong owner. The rule
+    // has to be asserted where it lives.
+    //
+    // seedDemo() opens its own pool connection, so it cannot see an uncommitted
+    // deactivation: the state must really exist for the duration of the call. Every
+    // affected id is snapshotted and restored in an unconditional finally so no sibling
+    // spec inherits it — and the window is one seedDemo() call that rejects immediately,
+    // since getAdminUserId runs before any insert work (demoService.ts:2309).
+    const activeAdmins = await pool.query<{ id: string }>(
+      `SELECT id FROM users WHERE role = 'admin' AND status = 'active'`,
+    );
+    const deactivatedIds = activeAdmins.rows.map((row) => row.id);
+
+    await pool.query(`UPDATE users SET status = 'inactive' WHERE id = ANY($1::uuid[])`, [
+      deactivatedIds,
+    ]);
+    try {
+      await expect(seedDemo()).rejects.toThrow(
+        'No active admin user found — cannot seed demo data.',
+      );
+    } finally {
+      await pool.query(`UPDATE users SET status = 'active' WHERE id = ANY($1::uuid[])`, [
+        deactivatedIds,
+      ]);
+    }
+  });
 });
 
 // ── getDemoStatus ─────────────────────────────────────────────────────────────
