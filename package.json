@@ -2,6 +2,12 @@
   "name": "minicrm",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24",
+    "npm": ">=11"
+  },
+  "//packageManager": "Declarative only — nothing in this repo enables Corepack, so npm does not enforce this. It records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. engines.npm above is the enforced floor. (MINCRM-704)",
+  "packageManager": "npm@11.17.0",
   "workspaces": [
     "shared",
     "server",

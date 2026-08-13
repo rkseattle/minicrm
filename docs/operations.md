@@ -257,7 +257,7 @@ require a version bump.
 
 The client container uses a multi-stage Docker build:
 
-1. **Build stage** (`node:20-alpine`): installs npm workspace dependencies and runs
+1. **Build stage** (`node:24-alpine`): installs npm workspace dependencies and runs
    `npm run build --workspace=minicrm-client` to produce an optimized production bundle
    in `client/dist/`.
 
