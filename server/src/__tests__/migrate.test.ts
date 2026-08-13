@@ -276,6 +276,19 @@ describe('runCoverageMigrations', () => {
     // on startup with a duplicate_database error instead of just treating
     // the database as now-existing (which is all any caller actually needs).
     process.env.COVERAGE_DB_NAME = testDbName;
+    // Bound the lock wait well below this test's own budget. The two calls below race for
+    // withMigrationLock's global advisory lock, so one holds it while the other polls —
+    // and MIGRATION_LOCK_TIMEOUT_MS defaults to 60_000, exactly equal to the serial
+    // project's SERIAL_TEST_TIMEOUT_MS. Under full-suite load the holder is slow enough
+    // that the waiter's poll loop approaches its own deadline, and the two 60s budgets
+    // expire together: the test times out at 60s instead of asserting anything. Observed
+    // as a 67s timeout on this test in a full run while it passed in isolation, and only
+    // ever load-dependent — which is what made it look like flake. A shorter bound makes
+    // the losing caller fail fast with the lock error rather than racing the harness, and
+    // the sibling test at :81 already establishes this override as the file's idiom.
+    // (MINCRM-704)
+    const originalLockTimeout = process.env.MIGRATION_LOCK_TIMEOUT_MS;
+    process.env.MIGRATION_LOCK_TIMEOUT_MS = '20000';
     try {
       await expect(
         Promise.all([runCoverageMigrations(), runCoverageMigrations()]),
@@ -293,6 +306,11 @@ describe('runCoverageMigrations', () => {
       }
     } finally {
       delete process.env.COVERAGE_DB_NAME;
+      if (originalLockTimeout === undefined) {
+        delete process.env.MIGRATION_LOCK_TIMEOUT_MS;
+      } else {
+        process.env.MIGRATION_LOCK_TIMEOUT_MS = originalLockTimeout;
+      }
     }
   });
 
