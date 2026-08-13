@@ -421,46 +421,11 @@ jobs:
       # Keep this job at zero. If a future advisory genuinely has no fix, add an
       # allowlist back with a written justification and a re-resolve actually
       # attempted first — not a reasoned argument for why the fix cannot work.
-      - name: Audit dependencies for high/critical vulnerabilities
-        run: |
-          # npm audit exits non-zero BOTH when it finds advisories and when it fails
-          # to run at all, so the exit code alone cannot distinguish "clean" from
-          # "never produced a verdict". Capture output and status separately, then
-          # require a well-formed report before trusting any conclusion — otherwise a
-          # registry outage, a proxy error, or an npm crash yields empty output that
-          # scrapes to zero advisories and reports a green security gate. (MINCRM-703)
-          set +e
-          npm audit --audit-level=high --json > "${RUNNER_TEMP}/audit.json"
-          AUDIT_STATUS=$?
-          set -e
-
-          if ! jq -e '(.metadata.vulnerabilities | type) == "object"' "${RUNNER_TEMP}/audit.json" > /dev/null 2>&1; then
-            echo "::error::npm audit did not produce a usable report (exit ${AUDIT_STATUS})."
-            echo "Treating this as a failure: an unreadable audit is not a clean audit."
-            head -c 4000 "${RUNNER_TEMP}/audit.json" || true
-            exit 1
-          fi
-
-          HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' "${RUNNER_TEMP}/audit.json")
-          CRITICAL=$(jq -r '.metadata.vulnerabilities.critical // 0' "${RUNNER_TEMP}/audit.json")
-
-          if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
-            echo "::error::npm audit found ${CRITICAL} critical and ${HIGH} high advisories:"
-            jq -r '
-              (.vulnerabilities // {}) | to_entries[] | .value.via[]
-              | select(type == "object")
-              | "\(.url | split("/")[-1])  \(.severity)  \(.name)"
-            ' "${RUNNER_TEMP}/audit.json" | sort -u
-            jq '.vulnerabilities' "${RUNNER_TEMP}/audit.json"
-            echo ""
-            echo "Before allowlisting anything, try a full re-resolve — an incremental"
-            echo "npm install will NOT reconsider overrides for transitive deps:"
-            echo "  rm -rf node_modules package-lock.json && npm install"
-            echo "Pin the fixed version in the root package.json \"overrides\" block."
-            exit 1
-          fi
-
-          echo "No high/critical advisories (MINCRM-703)."
+      # The repo's single audit definition, shared with security-audit.yml's nightly run.
+      # Extracted rather than duplicated: the two had already drifted once, which is how
+      # the fail-open hole survived in the nightly job after MINCRM-703 closed it here.
+      # (MINCRM-704)
+      - uses: ./.github/actions/npm-audit
 
   # MINCRM-633: PR select mode — runs the existing change-to-test selection
   # pipeline (server/src/scripts/select-tests.ts, pr-tia-6/MINCRM-623-627)

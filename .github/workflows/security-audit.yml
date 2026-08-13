@@ -12,6 +12,9 @@ on:
   schedule:
     - cron: '0 8 * * *'
 
+# Workflow-level default. The notify job below raises its own scope; the audit job must
+# never hold a write token, because `npm ci` executes arbitrary lifecycle scripts from the
+# whole dependency tree. (MINCRM-704)
 permissions:
   contents: read
 
@@ -19,6 +22,14 @@ jobs:
   security-audit:
     name: Daily Dependency Audit
     runs-on: ubuntu-latest
+    # Stated on the job, not merely inherited from the workflow default. This job runs
+    # `npm ci`, which executes arbitrary lifecycle scripts from the entire dependency
+    # tree; the read-only token is the boundary that keeps a malicious postinstall from
+    # writing to the repo. Declaring it here keeps the invariant next to the thing it
+    # protects, rather than in a file-level default a future editor may not read.
+    # (MINCRM-704)
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,6 +42,126 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      # The repo's single audit definition, shared with ci.yml's blocking gate. Extracted
+      # rather than duplicated: these two had already drifted once, which is how the
+      # fail-open hole survived here after MINCRM-703 closed it there. (MINCRM-704)
+      - uses: ./.github/actions/npm-audit
 
-      - name: Audit dependencies for high/critical vulnerabilities
-        run: npm audit --audit-level=high
+  notify-on-failure:
+    name: Report audit failure
+    needs: [security-audit]
+    if: failure()
+    runs-on: ubuntu-latest
+    # Serialize with close-on-success so a run that recovers cannot race a run that failed
+    # and leave the issue in the wrong state. (MINCRM-704)
+    concurrency: security-audit-notify
+    # Deliberately a separate job. The audit job runs `npm ci`, which executes arbitrary
+    # lifecycle scripts from the entire dependency tree; handing that job a write-scoped
+    # token would put it one malicious postinstall away from writing to the repo. This job
+    # holds the write scope and never checks out code or installs anything. (MINCRM-704)
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the audit-failure issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const LABEL = 'security-audit';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+
+            // The run log distinguishes the two causes; this job cannot, because it has no
+            // access to the audit job's output. Say so rather than guessing a diagnosis.
+            const body = [
+              'The scheduled dependency audit failed on `main`.',
+              '',
+              `Run: ${runUrl}`,
+              '',
+              'Check the run log — two causes produce this, and they need opposite responses:',
+              '',
+              '- **High/critical advisories found.** The log lists each GHSA id. Pin the',
+              '  patched version in the root `package.json` `overrides`, re-resolve with',
+              '  `rm -rf node_modules package-lock.json && npm install`, and commit the',
+              '  regenerated lockfile. An incremental install will not reconsider overrides',
+              '  for transitive deps (MINCRM-703).',
+              '- **No usable audit report** — registry outage, proxy error, or npm crash.',
+              '  Not a vulnerability; re-run once the registry recovers.',
+              '',
+              'Opened automatically: this job runs on a schedule, so a red run is otherwise',
+              'unread (MINCRM-704).',
+            ].join('\n');
+
+            // listForRepo returns pull requests as well as issues, and its default ordering
+            // is not guaranteed — filter and sort explicitly rather than taking data[0].
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: LABEL,
+              sort: 'created',
+              direction: 'desc',
+              per_page: 100,
+            });
+            const existing = open.filter((item) => item.pull_request === undefined);
+
+            if (existing.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                body,
+              });
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Daily dependency audit failed',
+              body,
+              labels: [LABEL],
+            });
+
+  close-on-success:
+    name: Close the audit-failure issue
+    needs: [security-audit]
+    if: success()
+    runs-on: ubuntu-latest
+    # Without this the failure issue stays open forever: once opened, every later failure
+    # comments on the same stale thread, so a genuine new advisory arrives as a one-line
+    # URL appended to a resolved outage's history. Closing on recovery means an open
+    # `security-audit` issue always describes the CURRENT state. (MINCRM-704)
+    concurrency: security-audit-notify
+    permissions:
+      issues: write
+    steps:
+      - name: Close any open audit-failure issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const LABEL = 'security-audit';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: LABEL,
+              per_page: 100,
+            });
+
+            for (const item of open.filter((i) => i.pull_request === undefined)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: item.number,
+                body: `The daily dependency audit is green again — ${runUrl}. Closing.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: item.number,
+                state: 'closed',
+              });
+            }

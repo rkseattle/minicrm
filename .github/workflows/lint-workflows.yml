@@ -8,10 +8,20 @@ on:
   pull_request:
     paths:
       - '.github/workflows/**'
+      # Composite actions are not workflows, so actionlint's workflow glob never reaches
+      # them — without this a PR editing only an action file runs no lint at all. That
+      # matters more since MINCRM-704 moved the audit gate's only definition into
+      # .github/actions/npm-audit/. See the validate-composite-actions job below.
+      - '.github/actions/**'
   push:
     branches: [main]
     paths:
       - '.github/workflows/**'
+      # Composite actions are not workflows, so actionlint's workflow glob never reaches
+      # them — without this a PR editing only an action file runs no lint at all. That
+      # matters more since MINCRM-704 moved the audit gate's only definition into
+      # .github/actions/npm-audit/. See the validate-composite-actions job below.
+      - '.github/actions/**'
 
 permissions:
   contents: read
@@ -29,3 +39,24 @@ jobs:
 
       - name: Run actionlint
         run: ./actionlint .github/workflows/*.yml
+
+  validate-composite-actions:
+    name: Validate composite actions
+    runs-on: ubuntu-latest
+    # actionlint parses workflows only — pointed at an action.yml it reports "jobs section
+    # is missing" rather than validating it, so composite actions had no linting at all.
+    # The script checks the two things that actually break them: structure, and shell
+    # errors in `run:` blocks. That matters since the npm audit gate's only definition now
+    # lives in .github/actions/npm-audit/. (MINCRM-704)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Validate composite actions
+        run: python3 .github/scripts/validate-composite-actions.py
