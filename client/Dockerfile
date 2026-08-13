@@ -1,4 +1,5 @@
-FROM node:20-alpine AS builder
+ARG NODE_VERSION=24
+FROM node:${NODE_VERSION}-alpine AS builder
 
 # Build from the repo root so npm workspaces can resolve hoisted dependencies
 WORKDIR /app

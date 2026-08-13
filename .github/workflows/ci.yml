@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -73,6 +73,7 @@ jobs:
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
       coverage-map-exit-code: ${{ steps.filter.outputs.coverage-map-exit-code }}
+      dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -146,6 +147,32 @@ jobs:
               - '*.yml'
               - 'Dockerfile*'
               - '.github/**'
+            # Single-purpose filter for the docker-images job. The `config` filter's
+            # 'Dockerfile*' matches only root-level files, so server/Dockerfile and
+            # client/Dockerfile were covered by nothing — and no job built them either.
+            # server/Dockerfile:24-35 records the resulting incident: a build break
+            # reached main "since ci.yml never actually builds this Dockerfile at all".
+            #
+            # shared/** is deliberately included, and is the entry that actually closes
+            # that incident. Its trigger was NOT a Dockerfile edit: server's
+            # tsconfig.build.json includes only 'src/**/*', so adding a file under
+            # shared/schemas/ breaks the in-image `npm run build` while every host-side
+            # job stays green. A filter listing only the Dockerfiles would skip the job
+            # on precisely the change that caused the incident it cites.
+            #
+            # Scoped to its own output rather than folded into `server`/`client`, which
+            # would boot the whole test and E2E matrix on a Dockerfile-only edit.
+            # (MINCRM-704)
+            dockerfiles:
+              - 'server/Dockerfile'
+              - 'client/Dockerfile'
+              - '.dockerignore'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.nvmrc'
+              - 'shared/**'
+              - 'server/tsconfig*.json'
+              - 'client/tsconfig*.json'
             visual:
               - 'qa/e2e/tests/apps/minicrm/functional/visual/**'
               - 'qa/e2e/snapshots/**'
@@ -337,7 +364,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -383,7 +410,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -413,7 +440,7 @@ jobs:
       # reported the same `invalid`; this pin moves 7.28.0 -> 7.29.0 within an
       # already-violated range, it does not create the violation. It is safe because
       # connect-node's ONLY undici usage is dist/cjs/node-headers-polyfill.js, which
-      # reads `undici.Headers` solely under `if (major < 18)` — dead code on Node 20
+      # reads `undici.Headers` solely under `if (major < 18)` — dead code on Node 24
       # (CI) and Node 22, and undici v7 exports `Headers` regardless. Verified by
       # loading @connectrpc/connect-node against 7.29.0. Recheck this if connect-node
       # is upgraded or its undici surface grows beyond that polyfill.
@@ -426,6 +453,47 @@ jobs:
       # the fail-open hole survived in the nightly job after MINCRM-703 closed it here.
       # (MINCRM-704)
       - uses: ./.github/actions/npm-audit
+
+  docker-images:
+    name: Build shipped Docker images
+    needs: [changes]
+    # always() with an explicit upstream result check: GitHub skips a job when anything in
+    # `needs` was skipped, BEFORE evaluating `if:`, so the gate alone is not enough. The
+    # result check preserves the upstream gate so a real failure still blocks.
+    # (see e2e-functional, MINCRM-271)
+    if: always() && needs.changes.result == 'success' && needs.changes.outputs.dockerfiles == 'true'
+    runs-on: ubuntu-latest
+    # Neither image was built by any CI job. server/Dockerfile:26-35 documents a break
+    # that reached main for exactly that reason, and MINCRM-704 changed both base images
+    # across two Node majors — the same blind spot. Build only; publishing is out of
+    # scope. (MINCRM-704)
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            dockerfile: server/Dockerfile
+          - name: client
+            dockerfile: client/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.name }} image
+        run: docker build -f ${{ matrix.dockerfile }} -t minicrm-${{ matrix.name }}:ci .
+
+      - name: Assert the image runs the Node version .nvmrc pins
+        if: matrix.name == 'server'
+        run: |
+          set -euo pipefail
+          expected="v$(tr -d '[:space:]' < .nvmrc)"
+          actual=$(docker run --rm minicrm-server:ci node --version)
+          echo "expected major ${expected}, image reports ${actual}"
+          case "${actual}" in
+            "${expected}".*) ;;
+            *) echo "::error::image Node ${actual} does not match .nvmrc ${expected}"; exit 1 ;;
+          esac
 
   # MINCRM-633: PR select mode — runs the existing change-to-test selection
   # pipeline (server/src/scripts/select-tests.ts, pr-tia-6/MINCRM-623-627)
@@ -474,7 +542,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -644,7 +712,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -749,7 +817,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Cache client node_modules
@@ -831,7 +899,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Cache coverage-dashboard node_modules
@@ -979,7 +1047,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -1048,7 +1116,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -1156,7 +1224,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       # MINCRM-549: Download the pre-generated shard configs from e2e-timing-setup.
@@ -1551,7 +1619,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Cache Playwright browser binaries
@@ -1943,7 +2011,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -2529,7 +2597,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
       - name: Install markdownlint-cli2
         run: npm install -g markdownlint-cli2
       - name: Lint markdown files
@@ -2584,7 +2652,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Cache Playwright browser binaries
@@ -2808,7 +2876,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -2865,6 +2933,9 @@ jobs:
       - e2e-all-shards-passed
       - e2e-serial
       - ai-evals
+      # Conditional on the dockerfiles filter; the gate treats 'skipped' as passing,
+      # so a Dockerfile-only PR blocks on it and every other PR ignores it. (MINCRM-704)
+      - docker-images
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -2883,6 +2954,7 @@ jobs:
             "${{ needs.e2e-all-shards-passed.result }}" \
             "${{ needs.e2e-serial.result }}" \
             "${{ needs.ai-evals.result }}" \
+            "${{ needs.docker-images.result }}" \
           )
           for result in "${results[@]}"; do
             if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then

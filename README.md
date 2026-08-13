@@ -2,7 +2,7 @@
 
 A minimal viable CRM (alpha / proof of concept) built to validate the core sales workflow loop: create a contact → attach them to a deal → log activity → move the deal through a pipeline.
 
-[![Build Status](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml/badge.svg)](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+[![Build Status](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml/badge.svg)](https://github.com/rkseattle/minicrm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D24-brightgreen)](https://nodejs.org/)
 
 ## Quick Start
 

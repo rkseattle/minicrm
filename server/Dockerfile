@@ -1,5 +1,10 @@
+# Node version for both stages. Declared once as an ARG so a version bump is a
+# single edit here, matching .nvmrc — which every CI job reads via
+# actions/setup-node's node-version-file. (MINCRM-704)
+ARG NODE_VERSION=24
+
 # Build stage: compile TypeScript to JavaScript (MINCRM-288)
-FROM node:20-alpine AS builder
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
@@ -33,10 +38,14 @@ RUN npm run build --workspace=@minicrm/shared
 RUN npm run build --workspace=minicrm-server
 
 # Runtime stage: node only, no TypeScript source or tsx (MINCRM-288)
-FROM node:20-alpine
+# Re-declared because a global ARG goes out of scope at each FROM — and placed BEFORE
+# this FROM, not after, because an ARG consumed by a FROM must precede it. Moving this
+# line below the FROM leaves ${NODE_VERSION} empty and the tag malformed.
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}-alpine
 
 # curl is required by docker-compose.yml's own healthcheck
-# (CMD curl -f http://localhost:3001/api/health) — node:20-alpine has no
+# (CMD curl -f http://localhost:3001/api/health) — node:24-alpine has no
 # curl by default, so that healthcheck always failed with "executable file
 # not found in $PATH" and the container never reported healthy.
 RUN apk add --no-cache curl

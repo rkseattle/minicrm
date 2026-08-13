@@ -24,7 +24,7 @@ export async function exportProposalDraftDocx(dealId: string, draft: ProposalDra
   // responseType 'arraybuffer', not 'blob': this is the only POST-with-body export
   // endpoint in the client, and that combination makes MSW's XHR interceptor throw
   // "object.stream is not a function" while constructing its mock Response from a
-  // native Blob under Node 20 (CI's runtime) — GET-based blob exports elsewhere are
+  // native Blob under Node 24 (CI's runtime) — GET-based blob exports elsewhere are
   // unaffected. Constructing the Blob ourselves from an ArrayBuffer sidesteps the
   // interceptor's Blob-body handling entirely.
   const response = await apiClient.post(
