@@ -116,6 +116,51 @@ describe('ensureUser', () => {
     expect(row.rows[0].must_change_password).toBe(false);
   });
 
+  it('clears every auth-gating column a prior spec may have left set', async () => {
+    await ensureUser(ADMIN_USER);
+    // password_changed_at later than a freshly-signed token's iat makes authenticate
+    // reject with 401; the MFA and SSO columns gate their own flows. All are documented
+    // as reset, so all are pinned — otherwise deleting a reset clause fails nothing.
+    await pool.query(
+      `UPDATE users SET password_changed_at = now(), mfa_enabled = true, mfa_secret = 'x',
+                        sso_provider = 'saml', sso_subject = 'subj'
+        WHERE email = $1`,
+      [ADMIN_USER.email],
+    );
+
+    await ensureUser(ADMIN_USER);
+
+    const row = await pool.query<{
+      password_changed_at: Date | null;
+      mfa_enabled: boolean;
+      mfa_secret: string | null;
+      sso_provider: string | null;
+      sso_subject: string | null;
+    }>(
+      `SELECT password_changed_at, mfa_enabled, mfa_secret, sso_provider, sso_subject
+         FROM users WHERE email = $1`,
+      [ADMIN_USER.email],
+    );
+    expect(row.rows[0].password_changed_at).toBeNull();
+    expect(row.rows[0].mfa_enabled).toBe(false);
+    expect(row.rows[0].mfa_secret).toBeNull();
+    expect(row.rows[0].sso_provider).toBeNull();
+    expect(row.rows[0].sso_subject).toBeNull();
+  });
+
+  it('applies the default backdate when no explicit interval is given', async () => {
+    // demoSeed.test.ts relies on the default path; without this, setting the default to
+    // '0 seconds' would fail nothing.
+    await ensureUser(ADMIN_USER);
+
+    const row = await pool.query<{ age_years: number }>(
+      `SELECT EXTRACT(YEAR FROM age(now(), created_at))::int AS age_years
+         FROM users WHERE email = $1`,
+      [ADMIN_USER.email],
+    );
+    expect(row.rows[0].age_years).toBe(100);
+  });
+
   it('normalizes email case so the upsert matches the case-sensitive unique index', async () => {
     const id = await ensureUser(ADMIN_USER);
     const upper = await ensureUser({ ...ADMIN_USER, email: ADMIN_USER.email.toUpperCase() });
@@ -131,7 +176,9 @@ describe('ensureUser', () => {
          FROM users WHERE email = $1`,
       [ADMIN_USER.email],
     );
-    expect(row.rows[0].age_years).toBeGreaterThan(100);
+    // Exact, not `> 100`: a loose bound passes for any value above the default and so
+    // would not pin the interval the caller actually passed.
+    expect(row.rows[0].age_years).toBe(500);
   });
 });
 
@@ -143,30 +190,38 @@ describe('assertResolvedAdminIs', () => {
   });
 
   it('throws, naming the condition, when no active admin exists at all', async () => {
-    // A non-admin present but zero admins — the state the ticket reproduces.
+    // "No active admin" is a property of the WHOLE users table, and the parallel project
+    // runs concurrently with this serial file — so establishing it by deactivating every
+    // admin row would make ~28 specs that authenticate with an admin cookie fail with
+    // 401 USER_INACTIVE while this test held the window open (middleware/auth.ts rejects
+    // any non-active user on a live lookup). A SELECT-then-UPDATE would also be TOCTOU:
+    // an admin created between the two statements survives, and the assertion then fails
+    // on the wrong branch.
     //
-    // Deliberately deactivates EVERY active admin rather than only this file's fixtures.
-    // The guard reads a global property (the oldest active admin across the whole table),
-    // and the parallel project runs concurrently with this serial file — so a foreign
-    // admin resident at this instant would send the guard down its "older active admin"
-    // branch instead, making the assertion pass or fail on timing. Restored per-id in a
-    // finally so no sibling spec observes the deactivation. (MINCRM-704)
-    const activeAdmins = await pool.query<{ id: string }>(
-      `SELECT id FROM users WHERE role = 'admin' AND status = 'active'`,
-    );
-    const deactivatedIds = activeAdmins.rows.map((row) => row.id);
-    await pool.query(`UPDATE users SET status = 'inactive' WHERE id = ANY($1::uuid[])`, [
-      deactivatedIds,
-    ]);
-
+    // Both problems go away by never committing the mutation. The deactivation runs
+    // inside a transaction on a dedicated client and is always rolled back, so no other
+    // connection can observe it — the isolation pattern expectActorScopingIsolatesForeignRows
+    // in testUtils.ts already uses for exactly this reason. assertResolvedAdminIs must
+    // run on that same client to see the uncommitted state. (MINCRM-704)
+    const client = await pool.connect();
     try {
-      await ensureUser({ ...ADMIN_USER, email: `${FILE_PREFIX}-rep@example.com`, role: 'rep' });
+      await client.query('BEGIN');
+      await client.query(`UPDATE users SET status = 'inactive' WHERE role = 'admin'`);
+      await client.query(
+        `INSERT INTO users (email, name, role, password_hash, status)
+         VALUES ($1, 'Leftover Rep', 'rep', 'x', 'active')
+         ON CONFLICT (email) DO UPDATE SET status = 'active'`,
+        [`${FILE_PREFIX}-rep@example.com`],
+      );
 
-      await expect(assertResolvedAdminIs(ADMIN_USER.email)).rejects.toThrow(/no ACTIVE ADMIN/);
+      await expect(assertResolvedAdminIs(ADMIN_USER.email, client)).rejects.toThrow(
+        /no ACTIVE ADMIN/,
+      );
     } finally {
-      await pool.query(`UPDATE users SET status = 'active' WHERE id = ANY($1::uuid[])`, [
-        deactivatedIds,
-      ]);
+      // Unconditional: an assertion failure must not leak the deactivation to any
+      // sibling spec.
+      await client.query('ROLLBACK');
+      client.release();
     }
   });
 

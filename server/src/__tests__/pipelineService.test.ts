@@ -20,6 +20,7 @@ import {
   getDefaultPipelineId,
 } from '../services/pipelineService.js';
 import pool from '../db.js';
+import { ensureUser } from './testUtils.js';
 
 const FILE_PREFIX = 'pipeline-svc';
 
@@ -75,19 +76,28 @@ async function clearPipelineAuditLog(): Promise<void> {
 const ACTOR_EMAIL = `${FILE_PREFIX}-actor@example.com`;
 const ACTOR = { id: '', name: 'Test Actor' };
 
+/** Creates or restores this file's actor. ACTOR.id is the FK target for every pipeline. */
+async function ensureActor(): Promise<string> {
+  return ensureUser({
+    email: ACTOR_EMAIL,
+    name: 'Test Actor',
+    role: 'admin',
+    passwordHash: 'x',
+    status: 'active',
+  });
+}
+
 beforeAll(async () => {
   // Upsert a real user so the FK on pipelines.created_by is satisfied.
-  const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO users (email, password_hash, name, role, status)
-     VALUES ($1, 'x', 'Test Actor', 'admin', 'active')
-     ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
-     RETURNING id`,
-    [ACTOR_EMAIL],
-  );
-  ACTOR.id = rows[0].id;
+  ACTOR.id = await ensureActor();
 });
 
 beforeEach(async () => {
+  // Re-established every test: ACTOR.id is the FK target for every pipeline this file
+  // creates, and a sibling spec's bare `DELETE FROM users` (userService.test.ts) would
+  // otherwise leave it dangling. Serial order is duration-derived, so this file cannot
+  // rely on running before that wipe. (MINCRM-704)
+  ACTOR.id = await ensureActor();
   await cleanupTestPipelines();
   await clearPipelineAuditLog();
 });

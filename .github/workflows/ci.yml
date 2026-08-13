@@ -173,6 +173,10 @@ jobs:
               - 'shared/**'
               - 'server/tsconfig*.json'
               - 'client/tsconfig*.json'
+              # Also COPYed into the images, so a change here can break a build that
+              # every host-side job still passes.
+              - 'client/nginx.conf'
+              - 'db/**'
             visual:
               - 'qa/e2e/tests/apps/minicrm/functional/visual/**'
               - 'qa/e2e/snapshots/**'
@@ -487,13 +491,17 @@ jobs:
         if: matrix.name == 'server'
         run: |
           set -euo pipefail
-          expected="v$(tr -d '[:space:]' < .nvmrc)"
+          # Compare MAJORS explicitly. A glob like "v${nvmrc}.*" silently stops matching
+          # if .nvmrc is ever pinned to a full version (24.10.0 -> v24.10.0.* matches
+          # nothing), turning the guard into a permanent false failure.
+          expected_major=$(tr -d '[:space:]' < .nvmrc | cut -d. -f1)
           actual=$(docker run --rm minicrm-server:ci node --version)
-          echo "expected major ${expected}, image reports ${actual}"
-          case "${actual}" in
-            "${expected}".*) ;;
-            *) echo "::error::image Node ${actual} does not match .nvmrc ${expected}"; exit 1 ;;
-          esac
+          actual_major=$(echo "${actual}" | sed 's/^v//' | cut -d. -f1)
+          echo "expected major ${expected_major}, image reports ${actual} (major ${actual_major})"
+          if [ "${expected_major}" != "${actual_major}" ]; then
+            echo "::error::image Node major ${actual_major} does not match .nvmrc ${expected_major}"
+            exit 1
+          fi
 
   # MINCRM-633: PR select mode — runs the existing change-to-test selection
   # pipeline (server/src/scripts/select-tests.ts, pr-tia-6/MINCRM-623-627)
