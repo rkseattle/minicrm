@@ -7,11 +7,14 @@ mattered little while every action was a convenience wrapper, but MINCRM-704 mov
 npm audit gate's ONLY definition into .github/actions/npm-audit/, and a shell error there
 fails a scheduled job whose failure signal is the very thing it exists to provide.
 
-Checks two things that actually break a composite action:
+Checks three things that actually break a composite action:
 
 1. Structure — valid YAML with the keys `uses:` requires (`name`, `description`,
    `runs.using`). A file missing `runs.using` parses fine and is silently inert.
-2. Shell — every `run:` block is extracted and passed to shellcheck. GitHub expression
+2. Per-step requirements — every `run:` step in a composite action must declare `shell:`.
+   This is the likeliest breakage and the one neither other check can see: it is valid
+   YAML and valid shell, and fails only at run time in every caller.
+3. Shell — every `run:` block is extracted and passed to shellcheck. GitHub expression
    syntax is blanked first, since `${{ ... }}` is not valid shell and would otherwise be
    reported as an error.
 
@@ -30,11 +33,17 @@ from pathlib import Path
 
 import yaml
 
-ACTION_GLOB = ".github/actions/*/action.yml"
+# GitHub accepts action.yml and action.yaml equally; a file named .yaml would
+# otherwise be silently unvalidated while the "no actions matched" guard still
+# passed on the .yml siblings. (MINCRM-704)
+ACTION_GLOB = ".github/actions/*/action.y*ml"
 REQUIRED_TOP_LEVEL_KEYS = ("name", "description", "runs")
 # `${{ ... }}` is GitHub expression syntax, not shell. Replaced with a placeholder token
 # so shellcheck sees a syntactically valid script.
-GITHUB_EXPRESSION = re.compile(r"\$\{\{[^}]*\}\}")
+# Non-greedy up to the closing "}}" rather than [^}]*, so an expression containing
+# a brace — ${{ fromJSON('{"a":1}') }} — is still blanked rather than leaving a
+# fragment that shellcheck reports as a spurious error. (MINCRM-704)
+GITHUB_EXPRESSION = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
 EXPRESSION_PLACEHOLDER = "GH_EXPR"
 
 
@@ -50,8 +59,35 @@ def validate_structure(path: str, document: object) -> list[str]:
         if "using" not in runs:
             # Without this the action is silently inert when referenced by `uses:`.
             problems.append(f"{path}: runs.using is missing")
+        problems.extend(validate_composite_steps(path, runs))
     elif "runs" in document:
         problems.append(f"{path}: runs is not a mapping")
+
+    return problems
+
+
+def validate_composite_steps(path: str, runs: dict) -> list[str]:
+    """Checks the per-step requirements GitHub enforces only at run time.
+
+    `shell:` is mandatory on every `run:` step inside a composite action. Omitting it is
+    neither a YAML error nor a shell error, so neither the structural check above nor
+    shellcheck below would catch it — but every caller fails at run time with "Required
+    property is missing: shell". That matters here because .github/actions/npm-audit is
+    the only definition of the audit gate for both ci.yml's blocking job and the nightly
+    security-audit.yml, so this validator reporting OK on a broken action would take out
+    both. (MINCRM-704)
+    """
+    if runs.get("using") != "composite":
+        return []
+
+    problems = []
+    for index, step in enumerate(runs.get("steps") or []):
+        if not isinstance(step, dict):
+            problems.append(f"{path}: runs.steps[{index}] is not a mapping")
+            continue
+        if "run" in step and "shell" not in step:
+            label = step.get("name", f"steps[{index}]")
+            problems.append(f"{path}: composite run step '{label}' is missing required key: shell")
 
     return problems
 

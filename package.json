@@ -6,7 +6,8 @@
     "node": ">=24",
     "npm": ">=11"
   },
-  "//packageManager": "Declarative only — nothing in this repo enables Corepack, so npm does not enforce this. It records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. engines.npm above is the enforced floor. (MINCRM-704)",
+  "//engines": "DECLARATIVE, not enforced. npm honours engines only under engine-strict, and no .npmrc sets it — deliberately: 82 packages in the tree declare node >= 22 and would turn every npm ci into a hard failure. CI pins the real floor via .nvmrc + setup-node. (MINCRM-704)",
+  "//packageManager": "Also declarative — nothing here enables Corepack. Records the npm that ships with the node version .nvmrc pins (node:24-alpine -> npm 11.17.0), which is what CI actually runs. (MINCRM-704)",
   "packageManager": "npm@11.17.0",
   "workspaces": [
     "shared",

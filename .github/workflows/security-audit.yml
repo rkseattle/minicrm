@@ -100,7 +100,14 @@ jobs:
               direction: 'desc',
               per_page: 100,
             });
-            const existing = open.filter((item) => item.pull_request === undefined);
+            // Same author filter close-on-success uses. Without it, a human-opened issue
+            // carrying this label absorbs every failure comment, the bot never opens its
+            // own, and close-on-success then finds nothing of its own to close — leaving
+            // the label permanently pointing at a thread nothing here manages.
+            const existing = open.filter(
+              (item) =>
+                item.pull_request === undefined && item.user?.login === 'github-actions[bot]',
+            );
 
             if (existing.length > 0) {
               await github.rest.issues.createComment({

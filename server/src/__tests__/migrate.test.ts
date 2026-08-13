@@ -276,19 +276,26 @@ describe('runCoverageMigrations', () => {
     // on startup with a duplicate_database error instead of just treating
     // the database as now-existing (which is all any caller actually needs).
     process.env.COVERAGE_DB_NAME = testDbName;
-    // Bound the lock wait well below this test's own budget. The two calls below race for
-    // withMigrationLock's global advisory lock, so one holds it while the other polls —
-    // and MIGRATION_LOCK_TIMEOUT_MS defaults to 60_000, exactly equal to the serial
-    // project's SERIAL_TEST_TIMEOUT_MS. Under full-suite load the holder is slow enough
-    // that the waiter's poll loop approaches its own deadline, and the two 60s budgets
-    // expire together: the test times out at 60s instead of asserting anything. Observed
-    // as a 67s timeout on this test in a full run while it passed in isolation, and only
-    // ever load-dependent — which is what made it look like flake. A shorter bound makes
-    // the losing caller fail fast with the lock error rather than racing the harness, and
-    // the sibling test at :81 already establishes this override as the file's idiom.
-    // (MINCRM-704)
+    // This test is about CREATE DATABASE racing, not about lock contention — the advisory
+    // lock is incidental, and the assertion below requires BOTH callers to resolve.
+    //
+    // It timed out at 60s in a full-suite run while passing 12/12 in isolation. The two
+    // calls race for withMigrationLock's global lock, so one holds it while the other
+    // polls; MIGRATION_LOCK_TIMEOUT_MS defaults to 60_000, exactly equal to the serial
+    // project's SERIAL_TEST_TIMEOUT_MS (vitest.config.ts). Under load the holder runs long
+    // enough that the waiter's poll loop and the harness deadline expire together, so the
+    // test dies before asserting.
+    //
+    // The waiter's budget is therefore raised, not lowered. Lowering it (tried first)
+    // only moves the failure earlier: withMigrationLock THROWS on timeout (migrate.ts:96),
+    // so a bounded waiter makes Promise.all reject and fails this assertion at the shorter
+    // bound instead. Headroom above the harness budget means a lock wait can never be what
+    // this test reports — if it fails now, it failed for the reason it is testing.
+    //
+    // Note the sibling test at :81 sets a SHORT timeout for the opposite reason: there the
+    // rejection is the expected outcome, asserted with rejects.toThrow. (MINCRM-704)
     const originalLockTimeout = process.env.MIGRATION_LOCK_TIMEOUT_MS;
-    process.env.MIGRATION_LOCK_TIMEOUT_MS = '20000';
+    process.env.MIGRATION_LOCK_TIMEOUT_MS = '120000';
     try {
       await expect(
         Promise.all([runCoverageMigrations(), runCoverageMigrations()]),
@@ -312,7 +319,12 @@ describe('runCoverageMigrations', () => {
         process.env.MIGRATION_LOCK_TIMEOUT_MS = originalLockTimeout;
       }
     }
-  });
+    // Explicit budget above the serial project's 60s default, so the harness cannot kill
+    // this test while the loser is still legitimately waiting on the lock. Paired with the
+    // 120s lock timeout above: the lock wait must be able to outlive nothing here. Both
+    // numbers exist only to take timing out of the picture; the assertion is about
+    // CREATE DATABASE. (MINCRM-704)
+  }, 150_000);
 
   it('connects successfully when COVERAGE_DB_PASSWORD contains URL-reserved characters (Greptile PR feedback)', async () => {
     // Regression test: databaseUrl was built via raw string interpolation of

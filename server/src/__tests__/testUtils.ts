@@ -61,10 +61,12 @@ const RESET_DATABASE_REMEDY =
  *    behind the `ON DELETE RESTRICT` owner FKs — surfacing as an FK violation in whatever
  *    unrelated file deletes users next.
  *
- * Call from `beforeAll` AND `beforeEach`, after the spec's own `ensureUser`, passing the
- * fixture's email. Checking after is deliberate: the assertion is not "an admin exists"
- * (which `ensureUser` has just guaranteed and would make this dead code) but "the admin
- * that will actually be resolved is mine".
+ * Normally reached via `claimAdminResolution`, which upserts the fixture and then calls
+ * this to confirm the claim held; specs should prefer that. Exported separately so a test
+ * can assert the guard's own branches, and so a spec that manages its own fixture can
+ * check the property without re-upserting. The assertion is deliberately not "an admin
+ * exists" — an upsert has just guaranteed that — but "the admin that will actually be
+ * resolved is mine".
  *
  * Deliberately a spec-level helper rather than a `globalSetup` check: globalSetup runs
  * once before any worker, so it cannot observe state a later file destroys — which is the

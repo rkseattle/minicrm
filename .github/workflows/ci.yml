@@ -177,6 +177,13 @@ jobs:
               # every host-side job still passes.
               - 'client/nginx.conf'
               - 'db/**'
+              # Per-workspace manifests are COPYed and drive `npm ci` / `npm run build`
+              # inside the image; the root 'package.json' entry above matches the root
+              # file only. qa/migrations is COPYed into the server runtime stage.
+              - 'server/package.json'
+              - 'client/package.json'
+              - 'shared/package.json'
+              - 'qa/migrations/**'
             visual:
               - 'qa/e2e/tests/apps/minicrm/functional/visual/**'
               - 'qa/e2e/snapshots/**'
@@ -486,6 +493,24 @@ jobs:
 
       - name: Build ${{ matrix.name }} image
         run: docker build -f ${{ matrix.dockerfile }} -t minicrm-${{ matrix.name }}:ci .
+
+      # Both Dockerfiles carry their own ARG NODE_VERSION default, so each is a copy that
+      # can drift from .nvmrc independently. The runtime assertion below covers only the
+      # server image (the client's final stage is nginx, with no node to interrogate), so
+      # the defaults are compared textually for both. (MINCRM-704)
+      - name: Assert both Dockerfile Node defaults match .nvmrc
+        run: |
+          set -euo pipefail
+          expected=$(tr -d '[:space:]' < .nvmrc)
+          status=0
+          for dockerfile in server/Dockerfile client/Dockerfile; do
+            actual=$(grep -m1 '^ARG NODE_VERSION=' "${dockerfile}" | cut -d= -f2)
+            if [ "${actual}" != "${expected}" ]; then
+              echo "::error::${dockerfile} pins Node ${actual}, .nvmrc says ${expected}"
+              status=1
+            fi
+          done
+          exit "${status}"
 
       - name: Assert the image runs the Node version .nvmrc pins
         if: matrix.name == 'server'
