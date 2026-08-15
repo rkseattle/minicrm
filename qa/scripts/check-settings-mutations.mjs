@@ -170,14 +170,17 @@ const MUTATION_EXEMPT = [
     file: 'apps/minicrm/functional/visual/visual-regression.spec.ts',
     reason: 'not-live',
     // Writes non-default nav layouts (setNavLayoutViaAPI 'left'/'hamburger'),
-    // but runs in NO enabled CI job: e2e-functional excludes it via
-    // --grep-invert "visual-regression|serial", and update-visual-snapshots is
-    // hard-disabled with `if: false`. Deliberately recorded as an allow-list
-    // entry rather than a silent basename bypass (which is what the bash
-    // version did) so that re-enabling the visual job surfaces this decision.
-    // If that job is ever re-enabled, this file must be tagged and registered:
-    // its nav_layout writes would race navigation, accessibility and
-    // reports-nav.
+    // but never CONCURRENTLY with anything that reads them:
+    //   - ci.yml's e2e-functional excludes it via
+    //     --grep-invert "visual-regression|serial";
+    //   - ci.yml's update-visual-snapshots is hard-disabled with `if: false`;
+    //   - update-baselines.yml DOES run it, but only on workflow_dispatch, alone
+    //     and at --workers=1 in its own stack — so no other spec is running.
+    // Deliberately recorded as an allow-list entry rather than a silent basename
+    // bypass (which is what the bash version did), so that enabling it in a
+    // shared-stack job surfaces this decision. If that happens the file must be
+    // tagged and registered: its nav_layout writes would race navigation,
+    // accessibility and reports-nav.
   },
 ];
 
@@ -254,7 +257,7 @@ const RESET_ARGUMENT = /(?:\(|,)\s*(?:'(?:top|en)'|null)\s*(?:,|\))/;
  * Both are needed — resetToTopNav takes no value argument at all, so a
  * call-site-only rule would report it as a mutation.
  */
-const RESET_LITERAL = /:\s*'(?:top|en)'|restClient\s*\.\s*delete/;
+const RESET_LITERAL = /:\s*'(?:top|en)'|restClient\s*\.\s*delete\s*(?:<[^>]*>)?\s*\(\s*`[^`]*\$\{/;
 
 /**
  * Cleanup helpers whose entire purpose is to RESTORE known-good defaults.
@@ -414,7 +417,26 @@ export function findSerialBlocks(source) {
 
   let match;
   while ((match = open.exec(clean)) !== null) {
+    // Skip an options object between the title and the callback —
+    // `test.describe.serial('t', { tag: [...] }, () => {...})`. Taking the first
+    // brace after the title lands on THAT object, so the block range would end
+    // at its close and every test in the real body would fall outside it,
+    // reporting a correctly-tagged file as a violation. Same hazard, same fix as
+    // the parameter-list skip in deriveMutatingWrappers.
     let i = clean.indexOf('{', match.index);
+    const arrow = clean.indexOf('=>', match.index);
+    if (i !== -1 && arrow !== -1 && i < arrow) {
+      let optionsDepth = 0;
+      let scan = i;
+      for (; scan < clean.length; scan += 1) {
+        if (clean[scan] === '{') optionsDepth += 1;
+        else if (clean[scan] === '}') {
+          optionsDepth -= 1;
+          if (optionsDepth === 0) break;
+        }
+      }
+      i = clean.indexOf('{', scan + 1);
+    }
     if (i === -1) continue;
     let depth = 0;
     let end = i;
@@ -584,19 +606,52 @@ export function scanSpec(displayPath, source, wrappers) {
   // is "the afterEach BODY calls something that writes a shared setting" —
   // restoration by any means, verified by inspecting the hook rather than
   // trusting its presence.
+  // Helpers defined IN THIS FILE whose own body writes a shared endpoint.
+  // mfa.spec.ts's resetMfaRequired() is exactly this: a local function doing the
+  // real restore, called from a finally. Accepting it by NAME alone would be
+  // fail-open (clearCookies would qualify); accepting it because its body
+  // provably writes the endpoint is not.
+  const localRestorers = [...clean.matchAll(/(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/g)]
+    .map((match) => {
+      const bodyStart = clean.indexOf('{', match.index + match[0].length - 1);
+      if (bodyStart === -1) return null;
+      let depth = 0;
+      let end = bodyStart;
+      for (; end < clean.length; end += 1) {
+        if (clean[end] === '{') depth += 1;
+        else if (clean[end] === '}') {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+      }
+      const body = clean.slice(bodyStart, end + 1);
+      return MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body) ? match[1] : null;
+    })
+    .filter((name) => name !== null);
+
   const afterEachBodies = extractHookBodies(clean, 'afterEach');
-  const restoresInAfterEach = afterEachBodies.some(
-    (body) =>
-      /\bensureSystemDefaults\s*\(/.test(body) ||
-      /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(body) ||
-      wrappers.mutating.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(body)) ||
-      // A DIRECT write to a shared endpoint inside the afterEach is restoration
-      // too, and is how several specs do it: pipeline-stages.spec.ts PUTs back
-      // the order it captured in beforeEach, and mfa.spec.ts PATCHes
-      // mfa_required to false. Recognising only named helpers would report both
-      // as uncleaned while they restore correctly.
-      (MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body)),
-  );
+  /**
+   * Does this block actually RESTORE a shared setting?
+   *
+   * A name-shaped match alone is not enough, and accepting one is fail-OPEN:
+   * clearCookies(), clearFilters() and resetPassword() all exist in this suite
+   * and restore nothing, so a spec could satisfy the cleanup requirement with a
+   * helper that never touches a settings row — the exact escape this guard
+   * exists to close. The callee must be either ensureSystemDefaults, a DERIVED
+   * mutating wrapper (which by construction writes a shared endpoint), or a
+   * direct REST write to one.
+   *
+   * The direct-write arm matters: pipeline-stages.spec.ts PUTs back the order it
+   * captured in beforeEach, and mfa.spec.ts PATCHes mfa_required to false —
+   * neither goes through a named helper.
+   */
+  const restoresSharedState = (body) =>
+    /\bensureSystemDefaults\s*\(/.test(body) ||
+    wrappers.mutating.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(body)) ||
+    localRestorers.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(body)) ||
+    (MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body));
+
+  const restoresInAfterEach = afterEachBodies.some(restoresSharedState);
 
   // Restricted to hook bodies. Scanning the whole file would accept unrelated
   // helpers that merely match the name shape — clearCookies(), clearFilters(),
@@ -611,18 +666,9 @@ export function scanSpec(displayPath, source, wrappers) {
   // recognition to hooks alone would report it as uncleaned while it cleans up
   // correctly.
   const finallyBlocks = clean.match(/\bfinally\s*\{[\s\S]{0,600}?\}/g) ?? [];
-  const restoresInFinally = finallyBlocks.some(
-    (body) =>
-      /\bensureSystemDefaults\s*\(/.test(body) ||
-      /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(body) ||
-      (MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body)),
-  );
+  const restoresInFinally = finallyBlocks.some(restoresSharedState);
 
-  const hasCleanup =
-    /\bensureSystemDefaults\s*\(/.test(hookBodies) ||
-    /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(hookBodies) ||
-    restoresInAfterEach ||
-    restoresInFinally;
+  const hasCleanup = restoresSharedState(hookBodies) || restoresInAfterEach || restoresInFinally;
 
   if (!hasCleanup) {
     findings.push(
@@ -725,13 +771,17 @@ export async function resetAiSettings(restClient) {
   ];
   const missing = expectWrappers.filter((w) => !derived.mutating.includes(w));
   const extra = derived.mutating.filter((w) => !expectWrappers.includes(w));
-  // resetAiSettings is deliberately ABSENT: it writes an explicit default
-  // payload (`{ enabled: false }`) rather than one of the bare literals
-  // RESET_LITERAL recognizes, so body inspection alone cannot classify it. It is
-  // neutralized by RESET_HELPER_NAME instead — which is exactly why that second
-  // mechanism exists, and the "domain reset helper alone" case above pins the
-  // behaviour that matters.
-  const expectAlwaysReset = ['resetToTopNav', 'ensureSystemDefaults', 'resetAiFieldExclusion'];
+  // resetAiSettings and ensureSystemDefaults are deliberately ABSENT. Neither is
+  // classifiable by body inspection alone: resetAiSettings writes an explicit
+  // default payload (`{ enabled: false }`) rather than a bare literal, and
+  // ensureSystemDefaults DELETEs fixed singleton paths — which no longer count
+  // as an automatic reset, because a fixed-path DELETE of a settings row is a
+  // mutation in the general case (only an interpolated per-record path is
+  // inherently teardown). Both are neutralized by RESET_HELPER_NAME at the call
+  // site instead, which is exactly why that second mechanism exists; the
+  // "calling only the cleanup helper" and "domain reset helper alone" cases
+  // above pin the behaviour that matters.
+  const expectAlwaysReset = ['resetToTopNav', 'resetAiFieldExclusion'];
   const resetMismatch =
     JSON.stringify([...derived.alwaysReset].sort()) !== JSON.stringify([...expectAlwaysReset].sort());
 
@@ -895,6 +945,30 @@ export async function resetAiSettings(restClient) {
       expect: 1,
     },
     {
+      name: 'a no-op clear*() in a hook does NOT satisfy cleanup (fail-open guard)',
+      path: 'apps/minicrm/functional/fo/fo.spec.ts',
+      src: `test.beforeEach(async ({ page }) => { await clearCookies({ page }); });
+      test('@functional @serial FO1: thing', async ({ restClient }) => {
+        await setAiEnabled(restClient, true);
+      });`,
+      expect: 1,
+    },
+    {
+      name: 'a LOCAL helper whose body restores the endpoint DOES satisfy cleanup',
+      path: 'apps/minicrm/functional/lr/lr.spec.ts',
+      src: `async function resetTheThing(restClient) {
+        await restClient.patch('/api/v1/settings/mfa-required', { mfa_required: false });
+      }
+      test('@functional @serial LR1: thing', async ({ restClient }) => {
+        try {
+          await setAiEnabled(restClient, true);
+        } finally {
+          await resetTheThing(restClient);
+        }
+      });`,
+      expect: 0,
+    },
+    {
       name: 'a bare afterEach does NOT satisfy the cleanup requirement',
       path: 'apps/minicrm/functional/be/be.spec.ts',
       src: `test.afterEach(async () => { /* tears down test data only */ });
@@ -902,6 +976,14 @@ export async function resetAiSettings(restClient) {
         await setAiEnabled(restClient, true);
       });`,
       expect: 1,
+    },
+    {
+      name: 'describe.serial with an options object is parsed correctly',
+      path: 'apps/minicrm/functional/opt/opt.spec.ts',
+      src: `test.describe.serial('Block', { tag: ['@functional'] }, () => {
+        test('@functional @serial OPT1: thing', async () => {});
+      });`,
+      expect: 0,
     },
     {
       name: "describe.configure({ mode: 'serial' }) untagged is caught (pipeline-stages shape)",
