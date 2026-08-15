@@ -328,7 +328,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
   // Admin uploads the attachment
   await loginAsAdmin(restClient);
 
-  const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
+  const rep = await createTestUser(testData, restClient, { role: 'rep', password: REP_PASSWORD });
 
   const contact = await createTestContact(testData, restClient);
 

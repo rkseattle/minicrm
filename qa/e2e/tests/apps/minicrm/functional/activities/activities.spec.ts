@@ -288,7 +288,7 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
 
   // Create a rep user (admin session).
   const repPassword = 'RepPassword1!';
-  const repUser = await createTestUser(restClient, {
+  const repUser = await createTestUser(testData, restClient, {
     name: `F5MY2 Rep ${uniqueSuffix}`,
     email: `f5my2-rep-${uniqueSuffix}@example.com`,
     role: 'rep',
@@ -349,7 +349,7 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const repPassword = 'RepPassword1!';
-  const rep = await createTestUser(restClient, {
+  const rep = await createTestUser(testData, restClient, {
     name: `F5MY3 Rep ${uniqueSuffix}`,
     email: `f5my3-rep-${uniqueSuffix}@example.com`,
     role: 'rep',

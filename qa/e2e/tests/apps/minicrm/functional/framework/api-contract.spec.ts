@@ -94,14 +94,14 @@ test(
 test(
   'CT-3: createTestUser validates { user, inviteToken } envelope against inviteUserResponseEnvelopeSchema',
   { tag: ['@functional'] },
-  async ({ restClient }) => {
+  async ({ testData, restClient }) => {
     await loginAsAdmin(restClient);
 
     let createdUserId: string | undefined;
     try {
       // Schema validation inside createTestUser catches any rename of `user`→`data`,
       // missing `inviteToken`, or role/status enum change.
-      const user = await createTestUser(restClient, { role: 'rep' });
+      const user = await createTestUser(testData, restClient, { role: 'rep' });
       createdUserId = user.id;
 
       expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);

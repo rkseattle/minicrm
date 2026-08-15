@@ -55,6 +55,7 @@ import {
   loginAndVerify,
 } from '@apps/minicrm/helpers.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
 // MINCRM-192: Permissions tests log in via the UI as dynamically-created rep users,
 // not as admin. Browser contexts in this spec must start unauthenticated so the
@@ -104,17 +105,23 @@ const TEST_USER_PASSWORD = 'F7TestPass1!';
 /**
  * Creates an activated test user authenticated as admin.
  *
+ * Teardown is registered by `createTestUser` itself, so the user is deactivated
+ * after the test even on failure. The `finally` deactivate at each call site
+ * below is redundant but harmless. (MINCRM-668)
+ *
+ * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
  * @param role - Role to assign.
  * @returns Created user row and their password.
  */
 async function createActivatedUser(
+  testData: TestDataManager,
   restClient: RestClient,
   role: 'admin' | 'rep' = 'rep',
 ): Promise<{ user: UserRow; password: string }> {
   // crypto.randomUUID() is cryptographically random — collision-safe under high parallelism.
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
-  const user = await createTestUser(restClient, {
+  const user = await createTestUser(testData, restClient, {
     name: `F7 User ${uniqueSuffix}`,
     email: `f7-user-${uniqueSuffix}@example.com`,
     role,
@@ -166,7 +173,7 @@ test('@functional F7-AA5: admin can read a contact owned by a rep', async ({
   testData,
 }) => {
   // Create a rep user and a contact owned by that rep.
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repRequestContext = await playwright.request.newContext();
   const repClient = new RestClient(repRequestContext);
 
@@ -195,7 +202,7 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
   restClient,
   testData,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repRequestContext = await playwright.request.newContext();
   const repClient = new RestClient(repRequestContext);
 
@@ -231,7 +238,7 @@ test('@functional F7-RP1: rep can create and read their own contact', async ({
   restClient,
   testData,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -257,8 +264,8 @@ test('@functional F7-RP2: rep can read a contact owned by another rep', async ({
   restClient,
   testData,
 }) => {
-  const { user: rep1 } = await createActivatedUser(restClient);
-  const { user: rep2 } = await createActivatedUser(restClient);
+  const { user: rep1 } = await createActivatedUser(testData, restClient);
+  const { user: rep2 } = await createActivatedUser(testData, restClient);
 
   const rep1Context = await playwright.request.newContext();
   const rep1Client = new RestClient(rep1Context);
@@ -294,7 +301,7 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
   restClient,
   testData,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -329,10 +336,11 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
 // ---------------------------------------------------------------------------
 
 test('@functional F7-FU1: rep navigating directly to /users is redirected to dashboard', async ({
+  testData,
   page,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
 
   try {
     // Log in as rep via UI.
@@ -351,10 +359,11 @@ test('@functional F7-FU1: rep navigating directly to /users is redirected to das
 });
 
 test('@functional F7-FU2: rep navigating directly to /admin/settings is redirected to dashboard', async ({
+  testData,
   page,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
 
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
@@ -372,10 +381,11 @@ test('@functional F7-FU2: rep navigating directly to /admin/settings is redirect
 });
 
 test('@functional F7-FU3: rep navigating directly to /admin/automation is redirected to dashboard', async ({
+  testData,
   page,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
 
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
@@ -393,10 +403,11 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
 });
 
 test('@functional F7-FU4: rep navigating directly to /reports can access the reports page', async ({
+  testData,
   page,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
 
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
@@ -418,8 +429,12 @@ test('@functional F7-FU4: rep navigating directly to /reports can access the rep
   }
 });
 
-test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page, restClient }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+test('@functional F7-FU5: rep does not see admin-only nav links', async ({
+  testData,
+  page,
+  restClient,
+}) => {
+  const { user: rep } = await createActivatedUser(testData, restClient);
 
   try {
     await login({ email: rep.email, password: TEST_USER_PASSWORD }, { page });
@@ -454,10 +469,11 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({ page,
 // ---------------------------------------------------------------------------
 
 test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -482,10 +498,11 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
 });
 
 test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -514,11 +531,12 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
 });
 
 test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
-  const { user: target } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
+  const { user: target } = await createActivatedUser(testData, restClient);
 
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
@@ -545,11 +563,12 @@ test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC
 });
 
 test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
-  const { user: target } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
+  const { user: target } = await createActivatedUser(testData, restClient);
 
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
@@ -576,12 +595,13 @@ test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 4
 });
 
 test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   // Create a second rep and deactivate them so there is a valid reactivation target.
-  const { user: target } = await createActivatedUser(restClient);
+  const { user: target } = await createActivatedUser(testData, restClient);
   await restClient.patch(`/api/v1/users/${target.id}/deactivate`);
 
   const repContext = await playwright.request.newContext();
@@ -610,11 +630,12 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
 });
 
 test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
-  const { user: target } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
+  const { user: target } = await createActivatedUser(testData, restClient);
 
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
@@ -643,10 +664,11 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
 });
 
 test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -672,10 +694,11 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
 });
 
 test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -706,10 +729,11 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
 });
 
 test('@functional F7-FA9: rep calling PATCH /api/settings/default-language receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -734,10 +758,11 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
 });
 
 test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 403 (AC1)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 
@@ -770,8 +795,8 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
   restClient,
   testData,
 }) => {
-  const { user: rep1 } = await createActivatedUser(restClient);
-  const { user: rep2 } = await createActivatedUser(restClient);
+  const { user: rep1 } = await createActivatedUser(testData, restClient);
+  const { user: rep2 } = await createActivatedUser(testData, restClient);
 
   const rep1Context = await playwright.request.newContext();
   const rep1Client = new RestClient(rep1Context);
@@ -822,10 +847,11 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
 // ---------------------------------------------------------------------------
 
 test('@functional F7-EH1: forbidden API response includes structured error body', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { user: rep } = await createActivatedUser(restClient);
+  const { user: rep } = await createActivatedUser(testData, restClient);
   const repContext = await playwright.request.newContext();
   const repClient = new RestClient(repContext);
 

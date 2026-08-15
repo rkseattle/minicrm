@@ -49,12 +49,13 @@ const USER_PASSWORD = 'MfaTest1!Secure';
 // ---------------------------------------------------------------------------
 
 test('@functional F8-S1: enable MFA via profile page — QR → verify → recovery codes → enabled badge', async ({
+  testData,
   page,
   restClient,
 }) => {
   // Create a test user as admin.
   await loginAsAdmin(restClient);
-  const user = await createTestUser(restClient, { password: USER_PASSWORD });
+  const user = await createTestUser(testData, restClient, { password: USER_PASSWORD });
 
   // Re-authenticate restClient as the test user so the dev/totp-code endpoint
   // is scoped to that user's pending secret during setup.
@@ -81,11 +82,12 @@ test('@functional F8-S1: enable MFA via profile page — QR → verify → recov
 // ---------------------------------------------------------------------------
 
 test('@functional F8-LS1: TOTP login — password ok → MFA modal → TOTP code → session established', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const user = await createTestUser(restClient, { password: USER_PASSWORD });
+  const user = await createTestUser(testData, restClient, { password: USER_PASSWORD });
 
   // Pre-enable MFA via API (restClient re-authenticated as the user).
   await restClient.post('/api/v1/auth/login', { email: user.email, password: USER_PASSWORD });
@@ -108,11 +110,12 @@ test('@functional F8-LS1: TOTP login — password ok → MFA modal → TOTP code
 // ---------------------------------------------------------------------------
 
 test('@functional F8-LS2: recovery code login — MFA modal → switch mode → recovery code → session established', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const user = await createTestUser(restClient, { password: USER_PASSWORD });
+  const user = await createTestUser(testData, restClient, { password: USER_PASSWORD });
 
   await restClient.post('/api/v1/auth/login', { email: user.email, password: USER_PASSWORD });
   const { recoveryCodes } = await enableMfaViaApi(restClient);
@@ -138,11 +141,12 @@ test('@functional F8-LS2: recovery code login — MFA modal → switch mode → 
 // ---------------------------------------------------------------------------
 
 test('@functional F8-D1: disable MFA via profile page — password confirmed → enable button visible', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const user = await createTestUser(restClient, { password: USER_PASSWORD });
+  const user = await createTestUser(testData, restClient, { password: USER_PASSWORD });
 
   await restClient.post('/api/v1/auth/login', { email: user.email, password: USER_PASSWORD });
   await enableMfaViaApi(restClient);

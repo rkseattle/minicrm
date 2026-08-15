@@ -32,7 +32,6 @@ import {
   type ContactRow,
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { createTestContact, createTestUser, createTestAdmin } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
 
@@ -66,7 +65,7 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   // Create a second rep to reassign to.
-  const newOwner = await createTestUser(restClient, {
+  const newOwner = await createTestUser(testData, restClient, {
     name: `BK1 Owner ${uniqueSuffix}`,
     email: `bk1-owner-${uniqueSuffix}@example.com`,
     role: 'rep',
@@ -115,9 +114,6 @@ test('@functional F2-BK1: select multiple contacts → bulk reassign → new own
 
   const c2Updated = (await getContactById(restClient, c2.id)) as ContactWithOwner;
   expect(c2Updated.owner_id, 'c2 should have new owner').toBe(newOwner.id);
-
-  // Deactivate the temp user (users cannot be hard-deleted).
-  await deactivateUser(restClient, newOwner.id);
 });
 
 test('@functional F2-BK2: select multiple contacts → bulk delete → contacts return 404 via API', async ({

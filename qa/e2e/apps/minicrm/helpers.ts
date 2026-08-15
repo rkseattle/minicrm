@@ -20,6 +20,7 @@
 
 import type { Page, BrowserContext } from '@playwright/test';
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { RestClientError } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
 import { contactResponseEnvelopeSchema } from '@minicrm/shared/schemas/contactSchema.js';
@@ -37,7 +38,7 @@ import {
   deactivateUser,
   suppressUserOnboarding,
 } from '@behaviors/minicrm/users.behaviors.js';
-import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
+import { loginAsAdmin, resolveAdminCredentials } from '@behaviors/minicrm/auth.behaviors.js';
 
 /**
  * The UTC calendar day `dayOffset` days from today, as YYYY-MM-DD.
@@ -178,6 +179,62 @@ export function registerAdminTeardown(
     // into a noisy false alarm. A genuine failure still leaks, exactly as it
     // would for a plain register() entry, which also logs and continues.
     await restClient.delete(deletePath).catch(() => undefined);
+  });
+}
+
+/**
+ * Extracts the created user's id from an invite response whose shape has not
+ * been validated yet.
+ *
+ * Checks the documented location first, then falls back to any single-level
+ * object property carrying a string `id`. The fallback exists because teardown
+ * registration must survive envelope drift: the server has already committed
+ * the row by the time the client validates, so a rename like `user` → `data`
+ * must not cost us the id we need to clean it up. Returns undefined when no id
+ * is discoverable, in which case there is nothing registrable. (MINCRM-668)
+ *
+ * @param body - The raw, unvalidated response body.
+ * @returns The user id, or undefined if none could be found.
+ */
+function findCreatedUserId(body: unknown): string | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+
+  const record = body as Record<string, unknown>;
+  const documented = (record['user'] as { id?: unknown } | undefined)?.id;
+  if (typeof documented === 'string') return documented;
+
+  for (const value of Object.values(record)) {
+    if (typeof value === 'object' && value !== null) {
+      const candidate = (value as { id?: unknown }).id;
+      if (typeof candidate === 'string') return candidate;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Registers a user for deactivation at teardown.
+ *
+ * Users cannot be hard-deleted, so cleanup is a PATCH rather than the DELETE a
+ * plain `testData.register()` entry would issue. Re-authenticates as admin
+ * first: tests routinely leave `restClient` authenticated as the user they just
+ * created, and deactivation is admin-only. (MINCRM-415, MINCRM-668)
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - The fixture RestClient, in any auth state. Must outlive
+ *   the test body — the callback runs after it.
+ * @param userId - The created user's id.
+ * @param label - Teardown-key prefix identifying the kind of user.
+ */
+function registerUserDeactivation(
+  testData: TestDataManager,
+  restClient: RestClient,
+  userId: string,
+  label = 'user',
+): void {
+  testData.registerCustomTeardown(`deactivate-${label}-${userId}`, async () => {
+    await loginAsAdmin(restClient);
+    await deactivateUser(restClient, userId);
   });
 }
 
@@ -554,19 +611,37 @@ export interface CreateUserOverrides {
  * via POST /api/users/set-password with the invite token, and returns the
  * created user.
  *
- * **Teardown note:** Users cannot be hard-deleted; `TestDataManager` tears down
- * via DELETE which does not match `PATCH /api/users/:id/deactivate`. This helper
- * does NOT register with TestDataManager. Callers must deactivate the user
- * manually, e.g. via a `try/finally` block with `PATCH /api/users/:id/deactivate`.
+ * **Teardown:** registered automatically. Users cannot be hard-deleted, so
+ * cleanup is a `registerCustomTeardown` entry issuing
+ * `PATCH /api/users/:id/deactivate` rather than a plain `register()` DELETE.
+ * The entry is registered as soon as the server reports an id — before the
+ * response envelope is validated, and before set-password and onboarding — so
+ * every step that can throw after the row exists is covered.
  *
- * @param restClient - Authenticated RestClient instance (must be admin).
+ * `testData` is required rather than optional deliberately: an optional
+ * parameter would leave the unregistered path reachable, and forgetting it at
+ * one of the call sites is the defect this helper had. (MINCRM-668)
+ *
+ * @param testData - TestDataManager instance for the current test.
+ * @param restClient - The fixture RestClient, authenticated as admin. Must
+ *   outlive the test body: the teardown callback closes over it and runs after
+ *   the test, so a client from `playwright.request.newContext()` that the test
+ *   disposes would leave the callback throwing against a dead context.
  * @param overrides - Optional field overrides.
  * @returns The created user as returned by the server.
  */
 export async function createTestUser(
+  testData: TestDataManager,
   restClient: RestClient,
   overrides: CreateUserOverrides = {},
 ): Promise<TestUser> {
+  // Resolve admin credentials BEFORE creating anything. This read used to sit
+  // just above the onboarding step, where throwing left an invited user behind
+  // that nothing could clean up — the registered teardown calls loginAsAdmin,
+  // which needs the same variable and would throw too. Failing here means no
+  // row is created, so there is nothing to leak. (MINCRM-668)
+  resolveAdminCredentials('createTestUser');
+
   // crypto.randomUUID() is cryptographically random — collision-safe under high parallelism.
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const payload = {
@@ -575,13 +650,40 @@ export async function createTestUser(
     role: overrides.role ?? 'rep',
   };
 
-  // Server returns { user, inviteToken } — validate the envelope (MINCRM-370).
+  // Post WITHOUT the schema, then validate separately below. The server commits
+  // the user row before the client validates, so passing `schema` here would
+  // throw on envelope drift with the row already created and no teardown
+  // registered — leaking exactly the user this helper exists to clean up.
+  // api-contract.spec.ts CT-3 exercises that failure deliberately. (MINCRM-668)
   const response = await restClient.post<{ user: TestUser; inviteToken: string }>(
     '/api/v1/users/invite',
     payload,
-    { schema: inviteUserResponseEnvelopeSchema },
   );
-  const { user, inviteToken } = response.body;
+
+  // Register as soon as an id is readable, before any assertion about shape.
+  // Search the envelope for the id rather than hard-coding `body.user.id`: the
+  // likeliest drift is the `user` key itself being renamed, and a TypeError
+  // there would skip registration and leak the row the server already
+  // committed — the very failure this ordering exists to prevent.
+  const createdId = findCreatedUserId(response.body);
+  if (createdId !== undefined) {
+    registerUserDeactivation(testData, restClient, createdId);
+  }
+
+  // Now enforce the response contract (MINCRM-370). A failure here still tears
+  // the user down, because registration already happened. RestClientError
+  // rather than a plain Error so callers keep the status, body, and structured
+  // Zod detail that `parseResponse` would have given them.
+  const parsed = inviteUserResponseEnvelopeSchema.safeParse(response.body);
+  if (!parsed.success) {
+    throw new RestClientError(
+      response.status,
+      response.body,
+      parsed.error,
+      `POST /api/v1/users/invite response failed schema validation: ${parsed.error.message}`,
+    );
+  }
+  const { user, inviteToken } = parsed.data;
 
   // Use POST /api/users/set-password with the invite token rather than
   // admin-set-password. admin-set-password forces must_change_password=true,
@@ -593,16 +695,15 @@ export async function createTestUser(
 
   // Suppress the onboarding widget for this test user so it does not appear
   // as a z-50 fixed overlay and intercept pointer events in other tests. (MINCRM-410)
-  const adminEmail = process.env['E2E_ADMIN_EMAIL'] ?? 'admin@example.com';
-  const adminPassword = process.env['E2E_ADMIN_PASSWORD'];
-  if (!adminPassword) throw new Error('[createTestUser] E2E_ADMIN_PASSWORD is not set');
   await restClient.post('/api/v1/auth/login', { email: user.email, password });
   try {
     await restClient.put('/api/v1/settings/onboarding', { onboarding_completed: true });
   } finally {
-    // Always re-authenticate as admin so the caller's restClient is back in admin context,
-    // even if the onboarding PUT throws.
-    await restClient.post('/api/v1/auth/login', { email: adminEmail, password: adminPassword });
+    // Always re-authenticate as admin so the caller's restClient is back in admin
+    // context, even if the onboarding PUT throws. loginAsAdmin rather than a raw
+    // POST: it retries once on ECONNRESET, which the set-password bcrypt hash a
+    // few lines above makes this the likeliest call site to need.
+    await loginAsAdmin(restClient);
   }
 
   return { ...user, status: 'active' };
@@ -655,13 +756,7 @@ export async function createTestRep(
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
 
-  // Register deactivation as a custom teardown — users cannot be hard-deleted.
-  // Re-auth as admin first: tests may re-auth restClient as the rep for data
-  // creation, and deactivateUser requires admin. (MINCRM-415)
-  testData.registerCustomTeardown(`deactivate-rep-${user.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, user.id);
-  });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   return { userId: user.id, email, password };
 }
@@ -693,10 +788,7 @@ export async function createTestAdmin(
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
 
-  testData.registerCustomTeardown(`deactivate-admin-${user.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, user.id);
-  });
+  registerUserDeactivation(testData, restClient, user.id, 'admin');
 
   return { userId: user.id, email, password };
 }

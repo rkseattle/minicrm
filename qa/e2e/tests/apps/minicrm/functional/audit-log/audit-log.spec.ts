@@ -226,11 +226,12 @@ test('@functional F12-AL4: Audit log — pagination controls always visible (MIN
 });
 
 test('@functional F12-AL5: Rep accessing audit log via gRPC is blocked with PERMISSION_DENIED', async ({
+  testData,
   restClient,
   grpcClient,
 }) => {
   // Create a rep dynamically so this test does not depend on E2E_REP_PASSWORD being set
-  const rep = await createTestUser(restClient, { role: 'rep', password: REP_PASSWORD });
+  const rep = await createTestUser(testData, restClient, { role: 'rep', password: REP_PASSWORD });
 
   try {
     await loginAs(restClient, rep.email, REP_PASSWORD);
