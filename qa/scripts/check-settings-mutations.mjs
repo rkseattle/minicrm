@@ -1040,9 +1040,25 @@ function main() {
   // here because it fails safe on its own: the entry stops matching, so the
   // block is reported as unallow-listed and the operator is told. It is the
   // missing FILE that is silent, because there is then no block to report.
-  const staleAllowlist = SELF_SERIAL_ALLOWLIST.filter(
+  const staleAllowlist = [...SELF_SERIAL_ALLOWLIST, ...MUTATION_EXEMPT].filter(
     (entry) => !existsSync(join(testsDir, entry.file)),
   );
+
+  // Both lists carry a `reason`; both are held to the same vocabulary. An
+  // unrecognised reason means an exemption was added without one of the verified
+  // justifications, which is the shape this guard exists to make impossible.
+  const badReasons = [...SELF_SERIAL_ALLOWLIST, ...MUTATION_EXEMPT].filter(
+    (entry) => !ALLOWED_REASONS.has(entry.reason),
+  );
+  if (badReasons.length > 0) {
+    console.error(
+      `FAIL: allow-list entr(ies) with an unrecognised reason: ${badReasons
+        .map((e) => `${e.file} (${e.reason})`)
+        .join(', ')}.`,
+    );
+    console.error(`Accepted reasons: ${[...ALLOWED_REASONS].join(', ')}.`);
+    process.exit(1);
+  }
   if (staleAllowlist.length > 0) {
     console.error(
       `FAIL: SELF_SERIAL_ALLOWLIST names file(s) that no longer exist: ${staleAllowlist

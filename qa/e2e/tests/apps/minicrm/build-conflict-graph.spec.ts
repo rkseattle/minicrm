@@ -16,6 +16,7 @@ import {
 import {
   RESOURCE_REGISTRY,
   collapseRegistryToFileTouches,
+  ENSURE_SYSTEM_DEFAULTS_KEYS,
 } from '@apps/minicrm/resource-registry.js';
 
 test.describe('conflict-graph pipeline with real resource-registry data', () => {
@@ -70,12 +71,31 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
     expect(graph.get(nav)?.has(a11y)).toBe(true);
   });
 
-  test('branding.spec.ts and visibility.spec.ts do not conflict (disjoint resources)', () => {
+  test('feature-flags.spec.ts and visibility.spec.ts do not conflict (disjoint resources)', () => {
+    // A genuinely disjoint pair: feature flags and custom roles on one side, the
+    // visibility policy on the other, with neither calling ensureSystemDefaults.
+    // branding/visibility used to be this example and no longer is — branding
+    // calls ensureSystemDefaults, which resets the visibility row (see the
+    // composite key). That edge is correct, so the example moved rather than the
+    // assertion being weakened. (MINCRM-705)
+    const touches = collapseRegistryToFileTouches();
+    const graph = buildConflictGraph(touches);
+    const featureFlags = 'qa/e2e/tests/apps/minicrm/functional/feature-flags/feature-flags.spec.ts';
+    const visibility = 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts';
+    expect(graph.get(featureFlags)?.has(visibility)).toBe(false);
+  });
+
+  test('an ensureSystemDefaults caller conflicts with a file touching ANY row it resets', () => {
+    // The composite key's whole point. branding.spec.ts calls
+    // ensureSystemDefaults, which PUTs the visibility policy back to 'org';
+    // visibility.spec.ts owns that row. Modeling only pipeline_stages_reviewed
+    // left this edge undrawn and put two such pairs in workers=2 groups with a
+    // live cross-file race. (MINCRM-705)
     const touches = collapseRegistryToFileTouches();
     const graph = buildConflictGraph(touches);
     const branding = 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts';
     const visibility = 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts';
-    expect(graph.get(branding)?.has(visibility)).toBe(false);
+    expect(graph.get(branding)?.has(visibility)).toBe(true);
   });
 
   test('branding.spec.ts and sso.spec.ts DO conflict (both reset pipeline_stages_reviewed)', () => {
@@ -104,10 +124,17 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
       (t) => t.file === 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
     );
     expect(reportsNav, 'reports-nav.spec.ts missing from collapsed touches').toBeDefined();
-    expect([...(reportsNav?.writes ?? [])].sort()).toEqual([
-      'settings.nav_layout',
-      'settings.pipeline_stages_reviewed',
-    ]);
+    const writes = [...(reportsNav?.writes ?? [])];
+    // Its own title-scoped key survives the union...
+    expect(writes).toContain('settings.nav_layout');
+    // ...and so does every row the composite key expands to. Both halves matter:
+    // dropping either would co-schedule the file with something it races.
+    for (const key of ENSURE_SYSTEM_DEFAULTS_KEYS) {
+      expect(writes, `composite key did not expand to ${key}`).toContain(key);
+    }
+    // The composite itself must NOT survive — it is a stand-in, and leaving it
+    // in would make it conflict only with other composites.
+    expect(writes).not.toContain('settings.ensure_system_defaults');
   });
 
   test('partitioning never places two conflicting registry files in the same group', () => {

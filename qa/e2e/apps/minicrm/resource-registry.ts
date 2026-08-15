@@ -37,6 +37,10 @@ export type ResourceKey =
   | 'settings.ai_session_retention'
   | 'settings.default_language'
   | 'settings.email_notifications_enabled'
+  // Reset by ensureSystemDefaults() and by nothing else today. Modeled so the
+  // composite key below expands to the helper's complete write set rather than
+  // a near-complete one. (MINCRM-705)
+  | 'settings.tags_restrict_creation'
   // Org-wide MFA enforcement. Leaving it on blocks every later loginAsAdmin(),
   // which mfa.spec.ts's own resetMfaRequired() comment already warned about —
   // the file restored the row correctly but was never tagged, so it ran in the
@@ -46,9 +50,27 @@ export type ResourceKey =
   | 'settings.mfa_required'
   // The system_settings row backing the onboarding checklist's first task.
   // Written directly by resetPipelineStagesReviewed() and indirectly by
-  // ensureSystemDefaults(), which eight spec files call — making this the
-  // widest-shared settings key in the registry. (MINCRM-705)
+  // ensureSystemDefaults(). (MINCRM-705)
   | 'settings.pipeline_stages_reviewed'
+  // Every row ensureSystemDefaults() resets, as ONE key. That helper writes TEN
+  // shared settings — default_language, nav_layout, email_notifications,
+  // tags_restrict_creation, currencies, branding, pipeline_stages_reviewed, sso,
+  // mfa_required and visibility — so any two files that call it conflict on all
+  // ten, and a file that calls it conflicts with anyone touching any of them.
+  //
+  // A composite key rather than ten entries per caller, deliberately. Listing
+  // them individually means nine hand-maintained ten-item lists that drift the
+  // moment ensureSystemDefaults gains or loses a write — which is exactly how
+  // this was first modeled (pipeline_stages_reviewed only), and it put
+  // data-hygiene beside deal-health-check and notifications beside mfa at
+  // workers=2, each with a live cross-file race. One name for one helper's
+  // effect cannot drift that way.
+  //
+  // Callers additionally declare the SPECIFIC key they deliberately mutate
+  // (settings.branding for branding.spec.ts, and so on), so a file that only
+  // resets is still distinguishable from one that sets a non-default value.
+  // (MINCRM-705)
+  | 'settings.ensure_system_defaults'
   // NOT a system_settings row: onboarding_completed is a column on the `users`
   // table, written per-caller (server settingsService.setOnboardingCompleted).
   // It is shared only because every spec authenticates as the same seeded admin
@@ -107,15 +129,15 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     file: 'qa/e2e/tests/apps/minicrm/functional/settings/settings.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
     // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
-    reads: ['settings.currencies', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.currencies', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.currencies', 'settings.ensure_system_defaults'],
+    writes: ['settings.currencies', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
     // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
-    reads: ['settings.branding', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.branding', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.branding', 'settings.ensure_system_defaults'],
+    writes: ['settings.branding', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts',
@@ -147,8 +169,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     file: 'qa/e2e/tests/apps/minicrm/functional/navigation/navigation.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
     // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
-    reads: ['settings.nav_layout', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.nav_layout', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.nav_layout', 'settings.ensure_system_defaults'],
+    writes: ['settings.nav_layout', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/deals/deal-health-check.spec.ts',
@@ -170,8 +192,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     file: 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
     // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
-    reads: ['settings.sso', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.sso', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.sso', 'settings.ensure_system_defaults'],
+    writes: ['settings.sso', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/ai/ai-context-proposal.spec.ts',
@@ -316,8 +338,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     file: 'qa/e2e/tests/apps/minicrm/functional/i18n/i18n.spec.ts',
     // ensureSystemDefaults() runs in this file's hooks and DELETEs
     // pipeline_stages_reviewed, so every test here writes that row. (MINCRM-705)
-    reads: ['settings.default_language', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.default_language', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.default_language', 'settings.ensure_system_defaults'],
+    writes: ['settings.default_language', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/notifications/notifications.spec.ts',
@@ -328,8 +350,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // beforeEach and never calls it. Promoting this to a file-wide entry would
     // move the whole file into the workers:1 partition on a false premise.
     // (MINCRM-705)
-    reads: ['settings.email_notifications_enabled', 'settings.pipeline_stages_reviewed'],
-    writes: ['settings.email_notifications_enabled', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.email_notifications_enabled', 'settings.ensure_system_defaults'],
+    writes: ['settings.email_notifications_enabled', 'settings.ensure_system_defaults'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
@@ -345,8 +367,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // returns false and the file stays eligible for MAX_GROUP_WORKERS, able to
     // race itself on the row. (MINCRM-705)
     file: 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
-    reads: ['settings.pipeline_stages_reviewed'],
-    writes: ['settings.pipeline_stages_reviewed'],
+    reads: ['settings.ensure_system_defaults'],
+    writes: ['settings.ensure_system_defaults'],
   },
   {
     // Only F8-A1 touches the org-wide row; F8-S1/LS1/LS2/D1 are per-user MFA
@@ -364,7 +386,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // stage-exit-requirements.spec.ts also read. describe.configure orders
     // tests within the file and gives no cross-file protection. (MINCRM-705)
     file: 'qa/e2e/tests/apps/minicrm/functional/pipeline-stages/pipeline-stages.spec.ts',
-    reads: ['pipeline_stages', 'settings.pipeline_stages_reviewed'],
+    reads: ['pipeline_stages', 'settings.ensure_system_defaults'],
     writes: [
       'pipeline_stages',
       // Second server-side cascade of the same shape as setAiEnabled's: PS-1
@@ -374,7 +396,7 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
       // — upserting the same system_settings row the eight ensureSystemDefaults
       // callers delete. Undeclared, the graph drew no edge and the generator
       // co-scheduled this file with branding.spec.ts. (MINCRM-705)
-      'settings.pipeline_stages_reviewed',
+      'settings.ensure_system_defaults',
     ],
   },
   {
@@ -384,8 +406,8 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // users.onboarding_completed — which it alone ever sets FALSE.
     // File-wide: all eight tests touch the flag. (MINCRM-705)
     file: 'qa/e2e/tests/apps/minicrm/functional/onboarding/onboarding.spec.ts',
-    reads: ['settings.pipeline_stages_reviewed', 'users.admin_onboarding_completed'],
-    writes: ['settings.pipeline_stages_reviewed', 'users.admin_onboarding_completed'],
+    reads: ['settings.ensure_system_defaults', 'users.admin_onboarding_completed'],
+    writes: ['settings.ensure_system_defaults', 'users.admin_onboarding_completed'],
   },
   {
     // F-HYGIENE3 calls setAiEnabled(restClient, true) to make the data-hygiene
@@ -401,10 +423,10 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // file-wide claim would misdescribe what they touch. (MINCRM-705)
     file: 'qa/e2e/tests/apps/minicrm/functional/data-hygiene/data-hygiene.spec.ts',
     testTitleContains: 'F-HYGIENE3',
-    reads: ['settings.ai_configuration_enabled', 'settings.pipeline_stages_reviewed'],
+    reads: ['settings.ai_configuration_enabled', 'settings.ensure_system_defaults'],
     writes: [
       'settings.ai_configuration_enabled',
-      'settings.pipeline_stages_reviewed',
+      'settings.ensure_system_defaults',
       // Same setAiEnabled() cascade as the ai/ specs. This entry matters most:
       // the generator places data-hygiene.spec.ts in a group at workers=2, so a
       // missing edge to feature-flags.spec.ts is genuinely concurrent, not just
@@ -427,6 +449,43 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
  * since LPT bin-packing and the conflict-group scheduler assign whole files,
  * not individual tests.
  */
+/**
+ * The rows ensureSystemDefaults() actually writes, in the order it writes them
+ * (settings.behaviors.ts). Declaring `settings.ensure_system_defaults` on an
+ * entry is equivalent to declaring all of these — see EXPANSION below.
+ *
+ * Keep this aligned with that helper. resource-registry.spec.ts asserts the two
+ * agree by reading the helper's own source, so adding a write there without
+ * adding it here fails rather than silently under-modeling the conflict.
+ */
+export const ENSURE_SYSTEM_DEFAULTS_KEYS: readonly ResourceKey[] = [
+  'settings.default_language',
+  'settings.nav_layout',
+  'settings.email_notifications_enabled',
+  'settings.tags_restrict_creation',
+  'settings.currencies',
+  'settings.branding',
+  'settings.pipeline_stages_reviewed',
+  'settings.sso',
+  'settings.mfa_required',
+  'settings.visibility_policy',
+];
+
+/**
+ * Rewrites the composite key into the concrete keys it stands for.
+ *
+ * The conflict graph matches keys by string equality, so a composite left
+ * unexpanded would conflict only with other composites — and NOT with, say,
+ * visibility.spec.ts's `settings.visibility_policy`, even though
+ * ensureSystemDefaults resets exactly that row. Expanding here means each caller
+ * declares the helper ONCE while the graph still sees all ten rows.
+ */
+function expandCompositeKeys(keys: readonly string[]): string[] {
+  return keys.flatMap((key) =>
+    key === 'settings.ensure_system_defaults' ? [...ENSURE_SYSTEM_DEFAULTS_KEYS] : [key],
+  );
+}
+
 export function collapseRegistryToFileTouches(): FileResourceTouch[] {
   const byFile = new Map<string, { reads: Set<string>; writes: Set<string> }>();
   for (const entry of RESOURCE_REGISTRY) {
@@ -434,8 +493,8 @@ export function collapseRegistryToFileTouches(): FileResourceTouch[] {
       reads: new Set<string>(),
       writes: new Set<string>(),
     };
-    for (const r of entry.reads) existing.reads.add(r);
-    for (const w of entry.writes) existing.writes.add(w);
+    for (const r of expandCompositeKeys(entry.reads)) existing.reads.add(r);
+    for (const w of expandCompositeKeys(entry.writes)) existing.writes.add(w);
     byFile.set(entry.file, existing);
   }
   return [...byFile.entries()].map(([file, { reads, writes }]) => ({ file, reads, writes }));

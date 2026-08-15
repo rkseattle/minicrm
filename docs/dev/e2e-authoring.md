@@ -207,6 +207,11 @@ representative sample of resource keys in use, as of MINCRM-661:
 | `settings.ai_configuration_enabled` | `ai/ai.spec.ts` (and 8 other `ai/*.spec.ts` files)                                          |
 | `settings.ai_cost_rates`            | `ai/ai-usage-dashboard.spec.ts` (F-AI-UD-6 only — distinct from `ai_configuration_enabled`) |
 | `feature_flags.mobile_access`       | `feature-flags/feature-flags.spec.ts`                                                       |
+| `settings.mfa_required`             | `auth/mfa.spec.ts` (F8-A1 only — the other four tests are per-user enrolment)               |
+| `settings.pipeline_stages_reviewed` | `onboarding/onboarding.spec.ts` (also reset by every `ensureSystemDefaults()` caller)       |
+| `settings.ensure_system_defaults`   | Composite: declaring it means declaring all ten rows that helper resets                     |
+| `users.admin_onboarding_completed`  | `onboarding/onboarding.spec.ts` — a `users` column, not a `system_settings` row             |
+| `pipeline_stages`                   | `pipeline-stages/pipeline-stages.spec.ts` (the stage rows, not the checklist boolean)       |
 
 **Note on `test.describe.serial` vs the `@serial` tag:** they do different jobs
 and one does not substitute for the other.
