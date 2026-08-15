@@ -181,7 +181,7 @@ async function resetMfaRequired(restClient: RestClient): Promise<void> {
     .catch(() => undefined);
 }
 
-test('@functional F8-A1: admin can toggle org-wide MFA enforcement in General Settings', async ({
+test('@functional @serial F8-A1: admin can toggle org-wide MFA enforcement in General Settings', async ({
   page,
   restClient,
 }) => {

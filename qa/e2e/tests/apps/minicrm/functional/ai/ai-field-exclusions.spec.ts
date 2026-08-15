@@ -32,6 +32,7 @@ import {
   getAiFieldExclusionToggle,
   resetAiFieldExclusion,
   setAiEnabled,
+  restoreAiDefaultsAfterTest,
 } from '@behaviors/minicrm/settings.behaviors.js';
 import { createTestAdmin } from '@apps/minicrm/helpers.js';
 import { RestClientError } from '@framework/clients/index.js';
@@ -54,7 +55,7 @@ test.describe('AI data minimization UI', () => {
     // feature flag server-side (aiConfigService.ts:507-515). Resetting only the
     // field exclusion left both on for the next sequential conflict group.
     // (MINCRM-705)
-    await setAiEnabled(restClient, false);
+    await restoreAiDefaultsAfterTest(restClient);
   });
 
   test(

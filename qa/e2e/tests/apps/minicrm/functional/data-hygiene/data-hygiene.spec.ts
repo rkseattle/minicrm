@@ -47,6 +47,7 @@ import {
   navigateToAdminSettings,
   expectAiSettingsSubPanelVisible,
   setAiEnabled,
+  restoreAiDefaultsAfterTest,
   clickDataHygieneRunNowAndAwaitResponse,
   expectDataHygieneRunAcceptedVisible,
   ensureSystemDefaults,
@@ -174,7 +175,7 @@ test.describe.serial('F-HYGIENE3 — AI-enabling scan trigger', () => {
     // settings.behaviors.ts:414-447), so restoring it takes its own call —
     // otherwise setAiEnabled(true) below outlives this file and the next
     // sequential conflict group starts with AI unexpectedly enabled.
-    await setAiEnabled(restClient, false);
+    await restoreAiDefaultsAfterTest(restClient);
     await ensureSystemDefaults(restClient);
   });
 

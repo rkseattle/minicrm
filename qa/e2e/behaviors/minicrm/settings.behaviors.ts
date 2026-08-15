@@ -620,13 +620,21 @@ export async function setAiEnabled(
  * stopped providing when it began assigning files to groups by conflict rather
  * than by name.
  *
- * Wraps resetAiSettings so the rationale lives in exactly one place rather than
- * being restated in every afterEach that needs it.
+ * Deliberately narrower than resetAiSettings, which also PATCHes
+ * /admin/ai/session-retention and /admin/ai/config. Those are separate shared
+ * resources — settings.ai_session_retention is a distinct ResourceKey that
+ * aiSettings.spec.ts and ai-data-lifecycle.spec.ts declare and conflict on — so
+ * calling the broader helper would have eight specs writing a row none of their
+ * registry entries name. That is precisely the registry-vs-reality drift
+ * MINCRM-705 exists to close, and doing it while closing it would be its own
+ * defect. This touches only the toggle the callers actually enable.
+ *
+ * The rationale lives here rather than being restated in every afterEach.
  *
  * @param restClient - Admin-authenticated RestClient.
  */
 export async function restoreAiDefaultsAfterTest(restClient: RestClient): Promise<void> {
-  await resetAiSettings(restClient);
+  await setAiEnabled(restClient, false);
 }
 
 /**
