@@ -74,11 +74,10 @@ qa/playwright-report/
 qa/e2e/.auth/
 # MINCRM-549: per-run timing log (gitignored); committed baseline is test-timing-baseline.json
 qa/e2e/test-timing.jsonl
-# MINCRM-661: per-run resource-touch log (gitignored). Captured by
-# resource-touch-reporter.ts for future empirical validation against
-# RESOURCE_REGISTRY (qa/e2e/apps/minicrm/resource-registry.ts) — not yet
-# consumed by any script; the conflict-graph scheduler currently reads only
-# the static registry.
+# MINCRM-661/705: stale per-run resource-touch logs from the reporter removed in
+# MINCRM-705. Kept ignored so existing local copies do not appear as untracked
+# files. RESOURCE_REGISTRY is hand-maintained and hand-audited; what enforces it
+# is resource-registry.spec.ts's bidirectional completeness tests, not a log.
 qa/e2e/resource-touch.jsonl
 # MINCRM-549: per-shard generated configs consumed by CI; not committed
 qa/e2e/playwright.shard.config.ts
