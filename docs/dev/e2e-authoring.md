@@ -208,20 +208,50 @@ representative sample of resource keys in use, as of MINCRM-661:
 | `settings.ai_cost_rates`            | `ai/ai-usage-dashboard.spec.ts` (F-AI-UD-6 only — distinct from `ai_configuration_enabled`) |
 | `feature_flags.mobile_access`       | `feature-flags/feature-flags.spec.ts`                                                       |
 
-**Note on `test.describe.serial` vs `@serial` tag:** `onboarding.spec.ts` uses
-`test.describe.serial(...)` at the describe level to serialize tests within the
-file, but its tests are not tagged `@serial` and run in the parallel shard job.
-This works because `setOnboardingCompleted` modifies per-session state that
-self-isolates within the describe block. Use `@serial` (not just
-`test.describe.serial`) whenever the mutation affects a shared row that parallel
-workers across different files could also be reading or writing.
+**Note on `test.describe.serial` vs the `@serial` tag:** they do different jobs
+and one does not substitute for the other.
+
+`test.describe.serial(...)` orders tests **within one file**. It does nothing
+about other spec files, which under `fullyParallel: true` run concurrently on
+other workers. The `@serial` **tag** is what moves a file out of the parallel
+shard matrix into the single-worker `e2e-serial` job, because
+`gen-conflict-group-configs.ts` discovers files by scanning test **titles** for
+it and CI filters on titles too.
+
+So a file that mutates a shared row and relies on `describe.serial` alone is
+still racing every other file. `onboarding.spec.ts` was exactly that case until
+MINCRM-705: it carried `describe.serial` and no tag, so it ran in the parallel
+matrix while writing `system_settings.pipeline_stages_reviewed` — a row eight
+other spec files also write via `ensureSystemDefaults()`. An earlier version of
+this note claimed the flag was "per-session state that self-isolates within the
+describe block"; that was wrong on both halves, and the belief is what kept the
+race open.
+
+Use the `@serial` tag (in the **title**), plus a `RESOURCE_REGISTRY` entry,
+whenever a mutation affects a row another file could read or write. Add
+`test.describe.serial` on top when tests within the file also need ordering.
 
 ### Enforcement
 
-`bash qa/scripts/check-settings-mutations.sh` — run as part of the
+`node qa/scripts/check-settings-mutations.mjs` — run as part of the
 `e2e-framework-purity` CI job and required locally before every commit (see
-CLAUDE.md). Fails if a spec that calls a settings-mutating behavior does not
-also call `ensureSystemDefaults()` and carry `@serial`.
+CLAUDE.md). Enforces two invariants:
+
+1. A spec that calls a settings-mutating behavior must also call
+   `ensureSystemDefaults()` (or a domain reset) and carry `@serial`. The set of
+   mutating behavior functions is **derived** from `qa/e2e/behaviors/minicrm/`
+   rather than hand-listed, so calling through a helper does not exempt a spec —
+   which is how `onboarding.spec.ts` and `data-hygiene.spec.ts` both escaped the
+   previous bash implementation (MINCRM-705).
+2. Every `test.describe.serial(...)` **block** must contain a `@serial`-tagged
+   test or be allow-listed in the guard with a written reason. Detection is
+   per-block, not per-file: `notifications.spec.ts` has one tagged and one
+   untagged block, and a file-level check passes it on the strength of the wrong
+   one.
+
+`--self-test` runs the scanner against fixtures for every shape it must catch,
+including reset-vs-mutation at the call site and multi-line declarations. CI runs
+it as its own step before the real scan.
 
 ---
 
@@ -315,7 +345,7 @@ message argument is sufficient and keeps the assertion visible in the spec.
 ```bash
 bash qa/scripts/check-framework-purity.sh   # no app-domain strings in framework/
 bash qa/scripts/check-behavior-layer.sh     # no @pages/* imports in specs
-bash qa/scripts/check-settings-mutations.sh # @serial + ensureSystemDefaults enforced
+node qa/scripts/check-settings-mutations.mjs # @serial + ensureSystemDefaults enforced
 bash qa/scripts/check-networkidle.sh        # no networkidle in spec files
 bash qa/scripts/check-sha-pattern-parity.sh # coverage build-SHA accept-set parity
 bash qa/scripts/check-e2e-cleanup.sh        # created records registered for teardown

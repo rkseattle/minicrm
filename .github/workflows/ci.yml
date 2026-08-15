@@ -1016,8 +1016,11 @@ jobs:
       - name: Check .env*.example templates match and mirror each other (MINCRM-699)
         run: bash qa/scripts/check-env-example-parity.sh
 
-      - name: Check spec files that mutate settings call ensureSystemDefaults() (MINCRM-358)
-        run: bash qa/scripts/check-settings-mutations.sh
+      - name: Check the settings-mutation guard itself is correct (MINCRM-705)
+        run: node qa/scripts/check-settings-mutations.mjs --self-test
+
+      - name: Check settings mutations and describe.serial blocks are @serial (MINCRM-358, MINCRM-705)
+        run: node qa/scripts/check-settings-mutations.mjs
 
       - name: Check spec files do not import from @pages/ directly (MINCRM-367)
         run: bash qa/scripts/check-behavior-layer.sh

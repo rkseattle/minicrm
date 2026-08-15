@@ -82,7 +82,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   test.setTimeout(60_000);
 
-  test('@functional F-OB1: widget is visible for admin when is_first_run is true', async ({
+  test('@functional @serial F-OB1: widget is visible for admin when is_first_run is true', async ({
     page,
     restClient,
   }) => {
@@ -109,7 +109,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
 
-  test('@functional F-OB2: widget is NOT visible when onboarding_completed is true', async ({
+  test('@functional @serial F-OB2: widget is NOT visible when onboarding_completed is true', async ({
     page,
     restClient,
   }) => {
@@ -123,7 +123,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     expect(await isSetupChecklistPillHidden({ page })).toBe(true);
   });
 
-  test('@functional F-OB3: dismiss (X) hides the widget and persists onboarding_completed=true', async ({
+  test('@functional @serial F-OB3: dismiss (X) hides the widget and persists onboarding_completed=true', async ({
     page,
     restClient,
   }) => {
@@ -152,7 +152,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
 
-  test('@functional F-OB4: widget collapses to pill when collapse button is clicked', async ({
+  test('@functional @serial F-OB4: widget collapses to pill when collapse button is clicked', async ({
     page,
     restClient,
   }) => {
@@ -175,7 +175,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
 
-  test('@functional F-OB5: task list shows five tasks', async ({ page, restClient }) => {
+  test('@functional @serial F-OB5: task list shows five tasks', async ({ page, restClient }) => {
     await loginAsAdmin(restClient);
     // Restore true in finally so parallel workers never observe false on the
     // shared admin account after this test completes. (MINCRM-415)
@@ -206,7 +206,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
 
   test.setTimeout(90_000);
 
-  test('@functional F-OB7: rep user sees four-task checklist when onboarding is incomplete', async ({
+  test('@functional @serial F-OB7: rep user sees four-task checklist when onboarding is incomplete', async ({
     page,
     restClient,
   }) => {
@@ -241,7 +241,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
 
-  test("@functional F-OB8: admin resets another user's onboarding from the Users page", async ({
+  test("@functional @serial F-OB8: admin resets another user's onboarding from the Users page", async ({
     page,
     restClient,
   }) => {
@@ -291,7 +291,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
     }
   });
 
-  test('@functional F-OB9: admin reset via API clears the onboarding flag', async ({
+  test('@functional @serial F-OB9: admin reset via API clears the onboarding flag', async ({
     restClient,
   }) => {
     await loginAsAdmin(restClient);

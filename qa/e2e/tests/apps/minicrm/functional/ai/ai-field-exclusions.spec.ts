@@ -50,6 +50,11 @@ test.describe('AI data minimization UI', () => {
   test.afterEach(async ({ restClient }) => {
     await loginAsAdmin(restClient);
     await resetAiFieldExclusion(restClient, 'contact', 'department');
+    // F-AI-FE-2 enables the AI master toggle, which also flips the ai_features
+    // feature flag server-side (aiConfigService.ts:507-515). Resetting only the
+    // field exclusion left both on for the next sequential conflict group.
+    // (MINCRM-705)
+    await setAiEnabled(restClient, false);
   });
 
   test(

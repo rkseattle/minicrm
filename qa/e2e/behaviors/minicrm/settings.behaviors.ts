@@ -604,6 +604,32 @@ export async function setAiEnabled(
 }
 
 /**
+ * Restores the AI master toggle to disabled after a test that enabled it.
+ *
+ * WHY THIS EXISTS (MINCRM-705)
+ * ----------------------------
+ * A spec that calls setAiEnabled(restClient, true) writes the shared
+ * ai_configuration_enabled row AND cascades to the ai_features feature flag,
+ * which the server updates in the SAME transaction as the master toggle
+ * (aiConfigService.ts:507-515). Leaving it on outlives the file: conflict
+ * groups run sequentially against one database, so the next group starts with
+ * AI unexpectedly enabled.
+ *
+ * Eight ai/ specs previously relied on aiSettings.spec.ts resetting the toggle
+ * "just before, alphabetically" — an ordering the conflict-graph scheduler
+ * stopped providing when it began assigning files to groups by conflict rather
+ * than by name.
+ *
+ * Wraps resetAiSettings so the rationale lives in exactly one place rather than
+ * being restated in every afterEach that needs it.
+ *
+ * @param restClient - Admin-authenticated RestClient.
+ */
+export async function restoreAiDefaultsAfterTest(restClient: RestClient): Promise<void> {
+  await resetAiSettings(restClient);
+}
+
+/**
  * Resets the AI configuration to disabled defaults by disabling AI
  * and clearing DPA acknowledgment. Safe to call in beforeEach/afterEach.
  *
