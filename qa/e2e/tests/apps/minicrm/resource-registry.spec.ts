@@ -268,10 +268,27 @@ test.describe('resource-registry — pipeline_stages_reviewed (MINCRM-705)', () 
    * calls live inside the F10-AS describe.serial block's own hooks, so only
    * those tests write the row and the title-scoped entry is correct.
    */
-  const FILE_LEVEL_HOOK_CALLERS = [
-    p('reports/reports-nav.spec.ts'),
-    p('onboarding/onboarding.spec.ts'),
-  ];
+  // DERIVED, not hand-listed — same reasoning as the caller list above. A file
+  // calls ensureSystemDefaults at FILE level when the call sits outside every
+  // test.describe block; inside one (notifications.spec.ts's F10-AS block) only
+  // that block's tests write the row, and a file-wide entry would be wrong.
+  const FILE_LEVEL_HOOK_CALLERS = ENSURE_SYSTEM_DEFAULTS_CALLERS.filter((file) => {
+    const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+    const callIndex = source.search(/\bensureSystemDefaults\s*\(/);
+    if (callIndex === -1) return false;
+    // Count unclosed `test.describe(`/`test.describe.serial(` blocks before the
+    // call: zero means it is at file level.
+    const before = source.slice(0, callIndex);
+    const opens = (before.match(/test\.describe(?:\.serial)?\s*\(/g) ?? []).length;
+    if (opens === 0) return true;
+    let depth = 0;
+    const firstDescribe = before.search(/test\.describe(?:\.serial)?\s*\(/);
+    for (let i = firstDescribe; i < callIndex; i += 1) {
+      if (before[i] === '{') depth += 1;
+      else if (before[i] === '}') depth -= 1;
+    }
+    return depth <= 0;
+  });
 
   for (const file of FILE_LEVEL_HOOK_CALLERS) {
     test(`${file.split('/').pop()} has a file-wide entry covering ${KEY}`, () => {

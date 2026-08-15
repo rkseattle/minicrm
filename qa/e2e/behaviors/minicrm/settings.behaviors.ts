@@ -634,7 +634,11 @@ export async function setAiEnabled(
  * @param restClient - Admin-authenticated RestClient.
  */
 export async function restoreAiDefaultsAfterTest(restClient: RestClient): Promise<void> {
-  await setAiEnabled(restClient, false);
+  // Swallowed like every write in resetAiSettings and ensureSystemDefaults: this
+  // runs in an afterEach, so a throw here turns a passing test red for a cleanup
+  // problem rather than a real one — and in ai-permissions.spec.ts it is reached
+  // only after three prior awaits that can each throw first.
+  await setAiEnabled(restClient, false).catch(() => undefined);
 }
 
 /**
