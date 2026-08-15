@@ -1126,6 +1126,12 @@ rather than one of the reasons below, so if you see that string, read the stderr
   from the invocation.
 - `results-file-unparseable` → the results file could not be fully read. This is a
   parser/reporter disagreement, _not_ a test outcome — do not infer pass or fail from it.
+- `zero-tests-executed` → the results file is well-formed but reports zero tests. An empty
+  run is not a passing run. The usual cause is every selected spec being filtered out by
+  `--grep`/`--grep-invert` — the failure mode that let a wholly-`@serial` selected spec
+  produce no tests and still pass the local hook before MINCRM-705. Note this reason is
+  only reachable when the SHA already has attributed dumps from an earlier run; otherwise
+  `no-session-attribution` fires first.
 - `selection-file-unreadable` → a `--selection` file was supplied but could not be read as
   a requirement list, so run-vs-selection reconciliation did not happen. The message names
   the specific cause: a missing path, an unreadable file, malformed JSON, or no `specFiles`
@@ -1138,6 +1144,26 @@ rather than one of the reasons below, so if you see that string, read the stderr
   record mode runs the full suite and has nothing to reconcile against. Mutually exclusive
   with `selection-file-unreadable` — an unreadable selection yields no requirement list to
   fall short of.
+
+### Is attestation per-test or per-file? (MINCRM-705)
+
+Both, on two independent axes — and knowing which is which explains what the gate can and
+cannot catch:
+
+- **Pass/fail is per-test.** `findFailedTests` and `findTestsSkippedEverywhere` operate on
+  rows in `results.xml`, reconciled across projects by `hostname`. They have no notion of
+  an _expected_ test, so they can only judge rows that exist.
+- **Run-vs-selection is per-file**, and does not read `results.xml` at all. It diffs the
+  `--selection` file's `specFiles` against `ranFiles`, which is built from
+  **coverage-session dumps for the SHA** — so it answers "did this file run at any point
+  under this SHA", not "did it run in this invocation".
+
+Two consequences worth holding onto. First, a selected spec whose tests are _all_ filtered
+out does get caught, but only in targeted mode, and it surfaces as
+`missing-required-tests` — a per-file reason — rather than as anything about the tests
+themselves. Second, because `ranFiles` is SHA-scoped rather than invocation-scoped, a
+caller may legitimately run several Playwright invocations and attest once at the end;
+that is what the local hook's targeted path does for its non-serial/serial split.
 
 This list must name every member of `AttestationFailureReason`, and that is **enforced**,
 not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any

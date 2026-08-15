@@ -519,6 +519,58 @@ function playwrightEnv(headSha: string, extra: Record<string, string> = {}): Nod
   return { ...process.env, ...testStackDbEnv(), ...extra, GIT_COMMIT_SHA: headSha };
 }
 
+/** JUnit output paths for the targeted mode's two invocations, and the merged
+ *  file the attestation gate actually reads. Relative to qa/. */
+const TARGETED_NON_SERIAL_JUNIT = 'test-results/targeted-non-serial.xml';
+const TARGETED_SERIAL_JUNIT = 'test-results/targeted-serial.xml';
+const MERGED_JUNIT = 'e2e/test-results/results.xml';
+
+/**
+ * What "a serial test" means, in one place. Matched by the serial invocation and
+ * INVERTED by the non-serial one so the two partition the selection exactly —
+ * see runPlaywright. Identical to the expression CI's e2e-serial job greps.
+ */
+const SERIAL_GREP = '@functional.*@serial|@serial.*@functional';
+
+/**
+ * Runs the TIA-selected spec files — as TWO invocations, non-serial then
+ * serial, then merges their JUnit output for a single attestation.
+ *
+ * WHY TWO INVOCATIONS (MINCRM-705)
+ * --------------------------------
+ * This path used to be one `--grep-invert serial` call with no paired serial
+ * run. If TIA selected a spec whose tests are all `@serial` — visibility.spec.ts
+ * (9 of 9), and now onboarding.spec.ts (8 of 8) — every test was filtered out,
+ * zero tests ran for that file, and the push proceeded. The full-suite fallback
+ * had this fixed in MINCRM-636/637 (see its docblock below) and the fix was
+ * never generalized here; the docblock's claim that the targeted path "needs
+ * neither this scoping nor this split" is right about the `--grep @functional`
+ * SCOPING half and wrong about the serial/non-serial SPLIT half, whose purpose
+ * is to ensure serial tests execute somewhere. The two concerns were conflated.
+ *
+ * WHY ONE ATTESTATION, NOT ONE PER INVOCATION
+ * -------------------------------------------
+ * The fallback attests after each of its two runs, and mirroring that here
+ * would deadlock. verify-test-attestation reconciles run-vs-selection per FILE
+ * (`missing-required-tests`), and `ranFiles` comes from coverage-session dumps
+ * for the SHA — not from results.xml. A wholly-@serial selected spec contributes
+ * no session during the non-serial invocation, so a first attestation would fail
+ * for exactly the file this fix exists to run, and the serial invocation would
+ * never happen. The fallback only escapes this because it never passes
+ * --selection (full-suite short-circuits to {kind:'none'}); targeted mode does.
+ * Attesting once, after both runs, asks the question reconciliation actually
+ * means: did every selected file run somewhere in this push.
+ *
+ * WHY PER-INVOCATION OUTPUT PATHS
+ * -------------------------------
+ * Playwright's junit reporter writes one fixed path (playwright.config.ts's
+ * outputFile), so a second invocation would overwrite the first's results.xml
+ * rather than merge — the same hazard documented for the fallback below. Both
+ * halves of CI's e2e-serial pattern are needed: PLAYWRIGHT_JUNIT_OUTPUT_FILE for
+ * the report, and a distinct --output dir because every `playwright test` call
+ * clears its outputDir at startup and would otherwise delete the first run's
+ * artifacts (ci.yml's own comment on that loop).
+ */
 function runPlaywright(specFiles: readonly string[], headSha: string): void {
   // Checked here, and in runFullSuiteFallbackAndAttest, rather than once at
   // the top of main(): these are the only points at which a run actually
@@ -527,24 +579,126 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
   // resolving to zero spec files, for instance).
   warnIfTestStackShaIsStale(headSha);
 
+  const qaDir = resolve(REPO_ROOT, 'qa');
+  const produced: string[] = [];
+  let firstFailure: unknown;
+
   // Array args via execFileSync — never a shell string — same precedent
   // as every other subprocess call in this file (runLoadCoverageMap,
   // runSelectTests, runAttestation). A spec file path containing a shell
   // metacharacter (quote, backtick, $(), ;) must not be able to break out
   // of the intended single-argument boundary.
-  const args = ['run', 'test', '--', ...specFiles, '--grep-invert', 'serial'];
-  execFileSync('npm', args, {
-    cwd: resolve(REPO_ROOT, 'qa'),
-    stdio: 'inherit',
-    env: playwrightEnv(headSha),
-  });
+  const invocations = [
+    {
+      label: 'non-serial',
+      junit: TARGETED_NON_SERIAL_JUNIT,
+      output: 'test-results/targeted-non-serial-artifacts',
+      // Inverts the SAME expression the serial half matches, so the two are
+      // exact complements. Inverting the bare word `serial` instead would drop
+      // any title containing that word while not matching the serial half's
+      // pattern — a test tagged @serial without @functional, or one that merely
+      // mentions "@serial" in prose, would then run in NEITHER half. Spec files
+      // in this repo do have such titles (resource-registry.spec.ts describes
+      // the tag in its own test names), and running nothing is the exact defect
+      // this split exists to fix. (MINCRM-705)
+      grep: ['--grep-invert', SERIAL_GREP],
+      workers: false,
+    },
+    {
+      label: 'serial',
+      junit: TARGETED_SERIAL_JUNIT,
+      output: 'test-results/targeted-serial-artifacts',
+      // Same expression CI's e2e-serial job uses, so the two agree on what
+      // "a serial test" means.
+      grep: ['--grep', SERIAL_GREP],
+      workers: true,
+    },
+  ] as const;
+
+  // Delete last push's reports first. If an invocation dies before its reporter
+  // writes, existsSync below would otherwise find the STALE file and merge it
+  // into the results the gate attests — stale output deciding pass/fail, which
+  // is exactly what this repo's results-file policy forbids.
+  for (const invocation of invocations) {
+    rmSync(resolve(qaDir, invocation.junit), { force: true });
+  }
+
+  for (const invocation of invocations) {
+    const args = [
+      'run',
+      'test',
+      '--',
+      ...specFiles,
+      ...invocation.grep,
+      `--output=${invocation.output}`,
+      ...(invocation.workers ? ['--workers=1'] : []),
+    ];
+    console.log(`[pre-push-tia] Running selected spec file(s), ${invocation.label}.`);
+    try {
+      execFileSync('npm', args, {
+        cwd: qaDir,
+        stdio: 'inherit',
+        env: playwrightEnv(headSha, { PLAYWRIGHT_JUNIT_OUTPUT_FILE: invocation.junit }),
+      });
+    } catch (err) {
+      // Accumulate rather than rethrowing immediately, mirroring CI's e2e-serial
+      // loop: the serial half must still run when the non-serial half fails, or
+      // a failure in one masks whether the other would have passed. The merged
+      // report is what attestOrThrow then reads, and the first failure is
+      // rethrown after both halves have had their turn.
+      firstFailure ??= err;
+    }
+    if (existsSync(resolve(qaDir, invocation.junit))) {
+      produced.push(invocation.junit);
+    }
+  }
+
+  if (produced.length > 0) {
+    // --allow-empty-inputs is REQUIRED here, not optional, and both CI call
+    // sites pass it for the same reason (ci.yml:1959, :2138). Playwright writes
+    // `<testsuites tests="0">` with no children when a run matches no tests, and
+    // with a non-serial/serial split that is the MODAL case in both directions:
+    // a selection of all-@serial specs (visibility, onboarding) empties the
+    // non-serial half, and a selection with no @serial tests empties the serial
+    // half. Without the flag the merge throws and the push is blocked even
+    // though every selected test passed — and attestOrThrow never runs, so the
+    // zero-tests-executed reason would be unreachable on this path.
+    //
+    // --expected-files keeps the signal the flag gives up: an invocation whose
+    // CONFIG failed to load writes no file at all, which is a real failure and
+    // must not be absorbed as "legitimately empty".
+    execFileSync(
+      'npx',
+      [
+        'tsx',
+        'scripts/merge-junit-results.ts',
+        '--output',
+        MERGED_JUNIT,
+        '--allow-empty-inputs',
+        '--expected-files',
+        String(invocations.length),
+        ...produced,
+      ],
+      { cwd: qaDir, stdio: 'inherit', env: process.env },
+    );
+  }
+
+  if (firstFailure) throw firstFailure;
 }
 
 /**
  * Runs the full-suite safety-net fallback — invoked from BOTH full-suite
  * call sites in main() below, never from the targeted path (runPlaywright
  * above, which already receives a specific, curated specFiles list from
- * select-tests.ts and needs neither this scoping nor this split).
+ * select-tests.ts and so needs no `--grep @functional` SCOPING).
+ *
+ * That parenthetical used to read "needs neither this scoping nor this split",
+ * which conflated two separate concerns and was half wrong: the targeted path
+ * genuinely does not need the scoping, but it very much needed the
+ * serial/non-serial SPLIT, whose purpose is to ensure serial tests execute
+ * somewhere rather than being filtered into nothing. runPlaywright now performs
+ * that split itself — see its docblock for why it attests once at the end
+ * rather than after each half as this function does. (MINCRM-705)
  *
  * Two real defects fixed here, found via a real local push that timed out
  * repeatedly under this fallback (MINCRM-636/637):
@@ -751,6 +905,27 @@ function main(): void {
   }
 
   if (selection.specFiles.length === 0) {
+    // An empty selection has two very different causes, and treating them alike
+    // let a push through on a suite that ran nothing (MINCRM-705):
+    //
+    //   - TIA ran, resolved cleanly, and the diff genuinely affects no tests
+    //     (a docs-only change). Legitimate — return, as before.
+    //   - Every selected test failed to resolve to a spec file, so the list is
+    //     empty because resolution COLLAPSED, not because there is nothing to
+    //     run. Indistinguishable from the benign case until now, and nothing
+    //     downstream noticed: with no run there are no coverage sessions, so
+    //     attestation is never even invoked.
+    //
+    // The second case falls back to the full suite, matching how runSelectTests'
+    // own failure path is already handled above — "TIA could not answer, so do
+    // not trust a narrow answer."
+    if (selection.unresolvedTestIds.length > 0) {
+      console.log(
+        `[pre-push-tia] WARN: selection resolved to zero spec files, but ${selection.unresolvedTestIds.length} selected test(s) could not be mapped to one. Falling back to the full suite rather than treating this as "nothing to run".`,
+      );
+      runFullSuiteFallbackAndAttest(headSha, selection);
+      return;
+    }
     console.log(
       '[pre-push-tia] No affected tests and no baseline files resolved — nothing to run.',
     );
