@@ -27,7 +27,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
+import { setAiEnabled, restoreAiDefaultsAfterTest } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   navigateToAiPage,
   waitForAiConversationPanel,
@@ -56,6 +56,9 @@ test.afterEach(async ({ restClient, ephemeralRep }) => {
   await loginAndVerify(restClient, ephemeralRep.email, ephemeralRep.password);
   await deleteAllAiSessionsViaApi(restClient);
   await loginAsAdmin(restClient);
+  // Restore AI defaults so the toggle does not outlive this file. See
+  // restoreAiDefaultsAfterTest's docblock for why this is load-bearing.
+  await restoreAiDefaultsAfterTest(restClient);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

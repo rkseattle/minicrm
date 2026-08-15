@@ -27,7 +27,7 @@ npm run unit_test
 # 5. QA static checks
 bash qa/scripts/check-framework-purity.sh
 bash qa/scripts/check-behavior-layer.sh
-bash qa/scripts/check-settings-mutations.sh
+node qa/scripts/check-settings-mutations.mjs
 bash qa/scripts/check-networkidle.sh
 bash qa/scripts/check-sha-pattern-parity.sh
 bash qa/scripts/check-e2e-cleanup.sh

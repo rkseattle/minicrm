@@ -44,11 +44,21 @@ allowed for dynamic IDs with a comment explaining why.
 - Any test that mutates a shared `system_settings` row — nav layout, visibility policy,
   default language, MFA policy, branding, SSO, email notifications, currencies,
   pipeline stage sort order — **must** be `@functional @serial`. Enforced by
-  `check-settings-mutations.sh`.
+  `check-settings-mutations.mjs`, which follows calls into the behavior layer, so
+  mutating through a helper does not exempt you.
+- The `@serial` tag must be in the test's **title**. A tag supplied only via the
+  `{ tag: [...] }` options object is invisible to `gen-conflict-group-configs.ts`
+  and to CI's `--grep`, so the file still runs in the parallel matrix.
 - Settings mutations call `ensureSystemDefaults()` for cleanup.
 - Feature flags via `withFlags()` only — never via API or DB mutation.
 - No `loginAsAdmin` in `test.beforeAll` — call it at the start of the test body.
-- New spec files touching any shared system resource default to `test.describe.serial`.
+- `test.describe.serial` is **not** isolation. It orders tests within one file and
+  gives no cross-file protection; a file relying on it alone still runs beside
+  other spec files. Shared-resource files need the `@serial` tag (which is what
+  moves them to the `e2e-serial` job) plus a `RESOURCE_REGISTRY` entry. Every
+  `describe.serial` block must be tagged or allow-listed. (MINCRM-705)
+- New spec files touching any shared system resource use `@serial` + a registry
+  entry, and may add `test.describe.serial` for intra-file ordering.
   Files creating all their own data via UUID-scoped `TestDataManager` may be candidates
   for `parallel` mode — apply the checklist in `qa/e2e/PARALLELISM-NOTES.md` first, and
   see `npm run e2e:timing:hotspots` for which files are worth auditing.

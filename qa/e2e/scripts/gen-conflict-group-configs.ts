@@ -29,11 +29,18 @@
  * itself under workers > 1 unless it independently self-serializes (e.g.
  * navigation.spec.ts wraps its layout-mutating tests in
  * `test.describe.serial`). Since not every file-wide-entry file does that,
- * this script conservatively forces workers=1 for the WHOLE group whenever
- * any file in it has a file-wide (non-testTitleContains) registry entry —
- * a group is only eligible for MAX_GROUP_WORKERS when every file in it is
- * scoped by testTitleContains (proving the shared resource touches at most
- * the identified subset of tests, not the whole file).
+ * this script partitions file-wide-entry files SEPARATELY from
+ * testTitleContains-scoped ones and caps only the file-wide groups at
+ * workers=1 — see buildGroupPlan below. A group is only eligible for
+ * MAX_GROUP_WORKERS when every file in it is scoped by testTitleContains
+ * (proving the shared resource touches at most the identified subset of tests,
+ * not the whole file).
+ *
+ * NOTE: this paragraph previously said a file-wide entry forced workers=1 for
+ * the WHOLE group. That has not been true since the separate-partition change
+ * documented on buildGroupPlan, whose whole point is to stop one file-wide file
+ * dragging an otherwise-safe group down. Corrected in MINCRM-705, where the
+ * stale wording caused a plan to predict the wrong CI cost.
  *
  * Falls back to a single-file, single-worker group (today's known-good
  * "run with --workers=1" behavior, scoped to just that file) for any file

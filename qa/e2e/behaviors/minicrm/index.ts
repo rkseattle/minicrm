@@ -520,6 +520,7 @@ export {
   getAiConfig,
   setAiEnabled,
   resetAiSettings,
+  restoreAiDefaultsAfterTest,
   resetVisibilitySettings,
   expectAdminSettingsHeadingVisible,
   expectAdminSettingsSaveVisible,

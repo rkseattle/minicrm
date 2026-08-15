@@ -41,7 +41,10 @@
  *   - Test data via restClient + TestDataManager (auto teardown)
  *   - checkScreenshot() only — no direct expect(page).toHaveScreenshot() calls
  *   - Nav layout mutations reset to 'top' in afterEach (not ensureSystemDefaults —
- *     that resets onboarding_completed and races with the onboarding spec)
+ *     that deletes the pipeline_stages_reviewed system_settings row, which the
+ *     onboarding spec's widget assertions depend on. The conclusion is right; the
+ *     original reason given here was not — ensureSystemDefaults does not write
+ *     onboarding_completed, which is a per-user column on `users`. MINCRM-705)
  *
  * Performance: A single ephemeral admin is created once per worker in beforeAll
  * and shared across all tests in that worker. Per-test admin creation (5 API calls

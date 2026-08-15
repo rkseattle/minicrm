@@ -70,12 +70,44 @@ test.describe('conflict-graph pipeline with real resource-registry data', () => 
     expect(graph.get(nav)?.has(a11y)).toBe(true);
   });
 
-  test('branding.spec.ts and sso.spec.ts do not conflict (disjoint resources)', () => {
+  test('branding.spec.ts and visibility.spec.ts do not conflict (disjoint resources)', () => {
+    const touches = collapseRegistryToFileTouches();
+    const graph = buildConflictGraph(touches);
+    const branding = 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts';
+    const visibility = 'qa/e2e/tests/apps/minicrm/functional/visibility/visibility.spec.ts';
+    expect(graph.get(branding)?.has(visibility)).toBe(false);
+  });
+
+  test('branding.spec.ts and sso.spec.ts DO conflict (both reset pipeline_stages_reviewed)', () => {
+    // This pair was the "disjoint resources" case until MINCRM-705. Both files
+    // call ensureSystemDefaults() in their hooks, which DELETEs the
+    // pipeline_stages_reviewed system_settings row — so they always did conflict
+    // and the registry simply did not model the row. Kept as a regression pin:
+    // it fails if that key is ever dropped from either entry, which is the edit
+    // that would silently reopen the race with onboarding.spec.ts.
     const touches = collapseRegistryToFileTouches();
     const graph = buildConflictGraph(touches);
     const branding = 'qa/e2e/tests/apps/minicrm/functional/branding/branding.spec.ts';
     const sso = 'qa/e2e/tests/apps/minicrm/functional/sso/sso.spec.ts';
-    expect(graph.get(branding)?.has(sso)).toBe(false);
+    expect(graph.get(branding)?.has(sso)).toBe(true);
+  });
+
+  test('collapseRegistryToFileTouches unions multiple entries for one file', () => {
+    // reports-nav.spec.ts carries two entries: one title-scoped to a single test
+    // (settings.nav_layout) and one file-wide (settings.pipeline_stages_reviewed,
+    // from its file-level ensureSystemDefaults hooks). The graph reasons about
+    // whole files, so both keys must survive the collapse — if the union dropped
+    // either, the file would be co-scheduled with something it races.
+    // (MINCRM-705)
+    const touches = collapseRegistryToFileTouches();
+    const reportsNav = touches.find(
+      (t) => t.file === 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
+    );
+    expect(reportsNav, 'reports-nav.spec.ts missing from collapsed touches').toBeDefined();
+    expect([...(reportsNav?.writes ?? [])].sort()).toEqual([
+      'settings.nav_layout',
+      'settings.pipeline_stages_reviewed',
+    ]);
   });
 
   test('partitioning never places two conflicting registry files in the same group', () => {

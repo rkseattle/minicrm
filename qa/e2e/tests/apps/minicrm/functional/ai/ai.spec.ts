@@ -64,7 +64,7 @@ import {
   getAiSessionViaApi,
   deleteAllAiSessionsViaApi,
 } from '@behaviors/minicrm/ai.behaviors.js';
-import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
+import { setAiEnabled, restoreAiDefaultsAfterTest } from '@behaviors/minicrm/settings.behaviors.js';
 
 // Serial mode required: all tests share the admin user's AI sessions. Parallel
 // execution causes cross-test session state bleed (messages from one test appear
@@ -77,8 +77,11 @@ test.beforeEach(async ({ restClient }) => {
   // Delete all admin sessions so each test starts with a clean slate.
   // Needed because serial tests share the admin account and sessions accumulate.
   await loginAsAdmin(restClient);
-  // Ensure AI is enabled — aiSettings.spec.ts (which runs just before this file
-  // alphabetically) resets the master toggle to disabled in its afterEach.
+  // Ensure AI is enabled. This used to say aiSettings.spec.ts "runs just before
+  // this file alphabetically" and leaves the toggle disabled — an ordering the
+  // conflict-graph scheduler stopped providing (the two files are in different
+  // groups). This file now owns both halves: enable here, restore in afterEach.
+  // (MINCRM-705)
   await setAiEnabled(restClient, true);
   await deleteAllAiSessionsViaApi(restClient);
 });
@@ -96,6 +99,9 @@ test.afterEach(async ({ restClient }) => {
   // user's own sessions. (MINCRM-686)
   await loginAsAdmin(restClient);
   await deleteAllAiSessionsViaApi(restClient);
+  // Restore AI defaults so the toggle does not outlive this file. See
+  // restoreAiDefaultsAfterTest's docblock for why this is load-bearing.
+  await restoreAiDefaultsAfterTest(restClient);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

@@ -19,8 +19,12 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 
-// Pipeline stage reorder tests mutate shared global state (sort_order column).
-// Serial mode ensures no two tests race on the same shared rows simultaneously.
+// Pipeline stage reorder tests mutate shared global state (sort_order column)
+// via PUT /api/v1/settings/pipeline-stages/reorder. describe.configure serial
+// mode orders tests WITHIN this file; the @serial TAG is what moves the file to
+// the single-worker e2e-serial job so it cannot race pipelines.spec.ts or
+// stage-exit-requirements.spec.ts, which read the same table. Both are needed.
+// (MINCRM-705)
 test.describe.configure({ mode: 'serial' });
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -99,7 +103,7 @@ test.afterEach(async ({ restClient }) => {
 // Tests
 // ---------------------------------------------------------------------------
 
-test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, new order persists via API', async ({
+test('@functional @serial MINCRM-381-1: move-up reorders stage atomically — no 409, new order persists via API', async ({
   page,
   restClient,
   testData,
@@ -130,7 +134,7 @@ test('@functional MINCRM-381-1: move-up reorders stage atomically — no 409, ne
   expect(stagesAfter[0].id, 'stage moved up should now be first').toBe(secondStageId);
 });
 
-test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, new order persists via API', async ({
+test('@functional @serial MINCRM-381-2: move-down reorders stage atomically — no 409, new order persists via API', async ({
   page,
   restClient,
   testData,
@@ -166,7 +170,7 @@ test('@functional MINCRM-381-2: move-down reorders stage atomically — no 409, 
   expect(stagesAfter[1].id, 'first stage should now be second').toBe(firstStageId);
 });
 
-test('@functional MINCRM-381-3: move-up button is disabled for the first stage', async ({
+test('@functional @serial MINCRM-381-3: move-up button is disabled for the first stage', async ({
   page,
   restClient,
   testData,
@@ -187,7 +191,7 @@ test('@functional MINCRM-381-3: move-up button is disabled for the first stage',
 // PS-1 — Add a new pipeline stage via UI (MINCRM-409)
 // ---------------------------------------------------------------------------
 
-test('@functional PS-1: admin adds a new pipeline stage; stage appears in API list', async ({
+test('@functional @serial PS-1: admin adds a new pipeline stage; stage appears in API list', async ({
   page,
   restClient,
   testData,
@@ -228,7 +232,7 @@ test('@functional PS-1: admin adds a new pipeline stage; stage appears in API li
 // PS-2 — Rename an existing non-fixed pipeline stage via UI (MINCRM-409)
 // ---------------------------------------------------------------------------
 
-test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name appears in API', async ({
+test('@functional @serial PS-2: admin renames a non-fixed pipeline stage; updated name appears in API', async ({
   page,
   restClient,
   testData,
@@ -276,7 +280,7 @@ test('@functional PS-2: admin renames a non-fixed pipeline stage; updated name a
 //        via UI (MINCRM-409)
 // ---------------------------------------------------------------------------
 
-test('@functional PS-4: admin deletes a custom pipeline stage; stage no longer appears in API', async ({
+test('@functional @serial PS-4: admin deletes a custom pipeline stage; stage no longer appears in API', async ({
   page,
   restClient,
   testData,

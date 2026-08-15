@@ -27,7 +27,7 @@
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin } from '@behaviors/minicrm/auth.behaviors.js';
-import { setAiEnabled } from '@behaviors/minicrm/settings.behaviors.js';
+import { setAiEnabled, restoreAiDefaultsAfterTest } from '@behaviors/minicrm/settings.behaviors.js';
 import {
   navigateToAiPage,
   waitForAiConversationPanel,
@@ -65,6 +65,9 @@ test.afterEach(async ({ restClient }) => {
   // auto-selects. (MINCRM-686)
   await deleteAllAiSessionsViaApi(restClient);
   await deleteAllContextEntriesViaApi(restClient);
+  // Restore AI defaults so the toggle does not outlive this file. See
+  // restoreAiDefaultsAfterTest's docblock for why this is load-bearing.
+  await restoreAiDefaultsAfterTest(restClient);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
