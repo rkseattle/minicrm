@@ -57,6 +57,11 @@ For every failing job:
 5. Act on its verdict. `SYMPTOM ONLY` or `UNVERIFIED` means the fix is not done. Fix
    every additional site it reports as a live defect in this same commit.
 6. Run the full Definition of Done, then commit.
+7. Push per `.claude/gates/pre-push.md` — including its step 1 rebase onto the parent
+   branch. An open PR is exactly where the parent drifts: `main` moves while the run is
+   red, and a fix pushed onto a stale base can go green locally and stay red in CI
+   against the merged result. Rebasing rewrites the branch, so this push is
+   `--force-with-lease`.
 
 If a fix touched E2E-relevant code, validate narrowly — run only the affected specs
 with `--grep`, once. Do not re-run the whole suite to check a narrow fix.
