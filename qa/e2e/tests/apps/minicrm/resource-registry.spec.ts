@@ -22,7 +22,10 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { RESOURCE_REGISTRY } from '../../../apps/minicrm/resource-registry.js';
+import {
+  RESOURCE_REGISTRY,
+  ENSURE_SYSTEM_DEFAULTS_KEYS,
+} from '../../../apps/minicrm/resource-registry.js';
 import { findTaggedTestTitles } from '../../../framework/reporting/timing-utils.js';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../..');
@@ -161,7 +164,11 @@ test.describe('resource-registry — completeness against files on disk', () => 
 // already covers, and would still pass if the entries themselves were wrong.
 // ---------------------------------------------------------------------------
 test.describe('resource-registry — pipeline_stages_reviewed (MINCRM-705)', () => {
-  const KEY = 'settings.pipeline_stages_reviewed';
+  // The composite key each ensureSystemDefaults() caller declares. It expands to
+  // the helper's ten real rows at collapse time (see expandCompositeKeys), so the
+  // assertions below check what entries DECLARE, and the key-coverage test above
+  // checks that what it expands to is complete.
+  const KEY = 'settings.ensure_system_defaults';
   const p = (rel: string) => `qa/e2e/tests/apps/minicrm/functional/${rel}`;
 
   /**
@@ -189,6 +196,49 @@ test.describe('resource-registry — pipeline_stages_reviewed (MINCRM-705)', () 
       })
       .join('\n');
     return /\bensureSystemDefaults\s*\(/.test(withoutComments);
+  });
+
+  test('ENSURE_SYSTEM_DEFAULTS_KEYS covers every row the helper actually writes', () => {
+    // The composite key is only as good as this list. A write added to
+    // ensureSystemDefaults() without a matching key here silently under-models
+    // the conflict for all nine callers at once — which is what happened when
+    // only pipeline_stages_reviewed was modeled: two pairs of specs ended up
+    // co-scheduled at workers=2 with a live cross-file race.
+    //
+    // Derived from the helper's own source rather than hand-listed, for the same
+    // reason the caller list is derived.
+    const source = fs.readFileSync(
+      path.join(REPO_ROOT, 'qa/e2e/behaviors/minicrm/settings.behaviors.ts'),
+      'utf8',
+    );
+    const afterSignature = source.slice(
+      source.indexOf('export async function ensureSystemDefaults'),
+    );
+    const helperBody = afterSignature.slice(0, afterSignature.indexOf('\n}'));
+    const endpoints = [...helperBody.matchAll(/\/api\/v1\/settings\/([a-z-]+)/g)].map((m) => m[1]);
+
+    /** endpoint slug -> the ResourceKey modeling that row. */
+    const KEY_FOR_ENDPOINT: Record<string, string> = {
+      'default-language': 'settings.default_language',
+      'nav-layout': 'settings.nav_layout',
+      'email-notifications': 'settings.email_notifications_enabled',
+      'tags-restrict-creation': 'settings.tags_restrict_creation',
+      currencies: 'settings.currencies',
+      branding: 'settings.branding',
+      'pipeline-stages-reviewed': 'settings.pipeline_stages_reviewed',
+      sso: 'settings.sso',
+      'mfa-required': 'settings.mfa_required',
+      visibility: 'settings.visibility_policy',
+    };
+
+    const unmapped = [...new Set(endpoints)].filter((e) => !KEY_FOR_ENDPOINT[e as string]);
+    expect(
+      unmapped,
+      `ensureSystemDefaults() writes endpoint(s) with no ResourceKey mapping: ${JSON.stringify(unmapped)}. Add the key to ResourceKey, to ENSURE_SYSTEM_DEFAULTS_KEYS, and to this map.`,
+    ).toEqual([]);
+
+    const expected = [...new Set(endpoints.map((e) => KEY_FOR_ENDPOINT[e as string]))].sort();
+    expect([...ENSURE_SYSTEM_DEFAULTS_KEYS].sort()).toEqual(expected);
   });
 
   test('the derived ensureSystemDefaults caller list is not empty', () => {

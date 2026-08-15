@@ -233,12 +233,12 @@ export type AttestationFailureReason =
   | 'skipped-tests'
   /** The reporter's own <testsuites skipped="N"> disagrees with what this parser could extract — rows were dropped, so the results file cannot be trusted either way. (MINCRM-687) */
   | 'results-file-unparseable'
+  /** The results file is present and well-formed but reports ZERO tests. An empty run is not a passing run; without this the gate returns no reasons at all, because every other check operates on rows that exist. Only reachable when the SHA already has attributed coverage dumps from an earlier run (otherwise no-session-attribution fires first) — which is exactly the repeat-invocation shape the pre-push hook now uses. The equivalent guard existed only as a CI workflow step, so the local hook lacked it while docs/dev/coverage.md listed it. (MINCRM-705) */
+  | 'zero-tests-executed'
   | 'no-session-attribution'
   /** A --selection path was given but could not be read as a requirement list — missing, unreadable, malformed JSON, or a specFiles that is not an array of strings. Distinct from "no selection requested": the caller ASKED for reconciliation and did not get it. (MINCRM-695) */
   | 'selection-file-unreadable'
-  | 'missing-required-tests'
-  /** The results file is present and well-formed but reports ZERO tests. An empty run is not a passing run; without this the gate returns no reasons at all, because every other check operates on rows that exist. Only reachable when the SHA already has attributed coverage dumps from an earlier run (otherwise no-session-attribution fires first) — which is exactly the repeat-invocation shape the pre-push hook now uses. The equivalent guard existed only as a CI workflow step, so the local hook lacked it while docs/dev/coverage.md listed it. (MINCRM-705) */
-  | 'zero-tests-executed';
+  | 'missing-required-tests';
 
 export interface AttestationResult {
   passed: boolean;
@@ -507,15 +507,15 @@ const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationRes
       `${result.skippedTests.length} test(s) skipped in every project that ran (never ran an assertion anywhere):`,
       ...result.skippedTests.map((t) => `  - ${t.classname} :: ${t.name}`),
     ],
-    'zero-tests-executed': () => [
-      'The results file is well-formed but reports zero tests — the run executed nothing.',
-      'Common causes: every selected spec was filtered out by --grep/--grep-invert, or the',
-      'suite matched no files. An empty run cannot attest anything.',
-    ],
     'results-file-unparseable': (result) => [
       `Results file could not be fully parsed: the reporter declares ${result.totalTests} test(s) but ${result.parsedTestCount} row(s) were recovered. ` +
         'This is a parser/reporter disagreement, NOT a test outcome — the run may have passed or failed, and this gate cannot tell which. ' +
         'Check the results XML for a truncated or unexpectedly shaped document before trusting any result derived from it.',
+    ],
+    'zero-tests-executed': () => [
+      'The results file is well-formed but reports zero tests — the run executed nothing.',
+      'Common causes: every selected spec was filtered out by --grep/--grep-invert, or the',
+      'suite matched no files. An empty run cannot attest anything.',
     ],
     'no-session-attribution': () => [
       'No coverage session attribution found for this commit SHA — cannot verify which tests actually ran against it. Ensure COVERAGE_SESSION_MANAGEMENT is enabled for this run.',
