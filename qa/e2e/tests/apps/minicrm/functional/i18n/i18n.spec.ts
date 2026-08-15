@@ -158,6 +158,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * can run this test in parallel without interfering with each other.
    */
   test('@functional @serial F9-L2: user language preference fr persists after two reloads', async ({
+    testData,
     page,
     restClient,
   }) => {
@@ -166,7 +167,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     const repEmail = `f9-l2-rep-${uniqueSuffix}@example.com`;
     const repPassword = 'F9L2RepPass1!';
 
-    const rep = await createTestUser(restClient, {
+    const rep = await createTestUser(testData, restClient, {
       name: `F9 L2 Rep ${uniqueSuffix}`,
       email: repEmail,
       role: 'rep',
@@ -226,6 +227,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
    * equivalent for the same key must not be visible.
    */
   test('@functional @serial F9-L3: per-user language preference de overrides system default en', async ({
+    testData,
     page,
     restClient,
   }) => {
@@ -234,7 +236,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     const repEmail = `f9-l3-rep-${uniqueSuffix}@example.com`;
     const repPassword = 'F9L3RepPass1!';
 
-    const rep = await createTestUser(restClient, {
+    const rep = await createTestUser(testData, restClient, {
       name: `F9 L3 Rep ${uniqueSuffix}`,
       email: repEmail,
       role: 'rep',

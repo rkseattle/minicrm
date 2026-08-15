@@ -66,7 +66,6 @@ import {
 } from '@behaviors/minicrm/contacts.behaviors.js';
 import { getDealById } from '@behaviors/minicrm/deals.behaviors.js';
 import { patchActivity } from '@behaviors/minicrm/activities.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   simulateConcurrentEdit,
   isConflictModalVisible,
@@ -466,7 +465,7 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       const admin = await createTestAdmin(testData, restClient);
 
       // Create the reassignment target while still admin-authed (MINCRM-415)
-      const newOwner = await createTestUser(restClient, {
+      const newOwner = await createTestUser(testData, restClient, {
         name: `CC6 Owner ${uniqueSuffix}`,
         email: `cc6-owner-${uniqueSuffix}@example.com`,
         role: 'rep',
@@ -533,9 +532,6 @@ test.describe.serial('F-CC — Optimistic locking concurrency', () => {
       const r3 = await restClient.get<ContactWithOwnerResponse>(`/api/v1/contacts/${c3.id}`);
       expect(r3.body.contact.owner_id, 'c3 should have new owner').toBe(newOwner.id);
       expect(r3.body.contact.version, 'c3 version unchanged by bulk op').toBe(1);
-
-      // Deactivate the temp user (users cannot be hard-deleted).
-      await deactivateUser(restClient, newOwner.id);
     },
   );
 

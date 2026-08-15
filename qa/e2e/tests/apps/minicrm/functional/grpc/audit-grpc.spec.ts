@@ -116,11 +116,12 @@ test('@functional GRPC-3: ListAuditEvents with no JWT returns UNAUTHENTICATED', 
 // ── Test 4: Unary — rep role returns PERMISSION_DENIED ───────────────────────
 
 test('@functional GRPC-4: ListAuditEvents with rep JWT returns PERMISSION_DENIED', async ({
+  testData,
   restClient,
   grpcClient,
 }) => {
   // Create a rep and obtain their JWT.
-  const rep = await createTestUser(restClient, { role: 'rep' });
+  const rep = await createTestUser(testData, restClient, { role: 'rep' });
 
   // Reuse the same restClient — loginAs switches its session cookie.
   await loginAs(restClient, rep.email, REP_PASSWORD);
@@ -133,10 +134,6 @@ test('@functional GRPC-4: ListAuditEvents with rep JWT returns PERMISSION_DENIED
     if (err instanceof GrpcClientError) caughtCode = err.code;
   }
   expect(caughtCode).toBe(grpc.status.PERMISSION_DENIED);
-
-  // Re-authenticate as admin for cleanup.
-  await loginAsAdmin(restClient);
-  await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {});
 });
 
 // ── Test 5: Streaming — receives live events ─────────────────────────────────

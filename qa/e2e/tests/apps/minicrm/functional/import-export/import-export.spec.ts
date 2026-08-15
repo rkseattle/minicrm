@@ -336,10 +336,11 @@ test('@functional F11-ID2: Upload a deals CSV with unresolvable account name and
 // ---------------------------------------------------------------------------
 
 test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 403', async ({
+  testData,
   request,
   restClient,
 }) => {
-  const repUser = await createTestUser(restClient, { role: 'rep' });
+  const repUser = await createTestUser(testData, restClient, { role: 'rep' });
 
   try {
     await loginAs(restClient, repUser.email, 'BvtPassword1!');

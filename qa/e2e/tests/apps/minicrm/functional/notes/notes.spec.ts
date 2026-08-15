@@ -279,8 +279,8 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
   const contact = await createTestContact(testData, restClient);
 
   // Create rep A and rep B
-  const repA = await createTestUser(restClient, { password: REP_PASSWORD });
-  const repB = await createTestUser(restClient, { password: REP_PASSWORD });
+  const repA = await createTestUser(testData, restClient, { password: REP_PASSWORD });
+  const repB = await createTestUser(testData, restClient, { password: REP_PASSWORD });
 
   try {
     // Rep A creates a private note via API

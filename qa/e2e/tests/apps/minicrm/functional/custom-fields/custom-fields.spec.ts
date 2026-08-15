@@ -156,7 +156,7 @@ test('CF-2: rep sets a custom field value on a contact, saves, reloads, confirms
 
   // Create a rep user to act as the browser session subject. (MINCRM-386)
   const repPassword = 'RepPassword1!';
-  const rep = await createTestUser(restClient, { role: 'rep', password: repPassword });
+  const rep = await createTestUser(testData, restClient, { role: 'rep', password: repPassword });
 
   // Authenticate restClient as the rep so the contact is created with rep as owner.
   // The server always sets owner_id = req.user.id, so we must request as the rep.
@@ -197,10 +197,6 @@ test('CF-2: rep sets a custom field value on a contact, saves, reloads, confirms
 
   await expectCustomFieldLabelVisible(definitionId, { page });
   await expect(readGrid).toContainText('Test Value 123');
-
-  // Deactivate the rep user — users cannot be hard-deleted, so deactivate via
-  // the admin API. restClient is already authenticated as admin from above. (MINCRM-386)
-  await restClient.patch(`/api/v1/users/${rep.id}/deactivate`, {});
 });
 
 // ---------------------------------------------------------------------------

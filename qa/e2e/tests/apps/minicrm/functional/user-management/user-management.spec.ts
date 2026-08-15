@@ -44,6 +44,7 @@ import {
 import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
 import { getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import {
   findUserById,
   inviteUserViaApi,
@@ -78,18 +79,22 @@ const ACTIVATED_USER_PASSWORD = 'F6TestPass1!';
  * password so callers don't need to carry the password as a separate value.
  * Returns the user row (status='active') and the password that was set.
  *
- * Caller is responsible for deactivating the user in a finally block.
+ * Teardown is registered by `createTestUser` itself, so the user is deactivated
+ * after the test even on failure. The `finally` deactivate at each call site
+ * below is redundant but harmless. (MINCRM-668)
  *
+ * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
  * @param role - Role to assign at invite time.
  * @returns Created user row and the activated password.
  */
 async function createActivatedUser(
+  testData: TestDataManager,
   restClient: RestClient,
   role: 'admin' | 'rep' = 'rep',
 ): Promise<{ user: UserRow; password: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const user = await createTestUser(restClient, {
+  const user = await createTestUser(testData, restClient, {
     name: `F6 User ${uniqueSuffix}`,
     email: `f6-user-${uniqueSuffix}@example.com`,
     role,
@@ -171,9 +176,10 @@ test('@smoke @functional F6-IN1: admin invites user with valid email and role �
 });
 
 test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no duplicate created', async ({
+  testData,
   restClient,
 }) => {
-  const { user } = await createActivatedUser(restClient);
+  const { user } = await createActivatedUser(testData, restClient);
 
   try {
     // Attempt to invite with the already-registered email.
@@ -263,9 +269,10 @@ test('@functional F6-IN4: invited user is visible in list before they log in', a
 // ---------------------------------------------------------------------------
 
 test('@functional F6-RA1: role assigned at invite time is reflected on the user record', async ({
+  testData,
   restClient,
 }) => {
-  const { user } = await createActivatedUser(restClient, 'admin');
+  const { user } = await createActivatedUser(testData, restClient, 'admin');
 
   try {
     const found = await findUserById(restClient, user.id);
@@ -279,10 +286,11 @@ test('@functional F6-RA1: role assigned at invite time is reflected on the user 
 });
 
 test('@functional F6-RA2: admin changes role post-invite → change persisted, no re-login required (AC2)', async ({
+  testData,
   restClient,
 }) => {
   // Invite as rep.
-  const { user } = await createActivatedUser(restClient, 'rep');
+  const { user } = await createActivatedUser(testData, restClient, 'rep');
 
   try {
     // Verify initial role.
@@ -430,9 +438,10 @@ test.describe('First login tests', () => {
 // ---------------------------------------------------------------------------
 
 test('@functional F6-DX1: deactivated user cannot log in — blocked at API layer (AC1)', async ({
+  testData,
   restClient,
 }) => {
-  const { user, password } = await createActivatedUser(restClient);
+  const { user, password } = await createActivatedUser(testData, restClient);
 
   try {
     // Deactivate the user.
@@ -470,7 +479,7 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
   restClient,
   testData,
 }) => {
-  const { user, password } = await createActivatedUser(restClient);
+  const { user, password } = await createActivatedUser(testData, restClient);
 
   // Second APIRequestContext authenticated as the test user, so the contact
   // is created with owner_id = test user's ID — not the admin's.
@@ -500,9 +509,10 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
 });
 
 test('@functional F6-DX3: deactivated user appears in list with inactive status', async ({
+  testData,
   restClient,
 }) => {
-  const { user } = await createActivatedUser(restClient);
+  const { user } = await createActivatedUser(testData, restClient);
 
   try {
     await deactivateUser(restClient, user.id);
@@ -520,8 +530,8 @@ test('@functional F6-DX3: deactivated user appears in list with inactive status'
 // Reactivation tests
 // ---------------------------------------------------------------------------
 
-test('@functional F6-RX1: reactivated user can log in again', async ({ restClient }) => {
-  const { user, password } = await createActivatedUser(restClient);
+test('@functional F6-RX1: reactivated user can log in again', async ({ testData, restClient }) => {
+  const { user, password } = await createActivatedUser(testData, restClient);
 
   try {
     // Deactivate.
@@ -549,7 +559,7 @@ test('@functional F6-RX2: reactivated user role and records are unchanged', asyn
   testData,
 }) => {
   // Create an admin-role user.
-  const { user } = await createActivatedUser(restClient, 'admin');
+  const { user } = await createActivatedUser(testData, restClient, 'admin');
 
   try {
     // Create a contact to verify records survive the deactivate/reactivate cycle.
