@@ -1245,6 +1245,54 @@ describe('verify-test-attestation.ts', () => {
       });
     });
 
+    describe('zero-tests-executed (MINCRM-705)', () => {
+      it('fails a well-formed results file that reports zero tests', async () => {
+        attestedDumps();
+        await writeResults(
+          `<testsuites id="" name="" tests="0" failures="0" skipped="0" errors="0" time="0">
+</testsuites>`,
+        );
+
+        const result = await attest(attestArgs());
+
+        // Before this reason existed the gate returned NO reasons here: every
+        // other check operates on rows that exist, and hasParseDisagreement is
+        // guarded on totalTests > 0. An empty run attested clean.
+        expect(result.reasons).toEqual(['zero-tests-executed']);
+        expect(result.passed).toBe(false);
+      });
+
+      it('does not fire when tests actually ran', async () => {
+        attestedDumps();
+        await writeResults(`<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="0.1">
+<testsuite name="a.spec.ts" hostname="desktop" tests="1" failures="0" skipped="0" errors="0" time="0.1">
+<testcase name="a test" classname="qa/e2e/tests/apps/minicrm/functional/a.spec.ts" time="0.1">
+</testcase>
+</testsuite>
+</testsuites>`);
+
+        const result = await attest(attestArgs());
+
+        expect(result.reasons).toEqual([]);
+        expect(result.passed).toBe(true);
+      });
+
+      it('is not reached when the SHA has no attributed dumps', async () => {
+        // no attestedDumps() — no-session-attribution is the honest answer
+        // first: with no dumps the gate cannot verify what ran either way, so
+        // an empty results file is not the finding to lead with.
+        await writeResults(
+          `<testsuites id="" name="" tests="0" failures="0" skipped="0" errors="0" time="0">
+</testsuites>`,
+        );
+
+        const result = await attest(attestArgs());
+
+        expect(result.reasons).toContain('no-session-attribution');
+        expect(result.passed).toBe(false);
+      });
+    });
+
     describe('results-file-unparseable', () => {
       it('reports a row-count disagreement between the reporter and the parser', async () => {
         attestedDumps();
@@ -1565,14 +1613,19 @@ describe('verify-test-attestation.ts', () => {
     // This also pins the EMISSION ORDER: FAILURE_MESSAGES' docblock declares its
     // key order to be the order reasons are pushed, and formatFailureOutput
     // derives its section order from that, so the two must not drift.
-    // Two reasons can never join this set, for two DIFFERENT structural
-    // reasons, and stating both is the point of the pair below:
+    // Three reasons can never join this set, for three DIFFERENT structural
+    // reasons, and stating each is the point of the cases below:
     //
     //  - results-file-missing returns early, before any other check runs.
     //  - selection-file-unreadable is mutually exclusive with
     //    missing-required-tests: an unreadable selection yields no requirement
     //    list, so missingRequiredFiles is [] and the shortfall cannot fire.
     //    (MINCRM-695)
+    //  - zero-tests-executed is mutually exclusive with every reason derived
+    //    from a test row. This fixture is maximally BROKEN, not empty: it has
+    //    failures and skips, so tests plainly ran. A file cannot simultaneously
+    //    report zero tests and report failing ones. Its own describe block
+    //    covers it directly. (MINCRM-705)
     //
     // So "every reason at once" is really two maximal sets, one per horn of that
     // exclusivity. Both are asserted, and between them every reason appears in a
@@ -1590,7 +1643,10 @@ describe('verify-test-attestation.ts', () => {
       // ATTESTATION_FAILURE_REASONS exists to eliminate.
       expect(result.reasons).toEqual(
         ATTESTATION_FAILURE_REASONS.filter(
-          (reason) => reason !== 'results-file-missing' && reason !== 'selection-file-unreadable',
+          (reason) =>
+            reason !== 'results-file-missing' &&
+            reason !== 'selection-file-unreadable' &&
+            reason !== 'zero-tests-executed',
         ),
       );
       expect(result.passed).toBe(false);
@@ -1608,7 +1664,10 @@ describe('verify-test-attestation.ts', () => {
 
       expect(result.reasons).toEqual(
         ATTESTATION_FAILURE_REASONS.filter(
-          (reason) => reason !== 'results-file-missing' && reason !== 'missing-required-tests',
+          (reason) =>
+            reason !== 'results-file-missing' &&
+            reason !== 'missing-required-tests' &&
+            reason !== 'zero-tests-executed',
         ),
       );
       expect(result.passed).toBe(false);

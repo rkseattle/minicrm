@@ -236,7 +236,9 @@ export type AttestationFailureReason =
   | 'no-session-attribution'
   /** A --selection path was given but could not be read as a requirement list — missing, unreadable, malformed JSON, or a specFiles that is not an array of strings. Distinct from "no selection requested": the caller ASKED for reconciliation and did not get it. (MINCRM-695) */
   | 'selection-file-unreadable'
-  | 'missing-required-tests';
+  | 'missing-required-tests'
+  /** The results file is present and well-formed but reports ZERO tests. An empty run is not a passing run; without this the gate returns no reasons at all, because every other check operates on rows that exist. Only reachable when the SHA already has attributed coverage dumps from an earlier run (otherwise no-session-attribution fires first) — which is exactly the repeat-invocation shape the pre-push hook now uses. The equivalent guard existed only as a CI workflow step, so the local hook lacked it while docs/dev/coverage.md listed it. (MINCRM-705) */
+  | 'zero-tests-executed';
 
 export interface AttestationResult {
   passed: boolean;
@@ -413,6 +415,16 @@ export async function verifyAttestation(args: CliArgs): Promise<AttestationResul
     reasons.push('results-file-unparseable');
   }
 
+  // An empty run is not a passing run. Every check above operates on rows that
+  // EXIST — findFailedTests, findTestsSkippedEverywhere and hasParseDisagreement
+  // (whose own `totalTests > 0` guard is deliberate, see above) all return
+  // nothing for a well-formed <testsuites tests="0">, so without this the gate
+  // reports `reasons: []` and attests a run that executed no tests at all.
+  // (MINCRM-705)
+  if (parsed.totalTests === 0 && parsed.testCases.length === 0) {
+    reasons.push('zero-tests-executed');
+  }
+
   // Session attribution (MINCRM-612) is the SHA-binding mechanism — the
   // JUnit XML itself carries no commit SHA, so a results.xml alone cannot
   // prove it belongs to this SHA. No attributed dumps for this SHA means
@@ -494,6 +506,11 @@ const FAILURE_MESSAGES: Record<AttestationFailureReason, (result: AttestationRes
     'skipped-tests': (result) => [
       `${result.skippedTests.length} test(s) skipped in every project that ran (never ran an assertion anywhere):`,
       ...result.skippedTests.map((t) => `  - ${t.classname} :: ${t.name}`),
+    ],
+    'zero-tests-executed': () => [
+      'The results file is well-formed but reports zero tests — the run executed nothing.',
+      'Common causes: every selected spec was filtered out by --grep/--grep-invert, or the',
+      'suite matched no files. An empty run cannot attest anything.',
     ],
     'results-file-unparseable': (result) => [
       `Results file could not be fully parsed: the reporter declares ${result.totalTests} test(s) but ${result.parsedTestCount} row(s) were recovered. ` +
