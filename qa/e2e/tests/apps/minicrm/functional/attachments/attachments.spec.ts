@@ -38,7 +38,6 @@ import {
   waitForAttachmentDownloadLinkAndGetHref,
   isAttachmentRowHidden,
 } from '@behaviors/minicrm/attachments.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   waitForContactAttachmentsSection,
   uploadContactAttachment,
@@ -366,8 +365,7 @@ test('@functional F10-A1: Rep cannot delete an attachment uploaded by another us
     }
     expect(got403, 'rep should get 403 when deleting another user attachment').toBe(true);
   } finally {
-    // Restore admin session so teardown succeeds, then deactivate the rep
+    // Restore admin session so teardown succeeds.
     await loginAsAdmin(restClient);
-    await deactivateUser(restClient, rep.id).catch(() => null);
   }
 });

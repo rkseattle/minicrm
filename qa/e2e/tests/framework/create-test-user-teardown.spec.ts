@@ -12,10 +12,15 @@
  * Same reason as register-admin-teardown.spec.ts: tests/framework/ is the only
  * spec directory CI runs unconditionally, via `test:framework:coverage`
  * (qa/package.json). Specs under tests/apps/minicrm/ reach CI only through a
- * `--grep @functional` filter. Without a home here, a regression that deleted
- * the registerCustomTeardown call would pass every job — the 16 surviving
- * `finally` blocks at the call sites would keep the functional suite green
- * while the four unprotected paths silently leaked again.
+ * `--grep @functional` filter.
+ *
+ * These assertions are the ONLY thing standing between a deleted registration
+ * and a silent leak. The call sites used to carry their own `finally` blocks,
+ * which would have masked such a regression by cleaning up anyway; those are
+ * gone now that registration is the single cleanup path, so nothing else in the
+ * suite would fail if the registerCustomTeardown call disappeared. A test that
+ * leaks a user still passes — that is the whole problem this ticket exists to
+ * fix, and the reason this coverage cannot live with the specs it protects.
  *
  * No real server is required. RestClient is replaced with a scripted stub.
  */

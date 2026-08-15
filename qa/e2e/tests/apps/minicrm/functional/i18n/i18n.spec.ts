@@ -47,7 +47,6 @@ import {
   expectMobileNavDrawerVisibleWithLanguageSelect,
   selectLanguageAndWaitForPatch,
 } from '@behaviors/minicrm/nav.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { setUserLanguage, setSystemDefaultLanguage } from '@behaviors/minicrm/setup.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import { reloadCurrentPage } from '@behaviors/minicrm/nav.behaviors.js';
@@ -167,7 +166,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     const repEmail = `f9-l2-rep-${uniqueSuffix}@example.com`;
     const repPassword = 'F9L2RepPass1!';
 
-    const rep = await createTestUser(testData, restClient, {
+    await createTestUser(testData, restClient, {
       name: `F9 L2 Rep ${uniqueSuffix}`,
       email: repEmail,
       role: 'rep',
@@ -213,11 +212,9 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       await assertFrenchNavLabel('after second reload');
     } finally {
       setLocale('en');
-      // Re-authenticate as admin and deactivate the test rep.
+      // Re-authenticate as admin; the rep is deactivated by createTestUser's
+      // registered teardown. (MINCRM-668)
       await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, rep.id).catch((err: unknown) => {
-        console.error(`[F9-L2] teardown: failed to deactivate rep: ${String(err)}`);
-      });
     }
   });
 
@@ -236,7 +233,7 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     const repEmail = `f9-l3-rep-${uniqueSuffix}@example.com`;
     const repPassword = 'F9L3RepPass1!';
 
-    const rep = await createTestUser(testData, restClient, {
+    await createTestUser(testData, restClient, {
       name: `F9 L3 Rep ${uniqueSuffix}`,
       email: repEmail,
       role: 'rep',
@@ -287,11 +284,9 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
       setLocale('de');
     } finally {
       setLocale('en');
-      // Re-authenticate as admin to deactivate the test rep.
+      // Re-authenticate as admin; the rep is deactivated by createTestUser's
+      // registered teardown. (MINCRM-668)
       await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, rep.id).catch((err: unknown) => {
-        console.error(`[F9-L3] teardown: failed to deactivate rep: ${String(err)}`);
-      });
       await resetLanguage(restClient, 'F9-L3');
     }
   });

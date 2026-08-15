@@ -29,7 +29,7 @@
  *   - beforeEach creates a fresh UUID-suffixed rep; all contacts, accounts,
  *     deals, and notes are owned by that rep and torn down by TestDataManager.
  *   - F14-V1 creates an isolated rep pair (repA writes a private note; repB
- *     verifies the masked placeholder); both deactivated in finally.
+ *     verifies the masked placeholder); both deactivated by TestDataManager.
  *   - F14-V2 re-authenticates the REST client as the singleton admin to set up
  *     visibility-change state, then asserts using only the rep's browser
  *     session. No REST calls are made after the re-auth, so the singleton admin
@@ -62,7 +62,6 @@ import {
   maskedNoteCardIsVisible,
   login,
   loginAsAdmin,
-  deactivateUser,
   createNoteViaApi,
   getNoteById,
   listNotes,
@@ -320,8 +319,6 @@ test('@functional F14-V1: Private note from rep A is masked for rep B', async ({
   } finally {
     // Restore admin session so subsequent tests are not affected
     await loginAsAdmin(restClient);
-    await deactivateUser(restClient, repA.id);
-    await deactivateUser(restClient, repB.id);
   }
 });
 

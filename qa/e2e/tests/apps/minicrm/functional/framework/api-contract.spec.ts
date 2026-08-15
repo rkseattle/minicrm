@@ -97,23 +97,13 @@ test(
   async ({ testData, restClient }) => {
     await loginAsAdmin(restClient);
 
-    let createdUserId: string | undefined;
-    try {
-      // Schema validation inside createTestUser catches any rename of `user`→`data`,
-      // missing `inviteToken`, or role/status enum change.
-      const user = await createTestUser(testData, restClient, { role: 'rep' });
-      createdUserId = user.id;
+    // Schema validation inside createTestUser catches any rename of `user`→`data`,
+    // missing `inviteToken`, or role/status enum change. The user is deactivated
+    // by its registered teardown, so no finally block is needed. (MINCRM-668)
+    const user = await createTestUser(testData, restClient, { role: 'rep' });
 
-      expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
-      expect(user.status).toBe('active');
-    } finally {
-      // Users cannot be hard-deleted; deactivate to keep the E2E DB clean.
-      if (createdUserId) {
-        await restClient
-          .patch(`/api/v1/users/${createdUserId}/deactivate`, {})
-          .catch(() => undefined);
-      }
-    }
+    expect(user.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(user.status).toBe('active');
   },
 );
 

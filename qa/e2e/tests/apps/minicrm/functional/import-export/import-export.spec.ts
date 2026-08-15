@@ -37,7 +37,6 @@ test.use({ storageState: { cookies: [], origins: [] } });
 import { searchContactsViaApi } from '@behaviors/minicrm/contacts.behaviors.js';
 import { searchAccountsViaApi } from '@behaviors/minicrm/accounts.behaviors.js';
 import { getDealsByAccount } from '@behaviors/minicrm/deals.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
 
 // ---------------------------------------------------------------------------
@@ -356,7 +355,6 @@ test('@functional F11-IX1: Rep cannot access import endpoints — blocked with 4
     expect(parsed.status, 'rep should be blocked from import endpoint').toBe(403);
   } finally {
     await loginAsAdmin(restClient);
-    await deactivateUser(restClient, repUser.id);
   }
 });
 
