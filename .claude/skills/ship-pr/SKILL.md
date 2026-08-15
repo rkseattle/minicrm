@@ -10,10 +10,15 @@ Ship the branch covering: $ARGUMENTS
 
 Run only after `/branch-review` has returned APPROVE.
 
-## Step 1 — Local CI equivalence
+## Step 1 — Rebase onto the parent, then local CI equivalence
 
 Read `.claude/gates/pre-push.md` and run the checklist in order. Everything CI will run,
 runs here first. All green before anything is pushed.
+
+The checklist opens with a rebase onto the parent branch, and it is first for a reason:
+CI tests your branch merged with the parent, so a gate run on the pre-rebase tree is not
+testing what CI will test. Rebase before Step 2's E2E as well — pulling in parent commits
+after a passing E2E run invalidates it, and that run is expensive to repeat.
 
 ## Step 2 — E2E
 
@@ -44,9 +49,17 @@ Pushing these contaminates history. When unsure whether a change was intentional
 ## Step 4 — Push and open the PR
 
 ```bash
-git push -u origin <branch>
+git push -u --force-with-lease origin <branch>
 gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 ```
+
+`--force-with-lease` because Step 1's rebase rewrote the branch, so a branch that was
+already pushed will reject a fast-forward push. Never bare `--force`: `--force-with-lease`
+aborts when the remote moved under you instead of overwriting whatever landed there.
+
+If the lease check rejects the push, the remote branch has commits your local copy does
+not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.
+Fetch, look at what is there, and reconcile.
 
 Title lists every covered ticket ID in full — `MINCRM-542, MINCRM-565` — never
 abbreviated, never partial.
