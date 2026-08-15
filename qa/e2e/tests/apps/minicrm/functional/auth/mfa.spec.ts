@@ -73,7 +73,6 @@ test('@functional F8-S1: enable MFA via profile page — QR → verify → recov
   } finally {
     await disableMfaViaApi(restClient, USER_PASSWORD).catch(() => null);
     await loginAsAdmin(restClient);
-    await restClient.patch(`/api/v1/users/${user.id}/deactivate`, {});
   }
 });
 
@@ -101,7 +100,6 @@ test('@functional F8-LS1: TOTP login — password ok → MFA modal → TOTP code
   } finally {
     await disableMfaViaApi(restClient, USER_PASSWORD).catch(() => null);
     await loginAsAdmin(restClient);
-    await restClient.patch(`/api/v1/users/${user.id}/deactivate`, {});
   }
 });
 
@@ -132,7 +130,6 @@ test('@functional F8-LS2: recovery code login — MFA modal → switch mode → 
   } finally {
     await disableMfaViaApi(restClient, USER_PASSWORD).catch(() => null);
     await loginAsAdmin(restClient);
-    await restClient.patch(`/api/v1/users/${user.id}/deactivate`, {});
   }
 });
 
@@ -159,9 +156,9 @@ test('@functional F8-D1: disable MFA via profile page — password confirmed →
 
     expect(result.disabled, 'enable button should be visible after disabling MFA').toBe(true);
   } finally {
-    // MFA is disabled by the test body — just deactivate.
+    // Restore the admin session for subsequent tests. The user itself is
+    // deactivated by createTestUser's registered teardown. (MINCRM-668)
     await loginAsAdmin(restClient);
-    await restClient.patch(`/api/v1/users/${user.id}/deactivate`, {});
   }
 });
 

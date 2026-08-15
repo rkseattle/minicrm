@@ -36,7 +36,7 @@
  *   - beforeEach creates a fresh UUID-suffixed rep; all activities, contacts,
  *     and accounts are owned by that rep and torn down by TestDataManager.
  *   - F5-MY2/MY3 create a second isolated API context (second rep user); both
- *     users are UUID-scoped and deactivated in finally blocks.
+ *     users are UUID-scoped and deactivated by TestDataManager.
  *   - No aggregate count assertions on the full activities table.
  *   - No system_settings writes in any test.
  */
@@ -73,7 +73,6 @@ import {
   isOverdueTaskBadgeHidden,
   type ActivityRow,
 } from '@behaviors/minicrm/activities.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -325,9 +324,6 @@ test('@functional F5-MY2: task created by rep A → appears in rep A my-tasks, N
     expect(adminFound, 'rep task should not appear in admin my-tasks').toBeUndefined();
   } finally {
     await repRequestContext.dispose().catch(() => null);
-    await deactivateUser(restClient, repUser.id).catch((err: unknown) => {
-      console.error(`[F5-MY2] teardown: failed to deactivate rep ${repUser.id}: ${String(err)}`);
-    });
   }
 });
 
@@ -413,9 +409,6 @@ test('@functional F5-MY3: owner_id is not patchable — task remains with origin
     ).toBe(true);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id).catch((err: unknown) => {
-      console.error(`[F5-MY3] teardown: failed to deactivate rep ${rep.id}: ${String(err)}`);
-    });
   }
 });
 

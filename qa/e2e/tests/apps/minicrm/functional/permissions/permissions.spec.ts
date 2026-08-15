@@ -16,7 +16,7 @@
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
- *   - All test data managed via restClient + finally-block teardown
+ *   - All test data managed via TestDataManager registration
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
  * AC notes:
@@ -29,7 +29,7 @@
  * Parallelism (MINCRM-550):
  *   File-scope parallel mode is enabled below. Safety audit passed:
  *   - Every test creates isolated users (admin + rep) with UUID-scoped names and
- *     emails; records are cleaned up in finally blocks.
+ *     emails; records are cleaned up by TestDataManager.
  *   - All API count assertions use status codes (200/403/404), not table totals.
  *   - No system_settings writes in any test.
  *   - storageState is cleared (empty object) so no shared auth cookie is mutated.
@@ -105,9 +105,9 @@ const TEST_USER_PASSWORD = 'F7TestPass1!';
 /**
  * Creates an activated test user authenticated as admin.
  *
- * Teardown is registered by `createTestUser` itself, so the user is deactivated
- * after the test even on failure. The `finally` deactivate at each call site
- * below is redundant but harmless. (MINCRM-668)
+ * Teardown is registered by `createTestUser` itself and is the only cleanup
+ * path: the user is deactivated after the test even on failure, and call sites
+ * need no `finally` block of their own. (MINCRM-668)
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -128,19 +128,6 @@ async function createActivatedUser(
     password: TEST_USER_PASSWORD,
   });
   return { user: user as UserRow, password: TEST_USER_PASSWORD };
-}
-
-/**
- * Deactivates a user; suppresses errors so teardown does not mask test failures.
- *
- * @param restClient - Admin-authenticated RestClient.
- * @param userId - User UUID to deactivate.
- * @param tag - Test tag for logging.
- */
-async function deactivateUser(restClient: RestClient, userId: string, tag: string): Promise<void> {
-  await restClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
-    console.error(`[${tag}] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +180,6 @@ test('@functional F7-AA5: admin can read a contact owned by a rep', async ({
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-AA5');
   }
 });
 
@@ -225,7 +211,6 @@ test('@functional F7-AA6: admin can delete a contact owned by a rep', async ({
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-AA6');
   }
 });
 
@@ -255,7 +240,6 @@ test('@functional F7-RP1: rep can create and read their own contact', async ({
     expect(res.body.contact.id).toBe(contact.id);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-RP1');
   }
 });
 
@@ -291,8 +275,6 @@ test('@functional F7-RP2: rep can read a contact owned by another rep', async ({
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep1.id, 'F7-RP2-rep1');
-    await deactivateUser(restClient, rep2.id, 'F7-RP2-rep2');
   }
 });
 
@@ -327,7 +309,6 @@ test('@functional F7-RP3: rep can create and complete their own task', async ({
     expect(res.body.activity.status, 'task status should be complete').toBe('complete');
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-RP3');
   }
 });
 
@@ -354,7 +335,6 @@ test('@functional F7-FU1: rep navigating directly to /users is redirected to das
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FU1');
   }
 });
 
@@ -376,7 +356,6 @@ test('@functional F7-FU2: rep navigating directly to /admin/settings is redirect
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FU2');
   }
 });
 
@@ -398,7 +377,6 @@ test('@functional F7-FU3: rep navigating directly to /admin/automation is redire
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FU3');
   }
 });
 
@@ -425,7 +403,6 @@ test('@functional F7-FU4: rep navigating directly to /reports can access the rep
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FU4');
   }
 });
 
@@ -460,7 +437,6 @@ test('@functional F7-FU5: rep does not see admin-only nav links', async ({
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FU5');
   }
 });
 
@@ -493,7 +469,6 @@ test('@functional F7-FA1: rep calling GET /api/users receives 403 (AC1)', async 
     expect(errorStatus, 'rep GET /api/users should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA1');
   }
 });
 
@@ -526,7 +501,6 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
     expect(errorStatus, 'rep POST /api/users/invite should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA2');
   }
 });
 
@@ -557,8 +531,6 @@ test('@functional F7-FA3: rep calling PATCH /api/users/:id/role receives 403 (AC
     expect(errorStatus, 'rep PATCH /api/users/:id/role should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA3-rep');
-    await deactivateUser(restClient, target.id, 'F7-FA3-target');
   }
 });
 
@@ -589,8 +561,6 @@ test('@functional F7-FA4: rep calling PATCH /api/users/:id/deactivate receives 4
     expect(errorStatus, 'rep PATCH /api/users/:id/deactivate should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA4-rep');
-    await deactivateUser(restClient, target.id, 'F7-FA4-target');
   }
 });
 
@@ -623,9 +593,6 @@ test('@functional F7-FA5: rep calling PATCH /api/users/:id/reactivate receives 4
     expect(errorStatus, 'rep PATCH /api/users/:id/reactivate should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA5-rep');
-    // target is already deactivated; suppress harmless second-deactivate error.
-    await restClient.patch(`/api/v1/users/${target.id}/deactivate`).catch(() => null);
   }
 });
 
@@ -658,8 +625,6 @@ test('@functional F7-FA6: rep calling POST /api/users/:id/admin-set-password rec
     expect(errorStatus, 'rep POST /api/users/:id/admin-set-password should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA6-rep');
-    await deactivateUser(restClient, target.id, 'F7-FA6-target');
   }
 });
 
@@ -689,7 +654,6 @@ test('@functional F7-FA7: rep calling GET /api/automation/rules receives 403 (AC
     expect(errorStatus, 'rep GET /api/automation/rules should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA7');
   }
 });
 
@@ -724,7 +688,6 @@ test('@functional F7-FA8: rep calling POST /api/automation/rules receives 403 (A
     expect(errorStatus, 'rep POST /api/automation/rules should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA8');
   }
 });
 
@@ -753,7 +716,6 @@ test('@functional F7-FA9: rep calling PATCH /api/settings/default-language recei
     expect(errorStatus, 'rep PATCH /api/settings/default-language should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA9');
   }
 });
 
@@ -782,7 +744,6 @@ test('@functional F7-FA10: rep calling PATCH /api/settings/nav-layout receives 4
     expect(errorStatus, 'rep PATCH /api/settings/nav-layout should return 403').toBe(403);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-FA10');
   }
 });
 
@@ -837,8 +798,6 @@ test('@functional F7-FA11: rep cannot delete a contact owned by another rep', as
     await restClient
       .post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
       .catch(() => null);
-    await deactivateUser(restClient, rep1.id, 'F7-FA11-rep1');
-    await deactivateUser(restClient, rep2.id, 'F7-FA11-rep2');
   }
 });
 
@@ -882,6 +841,5 @@ test('@functional F7-EH1: forbidden API response includes structured error body'
     expect(body.error?.message?.length, 'error.message should be non-empty').toBeGreaterThan(0);
   } finally {
     await repContext.dispose().catch(() => null);
-    await deactivateUser(restClient, rep.id, 'F7-EH1');
   }
 });

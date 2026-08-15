@@ -18,7 +18,7 @@
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - No raw locators or Page Object calls in this file — all through behaviors
- *   - All test data managed via restClient + finally-block teardown
+ *   - All test data managed via TestDataManager registration
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
  * AC notes:
@@ -79,9 +79,9 @@ const ACTIVATED_USER_PASSWORD = 'F6TestPass1!';
  * password so callers don't need to carry the password as a separate value.
  * Returns the user row (status='active') and the password that was set.
  *
- * Teardown is registered by `createTestUser` itself, so the user is deactivated
- * after the test even on failure. The `finally` deactivate at each call site
- * below is redundant but harmless. (MINCRM-668)
+ * Teardown is registered by `createTestUser` itself and is the only cleanup
+ * path: the user is deactivated after the test even on failure, and call sites
+ * need no `finally` block of their own. (MINCRM-668)
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
@@ -181,38 +181,32 @@ test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no dup
 }) => {
   const { user } = await createActivatedUser(testData, restClient);
 
+  // Attempt to invite with the already-registered email.
+  let conflictStatus: number | null = null;
+  let conflictCode: string | null = null;
   try {
-    // Attempt to invite with the already-registered email.
-    let conflictStatus: number | null = null;
-    let conflictCode: string | null = null;
-    try {
-      await inviteUserViaApi(restClient, {
-        name: 'Duplicate User',
-        email: user.email,
-        role: 'rep',
-      });
-    } catch (err: unknown) {
-      if (err instanceof RestClientError) {
-        conflictStatus = err.status;
-        conflictCode = (err.body as { error?: { code?: string } })?.error?.code ?? null;
-      } else {
-        throw err;
-      }
-    }
-
-    expect(conflictStatus, 'duplicate invite should return 409').toBe(409);
-    expect(conflictCode, 'error code should be USER_EMAIL_CONFLICT').toBe('USER_EMAIL_CONFLICT');
-
-    // Confirm only one user exists with that email (search all pages).
-    const found = await findUserById(restClient, user.id);
-    expect(found, 'original user should still exist in the list (no duplicate)').toBeDefined();
-    // findUserById returning the original user confirms the email exists exactly once;
-    // the 409 above guarantees the duplicate invite was rejected.
-  } finally {
-    await deactivateUser(restClient, user.id).catch((err: unknown) => {
-      console.error(`[F6-IN2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
+    await inviteUserViaApi(restClient, {
+      name: 'Duplicate User',
+      email: user.email,
+      role: 'rep',
     });
+  } catch (err: unknown) {
+    if (err instanceof RestClientError) {
+      conflictStatus = err.status;
+      conflictCode = (err.body as { error?: { code?: string } })?.error?.code ?? null;
+    } else {
+      throw err;
+    }
   }
+
+  expect(conflictStatus, 'duplicate invite should return 409').toBe(409);
+  expect(conflictCode, 'error code should be USER_EMAIL_CONFLICT').toBe('USER_EMAIL_CONFLICT');
+
+  // Confirm only one user exists with that email (search all pages).
+  const found = await findUserById(restClient, user.id);
+  expect(found, 'original user should still exist in the list (no duplicate)').toBeDefined();
+  // findUserById returning the original user confirms the email exists exactly once;
+  // the 409 above guarantees the duplicate invite was rejected.
 });
 
 test('@functional F6-IN3: admin invites with invalid email format → 400 validation error', async ({
@@ -274,15 +268,9 @@ test('@functional F6-RA1: role assigned at invite time is reflected on the user 
 }) => {
   const { user } = await createActivatedUser(testData, restClient, 'admin');
 
-  try {
-    const found = await findUserById(restClient, user.id);
-    expect(found, 'user should appear in list').toBeDefined();
-    expect(found?.role, 'role should match the role supplied at invite time').toBe('admin');
-  } finally {
-    await deactivateUser(restClient, user.id).catch((err: unknown) => {
-      console.error(`[F6-RA1] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
-    });
-  }
+  const found = await findUserById(restClient, user.id);
+  expect(found, 'user should appear in list').toBeDefined();
+  expect(found?.role, 'role should match the role supplied at invite time').toBe('admin');
 });
 
 test('@functional F6-RA2: admin changes role post-invite → change persisted, no re-login required (AC2)', async ({
@@ -292,23 +280,17 @@ test('@functional F6-RA2: admin changes role post-invite → change persisted, n
   // Invite as rep.
   const { user } = await createActivatedUser(testData, restClient, 'rep');
 
-  try {
-    // Verify initial role.
-    const before = await findUserById(restClient, user.id);
-    expect(before?.role, 'initial role should be rep').toBe('rep');
+  // Verify initial role.
+  const before = await findUserById(restClient, user.id);
+  expect(before?.role, 'initial role should be rep').toBe('rep');
 
-    // Change role to admin.
-    const updatedUser = await changeUserRole(restClient, user.id, 'admin');
-    expect(updatedUser.role, 'changeUserRole response should reflect new role').toBe('admin');
+  // Change role to admin.
+  const updatedUser = await changeUserRole(restClient, user.id, 'admin');
+  expect(updatedUser.role, 'changeUserRole response should reflect new role').toBe('admin');
 
-    // Verify persisted via list — no re-login needed (AC2: role change is immediate).
-    const after = await findUserById(restClient, user.id);
-    expect(after?.role, 'role change should be persisted in the user record').toBe('admin');
-  } finally {
-    await deactivateUser(restClient, user.id).catch((err: unknown) => {
-      console.error(`[F6-RA2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
-    });
-  }
+  // Verify persisted via list — no re-login needed (AC2: role change is immediate).
+  const after = await findUserById(restClient, user.id);
+  expect(after?.role, 'role change should be persisted in the user record').toBe('admin');
 });
 
 // ---------------------------------------------------------------------------
@@ -469,8 +451,6 @@ test('@functional F6-DX1: deactivated user cannot log in — blocked at API laye
   } finally {
     // Re-auth as admin in case the restClient cookie was overwritten by the login attempt.
     await loginAsAdmin(restClient).catch(() => null);
-    // User is already deactivated; a second deactivate is harmless but we catch errors.
-    await deactivateUser(restClient, user.id).catch(() => null);
   }
 });
 
@@ -504,7 +484,6 @@ test('@functional F6-DX2: deactivated user records remain intact and accessible 
   } finally {
     await userRequestContext.dispose().catch(() => null);
     await loginAsAdmin(restClient).catch(() => null);
-    await deactivateUser(restClient, user.id).catch(() => null);
   }
 });
 
@@ -514,16 +493,11 @@ test('@functional F6-DX3: deactivated user appears in list with inactive status'
 }) => {
   const { user } = await createActivatedUser(testData, restClient);
 
-  try {
-    await deactivateUser(restClient, user.id);
+  await deactivateUser(restClient, user.id);
 
-    const found = await findUserById(restClient, user.id);
-    expect(found, 'deactivated user should still appear in admin list').toBeDefined();
-    expect(found?.status, 'deactivated user status should be inactive').toBe('inactive');
-  } finally {
-    // Already deactivated; suppress second-deactivate errors.
-    await deactivateUser(restClient, user.id).catch(() => null);
-  }
+  const found = await findUserById(restClient, user.id);
+  expect(found, 'deactivated user should still appear in admin list').toBeDefined();
+  expect(found?.status, 'deactivated user status should be inactive').toBe('inactive');
 });
 
 // ---------------------------------------------------------------------------
@@ -548,9 +522,6 @@ test('@functional F6-RX1: reactivated user can log in again', async ({ testData,
     expect(loginStatus, 'reactivated user should be able to log in').toBe(200);
   } finally {
     await loginAsAdmin(restClient).catch(() => null);
-    await deactivateUser(restClient, user.id).catch((err: unknown) => {
-      console.error(`[F6-RX1] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
-    });
   }
 });
 
@@ -585,8 +556,5 @@ test('@functional F6-RX2: reactivated user role and records are unchanged', asyn
     );
   } finally {
     await loginAsAdmin(restClient).catch(() => null);
-    await deactivateUser(restClient, user.id).catch((err: unknown) => {
-      console.error(`[F6-RX2] teardown: failed to deactivate user ${user.id}: ${String(err)}`);
-    });
   }
 });

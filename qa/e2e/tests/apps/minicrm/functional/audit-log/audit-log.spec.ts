@@ -37,7 +37,6 @@ import {
   getDevJwt,
   loginViaBrowser,
 } from '@behaviors/minicrm/auth.behaviors.js';
-import { deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
 import {
   createLeadViaApi,
   convertLeadViaApi,
@@ -248,7 +247,6 @@ test('@functional F12-AL5: Rep accessing audit log via gRPC is blocked with PERM
     );
   } finally {
     await loginAsAdmin(restClient);
-    await deactivateUser(restClient, rep.id).catch(() => null);
   }
 });
 
