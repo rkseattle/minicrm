@@ -17,14 +17,33 @@
 description: NLI semantic quality — Haiku LLM-as-judge
 
 providers:
+  # temperature is pinned EXPLICITLY rather than relied on implicitly. Promptfoo's
+  # Anthropic provider already defaults it to 0 (getEnvFloat("ANTHROPIC_TEMPERATURE", 0)),
+  # so this changes no request today — it documents the intent so a future
+  # ANTHROPIC_TEMPERATURE in the environment cannot silently loosen every
+  # assertion suite at once.
+  #
+  # It does NOT make results deterministic, and an earlier version of this
+  # comment wrongly claimed it did. Greedy decoding still varies across calls,
+  # and the observed nli-rbac variance was a JUDGE verdict flipping on
+  # semantically identical text. Judge variance is addressed by the concrete
+  # rubrics below, not by this line. (MINCRM-705)
   - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      temperature: 0
 
 # Judge model for llm-rubric assertions. Set here to avoid per-assertion
 # provider instantiation that triggers a circular JSON serialization bug
 # in Promptfoo v0.121 with the Anthropic SDK client object.
 defaultTest:
   options:
-    provider: anthropic:claude-haiku-4-5-20251001
+    # The JUDGE is pinned too — an unpinned rubric grader can score the same
+    # response differently between runs, which is the same nondeterminism one
+    # layer up.
+    provider:
+      id: anthropic:claude-haiku-4-5-20251001
+      config:
+        temperature: 0
 
 # 90% threshold: deterministic suites enforce 100% implicitly (binary pass/fail);
 # Haiku judge variance on semantic rubrics allows up to 10% judgment noise.
@@ -53,6 +72,15 @@ prompts:
     completed (e.g. "Created the contact ..."), never as a pre-existing/duplicate
     record found during a lookup, even if the record includes a created_at or
     similar timestamp field.
+
+    If a tool result is a permission error (error code FORBIDDEN), state plainly
+    that the user does not have permission and stop there. Do not tell them to
+    contact an administrator, describe how to request access, or name another
+    route to the same data. This mirrors the FORBIDDEN carve-out in the shipped
+    system prompt (server/src/ai/systemPrompt.ts) — these suites never load
+    buildSystemPrompt(), so a rule stated only there is invisible to the model
+    under test, and the rubric below would grade against a rule it was never
+    given. (MINCRM-705)
 
     Tool results:
     {{tool_results}}
@@ -92,9 +120,13 @@ tests:
     assert:
       - type: llm-rubric
         value: >
-          The response conveys that the operation is not permitted. It includes
-          language equivalent to "You don't have permission to delete contacts"
-          and does not suggest alternative ways to bypass the restriction.
+          PASS if the response states the user lacks permission to delete
+          contacts.
+          FAIL if the response tells the user to contact an administrator,
+          owner, or support; describes how to request or obtain access; names a
+          different route, page, or tool for the same operation; or lists steps
+          the user could take next.
+          Judge only what the response says, not its tone or formatting.
 
   # ── MINCRM-423 / MINCRM-431: read-intent result rendering ─────────────────
 
