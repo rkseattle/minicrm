@@ -525,6 +525,32 @@ export function scanSpec(displayPath, source, wrappers) {
   // leads.spec.ts calls setSystemDefaultLanguage(restClient, 'en') in beforeEach
   // — a reset to the value every other spec also resets to, which cannot change
   // what another test observes.
+  // DIRECT calls, not just behavior wrappers. The bash version this replaced
+  // carried endpoint patterns (restClient.patch(.*settings, .../settings/sso …)
+  // alongside its wrapper names; the rewrite replaced the wrapper half with
+  // derivation and dropped the other half, so a spec mutating a singleton with
+  // an inline REST call became invisible. 22 such call sites exist today — all
+  // in files that happen to be @serial already, so nothing escaped, but the next
+  // one would have. Same two regexes the derivation uses, applied to the spec.
+  const directMutations = clean
+    .split(/(?=restClient\s*\.)/)
+    .filter((chunk) => {
+      if (!MUTATING_CALL.test(chunk)) return false;
+      const head = chunk.slice(0, 400);
+      if (!SHARED_ENDPOINT.test(head) || RESET_ARGUMENT.test(head)) return false;
+      // A DELETE of an INTERPOLATED id is teardown of a record this spec
+      // created, not a write to a shared singleton — stage-exit-requirements.ts
+      // deletes the pipeline stage it made two lines earlier. The singleton
+      // endpoints this guard cares about are fixed paths; an ${id} in the path
+      // means the target is per-record.
+      if (/restClient\s*\.\s*delete\s*(?:<[^>]*>)?\s*\(\s*`[^`]*\$\{/.test(head)) return false;
+      return true;
+    })
+    .map((chunk) => {
+      const endpoint = chunk.match(/\/api\/v1\/[A-Za-z0-9/_-]+/);
+      return endpoint ? endpoint[0] : 'a shared settings endpoint';
+    });
+
   const called = wrappers.mutating.filter((name) => {
     if (wrappers.alwaysReset.includes(name)) return false;
     // Calling the prescribed cleanup helper is not a mutation — see
@@ -537,7 +563,9 @@ export function scanSpec(displayPath, source, wrappers) {
     }
     return false;
   });
-  if (called.length === 0) return findings;
+  // Both routes to a mutation feed one set of checks below.
+  const mutationSources = [...called, ...new Set(directMutations)];
+  if (mutationSources.length === 0) return findings;
 
   // Cleanup may be ensureSystemDefaults or a domain-specific reset. The domain
   // forms are real and varied — resetAiFieldExclusion, resetAiCostRates,
@@ -561,7 +589,13 @@ export function scanSpec(displayPath, source, wrappers) {
     (body) =>
       /\bensureSystemDefaults\s*\(/.test(body) ||
       /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(body) ||
-      wrappers.mutating.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(body)),
+      wrappers.mutating.some((name) => new RegExp(`\\b${name}\\s*\\(`).test(body)) ||
+      // A DIRECT write to a shared endpoint inside the afterEach is restoration
+      // too, and is how several specs do it: pipeline-stages.spec.ts PUTs back
+      // the order it captured in beforeEach, and mfa.spec.ts PATCHes
+      // mfa_required to false. Recognising only named helpers would report both
+      // as uncleaned while they restore correctly.
+      (MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body)),
   );
 
   // Restricted to hook bodies. Scanning the whole file would accept unrelated
@@ -570,24 +604,49 @@ export function scanSpec(displayPath, source, wrappers) {
   // reduce the check to "the file mentions something reset-ish somewhere".
   const beforeEachBodies = extractHookBodies(clean, 'beforeEach');
   const hookBodies = [...beforeEachBodies, ...afterEachBodies].join('\n');
+  // A `finally` block is cleanup too, and is how several specs restore a
+  // setting they changed for one test only — deal-health-check.spec.ts sets the
+  // visibility policy, then calls resetVisibilitySettings() in a finally rather
+  // than an afterEach, so the reset runs even when the assertion throws. Scoping
+  // recognition to hooks alone would report it as uncleaned while it cleans up
+  // correctly.
+  const finallyBlocks = clean.match(/\bfinally\s*\{[\s\S]{0,600}?\}/g) ?? [];
+  const restoresInFinally = finallyBlocks.some(
+    (body) =>
+      /\bensureSystemDefaults\s*\(/.test(body) ||
+      /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(body) ||
+      (MUTATING_CALL.test(body) && SHARED_ENDPOINT.test(body)),
+  );
+
   const hasCleanup =
     /\bensureSystemDefaults\s*\(/.test(hookBodies) ||
     /\b(?:reset|clear|restore)[A-Z][A-Za-z]*\s*\(/.test(hookBodies) ||
-    restoresInAfterEach;
+    restoresInAfterEach ||
+    restoresInFinally;
 
   if (!hasCleanup) {
     findings.push(
-      `  ${displayPath}\n    mutates shared settings via ${called.join(', ')} but never calls ensureSystemDefaults().\n    Add beforeEach/afterEach calling ensureSystemDefaults(restClient).`,
+      `  ${displayPath}\n    mutates shared settings via ${mutationSources.join(', ')} but never calls ensureSystemDefaults().\n    Add beforeEach/afterEach calling ensureSystemDefaults(restClient).`,
     );
     return findings;
   }
 
+  // KNOWN LIMIT, stated so it is not mistaken for coverage: this check is
+  // FILE-level, unlike Invariant B which is per-block. A file where one test is
+  // tagged and a DIFFERENT, untagged test performs the mutation satisfies this
+  // and still runs the mutating test in the parallel matrix.
+  //
+  // Closing it needs per-test attribution — mapping each mutating call site to
+  // its enclosing test body — which is a materially larger change than the
+  // block-scoping Invariant B needed, and no instance exists in the tree today
+  // (verified: every file reported by this guard has its mutation and its tags
+  // on the same tests). Left file-level deliberately rather than silently.
   if (!decls.some(hasSerialInTitle)) {
     const optionsOnly = decls.some(hasSerialInOptions);
     findings.push(
       optionsOnly
-        ? `  ${displayPath}\n    mutates shared settings via ${called.join(', ')} and tags @serial ONLY via the options object.\n    Add @serial to the test titles so the scheduler can see it.`
-        : `  ${displayPath}\n    mutates shared settings via ${called.join(', ')} but no test is tagged @serial.\n    Add @serial to the title of every mutating test, then add a RESOURCE_REGISTRY entry.`,
+        ? `  ${displayPath}\n    mutates shared settings via ${mutationSources.join(', ')} and tags @serial ONLY via the options object.\n    Add @serial to the test titles so the scheduler can see it.`
+        : `  ${displayPath}\n    mutates shared settings via ${mutationSources.join(', ')} but no test is tagged @serial.\n    Add @serial to the title of every mutating test, then add a RESOURCE_REGISTRY entry.`,
     );
   }
 
@@ -973,10 +1032,14 @@ function main() {
   const staleUiMutators = UI_DRIVEN_MUTATORS.filter(
     (name) => !new RegExp(`export\\s+async\\s+function\\s+${name}\\b`).test(behaviorSource),
   );
-  // An allow-list entry naming a file that no longer exists, or a block that was
-  // renamed, silently never matches — so it stops exempting anything AND stops
-  // documenting anything, while still reading like a considered decision. Same
-  // staleness hazard as UI_DRIVEN_MUTATORS below.
+  // An allow-list entry naming a file that no longer exists silently never
+  // matches — so it stops documenting anything while still reading like a
+  // considered decision. Same staleness hazard as UI_DRIVEN_MUTATORS below.
+  //
+  // Only file existence is checked, deliberately. A RENAMED block needs no check
+  // here because it fails safe on its own: the entry stops matching, so the
+  // block is reported as unallow-listed and the operator is told. It is the
+  // missing FILE that is silent, because there is then no block to report.
   const staleAllowlist = SELF_SERIAL_ALLOWLIST.filter(
     (entry) => !existsSync(join(testsDir, entry.file)),
   );

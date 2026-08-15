@@ -37,6 +37,13 @@ export type ResourceKey =
   | 'settings.ai_session_retention'
   | 'settings.default_language'
   | 'settings.email_notifications_enabled'
+  // Org-wide MFA enforcement. Leaving it on blocks every later loginAsAdmin(),
+  // which mfa.spec.ts's own resetMfaRequired() comment already warned about —
+  // the file restored the row correctly but was never tagged, so it ran in the
+  // parallel matrix. Found by the direct-REST-call detection restored in
+  // MINCRM-705; the wrapper derivation alone could not see it, because this
+  // spec mutates the endpoint inline rather than through a behavior helper.
+  | 'settings.mfa_required'
   // The system_settings row backing the onboarding checklist's first task.
   // Written directly by resetPipelineStagesReviewed() and indirectly by
   // ensureSystemDefaults(), which eight spec files call — making this the
@@ -340,6 +347,14 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     file: 'qa/e2e/tests/apps/minicrm/functional/reports/reports-nav.spec.ts',
     reads: ['settings.pipeline_stages_reviewed'],
     writes: ['settings.pipeline_stages_reviewed'],
+  },
+  {
+    // Only F8-A1 touches the org-wide row; F8-S1/LS1/LS2/D1 are per-user MFA
+    // enrolment and stay plain @functional. (MINCRM-705)
+    file: 'qa/e2e/tests/apps/minicrm/functional/auth/mfa.spec.ts',
+    testTitleContains: 'F8-A1',
+    reads: ['settings.mfa_required'],
+    writes: ['settings.mfa_required'],
   },
   {
     // Self-serializes with test.describe.configure({ mode: 'serial' }) and its

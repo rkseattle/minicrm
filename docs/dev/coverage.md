@@ -1145,6 +1145,13 @@ rather than one of the reasons below, so if you see that string, read the stderr
   with `selection-file-unreadable` — an unreadable selection yields no requirement list to
   fall short of.
 
+This list must name every member of `AttestationFailureReason`, and that is **enforced**,
+not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
+reason exported from `ATTESTATION_FAILURE_REASONS` is missing a backticked entry above.
+The reasons and their operator-facing text are defined together in `FAILURE_MESSAGES`
+(`server/src/scripts/verify-test-attestation.ts`), where the type already makes a reason
+without a message a compile error. (MINCRM-691)
+
 ### Is attestation per-test or per-file? (MINCRM-705)
 
 Both, on two independent axes — and knowing which is which explains what the gate can and
@@ -1164,13 +1171,6 @@ out does get caught, but only in targeted mode, and it surfaces as
 themselves. Second, because `ranFiles` is SHA-scoped rather than invocation-scoped, a
 caller may legitimately run several Playwright invocations and attest once at the end;
 that is what the local hook's targeted path does for its non-serial/serial split.
-
-This list must name every member of `AttestationFailureReason`, and that is **enforced**,
-not left to reviewers: `verifyTestAttestation.test.ts` reads this section and fails if any
-reason exported from `ATTESTATION_FAILURE_REASONS` is missing a backticked entry above.
-The reasons and their operator-facing text are defined together in `FAILURE_MESSAGES`
-(`server/src/scripts/verify-test-attestation.ts`), where the type already makes a reason
-without a message a compile error. (MINCRM-691)
 
 The export and commit steps are gated on the suite, the zero-test guard, and the
 attestation all succeeding, which is why no incomplete map has ever been committed.

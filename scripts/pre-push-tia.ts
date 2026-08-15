@@ -66,6 +66,9 @@ import {
   type TestStackDbEnv,
   type TestStackDbSource,
 } from '../qa/scripts/test-stack-db-env.js';
+// Same arrangement again: the decision of WHICH halves to run is a pure rule
+// that needs a test runner, and root scripts/ has none. (MINCRM-705)
+import { planTargetedInvocations, SERIAL_GREP } from '../qa/scripts/targeted-run-plan.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -519,18 +522,9 @@ function playwrightEnv(headSha: string, extra: Record<string, string> = {}): Nod
   return { ...process.env, ...testStackDbEnv(), ...extra, GIT_COMMIT_SHA: headSha };
 }
 
-/** JUnit output paths for the targeted mode's two invocations, and the merged
- *  file the attestation gate actually reads. Relative to qa/. */
-const TARGETED_NON_SERIAL_JUNIT = 'test-results/targeted-non-serial.xml';
-const TARGETED_SERIAL_JUNIT = 'test-results/targeted-serial.xml';
+/** The merged JUnit file the attestation gate reads. Relative to qa/. The two
+ *  per-invocation paths live with the plan in qa/scripts/targeted-run-plan.ts. */
 const MERGED_JUNIT = 'e2e/test-results/results.xml';
-
-/**
- * What "a serial test" means, in one place. Matched by the serial invocation and
- * INVERTED by the non-serial one so the two partition the selection exactly —
- * see runPlaywright. Identical to the expression CI's e2e-serial job greps.
- */
-const SERIAL_GREP = '@functional.*@serial|@serial.*@functional';
 
 /**
  * Runs the TIA-selected spec files — as TWO invocations, non-serial then
@@ -588,32 +582,24 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
   // runSelectTests, runAttestation). A spec file path containing a shell
   // metacharacter (quote, backtick, $(), ;) must not be able to break out
   // of the intended single-argument boundary.
-  const invocations = [
-    {
-      label: 'non-serial',
-      junit: TARGETED_NON_SERIAL_JUNIT,
-      output: 'test-results/targeted-non-serial-artifacts',
-      // Inverts the SAME expression the serial half matches, so the two are
-      // exact complements. Inverting the bare word `serial` instead would drop
-      // any title containing that word while not matching the serial half's
-      // pattern — a test tagged @serial without @functional, or one that merely
-      // mentions "@serial" in prose, would then run in NEITHER half. Spec files
-      // in this repo do have such titles (resource-registry.spec.ts describes
-      // the tag in its own test names), and running nothing is the exact defect
-      // this split exists to fix. (MINCRM-705)
-      grep: ['--grep-invert', SERIAL_GREP],
-      workers: false,
-    },
-    {
-      label: 'serial',
-      junit: TARGETED_SERIAL_JUNIT,
-      output: 'test-results/targeted-serial-artifacts',
-      // Same expression CI's e2e-serial job uses, so the two agree on what
-      // "a serial test" means.
-      grep: ['--grep', SERIAL_GREP],
-      workers: true,
-    },
-  ] as const;
+  // Which halves can actually match a test is decided UP FRONT, from the
+  // selection's own titles — not by running both and forgiving a non-zero exit.
+  // Playwright exits 1 with "No tests found" when a grep matches nothing, so
+  // running the serial half against a selection with no @serial tests (the modal
+  // case: only ~26 of ~130 functional specs have one) would fail the push even
+  // though every selected test passed. Planning first keeps a non-zero exit
+  // meaningful: a half that was expected to have work and still failed is a real
+  // failure. See qa/scripts/targeted-run-plan.ts. (MINCRM-705)
+  const invocations = planTargetedInvocations(specFiles.map((file) => resolve(REPO_ROOT, file)));
+
+  if (invocations.length === 0) {
+    // The selection resolved to files that contain no tests at all. Running
+    // nothing and reporting success is the exact defect this ticket closes, so
+    // this is a failure, not a no-op.
+    throw new Error(
+      `selection resolved to ${specFiles.length} spec file(s) containing no tests — nothing would run`,
+    );
+  }
 
   // Delete last push's reports first. If an invocation dies before its reporter
   // writes, existsSync below would otherwise find the STALE file and merge it
@@ -631,7 +617,7 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
       ...specFiles,
       ...invocation.grep,
       `--output=${invocation.output}`,
-      ...(invocation.workers ? ['--workers=1'] : []),
+      ...(invocation.workers > 0 ? [`--workers=${invocation.workers}`] : []),
     ];
     console.log(`[pre-push-tia] Running selected spec file(s), ${invocation.label}.`);
     try {
@@ -771,11 +757,11 @@ function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsRe
     PW_GLOBAL_TIMEOUT_MS: String(25 * 60 * 1000),
   });
   console.log('[pre-push-tia] Running full suite, serial (safety net fallback).');
-  execFileSync(
-    'npm',
-    ['run', 'test', '--', '--grep', '@functional.*@serial|@serial.*@functional', '--workers=1'],
-    { cwd: resolve(REPO_ROOT, 'qa'), stdio: 'inherit', env: serialEnv },
-  );
+  execFileSync('npm', ['run', 'test', '--', '--grep', SERIAL_GREP, '--workers=1'], {
+    cwd: resolve(REPO_ROOT, 'qa'),
+    stdio: 'inherit',
+    env: serialEnv,
+  });
   attestOrThrow(headSha, selection);
 }
 

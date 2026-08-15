@@ -1064,6 +1064,17 @@ jobs:
     # guard's value-taking-flag list from node_modules. Without it that guard is
     # silent on the exact change it exists to catch.
     #
+    # This job's command also covers the app-level conflict-graph machinery specs
+    # (resource-registry, build-conflict-graph, gen-conflict-group-configs), which
+    # ran in NO job before MINCRM-705: they live outside e2e/tests/framework/ and
+    # carry no @functional tag, so test:framework's directory scope missed them and
+    # e2e-functional's --grep @functional never selected them. That left the
+    # registry's bidirectional completeness tests unenforced while three comments
+    # named them as the enforcement mechanism. Their inputs — qa/e2e/apps/**/*.ts
+    # (the registry) and qa/e2e/tests/**/*.ts (the specs they scan) — are both
+    # already in the `qa` filter, so the invariant is bidirectional without a new
+    # filter output.
+    #
     # always() is required here, and was not before. The other two inputs (qa,
     # qa-e2e-scripts) are both in lint-and-typecheck's own gate, so that job could
     # never be skipped out from under this one — the note above the `changes` job

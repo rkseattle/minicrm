@@ -74,9 +74,14 @@ if (!ADMIN_PASSWORD) throw new Error('[F-OB] E2E_ADMIN_PASSWORD is not set');
 // ---------------------------------------------------------------------------
 // Tests
 //
-// All tests mutate the same system_settings row (onboarding_completed).
-// test.describe.serial prevents races where one test's setup overwrites
-// another test's state mid-run.
+// All tests mutate the seeded admin's onboarding_completed flag — a column on
+// the `users` table, NOT a system_settings row (an earlier version of this
+// comment said otherwise). It is shared because every spec authenticates as
+// that same admin, and this file alone ever sets it false. The tests also
+// write the pipeline_stages_reviewed system_settings row via
+// ensureSystemDefaults/resetPipelineStagesReviewed. describe.serial orders
+// tests within this file; the @serial TAG is what keeps other files off both
+// resources. (MINCRM-705)
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
