@@ -57,4 +57,47 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('Acme &amp; Sons');
     expect(result).not.toContain('Acme & Sons');
   });
+
+  // The FORBIDDEN carve-out (MINCRM-705).
+  //
+  // The prompt's general error guidance says to "suggest how to resolve it" and
+  // "suggest next steps". For a permission denial that directly contradicts
+  // nli-rbac.yaml's rubric, which requires the response NOT to "suggest any
+  // workaround or alternative path to access the restricted data". With both
+  // instructions live and sampling unpinned, the model satisfied one or the
+  // other depending on the run — a two-case suite then scored 50% against a 90%
+  // threshold and failed CI on a commit that changed only a coverage map.
+  //
+  // Pinned here rather than left to the eval alone: the eval costs an API call
+  // per run and only catches this probabilistically, whereas the contradiction
+  // is a property of the prompt text and is checkable for free.
+  describe('permission-error guidance', () => {
+    it('tells the model to stop at the denial for FORBIDDEN errors', () => {
+      const result = buildSystemPrompt([]);
+      expect(result).toContain('FORBIDDEN');
+      expect(result).toMatch(/do not suggest a workaround/i);
+    });
+
+    it('carves out FORBIDDEN on every line that tells the model to suggest a remedy', () => {
+      // Asserts the SEMANTICS, not a keyword the fix itself authored. An earlier
+      // version matched /except/i inside the very line it had just written,
+      // which would have passed on any sentence containing that word.
+      //
+      // Every line instructing the model to suggest a resolution or next step
+      // must also name the FORBIDDEN exception. Miss one and the model gets
+      // contradictory instructions again, which is what made the RBAC eval
+      // grade inconsistently in the first place.
+      const result = buildSystemPrompt([]);
+      const remedyLines = result
+        .split('\n')
+        .filter((line) => /suggest (how to resolve|next steps)/i.test(line));
+
+      expect(remedyLines.length).toBeGreaterThan(0);
+      for (const line of remedyLines) {
+        expect(line, `unqualified remedy guidance: "${line.trim()}"`).toMatch(
+          /FORBIDDEN|permission/i,
+        );
+      }
+    });
+  });
 });

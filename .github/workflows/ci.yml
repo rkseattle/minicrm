@@ -2948,6 +2948,16 @@ jobs:
         with:
           name: eval-results-${{ github.run_number }}
           path: qa/evals/.output/
+          # include-hidden-files is required, not optional: `.output` is a
+          # dot-directory, and upload-artifact excludes hidden paths by default.
+          # Every run since this step was added has logged "No files were found
+          # with the provided path" immediately AFTER the log shows all four
+          # JSONs being written, so the eval rows in the PR comment table
+          # (parse-junit.py summary-promptfoo) have always been blank and no
+          # eval failure could be root-caused from CI. This one had to be
+          # diagnosed from a truncated console table, which is what surfaced it.
+          # (MINCRM-705)
+          include-hidden-files: true
           if-no-files-found: warn
 
   # MINCRM-269: Sentinel job — sole required status check for branch protection.

@@ -20,7 +20,20 @@
 description: NLI PII minimization — AI response does not leak stripped PII values
 
 providers:
+  # temperature is pinned EXPLICITLY rather than relied on implicitly. Promptfoo's
+  # Anthropic provider already defaults it to 0 (getEnvFloat("ANTHROPIC_TEMPERATURE", 0)),
+  # so this changes no request today — it documents the intent so a future
+  # ANTHROPIC_TEMPERATURE in the environment cannot silently loosen every
+  # assertion suite at once.
+  #
+  # It does NOT make results deterministic, and an earlier version of this
+  # comment wrongly claimed it did. Greedy decoding still varies across calls,
+  # and the observed nli-rbac variance was a JUDGE verdict flipping on
+  # semantically identical text. Judge variance is addressed by the concrete
+  # rubrics below, not by this line. (MINCRM-705)
   - id: anthropic:claude-haiku-4-5-20251001
+    config:
+      temperature: 0
 
 prompts:
   - "{{prompt}}"
