@@ -8,8 +8,11 @@
  *
  * Test groups. F9-L1..L4 share one test.describe.serial block because each
  * mutates or depends on the shared default-language system setting. F9-L5 sits
- * OUTSIDE it and is not @serial: it drives the user-scoped language selector on
- * an admin it creates itself, so it touches nothing shared. (MINCRM-668)
+ * OUTSIDE it and is not @serial: it drives the language selector through the
+ * browser session of an ephemeral admin it creates and tears down, so no shared
+ * row is written. Its finally must still restore the framework locale — that is
+ * worker-scoped module state, not per-test, and the serial block's afterAll no
+ * longer covers it. (MINCRM-668)
  *
  *   F9-L1 — Admin sets system default to 'es'; UI shows Spanish nav label.
  *   F9-L2 — Admin sets system default to 'fr'; change persists across two reloads.
@@ -20,8 +23,9 @@
  * State isolation:
  *   Every serialised test resets the system default language to 'en' in a
  *   finally block, and test.describe.serial keeps their state mutations from
- *   racing across workers. F9-L5 needs neither: it resets only its own user's
- *   preference.
+ *   racing across workers. F9-L5 writes no shared row and so needs neither —
+ *   but it DOES call setLocale('en') in its finally, which every test that
+ *   touches the locale must do regardless of tagging.
  *
  * Framework notes:
  *   - setLocale() from @framework/i18n/locale.js switches the framework's active
@@ -382,8 +386,9 @@ test('@functional F9-L5: mobile nav language selector changes UI language', asyn
   test.skip(!isMobile, 'F9-L5 only runs under the mobile-web Playwright project');
 
   // NOT @serial, and deliberately no setSystemLanguage() call. The selector
-  // under test patches /api/v1/users/me/language — user-scoped state on an
-  // admin this test creates itself — so nothing shared is mutated. Setting the
+  // under test patches /api/v1/users/me/language through the BROWSER session,
+  // which is the ephemeral admin created below — user-scoped state on a user
+  // this test owns and tears down, so no shared row is written. Setting the
   // system default here was incidental setup that earned the @serial tag, and
   // that tag put the test in a job matrix it could never run in: e2e-functional
   // filters @serial out, e2e-serial runs --project=desktop only, and this test
@@ -418,8 +423,20 @@ test('@functional F9-L5: mobile nav language selector changes UI language', asyn
 
     await closeMobileNavViaToggle({ page });
   } finally {
-    // Reset only the admin user's own preference — this test never wrote a
-    // system setting, so there is no shared state to restore.
-    await setUserLanguage(restClient, null).catch(() => null);
+    // MUST restore the framework locale. setLocale writes module-level state
+    // that lives for the whole worker process, not the test, so leaving it on
+    // 'fr' makes every later test in this worker resolve t() in French — and
+    // ~19 page objects use t() for text locator strategies, so it surfaces as
+    // "HealingLocator: all strategies exhausted" in an unrelated spec. The
+    // serial block's afterAll used to cover this; moving the test out of that
+    // block moved the responsibility here. (MINCRM-668)
+    setLocale('en');
+
+    // Nothing else to restore. The language PATCH went to the EPHEMERAL admin
+    // via the browser session, and its registered teardown deactivates that
+    // user. A setUserLanguage(restClient, null) here would hit the SHARED admin
+    // instead — restClient is re-authenticated as it by createTestAdmin's
+    // suppressUserOnboarding (users.behaviors.ts:329) — which would be both a
+    // shared write in the parallel matrix and a reset of the wrong user.
   }
 });
