@@ -23,7 +23,11 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAndVerify, registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import {
+  loginAndVerify,
+  registerAdminTeardown,
+  registerUserDeactivation,
+} from '@apps/minicrm/helpers.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
@@ -323,9 +327,13 @@ test('@functional F-VIEWER-W4: viewer cannot create a deal', async ({
     email: `deal-owner-viewer-w4-${Date.now()}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
-  testData.registerCustomTeardown(`delete-contact-viewer-w4-${contactId}`, async () => {
-    await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-  });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactId,
+    `/api/v1/contacts/${contactId}`,
+  );
 
   const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
@@ -387,9 +395,13 @@ test('@functional F-VIEWER-W6: viewer cannot update a contact', async ({
     email: `patch-target-viewer-w6-${Date.now()}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
-  testData.registerCustomTeardown(`delete-contact-viewer-w6-${contactId}`, async () => {
-    await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-  });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactId,
+    `/api/v1/contacts/${contactId}`,
+  );
 
   const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
@@ -420,9 +432,13 @@ test('@functional F-VIEWER-W7: viewer cannot delete a contact', async ({
     email: `delete-target-viewer-w7-${Date.now()}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
-  testData.registerCustomTeardown(`delete-contact-viewer-w7-${contactId}`, async () => {
-    await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-  });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactId,
+    `/api/v1/contacts/${contactId}`,
+  );
 
   const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
@@ -452,9 +468,13 @@ test('@functional F-VIEWER-W8: viewer cannot update an account', async ({
     name: `PatchTargetAccount-VIEWER-W8-${Date.now()}`,
   });
   const accountId = accountRes.body.account.id;
-  testData.registerCustomTeardown(`delete-account-viewer-w8-${accountId}`, async () => {
-    await restClient.delete(`/api/v1/accounts/${accountId}`).catch(() => null);
-  });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'account',
+    accountId,
+    `/api/v1/accounts/${accountId}`,
+  );
 
   const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
@@ -485,9 +505,13 @@ test('@functional F-VIEWER-W9: viewer cannot update a deal', async ({
     email: `deal-contact-viewer-w9-${Date.now()}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
-  testData.registerCustomTeardown(`delete-contact-viewer-w9-${contactId}`, async () => {
-    await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-  });
+  registerAdminTeardown(
+    testData,
+    restClient,
+    'contact',
+    contactId,
+    `/api/v1/contacts/${contactId}`,
+  );
 
   const dealRes = await restClient.post<{ deal: DealRow }>('/api/v1/deals', {
     name: `ViewerDeal-W9-${Date.now()}`,
@@ -495,9 +519,7 @@ test('@functional F-VIEWER-W9: viewer cannot update a deal', async ({
     contact_ids: [contactId],
   });
   const dealId = dealRes.body.deal.id;
-  testData.registerCustomTeardown(`delete-deal-viewer-w9-${dealId}`, async () => {
-    await restClient.delete(`/api/v1/deals/${dealId}`).catch(() => null);
-  });
+  registerAdminTeardown(testData, restClient, 'deal', dealId, `/api/v1/deals/${dealId}`);
 
   const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
