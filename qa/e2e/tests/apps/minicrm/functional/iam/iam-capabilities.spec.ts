@@ -13,7 +13,7 @@
  *
  * Framework conventions:
  *   - All tests tagged @functional
- *   - API tests: no browser UI navigation; each test tears down its own fixtures in try/finally
+ *   - API tests: no browser UI navigation; user cleanup is registered with TestDataManager
  *   - Browser tests: import from @behaviors/* only, no @pages/* imports
  *
  * MINCRM-542, MINCRM-547
@@ -23,7 +23,8 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
 import { loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestAdmin } from '@apps/minicrm/helpers.js';
+import { createTestAdmin, registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import {
   navigateToAdminSettings,
   expectRoleViewButtonVisible,
@@ -66,6 +67,7 @@ interface ContactRow {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function createActivatedRep(
+  testData: TestDataManager,
   adminClient: RestClient,
   newContext: () => Promise<APIRequestContext>,
   suffix: string,
@@ -82,6 +84,10 @@ async function createActivatedRep(
     role: 'rep',
   });
   const { user, inviteToken } = inviteRes.body;
+
+  // Register before the steps below, any of which can throw. adminClient is the
+  // fixture restClient, which outlives the test. (MINCRM-668)
+  registerUserDeactivation(testData, adminClient, user.id, 'rep');
 
   await adminClient.post('/api/v1/users/set-password', {
     token: inviteToken,
@@ -102,10 +108,6 @@ async function createActivatedRep(
   await repClient.post('/api/v1/auth/login', { email, password: REP_PASSWORD });
 
   return { repId: user.id, repClient, repContext };
-}
-
-async function deactivateUser(adminClient: RestClient, userId: string): Promise<void> {
-  await adminClient.patch(`/api/v1/users/${userId}/deactivate`).catch(() => null);
 }
 
 function errorBody(err: unknown): ErrorBody {
@@ -183,6 +185,7 @@ test('@functional custom role — cannot update a built-in role', async ({ restC
 });
 
 test('@functional custom role — cannot delete a role with active assignees', async ({
+  testData,
   restClient,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
@@ -202,6 +205,7 @@ test('@functional custom role — cannot delete a role with active assignees', a
       role: 'rep',
     });
     repId = inviteRes.body.user.id;
+    registerUserDeactivation(testData, restClient, repId, 'rep');
 
     await restClient.post(`/api/v1/users/${repId}/roles`, { roleId });
 
@@ -219,7 +223,6 @@ test('@functional custom role — cannot delete a role with active assignees', a
     if (repId && roleId) {
       await restClient.delete(`/api/v1/users/${repId}/roles/${roleId}`).catch(() => null);
     }
-    if (repId) await deactivateUser(restClient, repId);
     if (roleId) await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
   }
 });
@@ -229,52 +232,47 @@ test('@functional custom role — cannot delete a role with active assignees', a
 // a rep can delete their own contact but not another user's contact.
 
 test('@functional rep can delete their own contact (contacts:delete, MINCRM-542)', async ({
+  testData,
   restClient,
   playwright,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
-  let repId: string | null = null;
+  const { repClient, repContext } = await createActivatedRep(
+    testData,
+    restClient,
+    () => playwright.request.newContext(),
+    suffix,
+  );
 
-  try {
-    const {
-      repId: id,
-      repClient,
-      repContext,
-    } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
-    repId = id;
+  // Create contact as the rep (rep is the owner)
+  const contactRes = await repClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
+    first_name: 'Cap',
+    last_name: 'OwnDelete',
+    email: `cap-own-delete-${suffix}@example.com`,
+  });
+  const contactId = contactRes.body.contact.id;
 
-    // Create contact as the rep (rep is the owner)
-    const contactRes = await repClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
-      first_name: 'Cap',
-      last_name: 'OwnDelete',
-      email: `cap-own-delete-${suffix}@example.com`,
-    });
-    const contactId = contactRes.body.contact.id;
+  const deleteRes = await repClient.delete(`/api/v1/contacts/${contactId}`);
+  expect(deleteRes.status).toBe(204);
 
-    const deleteRes = await repClient.delete(`/api/v1/contacts/${contactId}`);
-    expect(deleteRes.status).toBe(204);
-
-    await repContext.dispose();
-  } finally {
-    if (repId) await deactivateUser(restClient, repId);
-  }
+  await repContext.dispose();
 });
 
 test('@functional rep cannot delete a contact they do not own (MINCRM-542)', async ({
+  testData,
   restClient,
   playwright,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
-  let repId: string | null = null;
   let contactId: string | null = null;
 
   try {
-    const {
-      repId: id,
-      repClient,
-      repContext,
-    } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
-    repId = id;
+    const { repClient, repContext } = await createActivatedRep(
+      testData,
+      restClient,
+      () => playwright.request.newContext(),
+      suffix,
+    );
 
     // Admin creates the contact (admin is the owner, not the rep)
     const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
@@ -296,7 +294,6 @@ test('@functional rep cannot delete a contact they do not own (MINCRM-542)', asy
 
     await repContext.dispose();
   } finally {
-    if (repId) await deactivateUser(restClient, repId);
     if (contactId) await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
   }
 });
@@ -318,39 +315,35 @@ test('@functional admin can delete any contact', async ({ restClient }) => {
 // ── Custom role requires settings:manage ──────────────────────────────────────
 
 test('@functional rep cannot access /api/v1/custom-roles (requires settings:manage)', async ({
+  testData,
   restClient,
   playwright,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
-  let repId: string | null = null;
+  const { repClient, repContext } = await createActivatedRep(
+    testData,
+    restClient,
+    () => playwright.request.newContext(),
+    suffix,
+  );
 
+  let threw = false;
   try {
-    const {
-      repId: id,
-      repClient,
-      repContext,
-    } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
-    repId = id;
-
-    let threw = false;
-    try {
-      await repClient.get('/api/v1/custom-roles');
-    } catch (err) {
-      threw = true;
-      expect(err).toBeInstanceOf(RestClientError);
-      expect((err as RestClientError).status).toBe(403);
-    }
-    expect(threw).toBe(true);
-
-    await repContext.dispose();
-  } finally {
-    if (repId) await deactivateUser(restClient, repId);
+    await repClient.get('/api/v1/custom-roles');
+  } catch (err) {
+    threw = true;
+    expect(err).toBeInstanceOf(RestClientError);
+    expect((err as RestClientError).status).toBe(403);
   }
+  expect(threw).toBe(true);
+
+  await repContext.dispose();
 });
 
 // ── User role assignment changes effective capabilities ────────────────────────
 
 test('@functional assigning a custom role grants its capabilities to the user', async ({
+  testData,
   restClient,
   playwright,
 }) => {
@@ -363,7 +356,12 @@ test('@functional assigning a custom role grants its capabilities to the user', 
       repId: id,
       repClient,
       repContext,
-    } = await createActivatedRep(restClient, () => playwright.request.newContext(), suffix);
+    } = await createActivatedRep(
+      testData,
+      restClient,
+      () => playwright.request.newContext(),
+      suffix,
+    );
     repId = id;
 
     // Create a role with settings:manage so the rep can access /custom-roles
@@ -396,7 +394,6 @@ test('@functional assigning a custom role grants its capabilities to the user', 
 
     await repContext.dispose();
   } finally {
-    if (repId) await deactivateUser(restClient, repId);
     if (roleId) await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
   }
 });

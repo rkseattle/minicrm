@@ -20,20 +20,17 @@
  *   - All tests tagged @functional
  *   - Import test/expect from @apps/minicrm/fixtures.js only
  *   - Mailhog messages cleared before each test to prevent cross-test contamination
- *   - All test data managed via restClient + finally-block teardown
+ *   - All test data managed via TestDataManager registration
  *   - Tests must pass with --workers=4 (no shared mutable state)
  *
  * MINCRM-306
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
 import { MailhogClient, decodeQuotedPrintable } from '@apps/minicrm/mailhogClient.js';
 import { loginAsAdmin, forgotPassword } from '@behaviors/minicrm/auth.behaviors.js';
-import {
-  inviteUserViaApi,
-  setUserPassword,
-  deactivateUser,
-} from '@behaviors/minicrm/users.behaviors.js';
+import { inviteUserViaApi, setUserPassword } from '@behaviors/minicrm/users.behaviors.js';
 
 // F1-EM tests exercise unauthenticated flows. Use an empty storageState to
 // prevent the project-level admin session from loading.
@@ -50,6 +47,7 @@ const MAILHOG_URL = process.env['MAILHOG_URL'] ?? 'http://localhost:8025';
 // ---------------------------------------------------------------------------
 
 test('@functional F1-EM1: forgot-password — sends reset email to the correct address containing a reset link', async ({
+  testData,
   restClient,
 }) => {
   const mailhog = new MailhogClient(MAILHOG_URL);
@@ -65,6 +63,7 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
     role: 'rep',
   });
   const userId = inviteRes.user.id;
+  registerUserDeactivation(testData, restClient, userId, 'rep');
 
   // Wait for the invite email to arrive before triggering the reset flow —
   // ensures the invite email has landed so the reset email arrives as a second message.
@@ -99,13 +98,11 @@ test('@functional F1-EM1: forgot-password — sends reset email to the correct a
     );
   } finally {
     await loginAsAdmin(restClient).catch(() => null);
-    await deactivateUser(restClient, userId).catch((err: unknown) => {
-      console.error(`[F1-EM1] teardown failed: ${String(err)}`);
-    });
   }
 });
 
 test('@functional F1-EM2: user invitation — sends invite email to the invited address', async ({
+  testData,
   restClient,
 }) => {
   const mailhog = new MailhogClient(MAILHOG_URL);
@@ -121,21 +118,14 @@ test('@functional F1-EM2: user invitation — sends invite email to the invited 
     role: 'rep',
   });
   const userId = inviteRes.user.id;
+  registerUserDeactivation(testData, restClient, userId, 'rep');
 
-  try {
-    // Poll Mailhog briefly — the server fires the invite email after responding.
-    const messages = await mailhog.waitForMessagesTo(invitedEmail);
+  // Poll Mailhog briefly — the server fires the invite email after responding.
+  const messages = await mailhog.waitForMessagesTo(invitedEmail);
 
-    expect(messages.length, 'exactly one invite email should be delivered').toBe(1);
+  expect(messages.length, 'exactly one invite email should be delivered').toBe(1);
 
-    // Decode quoted-printable — Content.Body and Raw.Data use QP encoding.
-    const body = decodeQuotedPrintable(messages[0].Raw.Data);
-    expect(body, 'invite email should contain a set-password link').toContain(
-      '/set-password?token=',
-    );
-  } finally {
-    await deactivateUser(restClient, userId).catch((err: unknown) => {
-      console.error(`[F1-EM2] teardown failed: ${String(err)}`);
-    });
-  }
+  // Decode quoted-printable — Content.Body and Raw.Data use QP encoding.
+  const body = decodeQuotedPrintable(messages[0].Raw.Data);
+  expect(body, 'invite email should contain a set-password link').toContain('/set-password?token=');
 });

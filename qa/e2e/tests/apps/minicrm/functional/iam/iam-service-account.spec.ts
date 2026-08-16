@@ -22,6 +22,8 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -74,15 +76,22 @@ interface IssueTokenResponse {
  * Creates an activated service account user.
  * Activation uses POST /users/set-password with the invite token, which sets
  * status='active' and must_change_password=false — the clean activation path.
- * Caller is responsible for deactivating in teardown.
+ * Teardown is registered internally; callers need no cleanup of their own. (MINCRM-668)
  */
-async function createServiceAccount(adminClient: RestClient): Promise<UserRow> {
+async function createServiceAccount(
+  testData: TestDataManager,
+  adminClient: RestClient,
+): Promise<UserRow> {
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const res = await adminClient.post<InviteResponse>('/api/v1/users/invite', {
     name: `SA ${uniqueSuffix}`,
     email: `sa-${uniqueSuffix}@example.com`,
     role: 'service_account',
   });
+
+  // Register before set-password below, which can throw. adminClient is the
+  // fixture restClient, which outlives the test. (MINCRM-668)
+  registerUserDeactivation(testData, adminClient, res.body.user.id, 'service-account');
   // Activate with invite token (must_change_password stays false, status becomes 'active')
   await adminClient.post('/api/v1/users/set-password', {
     token: res.body.inviteToken,
@@ -166,47 +175,38 @@ async function bearerPost(
   return { status: response.status, body };
 }
 
-/**
- * Deactivates a user; suppresses errors so teardown never masks test failures.
- */
-async function deactivateUser(adminClient: RestClient, userId: string, tag: string): Promise<void> {
-  await adminClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
-    console.error(`[${tag}] teardown: failed to deactivate ${userId}: ${String(err)}`);
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Service Account Creation tests
 // ---------------------------------------------------------------------------
 
-test('@functional F-SA-C1: admin can invite a service_account user', async ({ restClient }) => {
+test('@functional F-SA-C1: admin can invite a service_account user', async ({
+  testData,
+  restClient,
+}) => {
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const res = await restClient.post<InviteResponse>('/api/v1/users/invite', {
     name: `SA ${uniqueSuffix}`,
     email: `sa-c1-${uniqueSuffix}@example.com`,
     role: 'service_account',
   });
+  registerUserDeactivation(testData, restClient, res.body.user.id, 'service-account');
+
   expect(res.status, 'invite should return 201').toBe(201);
   expect(res.body.user.role, 'user role should be service_account').toBe('service_account');
   expect(res.body.inviteToken, 'invite token should be present').toBeTruthy();
-
-  await deactivateUser(restClient, res.body.user.id, 'F-SA-C1');
 });
 
 test('@functional F-SA-C2: service accounts do not appear in the active users list', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const res = await restClient.get<{ users: { id: string; name: string }[] }>(
-      '/api/v1/users/active',
-    );
-    expect(res.status, 'GET /users/active should return 200').toBe(200);
-    const ids = res.body.users.map((u) => u.id);
-    expect(ids, 'service account should not appear in active users list').not.toContain(saUser.id);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-C2');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  const res = await restClient.get<{ users: { id: string; name: string }[] }>(
+    '/api/v1/users/active',
+  );
+  expect(res.status, 'GET /users/active should return 200').toBe(200);
+  const ids = res.body.users.map((u) => u.id);
+  expect(ids, 'service account should not appear in active users list').not.toContain(saUser.id);
 });
 
 // ---------------------------------------------------------------------------
@@ -214,51 +214,42 @@ test('@functional F-SA-C2: service accounts do not appear in the active users li
 // ---------------------------------------------------------------------------
 
 test('@functional F-SA-T1: admin can issue an API token for a service account', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const res = await restClient.post<IssueTokenResponse>(`/api/v1/users/${saUser.id}/api-token`);
-    expect(res.status, 'POST /api-token should return 201').toBe(201);
-    expect(res.body.token, 'plaintext token should be present').toBeTruthy();
-    expect(typeof res.body.token, 'token should be a string').toBe('string');
-    expect(res.body.issued_at, 'issued_at should be present').toBeTruthy();
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-T1');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  const res = await restClient.post<IssueTokenResponse>(`/api/v1/users/${saUser.id}/api-token`);
+  expect(res.status, 'POST /api-token should return 201').toBe(201);
+  expect(res.body.token, 'plaintext token should be present').toBeTruthy();
+  expect(typeof res.body.token, 'token should be a string').toBe('string');
+  expect(res.body.issued_at, 'issued_at should be present').toBeTruthy();
 });
 
-test('@functional F-SA-T2: issuing a second token replaces the first', async ({ restClient }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const first = await restClient.post<IssueTokenResponse>(`/api/v1/users/${saUser.id}/api-token`);
-    const second = await restClient.post<IssueTokenResponse>(
-      `/api/v1/users/${saUser.id}/api-token`,
-    );
+test('@functional F-SA-T2: issuing a second token replaces the first', async ({
+  testData,
+  restClient,
+}) => {
+  const saUser = await createServiceAccount(testData, restClient);
+  const first = await restClient.post<IssueTokenResponse>(`/api/v1/users/${saUser.id}/api-token`);
+  const second = await restClient.post<IssueTokenResponse>(`/api/v1/users/${saUser.id}/api-token`);
 
-    expect(second.status, 'second issue should return 201').toBe(201);
-    expect(second.body.token, 'second token should differ from first').not.toBe(first.body.token);
+  expect(second.status, 'second issue should return 201').toBe(201);
+  expect(second.body.token, 'second token should differ from first').not.toBe(first.body.token);
 
-    // First token must now be rejected
-    const authCheck = await bearerGet('/api/v1/contacts', first.body.token);
-    expect(authCheck.status, 'first token should be rejected after rotation').toBe(401);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-T2');
-  }
+  // First token must now be rejected
+  const authCheck = await bearerGet('/api/v1/contacts', first.body.token);
+  expect(authCheck.status, 'first token should be rejected after rotation').toBe(401);
 });
 
 test('@functional F-SA-T3: user detail reflects has_api_token after issuance', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    await restClient.post(`/api/v1/users/${saUser.id}/api-token`);
-    const user = await fetchUserFromList(restClient, saUser.id);
-    expect(user, 'user should appear in admin list').toBeTruthy();
-    expect(user?.has_api_token, 'has_api_token should be true after issuance').toBe(true);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-T3');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  await restClient.post(`/api/v1/users/${saUser.id}/api-token`);
+  const user = await fetchUserFromList(restClient, saUser.id);
+  expect(user, 'user should appear in admin list').toBeTruthy();
+  expect(user?.has_api_token, 'has_api_token should be true after issuance').toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -266,55 +257,45 @@ test('@functional F-SA-T3: user detail reflects has_api_token after issuance', a
 // ---------------------------------------------------------------------------
 
 test('@functional F-SA-B1: service account can read contacts with Bearer token', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const token = await issueToken(restClient, saUser.id);
-    const res = await bearerGet('/api/v1/contacts', token);
-    expect(res.status, 'Bearer GET /contacts should return 200').toBe(200);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-B1');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  const token = await issueToken(restClient, saUser.id);
+  const res = await bearerGet('/api/v1/contacts', token);
+  expect(res.status, 'Bearer GET /contacts should return 200').toBe(200);
 });
 
 test('@functional F-SA-B2: service account can read accounts with Bearer token', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const token = await issueToken(restClient, saUser.id);
-    const res = await bearerGet('/api/v1/accounts', token);
-    expect(res.status, 'Bearer GET /accounts should return 200').toBe(200);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-B2');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  const token = await issueToken(restClient, saUser.id);
+  const res = await bearerGet('/api/v1/accounts', token);
+  expect(res.status, 'Bearer GET /accounts should return 200').toBe(200);
 });
 
 test('@functional F-SA-B3: service account can create a contact with Bearer token', async ({
   restClient,
   testData,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const token = await issueToken(restClient, saUser.id);
-    const res = await bearerPost('/api/v1/contacts', token, {
-      first_name: 'SACreated',
-      last_name: `F-SA-B3-${Date.now()}`,
-      email: `sa-b3-contact-${Date.now()}@example.com`,
-    });
-    expect(res.status, 'Bearer POST /contacts should return 201').toBe(201);
+  const saUser = await createServiceAccount(testData, restClient);
+  const token = await issueToken(restClient, saUser.id);
+  const res = await bearerPost('/api/v1/contacts', token, {
+    first_name: 'SACreated',
+    last_name: `F-SA-B3-${Date.now()}`,
+    email: `sa-b3-contact-${Date.now()}@example.com`,
+  });
+  expect(res.status, 'Bearer POST /contacts should return 201').toBe(201);
 
-    // Register for teardown — contact is owned by the SA, which we deactivate below.
-    // Deactivation doesn't cascade-delete contacts so we must clean up explicitly.
-    const contactId = (res.body as { contact: { id: string } }).contact?.id;
-    if (contactId) {
-      testData.registerCustomTeardown(`delete-sa-b3-contact-${contactId}`, async () => {
-        await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-      });
-    }
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-B3');
+  // Register for teardown — contact is owned by the SA, which we deactivate below.
+  // Deactivation doesn't cascade-delete contacts so we must clean up explicitly.
+  const contactId = (res.body as { contact: { id: string } }).contact?.id;
+  if (contactId) {
+    testData.registerCustomTeardown(`delete-sa-b3-contact-${contactId}`, async () => {
+      await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
+    });
   }
 });
 
@@ -327,9 +308,10 @@ test('@functional F-SA-B4: invalid Bearer token returns 401', async ({ restClien
 });
 
 test('@functional F-SA-B5: service account Bearer token is rejected after deactivation', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
+  const saUser = await createServiceAccount(testData, restClient);
   const token = await issueToken(restClient, saUser.id);
 
   // Confirm token works before deactivation
@@ -345,21 +327,19 @@ test('@functional F-SA-B5: service account Bearer token is rejected after deacti
 });
 
 test('@functional F-SA-B6: service account cannot call admin-only endpoints', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const token = await issueToken(restClient, saUser.id);
-    // POST /api/v1/users/invite is admin-only (requireRole('admin'))
-    const res = await bearerPost('/api/v1/users/invite', token, {
-      name: 'SA Invite Attempt',
-      email: `sa-invite-blocked-${Date.now()}@example.com`,
-      role: 'rep',
-    });
-    expect(res.status, 'service account cannot access admin-only endpoints').toBe(403);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-B6');
-  }
+  const saUser = await createServiceAccount(testData, restClient);
+  const token = await issueToken(restClient, saUser.id);
+  // POST /api/v1/users/invite is admin-only (requireRole('admin'))
+  // MINCRM-686-ok: expected to fail with 403 — no user row is created.
+  const res = await bearerPost('/api/v1/users/invite', token, {
+    name: 'SA Invite Attempt',
+    email: `sa-invite-blocked-${Date.now()}@example.com`,
+    role: 'rep',
+  });
+  expect(res.status, 'service account cannot access admin-only endpoints').toBe(403);
 });
 
 // ---------------------------------------------------------------------------
@@ -367,61 +347,57 @@ test('@functional F-SA-B6: service account cannot call admin-only endpoints', as
 // ---------------------------------------------------------------------------
 
 test('@functional F-SA-R1: admin can revoke a service account API token', async ({
+  testData,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    await issueToken(restClient, saUser.id);
+  const saUser = await createServiceAccount(testData, restClient);
+  await issueToken(restClient, saUser.id);
 
-    const revokeRes = await restClient.delete<{ success: boolean }>(
-      `/api/v1/users/${saUser.id}/api-token`,
-    );
-    expect(revokeRes.status, 'DELETE /api-token should return 200').toBe(200);
-    expect(revokeRes.body.success, 'success should be true').toBe(true);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-R1');
-  }
+  const revokeRes = await restClient.delete<{ success: boolean }>(
+    `/api/v1/users/${saUser.id}/api-token`,
+  );
+  expect(revokeRes.status, 'DELETE /api-token should return 200').toBe(200);
+  expect(revokeRes.body.success, 'success should be true').toBe(true);
 });
 
-test('@functional F-SA-R2: revoked token is rejected immediately', async ({ restClient }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    const token = await issueToken(restClient, saUser.id);
+test('@functional F-SA-R2: revoked token is rejected immediately', async ({
+  testData,
+  restClient,
+}) => {
+  const saUser = await createServiceAccount(testData, restClient);
+  const token = await issueToken(restClient, saUser.id);
 
-    // Confirm it works first
-    const before = await bearerGet('/api/v1/contacts', token);
-    expect(before.status, 'token should work before revocation').toBe(200);
+  // Confirm it works first
+  const before = await bearerGet('/api/v1/contacts', token);
+  expect(before.status, 'token should work before revocation').toBe(200);
 
-    // Revoke
-    await restClient.delete(`/api/v1/users/${saUser.id}/api-token`);
+  // Revoke
+  await restClient.delete(`/api/v1/users/${saUser.id}/api-token`);
 
-    // Must be rejected immediately (no caching)
-    const after = await bearerGet('/api/v1/contacts', token);
-    expect(after.status, 'token should be rejected after revocation').toBe(401);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-R2');
-  }
+  // Must be rejected immediately (no caching)
+  const after = await bearerGet('/api/v1/contacts', token);
+  expect(after.status, 'token should be rejected after revocation').toBe(401);
 });
 
-test('@functional F-SA-R3: has_api_token is false after revocation', async ({ restClient }) => {
-  const saUser = await createServiceAccount(restClient);
-  try {
-    await issueToken(restClient, saUser.id);
-    await restClient.delete(`/api/v1/users/${saUser.id}/api-token`);
+test('@functional F-SA-R3: has_api_token is false after revocation', async ({
+  testData,
+  restClient,
+}) => {
+  const saUser = await createServiceAccount(testData, restClient);
+  await issueToken(restClient, saUser.id);
+  await restClient.delete(`/api/v1/users/${saUser.id}/api-token`);
 
-    const user = await fetchUserFromList(restClient, saUser.id);
-    expect(user, 'user should appear in admin list').toBeTruthy();
-    expect(user?.has_api_token, 'has_api_token should be false after revocation').toBe(false);
-  } finally {
-    await deactivateUser(restClient, saUser.id, 'F-SA-R3');
-  }
+  const user = await fetchUserFromList(restClient, saUser.id);
+  expect(user, 'user should appear in admin list').toBeTruthy();
+  expect(user?.has_api_token, 'has_api_token should be false after revocation').toBe(false);
 });
 
 test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const saUser = await createServiceAccount(restClient);
+  const saUser = await createServiceAccount(testData, restClient);
 
   // Create an activated rep user
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
@@ -430,6 +406,7 @@ test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', a
     email: `rep-sa-r4-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
+  registerUserDeactivation(testData, restClient, repInvite.body.user.id, 'rep');
   await restClient.post('/api/v1/users/set-password', {
     token: repInvite.body.inviteToken,
     password: 'RepPassword1!',
@@ -455,7 +432,5 @@ test('@functional F-SA-R4: only admin can issue a token — rep is forbidden', a
   } finally {
     await repContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, saUser.id, 'F-SA-R4');
-    await deactivateUser(restClient, repInvite.body.user.id, 'F-SA-R4-rep');
   }
 });

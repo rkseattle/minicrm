@@ -226,7 +226,7 @@ function findCreatedUserId(body: unknown): string | undefined {
  * @param userId - The created user's id.
  * @param label - Teardown-key prefix identifying the kind of user.
  */
-function registerUserDeactivation(
+export function registerUserDeactivation(
   testData: TestDataManager,
   restClient: RestClient,
   userId: string,

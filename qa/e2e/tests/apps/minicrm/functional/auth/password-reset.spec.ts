@@ -25,6 +25,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import {
   loginAsAdmin,
   loginAs,
@@ -37,7 +39,6 @@ import {
 import {
   inviteUserViaApi,
   setUserPassword,
-  deactivateUser,
   suppressUserOnboarding,
 } from '@behaviors/minicrm/users.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -73,6 +74,7 @@ if (!ADMIN_PASSWORD) throw new Error('[F1-PR] E2E_ADMIN_PASSWORD is not set');
  * @param initialPassword - Password to set on the account.
  */
 async function createActiveTestUser(
+  testData: TestDataManager,
   restClient: RestClient,
   initialPassword: string,
 ): Promise<{ userId: string; email: string }> {
@@ -82,6 +84,7 @@ async function createActiveTestUser(
     email: `f1-pr-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   await setUserPassword(restClient, inviteToken, initialPassword);
 
@@ -137,6 +140,7 @@ test('@functional F1-PR3: reset-password — invalid token shows error with re-r
 });
 
 test('@functional F1-PR4: reset-password — mismatched passwords shows inline validation error', async ({
+  testData,
   page,
   restClient,
 }) => {
@@ -144,10 +148,8 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
 
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   try {
-    const { userId: uid, email } = await createActiveTestUser(restClient, INITIAL_PASSWORD);
-    userId = uid;
+    const { email } = await createActiveTestUser(testData, restClient, INITIAL_PASSWORD);
 
     const token = await getDevResetToken(restClient, email);
 
@@ -161,16 +163,14 @@ test('@functional F1-PR4: reset-password — mismatched passwords shows inline v
       '/reset-password',
     );
   } finally {
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-PR4] teardown failed: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });
 
 test('@functional F1-PR5: reset-password — successful reset logs user in and redirects to dashboard', async ({
+  testData,
   page,
   restClient,
 }) => {
@@ -179,10 +179,8 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
 
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   try {
-    const { userId: uid, email } = await createActiveTestUser(restClient, INITIAL_PASSWORD);
-    userId = uid;
+    const { email } = await createActiveTestUser(testData, restClient, INITIAL_PASSWORD);
 
     // Get the reset token via dev endpoint.
     const token = await getDevResetToken(restClient, email);
@@ -215,16 +213,14 @@ test('@functional F1-PR5: reset-password — successful reset logs user in and r
     expect(replayResult.success, 'replaying used token should fail').toBe(false);
     expect(replayResult.errorMessage, 'replay error should be present').not.toBeNull();
   } finally {
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-PR5] teardown failed: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });
 
 test('@functional F1-PR6: reset-password — old password rejected after reset, confirming password change (MINCRM-157)', async ({
+  testData,
   page,
   restClient,
 }) => {
@@ -233,10 +229,8 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
 
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   try {
-    const { userId: uid, email } = await createActiveTestUser(restClient, INITIAL_PASSWORD);
-    userId = uid;
+    const { email } = await createActiveTestUser(testData, restClient, INITIAL_PASSWORD);
 
     // ── 1. Establish a restClient session for the test user ───────────────────
     await loginAs(restClient, email, INITIAL_PASSWORD);
@@ -271,11 +265,8 @@ test('@functional F1-PR6: reset-password — old password rejected after reset, 
       401,
     );
   } finally {
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-PR6] teardown failed: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });

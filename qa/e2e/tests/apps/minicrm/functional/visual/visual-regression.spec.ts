@@ -132,6 +132,8 @@ test.beforeAll(async ({ restClient }) => {
   const email = `vr-admin-${uniqueSuffix}@example.com`;
   const name = `VR Admin ${uniqueSuffix}`;
   const password = 'BvtPassword1!';
+  // MINCRM-686-ok: created in beforeAll, where the test-scoped testData fixture
+  // does not exist; torn down in afterAll instead. (MINCRM-416)
   const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);

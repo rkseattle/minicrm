@@ -32,13 +32,13 @@ import {
   createTestRep,
   loginAndVerify,
   registerAdminTeardown,
+  registerUserDeactivation,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   inviteUserViaApi,
   setUserPassword,
   suppressUserOnboarding,
-  deactivateUser,
 } from '@behaviors/minicrm/users.behaviors.js';
 import {
   navigateToAdminSettings,
@@ -239,10 +239,7 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
   });
   await setUserPassword(restClient, managerToken, managerPassword);
   await suppressUserOnboarding(restClient, managerEmail, managerPassword);
-  testData.registerCustomTeardown(`deactivate-manager-vis5-${managerUser.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, managerUser.id);
-  });
+  registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis5');
 
   // Create a team member
   const memberEmail = `member-vis5-${uniqueSuffix}@example.com`;
@@ -254,10 +251,7 @@ test('@functional @serial F-VIS5: manager sees only contacts owned by their team
   });
   await setUserPassword(restClient, memberToken, memberPassword);
   await suppressUserOnboarding(restClient, memberEmail, memberPassword);
-  testData.registerCustomTeardown(`deactivate-member-vis5-${memberUser.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, memberUser.id);
-  });
+  registerUserDeactivation(testData, restClient, memberUser.id, 'member-vis5');
 
   // Create an outsider rep
   const outsider = await createTestRep(testData, restClient, {
@@ -340,10 +334,7 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
   });
   await setUserPassword(restClient, managerToken, managerPassword);
   await suppressUserOnboarding(restClient, managerEmail, managerPassword);
-  testData.registerCustomTeardown(`deactivate-manager-vis6-${managerUser.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, managerUser.id);
-  });
+  registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis6');
 
   const memberEmail = `member-vis6-${uniqueSuffix}@example.com`;
   const memberPassword = 'BvtPassword1!';
@@ -354,10 +345,7 @@ test('@functional @serial F-VIS6: manager can reassign a contact to a member of 
   });
   await setUserPassword(restClient, memberToken, memberPassword);
   await suppressUserOnboarding(restClient, memberEmail, memberPassword);
-  testData.registerCustomTeardown(`deactivate-member-vis6-${memberUser.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, memberUser.id);
-  });
+  registerUserDeactivation(testData, restClient, memberUser.id, 'member-vis6');
 
   // Create team
   await loginAsAdmin(restClient);
@@ -415,10 +403,7 @@ test('@functional @serial F-VIS7: manager gets 403 when reassigning a contact to
   });
   await setUserPassword(restClient, managerToken, managerPassword);
   await suppressUserOnboarding(restClient, managerEmail, managerPassword);
-  testData.registerCustomTeardown(`deactivate-manager-vis7-${managerUser.id}`, async () => {
-    await loginAsAdmin(restClient);
-    await deactivateUser(restClient, managerUser.id);
-  });
+  registerUserDeactivation(testData, restClient, managerUser.id, 'manager-vis7');
 
   // Create a team (empty — no members that the manager can reassign to,
   // except the manager themselves)

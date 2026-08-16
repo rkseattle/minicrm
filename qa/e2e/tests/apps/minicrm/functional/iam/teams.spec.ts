@@ -20,6 +20,8 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
 interface TeamResponse {
   id: string;
@@ -63,6 +65,7 @@ function errorBody(err: unknown): ErrorBody {
 }
 
 async function createActivatedRep(
+  testData: TestDataManager,
   adminClient: RestClient,
   newContext: () => Promise<APIRequestContext>,
   suffix: string,
@@ -75,6 +78,10 @@ async function createActivatedRep(
     role: 'rep',
   });
   const { user, inviteToken } = inviteRes.body;
+
+  // Register before the steps below, any of which can throw. adminClient is the
+  // fixture restClient, which outlives the test. (MINCRM-668)
+  registerUserDeactivation(testData, adminClient, user.id, 'rep');
 
   await adminClient.post('/api/v1/users/set-password', {
     token: inviteToken,
@@ -95,10 +102,6 @@ async function createActivatedRep(
   await repClient.post('/api/v1/auth/login', { email, password: REP_PASSWORD });
 
   return { repId: user.id, repClient, repContext };
-}
-
-async function deactivateUser(adminClient: RestClient, userId: string): Promise<void> {
-  await adminClient.patch(`/api/v1/users/${userId}/deactivate`).catch(() => null);
 }
 
 test.beforeEach(async ({ restClient }) => {
@@ -174,6 +177,7 @@ test('@functional teams — duplicate name returns 409 TEAM_NAME_DUPLICATE', asy
 // ── Member management ─────────────────────────────────────────────────────────
 
 test('@functional teams — add member and verify member_count increments', async ({
+  testData,
   restClient,
   playwright,
 }) => {
@@ -189,6 +193,7 @@ test('@functional teams — add member and verify member_count increments', asyn
     teamId = teamRes.body.team.id;
 
     const { repId: rId, repContext: rCtx } = await createActivatedRep(
+      testData,
       restClient,
       () => playwright.request.newContext(),
       suffix,
@@ -223,9 +228,6 @@ test('@functional teams — add member and verify member_count increments', asyn
     if (teamId) {
       await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
     }
-    if (repId) {
-      await deactivateUser(restClient, repId);
-    }
     if (repContext) {
       await repContext.dispose();
     }
@@ -233,6 +235,7 @@ test('@functional teams — add member and verify member_count increments', asyn
 });
 
 test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXISTS', async ({
+  testData,
   restClient,
   playwright,
 }) => {
@@ -248,6 +251,7 @@ test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXI
     teamId = teamRes.body.team.id;
 
     const { repId: rId, repContext: rCtx } = await createActivatedRep(
+      testData,
       restClient,
       () => playwright.request.newContext(),
       `dup-${suffix}`,
@@ -276,9 +280,6 @@ test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXI
   } finally {
     if (teamId) {
       await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
-    if (repId) {
-      await deactivateUser(restClient, repId);
     }
     if (repContext) {
       await repContext.dispose();
@@ -331,6 +332,7 @@ test('@functional teams — deleting a team with children returns 409 TEAM_HAS_C
 // ── Capability enforcement ────────────────────────────────────────────────────
 
 test('@functional teams — rep without teams:manage capability receives 403 on mutations', async ({
+  testData,
   restClient,
   playwright,
 }) => {
@@ -351,6 +353,7 @@ test('@functional teams — rep without teams:manage capability receives 403 on 
       repClient,
       repContext: rCtx,
     } = await createActivatedRep(
+      testData,
       restClient,
       () => playwright.request.newContext(),
       `cap-${suffix}`,
@@ -407,9 +410,6 @@ test('@functional teams — rep without teams:manage capability receives 403 on 
   } finally {
     if (teamId) {
       await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
-    if (repId) {
-      await deactivateUser(restClient, repId);
     }
     if (repContext) {
       await repContext.dispose();
