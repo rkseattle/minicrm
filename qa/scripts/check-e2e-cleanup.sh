@@ -155,6 +155,14 @@ test('opts out with a reason', async ({ restClient }) => {
 });
 CASE
 
+  write_case 'ok-register-immediate.spec.ts' <<'CASE'
+test('registers before the steps that can throw', async ({ testData, restClient }) => {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { role: 'rep' });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
+  await restClient.post('/api/v1/users/set-password', { token: inviteToken, password: 'x' });
+});
+CASE
+
   write_case 'ok-comment-mentions-invite.spec.ts' <<'CASE'
 // The server exposes post '/api/v1/users/invite' for admins only.
 test('discusses the endpoint without calling it', async ({ restClient }) => {
@@ -182,6 +190,14 @@ CASE
 test('leaks a raw-POST invite', async ({ restClient }) => {
   const inviteRes = await restClient.post('/api/v1/users/invite', { role: 'viewer' });
   expect(inviteRes.status).toBe(201);
+});
+CASE
+
+  write_case 'bad-register-after-await.spec.ts' <<'CASE'
+test('registers after a step that can throw', async ({ testData, restClient }) => {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { role: 'rep' });
+  await restClient.post('/api/v1/users/set-password', { token: inviteToken, password: 'x' });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 });
 CASE
 
@@ -230,10 +246,11 @@ CASE
 
   self_test_failures=0
   ok_cases="ok-registered ok-invite-registered ok-raw-post-registered
-    ok-self-registering ok-opted-out ok-comment-mentions-invite"
+    ok-self-registering ok-opted-out ok-comment-mentions-invite
+    ok-register-immediate"
   bad_cases="bad-unregistered bad-invite-unregistered
     bad-raw-post-unregistered bad-wrapped-post bad-mixed-same-line
-    bad-opt-out-without-reason"
+    bad-register-after-await bad-opt-out-without-reason"
   self_test_total=0
 
   for expected_pass in $ok_cases; do
@@ -467,6 +484,38 @@ while IFS= read -r -d '' spec_file; do
     # name, so nothing can register it — only the opt-out marker above clears it.
     if [ -n "$bindings" ]; then
       window_text="$(sed -n "${line_no},${window_end}p" "$spec_file")"
+
+      # ORDERING, not just presence. The header promises registration happens
+      # "immediately after" creation so cleanup survives a mid-setup failure —
+      # but a window check alone accepts `create → await something → register`,
+      # which is exactly the shape MINCRM-668 removed from createTestRep,
+      # createTestAdmin and five visibility.spec.ts sites. If an `await` sits
+      # between the create statement and the registration, the row exists while
+      # that call can throw, and nothing would clean it up.
+      #
+      # The create statement itself usually spans several lines (a multi-line
+      # object literal), so the scan starts after its closing `});` rather than
+      # at the create line.
+      # End of the create STATEMENT: the first line at or after the create that
+      # closes it with `);` or `});`. Bounded by the registration line so the
+      # test function's own closing brace further down cannot be mistaken for it.
+      create_end="$(printf '%s' "$window_text" |
+        { grep -nE '\)\s*;\s*$' || true; } | head -1 | cut -d: -f1)"
+      [ -z "$create_end" ] && create_end=1
+      register_offset="$(printf '%s' "$window_text" | { grep -nE "$REGISTER_PATTERN" || true; } | head -1 | cut -d: -f1)"
+
+      if [ -n "$register_offset" ] && [ "$register_offset" -gt "$create_end" ]; then
+        between="$(printf '%s' "$window_text" |
+          sed -n "$((create_end + 1)),$((register_offset - 1))p" |
+          grep -vE '^\s*(//|\*|/\*)' |
+          grep -E '\bawait\b' || true)"
+        if [ -n "$between" ]; then
+          first_await="$(printf '%s' "$between" | head -1 | sed -E 's/^[[:space:]]+//')"
+          file_violations="${file_violations}    ${line_no}: registration is not immediate — \`${first_await}\` can throw first
+"
+          continue
+        fi
+      fi
 
       # ONLY the text of register statements — from each REGISTER_PATTERN match
       # through the following few lines that carry its arguments. A register call
