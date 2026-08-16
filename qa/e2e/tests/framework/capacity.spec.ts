@@ -115,28 +115,48 @@ test.describe('computeCapacityPlan — scaling behavior', () => {
 });
 
 test.describe('the documented CI runner size', () => {
-  test('GitHub-hosted runners still provide the 4 vCPUs the docs claim', () => {
-    // The ONE assertion that observes the real runner rather than the formula.
+  test('reports when GitHub-hosted runners stop providing the documented 4 vCPUs', () => {
     // capacity.ts, e2e-performance.md, qa/e2e/README.md and README.md all state
-    // "2 shards x 4 workers on 4-vCPU runners"; that is only true while GitHub
-    // keeps providing 4 vCPUs. Because computeCapacityPlan plateaus at
-    // WORKERS_CAP, no assertion over the formula can notice an upgrade to 8 or
-    // 16 — every one of those still returns 2 x 4 — so without this check the
-    // docs would go stale silently, exactly as the 2-vCPU claim did.
+    // "2 shards x 4 workers on 4-vCPU runners". That is only true while GitHub
+    // keeps providing 4 vCPUs, and because computeCapacityPlan plateaus at
+    // WORKERS_CAP no assertion over the FORMULA can notice an upgrade to 8 or
+    // 16 — each still returns 2 x 4. Something has to observe the machine, or
+    // those figures go stale silently exactly as the 2-vCPU claim did.
     //
-    // Gated on RUNNER_ENVIRONMENT, which GitHub sets to 'github-hosted' or
-    // 'self-hosted'. Neither `CI` nor `GITHUB_ACTIONS` would do: `CI` is set by
-    // local tooling too, and `GITHUB_ACTIONS` is true on SELF-HOSTED runners as
-    // well — where a different core count is expected and correct, since
-    // capacity.ts exists precisely to scale across runner sizes. Asserting 4
-    // there would fail the first self-hosted runner this pipeline ever uses,
-    // for doing exactly what the module advertises.
+    // ANNOTATES, does not fail. A runner-spec change is GitHub's to make and
+    // ours to react to; it makes documentation stale, not the pipeline broken —
+    // computeCapacityPlan keeps emitting a correct plan either way. Hard-failing
+    // here would block every merge on the repo until someone edited a number,
+    // which is out of proportion to a docs-refresh signal. The annotation
+    // surfaces in the HTML report and the JUnit XML instead.
+    //
+    // Gated on RUNNER_ENVIRONMENT ('github-hosted' | 'self-hosted'): `CI` is set
+    // by local tooling too, and `GITHUB_ACTIONS` is true on self-hosted runners,
+    // where a different core count is expected and correct.
     test.skip(
       process.env['RUNNER_ENVIRONMENT'] !== 'github-hosted',
-      'asserts the GitHub-hosted runner spec; other environments size themselves',
+      'observes the GitHub-hosted runner spec; other environments size themselves',
     );
 
-    expect(detectCpuCount()).toBe(4);
+    const DOCUMENTED_GITHUB_HOSTED_VCPUS = 4;
+    const actual = detectCpuCount();
+
+    if (actual !== DOCUMENTED_GITHUB_HOSTED_VCPUS) {
+      test.info().annotations.push({
+        type: 'runner-size-drift',
+        description:
+          `GitHub-hosted runners now report ${actual} vCPUs, not ` +
+          `${DOCUMENTED_GITHUB_HOSTED_VCPUS}. computeCapacityPlan still emits a ` +
+          `correct plan, but the "2 shards x 4 workers on 4-vCPU runners" figure ` +
+          `is now stale in capacity.ts, docs/dev/e2e-performance.md, ` +
+          `qa/e2e/README.md and README.md. Refresh them and this constant.`,
+      });
+    }
+
+    // Asserted only as a sanity bound: the probe must still return something
+    // usable, or getCapacityPlan silently falls back for every shard.
+    expect(actual).not.toBeNull();
+    expect(actual as number).toBeGreaterThanOrEqual(1);
   });
 });
 

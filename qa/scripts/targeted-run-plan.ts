@@ -128,6 +128,28 @@ export function isSerialTitle(title: string): boolean {
   return new RegExp(SERIAL_GREP).test(title);
 }
 
+/** Compiled once; stateless (no `g`/`y` flag, so no lastIndex to carry). */
+const NON_SERIAL_GREP_INVERT_PATTERN = new RegExp(NON_SERIAL_GREP_INVERT);
+
+/**
+ * Would the NON-SERIAL invocation actually select this title? (MINCRM-706)
+ *
+ * Not simply `!isSerialTitle(title)`. That was correct while the two halves were
+ * exact complements of one expression, but the non-serial half now inverts
+ * NON_SERIAL_GREP_INVERT, which is strictly BROADER than SERIAL_GREP — it also
+ * drops anything matching `visual-regression`.
+ *
+ * Deciding the plan with the narrower predicate would plan a non-serial
+ * invocation for a selection whose titles the wider inversion then filters to
+ * nothing. Playwright exits 1 with "No tests found", and the push fails on a
+ * passing codebase — the exact defect this module was extracted to prevent,
+ * reached from the other side. The planner must ask the question the invocation
+ * will actually ask.
+ */
+export function isNonSerialTitle(title: string): boolean {
+  return !NON_SERIAL_GREP_INVERT_PATTERN.test(title);
+}
+
 /**
  * Extracts test title strings from a spec file's source.
  *
@@ -188,8 +210,13 @@ export function planTargetedInvocations(
       ];
     }
     for (const title of titles) {
+      // Each half is asked its OWN question, rather than one half being the
+      // negation of the other: the two expressions are no longer exact
+      // complements, so a title can match neither (see isNonSerialTitle). A
+      // title in that gap plans no invocation, which is correct — nothing would
+      // run it — rather than planning one that finds nothing and exits 1.
       if (isSerialTitle(title)) hasSerial = true;
-      else hasNonSerial = true;
+      if (isNonSerialTitle(title)) hasNonSerial = true;
     }
   }
 
