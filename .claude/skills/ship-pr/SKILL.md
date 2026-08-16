@@ -49,13 +49,27 @@ Pushing these contaminates history. When unsure whether a change was intentional
 ## Step 4 — Push and open the PR
 
 ```bash
-git push -u --force-with-lease origin <branch>
+SKIP_TIA_PREPUSH=1 git push -u --force-with-lease origin <branch>
 gh pr create --title "<ALL ticket IDs> — <summary>" --body "<body>"
 ```
 
 `--force-with-lease` because Step 1's rebase rewrote the branch, so a branch that was
 already pushed will reject a fast-forward push. Never bare `--force`: `--force-with-lease`
 aborts when the remote moved under you instead of overwriting whatever landed there.
+
+`SKIP_TIA_PREPUSH=1` because Step 2 just ran the E2E gate by hand, and the `pre-push`
+hook would otherwise run its own selection over an identical tree — twenty-plus minutes
+to re-derive a verdict you already have. Preferred over `--no-verify`, which skips the
+hook silently; the env var is the hook's own escape hatch and logs each use to
+`.git/tia-prepush-bypass.log`.
+
+Only valid when Step 2 ran **both halves** with zero failures in `results.xml` **and**
+HEAD has not moved since — check `git rev-parse HEAD`, never assume. If anything was
+committed, amended, or rebased after those runs (a fix for something they surfaced
+counts), the result is void: drop the flag, or re-run the gate. See "Not re-running E2E
+in the push hook" in `.claude/gates/pre-push.md` for the full conditions and what the
+bypass gives up. Never use it to get around a failure or a run you'd rather not sit
+through.
 
 If the lease check rejects the push, the remote branch has commits your local copy does
 not — someone else pushed, or an earlier run of this skill did. Do not re-force past it.

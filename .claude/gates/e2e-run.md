@@ -88,15 +88,57 @@ rm -rf qa/e2e/test-results/
 
 # Non-serial — both projects, matching e2e-functional's [desktop, mobile-web]
 # matrix. --workers=1 matches CI's LPT file-per-shard isolation.
+# PW_GLOBAL_TIMEOUT_MS is REQUIRED — see "The 20-minute globalTimeout" below.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  PW_GLOBAL_TIMEOUT_MS=3600000 \
   npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
 
 # Serial — DESKTOP ONLY, and single-worker. Both halves match the e2e-serial
 # CI job, which pins --project=desktop (ci.yml) and never runs mobile-web.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
+  PW_GLOBAL_TIMEOUT_MS=1500000 \
   npm run test -- --project=desktop \
   --grep "@functional.*@serial|@serial.*@functional" --workers=1
 ```
+
+### The 20-minute globalTimeout, and why these commands override it
+
+`playwright.config.ts` caps a run at 20 minutes. That figure is calibrated for **CI's
+4-shard × 2-worker × 2-project matrix**, where each shard runs a slice. A local run is
+unsharded against a single test-server Node process, so it is not the same workload and
+cannot meet that budget.
+
+Measured (recorded in `scripts/pre-push-tia.ts` and the config's own comment): of ~1030
+non-serial tests, only **~420–445 complete in 20 minutes** at 1 _or_ 2 workers — a ~6%
+difference, not the ~2× more workers would predict, because the single-process test
+server is the bottleneck. `pre-push-tia.ts` therefore sets 60 minutes for its non-serial
+fallback and 25 for serial; these commands match it.
+
+**Without the override the run is silently truncated, and it does not look like a
+failure.** Playwright marks every test it never reached as `skipped`, so `results.xml`
+reports `failures="0"` and looks green. The tells:
+
+- `<testsuites time="1200.00…">` — pin-exact 1200s is the timeout, not a coincidence.
+- A large `skipped` count (~569 of 1002) with no per-test output in the log.
+- Playwright exits non-zero while the XML shows zero failures.
+
+**Check executed count, not just failure count.** Zero failures out of 433 executed is
+not a pass of a 1002-test suite:
+
+```bash
+python3 -c "
+import xml.etree.ElementTree as ET, collections
+r = ET.parse('qa/e2e/test-results/results.xml').getroot()
+c = [tc for ts in r.iter('testsuite') for tc in ts.iter('testcase')]
+print(collections.Counter('failed' if tc.find('failure') is not None else
+  'skipped' if tc.find('skipped') is not None else 'passed' for tc in c))
+"
+```
+
+Some skips are legitimate — this suite runs two projects and guards viewport-specific
+tests in both directions, so desktop-only tests skip under mobile-web and vice versa.
+A truncated run is distinguished by the exact-1200s `time` and by executed count
+collapsing to the ~420–445 band.
 
 **`--project` is not optional on the serial run, and the two commands differ on
 purpose.** `npm run test` runs every configured project, so omitting it there
