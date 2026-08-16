@@ -714,9 +714,10 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
  *    unrelated spec file on another worker.
  *
  * Even correctly scoped to 1030 non-serial tests, playwright.config.ts's
- * own 20-minute globalTimeout (calibrated for CI's 4-shard x 2-worker x
- * 2-project matrix — see that file's own comment) is unreachable for a
- * single unsharded local run: measured directly, only ~420-445 of 1030
+ * own 20-minute globalTimeout (calibrated for CI's sharded multi-project
+ * matrix, whose shard and worker counts come from the capacity probe — see
+ * that file's own comment) is unreachable for a single unsharded local
+ * run: measured directly, only ~420-445 of 1030
  * tests completed in 20 minutes regardless of using 1 or 2 local workers
  * (a ~6% difference, not the ~2x more workers would predict) — the test server
  * is one Node process, so it bottlenecks throughput no matter how many
@@ -735,12 +736,13 @@ function runPlaywright(specFiles: readonly string[], headSha: string): void {
  * effectively do too (never merged, always two independent pass/fail
  * signals).
  *
- * --workers=1: e2e-run.md's own current documented value, not capacity.ts's
- * CI-oriented, sharding-aware plan (see that file's own WORKERS_CAP
- * docblock) — chosen for simplicity given 2 workers bought negligible real
- * throughput here, not because 2 workers were proven unsafe for this
- * specific scoped, non-serial set (unlike the true fix in defect 2 above,
- * this is a pragmatic choice, not a correctness requirement).
+ * --workers=1: chosen on the measured basis above, not on parity with CI —
+ * CI runs MORE workers per shard than this (4 on today's runners), so
+ * matching it was never the argument. The single-threaded test server is the
+ * throughput ceiling, and 2 workers bought ~6% over 1, so the extra
+ * concurrency against shared local state is not worth it. A pragmatic choice,
+ * not a correctness requirement: 2 workers were never proven unsafe for this
+ * scoped, non-serial set (unlike the true fix in defect 2 above).
  */
 function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsResult | null): void {
   // See runPlaywright's own call: warned at the point dumps are produced.

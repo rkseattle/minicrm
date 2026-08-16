@@ -69,9 +69,13 @@ export default defineConfig({
   // MINCRM-217: sharded runs pass an explicit --workers=N on the CLI (computed by the
   // capacity-probe job, MINCRM-662) which takes precedence over this value; this value
   // only drives non-sharded local CI invocations via the config.
-  // MINCRM-557: cap local runs at 2 workers (CI uses capacity-probe's per-shard worker
-  // count; local machines get half of this config's own default to reduce concurrency
-  // on shared state). Playwright defaults to half the available logical CPUs when
+  // MINCRM-557: cap local runs at 2 workers. NOT a parity choice — CI runs MORE
+  // workers per shard than this (4 on today's runners), not fewer. The cap exists
+  // because a local run is unsharded: every spec file is visible to every worker,
+  // with no LPT partitioning to keep them off each other's shared state. Raising it
+  // buys little anyway — the single-threaded test server is the throughput ceiling,
+  // measured at ~6% between 1 and 2 workers (see globalTimeout below).
+  // Playwright defaults to half the available logical CPUs when
   // workers is undefined (e.g. 6 on a 12-thread machine). With 2 Playwright projects
   // (desktop + mobile-web) that means up to 12 concurrent test contexts sharing the
   // same minicrm_e2e database. LPT file partitioning prevents this in CI (one shard
@@ -135,7 +139,8 @@ export default defineConfig({
 
   // Global timeouts (ms).
   // 60 s per test: createTestRep (5 API calls) + loginViaBrowser + actual test work
-  // needs headroom beyond the previous 30 s under 4-worker local parallelism. (MINCRM-415)
+  // needs headroom beyond the previous 30 s under local parallelism (4 workers at
+  // the time this was measured; MINCRM-557 later capped local runs at 2). (MINCRM-415)
   timeout: 60_000,
   // MINCRM-554: Cap the entire run at 20 minutes. A healthy suite finishes in
   // ~15 minutes; exceeding this signals a hung test rather than a slow one. CI shards
@@ -143,10 +148,12 @@ export default defineConfig({
   //
   // PW_GLOBAL_TIMEOUT_MS overrides this — needed by pre-push-tia.ts's local
   // full-suite fallback (MINCRM-636/637), which runs the ENTIRE @functional
-  // suite unsharded against one test-server process, unlike CI's own 4-shard
-  // x 2-worker x 2-project matrix this 20-minute figure is actually
-  // calibrated against. Measured directly: 1030 non-serial tests completed
-  // only ~420-445 of them in 20 minutes at 1 or 2 local workers (a ~6%
+  // suite unsharded against one test-server process, unlike CI's own sharded
+  // multi-project matrix this 20-minute figure is calibrated against (shard and
+  // worker counts come from the capacity probe, so they vary with runner size —
+  // 2 shards x 4 workers x 2 projects on today's runners). Measured directly:
+  // of 1030 non-serial tests, only ~420-445 completed in 20 minutes at 1 or 2
+  // local workers (a ~6%
   // difference between worker counts, not the ~2x more workers would
   // predict) — the test server is a single Node process, so it bottlenecks
   // throughput regardless of how many Playwright workers send it requests

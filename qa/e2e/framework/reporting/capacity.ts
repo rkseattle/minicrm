@@ -5,12 +5,20 @@
  * checks see no app-domain strings here.
  *
  * Shard count and per-shard worker count were previously two hand-maintained
- * constants tuned once for GitHub's free-tier 2-vCPU runners (4 shards x 2
- * workers = 8 parallel test slots). This module re-derives both from a
- * measured per-runner CPU count, so parallelism scales automatically if this
- * pipeline ever runs on differently-sized runners (self-hosted, a larger
- * nightly box, etc), while reproducing today's exact values (4 shards, 2
- * workers) on today's exact runner (2 vCPUs) — verified in capacity.spec.ts.
+ * constants, tuned once for a 2-vCPU runner (4 shards x 2 workers = 8 parallel
+ * test slots). This module re-derives both from a measured per-runner CPU
+ * count, so parallelism scales automatically across differently-sized runners
+ * (self-hosted, a larger nightly box, etc) without manual retuning.
+ *
+ * On GitHub-hosted ubuntu-latest runners — 4 vCPUs as of 2026-08, verified from
+ * run 31962366377's probe output `{"shards":2,"workers":4}` — that yields
+ * 2 shards x 4 workers, not the 4 x 2 the original constants encoded. The 4 x 2
+ * pair survives only as FALLBACK_PLAN, for when detection fails.
+ *
+ * That runner size is asserted directly in capacity.spec.ts, under CI. It has to
+ * be: this formula plateaus at WORKERS_CAP, so 4, 8 and 64 vCPUs all produce the
+ * same plan, and no assertion over the formula alone would notice a runner
+ * upgrade making the figures above stale again.
  *
  * Model: every shard in a GitHub Actions matrix runs on an identically-sized
  * runner VM, so ONE capacity probe (run as its own CI step, on that runner
@@ -44,15 +52,27 @@ export interface CapacityPlan {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/** Known-good values if capacity can't be determined — the original hardcoded constants. */
+/**
+ * Values used when CPU count cannot be determined — the pre-probe
+ * hardcoded constants, retained as a DETECTION-FAILURE fallback rather than as
+ * a description of any current runner.
+ *
+ * Same TOTAL concurrency as any probed plan (8 slots) — it is not more
+ * conservative overall, just differently distributed: fewer workers per shard,
+ * more shards. That is the right shape when the machine could not be measured,
+ * since per-shard load on the single-threaded test server is the thing an
+ * unknown runner might not sustain.
+ */
 export const FALLBACK_PLAN: Readonly<CapacityPlan> = Object.freeze({
   shards: 4,
   workers: 2,
   source: 'fallback',
 });
 
-/** Target total parallel Playwright test slots (shards x workers), matching
- *  the original baseline (4 shards x 2 workers) on a 2-vCPU runner. */
+/** Target total parallel Playwright test slots (shards x workers), carried
+ *  forward from the pre-probe baseline (4 shards x 2 workers). Held
+ *  constant across runner sizes, so more cores buy wider shards, not more
+ *  total concurrency. */
 const TARGET_TOTAL_SLOTS = FALLBACK_PLAN.shards * FALLBACK_PLAN.workers;
 
 /**
@@ -86,11 +106,13 @@ export function detectCpuCount(): number | null {
 /**
  * Computes a CapacityPlan from a measured per-runner CPU count.
  *
- * Falls back to FALLBACK_PLAN (4 shards, 2 workers) if cpuCount is null or
- * not a positive integer — this is a strict improvement with no regression
- * risk. On the documented 2-vCPU GitHub free-tier runner this reproduces the
- * fallback values exactly (workers=min(WORKERS_CAP, 2)=2, shards=8/2=4),
- * verified in capacity.spec.ts.
+ * Falls back to FALLBACK_PLAN if cpuCount is null or not a positive integer.
+ *
+ * Worked examples, both pinned in capacity.spec.ts:
+ *   - 4 vCPUs (today's GitHub-hosted ubuntu-latest): workers=min(4, 4)=4,
+ *     shards=round(8/4)=2 → 2 shards x 4 workers.
+ *   - 2 vCPUs (a formula input, not a runner this pipeline uses today):
+ *     workers=min(4, 2)=2, shards=round(8/2)=4 → reproduces FALLBACK_PLAN.
  */
 export function computeCapacityPlan(cpuCount: number | null): CapacityPlan {
   if (cpuCount === null || !Number.isInteger(cpuCount) || cpuCount < 1) {
