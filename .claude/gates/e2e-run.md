@@ -91,7 +91,7 @@ rm -rf qa/e2e/test-results/
 # PW_GLOBAL_TIMEOUT_MS is REQUIRED — see "The 20-minute globalTimeout" below.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
   PW_GLOBAL_TIMEOUT_MS=3600000 \
-  npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
+  npm run test -- --grep "@functional" --grep-invert "visual-regression|serial" --workers=1
 
 # Serial — DESKTOP ONLY, and single-worker. Both halves match the e2e-serial
 # CI job, which pins --project=desktop (ci.yml) and never runs mobile-web.

@@ -74,6 +74,7 @@ jobs:
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
       coverage-map-exit-code: ${{ steps.filter.outputs.coverage-map-exit-code }}
       audit-gate: ${{ steps.filter.outputs.audit-gate }}
+      grep-invert-parity: ${{ steps.filter.outputs.grep-invert-parity }}
       dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
     steps:
       - uses: actions/checkout@v4
@@ -231,6 +232,18 @@ jobs:
               - 'scripts/pre-push-tia.ts'
               - '.github/actions/npm-audit/action.yml'
               - 'qa/scripts/check-audit-gate-parity.sh'
+            # Single-purpose output for check-grep-invert-parity.sh, which pins
+            # the non-serial --grep-invert expression across this workflow, the
+            # shared TS constant, and the documented local command. ci.yml and
+            # the gate doc live outside qa/, so without this entry an edit to
+            # either would not re-run the guard — the bidirectional-invariant
+            # rule in CLAUDE.md. Deliberately not folded into `qa`, which gates
+            # the whole E2E matrix. (MINCRM-706)
+            grep-invert-parity:
+              - '.github/workflows/ci.yml'
+              - '.claude/gates/e2e-run.md'
+              - 'qa/scripts/targeted-run-plan.ts'
+              - 'qa/scripts/check-grep-invert-parity.sh'
             ai:
               - 'server/src/ai/**'
               - 'qa/evals/**'
@@ -1022,7 +1035,11 @@ jobs:
     # outside qa/, so an edit to the shared audit script or to either caller
     # would otherwise leave check-audit-gate-parity.sh unrun on exactly the
     # change it guards. (MINCRM-668)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true'
+    # grep-invert-parity is OR'd in for the same reason: two of the three files
+    # it pins (this workflow and .claude/gates/e2e-run.md) live outside qa/, so
+    # an edit to either would otherwise leave check-grep-invert-parity.sh unrun
+    # on exactly the drift it guards. (MINCRM-706)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true' || needs.changes.outputs.grep-invert-parity == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1065,6 +1082,9 @@ jobs:
 
       - name: Check every audit caller uses the shared gate (MINCRM-668)
         run: bash qa/scripts/check-audit-gate-parity.sh
+
+      - name: Check the non-serial --grep-invert has not drifted (MINCRM-706)
+        run: bash qa/scripts/check-grep-invert-parity.sh
 
       - name: Check the locator-timeout guard itself is correct (MINCRM-703)
         run: node qa/scripts/check-locator-timeout-forwarding.mjs --self-test

@@ -44,6 +44,48 @@ import { readFileSync } from 'node:fs';
  */
 export const SERIAL_GREP = '@functional.*@serial|@serial.*@functional';
 
+/**
+ * The expression the NON-SERIAL half inverts. Character-identical to the
+ * `--grep-invert` value CI's e2e-functional job passes (ci.yml), and it must
+ * stay that way: the whole point is that local and CI exclude the same set.
+ * (MINCRM-706)
+ *
+ * WHY A LITERAL AND NOT `visual-regression|${SERIAL_GREP}`
+ * -------------------------------------------------------
+ * Composing looks tidier and selects a DIFFERENT set. CI's `serial` is a
+ * SUBSTRING filter; SERIAL_GREP is a two-tag regex. A title containing the word
+ * "non-serial" — e.g. this module's own spec, 'treats a plain @functional title
+ * as non-serial' — is excluded by the substring and NOT by the regex, so the
+ * composed form pulls a framework unit spec into the functional run (measured:
+ * 80 files instead of 79). Parity with CI is the requirement, so CI's literal
+ * is the value.
+ *
+ * WHAT IT MATCHES AGAINST
+ * -----------------------
+ * Playwright greps the FILE PATH (relative to testDir) plus describe titles plus
+ * the test title — not the title alone. `visual-regression` matches solely via
+ * the path qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts;
+ * not one of that spec's titles contains the string.
+ *
+ * EFFECT, STATED HONESTLY
+ * -----------------------
+ * Nothing in either local selection changes today. The full-suite commands pin
+ * `--grep @functional` and the visual spec's tests are tagged @visual only, so
+ * they were already out (measured identical: 501 tests / 79 files, before and
+ * after). The targeted path passes no `--grep @functional`, but its selection
+ * comes from qa/coverage-map.jsonl, which tia-record-mode.yml builds with
+ * `--grep @functional` — so the visual spec is never attributed and never
+ * selected (verified: zero occurrences in that map).
+ *
+ * What this buys is parity and defense in depth. If that spec were ever retagged
+ * @functional — the change check-settings-mutations.mjs's `not-live` exemption
+ * already warns about — the NON-SERIAL local halves would exclude it exactly as
+ * CI does, instead of running it against a shared database and reporting pixel
+ * diffs caused by other tests' seeded data. The serial halves still rely on the
+ * tags, so retagging remains the thing that would break the exemption.
+ */
+export const NON_SERIAL_GREP_INVERT = 'visual-regression|serial';
+
 /** Which half of the split an invocation covers. */
 export type InvocationLabel = 'non-serial' | 'serial';
 
@@ -62,7 +104,7 @@ export interface PlannedInvocation {
 const NON_SERIAL: Omit<PlannedInvocation, 'label'> = {
   junit: 'test-results/targeted-non-serial.xml',
   output: 'test-results/targeted-non-serial-artifacts',
-  grep: ['--grep-invert', SERIAL_GREP],
+  grep: ['--grep-invert', NON_SERIAL_GREP_INVERT],
   workers: 0,
 };
 

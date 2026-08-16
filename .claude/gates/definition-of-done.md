@@ -30,6 +30,7 @@ bash qa/scripts/check-behavior-layer.sh
 node qa/scripts/check-settings-mutations.mjs
 bash qa/scripts/check-networkidle.sh
 bash qa/scripts/check-sha-pattern-parity.sh
+bash qa/scripts/check-grep-invert-parity.sh
 bash qa/scripts/check-e2e-cleanup.sh
 node qa/scripts/check-locator-timeout-forwarding.mjs
 ```
