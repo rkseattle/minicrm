@@ -131,8 +131,11 @@ export function isSerialTitle(title: string): boolean {
 /** Compiled once; stateless (no `g`/`y` flag, so no lastIndex to carry). */
 const NON_SERIAL_GREP_INVERT_PATTERN = new RegExp(NON_SERIAL_GREP_INVERT);
 
+/** Playwright's testDir, relative to the repo root. */
+const TEST_DIR_PREFIX = 'qa/e2e/tests/';
+
 /**
- * Would the NON-SERIAL invocation actually select this title? (MINCRM-706)
+ * Would the NON-SERIAL invocation actually select this test? (MINCRM-706)
  *
  * Not simply `!isSerialTitle(title)`. That was correct while the two halves were
  * exact complements of one expression, but the non-serial half now inverts
@@ -140,14 +143,34 @@ const NON_SERIAL_GREP_INVERT_PATTERN = new RegExp(NON_SERIAL_GREP_INVERT);
  * drops anything matching `visual-regression`.
  *
  * Deciding the plan with the narrower predicate would plan a non-serial
- * invocation for a selection whose titles the wider inversion then filters to
- * nothing. Playwright exits 1 with "No tests found", and the push fails on a
- * passing codebase — the exact defect this module was extracted to prevent,
- * reached from the other side. The planner must ask the question the invocation
- * will actually ask.
+ * invocation for a selection the wider inversion then filters to nothing.
+ * Playwright exits 1 with "No tests found", and the push fails on a passing
+ * codebase — the exact defect this module was extracted to prevent, reached from
+ * the other side. The planner must ask the question the invocation will ask.
+ *
+ * TAKES THE PATH, NOT JUST THE TITLE
+ * ----------------------------------
+ * Playwright greps the file's path relative to testDir, PLUS describe titles,
+ * PLUS the test title, joined together. Testing the title alone would miss the
+ * one case that matters most here: visual-regression.spec.ts is excluded purely
+ * by its PATH — not one of its 15 titles contains the string — so a title-only
+ * predicate calls its tests non-serial, plans that half, and Playwright then
+ * selects zero. The `specFile` argument is optional so a caller with only a
+ * title still gets title matching, but the planner always passes it.
  */
-export function isNonSerialTitle(title: string): boolean {
-  return !NON_SERIAL_GREP_INVERT_PATTERN.test(title);
+export function isNonSerialTitle(title: string, specFile?: string): boolean {
+  if (NON_SERIAL_GREP_INVERT_PATTERN.test(title)) return false;
+
+  if (specFile !== undefined) {
+    const normalized = specFile.replace(/\\/g, '/');
+    const index = normalized.lastIndexOf(TEST_DIR_PREFIX);
+    // lastIndexOf, and slice to the testDir-relative form: a checkout living
+    // under a directory containing the excluded term must not exclude the suite.
+    const grepped = index === -1 ? normalized : normalized.slice(index + TEST_DIR_PREFIX.length);
+    if (NON_SERIAL_GREP_INVERT_PATTERN.test(grepped)) return false;
+  }
+
+  return true;
 }
 
 /**
@@ -216,7 +239,7 @@ export function planTargetedInvocations(
       // title in that gap plans no invocation, which is correct — nothing would
       // run it — rather than planning one that finds nothing and exits 1.
       if (isSerialTitle(title)) hasSerial = true;
-      if (isNonSerialTitle(title)) hasNonSerial = true;
+      if (isNonSerialTitle(title, file)) hasNonSerial = true;
     }
   }
 

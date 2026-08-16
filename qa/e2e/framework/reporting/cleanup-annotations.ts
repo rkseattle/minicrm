@@ -24,6 +24,18 @@
 /** Annotation type marking a record the run failed to clean up. */
 export const CLEANUP_FAILED_ANNOTATION = 'teardown-failed';
 
+/**
+ * Annotation type marking an environment fact a doc or constant asserts that no
+ * longer holds.
+ *
+ * For findings that make DOCUMENTATION stale without making the pipeline wrong —
+ * where failing the run would block every merge on a change nobody here
+ * controls, but staying silent lets the claim rot exactly as the one this ticket
+ * fixed did. StepSummaryReporter surfaces these; an annotation no reporter reads
+ * is indistinguishable from no annotation at all.
+ */
+export const ENVIRONMENT_DRIFT_ANNOTATION = 'environment-drift';
+
 /** The subset of Playwright's TestInfo this module writes to. */
 export interface AnnotatableTestInfo {
   annotations: { type: string; description?: string }[];

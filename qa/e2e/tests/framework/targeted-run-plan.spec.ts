@@ -169,6 +169,26 @@ test.describe('planTargetedInvocations', () => {
     expect(NON_SERIAL_GREP_INVERT).toBe('visual-regression|serial');
   });
 
+  test('plans nothing for a spec excluded by its PATH alone', () => {
+    // visual-regression.spec.ts is excluded by its path — not one of its titles
+    // contains the string — so a title-only predicate would call these tests
+    // non-serial, plan that half, and Playwright would then select zero and
+    // exit 1, failing the push. Playwright greps path + describe + title
+    // together, so the planner has to consider the path too.
+    const visualSpec = 'qa/e2e/tests/apps/minicrm/functional/visual/visual-regression.spec.ts';
+    const visualSource = `
+      test('V1: pipeline board renders correctly at desktop viewport @visual', async () => {});
+      test('V2: pipeline board renders correctly at mobile viewport @visual', async () => {});
+    `;
+
+    expect(isNonSerialTitle('V1: renders at desktop viewport @visual')).toBe(true);
+    expect(isNonSerialTitle('V1: renders at desktop viewport @visual', visualSpec)).toBe(false);
+
+    expect(planTargetedInvocations([visualSpec], reader({ [visualSpec]: visualSource }))).toEqual(
+      [],
+    );
+  });
+
   test('no real @functional title in the suite falls between the two halves', () => {
     // The inversion is BROADER than SERIAL_GREP (it also drops anything matching
     // visual-regression), so the halves are no longer exact complements — a
@@ -180,18 +200,34 @@ test.describe('planTargetedInvocations', () => {
     // non-serial ordering @functional" lands in the gap, and this reads it off
     // disk and fails.
     // Scoped to the app suite, which is what TIA selects and what these two
-    // invocations run. Framework specs under qa/e2e/tests/framework/ are
-    // deliberately excluded: they are never TIA-selected, and several legitimately
-    // quote tag names as TEST DATA — this file's own
-    // "treats a plain @functional title as non-serial" is a string under test,
-    // not a tagged test, and scanning it would report a permanent false orphan.
+    // invocations run. Framework-style specs are excluded: they are never
+    // TIA-selected, and several legitimately quote tag names as TEST DATA —
+    // this file's own "treats a plain @functional title as non-serial" is a
+    // string under test, not a tagged test, and scanning it would report a
+    // permanent false orphan.
+    //
+    // Directory alone is not a sufficient filter: qa/package.json's
+    // `test:framework` runs four such specs that live under tests/apps/ rather
+    // than tests/framework/. They are excluded BY NAME rather than by requiring
+    // '@functional' in the title, because that predicate would also swallow real
+    // orphans in genuine functional specs — precisely what this scan exists to
+    // surface. Naming a known exception is honest; a filter that hides the
+    // finding is not.
+    const FRAMEWORK_SPECS_UNDER_APPS = new Set([
+      'qa/e2e/tests/apps/minicrm/resource-registry.spec.ts',
+      'qa/e2e/tests/apps/minicrm/build-conflict-graph.spec.ts',
+      'qa/e2e/tests/apps/minicrm/gen-conflict-group-configs.spec.ts',
+      'qa/e2e/tests/apps/minicrm/test-data-manager.spec.ts',
+    ]);
+
     const repoRoot = resolve(__dirname, '../../../..');
     const specFiles = execFileSync('git', ['ls-files', 'qa/e2e/tests/apps/**/*.spec.ts'], {
       cwd: repoRoot,
       encoding: 'utf8',
     })
       .split('\n')
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((file) => !FRAMEWORK_SPECS_UNDER_APPS.has(file));
 
     // Guards the scan itself: a glob that silently matched nothing would make
     // this test pass vacuously, which is the failure mode it exists to avoid.
@@ -201,9 +237,10 @@ test.describe('planTargetedInvocations', () => {
 
     for (const file of specFiles) {
       for (const title of findTestTitles(readFileSync(resolve(repoRoot, file), 'utf8'))) {
-        // Only @functional titles matter: anything else is not selected by
-        // either half's --grep in the first place.
-        if (!title.includes('@functional')) continue;
+        // Every title in a functional spec is checked, deliberately — no
+        // '@functional' pre-filter. Both halves pass `--grep @functional`, so an
+        // untagged title runs nowhere anyway; but filtering on the tag here
+        // would hide gap titles that DO carry it, which is the finding.
         if (!isSerialTitle(title) && !isNonSerialTitle(title)) {
           orphans.push(`${file} :: ${title}`);
         }
