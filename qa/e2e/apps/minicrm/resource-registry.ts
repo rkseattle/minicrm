@@ -179,6 +179,26 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['settings.visibility_policy'],
   },
   {
+    // File-wide. Every test here depends on AI being enabled — the health-check
+    // button only renders when the server reports it on — and the beforeEach now
+    // sets it rather than inheriting it, so this is a write as well as a read.
+    // withFlags() cannot substitute: it intercepts the CLIENT's flag fetch and
+    // never reaches ai_configuration.enabled, which the server checks.
+    //
+    // Undeclared, the scheduler co-scheduled this file directly after
+    // data-hygiene, whose restoreAiDefaultsAfterTest leaves ai_features=false
+    // and ai_configuration.enabled=false. F7-DH4 then failed with
+    // "HealingLocator: all strategies exhausted" on run-deal-health-check-button
+    // — reproduced with just those two files, and passing with either alone.
+    // The comment at the top of this file records that MINCRM-705's composite
+    // key was introduced precisely because the old modelling "put data-hygiene
+    // beside deal-health-check ... with a live cross-file race"; this entry is
+    // the half that was still missing. (MINCRM-668)
+    file: 'qa/e2e/tests/apps/minicrm/functional/deals/deal-health-check.spec.ts',
+    reads: ['settings.ai_configuration_enabled'],
+    writes: ['settings.ai_configuration_enabled'],
+  },
+  {
     file: 'qa/e2e/tests/apps/minicrm/functional/admin/aiSettings.spec.ts',
     reads: ['settings.ai_configuration_enabled', 'settings.ai_session_retention'],
     writes: [

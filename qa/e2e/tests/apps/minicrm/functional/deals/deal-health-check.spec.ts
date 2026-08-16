@@ -32,7 +32,11 @@ import {
   withFlags,
 } from '@apps/minicrm/helpers.js';
 import { loginAsAdmin, loginViaBrowser, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
-import { resetVisibilitySettings } from '@behaviors/minicrm/settings.behaviors.js';
+import {
+  resetVisibilitySettings,
+  setAiEnabled,
+  restoreAiDefaultsAfterTest,
+} from '@behaviors/minicrm/settings.behaviors.js';
 import {
   runDealHealthCheck,
   waitForDealHealthResult,
@@ -47,9 +51,26 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
+
+  // Enable AI explicitly rather than inheriting whatever the previous spec left
+  // behind. The health-check button only renders when the SERVER reports AI on,
+  // and withFlags() cannot supply that — it intercepts the client's flag fetch
+  // and never reaches ai_configuration.enabled. data-hygiene's
+  // restoreAiDefaultsAfterTest leaves it false, so when the scheduler placed
+  // that file immediately before this one, F7-DH4 failed with "HealingLocator:
+  // all strategies exhausted". Declaring the dependency in resource-registry.ts
+  // keeps the two files apart; setting it here means the spec does not depend on
+  // that scheduling holding. (MINCRM-668)
+  await setAiEnabled(restClient, true);
+
   const rep = await createTestRep(testData, restClient);
   await loginViaBrowser(rep.email, rep.password, { page });
   await loginAs(restClient, rep.email, rep.password);
+});
+
+test.afterEach(async ({ restClient }) => {
+  await loginAsAdmin(restClient);
+  await restoreAiDefaultsAfterTest(restClient);
 });
 
 // ---------------------------------------------------------------------------
