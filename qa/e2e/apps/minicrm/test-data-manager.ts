@@ -49,7 +49,12 @@ interface CustomEntry {
   kind: 'custom';
   /** Human-readable label for log output (e.g. 'user-deactivate'). */
   label: string;
-  /** Async teardown callback; must not throw — errors are caught internally. */
+  /**
+   * Async teardown callback. Throwing is how it reports failure: `teardown()`
+   * catches per entry, records `success: false`, logs, and continues with the
+   * remaining entries. Swallow only the errors that mean cleanup already
+   * happened — anything else hides a leaked record. (MINCRM-668)
+   */
   fn: () => Promise<void>;
 }
 
@@ -110,8 +115,11 @@ export class TestDataManager {
    * Callbacks are executed in reverse registration order, interleaved with
    * standard entity deletes.
    *
-   * The callback must not throw. Errors are caught, logged, and do not abort
-   * subsequent cleanup steps.
+   * Throwing is how the callback reports failure: errors are caught per entry,
+   * recorded as `success: false`, logged, and do not abort subsequent cleanup
+   * steps. A callback that swallows its own errors reports successful cleanup
+   * while the record leaks — swallow only what means the record is already
+   * gone. (MINCRM-668)
    *
    * @param label - Human-readable label for log output (e.g. 'user-deactivate').
    * @param fn - Async teardown callback.

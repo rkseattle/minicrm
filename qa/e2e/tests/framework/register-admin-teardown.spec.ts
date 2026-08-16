@@ -20,7 +20,8 @@
 import { test, expect } from '@playwright/test';
 import { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import { registerAdminTeardown } from '@apps/minicrm/helpers.js';
-import type { RestClient } from '@framework/clients/rest-client.js';
+import type { RestClient, SchemaError } from '@framework/clients/rest-client.js';
+import { RestClientError } from '@framework/clients/rest-client.js';
 
 // loginAsAdmin() throws when E2E_ADMIN_PASSWORD is unset (auth.behaviors.ts:57).
 // These specs run with no server and no .env — supply a value so the helper
@@ -41,11 +42,29 @@ test.afterAll(() => {
 });
 
 /**
+ * The one status `registerAdminTeardown` may swallow. Declared here rather than
+ * imported so the spec asserts the contracted value independently — importing
+ * the helper's own constant would make a change to it invisible to this test.
+ */
+const HTTP_NOT_FOUND = 404;
+
+/** Statuses that mean the record is still in the database. */
+const RECORD_STILL_EXISTS_STATUSES = [403, 500];
+
+/**
  * RestClient stub that records every call in order.
  *
+ * One factory for every stub in this file: three shapes drifted apart before,
+ * and because they are `as unknown as RestClient` the compiler could not see
+ * that one had silently dropped `get`. A single shape means a future method the
+ * helper starts calling is missing from all stubs at once, not just one.
+ *
+ * @param onDelete - Optional DELETE behavior. Omit for a successful 204; supply
+ *   a thrower to drive the swallow-vs-propagate boundary. It still records the
+ *   call before throwing, so ordering assertions hold on failing paths too.
  * @returns The stub client and the ordered call log.
  */
-function makeRecordingClient(): { client: RestClient; calls: string[] } {
+function makeRecordingClient(onDelete?: () => never): { client: RestClient; calls: string[] } {
   const calls: string[] = [];
 
   const client = {
@@ -59,11 +78,26 @@ function makeRecordingClient(): { client: RestClient; calls: string[] } {
     },
     delete: async (path: string) => {
       calls.push(`DELETE ${path}`);
+      if (onDelete) onDelete();
       return { status: 204, body: undefined as never, headers: {} };
     },
   } as unknown as RestClient;
 
   return { client, calls };
+}
+
+/**
+ * A DELETE behavior that rejects with a RestClientError of the given status.
+ *
+ * @param status - HTTP status to reject with.
+ * @param validationError - Set to simulate a schema-parse failure, which shares
+ *   the RestClientError class with an error status.
+ * @returns A thrower for `makeRecordingClient`.
+ */
+function rejectsWith(status: number, validationError?: SchemaError): () => never {
+  return () => {
+    throw new RestClientError(status, { error: { code: 'STUBBED' } }, validationError);
+  };
 }
 
 test.describe('registerAdminTeardown', () => {
@@ -112,5 +146,69 @@ test.describe('registerAdminTeardown', () => {
 
     const deletes = calls.filter((c) => c.startsWith('DELETE '));
     expect(deletes).toEqual(['DELETE /api/v1/deals/2', 'DELETE /api/v1/accounts/1']);
+  });
+
+  // ── Swallow-vs-propagate boundary (MINCRM-668) ────────────────────────────
+  // The helper used to `.catch(() => undefined)` every error, so a 403 or 500 —
+  // precisely the cases where the record IS still in the database — was
+  // reported as successful cleanup. Only a 404 means "already gone".
+
+  test('reports success when the DELETE 404s, because the record is already gone', async () => {
+    // The happy path for a test that deleted the record itself through the UI.
+    // leads.spec.ts, pipelines.spec.ts, and ai.spec.ts all depend on this: a
+    // "teardown failed" line on every green run trains readers to ignore it.
+    const { client } = makeRecordingClient(rejectsWith(HTTP_NOT_FOUND));
+    const manager = new TestDataManager();
+
+    registerAdminTeardown(manager, client, 'lead', '7', '/api/v1/leads/7');
+    const results = await manager.teardown(client);
+
+    expect(results[0]?.success, 'a 404 must be swallowed as already-deleted').toBe(true);
+  });
+
+  for (const status of RECORD_STILL_EXISTS_STATUSES) {
+    test(`reports failure when the DELETE returns ${status}, because the record still exists`, async () => {
+      const { client } = makeRecordingClient(rejectsWith(status));
+      const manager = new TestDataManager();
+
+      registerAdminTeardown(manager, client, 'contact', '42', '/api/v1/contacts/42');
+      const results = await manager.teardown(client);
+
+      expect(
+        results[0]?.success,
+        `a ${status} leaves the record in the database and must not report success`,
+      ).toBe(false);
+      expect(results[0]?.error, 'the failure must carry a diagnosable message').toBeTruthy();
+    });
+  }
+
+  test('reports failure on a network error, which is not an HTTP status at all', async () => {
+    const { client } = makeRecordingClient(() => {
+      throw new Error('ECONNREFUSED');
+    });
+    const manager = new TestDataManager();
+
+    registerAdminTeardown(manager, client, 'contact', '9', '/api/v1/contacts/9');
+    const results = await manager.teardown(client);
+
+    expect(results[0]?.success, 'a network error must not report successful cleanup').toBe(false);
+  });
+
+  test('reports failure on a 404 that is really a schema-parse error', async () => {
+    // A constructed invariant, not a reachable production state: parseResponse
+    // throws on `status >= 400` before schema validation (rest-client.ts:352),
+    // so a real parse failure always carries a 2xx. This pins the guard's
+    // intent — RestClientError is one class for two unrelated failures, and
+    // only an error status means "the record is gone".
+    const schemaError = Object.assign(new Error('parse failed'), {
+      issues: [],
+    }) as unknown as SchemaError;
+    const { client } = makeRecordingClient(rejectsWith(HTTP_NOT_FOUND, schemaError));
+    const manager = new TestDataManager();
+
+    registerAdminTeardown(manager, client, 'contact', '5', '/api/v1/contacts/5');
+    const results = await manager.teardown(client);
+
+    expect(results[0]?.success, 'a schema failure must not be swallowed as a 404').toBe(false);
   });
 });

@@ -22,7 +22,7 @@
 import { test, expect } from '@apps/minicrm/fixtures.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import { resolveApiBaseUrl } from '@apps/minicrm/apiBaseUrl.js';
-import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import { registerAdminTeardown, registerUserDeactivation } from '@apps/minicrm/helpers.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -293,9 +293,13 @@ test('@functional F-SA-B3: service account can create a contact with Bearer toke
   // Deactivation doesn't cascade-delete contacts so we must clean up explicitly.
   const contactId = (res.body as { contact: { id: string } }).contact?.id;
   if (contactId) {
-    testData.registerCustomTeardown(`delete-sa-b3-contact-${contactId}`, async () => {
-      await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
-    });
+    registerAdminTeardown(
+      testData,
+      restClient,
+      'contact',
+      contactId,
+      `/api/v1/contacts/${contactId}`,
+    );
   }
 });
 

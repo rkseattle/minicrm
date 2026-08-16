@@ -132,6 +132,9 @@ export interface CreateAccountOverrides {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** HTTP status returned when the record a teardown targets is already gone. */
+const HTTP_NOT_FOUND = 404;
+
 /**
  * Registers an entity for teardown that must be deleted as an admin, even though
  * the test created it while `restClient` was authenticated as someone else.
@@ -151,10 +154,17 @@ export interface CreateAccountOverrides {
  *
  * **Side effect:** this leaves `restClient` authenticated as the admin. Teardown
  * runs in reverse registration order, so every entry registered BEFORE this one
- * also runs as admin. That is the safe direction — admin can delete anything a
- * rep could — and it is why the auth state is deliberately not restored: putting
- * a rep's session back would re-break the plain `register()` entries below it.
- * Do not rely on the client's auth state after teardown begins.
+ * also runs as admin. That is the safer direction for every ownership-scoped
+ * resource in the app, and it is why the auth state is deliberately not
+ * restored: putting a rep's session back would re-break the plain `register()`
+ * entries below it. Do not rely on the client's auth state after teardown begins.
+ *
+ * **Not universal, though:** `ai_session` is scoped by `user_id`, not by role
+ * (`aiSessionService.ts:398-405`), so an admin deleting another user's session
+ * gets a 404 rather than deleting it. Since a 404 is swallowed as "already
+ * gone", a rep-owned session registered here would leak silently. `ai.spec.ts`
+ * registers only admin-owned sessions, which is why it is correct today.
+ * (MINCRM-668)
  *
  * @param testData - TestDataManager instance for the current test.
  * @param restClient - The fixture RestClient, in any auth state.
@@ -171,14 +181,37 @@ export function registerAdminTeardown(
 ): void {
   testData.registerCustomTeardown(`delete-${entityType}-${id}`, async () => {
     await loginAsAdmin(restClient);
-    // Swallow the delete's own error, matching the hand-rolled team/contact
-    // teardown callbacks this helper replaces (owner-filter.spec.ts,
-    // visibility.spec.ts). A 404 is the EXPECTED outcome whenever the test
-    // already deleted the record itself, and a custom entry surfaces any throw
-    // as a logged "custom teardown failed" — which would turn every such test
-    // into a noisy false alarm. A genuine failure still leaks, exactly as it
-    // would for a plain register() entry, which also logs and continues.
-    await restClient.delete(deletePath).catch(() => undefined);
+    // Swallow ONLY the expected 404. A test that deleted the record itself
+    // through the UI leaves nothing to delete here, and surfacing that as a
+    // "custom teardown failed" line would train readers to ignore a message
+    // that should mean something. Three specs rely on this: leads.spec.ts,
+    // pipelines.spec.ts, and ai.spec.ts.
+    //
+    // Everything else — 403, 500, a network error — is rethrown so
+    // TestDataManager records `success: false` and logs it. Those are exactly
+    // the cases where the record IS still in the database, and a blanket catch
+    // reported successful cleanup while the row leaked: the silent-failure mode
+    // MINCRM-686 exists to close, reintroduced one layer up. (MINCRM-668)
+    //
+    // `validationError === undefined` is belt-and-braces: RestClientError is
+    // one class for two unrelated failures — an error status and a schema
+    // parse failure — and only the first means "the record is gone". The two
+    // cannot actually collide here, because parseResponse throws on `status >=
+    // 400` (rest-client.ts:352-354) before it ever reaches schema validation,
+    // so a parse failure always carries a 2xx. The clause costs nothing and
+    // keeps the intent explicit rather than resting on that ordering.
+    try {
+      await restClient.delete(deletePath);
+    } catch (err) {
+      if (
+        err instanceof RestClientError &&
+        err.status === HTTP_NOT_FOUND &&
+        err.validationError === undefined
+      ) {
+        return;
+      }
+      throw err;
+    }
   });
 }
 
