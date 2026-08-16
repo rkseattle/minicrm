@@ -86,14 +86,27 @@ env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 # Clear stale results so they cannot influence pass/fail
 rm -rf qa/e2e/test-results/
 
-# Non-serial — --workers=1 matches CI's LPT file-per-shard isolation
+# Non-serial — both projects, matching e2e-functional's [desktop, mobile-web]
+# matrix. --workers=1 matches CI's LPT file-per-shard isolation.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
   npm run test -- --grep "@functional" --grep-invert "serial" --workers=1
 
-# Serial — always single-worker, matches the e2e-serial CI job
+# Serial — DESKTOP ONLY, and single-worker. Both halves match the e2e-serial
+# CI job, which pins --project=desktop (ci.yml) and never runs mobile-web.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
-  npm run test -- --grep "@functional.*@serial|@serial.*@functional" --workers=1
+  npm run test -- --project=desktop \
+  --grep "@functional.*@serial|@serial.*@functional" --workers=1
 ```
+
+**`--project` is not optional on the serial run, and the two commands differ on
+purpose.** `npm run test` runs every configured project, so omitting it there
+executes the `@serial` specs against mobile-web as well — which CI never does.
+Several of them (the AI conversation panel, the deal health-check button) are
+desktop-only surfaces, so they fail with "HealingLocator: all strategies
+exhausted" against a viewport they were never written for. That reads exactly
+like a real regression and costs a full investigation to dismiss. The non-serial
+command deliberately has no `--project`, because `e2e-functional` genuinely runs
+both projects as a matrix.
 
 Add domain scoping to the `--grep` per rule 2.
 
