@@ -56,10 +56,30 @@ fi
 # The shared script itself must keep the fail-closed report check. Losing this
 # is the precise regression that made the nightly job report green on an outage,
 # and it would leave every caller below correctly pointed at a broken rule.
-if ! grep -q 'metadata.vulnerabilities | type) == "object"' "${REPO_ROOT}/${SHARED_SCRIPT}"; then
+# Matches the SEMANTICS (a typeof check on metadata.vulnerabilities), not one
+# tool's syntax. The original pattern hard-coded the jq expression, so swapping
+# jq for node — which the fix below required, since jq is not a documented
+# prerequisite — tripped this check even though the validation was intact.
+# Pinning behaviour rather than spelling keeps that from recurring.
+if ! grep -q 'typeof r.metadata.vulnerabilities === "object"' "${REPO_ROOT}/${SHARED_SCRIPT}"; then
   echo "ERROR: ${SHARED_SCRIPT} no longer validates that npm audit produced a"
   echo "  usable report. An unreadable audit must never be treated as a clean"
   echo "  audit — see MINCRM-703."
+  failed=1
+fi
+
+# The shared script must not depend on jq. It runs on developer machines via the
+# pre-push hook, and jq is not a documented or provisioned prerequisite of this
+# repo — only GitHub's runners are guaranteed to have it. When it was missing,
+# every JSON read failed, the report-validation check read that as "unusable",
+# and a CLEAN audit blocked the push. node is guaranteed present in an npm repo.
+# (Greptile review, PR #384)
+jq_use="$(grep -n -E '(^|[^[:alnum:]_])jq[[:space:]]' "${REPO_ROOT}/${SHARED_SCRIPT}" \
+  | grep -v -E '^[0-9]+:[[:space:]]*#' || true)"
+if [[ -n "$jq_use" ]]; then
+  echo "ERROR: ${SHARED_SCRIPT} calls jq, which is not a guaranteed prerequisite:"
+  echo "${jq_use}" | sed 's/^/    /'
+  echo "  Use node instead — a missing jq turns a clean audit into a blocked push."
   failed=1
 fi
 
