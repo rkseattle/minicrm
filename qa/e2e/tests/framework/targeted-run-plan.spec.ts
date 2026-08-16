@@ -32,6 +32,7 @@ import {
   planTargetedInvocations,
   findTestTitles,
   isSerialTitle,
+  NON_SERIAL_GREP_INVERT,
   SERIAL_GREP,
 } from '../../../scripts/targeted-run-plan.js';
 
@@ -110,7 +111,7 @@ test.describe('planTargetedInvocations', () => {
     expect(plan.map((p) => p.label)).toEqual(['non-serial', 'serial']);
   });
 
-  test('the two halves are exact complements of one expression', () => {
+  test('the two halves partition the selection, and the inversion matches CI', () => {
     const plan = planTargetedInvocations(['c.spec.ts'], reader({ 'c.spec.ts': MIXED_SPEC }));
     const nonSerial = plan.find((p) => p.label === 'non-serial');
     const serial = plan.find((p) => p.label === 'serial');
@@ -118,8 +119,46 @@ test.describe('planTargetedInvocations', () => {
     // Inverting a different expression than the serial half matches would leave
     // titles that neither half runs — e.g. a title tagged @serial without
     // @functional, or one merely mentioning "@serial" in prose.
-    expect(nonSerial?.grep).toEqual(['--grep-invert', SERIAL_GREP]);
+    expect(nonSerial?.grep).toEqual(['--grep-invert', NON_SERIAL_GREP_INVERT]);
     expect(serial?.grep).toEqual(['--grep', SERIAL_GREP]);
+  });
+
+  test('the inversion still covers the serial half after any edit to either', () => {
+    // The complement property composition would have GUARANTEED, asserted
+    // directly instead: NON_SERIAL_GREP_INVERT is CI's literal, not
+    // `visual-regression|${SERIAL_GREP}` (composing selects a strictly larger
+    // set — see that constant's docblock), so nothing structural stops the two
+    // from drifting apart.
+    //
+    // Derived from SERIAL_GREP rather than hand-written, so it cannot degrade
+    // into a tautology: every title asserted here is one the serial half really
+    // selects, generated from the expression under test. A hand-written list of
+    // "@serial"-bearing titles would pass for free, since the inversion contains
+    // `serial` as a bare substring alternative.
+    const invert = new RegExp(NON_SERIAL_GREP_INVERT);
+    const serialTitles = [
+      '@functional @serial F-OB1: widget is visible',
+      '@serial @functional F-OB2: widget is hidden',
+      'F3: thing @functional @serial',
+    ].filter((title) => isSerialTitle(title));
+
+    expect(serialTitles).toHaveLength(3);
+    for (const title of serialTitles) {
+      expect(invert.test(title)).toBe(true);
+    }
+
+    // The half that can actually regress: a title the serial half does NOT
+    // select must still survive the inversion, or the two halves overlap and
+    // some test runs twice — or, if the inversion widened, runs never.
+    expect(isSerialTitle('@functional F-C1: creates a contact')).toBe(false);
+    expect(invert.test('@functional F-C1: creates a contact')).toBe(false);
+  });
+
+  test('NON_SERIAL_GREP_INVERT stays character-identical to CI', () => {
+    // Parity with e2e-functional's --grep-invert is the entire point of the
+    // constant; a well-meaning "simplification" to a regex form would silently
+    // change which specs run locally. (MINCRM-706)
+    expect(NON_SERIAL_GREP_INVERT).toBe('visual-regression|serial');
   });
 
   test('each half writes its own JUnit and output paths', () => {

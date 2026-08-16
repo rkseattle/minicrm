@@ -171,8 +171,13 @@ const MUTATION_EXEMPT = [
     reason: 'not-live',
     // Writes non-default nav layouts (setNavLayoutViaAPI 'left'/'hamburger'),
     // but never CONCURRENTLY with anything that reads them:
-    //   - ci.yml's e2e-functional excludes it via
-    //     --grep-invert "visual-regression|serial";
+    //   - ci.yml's e2e-functional excludes it via --grep-invert with the
+    //     NON_SERIAL_GREP_INVERT expression (qa/scripts/targeted-run-plan.ts),
+    //     which local NON-SERIAL runs now share verbatim (MINCRM-706) — so that
+    //     leg holds locally by construction, not just in CI. The SERIAL halves
+    //     (local and CI alike) still rely on these tests being tagged @visual
+    //     and not @functional, so retagging this file remains the thing that
+    //     would break the argument;
     //   - ci.yml's update-visual-snapshots is hard-disabled with `if: false`;
     //   - update-baselines.yml DOES run it, but only on workflow_dispatch, alone
     //     and at --workers=1 in its own stack — so no other spec is running.

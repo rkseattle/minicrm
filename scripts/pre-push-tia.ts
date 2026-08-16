@@ -68,7 +68,11 @@ import {
 } from '../qa/scripts/test-stack-db-env.js';
 // Same arrangement again: the decision of WHICH halves to run is a pure rule
 // that needs a test runner, and root scripts/ has none. (MINCRM-705)
-import { planTargetedInvocations, SERIAL_GREP } from '../qa/scripts/targeted-run-plan.js';
+import {
+  planTargetedInvocations,
+  NON_SERIAL_GREP_INVERT,
+  SERIAL_GREP,
+} from '../qa/scripts/targeted-run-plan.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -748,7 +752,16 @@ function runFullSuiteFallbackAndAttest(headSha: string, selection: SelectTestsRe
   console.log('[pre-push-tia] Running full suite, non-serial (safety net fallback).');
   execFileSync(
     'npm',
-    ['run', 'test', '--', '--grep', '@functional', '--grep-invert', 'serial', '--workers=1'],
+    [
+      'run',
+      'test',
+      '--',
+      '--grep',
+      '@functional',
+      '--grep-invert',
+      NON_SERIAL_GREP_INVERT,
+      '--workers=1',
+    ],
     { cwd: resolve(REPO_ROOT, 'qa'), stdio: 'inherit', env: nonSerialEnv },
   );
   attestOrThrow(headSha, selection);
