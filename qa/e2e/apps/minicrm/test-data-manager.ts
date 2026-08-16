@@ -18,6 +18,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { isAlreadyGone } from '@framework/clients/rest-client.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -141,8 +142,11 @@ export class TestDataManager {
    * Iterates the entries in reverse so that dependents (created later) are
    * deleted before their dependencies (created earlier). A failure on any
    * single delete is logged to stderr and does not prevent the remaining
-   * deletes from running. Partial failure is the expected behavior when a
-   * cascade has already removed a child entity.
+   * deletes from running. A 404 counts as SUCCESS: the record is already gone,
+   * whether the test deleted it itself or a cascade removed it with its parent,
+   * and that is cleanup having happened rather than cleanup having failed.
+   * Any other error is a genuine failure — the row is still there — and is
+   * reported as `success: false` so the fixture can annotate it. (MINCRM-668)
    *
    * After teardown completes (successfully or not), the internal registry is
    * cleared so that a second call is a safe no-op.
@@ -176,6 +180,19 @@ export class TestDataManager {
           await client.delete(entry.deletePath);
           results.push({ entityType: entry.entityType, id: entry.id, success: true });
         } catch (err: unknown) {
+          // A 404 means the record is already gone — the test deleted it
+          // itself, or a cascade removed it with its parent. That is
+          // successful cleanup, not a failure: reporting it as one would put a
+          // `teardown-failed` annotation on every green run of every
+          // delete-through-the-UI test (contacts F2-D1, accounts F3-D1/D2),
+          // and a warning that fires when nothing is wrong is one readers
+          // learn to skip. Same 404 semantics registerAdminTeardown uses.
+          // (MINCRM-668)
+          if (isAlreadyGone(err)) {
+            results.push({ entityType: entry.entityType, id: entry.id, success: true });
+            continue;
+          }
+
           const message = err instanceof Error ? err.message : String(err);
           // Log but do not rethrow — partial failure must not abort remaining cleanup.
           console.error(

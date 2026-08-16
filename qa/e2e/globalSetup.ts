@@ -216,8 +216,16 @@ export function selectsOnlyFrameworkSpecs(argv: readonly string[]): boolean {
 /**
  * MINCRM-559: Check for accumulated test data in the local E2E database.
  *
- * Skipped in CI where the database is always freshly seeded. Locally, test
- * users accumulate across sessions when `npm run e2e:setup` is skipped.
+ * Skipped in CI where the database is always freshly seeded. Locally, users
+ * accumulate for two reasons, and the first is a defect rather than a cost of
+ * skipping a reset: a teardown path that does not survive test failure. Until
+ * MINCRM-668 the user-creation helpers cleaned up in `finally` blocks that an
+ * earlier failing assertion threw straight past, and `registerAdminTeardown`
+ * swallowed every delete error including the ones meaning the row was still
+ * there — so a failing run leaked silently while reporting success. Cleanup is
+ * now registered with `TestDataManager` and failures are annotated on the test.
+ * The second reason is the ordinary one: rows genuinely survive across sessions
+ * when `npm run e2e:setup` is skipped, since deactivation does not delete them.
  * 50k+ users have been observed, causing user-list pagination timeouts that
  * cascade across unrelated specs.
  *

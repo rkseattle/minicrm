@@ -387,13 +387,31 @@ testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
 
 **If the test re-authenticates `restClient` as a non-admin at any point, use
 `registerAdminTeardown()` instead.** Teardown runs with the client in whatever auth
-state the test left it, and a rep deleting another user's record gets a 403 that
-`TestDataManager` logs and swallows — so the record leaks while the run still reports
-success:
+state the test left it, so a rep deleting another user's record takes a 403 and the
+record is never cleaned up:
 
 ```ts
 registerAdminTeardown(testData, restClient, 'contact', c.id, `/api/v1/contacts/${c.id}`);
 ```
+
+That 403 is now reported rather than swallowed. `registerAdminTeardown` swallows only
+a 404 — the expected outcome when the test already deleted the record itself, and the
+same rule a plain `register()` entry follows — and propagates everything else, so
+`TestDataManager` records `success: false` and the `testData` fixture annotates the test
+with `teardown-failed`.
+
+Where that annotation shows up depends on where you are running:
+
+- **Locally** — as a `<property>` on the test in `qa/e2e/test-results/results.xml`, plus
+  a `[TestDataManager] teardown failed` line on stderr. There is no step summary locally;
+  `StepSummaryReporter` is registered only under CI.
+- **In CI** — additionally in the job summary's **Cleanup Failures** section, which
+  collects them from every attempt, _including tests that passed_. A green test that
+  leaked a record is the case with no other signal, and the one that accumulates.
+
+If you see one, a record leaked. Treat it as a real failure rather than noise — a 404 is
+already filtered out, so anything reported here means the row is still in the database.
+(MINCRM-668)
 
 Register a record even when the test deletes it itself through the UI: registration is
 what covers the path where the test fails before reaching its own delete. Use

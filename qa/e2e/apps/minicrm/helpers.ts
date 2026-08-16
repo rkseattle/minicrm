@@ -20,7 +20,7 @@
 
 import type { Page, BrowserContext } from '@playwright/test';
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { RestClientError } from '@framework/clients/rest-client.js';
+import { isAlreadyGone, RestClientError } from '@framework/clients/rest-client.js';
 import type { SafePage } from '@framework/types/safe-page.js';
 import type { TestDataManager } from './test-data-manager.js';
 import { contactResponseEnvelopeSchema } from '@minicrm/shared/schemas/contactSchema.js';
@@ -132,9 +132,6 @@ export interface CreateAccountOverrides {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** HTTP status returned when the record a teardown targets is already gone. */
-const HTTP_NOT_FOUND = 404;
-
 /**
  * Registers an entity for teardown that must be deleted as an admin, even though
  * the test created it while `restClient` was authenticated as someone else.
@@ -144,9 +141,10 @@ const HTTP_NOT_FOUND = 404;
  * client as a rep — the owner-scoped visibility and owner-filter suites do this
  * between every create — would therefore delete as that rep, and
  * `deleteContactHandler` answers 403 for a non-owner non-admin
- * (`contactController.ts:608-609`). Teardown logs the failure and continues
- * (`test-data-manager.ts:171-176`), so the record leaks while the run still
- * reports success — the silent-failure mode MINCRM-686 exists to close.
+ * (`contactController.ts:608-609`), so the record is never removed. Since
+ * MINCRM-668 that 403 is reported rather than swallowed — teardown records
+ * `success: false` and the test is annotated — but the row still leaks, which
+ * is the silent-failure mode MINCRM-686 exists to close.
  *
  * Use this instead of `testData.register()` whenever the client may not be an
  * admin at teardown time. It mirrors `createTestRep`'s deactivation callback,
@@ -203,13 +201,7 @@ export function registerAdminTeardown(
     try {
       await restClient.delete(deletePath);
     } catch (err) {
-      if (
-        err instanceof RestClientError &&
-        err.status === HTTP_NOT_FOUND &&
-        err.validationError === undefined
-      ) {
-        return;
-      }
+      if (isAlreadyGone(err)) return;
       throw err;
     }
   });

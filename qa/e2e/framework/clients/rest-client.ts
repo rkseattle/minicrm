@@ -139,6 +139,33 @@ export class RestClientError extends Error {
   }
 }
 
+/** HTTP status meaning the record a request targets does not exist. */
+const HTTP_NOT_FOUND = 404;
+
+/**
+ * True when an error means "the record is already gone" rather than "the
+ * request failed".
+ *
+ * The distinction matters to every teardown path: a 404 is successful cleanup
+ * (the test deleted the record itself, or a cascade took it with its parent),
+ * while any other error leaves the row in the database. Swallowing the second
+ * kind reports success while the record leaks.
+ *
+ * `validationError === undefined` is part of the predicate because
+ * RestClientError is one class for two unrelated failures — an error status and
+ * a schema parse failure — and only the first means the record is gone.
+ *
+ * @param err - The thrown value to classify.
+ * @returns True if the error is a plain 404.
+ */
+export function isAlreadyGone(err: unknown): boolean {
+  return (
+    err instanceof RestClientError &&
+    err.status === HTTP_NOT_FOUND &&
+    err.validationError === undefined
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Per-request options
 // ---------------------------------------------------------------------------

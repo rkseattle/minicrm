@@ -61,8 +61,10 @@
 # If the test re-authenticates restClient as a non-admin at any point, use
 # registerAdminTeardown() from @apps/minicrm/helpers.js instead — teardown runs
 # with the client in whatever auth state the test left it, and a rep deleting
-# another user's record gets a 403 that TestDataManager logs and swallows, so
-# the record leaks while the run still reports success.
+# another user's record gets a 403, so the record is never cleaned up. That 403
+# is now reported rather than swallowed — TestDataManager records success:false
+# and the test is annotated teardown-failed — but the record still leaks, so
+# the helper is still what you want. (MINCRM-668)
 #
 # Prefer the createTest* helpers in apps/minicrm/helpers.ts where they fit —
 # they create and register in one call.
