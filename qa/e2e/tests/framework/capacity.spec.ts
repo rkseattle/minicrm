@@ -21,6 +21,7 @@ import {
   getCapacityPlan,
   FALLBACK_PLAN,
 } from '../../framework/reporting/capacity.js';
+import { ENVIRONMENT_DRIFT_ANNOTATION } from '../../framework/reporting/cleanup-annotations.js';
 
 test.describe('detectCpuCount', () => {
   test('returns a positive integer matching os.cpus().length', () => {
@@ -40,6 +41,11 @@ test.describe('computeCapacityPlan — pinned formula inputs', () => {
     // case sat at 2 vCPUs or at 64 — which is how the surrounding docs went on
     // claiming 4 shards x 2 workers long after the probe stopped emitting them.
     expect(computeCapacityPlan(4)).toEqual({ shards: 2, workers: 4, source: 'capacity-probe' });
+  });
+
+  test('below the cap, workers track cores and shards absorb the remainder', () => {
+    // 3 vCPUs is the last input where workers still follow the core count, so it
+    // pins the formula on the sloped side of the boundary rather than the flat.
     expect(computeCapacityPlan(3)).toEqual({ shards: 3, workers: 3, source: 'capacity-probe' });
   });
 
@@ -127,8 +133,14 @@ test.describe('the documented CI runner size', () => {
     // ours to react to; it makes documentation stale, not the pipeline broken —
     // computeCapacityPlan keeps emitting a correct plan either way. Hard-failing
     // here would block every merge on the repo until someone edited a number,
-    // which is out of proportion to a docs-refresh signal. The annotation
-    // surfaces in the HTML report and the JUnit XML instead.
+    // which is out of proportion to a docs-refresh signal.
+    //
+    // Uses ENVIRONMENT_DRIFT_ANNOTATION so StepSummaryReporter surfaces it in
+    // the CI step summary. That routing is load-bearing, not decorative: the
+    // bundled JUnit reporter writes no annotations, and e2e-framework-specs
+    // uploads results.xml rather than playwright-report/, so an unrouted
+    // annotation would reach nobody and this test would be a comment with a
+    // duplicate assertion attached.
     //
     // Gated on RUNNER_ENVIRONMENT ('github-hosted' | 'self-hosted'): `CI` is set
     // by local tooling too, and `GITHUB_ACTIONS` is true on self-hosted runners,
@@ -143,7 +155,7 @@ test.describe('the documented CI runner size', () => {
 
     if (actual !== DOCUMENTED_GITHUB_HOSTED_VCPUS) {
       test.info().annotations.push({
-        type: 'runner-size-drift',
+        type: ENVIRONMENT_DRIFT_ANNOTATION,
         description:
           `GitHub-hosted runners now report ${actual} vCPUs, not ` +
           `${DOCUMENTED_GITHUB_HOSTED_VCPUS}. computeCapacityPlan still emits a ` +

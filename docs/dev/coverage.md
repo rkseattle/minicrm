@@ -1083,7 +1083,8 @@ pre-push hook.
 
 The full suite at `--workers=1` across two projects is 1322 tests (661 per project) and is
 budgeted at 150 minutes via `PW_GLOBAL_TIMEOUT_MS`. That figure comes from this repo's
-measured single-worker throughput of ~21–22 tests/min (`playwright.config.ts:143-152`),
+measured single-worker throughput of ~21–22 tests/min (see `playwright.config.ts`'s
+`globalTimeout` comment),
 which projects to ~60–63 minutes, plus margin for a CI runner slower than the dev machine
 that rate was measured on. `scripts/pre-push-tia.ts` budgets 85 minutes for the same
 two-project set. Single-worker is deliberate: this run mixes `@functional` and `@serial` in

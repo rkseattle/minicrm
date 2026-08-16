@@ -24,6 +24,14 @@
 # The three sites are a GitHub Actions workflow, a TypeScript module, and a
 # Markdown gate document. No import can span them.
 #
+# KNOWN PROSE MENTIONS, DELIBERATELY UNCHECKED
+# --------------------------------------------
+# The expression also appears in explanatory text at docs/dev/e2e-authoring.md,
+# .github/workflows/tia-record-mode.yml, and ci.yml's e2e-serial comment. Those
+# are descriptions, not invocations, and runnable_lines() exists to keep them
+# from satisfying this check. They can still go stale — sweep them by hand if
+# the constant ever changes.
+#
 # ONLY REAL COMMANDS COUNT — SEE runnable_lines()
 # -----------------------------------------------
 # Both non-TS callers legitimately DISCUSS this expression in prose — ci.yml's
@@ -147,6 +155,8 @@ if [[ "$ci_occurrences" -ne "$EXPECTED_CI_INVOCATIONS" ]]; then
   echo "       of --grep-invert \"${canonical}\"; expected exactly"
   echo "       ${EXPECTED_CI_INVOCATIONS} (the LPT shard-config path and the"
   echo "       native --shard fallback). Comment lines are not counted."
+  echo "       If a new invocation is legitimate, review it and then bump"
+  echo "       EXPECTED_CI_INVOCATIONS in $(basename "$0")."
   failed=1
 fi
 

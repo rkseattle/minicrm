@@ -11,7 +11,7 @@ import type {
 } from '@playwright/test/reporter';
 import type { HealTrendEntry } from '../healing/heal-trends.js';
 import { readTrends, quarantineCandidates } from '../healing/heal-trends.js';
-import { CLEANUP_FAILED_ANNOTATION } from './cleanup-annotations.js';
+import { CLEANUP_FAILED_ANNOTATION, ENVIRONMENT_DRIFT_ANNOTATION } from './cleanup-annotations.js';
 
 // Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
 const DEFAULT_SUITE_NAME = 'E2E Tests';
@@ -83,6 +83,7 @@ export class StepSummaryReporter implements Reporter {
   private flakyTests: string[];
   private interruptedTests: string[];
   private cleanupFailures: string[];
+  private environmentDrift: string[];
   private slowThreshold: number;
 
   constructor() {
@@ -97,6 +98,7 @@ export class StepSummaryReporter implements Reporter {
     this.flakyTests = [];
     this.interruptedTests = [];
     this.cleanupFailures = [];
+    this.environmentDrift = [];
     this.slowThreshold = 120_000;
   }
 
@@ -244,6 +246,7 @@ export class StepSummaryReporter implements Reporter {
       this.buildStatsTable() +
       this.buildFailedSection() +
       this.buildBulletSection('Cleanup Failures', this.cleanupFailures) +
+      this.buildBulletSection('Environment Drift', this.environmentDrift) +
       this.buildBulletSection('Flaky Tests', this.flakyTests) +
       this.buildBulletSection('Interrupted Tests', this.interruptedTests) +
       this.buildSlowTestsSection() +
@@ -276,6 +279,12 @@ export class StepSummaryReporter implements Reporter {
     // `?? []` because a Reporter may be driven by a hand-built TestCase or
     // TestResult that omits optional fields — this file's own specs do that.
     for (const annotation of result.annotations ?? test.annotations ?? []) {
+      if (annotation.type === ENVIRONMENT_DRIFT_ANNOTATION) {
+        // Reported even though the test PASSED: this marks a documented fact
+        // about the environment that no longer holds, which makes prose stale
+        // without making the run wrong.
+        this.environmentDrift.push(`${test.title} — ${annotation.description ?? 'no detail'}`);
+      }
       if (annotation.type === CLEANUP_FAILED_ANNOTATION) {
         // Label whenever the test can retry, so two entries from the same
         // test are distinguishable rather than one labeled and one bare.
