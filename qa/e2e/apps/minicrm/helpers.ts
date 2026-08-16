@@ -211,8 +211,12 @@ export function registerAdminTeardown(
  * Extracts the created user's id from an invite response whose shape has not
  * been validated yet.
  *
- * Checks the documented location first, then falls back to any single-level
- * object property carrying a string `id`. The fallback exists because teardown
+ * Checks the documented location first, then falls back to the first
+ * single-level object property carrying a string `id`. The fallback is a guess:
+ * if an envelope ever carries another object with an `id` ahead of the renamed
+ * user key, it returns that one. That fails visibly — the PATCH 404s, the entry
+ * records `success: false`, and the test is annotated — rather than silently,
+ * which is the trade this makes against losing the id entirely. The fallback exists because teardown
  * registration must survive envelope drift: the server has already committed
  * the row by the time the client validates, so a rename like `user` → `data`
  * must not cost us the id we need to clean it up. Returns undefined when no id
@@ -259,7 +263,16 @@ export function registerUserDeactivation(
 ): void {
   testData.registerCustomTeardown(`deactivate-${label}-${userId}`, async () => {
     await loginAsAdmin(restClient);
-    await deactivateUser(restClient, userId);
+    try {
+      await deactivateUser(restClient, userId);
+    } catch (err) {
+      // Same 404 semantics as every other teardown path: a user that is already
+      // gone is cleanup having happened. Unreachable while users are only ever
+      // soft-deleted, but leaving this path as the one that treats 404 as
+      // failure is the asymmetry that lets the three drift apart. (MINCRM-668)
+      if (isAlreadyGone(err)) return;
+      throw err;
+    }
   });
 }
 
@@ -778,10 +791,14 @@ export async function createTestRep(
   const password = 'BvtPassword1!';
 
   const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'rep' });
+
+  // Register before set-password and onboarding, not after: the row exists from
+  // the moment the invite returns, and both steps below are network calls that
+  // can throw with the user already created. (MINCRM-668)
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
+
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
-
-  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   return { userId: user.id, email, password };
 }
@@ -810,10 +827,14 @@ export async function createTestAdmin(
   const password = 'BvtPassword1!';
 
   const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
+
+  // Register before set-password and onboarding, not after: the row exists from
+  // the moment the invite returns, and both steps below are network calls that
+  // can throw with the user already created. (MINCRM-668)
+  registerUserDeactivation(testData, restClient, user.id, 'admin');
+
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
-
-  registerUserDeactivation(testData, restClient, user.id, 'admin');
 
   return { userId: user.id, email, password };
 }
