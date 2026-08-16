@@ -17,8 +17,9 @@ jobs:
   # matrix runs on an identically-sized runner, so this one measurement is
   # representative). Replaces the old hand-maintained TOTAL_SHARDS env var and
   # --workers=2 CLI flags — see qa/e2e/framework/reporting/capacity.ts and
-  # docs/dev/e2e-performance.md. Falls back to today's known-good 4 shards / 2
-  # workers if the probe can't determine CPU count, so this is a strict
+  # docs/dev/e2e-performance.md. On today's 4-vCPU GitHub-hosted runners the
+  # probe yields 2 shards x 4 workers; it falls back to the pre-probe 4 shards /
+  # 2 workers only if CPU count can't be determined, so this is a strict
   # improvement with no regression risk.
   capacity-probe:
     name: Detect runner capacity
@@ -1244,9 +1245,10 @@ jobs:
     # MINCRM-193: Phase 3 (BVT) eliminated — functional suite gates on Phase 2 directly.
     # Smoke tests (@smoke @functional) are individual tests distributed across domain
     # suites; they run alongside all functional tests in the same phase.
-    # MINCRM-217: shard/worker counts are computed by capacity-probe (MINCRM-662);
-    # today's known-good values are 4 shards x 2 workers = 8 parallel test slots per
-    # project (2 projects x 4 shards = 8 concurrent runners) — see capacity-probe job.
+    # MINCRM-217: shard/worker counts are computed by capacity-probe (MINCRM-662)
+    # and therefore track runner size — do not hardcode them here or in prose.
+    # On today's 4-vCPU runners that is 2 shards x 4 workers = 8 parallel test
+    # slots per project (2 projects x 2 shards = 4 concurrent runners).
     # MINCRM-549: Shard index is 1-based in the matrix (matching --shard=K/N convention)
     # but 0-based in the generated config filename (playwright.shard.0.config.ts).
     name: Phase 3 - E2E Functional (${{ matrix.project }}, shard ${{ matrix.shard }}/${{ needs.capacity-probe.outputs.total-shards }})
@@ -1641,7 +1643,7 @@ jobs:
 
   # MINCRM-549: Serial E2E job for tests that mutate shared global state and cannot
   # safely run concurrently with the sharded matrix. Tests tagged @serial are excluded
-  # from e2e-functional (--grep-invert serial) and run here.
+  # from e2e-functional (--grep-invert "visual-regression|serial") and run here.
   # MINCRM-661: within this job, @serial files are partitioned into conflict-free
   # groups (qa/e2e/scripts/gen-conflict-group-configs.ts, driven by
   # qa/e2e/apps/minicrm/resource-registry.ts) and run as sequential invocations —
@@ -1650,10 +1652,10 @@ jobs:
   # up to 2 workers within their own group. See docs/dev/e2e-authoring.md.
   e2e-serial:
     name: Phase 3 - E2E Serial (global-state tests)
-    # MINCRM-658: runs after e2e-functional's 8 shard jobs finish rather than
+    # MINCRM-658: runs after e2e-functional's shard jobs finish rather than
     # concurrently with them. Previously e2e-serial had no dependency on
-    # e2e-functional and ran alongside all 8 shards, which meant 9 jobs
-    # simultaneously spinning up their own Postgres/MinIO/Mailhog/Playwright on
+    # e2e-functional and ran alongside every shard, which meant one more job
+    # simultaneously spinning up its own Postgres/MinIO/Mailhog/Playwright on
     # GitHub's shared runners — confirmed (via repeated historical CI failures
     # with an identical signature, and a clean local repro of the full serial
     # suite at full test volume with no timing degradation) to cause
@@ -2073,9 +2075,9 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # MINCRM-218: Aggregation job runs after all 8 e2e-functional shard jobs complete.
+  # MINCRM-218: Aggregation job runs after every e2e-functional shard job completes.
   # Job dependency chain:
-  #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
+  #   Phase 2 → e2e-functional (N shard jobs x 2 projects) → e2e-aggregate (2 jobs) → e2e-functional-report
   e2e-aggregate:
     name: Phase 3 - Aggregate E2E Results (${{ matrix.project }})
     needs: [e2e-functional, changes, capacity-probe]
@@ -2355,7 +2357,7 @@ jobs:
     # MINCRM-218: Depends on e2e-aggregate (not e2e-functional directly) so that
     # the PR comment is built from merged outputs covering all shards.
     # Job dependency chain:
-    #   Phase 2 → e2e-functional (8 shard jobs) → e2e-aggregate (2 jobs) → e2e-functional-report
+    #   Phase 2 → e2e-functional (N shard jobs x 2 projects) → e2e-aggregate (2 jobs) → e2e-functional-report
     #                                            → e2e-serial ────────────┘
     needs: [e2e-aggregate, e2e-serial, ai-evals]
     runs-on: ubuntu-latest

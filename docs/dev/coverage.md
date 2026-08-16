@@ -1088,7 +1088,8 @@ which projects to ~60–63 minutes, plus margin for a CI runner slower than the 
 that rate was measured on. `scripts/pre-push-tia.ts` budgets 85 minutes for the same
 two-project set. Single-worker is deliberate: this run mixes `@functional` and `@serial` in
 one invocation, and `@serial` specs mutate shared `system_settings` rows. `ci.yml` gets
-away with more parallelism only because it _splits_ the suite across jobs.
+away with more parallelism (4 workers per shard on today's runners) only because it
+_splits_ the suite across jobs, keeping `@serial` work in its own single-group invocations.
 
 The attestation script's `--max-age-minutes` (default 120) is **not** a competing budget:
 it stats the results file's mtime, written when the suite _finishes_, and the gate runs

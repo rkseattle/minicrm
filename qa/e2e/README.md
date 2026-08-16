@@ -117,7 +117,7 @@ Playwright's built-in `--shard=K/N` splits tests by count, ignoring duration. Th
 
 ### Shard/worker count (MINCRM-662)
 
-Shard count (`N` in `--total-shards=N`) and per-shard worker count are computed by a `capacity-probe` CI job (`qa/e2e/framework/reporting/capacity.ts`, run via `npm run e2e:capacity-plan`) instead of two hand-maintained constants. The probe measures the runner's CPU core count and derives both values — reproducing today's known-good 4 shards x 2 workers exactly on today's 2-vCPU GitHub-hosted runners, and scaling for differently-sized runners (self-hosted, a larger nightly box) without manual retuning. If CPU count can't be determined, it falls back to the same 4 shards / 2 workers. See [docs/dev/e2e-performance.md](../../docs/dev/e2e-performance.md) for the empirical findings behind the formula.
+Shard count (`N` in `--total-shards=N`) and per-shard worker count are computed by a `capacity-probe` CI job (`qa/e2e/framework/reporting/capacity.ts`, run via `npm run e2e:capacity-plan`) instead of two hand-maintained constants. The probe measures the runner's CPU core count and derives both values — yielding **2 shards x 4 workers** on today's GitHub-hosted runners (4 vCPUs, since this is a public repository), and scaling for differently-sized runners (self-hosted, a larger nightly box) without manual retuning. If CPU count can't be determined, it falls back to 4 shards / 2 workers — the pre-probe constants, kept as a detection-failure fallback rather than as a description of any current runner. See [docs/dev/e2e-performance.md](../../docs/dev/e2e-performance.md) for the empirical findings behind the formula.
 
 ### Committed vs. gitignored
 

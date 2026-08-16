@@ -288,9 +288,9 @@ E2E tests run in Phase 3 of the CI pipeline (after server and client unit tests 
 | Dimension | Values                  |
 | --------- | ----------------------- |
 | Project   | `desktop`, `mobile-web` |
-| Shard     | `1`, `2`, `3`, `4`      |
+| Shard     | `1`..`N` (from probe)   |
 
-That produces 8 concurrent runners, each with 4 Playwright workers — 32 parallel test slots per push. Per-shard artifacts (JUnit XML, blob reports, healing files) are collected and merged by an aggregation job. The merged JUnit results are posted to the GitHub Checks tab via `dorny/test-reporter`; the test summary and healing report are posted as sticky PR comments.
+Shard and worker counts come from the `capacity-probe` job rather than being fixed: on today's GitHub-hosted runners (4 vCPUs) that is 2 shards, so 4 concurrent runners with 4 Playwright workers each — 16 parallel test slots per push. Per-shard artifacts (JUnit XML, blob reports, healing files) are collected and merged by an aggregation job. The merged JUnit results are posted to the GitHub Checks tab via `dorny/test-reporter`; the test summary and healing report are posted as sticky PR comments.
 
 ## Automated PR Code Review
 
