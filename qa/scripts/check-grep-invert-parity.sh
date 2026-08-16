@@ -24,19 +24,24 @@
 # The three sites are a GitHub Actions workflow, a TypeScript module, and a
 # Markdown gate document. No import can span them.
 #
-# COMMENT AND PROSE LINES ARE STRIPPED BEFORE MATCHING
-# ----------------------------------------------------
+# ONLY REAL COMMANDS COUNT — SEE runnable_lines()
+# -----------------------------------------------
 # Both non-TS callers legitimately DISCUSS this expression in prose — ci.yml's
 # e2e-serial job explains in a comment which tests e2e-functional excluded, and
 # the gate document narrates the command before showing it. Matching whole-file
 # text would let those mentions stand in for the real thing: a run step could
 # drop the expression, keep the comment, and still pass.
 #
-# That is not hypothetical. Verified by mutation: with whole-file matching, the
-# native --shard fallback path could be changed to `--grep-invert "serial"` and
-# this script still printed PASS, because a prose comment padded the count.
-# check-audit-gate-parity.sh already documents the identical trap for its own
-# callers; this follows its form.
+# That is not hypothetical, and it bit this script twice. With whole-file
+# matching, the native --shard fallback could be changed to `--grep-invert
+# "serial"` and this printed PASS, because a prose comment padded the count. The
+# first fix stripped `#` lines only — which still passed when the gate
+# document's fenced command drifted and ordinary Markdown body text (not
+# `#`-prefixed, so untouched) mentioned the expression.
+#
+# Hence runnable_lines() dispatches on file type rather than applying one
+# heuristic: a fence state machine for Markdown, comment-stripping for YAML.
+# check-audit-gate-parity.sh documents the same trap for its own callers.
 # =============================================================================
 
 set -euo pipefail
@@ -73,6 +78,31 @@ fi
 
 failed=0
 
+# Reduces a caller to the lines that are REAL COMMANDS, discarding anything that
+# merely talks about one. How prose is spelled differs by file type, so this
+# dispatches on it rather than applying one heuristic everywhere — an earlier
+# revision stripped only `#` lines, which silently let ordinary Markdown body
+# text stand in for the gate document's actual command.
+runnable_lines() {
+  local path="$1"
+  case "$path" in
+    *.md)
+      # Markdown: only fenced code blocks are commands. Body prose is NOT
+      # `#`-prefixed, so comment-stripping does not touch it — the fence state
+      # machine is what separates narration from the command it documents.
+      # `#` lines INSIDE a fence are shell comments and are dropped too.
+      awk '
+        /^[[:space:]]*```/ { in_fence = !in_fence; next }
+        in_fence && $0 !~ /^[[:space:]]*#/ { print }
+      ' "$path"
+      ;;
+    *)
+      # YAML and shell: `#` begins a comment.
+      grep -v -E '^[[:space:]]*#' "$path"
+      ;;
+  esac
+}
+
 # Every site that hand-writes the expression instead of importing the constant.
 # Each must contain it verbatim, quoted exactly as the tool there expects.
 CALLERS=(
@@ -89,11 +119,8 @@ for file in "${CALLERS[@]}"; do
     continue
   fi
 
-  # Strip comment/prose lines FIRST — see this script's header. `#` covers YAML
-  # and the Markdown gate document's narration; the fenced command block it
-  # documents is not a comment and survives.
   found="$(grep --text -c -- "--grep-invert \"${canonical}\"" \
-    <(grep -v -E '^[[:space:]]*#' "$path") || true)"
+    <(runnable_lines "$path") || true)"
 
   if [[ "$found" -eq 0 ]]; then
     echo "ERROR: ${file} does not pass --grep-invert \"${canonical}\" in a real"
@@ -113,7 +140,7 @@ done
 # guard should not pass silently on a site nobody has reviewed.
 EXPECTED_CI_INVOCATIONS=2
 ci_occurrences="$(grep --text -c -- "--grep-invert \"${canonical}\"" \
-  <(grep -v -E '^[[:space:]]*#' "${REPO_ROOT}/.github/workflows/ci.yml") || true)"
+  <(runnable_lines "${REPO_ROOT}/.github/workflows/ci.yml") || true)"
 
 if [[ "$ci_occurrences" -ne "$EXPECTED_CI_INVOCATIONS" ]]; then
   echo "ERROR: .github/workflows/ci.yml has ${ci_occurrences} real invocation(s)"

@@ -28,10 +28,14 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   planTargetedInvocations,
   findTestTitles,
   isSerialTitle,
+  isNonSerialTitle,
   NON_SERIAL_GREP_INVERT,
   SERIAL_GREP,
 } from '../../../scripts/targeted-run-plan.js';
@@ -165,26 +169,48 @@ test.describe('planTargetedInvocations', () => {
     expect(NON_SERIAL_GREP_INVERT).toBe('visual-regression|serial');
   });
 
-  test('no @functional title falls between the two halves', () => {
-    // The inversion is now BROADER than SERIAL_GREP (it also drops anything
-    // matching visual-regression), so the halves are no longer exact
-    // complements by construction — a title could match neither, and any such
-    // title would run in no invocation at all.
+  test('no real @functional title in the suite falls between the two halves', () => {
+    // The inversion is BROADER than SERIAL_GREP (it also drops anything matching
+    // visual-regression), so the halves are no longer exact complements — a
+    // title can match neither and would then run in NO invocation at all.
     //
-    // That is safe only while nothing @functional lands in the gap, which is a
-    // convention rather than a guarantee. Asserted here so a future spec named,
-    // say, "visual-regression handling @functional" fails this test instead of
-    // silently never running.
-    const invert = new RegExp(NON_SERIAL_GREP_INVERT);
-    for (const title of [
-      '@functional F-C1: creates a contact',
-      '@functional F-M1: plain',
-      '@functional V-1: renders the visual editor',
-    ]) {
-      const runsInSerialHalf = isSerialTitle(title);
-      const runsInNonSerialHalf = !invert.test(title);
-      expect(runsInSerialHalf || runsInNonSerialHalf).toBe(true);
+    // Scans the REAL suite rather than a hand-written list: a hardcoded list can
+    // only contain titles someone already thought of, so it could never fail for
+    // the reason this test exists. A future spec titled, say, "handles
+    // non-serial ordering @functional" lands in the gap, and this reads it off
+    // disk and fails.
+    // Scoped to the app suite, which is what TIA selects and what these two
+    // invocations run. Framework specs under qa/e2e/tests/framework/ are
+    // deliberately excluded: they are never TIA-selected, and several legitimately
+    // quote tag names as TEST DATA — this file's own
+    // "treats a plain @functional title as non-serial" is a string under test,
+    // not a tagged test, and scanning it would report a permanent false orphan.
+    const repoRoot = resolve(__dirname, '../../../..');
+    const specFiles = execFileSync('git', ['ls-files', 'qa/e2e/tests/apps/**/*.spec.ts'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter(Boolean);
+
+    // Guards the scan itself: a glob that silently matched nothing would make
+    // this test pass vacuously, which is the failure mode it exists to avoid.
+    expect(specFiles.length).toBeGreaterThan(50);
+
+    const orphans: string[] = [];
+
+    for (const file of specFiles) {
+      for (const title of findTestTitles(readFileSync(resolve(repoRoot, file), 'utf8'))) {
+        // Only @functional titles matter: anything else is not selected by
+        // either half's --grep in the first place.
+        if (!title.includes('@functional')) continue;
+        if (!isSerialTitle(title) && !isNonSerialTitle(title)) {
+          orphans.push(`${file} :: ${title}`);
+        }
+      }
     }
+
+    expect(orphans).toEqual([]);
   });
 
   test('each half writes its own JUnit and output paths', () => {
