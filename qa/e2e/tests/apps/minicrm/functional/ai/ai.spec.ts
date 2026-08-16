@@ -190,11 +190,12 @@ test(
     // the top of `ORDER BY updated_at DESC` — where a later spec's page
     // auto-selects it and reads an empty thread. (MINCRM-686)
     const newSessionId = await clickNewSessionButton({ page });
-    // registerAdminTeardown, not a plain register(): the afterEach sweep above
-    // runs BEFORE fixture teardown and already deletes this session, so the
-    // registered DELETE 404s on every green run — which a plain entry records as
-    // `success: false` and logs as "teardown failed". Registration still earns
-    // its place by covering the path where the sweep does not run. (MINCRM-686)
+    // The afterEach sweep above runs BEFORE fixture teardown and already deletes
+    // this session, so the registered DELETE 404s on every green run — which
+    // counts as successful cleanup for either entry kind since MINCRM-668.
+    // registerAdminTeardown is used because the session is admin-owned and this
+    // spec re-authenticates restClient; registration earns its place by covering
+    // the path where the sweep does not run. (MINCRM-686, MINCRM-668)
     registerAdminTeardown(
       testData,
       restClient,
