@@ -73,6 +73,7 @@ jobs:
       auth-token-expiry: ${{ steps.filter.outputs.auth-token-expiry }}
       coverage-migrations: ${{ steps.filter.outputs.coverage-migrations }}
       coverage-map-exit-code: ${{ steps.filter.outputs.coverage-map-exit-code }}
+      audit-gate: ${{ steps.filter.outputs.audit-gate }}
       dockerfiles:       ${{ steps.filter.outputs.dockerfiles }}
     steps:
       - uses: actions/checkout@v4
@@ -218,6 +219,18 @@ jobs:
             coverage-map-exit-code:
               - 'server/src/scripts/load-coverage-map.ts'
               - 'scripts/pre-push-tia.ts'
+            # Single-purpose output for check-audit-gate-parity.sh, which pins
+            # every caller of the dependency audit to the one shared definition.
+            # All three files live outside qa/, so without this entry an edit to
+            # any of them would not re-run the guard — the bidirectional-
+            # invariant rule in CLAUDE.md. Deliberately not folded into `server`
+            # or `config`, which gate far more than this one check needs.
+            # (MINCRM-668)
+            audit-gate:
+              - 'scripts/npm-audit-gate.sh'
+              - 'scripts/pre-push-tia.ts'
+              - '.github/actions/npm-audit/action.yml'
+              - 'qa/scripts/check-audit-gate-parity.sh'
             ai:
               - 'server/src/ai/**'
               - 'qa/evals/**'
@@ -1005,7 +1018,11 @@ jobs:
     # one in a workspace this job's other checks ignore — still runs the template
     # mirror assertion. Scoped here rather than widening `qa`, which gates the
     # whole E2E matrix. (MINCRM-699)
-    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true'
+    # audit-gate is OR'd in for the same reason: its three pinned files all live
+    # outside qa/, so an edit to the shared audit script or to either caller
+    # would otherwise leave check-audit-gate-parity.sh unrun on exactly the
+    # change it guards. (MINCRM-668)
+    if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.auth-token-expiry == 'true' || needs.changes.outputs.coverage-map-exit-code == 'true' || needs.changes.outputs.env-example-parity == 'true' || needs.changes.outputs.audit-gate == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1045,6 +1062,9 @@ jobs:
 
       - name: Check the corrupt-map exit code has not drifted (MINCRM-703)
         run: bash qa/scripts/check-coverage-map-exit-code-parity.sh
+
+      - name: Check every audit caller uses the shared gate (MINCRM-668)
+        run: bash qa/scripts/check-audit-gate-parity.sh
 
       - name: Check the locator-timeout guard itself is correct (MINCRM-703)
         run: node qa/scripts/check-locator-timeout-forwarding.mjs --self-test

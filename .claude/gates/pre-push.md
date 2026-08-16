@@ -108,7 +108,7 @@ turns into an unverified push:
 4. **Steps 2–5 and 7 still run.** This skips _only_ the redundant E2E leg. Lint,
    typecheck, unit tests, and `npm audit` are cheap, are not what an E2E run covers, and
    `npm audit` in particular fails on advisories published against a lockfile that never
-   changed.
+   changed. The hook enforces steps 3 and 5 itself — see below — but not 2, 4, or 7.
 
 What the bypass gives up beyond the tests themselves: the hook's `attestOrThrow` proves
 via SHA-bound coverage sessions that the selected specs _actually executed against this
@@ -118,6 +118,17 @@ not the one to eyeball.
 
 Never skip the hook to get _around_ a failure, a flake, or a run you'd rather not sit
 through. The only thing this shortcut is for is not paying twice for the same verdict.
+
+**`SKIP_TIA_PREPUSH=1` does not skip typecheck or `npm audit`.** The hook runs both
+(steps 3 and 5) before it consults that variable, so the bypass drops only the E2E leg —
+which is the scope the variable's name describes. Both are seconds against a 20-60 minute
+E2E run, and both guard a documented way a branch reaches CI red: a cross-file type error
+that staged-only `pre-commit` lint cannot see, and an advisory published against a
+lockfile nobody touched (MINCRM-703). Lint stays out of the hook because `pre-commit`'s
+`lint-staged` already runs ESLint over every staged file on the way in.
+
+Only `--no-verify` skips those too, which is a further reason to reach for the env var
+first.
 
 Steps 2–7 all describe the post-rebase tree. If anything sends you back to step 1 —
 a late conflict, a parent that moved while E2E was running — the steps after it are

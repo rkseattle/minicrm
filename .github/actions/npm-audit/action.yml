@@ -24,44 +24,18 @@ description: >
 runs:
   using: composite
   steps:
+    # The rule itself lives in scripts/npm-audit-gate.sh so the LOCAL pre-push
+    # hook can run the identical check — a composite action is only invocable by
+    # the Actions runner, so keeping the body here forced scripts/pre-push-tia.ts
+    # to carry its own copy. It did, as a bare `npm audit --audit-level=high`,
+    # which is not just a duplicate but a weaker rule: it reintroduces the
+    # fail-open hole the script guards against. One rule, three callers, pinned
+    # by qa/scripts/check-audit-gate-parity.sh. (MINCRM-668)
+    #
+    # GITHUB_WORKSPACE, not a relative walk up from github.action_path: the
+    # action lives inside the repo, so the checkout root is where the script
+    # reliably is, and `../../..` would break if the action ever moved.
     - name: Audit dependencies for high/critical vulnerabilities
       shell: bash
       run: |
-        # npm audit exits non-zero BOTH when it finds advisories and when it fails
-        # to run at all, so the exit code alone cannot distinguish "clean" from
-        # "never produced a verdict". Capture output and status separately, then
-        # require a well-formed report before trusting any conclusion — otherwise a
-        # registry outage, a proxy error, or an npm crash yields empty output that
-        # scrapes to zero advisories and reports a green security gate. (MINCRM-703)
-        set +e
-        npm audit --audit-level=high --json > "${RUNNER_TEMP}/audit.json"
-        AUDIT_STATUS=$?
-        set -e
-
-        if ! jq -e '(.metadata.vulnerabilities | type) == "object"' "${RUNNER_TEMP}/audit.json" > /dev/null 2>&1; then
-          echo "::error::npm audit did not produce a usable report (exit ${AUDIT_STATUS})."
-          echo "Treating this as a failure: an unreadable audit is not a clean audit."
-          head -c 4000 "${RUNNER_TEMP}/audit.json" || true
-          exit 1
-        fi
-
-        HIGH=$(jq -r '.metadata.vulnerabilities.high // 0' "${RUNNER_TEMP}/audit.json")
-        CRITICAL=$(jq -r '.metadata.vulnerabilities.critical // 0' "${RUNNER_TEMP}/audit.json")
-
-        if [ "$HIGH" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
-          echo "::error::npm audit found ${CRITICAL} critical and ${HIGH} high advisories:"
-          jq -r '
-            (.vulnerabilities // {}) | to_entries[] | .value.via[]
-            | select(type == "object")
-            | "\(.url | split("/")[-1])  \(.severity)  \(.name)"
-          ' "${RUNNER_TEMP}/audit.json" | sort -u
-          jq '.vulnerabilities' "${RUNNER_TEMP}/audit.json"
-          echo ""
-          echo "Before allowlisting anything, try a full re-resolve — an incremental"
-          echo "npm install will NOT reconsider overrides for transitive deps:"
-          echo "  rm -rf node_modules package-lock.json && npm install"
-          echo "Pin the fixed version in the root package.json \"overrides\" block."
-          exit 1
-        fi
-
-        echo "No high/critical advisories (MINCRM-703)."
+        "$GITHUB_WORKSPACE/scripts/npm-audit-gate.sh" --github
