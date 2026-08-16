@@ -3,13 +3,14 @@
  *
  * Verifies:
  * 1. detectCpuCount() — returns a positive integer or null on failure
- * 2. computeCapacityPlan() — reproduces FALLBACK_PLAN exactly on today's 2-vCPU baseline
+ * 2. computeCapacityPlan() — reproduces FALLBACK_PLAN's values at a 2-vCPU input
  * 3. computeCapacityPlan() — falls back on null/invalid input (no regression risk)
  * 4. computeCapacityPlan() — workers capped at WORKERS_CAP on large runners
  * 5. computeCapacityPlan() — shards/workers never below 1
  * 6. getCapacityPlan() — wires detectCpuCount() into computeCapacityPlan()
+ * 7. computeCapacityPlan() — 2 shards x 4 workers at today's real 4-vCPU runner
  *
- * MINCRM-662
+ * MINCRM-662, MINCRM-706
  */
 
 import { test, expect } from '@playwright/test';
@@ -31,13 +32,37 @@ test.describe('detectCpuCount', () => {
   });
 });
 
-test.describe('computeCapacityPlan — known-good baseline reproduction', () => {
-  test('reproduces the pre-MINCRM-662 constants exactly on a 2-vCPU runner', () => {
+test.describe('computeCapacityPlan — pinned formula inputs', () => {
+  test('4 vCPUs is the WORKERS_CAP plateau boundary: 2 shards x 4 workers', () => {
+    // 4 is where workers saturate WORKERS_CAP, so every larger runner yields
+    // this same plan (see the plateau assertion below). Pinned because nothing
+    // covered this branch of the formula before MINCRM-706 — every existing
+    // case sat at 2 vCPUs or at 64 — which is how the surrounding docs went on
+    // claiming 4 shards x 2 workers long after the probe stopped emitting them.
+    expect(computeCapacityPlan(4)).toEqual({ shards: 2, workers: 4, source: 'capacity-probe' });
+    expect(computeCapacityPlan(3)).toEqual({ shards: 3, workers: 3, source: 'capacity-probe' });
+  });
+
+  test('every runner at or above the cap yields the same plan', () => {
+    // Stated explicitly so nobody reads the 4-vCPU case as "this is the runner
+    // size". It is not observable from the formula: 4, 8 and 64 vCPUs are
+    // indistinguishable here. The runner's ACTUAL size is asserted separately,
+    // against detectCpuCount(), below.
+    const atCap = { shards: 2, workers: 4, source: 'capacity-probe' };
+    for (const cpuCount of [4, 5, 6, 8, 16, 64]) {
+      expect(computeCapacityPlan(cpuCount)).toEqual(atCap);
+    }
+  });
+
+  test('a 2-vCPU input reproduces the pre-MINCRM-662 constants', () => {
+    // A formula input, NOT a description of any runner this pipeline uses.
+    // Kept because it pins the derivation at a second known point, and because
+    // it is the shape FALLBACK_PLAN encodes for detection failure.
     const plan = computeCapacityPlan(2);
     expect(plan).toEqual({ shards: 4, workers: 2, source: 'capacity-probe' });
   });
 
-  test("2-vCPU result matches FALLBACK_PLAN's shard/worker values", () => {
+  test("the 2-vCPU result matches FALLBACK_PLAN's shard/worker values", () => {
     const plan = computeCapacityPlan(2);
     expect(plan.shards).toBe(FALLBACK_PLAN.shards);
     expect(plan.workers).toBe(FALLBACK_PLAN.workers);
@@ -86,6 +111,29 @@ test.describe('computeCapacityPlan — scaling behavior', () => {
   test('source is tagged "capacity-probe" for any valid positive cpuCount', () => {
     expect(computeCapacityPlan(1).source).toBe('capacity-probe');
     expect(computeCapacityPlan(16).source).toBe('capacity-probe');
+  });
+});
+
+test.describe('the documented CI runner size', () => {
+  test('GitHub-hosted runners still provide the 4 vCPUs the docs claim', () => {
+    // The ONE assertion that observes the real runner rather than the formula.
+    // capacity.ts, e2e-performance.md, qa/e2e/README.md and README.md all state
+    // "2 shards x 4 workers on 4-vCPU runners"; that is only true while GitHub
+    // keeps providing 4 vCPUs. Because computeCapacityPlan plateaus at
+    // WORKERS_CAP, no assertion over the formula can notice an upgrade to 8 or
+    // 16 — every one of those still returns 2 x 4 — so without this check the
+    // docs would go stale silently, exactly as the 2-vCPU claim did.
+    //
+    // Gated on GITHUB_ACTIONS, not CI: `CI` is also set by local tooling and by
+    // self-hosted runners, and this asserts a GitHub-HOSTED runner's spec
+    // specifically. On a developer machine it would just report the core count
+    // of that laptop (measured: 12 here), which is not the claim under test.
+    test.skip(
+      process.env['GITHUB_ACTIONS'] !== 'true',
+      'asserts the GitHub-hosted runner spec, not a local or self-hosted machine',
+    );
+
+    expect(detectCpuCount()).toBe(4);
   });
 });
 
