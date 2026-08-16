@@ -414,10 +414,11 @@ already filtered out, so anything reported here means the row is still in the da
 (MINCRM-668)
 
 Register a record even when the test deletes it itself through the UI: registration is
-what covers the path where the test fails before reaching its own delete. Use
-`registerAdminTeardown` for these — on the happy path the record is already gone and the
-DELETE 404s, and a plain `register()` entry records that as `success: false` and logs
-"teardown failed" to stderr on every green run.
+what covers the path where the test fails before reaching its own delete. On the happy
+path the record is already gone and the teardown DELETE 404s, which counts as successful
+cleanup — a plain `register()` entry is fine here and costs nothing on a green run. Pick
+between `register()` and `registerAdminTeardown()` on the auth question above, not on
+whether the test deletes its own record. (MINCRM-668)
 
 **Users need `registerUserDeactivation()`, not `register()`.** Users cannot be
 hard-deleted, so cleanup is `PATCH /api/v1/users/:id/deactivate` rather than the DELETE a
