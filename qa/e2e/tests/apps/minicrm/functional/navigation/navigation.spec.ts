@@ -515,19 +515,6 @@ test.describe.serial('Layout-mutating tests', () => {
           await resetNavLayout(restClient, 'F8-AD1-hamburger');
         },
       },
-      {
-        label: 'mobile drawer',
-        layout: 'top-mobile',
-        skipOnMobile: false,
-        skipOnDesktop: true,
-        setup: async (_page, _restClient) => {
-          await navigateToDashboard(_page);
-          await openMobileNav({ page: _page });
-        },
-        teardown: async (_page, _restClient) => {
-          await closeMobileNavViaToggle({ page: _page }).catch(() => undefined);
-        },
-      },
     ];
 
     for (const variant of DIVIDER_VARIANTS) {
@@ -828,6 +815,33 @@ test.describe.serial('Layout-mutating tests', () => {
     });
   }); // end Hamburger Menu mechanics
 }); // end Layout-mutating tests
+
+// ---------------------------------------------------------------------------
+// F8-AD1 — mobile drawer variant (MINCRM-668)
+//
+// Lifted out of the Layout-mutating serial block and untagged. It was the one
+// DIVIDER_VARIANTS entry whose setup/teardown touch no restClient at all — it
+// opens the mobile drawer and asserts the divider, mutating nothing shared —
+// but it carried @serial from the shared loop while also being mobile-only.
+// That combination ran in NO CI job: e2e-functional filters @serial out, and
+// e2e-serial runs --project=desktop, where this test skips itself. Same defect
+// as i18n's F9-L5.
+// ---------------------------------------------------------------------------
+
+test('@functional F8-AD1: admin sees Administration divider across all layouts — mobile drawer', async ({
+  page,
+}) => {
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  test.skip(!isMobile, 'F8-AD1 [mobile drawer]: only runs under the mobile-web Playwright project');
+
+  await navigateToDashboard(page);
+  await openMobileNav({ page });
+  try {
+    await expectAdminSectionDividerVisible('top-mobile', { page });
+  } finally {
+    await closeMobileNavViaToggle({ page }).catch(() => undefined);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Mobile nav mechanics (mobile-web project only)

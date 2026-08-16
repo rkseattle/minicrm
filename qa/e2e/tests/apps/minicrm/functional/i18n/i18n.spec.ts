@@ -6,19 +6,22 @@
  * asserted any i18n behaviour — the entire feature could silently break without
  * the suite catching it.
  *
- * Test groups (all in a single test.describe.serial block because all five tests
- * mutate or depend on the shared default-language system setting):
+ * Test groups. F9-L1..L4 share one test.describe.serial block because each
+ * mutates or depends on the shared default-language system setting. F9-L5 sits
+ * OUTSIDE it and is not @serial: it drives the user-scoped language selector on
+ * an admin it creates itself, so it touches nothing shared. (MINCRM-668)
  *
  *   F9-L1 — Admin sets system default to 'es'; UI shows Spanish nav label.
  *   F9-L2 — Admin sets system default to 'fr'; change persists across two reloads.
  *   F9-L3 — Per-user preference ('de') overrides system default ('en').
  *   F9-L4 — Language selector in nav changes language immediately and persists.
- *   F9-L5 — Mobile-web only: language selector in mobile nav drawer is functional.
+ *   F9-L5 — Mobile-web only, NOT serial: language selector in mobile nav drawer.
  *
  * State isolation:
- *   Every test resets the system default language to 'en' in a finally block.
- *   Tests are serialised (test.describe.serial) so state mutations cannot race
- *   across test workers.
+ *   Every serialised test resets the system default language to 'en' in a
+ *   finally block, and test.describe.serial keeps their state mutations from
+ *   racing across workers. F9-L5 needs neither: it resets only its own user's
+ *   preference.
  *
  * Framework notes:
  *   - setLocale() from @framework/i18n/locale.js switches the framework's active
@@ -86,20 +89,24 @@ async function resetLanguage(restClient: RestClient, tag: string): Promise<void>
 // Shared setup — admin auth + known-good system state before/after each test (MINCRM-358)
 // ---------------------------------------------------------------------------
 
-test.beforeEach(async ({ restClient }) => {
-  await loginAsAdmin(restClient);
-  await ensureSystemDefaults(restClient);
-});
-
-test.afterEach(async ({ restClient }) => {
-  await ensureSystemDefaults(restClient);
-});
-
 // ---------------------------------------------------------------------------
 // Language-switching tests — serialised to prevent concurrent state mutation
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Language switching (MINCRM-239)', () => {
+  // Scoped to this block, not the file. ensureSystemDefaults writes four shared
+  // settings rows, so running it for F9-L5 — which sits outside this block and
+  // mutates nothing shared — would put shared writes in the parallel matrix and
+  // undo the point of untagging it. (MINCRM-668)
+  test.beforeEach(async ({ restClient }) => {
+    await loginAsAdmin(restClient);
+    await ensureSystemDefaults(restClient);
+  });
+
+  test.afterEach(async ({ restClient }) => {
+    await ensureSystemDefaults(restClient);
+  });
+
   /**
    * F9-L1: Admin sets system default to Spanish.
    * A fresh page load resolves the new default and renders Spanish nav labels.
@@ -351,49 +358,6 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     }
   });
 
-  /**
-   * F9-L5: Mobile-web only.
-   * The language selector in the mobile nav drawer changes the UI language when
-   * a non-English option is selected. Extends F8-MN6 which only checks presence.
-   */
-  test('@functional @serial F9-L5: mobile nav language selector changes UI language', async ({
-    page,
-    restClient,
-    testData,
-  }) => {
-    const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
-    test.skip(!isMobile, 'F9-L5 only runs under the mobile-web Playwright project');
-
-    await setSystemLanguage('en', restClient, 'F9-L5');
-    const admin = await createTestAdmin(testData, restClient);
-    await loginViaBrowser(admin.email, admin.password, { page });
-    await navigateToDashboard(page);
-
-    try {
-      // Open the mobile nav drawer and verify the drawer + language select are present.
-      await openMobileNav({ page });
-      await expectMobileNavDrawerVisibleWithLanguageSelect({ page });
-
-      // Select French via the mobile language select.
-      await selectMobileLanguageAndWaitForPatch('fr', { page });
-
-      // Close the drawer after language selection.
-      await closeMobileNavViaToggle({ page });
-
-      setLocale('fr');
-      // Re-open the drawer to expose the now-translated nav labels.
-      await openMobileNav({ page });
-
-      const frenchDashboardLabel = t('nav.dashboard'); // "Tableau de bord"
-      await expectMobileNavLinkHasText('dashboard', frenchDashboardLabel, { page });
-
-      await closeMobileNavViaToggle({ page });
-    } finally {
-      // Reset the admin user's personal language preference and system default.
-      await setUserLanguage(restClient, null).catch(() => null);
-      await resetLanguage(restClient, 'F9-L5');
-    }
-  });
   // Safety-net: unconditionally restore system language and framework locale after
   // the entire serial block, even if an individual test's finally block failed or
   // the test was aborted before reaching it. Without this, a stale non-English DB
@@ -403,3 +367,59 @@ test.describe.serial('Language switching (MINCRM-239)', () => {
     setLocale('en');
   });
 }); // end Language switching
+
+/**
+ * F9-L5: Mobile-web only.
+ * The language selector in the mobile nav drawer changes the UI language when
+ * a non-English option is selected. Extends F8-MN6 which only checks presence.
+ */
+test('@functional F9-L5: mobile nav language selector changes UI language', async ({
+  page,
+  restClient,
+  testData,
+}) => {
+  const isMobile = (page.viewportSize()?.width ?? 1024) < 1024;
+  test.skip(!isMobile, 'F9-L5 only runs under the mobile-web Playwright project');
+
+  // NOT @serial, and deliberately no setSystemLanguage() call. The selector
+  // under test patches /api/v1/users/me/language — user-scoped state on an
+  // admin this test creates itself — so nothing shared is mutated. Setting the
+  // system default here was incidental setup that earned the @serial tag, and
+  // that tag put the test in a job matrix it could never run in: e2e-functional
+  // filters @serial out, e2e-serial runs --project=desktop only, and this test
+  // skips itself off mobile. It executed in NO CI job. (MINCRM-668)
+  //
+  // Authenticates itself rather than relying on a file-level hook: the
+  // ensureSystemDefaults beforeEach is scoped to the serial block above,
+  // precisely so its shared writes do not follow this test into the parallel
+  // matrix.
+  await loginAsAdmin(restClient);
+  const admin = await createTestAdmin(testData, restClient);
+  await loginViaBrowser(admin.email, admin.password, { page });
+  await navigateToDashboard(page);
+
+  try {
+    // Open the mobile nav drawer and verify the drawer + language select are present.
+    await openMobileNav({ page });
+    await expectMobileNavDrawerVisibleWithLanguageSelect({ page });
+
+    // Select French via the mobile language select.
+    await selectMobileLanguageAndWaitForPatch('fr', { page });
+
+    // Close the drawer after language selection.
+    await closeMobileNavViaToggle({ page });
+
+    setLocale('fr');
+    // Re-open the drawer to expose the now-translated nav labels.
+    await openMobileNav({ page });
+
+    const frenchDashboardLabel = t('nav.dashboard'); // "Tableau de bord"
+    await expectMobileNavLinkHasText('dashboard', frenchDashboardLabel, { page });
+
+    await closeMobileNavViaToggle({ page });
+  } finally {
+    // Reset only the admin user's own preference — this test never wrote a
+    // system setting, so there is no shared state to restore.
+    await setUserLanguage(restClient, null).catch(() => null);
+  }
+});
