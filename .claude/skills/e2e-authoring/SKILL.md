@@ -63,6 +63,40 @@ allowed for dynamic IDs with a comment explaining why.
   for `parallel` mode — apply the checklist in `qa/e2e/PARALLELISM-NOTES.md` first, and
   see `npm run e2e:timing:hotspots` for which files are worth auditing.
 
+## Cleaning up what a test creates
+
+`TestDataManager` deletes only what a test **registers**. `check-e2e-cleanup.sh` looks
+for a registration call and nothing else, so a `finally` block does not satisfy it — and
+an earlier failing assertion throws straight past a `finally` anyway, which is exactly
+how four call sites leaked a user on every failing run (MINCRM-668).
+
+- Prefer the `createTest*` helpers in `qa/e2e/apps/minicrm/helpers.ts` — they create and
+  register in one call.
+- Using a behavior helper directly? Register immediately after creation, **before any
+  assertion**, so cleanup survives a mid-setup throw.
+- **Users need `registerUserDeactivation()`**, not `register()` — users cannot be
+  hard-deleted, so cleanup is a PATCH. `createTestUser`/`createTestRep`/`createTestAdmin`
+  call it for you. Call it directly when you need the raw invite token, a specific
+  password, or a role those helpers do not produce — `visibility` does this for
+  `manager`, `iam/` for `viewer` and `service_account`, and a good number of specs
+  simply for `rep` where they need the token.
+- **Re-authenticating `restClient` as a non-admin?** Use `registerAdminTeardown()` — it
+  re-auths as admin inside the callback. Teardown otherwise runs as whoever the test
+  left logged in, and a rep deleting another user's record takes a 403. It assumes the
+  resource is ROLE-scoped, though: `ai_session` is scoped by `user_id`, so an admin
+  deleting someone else's session gets a 404 and the entry is swallowed as
+  already-gone. For user-scoped resources, tear down as the owner.
+- Always pass the **fixture** `restClient` to a registered callback, never a client the
+  test disposes in a `finally`; the callback runs after the test body.
+- A record the test deletes itself through the UI still gets registered — registration
+  covers the path where the test fails before reaching its own delete. The follow-up 404
+  is treated as successful cleanup, so this costs nothing on the happy path.
+- Deliberate exception? `// MINCRM-686-ok: <reason>`. The reason is required.
+
+A failed teardown annotates the test `teardown-failed` and appears in CI's **Cleanup
+Failures** summary section, including for tests that passed. If you see one, a record
+leaked — 404s are already filtered out.
+
 ## Fixtures
 
 Test fixture passwords must be ≥ 12 characters (`PASSWORD_MIN_LENGTH=12`); shorter ones

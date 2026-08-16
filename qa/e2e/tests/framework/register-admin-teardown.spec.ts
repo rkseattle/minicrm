@@ -104,9 +104,10 @@ test.describe('registerAdminTeardown', () => {
   test('authenticates as admin before issuing the DELETE', async () => {
     // The property every caller depends on. Specs that re-authenticate the
     // shared restClient as a rep would otherwise delete AS that rep and take a
-    // 403, which TestDataManager logs and swallows — leaking the record while
-    // the run still reports success. That silent-failure mode is what
-    // MINCRM-686 exists to close.
+    // 403, leaving the record in the database. Since MINCRM-668 that 403 is
+    // reported rather than swallowed — the cases below assert it — but the
+    // record still leaks, so re-authenticating first is what actually prevents
+    // the failure MINCRM-686 exists to close.
     const { client, calls } = makeRecordingClient();
     const manager = new TestDataManager();
 
