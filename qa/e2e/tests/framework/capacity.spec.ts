@@ -124,13 +124,16 @@ test.describe('the documented CI runner size', () => {
     // 16 — every one of those still returns 2 x 4 — so without this check the
     // docs would go stale silently, exactly as the 2-vCPU claim did.
     //
-    // Gated on GITHUB_ACTIONS, not CI: `CI` is also set by local tooling and by
-    // self-hosted runners, and this asserts a GitHub-HOSTED runner's spec
-    // specifically. On a developer machine it would just report the core count
-    // of that laptop (measured: 12 here), which is not the claim under test.
+    // Gated on RUNNER_ENVIRONMENT, which GitHub sets to 'github-hosted' or
+    // 'self-hosted'. Neither `CI` nor `GITHUB_ACTIONS` would do: `CI` is set by
+    // local tooling too, and `GITHUB_ACTIONS` is true on SELF-HOSTED runners as
+    // well — where a different core count is expected and correct, since
+    // capacity.ts exists precisely to scale across runner sizes. Asserting 4
+    // there would fail the first self-hosted runner this pipeline ever uses,
+    // for doing exactly what the module advertises.
     test.skip(
-      process.env['GITHUB_ACTIONS'] !== 'true',
-      'asserts the GitHub-hosted runner spec, not a local or self-hosted machine',
+      process.env['RUNNER_ENVIRONMENT'] !== 'github-hosted',
+      'asserts the GitHub-hosted runner spec; other environments size themselves',
     );
 
     expect(detectCpuCount()).toBe(4);
