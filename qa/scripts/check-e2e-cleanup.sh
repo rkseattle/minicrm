@@ -30,13 +30,26 @@
 #   - Records created through the BROWSER (a "New Session" click, a create form)
 #     match no create*ViaApi call and are invisible here. ai.spec.ts's F-AI4 is
 #     one such site; it registers explicitly.
-#   - inviteUserViaApi creates users and is deliberately outside CREATE_PATTERN,
-#     because users are deactivated rather than deleted and TestDataManager
-#     tears down via DELETE. Note MINCRM-544 — the incident this family of
-#     guards exists to prevent — was caused by accumulated test USERS, so the
-#     one path with the worst history is the one this script cannot see.
-#     createTestRep/createTestAdmin register a deactivation callback; bare
-#     inviteUserViaApi call sites are on their callers.
+#   - Users created through the browser (an invite submitted through the UI)
+#     are invisible here for the same reason as any other browser-created
+#     record.
+#   - An invite POSTed through a PATH CONSTANT (`const P = '/api/v1/users/invite'`
+#     then `post(P, ...)`) is invisible: the call line carries no literal. The
+#     endpoint literal is matched wherever it appears on a line, so a wrapped
+#     call or a wrapper function (bearerPost) IS seen, but a constant defeats
+#     any line-based scanner. No spec uses that shape today.
+#
+# CLOSED GAP — user creation (MINCRM-668)
+#   inviteUserViaApi and raw `POST /api/v1/users/invite` used to sit outside
+#   CREATE_PATTERN, on the reasoning that users are deactivated rather than
+#   deleted. That left the path with the worst history — MINCRM-544 was caused
+#   by accumulated test USERS — as the one this script could not see, and four
+#   call sites duly drifted into deactivating outside any try/finally, leaking
+#   a user on every failing run. Both forms are now matched, and
+#   registerUserDeactivation counts as registration alongside the other three
+#   forms. Helpers that register internally (createTestUser, createTestRep,
+#   createTestAdmin) are exempt at their call sites via
+#   SELF_REGISTERING_PATTERN, since their cleanup is not visible to the caller.
 #
 # WHY THIS EXISTS
 # ---------------
@@ -85,7 +98,195 @@ set -euo pipefail
 
 # shellcheck source=spec-files.sh
 source "$(dirname "$0")/spec-files.sh"
-resolve_tests_dir
+
+# --self-test runs this script against a generated corpus of known-good and
+# known-bad specs and asserts the verdict for each. Without it the guard's own
+# correctness rests on a manual spot-check, and a guard that has silently
+# stopped guarding is worse than none because it is trusted. (MINCRM-668)
+if [ "${1:-}" = "--self-test" ]; then
+  self_test_dir="$(mktemp -d)"
+  trap 'rm -rf "$self_test_dir"' EXIT
+
+  # One directory per case, so a run sees exactly one spec.
+  write_case() {
+    mkdir -p "$self_test_dir/${1%.spec.ts}"
+    cat > "$self_test_dir/${1%.spec.ts}/$1"
+  }
+
+  # --- Cases that MUST pass ---------------------------------------------
+  write_case 'ok-registered.spec.ts' <<'CASE'
+test('registers what it creates', async ({ testData, restClient }) => {
+  const contact = await createContactViaApi(restClient, { first_name: 'A' });
+  testData.register('contact', contact.id, `/api/v1/contacts/${contact.id}`);
+});
+CASE
+
+  write_case 'ok-invite-registered.spec.ts' <<'CASE'
+test('registers an invited user', async ({ testData, restClient }) => {
+  const { user, inviteToken } = await inviteUserViaApi(restClient, { role: 'rep' });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
+  await setUserPassword(restClient, inviteToken, 'x');
+});
+CASE
+
+  write_case 'ok-raw-post-registered.spec.ts' <<'CASE'
+test('registers a raw-POST invite', async ({ testData, restClient }) => {
+  const inviteRes = await restClient.post('/api/v1/users/invite', { role: 'viewer' });
+  const { user } = inviteRes.body;
+  registerUserDeactivation(testData, restClient, user.id, 'viewer');
+});
+CASE
+
+  write_case 'ok-self-registering.spec.ts' <<'CASE'
+test('needs no registration of its own', async ({ testData, restClient }) => {
+  const rep = await createTestUser(testData, restClient, { role: 'rep' });
+  await loginAs(restClient, rep.email, 'pw');
+});
+CASE
+
+  write_case 'ok-opted-out.spec.ts' <<'CASE'
+test('opts out with a reason', async ({ restClient }) => {
+  // MINCRM-686-ok: expected to fail with 409 — no user row is created.
+  await inviteUserViaApi(restClient, { role: 'rep' });
+});
+CASE
+
+  write_case 'ok-comment-mentions-invite.spec.ts' <<'CASE'
+// The server exposes post '/api/v1/users/invite' for admins only.
+test('discusses the endpoint without calling it', async ({ restClient }) => {
+  const res = await restClient.get('/api/v1/users');
+  expect(res.status).toBe(200);
+});
+CASE
+
+  # --- Cases that MUST fail ---------------------------------------------
+  write_case 'bad-unregistered.spec.ts' <<'CASE'
+test('leaks a contact', async ({ restClient }) => {
+  const contact = await createContactViaApi(restClient, { first_name: 'A' });
+  expect(contact.id).toBeTruthy();
+});
+CASE
+
+  write_case 'bad-invite-unregistered.spec.ts' <<'CASE'
+test('leaks an invited user', async ({ restClient }) => {
+  const { user } = await inviteUserViaApi(restClient, { role: 'rep' });
+  expect(user.id).toBeTruthy();
+});
+CASE
+
+  write_case 'bad-raw-post-unregistered.spec.ts' <<'CASE'
+test('leaks a raw-POST invite', async ({ restClient }) => {
+  const inviteRes = await restClient.post('/api/v1/users/invite', { role: 'viewer' });
+  expect(inviteRes.status).toBe(201);
+});
+CASE
+
+  write_case 'bad-wrapped-post.spec.ts' <<'CASE'
+test('prettier wrapped the url onto its own line', async ({ restClient }) => {
+  const res = await restClient.post<{ user: { id: string } }>(
+    '/api/v1/users/invite',
+    { name: 'X', role: 'rep' },
+  );
+  expect(res.status).toBe(201);
+});
+CASE
+
+  write_case 'bad-mixed-same-line.spec.ts' <<'CASE'
+test('self-registering helper must not exempt its line-mate', async ({ testData, restClient }) => {
+  const u = await createTestUser(testData, restClient), c = await createContactViaApi(restClient);
+  expect(u.id && c.id).toBeTruthy();
+});
+CASE
+
+  write_case 'bad-opt-out-without-reason.spec.ts' <<'CASE'
+test('bare marker does not count', async ({ restClient }) => {
+  // MINCRM-686-ok
+  const contact = await createContactViaApi(restClient, { first_name: 'A' });
+  expect(contact.id).toBeTruthy();
+});
+CASE
+
+  # Assert the exact number of findings, not just the exit status. An exit-only
+  # check passes on an unscanned or empty TESTS_DIR — verified: pointing it at a
+  # nonexistent directory prints OK and exits 0 — so every "should pass" case
+  # would go green without the fixture ever being read. Both sibling guards
+  # (check-locator-timeout-forwarding.mjs, check-settings-mutations.mjs) count
+  # findings for this reason.
+  # Captures BOTH the finding count and the exit status. A pipe would discard
+  # the status, so a script that crashed before scanning would look identical to
+  # one that found nothing — and every "should pass" case would go green on a
+  # guard that never ran.
+  run_case() {
+    local case_dir="$self_test_dir/$1"
+    local output status
+    output="$(TESTS_DIR="$case_dir" bash "$0" 2>&1)" && status=0 || status=$?
+    RUN_CASE_FINDINGS="$(printf '%s\n' "$output" | grep -cE '^    [0-9]+:' || true)"
+    RUN_CASE_STATUS="$status"
+  }
+
+  self_test_failures=0
+  ok_cases="ok-registered ok-invite-registered ok-raw-post-registered
+    ok-self-registering ok-opted-out ok-comment-mentions-invite"
+  bad_cases="bad-unregistered bad-invite-unregistered
+    bad-raw-post-unregistered bad-wrapped-post bad-mixed-same-line
+    bad-opt-out-without-reason"
+  self_test_total=0
+
+  for expected_pass in $ok_cases; do
+    self_test_total=$((self_test_total + 1))
+    if [ ! -f "$self_test_dir/${expected_pass}/${expected_pass}.spec.ts" ]; then
+      echo "  FAIL  $expected_pass — fixture missing, so the case proves nothing"
+      self_test_failures=$((self_test_failures + 1))
+      continue
+    fi
+    run_case "$expected_pass"
+    if [ "$RUN_CASE_FINDINGS" -eq 0 ] && [ "$RUN_CASE_STATUS" -eq 0 ]; then
+      echo "  PASS  $expected_pass (0 findings, exit 0, as expected)"
+    else
+      echo "  FAIL  $expected_pass reported $RUN_CASE_FINDINGS finding(s)" \
+        "and exit $RUN_CASE_STATUS; expected 0 and 0"
+      self_test_failures=$((self_test_failures + 1))
+    fi
+  done
+
+  for expected_fail in $bad_cases; do
+    self_test_total=$((self_test_total + 1))
+    if [ ! -f "$self_test_dir/${expected_fail}/${expected_fail}.spec.ts" ]; then
+      echo "  FAIL  $expected_fail — fixture missing, so the case proves nothing"
+      self_test_failures=$((self_test_failures + 1))
+      continue
+    fi
+    run_case "$expected_fail"
+    if [ "$RUN_CASE_FINDINGS" -eq 1 ] && [ "$RUN_CASE_STATUS" -eq 1 ]; then
+      echo "  PASS  $expected_fail (1 finding, exit 1, as expected)"
+    else
+      echo "  FAIL  $expected_fail reported $RUN_CASE_FINDINGS finding(s)" \
+        "and exit $RUN_CASE_STATUS; expected 1 and 1"
+      self_test_failures=$((self_test_failures + 1))
+    fi
+  done
+
+  if [ "$self_test_failures" -gt 0 ]; then
+    echo "SELF-TEST FAIL: $self_test_failures case(s) behaved incorrectly."
+    exit 1
+  fi
+  echo "SELF-TEST OK: all $self_test_total cases classified correctly."
+  exit 0
+fi
+
+# Honour a caller-supplied TESTS_DIR (the self-test points it at a fixture
+# tree); otherwise resolve it relative to this script.
+#
+# The caller-supplied path is validated too. resolve_tests_dir is the only place
+# that checked, so skipping it made the guard FAIL OPEN: a bad path printed OK
+# and exited 0, which for a guard is worse than not existing, because it is
+# trusted. Same reasoning as the stale-data guard's fail-closed rule.
+if [ -z "${TESTS_DIR:-}" ]; then
+  resolve_tests_dir
+elif [ ! -d "$TESTS_DIR" ]; then
+  echo "tests directory not found: $TESTS_DIR"
+  exit 1
+fi
 
 # How many lines after a create call may contain its registration. Registration
 # is required "immediately after" creation so cleanup survives a mid-setup
@@ -107,8 +308,26 @@ readonly REGISTER_ARG_SPAN=6
 # sit ~25 lines below the create (see leads.spec.ts's F9-V2).
 readonly CONVERT_REGISTRATION_WINDOW=30
 
-readonly CREATE_PATTERN='(create[A-Z][A-Za-z]*ViaApi|convertLeadViaApi)\('
-readonly REGISTER_PATTERN='(testData\.register|testData\.registerCustomTeardown|registerAdminTeardown)\('
+# User creation reaches the database by three routes, and until MINCRM-668 this
+# script saw none of them: inviteUserViaApi does not match the create*ViaApi
+# shape, and several iam/ specs POST the invite endpoint directly. That gap is
+# what let four call sites deactivate outside any try/finally and leak a user on
+# every failing run.
+readonly CREATE_PATTERN='(create[A-Z][A-Za-z]*ViaApi|convertLeadViaApi|inviteUserViaApi)\(|['"'"'"`]/api/v1/users/invite['"'"'"`]'
+
+# Helpers that register their own teardown internally, so their call sites need
+# no adjacent register() line. These are the safe path — the whole point of
+# MINCRM-668 was moving registration inside them — so requiring a registration
+# the caller cannot see would push authors back to hand-rolled cleanup.
+readonly SELF_REGISTERING_PATTERN='(createTestUser|createTestRep|createTestAdmin)\('
+
+# Bindings that are not records and therefore cannot be registered. An invite
+# returns `{ user, inviteToken }`; the token is a string, not a row. Requiring
+# it to appear in a register() call would fail every correctly-registered site.
+# Matched against the ORIGINAL destructured key (the `user` in `{ user: rep }`),
+# because that is what names the thing, not the caller's local alias.
+readonly NON_RECORD_BINDINGS_KEY='^(inviteToken|token|password)([[:space:]]*:.*)?$'
+readonly REGISTER_PATTERN='(testData\.register|testData\.registerCustomTeardown|registerAdminTeardown|registerUserDeactivation)\('
 readonly OPT_OUT_MARKER='MINCRM-686-ok'
 
 # The opt-out marker must carry a reason. A bare `// MINCRM-686-ok` would make a
@@ -117,8 +336,10 @@ readonly OPT_OUT_MARKER='MINCRM-686-ok'
 readonly OPT_OUT_WITH_REASON="${OPT_OUT_MARKER}:[[:space:]]*[^[:space:]]"
 
 FOUND=0
+SCANNED=0
 
 while IFS= read -r -d '' spec_file; do
+  SCANNED=$((SCANNED + 1))
   file_violations=""
 
   while IFS=: read -r line_no line_text; do
@@ -128,6 +349,21 @@ while IFS= read -r -d '' spec_file; do
     # createFooViaApi(...)` is a definition, not a call site. Registration
     # belongs at the call sites below it, which this loop reaches separately.
     if printf '%s' "$line_text" | grep -qE '(async +)?function +(create[A-Z][A-Za-z]*ViaApi|convertLeadViaApi)\('; then
+      continue
+    fi
+
+    # Skip comment lines. The raw-POST alternation matches prose, and these
+    # specs routinely name the invite endpoint in docblocks.
+    if printf '%s' "$line_text" | grep -qE '^[[:space:]]*(//|\*|/\*)'; then
+      continue
+    fi
+
+    # A self-registering helper cleans up internally, so its call needs no
+    # adjacent register(). Blank the call rather than skipping the line: a line
+    # holding BOTH a self-registering helper and another create would otherwise
+    # exempt the second one too.
+    line_text="$(printf '%s' "$line_text" | sed -E "s/${SELF_REGISTERING_PATTERN}//g")"
+    if ! printf '%s' "$line_text" | grep -qE "$CREATE_PATTERN"; then
       continue
     fi
 
@@ -209,7 +445,16 @@ while IFS= read -r -d '' spec_file; do
     #   const contact = await createContactViaApi(...)          -> "contact"
     #   const { contact_id, deal_id } = await convertLeadViaApi -> "contact_id deal_id"
     # A destructuring create must have EVERY name it binds registered.
-    bindings="$(printf '%s' "$line_text" | sed -nE 's/^[[:space:]]*(const|let|var)[[:space:]]+\{([^}]*)\}[[:space:]]*=.*/\2/p' | tr ',' ' ')"
+    # `{ user: managerUser }` renames the binding; only the LOCAL name
+    # (managerUser) exists in scope, so collapse `outer: local` to `local`
+    # before splitting, or the two halves split into separate bogus tokens.
+    bindings="$(printf '%s' "$line_text" |
+      sed -nE 's/^[[:space:]]*(const|let|var)[[:space:]]+\{([^}]*)\}[[:space:]]*=.*/\2/p' |
+      tr ',' '\n' |
+      sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' |
+      { grep -vE "$NON_RECORD_BINDINGS_KEY" || true; } |
+      sed -E 's/^[A-Za-z_$][A-Za-z0-9_$]*[[:space:]]*:[[:space:]]*//' |
+      tr '\n' ' ')"
     if [ -z "$bindings" ]; then
       bindings="$(printf '%s' "$line_text" | sed -nE 's/^[[:space:]]*(const|let|var)[[:space:]]+([A-Za-z_$][A-Za-z0-9_$]*)[[:space:]]*=.*/\2/p')"
     fi
@@ -251,7 +496,7 @@ while IFS= read -r -d '' spec_file; do
         grep -vE '^[[:space:]]*(//|\*|/\*)' |
         awk '
           index($0, "testData.register(") || index($0, "testData.registerCustomTeardown(") ||
-            index($0, "registerAdminTeardown(") { inside = 1 }
+            index($0, "registerAdminTeardown(") || index($0, "registerUserDeactivation(") { inside = 1 }
           inside { print }
           inside && /\);[[:space:]]*$/ { inside = 0 }
         ' |
@@ -268,10 +513,42 @@ while IFS= read -r -d '' spec_file; do
             continue
           fi
 
+          # Via a destructure: `const { user } = inviteRes.body` then
+          # register(user.id). The invite endpoints return an envelope, so the
+          # thing that gets registered is a field of the create's binding rather
+          # than the binding itself.
+          destructured="$(printf '%s' "$window_text" |
+            sed -nE "s/^[[:space:]]*(const|let|var)[[:space:]]+\{([^}]*)\}[[:space:]]*=[[:space:]]*${name}(\.[A-Za-z0-9_\$]+)*[[:space:]]*;.*/\2/p" |
+            tr ',' ' ' | sed -E 's/[A-Za-z_$][A-Za-z0-9_$]*[[:space:]]*:[[:space:]]*//g')"
+          destructure_registered=0
+          for field in $destructured; do
+            if printf '%s' "$register_lines" |
+              grep -qE "[^A-Za-z0-9_\$]${field}[^A-Za-z0-9_\$]"; then
+              destructure_registered=1
+              break
+            fi
+          done
+          if [ "$destructure_registered" -eq 1 ]; then
+            continue
+          fi
+
           # Via one alias: `const leadId = created.id` then register(leadId).
-          alias="$(printf '%s' "$window_text" | sed -nE "s/^[[:space:]]*(const|let|var)[[:space:]]+([A-Za-z_\$][A-Za-z0-9_\$]*)[[:space:]]*=[[:space:]]*${name}\..*/\2/p" | head -1)"
-          if [ -n "$alias" ] && printf '%s' "$register_lines" |
-            grep -qE "[^A-Za-z0-9_\$]${alias}[^A-Za-z0-9_\$]"; then
+          # `const|let|var` is optional: a test that declared the variable
+          # earlier (`let repId: string | null = null`) assigns bare.
+          # ALL aliases, not just the first. A create's id is often assigned
+          # more than once (`logged = user.email` above `const id = user.id`),
+          # and taking only the first produced a false positive on a correctly
+          # registered site.
+          aliases="$(printf '%s' "$window_text" | sed -nE "s/^[[:space:]]*((const|let|var)[[:space:]]+)?([A-Za-z_\$][A-Za-z0-9_\$]*)[[:space:]]*=[[:space:]]*${name}\..*/\3/p")"
+          alias_registered=0
+          for alias in $aliases; do
+            if printf '%s' "$register_lines" |
+              grep -qE "[^A-Za-z0-9_\$]${alias}[^A-Za-z0-9_\$]"; then
+              alias_registered=1
+              break
+            fi
+          done
+          if [ "$alias_registered" -eq 1 ]; then
             continue
           fi
 
@@ -302,6 +579,13 @@ done < <(find_spec_files)
 if [ "$FOUND" -eq 1 ]; then
   echo "FAIL: one or more specs create records with no teardown registration."
   echo "See MINCRM-686 for the required pattern."
+  exit 1
+fi
+
+# Scanning nothing is not a pass. An empty or wrong TESTS_DIR would otherwise
+# report OK, which is the fail-open shape this guard exists to prevent.
+if [ "$SCANNED" -eq 0 ]; then
+  echo "FAIL: no spec files found under $TESTS_DIR — nothing was checked."
   exit 1
 fi
 

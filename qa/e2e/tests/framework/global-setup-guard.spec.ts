@@ -27,6 +27,7 @@ import {
   selectsOnlyFrameworkSpecs,
   FLAGS_TAKING_A_VALUE,
   StaleDataAbortError,
+  STALE_DATA_COUNT_SQL,
 } from '../../globalSetup.js';
 import {
   resolveRuntimeTestStackDb,
@@ -366,5 +367,40 @@ test.describe('StaleDataAbortError', () => {
 
     expect(error.message).toContain('2049 users');
     expect(error.message).toContain('npm run e2e:setup');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The stale-data count query (MINCRM-668)
+// ---------------------------------------------------------------------------
+
+test.describe('STALE_DATA_COUNT_SQL', () => {
+  test('counts TOTAL rows unfiltered, because pagination pays for inactive rows too', () => {
+    // MINCRM-544 was a pagination failure, and listUsers (userService.ts:294)
+    // counts and pages every row with no status filter — a deactivated user
+    // costs exactly what an active one does. Filtering the total would let 50k
+    // deactivated rows accumulate with the guard reporting near zero, blinding
+    // it to the incident it exists to prevent.
+    expect(STALE_DATA_COUNT_SQL).toContain('COUNT(*) AS total');
+    // The only WHERE permitted is the one inside FILTER(...), which scopes the
+    // active count. A WHERE after the FROM would filter the total.
+    expect(
+      STALE_DATA_COUNT_SQL.slice(STALE_DATA_COUNT_SQL.indexOf('FROM')),
+      'no WHERE may follow the FROM — that would filter the total',
+    ).not.toContain('WHERE');
+  });
+
+  test('counts ACTIVE users separately, so a teardown regression is observable', () => {
+    // Cleanup deactivates rather than deletes, so the total is identical
+    // whether every teardown fired or every one leaked. The active count is
+    // the number that moves when teardown breaks.
+    expect(STALE_DATA_COUNT_SQL).toContain("FILTER (WHERE status <> 'inactive') AS active");
+  });
+
+  test('reads both counts in ONE scan of the table', () => {
+    // A second query would double the work on a table this guard runs against
+    // at startup of every local run.
+    expect(STALE_DATA_COUNT_SQL.match(/SELECT/gi) ?? [], 'exactly one SELECT').toHaveLength(1);
+    expect(STALE_DATA_COUNT_SQL.match(/FROM/gi) ?? [], 'exactly one FROM').toHaveLength(1);
   });
 });

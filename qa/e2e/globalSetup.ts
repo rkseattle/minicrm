@@ -29,6 +29,33 @@ const STALE_DATA_WARN_THRESHOLD = 500;
 /** User count at which the run is aborted to prevent cascading failures (local only). */
 const STALE_DATA_ABORT_THRESHOLD = 2000;
 
+/**
+ * Non-inactive user count at which a teardown-regression warning is emitted.
+ *
+ * "Active" here means `status <> 'inactive'`, so it counts `invited` users too
+ * — an invited-and-abandoned row is a leak exactly like an activated one, and
+ * the invite path is where the leaks were.
+ *
+ * Deliberately far below the total-row thresholds: cleanup deactivates every
+ * user it creates, and `reset-e2e-data.ts` leaves exactly one row, so the
+ * steady-state floor is ~1 plus whatever a run currently holds open. 100 is
+ * loose enough that a large parallel run never trips it and tight enough that
+ * a broken teardown does so within a session. (MINCRM-668)
+ */
+const STALE_ACTIVE_USER_WARN_THRESHOLD = 100;
+
+/**
+ * The stale-data count query.
+ *
+ * Exported so a framework spec can assert its shape without a database. Two
+ * properties are load-bearing and neither is obvious from the call site: the
+ * total is unfiltered (deactivated rows still cost pagination, which is the
+ * MINCRM-544 failure), and the active count is a FILTER on the same scan rather
+ * than a second query. (MINCRM-668)
+ */
+export const STALE_DATA_COUNT_SQL =
+  "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status <> 'inactive') AS active FROM users";
+
 /** Path fragment identifying the framework specs, which need no database. */
 const FRAMEWORK_SPEC_DIR = 'tests/framework';
 
@@ -261,8 +288,23 @@ export async function assertStaleDataGuard(
   const client = new Client(connection);
   try {
     await client.connect();
-    const result = await client.query<{ count: string }>('SELECT COUNT(*) AS count FROM users');
-    const userCount = parseInt(result.rows[0].count, 10);
+    // TWO counts, because they answer different questions and one query cannot
+    // serve both. (MINCRM-668)
+    //
+    // total — the abort/warn signal, unchanged. MINCRM-544 was a PAGINATION
+    // failure, and `listUsers` (userService.ts:294-300) counts and pages over
+    // every row with no status filter, so a deactivated user costs exactly what
+    // an active one does. Counting only active users here would let 50k
+    // deactivated rows accumulate with the guard reporting near zero — blinding
+    // it to the very incident it exists to prevent.
+    //
+    // active — leak observability. Cleanup deactivates rather than deletes, so
+    // the total is identical whether every teardown fired or every one leaked.
+    // The active count is the one that moves when teardown breaks, and it is
+    // reported alongside the total rather than replacing it.
+    const result = await client.query<{ total: string; active: string }>(STALE_DATA_COUNT_SQL);
+    const userCount = parseInt(result.rows[0].total, 10);
+    const activeUserCount = parseInt(result.rows[0].active, 10);
 
     if (userCount >= STALE_DATA_ABORT_THRESHOLD) {
       throw new StaleDataAbortError(userCount);
@@ -270,8 +312,21 @@ export async function assertStaleDataGuard(
 
     if (userCount >= STALE_DATA_WARN_THRESHOLD) {
       console.warn(
-        `[globalSetup] E2E database contains ${userCount} users — ` +
+        `[globalSetup] E2E database contains ${userCount} users ` +
+          `(${activeUserCount} active) — ` +
           "run 'npm run e2e:setup' to reset before testing locally.",
+      );
+    }
+
+    // A large ACTIVE population is a different signal from a large total: rows
+    // survive a session by design, but users left active are ones a teardown
+    // did not deactivate. Warned separately so a teardown regression is
+    // visible well before the total trips anything.
+    if (activeUserCount >= STALE_ACTIVE_USER_WARN_THRESHOLD) {
+      console.warn(
+        `[globalSetup] ${activeUserCount} users are still ACTIVE. Cleanup ` +
+          'deactivates users, so a population this size suggests teardown is ' +
+          'not running — check for teardown-failed annotations. (MINCRM-668)',
       );
     }
   } catch (err) {

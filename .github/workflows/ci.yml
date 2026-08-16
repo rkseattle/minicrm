@@ -1034,6 +1034,9 @@ jobs:
       - name: Check the coverage build-SHA accept-set has not drifted (MINCRM-688)
         run: bash qa/scripts/check-sha-pattern-parity.sh
 
+      - name: Self-test the teardown-registration guard (MINCRM-668)
+        run: bash qa/scripts/check-e2e-cleanup.sh --self-test
+
       - name: Check specs register created records for teardown (MINCRM-686)
         run: bash qa/scripts/check-e2e-cleanup.sh
 
