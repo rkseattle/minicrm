@@ -848,7 +848,86 @@ function attestOrThrow(headSha: string, selection: SelectTestsResult | null): vo
   console.log('[pre-push-tia] Attestation passed.');
 }
 
+/**
+ * Repo-root typecheck and dependency audit — the two CI jobs this hook could
+ * previously let a developer discover from CI instead of locally. (MINCRM-668)
+ *
+ * WHY THESE TWO, AND WHY HERE
+ * ---------------------------
+ * .claude/gates/pre-push.md has required both for a long time, but nothing
+ * enforced them, and each has a recorded failure mode:
+ *
+ *   - Typecheck. The checklist's own line is "a branch with type errors fails
+ *     CI even when every test passes locally" — this hook enforced the tests
+ *     half of that sentence and not the types half. pre-commit's lint-staged
+ *     runs ESLint on STAGED FILES only, which structurally cannot see a
+ *     cross-file type break, and runs no tsc at all.
+ *   - Audit. Advisories are published against versions already in the
+ *     lockfile, so a tree that was clean yesterday fails today with no repo
+ *     change. MINCRM-703 is exactly this: a red CI audit job first seen in CI
+ *     because the branch touched no package.json.
+ *
+ * Both are seconds against this hook's 20-60 minute E2E leg, and both run
+ * BEFORE it so a type error fails in about a minute rather than after an hour.
+ *
+ * Lint is deliberately NOT here. pre-commit's lint-staged already runs ESLint
+ * (plus prettier, markdownlint, actionlint) over every staged file on the way
+ * in, so the marginal catch of a second repo-wide pass does not pay for
+ * itself in a hook that already runs twice-over work.
+ *
+ * Both are hard failures, not warnings — unlike runCreateCoverageDb and
+ * runLoadCoverageMap above, whose best-effort treatment is for local
+ * INFRASTRUCTURE being unavailable. A type error and a published advisory are
+ * properties of the code being pushed, not of this machine, and they fail CI
+ * for everyone.
+ */
+function runStaticGates(): void {
+  // stdio inherit: tsc and npm audit already format their own diagnostics, and
+  // a developer needs the actual error text, not a summary of it.
+  console.log('[pre-push-tia] Typechecking (repo root)...');
+  try {
+    execFileSync('npm', ['run', 'typecheck'], {
+      cwd: REPO_ROOT,
+      stdio: ['ignore', 'inherit', 'inherit'],
+      env: process.env,
+    });
+  } catch {
+    // The message, not the underlying "Command failed: npm run typecheck" —
+    // tsc's own output is directly above and is what actually needs reading.
+    throw new Error('typecheck failed — see the errors above');
+  }
+
+  // scripts/npm-audit-gate.sh, NOT a bare `npm audit --audit-level=high` here:
+  // the same script .github/actions/npm-audit runs, so the local gate and both
+  // CI callers are one rule rather than three implementations of it. An inline
+  // copy is materially weaker, not merely duplicated — `npm audit` exits
+  // non-zero both when it finds advisories and when it fails to run at all, so
+  // a bare invocation reports green on a registry outage that produced no
+  // verdict. The shared script fails closed on an unreadable report.
+  // (MINCRM-703, MINCRM-704)
+  console.log('[pre-push-tia] Auditing dependencies (--audit-level=high)...');
+  try {
+    execFileSync(resolve(REPO_ROOT, 'scripts', 'npm-audit-gate.sh'), [], {
+      cwd: REPO_ROOT,
+      stdio: ['ignore', 'inherit', 'inherit'],
+      env: process.env,
+    });
+  } catch {
+    // The script has already printed the advisory table and the re-resolve
+    // instructions; repeating them here would only bury its output.
+    throw new Error('npm audit gate failed — see above');
+  }
+}
+
 function main(): void {
+  // Static gates run BEFORE the SKIP_TIA_PREPUSH early-return, deliberately.
+  // That variable means "skip the TIA-selected E2E run" — the expensive leg a
+  // developer legitimately skips when the gate was just run by hand on an
+  // unchanged HEAD (.claude/gates/pre-push.md). Typecheck and audit are seconds,
+  // are not what an E2E run covers, and are precisely what that bypass would
+  // otherwise leave unguarded, so they are outside its scope.
+  runStaticGates();
+
   if (process.env.SKIP_TIA_PREPUSH === '1') {
     logBypass('SKIP_TIA_PREPUSH=1');
     console.log(
