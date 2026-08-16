@@ -110,68 +110,59 @@ test.beforeEach(async ({ restClient }) => {
 
 // ── Team CRUD ─────────────────────────────────────────────────────────────────
 
-test('@functional teams — create, update, and delete a team', async ({ restClient }) => {
+test('@functional teams — create, update, and delete a team', async ({ testData, restClient }) => {
   const suffix = `${Date.now()}-${process.pid}`;
   let teamId: string | null = null;
 
-  try {
-    // Create
-    const createRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
-      name: `E2E Team ${suffix}`,
-    });
-    expect(createRes.status).toBe(201);
-    teamId = createRes.body.team.id;
-    expect(createRes.body.team.name).toBe(`E2E Team ${suffix}`);
-    expect(createRes.body.team.manager_id).toBeNull();
-    expect(createRes.body.team.parent_team_id).toBeNull();
+  // Create
+  const createRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
+    name: `E2E Team ${suffix}`,
+  });
+  expect(createRes.status).toBe(201);
+  teamId = createRes.body.team.id;
+  testData.register('team', teamId, `/api/v1/teams/${teamId}`);
+  expect(createRes.body.team.name).toBe(`E2E Team ${suffix}`);
+  expect(createRes.body.team.manager_id).toBeNull();
+  expect(createRes.body.team.parent_team_id).toBeNull();
 
-    // Read via list
-    const listRes = await restClient.get<{ teams: TeamResponse[] }>('/api/v1/teams');
-    expect(listRes.status).toBe(200);
-    const found = listRes.body.teams.find((t) => t.id === teamId);
-    expect(found).toBeDefined();
-    expect(found!.member_count).toBe(0);
+  // Read via list
+  const listRes = await restClient.get<{ teams: TeamResponse[] }>('/api/v1/teams');
+  expect(listRes.status).toBe(200);
+  const found = listRes.body.teams.find((t) => t.id === teamId);
+  expect(found).toBeDefined();
+  expect(found!.member_count).toBe(0);
 
-    // Update
-    const updateRes = await restClient.put<{ team: TeamResponse }>(`/api/v1/teams/${teamId}`, {
-      name: `E2E Team Updated ${suffix}`,
-    });
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.team.name).toBe(`E2E Team Updated ${suffix}`);
-  } finally {
-    if (teamId) {
-      await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
-  }
+  // Update
+  const updateRes = await restClient.put<{ team: TeamResponse }>(`/api/v1/teams/${teamId}`, {
+    name: `E2E Team Updated ${suffix}`,
+  });
+  expect(updateRes.status).toBe(200);
+  expect(updateRes.body.team.name).toBe(`E2E Team Updated ${suffix}`);
 });
 
 test('@functional teams — duplicate name returns 409 TEAM_NAME_DUPLICATE', async ({
+  testData,
   restClient,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
   let teamId: string | null = null;
 
-  try {
-    const createRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
-      name: `E2E Dup Team ${suffix}`,
-    });
-    teamId = createRes.body.team.id;
+  const createRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
+    name: `E2E Dup Team ${suffix}`,
+  });
+  teamId = createRes.body.team.id;
+  testData.register('team', teamId, `/api/v1/teams/${teamId}`);
 
-    let threw = false;
-    try {
-      await restClient.post('/api/v1/teams', { name: `E2E Dup Team ${suffix}` });
-    } catch (err) {
-      threw = true;
-      expect(err).toBeInstanceOf(RestClientError);
-      expect((err as RestClientError).status).toBe(409);
-      expect(errorBody(err).error?.code).toBe('TEAM_NAME_DUPLICATE');
-    }
-    expect(threw).toBe(true);
-  } finally {
-    if (teamId) {
-      await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
+  let threw = false;
+  try {
+    await restClient.post('/api/v1/teams', { name: `E2E Dup Team ${suffix}` });
+  } catch (err) {
+    threw = true;
+    expect(err).toBeInstanceOf(RestClientError);
+    expect((err as RestClientError).status).toBe(409);
+    expect(errorBody(err).error?.code).toBe('TEAM_NAME_DUPLICATE');
   }
+  expect(threw).toBe(true);
 });
 
 // ── Member management ─────────────────────────────────────────────────────────
@@ -191,6 +182,7 @@ test('@functional teams — add member and verify member_count increments', asyn
       name: `E2E Members Team ${suffix}`,
     });
     teamId = teamRes.body.team.id;
+    testData.register('team', teamId, `/api/v1/teams/${teamId}`);
 
     const { repId: rId, repContext: rCtx } = await createActivatedRep(
       testData,
@@ -225,9 +217,6 @@ test('@functional teams — add member and verify member_count increments', asyn
     const team2 = listRes2.body.teams.find((t) => t.id === teamId);
     expect(team2!.member_count).toBe(0);
   } finally {
-    if (teamId) {
-      await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
     if (repContext) {
       await repContext.dispose();
     }
@@ -249,6 +238,7 @@ test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXI
       name: `E2E DupMember Team ${suffix}`,
     });
     teamId = teamRes.body.team.id;
+    testData.register('team', teamId, `/api/v1/teams/${teamId}`);
 
     const { repId: rId, repContext: rCtx } = await createActivatedRep(
       testData,
@@ -278,9 +268,6 @@ test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXI
     }
     expect(threw).toBe(true);
   } finally {
-    if (teamId) {
-      await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
     if (repContext) {
       await repContext.dispose();
     }
@@ -290,43 +277,36 @@ test('@functional teams — duplicate member returns 409 TEAM_MEMBER_ALREADY_EXI
 // ── Child team guard ──────────────────────────────────────────────────────────
 
 test('@functional teams — deleting a team with children returns 409 TEAM_HAS_CHILDREN', async ({
+  testData,
   restClient,
 }) => {
   const suffix = `${Date.now()}-${process.pid}`;
   let parentId: string | null = null;
   let childId: string | null = null;
 
+  const parentRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
+    name: `E2E Parent Team ${suffix}`,
+  });
+  parentId = parentRes.body.team.id;
+  testData.register('team', parentId, `/api/v1/teams/${parentId}`);
+
+  const childRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
+    name: `E2E Child Team ${suffix}`,
+    parent_team_id: parentId,
+  });
+  childId = childRes.body.team.id;
+  testData.register('team', childId, `/api/v1/teams/${childId}`);
+
+  let threw = false;
   try {
-    const parentRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
-      name: `E2E Parent Team ${suffix}`,
-    });
-    parentId = parentRes.body.team.id;
-
-    const childRes = await restClient.post<{ team: TeamResponse }>('/api/v1/teams', {
-      name: `E2E Child Team ${suffix}`,
-      parent_team_id: parentId,
-    });
-    childId = childRes.body.team.id;
-
-    let threw = false;
-    try {
-      await restClient.delete(`/api/v1/teams/${parentId}`);
-    } catch (err) {
-      threw = true;
-      expect(err).toBeInstanceOf(RestClientError);
-      expect((err as RestClientError).status).toBe(409);
-      expect(errorBody(err).error?.code).toBe('TEAM_HAS_CHILDREN');
-    }
-    expect(threw).toBe(true);
-  } finally {
-    // Delete child first, then parent
-    if (childId) {
-      await restClient.delete(`/api/v1/teams/${childId}`).catch(() => null);
-    }
-    if (parentId) {
-      await restClient.delete(`/api/v1/teams/${parentId}`).catch(() => null);
-    }
+    await restClient.delete(`/api/v1/teams/${parentId}`);
+  } catch (err) {
+    threw = true;
+    expect(err).toBeInstanceOf(RestClientError);
+    expect((err as RestClientError).status).toBe(409);
+    expect(errorBody(err).error?.code).toBe('TEAM_HAS_CHILDREN');
   }
+  expect(threw).toBe(true);
 });
 
 // ── Capability enforcement ────────────────────────────────────────────────────
@@ -347,6 +327,7 @@ test('@functional teams — rep without teams:manage capability receives 403 on 
       name: `E2E Cap Guard Team ${suffix}`,
     });
     teamId = teamRes.body.team.id;
+    testData.register('team', teamId, `/api/v1/teams/${teamId}`);
 
     const {
       repId: rId,
@@ -408,9 +389,6 @@ test('@functional teams — rep without teams:manage capability receives 403 on 
     const listRes = await repClient.get('/api/v1/teams');
     expect(listRes.status).toBe(200);
   } finally {
-    if (teamId) {
-      await restClient.delete(`/api/v1/teams/${teamId}`).catch(() => null);
-    }
     if (repContext) {
       await repContext.dispose();
     }
