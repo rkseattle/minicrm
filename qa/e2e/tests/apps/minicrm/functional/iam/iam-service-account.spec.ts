@@ -287,11 +287,11 @@ test('@functional F-SA-B3: service account can create a contact with Bearer toke
     last_name: `F-SA-B3-${Date.now()}`,
     email: `sa-b3-contact-${Date.now()}@example.com`,
   });
-  expect(res.status, 'Bearer POST /contacts should return 201').toBe(201);
-
-  // Register for teardown — contact is owned by the SA, which we deactivate below.
-  // Deactivation doesn't cascade-delete contacts so we must clean up explicitly.
-  const contactId = (res.body as { contact: { id: string } }).contact?.id;
+  // Register BEFORE asserting the status. The contact is owned by the SA, which
+  // this test deactivates, and deactivation does not cascade-delete contacts —
+  // so an assertion failure between the create and the register would leak the
+  // row. Ordering matches the rule the rest of this branch enforces. (MINCRM-668)
+  const contactId = (res.body as { contact?: { id?: string } }).contact?.id;
   if (contactId) {
     registerAdminTeardown(
       testData,
@@ -301,6 +301,8 @@ test('@functional F-SA-B3: service account can create a contact with Bearer toke
       `/api/v1/contacts/${contactId}`,
     );
   }
+
+  expect(res.status, 'Bearer POST /contacts should return 201').toBe(201);
 });
 
 test('@functional F-SA-B4: invalid Bearer token returns 401', async ({ restClient }) => {

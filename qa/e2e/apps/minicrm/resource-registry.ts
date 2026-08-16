@@ -179,9 +179,10 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     writes: ['settings.visibility_policy'],
   },
   {
-    // File-wide. Every test here depends on AI being enabled — the health-check
-    // button only renders when the server reports it on — and the beforeEach now
-    // sets it rather than inheriting it, so this is a write as well as a read.
+    // File-wide, and all four tests in the file are @serial: the beforeEach sets
+    // AI on and the afterEach restores defaults, so every test writes it. The
+    // panel only renders when the server reports AI on, and all four were
+    // verified to depend on it.
     // withFlags() cannot substitute: it intercepts the CLIENT's flag fetch and
     // never reaches ai_configuration.enabled, which the server checks.
     //
@@ -195,8 +196,13 @@ export const RESOURCE_REGISTRY: readonly ResourceRegistryEntry[] = [
     // beside deal-health-check ... with a live cross-file race"; this entry is
     // the half that was still missing. (MINCRM-668)
     file: 'qa/e2e/tests/apps/minicrm/functional/deals/deal-health-check.spec.ts',
-    reads: ['settings.ai_configuration_enabled'],
-    writes: ['settings.ai_configuration_enabled'],
+    // feature_flags.ai_features as well as the settings key: setAiEnabled writes
+    // BOTH in one server transaction (aiConfigService.ts). Every other
+    // setAiEnabled caller in this registry declares the pair; omitting it here
+    // drew no edge to feature-flags.spec.ts, which is the same undeclared-cascade
+    // defect MINCRM-705 fixed across eleven entries.
+    reads: ['settings.ai_configuration_enabled', 'feature_flags.ai_features'],
+    writes: ['settings.ai_configuration_enabled', 'feature_flags.ai_features'],
   },
   {
     file: 'qa/e2e/tests/apps/minicrm/functional/admin/aiSettings.spec.ts',
