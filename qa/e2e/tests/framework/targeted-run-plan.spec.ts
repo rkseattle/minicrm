@@ -154,11 +154,37 @@ test.describe('planTargetedInvocations', () => {
     expect(invert.test('@functional F-C1: creates a contact')).toBe(false);
   });
 
-  test('NON_SERIAL_GREP_INVERT stays character-identical to CI', () => {
-    // Parity with e2e-functional's --grep-invert is the entire point of the
-    // constant; a well-meaning "simplification" to a regex form would silently
-    // change which specs run locally. (MINCRM-706)
+  test('NON_SERIAL_GREP_INVERT holds the exact literal CI is pinned to', () => {
+    // Deliberately NOT named "matches CI": this assertion cannot see ci.yml. It
+    // pins the local half of a two-sided invariant, so a "simplification" to a
+    // regex form fails here immediately. The cross-file half — that ci.yml and
+    // the gate document carry this same literal in a REAL command, not merely
+    // in prose — is enforced by qa/scripts/check-grep-invert-parity.sh, which
+    // runs in e2e-framework-purity. Neither check substitutes for the other.
+    // (MINCRM-706)
     expect(NON_SERIAL_GREP_INVERT).toBe('visual-regression|serial');
+  });
+
+  test('no @functional title falls between the two halves', () => {
+    // The inversion is now BROADER than SERIAL_GREP (it also drops anything
+    // matching visual-regression), so the halves are no longer exact
+    // complements by construction — a title could match neither, and any such
+    // title would run in no invocation at all.
+    //
+    // That is safe only while nothing @functional lands in the gap, which is a
+    // convention rather than a guarantee. Asserted here so a future spec named,
+    // say, "visual-regression handling @functional" fails this test instead of
+    // silently never running.
+    const invert = new RegExp(NON_SERIAL_GREP_INVERT);
+    for (const title of [
+      '@functional F-C1: creates a contact',
+      '@functional F-M1: plain',
+      '@functional V-1: renders the visual editor',
+    ]) {
+      const runsInSerialHalf = isSerialTitle(title);
+      const runsInNonSerialHalf = !invert.test(title);
+      expect(runsInSerialHalf || runsInNonSerialHalf).toBe(true);
+    }
   });
 
   test('each half writes its own JUnit and output paths', () => {
