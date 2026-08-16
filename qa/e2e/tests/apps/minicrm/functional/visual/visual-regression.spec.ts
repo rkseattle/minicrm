@@ -135,9 +135,16 @@ test.beforeAll(async ({ restClient }) => {
   // MINCRM-686-ok: created in beforeAll, where the test-scoped testData fixture
   // does not exist; torn down in afterAll instead. (MINCRM-416)
   const { user, inviteToken } = await inviteUserViaApi(restClient, { name, email, role: 'admin' });
+
+  // Record the id BEFORE the two calls below, both of which are network calls
+  // that can throw. afterAll gates on `sharedAdmin`, so assigning it last meant
+  // a beforeAll failure left this admin with nothing to deactivate it — the
+  // same register-after-the-throwable-step defect fixed elsewhere on this
+  // branch, in the one place that cannot use TestDataManager. (MINCRM-668)
+  sharedAdmin = { userId: user.id, email, password };
+
   await setUserPassword(restClient, inviteToken, password);
   await suppressUserOnboarding(restClient, email, password);
-  sharedAdmin = { userId: user.id, email, password };
 });
 
 // afterAll receives its own restClient fixture — the one captured in beforeAll

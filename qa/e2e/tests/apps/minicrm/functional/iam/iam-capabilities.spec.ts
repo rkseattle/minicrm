@@ -121,43 +121,41 @@ test.beforeEach(async ({ restClient }) => {
 
 // ── Custom role CRUD ──────────────────────────────────────────────────────────
 
-test('@functional custom role — create, read, update, delete lifecycle', async ({ restClient }) => {
+test('@functional custom role — create, read, update, delete lifecycle', async ({
+  testData,
+  restClient,
+}) => {
   const suffix = `${Date.now()}-${process.pid}`;
   let roleId: string | null = null;
 
-  try {
-    const createRes = await restClient.post<{ data: CustomRoleResponse }>('/api/v1/custom-roles', {
-      name: `cap-test-${suffix}`,
-      description: 'E2E test role',
-      capabilities: ['contacts:view', 'deals:view'],
-    });
-    expect(createRes.status).toBe(201);
-    roleId = createRes.body.data.id;
-    expect(createRes.body.data.name).toBe(`cap-test-${suffix}`);
-    expect(createRes.body.data.capabilities).toContain('contacts:view');
-    expect(createRes.body.data.is_builtin).toBe(false);
+  const createRes = await restClient.post<{ data: CustomRoleResponse }>('/api/v1/custom-roles', {
+    name: `cap-test-${suffix}`,
+    description: 'E2E test role',
+    capabilities: ['contacts:view', 'deals:view'],
+  });
+  expect(createRes.status).toBe(201);
+  roleId = createRes.body.data.id;
+  testData.register('custom_role', roleId, `/api/v1/custom-roles/${roleId}`);
+  expect(createRes.body.data.name).toBe(`cap-test-${suffix}`);
+  expect(createRes.body.data.capabilities).toContain('contacts:view');
+  expect(createRes.body.data.is_builtin).toBe(false);
 
-    const getRes = await restClient.get<{ data: CustomRoleResponse }>(
-      `/api/v1/custom-roles/${roleId}`,
-    );
-    expect(getRes.status).toBe(200);
-    expect(getRes.body.data.id).toBe(roleId);
+  const getRes = await restClient.get<{ data: CustomRoleResponse }>(
+    `/api/v1/custom-roles/${roleId}`,
+  );
+  expect(getRes.status).toBe(200);
+  expect(getRes.body.data.id).toBe(roleId);
 
-    const updateRes = await restClient.put<{ data: CustomRoleResponse }>(
-      `/api/v1/custom-roles/${roleId}`,
-      {
-        name: `cap-test-updated-${suffix}`,
-        capabilities: ['contacts:view', 'contacts:create'],
-      },
-    );
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.data.name).toBe(`cap-test-updated-${suffix}`);
-    expect(updateRes.body.data.capabilities).toContain('contacts:create');
-  } finally {
-    if (roleId) {
-      await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
-    }
-  }
+  const updateRes = await restClient.put<{ data: CustomRoleResponse }>(
+    `/api/v1/custom-roles/${roleId}`,
+    {
+      name: `cap-test-updated-${suffix}`,
+      capabilities: ['contacts:view', 'contacts:create'],
+    },
+  );
+  expect(updateRes.status).toBe(200);
+  expect(updateRes.body.data.name).toBe(`cap-test-updated-${suffix}`);
+  expect(updateRes.body.data.capabilities).toContain('contacts:create');
 });
 
 test('@functional custom role — list returns built-in roles', async ({ restClient }) => {
@@ -198,6 +196,7 @@ test('@functional custom role — cannot delete a role with active assignees', a
       capabilities: ['contacts:view'],
     });
     roleId = role.body.data.id;
+    testData.register('custom_role', roleId, `/api/v1/custom-roles/${roleId}`);
 
     const inviteRes = await restClient.post<InviteResponse>('/api/v1/users/invite', {
       name: `Cap Block ${suffix}`,
@@ -221,9 +220,11 @@ test('@functional custom role — cannot delete a role with active assignees', a
     expect(threw).toBe(true);
   } finally {
     if (repId && roleId) {
+      // Unassignment, not a record delete, and it must precede the registered
+      // role delete — a registered entry cannot express that ordering. Errors
+      // are swallowed because the role delete below reports the real failure.
       await restClient.delete(`/api/v1/users/${repId}/roles/${roleId}`).catch(() => null);
     }
-    if (roleId) await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
   }
 });
 
@@ -266,36 +267,33 @@ test('@functional rep cannot delete a contact they do not own (MINCRM-542)', asy
   const suffix = `${Date.now()}-${process.pid}`;
   let contactId: string | null = null;
 
+  const { repClient, repContext } = await createActivatedRep(
+    testData,
+    restClient,
+    () => playwright.request.newContext(),
+    suffix,
+  );
+
+  // Admin creates the contact (admin is the owner, not the rep)
+  const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
+    first_name: 'Cap',
+    last_name: 'OtherDelete',
+    email: `cap-other-delete-${suffix}@example.com`,
+  });
+  contactId = contactRes.body.contact.id;
+  testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
+
+  let threw = false;
   try {
-    const { repClient, repContext } = await createActivatedRep(
-      testData,
-      restClient,
-      () => playwright.request.newContext(),
-      suffix,
-    );
-
-    // Admin creates the contact (admin is the owner, not the rep)
-    const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
-      first_name: 'Cap',
-      last_name: 'OtherDelete',
-      email: `cap-other-delete-${suffix}@example.com`,
-    });
-    contactId = contactRes.body.contact.id;
-
-    let threw = false;
-    try {
-      await repClient.delete(`/api/v1/contacts/${contactId}`);
-    } catch (err) {
-      threw = true;
-      expect(err).toBeInstanceOf(RestClientError);
-      expect((err as RestClientError).status).toBe(403);
-    }
-    expect(threw).toBe(true);
-
-    await repContext.dispose();
-  } finally {
-    if (contactId) await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
+    await repClient.delete(`/api/v1/contacts/${contactId}`);
+  } catch (err) {
+    threw = true;
+    expect(err).toBeInstanceOf(RestClientError);
+    expect((err as RestClientError).status).toBe(403);
   }
+  expect(threw).toBe(true);
+
+  await repContext.dispose();
 });
 
 test('@functional admin can delete any contact', async ({ restClient }) => {
@@ -351,51 +349,43 @@ test('@functional assigning a custom role grants its capabilities to the user', 
   let repId: string | null = null;
   let roleId: string | null = null;
 
+  const {
+    repId: id,
+    repClient,
+    repContext,
+  } = await createActivatedRep(testData, restClient, () => playwright.request.newContext(), suffix);
+  repId = id;
+
+  // Create a role with settings:manage so the rep can access /custom-roles
+  const roleRes = await restClient.post<{ data: CustomRoleResponse }>('/api/v1/custom-roles', {
+    name: `cap-assign-${suffix}`,
+    capabilities: ['settings:manage', 'contacts:view'],
+  });
+  roleId = roleRes.body.data.id;
+  testData.register('custom_role', roleId, `/api/v1/custom-roles/${roleId}`);
+
+  // Assign role to rep
+  await restClient.post(`/api/v1/users/${repId}/roles`, { roleId });
+
+  // Rep can now GET /custom-roles
+  const listRes = await repClient.get<{ data: CustomRoleResponse[] }>('/api/v1/custom-roles');
+  expect(listRes.status).toBe(200);
+
+  // Remove the assignment
+  await restClient.delete(`/api/v1/users/${repId}/roles/${roleId}`);
+
+  // Rep is blocked again after removal
+  let threw = false;
   try {
-    const {
-      repId: id,
-      repClient,
-      repContext,
-    } = await createActivatedRep(
-      testData,
-      restClient,
-      () => playwright.request.newContext(),
-      suffix,
-    );
-    repId = id;
-
-    // Create a role with settings:manage so the rep can access /custom-roles
-    const roleRes = await restClient.post<{ data: CustomRoleResponse }>('/api/v1/custom-roles', {
-      name: `cap-assign-${suffix}`,
-      capabilities: ['settings:manage', 'contacts:view'],
-    });
-    roleId = roleRes.body.data.id;
-
-    // Assign role to rep
-    await restClient.post(`/api/v1/users/${repId}/roles`, { roleId });
-
-    // Rep can now GET /custom-roles
-    const listRes = await repClient.get<{ data: CustomRoleResponse[] }>('/api/v1/custom-roles');
-    expect(listRes.status).toBe(200);
-
-    // Remove the assignment
-    await restClient.delete(`/api/v1/users/${repId}/roles/${roleId}`);
-
-    // Rep is blocked again after removal
-    let threw = false;
-    try {
-      await repClient.get('/api/v1/custom-roles');
-    } catch (err) {
-      threw = true;
-      expect(err).toBeInstanceOf(RestClientError);
-      expect((err as RestClientError).status).toBe(403);
-    }
-    expect(threw).toBe(true);
-
-    await repContext.dispose();
-  } finally {
-    if (roleId) await restClient.delete(`/api/v1/custom-roles/${roleId}`).catch(() => null);
+    await repClient.get('/api/v1/custom-roles');
+  } catch (err) {
+    threw = true;
+    expect(err).toBeInstanceOf(RestClientError);
+    expect((err as RestClientError).status).toBe(403);
   }
+  expect(threw).toBe(true);
+
+  await repContext.dispose();
 });
 
 // ── Built-in role View button (MINCRM-547) ────────────────────────────────────

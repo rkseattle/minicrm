@@ -33,6 +33,10 @@
 #   - Users created through the browser (an invite submitted through the UI)
 #     are invisible here for the same reason as any other browser-created
 #     record.
+#   - Records created by a raw entity POST (`restClient.post('/api/v1/teams', …)`)
+#     rather than a create*ViaApi helper. Only the users/invite endpoint is
+#     matched by path; every other entity relies on the helper naming
+#     convention. MINCRM-668 converted twelve such sites in iam/ by hand.
 #   - An invite POSTed through a PATH CONSTANT (`const P = '/api/v1/users/invite'`
 #     then `post(P, ...)`) is invisible: the call line carries no literal. The
 #     endpoint literal is matched wherever it appears on a line, so a wrapped
