@@ -220,9 +220,9 @@ jobs:
       # all 29 @serial files), so the single grep is the union of ci.yml's
       # two jobs rather than a subset of either. ci.yml needs its narrower
       # patterns only because it SPLITS the suite — the shards use
-      # `--grep-invert "visual-regression|serial"` (ci.yml:1036) to push
-      # serial work to a separate job, and that job re-selects it with a
-      # both-tags pattern (ci.yml:1436). Record mode wants everything in one
+      # `--grep-invert "visual-regression|serial"` (the e2e-functional job's
+      # run step) to push serial work to a separate job, and that job
+      # re-selects it with a both-tags pattern. Record mode wants everything in one
       # pass, so it excludes nothing. @visual tests are not swept in: they
       # are tagged @visual and deliberately NOT @functional
       # (visual-regression.spec.ts:39), because they need OS-matching
@@ -247,7 +247,8 @@ jobs:
       # Known risk accepted when this landed: most @serial spec files carry
       # NO viewport handling at all and had never run under mobile-web
       # before this change, because ci.yml runs serial specs on desktop only
-      # (ci.yml:1436). Some target pages hide elements responsively — e.g.
+      # (its e2e-serial job pins --project=desktop). Some target pages hide
+      # elements responsively — e.g.
       # client/src/pages/admin/GeneralSettings.tsx:152 (`hidden lg:block`)
       # and client/src/pages/admin/BrandingSettings.tsx:350
       # (`hidden sm:block`) — so a spec that assumes such an element is
@@ -327,7 +328,7 @@ jobs:
           # parity" with ci.yml by adding AI_HEALING/ANTHROPIC_API_KEY.
           #
           # 150 minutes, overriding playwright.config.ts's 20-minute default
-          # (:154-156), which is calibrated for CI's sharded 4x2x2 matrix and
+          # (:154-156), which is calibrated for CI's sharded matrix and
           # is far too small for one unsharded single-worker process.
           #
           # Derived from this repo's own MEASURED single-worker throughput,

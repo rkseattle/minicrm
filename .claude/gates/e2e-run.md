@@ -87,7 +87,9 @@ env $(cat qa/e2e/.env | grep -v '^#' | grep -v '^$' | xargs) npm run e2e:setup
 rm -rf qa/e2e/test-results/
 
 # Non-serial — both projects, matching e2e-functional's [desktop, mobile-web]
-# matrix. --workers=1 matches CI's LPT file-per-shard isolation.
+# matrix. --workers=1 is NOT parity with CI (which runs 4 workers per shard) —
+# a local run is unsharded, so every spec is visible to every worker, and the
+# single-threaded test server caps throughput anyway (~6% between 1 and 2).
 # PW_GLOBAL_TIMEOUT_MS is REQUIRED — see "The 20-minute globalTimeout" below.
 cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
   PW_GLOBAL_TIMEOUT_MS=3600000 \
@@ -104,9 +106,10 @@ cd qa && env $(cat e2e/.env | grep -v '^#' | grep -v '^$' | xargs) \
 ### The 20-minute globalTimeout, and why these commands override it
 
 `playwright.config.ts` caps a run at 20 minutes. That figure is calibrated for **CI's
-4-shard × 2-worker × 2-project matrix**, where each shard runs a slice. A local run is
-unsharded against a single test-server Node process, so it is not the same workload and
-cannot meet that budget.
+sharded multi-project matrix** — shard and worker counts come from the capacity probe,
+so they track runner size (2 shards × 4 workers × 2 projects today) — where each shard
+runs a slice. A local run is unsharded against a single test-server Node process, so it
+is not the same workload and cannot meet that budget.
 
 Measured (recorded in `scripts/pre-push-tia.ts` and the config's own comment): of ~1030
 non-serial tests, only **~420–445 complete in 20 minutes** at 1 _or_ 2 workers — a ~6%

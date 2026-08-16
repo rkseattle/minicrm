@@ -83,14 +83,21 @@ unrelated files for a faster run.
 | `e2e-functional` | `--workers=N` per shard, `M` shards × 2 projects (N, M from capacity-probe)   | `@functional` tests **without** `@serial` |
 | `e2e-serial`     | Sequential per-group invocations, `--workers=1` or `2` per group (MINCRM-661) | `@functional @serial` tests               |
 
-`N` and `M` default to 2 and 4 respectively (today's known-good values on
-GitHub's free-tier 2-vCPU runners) but are computed dynamically by the
-`capacity-probe` CI job — see [e2e-performance.md](e2e-performance.md) and
+`N` and `M` fall back to 2 and 4 respectively (the pre-probe constants, used
+only when CPU count cannot be determined) but are normally computed dynamically
+by the `capacity-probe` CI job — on today's 4-vCPU GitHub-hosted runners that
+gives `N`=4 workers and `M`=2 shards — see [e2e-performance.md](e2e-performance.md) and
 the "Shard/worker count" section in
 [qa/e2e/README.md](../../qa/e2e/README.md#shardworker-count-mincrm-662).
 
-The `e2e-functional` job passes `--grep-invert serial` so `@serial` tests are
-never picked up by parallel workers. The `e2e-serial` job's grep filter
+The `e2e-functional` job passes `--grep-invert "visual-regression|serial"` so
+`@serial` tests are never picked up by parallel workers, and the
+visual-regression spec (which needs an isolated database) is left to
+`update-visual-snapshots`.
+
+Local non-serial runs share that exact expression via `NON_SERIAL_GREP_INVERT`
+in `qa/scripts/targeted-run-plan.ts`, pinned across both sides by
+`qa/scripts/check-grep-invert-parity.sh`. The `e2e-serial` job's grep filter
 (`"@functional.*@serial|@serial.*@functional"`) is unchanged, but instead of
 one blanket `--workers=1` invocation over every `@serial` file, it now runs
 `qa/e2e/scripts/gen-conflict-group-configs.ts` to partition files into

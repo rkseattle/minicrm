@@ -153,11 +153,10 @@ export default defineConfig({
   // worker counts come from the capacity probe, so they vary with runner size —
   // 2 shards x 4 workers x 2 projects on today's runners). Measured directly:
   // of 1030 non-serial tests, only ~420-445 completed in 20 minutes at 1 or 2
-  // local workers (a ~6%
-  // difference between worker counts, not the ~2x more workers would
-  // predict) — the test server is a single Node process, so it bottlenecks
-  // throughput regardless of how many Playwright workers send it requests
-  // concurrently. There is no local sharding equivalent to shrink this run
+  // local workers (a ~6% difference between worker counts, not the ~2x more
+  // workers would predict) — the test server is a single Node process, so it
+  // bottlenecks throughput regardless of how many Playwright workers send it
+  // requests concurrently. There is no local sharding equivalent to shrink this run
   // down to CI's per-shard slice, so the honest fix is a longer local-only
   // budget, not a tighter one that can never actually be met.
   globalTimeout: process.env['PW_GLOBAL_TIMEOUT_MS']

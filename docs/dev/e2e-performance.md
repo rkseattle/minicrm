@@ -9,17 +9,20 @@ empirical findings that informed the capacity-probe design in
 CI splits the ~1000-test functional suite into `TOTAL_SHARDS` parallel jobs
 (one runner VM per shard), each running `--workers=N` Playwright workers.
 Shard/worker counts were previously two hand-maintained constants tuned once
-for GitHub's free-tier 2-vCPU runners (`.github/workflows/ci.yml`): 4 shards
-x 2 workers = 8 parallel test slots. `qa/e2e/scripts/gen-shard-config.ts`
+for a 2-vCPU runner (`.github/workflows/ci.yml`): 4 shards x 2 workers = 8
+parallel test slots. Today the capacity probe derives them instead, and on
+GitHub-hosted `ubuntu-latest` (4 vCPUs) it produces **2 shards x 4 workers** —
+the same 8 slots, distributed differently. `qa/e2e/scripts/gen-shard-config.ts`
 assigns spec files to shards via LPT (Longest Processing Time) bin-packing
 using `qa/e2e/test-timing-baseline.json`, so each shard's wall-clock time is
 roughly balanced regardless of file ordering.
 
 MINCRM-662 replaced the two hardcoded constants with a capacity probe
 (`getCapacityPlan()` in `capacity.ts`) that derives both values from a
-measured per-runner CPU count, reproducing today's exact values on today's
-exact 2-vCPU runner and scaling for differently-sized runners (self-hosted,
-a larger nightly box) without manual retuning.
+measured per-runner CPU count, reproducing the original 4 x 2 pair at a 2-vCPU
+input and scaling for differently-sized runners (self-hosted, a larger nightly
+box) without manual retuning. Those original values survive only as
+`FALLBACK_PLAN`, used when CPU count cannot be determined.
 
 ## Empirical findings that shaped the design
 
@@ -33,11 +36,12 @@ Playwright's `globalTimeout`.
 411 of 1016 tests completed in the full 20-minute `globalTimeout` window
 (~20.6 tests/min), extrapolating to ~49 minutes for the full suite — over
 double the budget. Root cause is architectural, not a resource shortfall:
-`globalTimeout` is sized for one CI shard's ~1/4 share of the suite, not the
-whole suite run as a single local invocation. This finding is independent of
-this specific machine's capability — a 12-core machine ran into the same
-wall as a 2-vCPU CI runner would, because the mismatch is between the timeout
-budget and the amount of work assigned to one worker, not raw compute.
+`globalTimeout` is sized for one CI shard's slice of the suite, not the whole
+suite run as a single local invocation.
+This finding is independent of this specific machine's capability — a 12-core
+machine ran into the same wall a smaller CI runner would, because the mismatch
+is between the timeout budget and the amount of work assigned to one worker,
+not raw compute.
 
 ### `--workers=4` is faster but not _reliably_ within budget
 
@@ -88,7 +92,11 @@ same tuning applies there without measuring it directly.
    `qa/e2e/test-timing-baseline.json`) for local full-suite runs instead of a
    bare `playwright test` invocation.
 3. The per-project documented local command
-   (see root `CLAUDE.md`'s Definition of Done) already uses `--workers=1` for
-   both non-serial and serial local suites deliberately, matching CI's
-   per-shard isolation (MINCRM-557) rather than optimizing for local
-   wall-clock time — that tradeoff is intentional, not an oversight.
+   (see `.claude/gates/e2e-run.md`) already uses `--workers=1` for
+   both non-serial and serial local suites deliberately (MINCRM-557) rather
+   than optimizing for local wall-clock time — that tradeoff is intentional,
+   not an oversight. Note this is **not** parity with CI, which runs 4 workers
+   per shard: a local run is unsharded, so every spec is visible to every
+   worker, and the single-threaded test server caps throughput anyway — ~6%
+   between 1 and 2 workers, measured in `scripts/pre-push-tia.ts` and
+   `qa/e2e/playwright.config.ts`'s `globalTimeout` comment.
