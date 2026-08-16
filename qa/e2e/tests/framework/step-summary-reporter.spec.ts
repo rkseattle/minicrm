@@ -23,6 +23,7 @@ import path from 'node:path';
 import { StepSummaryReporter } from '../../framework/reporting/step-summary-reporter.js';
 import type { FullConfig, FullResult, TestCase, TestResult } from '@playwright/test/reporter';
 import type { HealTrendsFile } from '../../framework/healing/heal-trends.js';
+import { CLEANUP_FAILED_ANNOTATION } from '../../framework/reporting/cleanup-annotations.js';
 import {
   setTrendsFileForTesting,
   resetTrendsFileForTesting,
@@ -37,6 +38,7 @@ function makeTestCase(overrides: {
   file?: string;
   line?: number;
   retries?: number;
+  annotations?: { type: string; description?: string }[];
 }): TestCase {
   return {
     title: overrides.title ?? 'a test',
@@ -46,6 +48,10 @@ function makeTestCase(overrides: {
       column: 0,
     },
     retries: overrides.retries ?? 0,
+    // Omitted by default, deliberately: a hand-built TestCase without this
+    // field is exactly what the reporter must tolerate, and every other case
+    // in this file relies on that.
+    ...(overrides.annotations ? { annotations: overrides.annotations } : {}),
   } as unknown as TestCase;
 }
 
@@ -54,12 +60,16 @@ function makeResult(overrides: {
   retry?: number;
   duration?: number;
   errors?: TestResult['errors'];
+  annotations?: { type: string; description?: string }[];
 }): TestResult {
   return {
     status: overrides.status,
     retry: overrides.retry ?? 0,
     duration: overrides.duration ?? 100,
     errors: overrides.errors ?? [],
+    // Playwright populates this per attempt; `test.annotations` holds only the
+    // LAST attempt's, which is why the reporter reads the result first.
+    ...(overrides.annotations ? { annotations: overrides.annotations } : {}),
   } as unknown as TestResult;
 }
 
@@ -287,6 +297,91 @@ test.describe('StepSummaryReporter — generateSummary bullet sections', () => {
     expect(summary).toContain('- flaky login');
     expect(summary).toContain('| Flaky | 1 |');
     expect(summary).not.toContain('| Failed | 1 |');
+  });
+
+  test('omits Cleanup Failures section when nothing leaked', () => {
+    const reporter = new StepSummaryReporter();
+    reporter.onTestEnd(makeTestCase({ title: 'clean test' }), makeResult({ status: 'passed' }));
+    expect(reporter.generateSummary()).not.toContain('### Cleanup Failures');
+  });
+
+  test('reports a cleanup failure from a test that PASSED', () => {
+    // The case with no other surface: a green run that left a record behind.
+    // A failing test is already in the Failed Tests section; this one would be
+    // invisible without the annotation. (MINCRM-668)
+    const reporter = new StepSummaryReporter();
+    reporter.onTestEnd(
+      makeTestCase({
+        title: 'leaky test',
+        annotations: [
+          { type: CLEANUP_FAILED_ANNOTATION, description: 'contact 42 was not cleaned up' },
+        ],
+      }),
+      makeResult({ status: 'passed' }),
+    );
+    const summary = reporter.generateSummary();
+    expect(summary).toContain('### Cleanup Failures');
+    expect(summary).toContain('leaky test — contact 42 was not cleaned up');
+    expect(summary, 'the test itself still passed').toContain('| Passed | 1 |');
+  });
+
+  test('reads the cleanup annotation from the RESULT, which is per-attempt', () => {
+    // The branch real Playwright takes: `result.annotations` is populated per
+    // attempt, while `test.annotations` is overwritten with the last attempt's.
+    // Reading only the latter loses a leak from an attempt that was retried.
+    const reporter = new StepSummaryReporter();
+    reporter.onTestEnd(
+      makeTestCase({ title: 'result-annotated test' }),
+      makeResult({
+        status: 'passed',
+        annotations: [
+          { type: CLEANUP_FAILED_ANNOTATION, description: 'deal 7 was not cleaned up' },
+        ],
+      }),
+    );
+    const summary = reporter.generateSummary();
+    expect(summary).toContain('### Cleanup Failures');
+    expect(summary).toContain('result-annotated test — deal 7 was not cleaned up');
+  });
+
+  test('keeps a leak from a failed attempt that a retry later cleaned', () => {
+    // Each attempt creates and tears down its own records, so a passing retry
+    // does not undo what attempt 1 left behind. Reporting only the final
+    // attempt would drop it entirely — the silent accumulation this guards.
+    const reporter = new StepSummaryReporter();
+    const flaky = makeTestCase({ title: 'retried test', retries: 1 });
+
+    reporter.onTestEnd(
+      flaky,
+      makeResult({
+        status: 'failed',
+        retry: 0,
+        annotations: [
+          { type: CLEANUP_FAILED_ANNOTATION, description: 'contact 1 was not cleaned up' },
+        ],
+      }),
+    );
+    reporter.onTestEnd(flaky, makeResult({ status: 'passed', retry: 1 }));
+
+    const summary = reporter.generateSummary();
+    expect(summary, 'the leak from the failed attempt must survive the retry').toContain(
+      'retried test (attempt 1) — contact 1 was not cleaned up',
+    );
+    expect(summary, 'the test itself is reported as flaky, not failed').toContain('| Flaky | 1 |');
+  });
+
+  test('ignores annotations of other types', () => {
+    // skip/fixme/fail annotations are routine; only a cleanup failure belongs
+    // in this section, or the section becomes noise.
+    const reporter = new StepSummaryReporter();
+    reporter.onTestEnd(
+      makeTestCase({
+        title: 'skipped-ish test',
+        annotations: [{ type: 'skip', description: 'not on mobile' }],
+      }),
+      makeResult({ status: 'passed' }),
+    );
+    expect(reporter.generateSummary()).not.toContain('### Cleanup Failures');
   });
 
   test('omits Interrupted Tests section when none exist', () => {

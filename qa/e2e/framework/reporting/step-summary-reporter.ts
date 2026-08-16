@@ -11,6 +11,7 @@ import type {
 } from '@playwright/test/reporter';
 import type { HealTrendEntry } from '../healing/heal-trends.js';
 import { readTrends, quarantineCandidates } from '../healing/heal-trends.js';
+import { CLEANUP_FAILED_ANNOTATION } from './cleanup-annotations.js';
 
 // Suite name is injected via SUITE_NAME env var so this file stays domain-agnostic.
 const DEFAULT_SUITE_NAME = 'E2E Tests';
@@ -81,6 +82,7 @@ export class StepSummaryReporter implements Reporter {
   private testDurations: Map<string, TestDurationEntry>;
   private flakyTests: string[];
   private interruptedTests: string[];
+  private cleanupFailures: string[];
   private slowThreshold: number;
 
   constructor() {
@@ -94,6 +96,7 @@ export class StepSummaryReporter implements Reporter {
     this.testDurations = new Map();
     this.flakyTests = [];
     this.interruptedTests = [];
+    this.cleanupFailures = [];
     this.slowThreshold = 120_000;
   }
 
@@ -240,6 +243,7 @@ export class StepSummaryReporter implements Reporter {
     return (
       this.buildStatsTable() +
       this.buildFailedSection() +
+      this.buildBulletSection('Cleanup Failures', this.cleanupFailures) +
       this.buildBulletSection('Flaky Tests', this.flakyTests) +
       this.buildBulletSection('Interrupted Tests', this.interruptedTests) +
       this.buildSlowTestsSection() +
@@ -260,6 +264,27 @@ export class StepSummaryReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult): void {
     this.log(`Finished ${test.title}, ${this.resultLabel(result.status)}`, ReportType.TEST_CASE);
+
+    // Collect cleanup failures from EVERY attempt, before the final-attempt
+    // gate below. Each attempt creates and cleans up its own records, so a
+    // retry that succeeds does not undo what attempt 1 leaked — and reading
+    // `test.annotations` after the fact would miss it entirely, since
+    // Playwright overwrites that array with the last attempt's. Passing tests
+    // are included deliberately: a failing test is already reported, while a
+    // green run that left a row behind is the case with no other surface.
+    //
+    // `?? []` because a Reporter may be driven by a hand-built TestCase or
+    // TestResult that omits optional fields — this file's own specs do that.
+    for (const annotation of result.annotations ?? test.annotations ?? []) {
+      if (annotation.type === CLEANUP_FAILED_ANNOTATION) {
+        // Label whenever the test can retry, so two entries from the same
+        // test are distinguishable rather than one labeled and one bare.
+        const attempt = test.retries > 0 ? ` (attempt ${result.retry + 1})` : '';
+        this.cleanupFailures.push(
+          `${test.title}${attempt} — ${annotation.description ?? 'no detail'}`,
+        );
+      }
+    }
 
     // Only tally on the final attempt to avoid double-counting retries.
     const isFinalAttempt = result.status === 'passed' || result.retry === test.retries;

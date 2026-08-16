@@ -52,6 +52,7 @@ import { RestClient } from '@framework/clients/rest-client.js';
 import { applySessionUpkeep } from '@framework/auth/token-expiry.js';
 import { request as playwrightRequest } from '@playwright/test';
 import { TestDataManager } from './test-data-manager.js';
+import { annotateCleanupFailures } from '@framework/reporting/cleanup-annotations.js';
 import { createTestRep, createTestAdmin } from './helpers.js';
 import type { EphemeralUserCredentials } from './helpers.js';
 import {
@@ -377,15 +378,17 @@ const testWithPage = baseTest.extend<{ page: PageFacade }>({
 });
 
 const testWithData = testWithPage.extend<Pick<MinicrmFixtures, 'testData'>>({
-  testData: async ({ restClient }, use) => {
+  testData: async ({ restClient }, use, testInfo) => {
     const manager = new TestDataManager();
     try {
       await use(manager);
     } finally {
-      // Teardown always runs — test failure does not skip cleanup.
-      // Errors from individual deletes are logged inside teardown() and do
-      // not propagate here, so the finally block itself never throws.
-      await manager.teardown(restClient);
+      // Teardown always runs — test failure does not skip cleanup. Individual
+      // entries are caught inside teardown() and reported through its return
+      // value, so this finally block itself never throws even though a callback
+      // may (registerAdminTeardown rethrows non-404s since MINCRM-668).
+      const results = await manager.teardown(restClient);
+      annotateCleanupFailures(testInfo, results);
     }
   },
 });

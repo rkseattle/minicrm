@@ -31,7 +31,10 @@ import type { RestClient } from '@framework/clients/rest-client.js';
  * @param failPaths - Paths on which delete() should throw RestClientError(500).
  * @returns Stub client and a deletedPaths array for assertions.
  */
-function makeStubClient(failPaths: Set<string> = new Set()): {
+function makeStubClient(
+  failPaths: Set<string> = new Set(),
+  failStatus = 500,
+): {
   client: RestClient;
   deletedPaths: string[];
 } {
@@ -41,8 +44,8 @@ function makeStubClient(failPaths: Set<string> = new Set()): {
     delete: async (path: string) => {
       deletedPaths.push(path);
       if (failPaths.has(path)) {
-        throw new RestClientError(500, {
-          error: { code: 'INTERNAL_ERROR', message: 'simulated 500' },
+        throw new RestClientError(failStatus, {
+          error: { code: 'STUBBED', message: `simulated ${failStatus}` },
         });
       }
       return { status: 204, body: undefined as never, headers: {} };
@@ -259,4 +262,38 @@ test.describe('AC3 — partial teardown failure', () => {
     expect(results[0].error).toBeTruthy();
     expect(results[0].error).toMatch(/500/);
   });
+});
+
+// ---------------------------------------------------------------------------
+// teardown — a 404 means the record is already gone (MINCRM-668)
+// ---------------------------------------------------------------------------
+
+test.describe('TestDataManager — 404 handling on teardown', () => {
+  test('reports a 404 as SUCCESS, because the record is already gone', async () => {
+    // Tests that delete their own record through the UI (contacts F2-D1,
+    // accounts F3-D1/D2) reach teardown with nothing left to delete. Reporting
+    // that as a failure would annotate every green run of those tests, and a
+    // warning that fires when nothing is wrong is one readers learn to skip.
+    const manager = new TestDataManager();
+    const { client } = makeStubClient(new Set(['/api/v1/contacts/1']), 404);
+
+    manager.register('contact', 1, '/api/v1/contacts/1');
+    const results = await manager.teardown(client);
+
+    expect(results[0]?.success, 'an already-deleted record is cleaned up, not leaked').toBe(true);
+    expect(results[0]?.error, 'a success carries no error').toBeUndefined();
+  });
+
+  for (const status of [403, 500]) {
+    test(`reports a ${status} as FAILURE, because the record is still there`, async () => {
+      const manager = new TestDataManager();
+      const { client } = makeStubClient(new Set(['/api/v1/contacts/2']), status);
+
+      manager.register('contact', 2, '/api/v1/contacts/2');
+      const results = await manager.teardown(client);
+
+      expect(results[0]?.success, `a ${status} leaves the row in the database`).toBe(false);
+      expect(results[0]?.error, 'the failure must be diagnosable').toBeTruthy();
+    });
+  }
 });
