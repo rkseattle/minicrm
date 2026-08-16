@@ -53,14 +53,21 @@ test.beforeEach(async ({ restClient, testData, page }) => {
   await loginAsAdmin(restClient);
 
   // Enable AI explicitly rather than inheriting whatever the previous spec left
-  // behind. The health-check button only renders when the SERVER reports AI on,
+  // behind. The health-check panel only renders when the SERVER reports AI on,
   // and withFlags() cannot supply that — it intercepts the client's flag fetch
   // and never reaches ai_configuration.enabled. data-hygiene's
   // restoreAiDefaultsAfterTest leaves it false, so when the scheduler placed
   // that file immediately before this one, F7-DH4 failed with "HealingLocator:
-  // all strategies exhausted". Declaring the dependency in resource-registry.ts
-  // keeps the two files apart; setting it here means the spec does not depend on
-  // that scheduling holding. (MINCRM-668)
+  // all strategies exhausted". Verified all four tests depend on it: with AI
+  // off, DH1 and DH2 fail too.
+  //
+  // These hooks are file-scoped, so EVERY test here writes the shared AI
+  // toggle — which is why all four are @serial rather than just F7-DH4. The
+  // alternative, scoping the hooks to a describe.serial around F7-DH4 as
+  // data-hygiene.spec.ts does, does not apply: there only one test needed the
+  // toggle, here all four do. Leaving the hooks at file scope with three plain
+  // @functional tests would put shared-settings writes in the parallel shard
+  // matrix. (MINCRM-668)
   await setAiEnabled(restClient, true);
 
   const rep = await createTestRep(testData, restClient);
@@ -78,8 +85,8 @@ test.afterEach(async ({ restClient }) => {
 // ---------------------------------------------------------------------------
 
 test(
-  'F7-DH1: running a health check renders the status badge, narrative, and next actions',
-  { tag: ['@functional'] },
+  'F7-DH1: running a health check renders the status badge, narrative, and next actions @functional @serial',
+  { tag: ['@functional', '@serial'] },
   async ({ testData, restClient, page }) => {
     const account = await createTestAccount(testData, restClient, {
       name: `DH1-Acct ${test.info().title}`,
@@ -103,8 +110,8 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  'F7-DH2: the panel shows an empty state before any check has been run',
-  { tag: ['@functional'] },
+  'F7-DH2: the panel shows an empty state before any check has been run @functional @serial',
+  { tag: ['@functional', '@serial'] },
   async ({ testData, restClient, page }) => {
     const account = await createTestAccount(testData, restClient, {
       name: `DH2-Acct ${test.info().title}`,
@@ -126,8 +133,8 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  'F7-DH3: the deal health panel is hidden when ai_deal_health_check is off',
-  { tag: ['@functional'] },
+  'F7-DH3: the deal health panel is hidden when ai_deal_health_check is off @functional @serial',
+  { tag: ['@functional', '@serial'] },
   async ({ testData, restClient, page }) => {
     const account = await createTestAccount(testData, restClient, {
       name: `DH3-Acct ${test.info().title}`,

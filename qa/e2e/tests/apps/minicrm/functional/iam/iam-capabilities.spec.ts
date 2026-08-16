@@ -252,6 +252,11 @@ test('@functional rep can delete their own contact (contacts:delete, MINCRM-542)
     email: `cap-own-delete-${suffix}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
+  // Registered even though the test deletes it below: registration covers the
+  // path where the delete or its assertion throws first. Teardown runs as the
+  // fixture admin, so a plain register() reaches a rep-owned contact, and the
+  // happy-path 404 counts as successful cleanup. (MINCRM-668)
+  testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
   const deleteRes = await repClient.delete(`/api/v1/contacts/${contactId}`);
   expect(deleteRes.status).toBe(204);
@@ -296,7 +301,7 @@ test('@functional rep cannot delete a contact they do not own (MINCRM-542)', asy
   await repContext.dispose();
 });
 
-test('@functional admin can delete any contact', async ({ restClient }) => {
+test('@functional admin can delete any contact', async ({ testData, restClient }) => {
   const suffix = `${Date.now()}-${process.pid}`;
 
   const contactRes = await restClient.post<{ contact: ContactRow }>('/api/v1/contacts', {
@@ -305,6 +310,8 @@ test('@functional admin can delete any contact', async ({ restClient }) => {
     email: `cap-admindel-${suffix}@example.com`,
   });
   const contactId = contactRes.body.contact.id;
+  // See the note in the rep-delete test above. (MINCRM-668)
+  testData.register('contact', contactId, `/api/v1/contacts/${contactId}`);
 
   const deleteRes = await restClient.delete(`/api/v1/contacts/${contactId}`);
   expect(deleteRes.status).toBe(204);
