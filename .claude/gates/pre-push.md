@@ -77,6 +77,48 @@ In order, all green, before every `git push`:
 Lint and typecheck are separate gates from tests: a branch with type errors fails CI
 even when every test passes locally.
 
+### Not re-running E2E in the push hook
+
+The `pre-push` hook (`scripts/pre-push-tia.ts`) runs its own E2E selection. When step 6
+has just run the gate manually and **nothing has changed since**, that hook run is
+duplicated work on an identical tree — twenty-plus minutes to re-derive a verdict you
+already hold. Skip it:
+
+```bash
+SKIP_TIA_PREPUSH=1 git push --force-with-lease origin <branch>
+```
+
+**Prefer `SKIP_TIA_PREPUSH=1` over `--no-verify`.** The hook has this escape hatch built
+in, and it appends every use to `.git/tia-prepush-bypass.log` with a timestamp and the
+branch — local, gitignored, never blocking. `--no-verify` reaches the same end silently
+and leaves no record. Use `--no-verify` only when the hook itself is broken in a way the
+env var cannot route around.
+
+All four conditions must hold. They are not a formality — each one is a way the shortcut
+turns into an unverified push:
+
+1. **Both halves ran** — non-serial and serial. Skipping the hook after only one half is
+   how a whole class of tests reaches CI unexecuted.
+2. **Zero failures in `results.xml`**, read from the file, per "Reading results" in
+   `.claude/gates/e2e-run.md`.
+3. **HEAD is unchanged from what those runs executed against.** Any commit, amend, or
+   rebase afterwards — including a fix for something the runs surfaced — voids the
+   result and the gate restarts from step 1. Confirm with `git rev-parse HEAD`, don't
+   assume.
+4. **Steps 2–5 and 7 still run.** This skips _only_ the redundant E2E leg. Lint,
+   typecheck, unit tests, and `npm audit` are cheap, are not what an E2E run covers, and
+   `npm audit` in particular fails on advisories published against a lockfile that never
+   changed.
+
+What the bypass gives up beyond the tests themselves: the hook's `attestOrThrow` proves
+via SHA-bound coverage sessions that the selected specs _actually executed against this
+HEAD_, rather than that a run was merely attempted. Condition 3 is what replaces that
+proof by hand — which is why "HEAD is unchanged" is the condition to be strict about,
+not the one to eyeball.
+
+Never skip the hook to get _around_ a failure, a flake, or a run you'd rather not sit
+through. The only thing this shortcut is for is not paying twice for the same verdict.
+
 Steps 2–7 all describe the post-rebase tree. If anything sends you back to step 1 —
 a late conflict, a parent that moved while E2E was running — the steps after it are
 stale and run again.
