@@ -41,7 +41,11 @@ import {
   loginAsAdmin,
   loginAs,
 } from '@behaviors/minicrm/auth.behaviors.js';
-import { createTestContact, createTestUser } from '@apps/minicrm/helpers.js';
+import {
+  createTestContact,
+  createTestUser,
+  registerUserDeactivation,
+} from '@apps/minicrm/helpers.js';
 import { getContactById } from '@behaviors/minicrm/contacts.behaviors.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
@@ -107,13 +111,16 @@ async function createActivatedUser(
  * Invites a new user and sets their password via admin-set-password, which
  * forces must_change_password=true. Returns the user row and temp password.
  *
- * Caller is responsible for deactivating the user in a finally block.
+ * Teardown is registered internally, so callers need no `finally` block for
+ * the user. (MINCRM-668)
  *
+ * @param testData - TestDataManager instance for the current test.
  * @param restClient - Admin-authenticated RestClient.
  * @param tempPassword - Temporary password to set.
  * @returns Created user row and the temp password.
  */
 async function createUserWithForcedPasswordChange(
+  testData: TestDataManager,
   restClient: RestClient,
   tempPassword: string,
 ): Promise<{ user: UserRow; tempPassword: string }> {
@@ -124,6 +131,7 @@ async function createUserWithForcedPasswordChange(
     email: `f6-fpc-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   // Activate the account first (required before admin-set-password).
   const activationPassword = 'Activ@te1234!';
@@ -144,35 +152,27 @@ async function createUserWithForcedPasswordChange(
 // ---------------------------------------------------------------------------
 
 test('@smoke @functional F6-IN1: admin invites user with valid email and role → user appears in list with invited status', async ({
+  testData,
   restClient,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const email = `f6-in1-${uniqueSuffix}@example.com`;
 
-  let userId: string | null = null;
-  try {
-    const { user, inviteToken } = await inviteUserViaApi(restClient, {
-      name: `F6 IN1 User ${uniqueSuffix}`,
-      email,
-      role: 'rep',
-    });
+  const { user, inviteToken } = await inviteUserViaApi(restClient, {
+    name: `F6 IN1 User ${uniqueSuffix}`,
+    email,
+    role: 'rep',
+  });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
-    userId = user.id;
-    expect(user.status, 'newly invited user should have invited status').toBe('invited');
-    expect(user.email, 'invited user should have the supplied email').toBe(email);
-    expect(inviteToken, 'invite response should include a token').toBeTruthy();
+  expect(user.status, 'newly invited user should have invited status').toBe('invited');
+  expect(user.email, 'invited user should have the supplied email').toBe(email);
+  expect(inviteToken, 'invite response should include a token').toBeTruthy();
 
-    // Verify user appears in the admin list.
-    const found = await findUserById(restClient, userId);
-    expect(found, 'invited user should be visible in the admin user list').toBeDefined();
-    expect(found?.status, 'user status in list should be invited').toBe('invited');
-  } finally {
-    if (userId) {
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F6-IN1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
-    }
-  }
+  // Verify user appears in the admin list.
+  const found = await findUserById(restClient, user.id);
+  expect(found, 'invited user should be visible in the admin user list').toBeDefined();
+  expect(found?.status, 'user status in list should be invited').toBe('invited');
 });
 
 test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no duplicate created', async ({
@@ -185,6 +185,7 @@ test('@functional F6-IN2: admin invites duplicate email → 409 conflict, no dup
   let conflictStatus: number | null = null;
   let conflictCode: string | null = null;
   try {
+    // MINCRM-686-ok: expected to fail with 409 — no user row is created.
     await inviteUserViaApi(restClient, {
       name: 'Duplicate User',
       email: user.email,
@@ -214,6 +215,7 @@ test('@functional F6-IN3: admin invites with invalid email format → 400 valida
 }) => {
   let errorStatus: number | null = null;
   try {
+    // MINCRM-686-ok: expected to fail with 400 — no user row is created.
     await inviteUserViaApi(restClient, {
       name: 'Bad Email User',
       email: 'not-a-valid-email',
@@ -231,31 +233,22 @@ test('@functional F6-IN3: admin invites with invalid email format → 400 valida
 });
 
 test('@functional F6-IN4: invited user is visible in list before they log in', async ({
+  testData,
   restClient,
 }) => {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  let userId: string | null = null;
 
-  try {
-    const { user } = await inviteUserViaApi(restClient, {
-      name: `F6 IN4 User ${uniqueSuffix}`,
-      email: `f6-in4-${uniqueSuffix}@example.com`,
-      role: 'rep',
-    });
-    userId = user.id;
+  const { user } = await inviteUserViaApi(restClient, {
+    name: `F6 IN4 User ${uniqueSuffix}`,
+    email: `f6-in4-${uniqueSuffix}@example.com`,
+    role: 'rep',
+  });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
-    // Do NOT call set-password — the user has never logged in.
-    const found = await findUserById(restClient, userId);
-    expect(found, 'invited-but-never-logged-in user should appear in admin list').toBeDefined();
-    expect(found?.status, 'status should be invited before first login').toBe('invited');
-  } finally {
-    if (userId) {
-      // Invited (not yet activated) users can still be deactivated.
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F6-IN4] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
-    }
-  }
+  // Do NOT call set-password — the user has never logged in.
+  const found = await findUserById(restClient, user.id);
+  expect(found, 'invited-but-never-logged-in user should appear in admin list').toBeDefined();
+  expect(found?.status, 'status should be invited before first login').toBe('invited');
 });
 
 // ---------------------------------------------------------------------------
@@ -305,15 +298,18 @@ test.describe('First login tests', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@smoke @functional F6-FL1: invited user with forced password change → redirected to /change-password on login', async ({
+    testData,
     page,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
 
-    let userId: string | null = null;
     try {
-      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-      userId = user.id;
+      const { user } = await createUserWithForcedPasswordChange(
+        testData,
+        restClient,
+        TEMP_PASSWORD,
+      );
 
       const loginResult = await login({ email: user.email, password: TEMP_PASSWORD }, { page });
 
@@ -323,26 +319,26 @@ test.describe('First login tests', () => {
         'forced-change user should land on /change-password',
       ).toBe('/change-password');
     } finally {
-      if (userId) {
-        await loginAsAdmin(restClient).catch(() => null);
-        await deactivateUser(restClient, userId).catch((err: unknown) => {
-          console.error(`[F6-FL1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-        });
-      }
+      // Restore the admin session; the user is deactivated by its registered
+      // teardown. (MINCRM-668)
+      await loginAsAdmin(restClient).catch(() => null);
     }
   });
 
   test('@functional F6-FL2: temp password rejected after forced password change', async ({
+    testData,
     page,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
     const NEW_PASSWORD = 'F6NewP@ss2!3';
 
-    let userId: string | null = null;
     try {
-      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-      userId = user.id;
+      const { user } = await createUserWithForcedPasswordChange(
+        testData,
+        restClient,
+        TEMP_PASSWORD,
+      );
 
       // Login — lands on /change-password.
       await login({ email: user.email, password: TEMP_PASSWORD }, { page });
@@ -366,25 +362,25 @@ test.describe('First login tests', () => {
       expect(retryResult.success, 'old temp password should be rejected after change').toBe(false);
       expect(retryResult.errorMessage, 'error message should be present').not.toBeNull();
     } finally {
-      if (userId) {
-        await loginAsAdmin(restClient).catch(() => null);
-        await deactivateUser(restClient, userId).catch((err: unknown) => {
-          console.error(`[F6-FL2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-        });
-      }
+      // Restore the admin session; the user is deactivated by its registered
+      // teardown. (MINCRM-668)
+      await loginAsAdmin(restClient).catch(() => null);
     }
   });
 
   test('@functional F6-FL3: weak new password on forced-change form → inline error, stays on /change-password', async ({
+    testData,
     page,
     restClient,
   }) => {
     const TEMP_PASSWORD = 'F6TempPass1!';
 
-    let userId: string | null = null;
     try {
-      const { user } = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-      userId = user.id;
+      const { user } = await createUserWithForcedPasswordChange(
+        testData,
+        restClient,
+        TEMP_PASSWORD,
+      );
 
       // Login — lands on /change-password.
       await login({ email: user.email, password: TEMP_PASSWORD }, { page });
@@ -405,12 +401,9 @@ test.describe('First login tests', () => {
         'browser should stay on /change-password after weak password error',
       ).toBe('/change-password');
     } finally {
-      if (userId) {
-        await loginAsAdmin(restClient).catch(() => null);
-        await deactivateUser(restClient, userId).catch((err: unknown) => {
-          console.error(`[F6-FL3] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-        });
-      }
+      // Restore the admin session; the user is deactivated by its registered
+      // teardown. (MINCRM-668)
+      await loginAsAdmin(restClient).catch(() => null);
     }
   });
 }); // end test.describe('First login tests')

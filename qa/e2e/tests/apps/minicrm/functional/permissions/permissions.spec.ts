@@ -486,6 +486,7 @@ test('@functional F7-FA2: rep calling POST /api/users/invite receives 403 (AC1)'
 
     let errorStatus: number | null = null;
     try {
+      // MINCRM-686-ok: expected to fail with 403 — no user row is created.
       await repClient.post('/api/v1/users/invite', {
         name: 'Forbidden Invite',
         email: `f7-forbidden-${Date.now()}@example.com`,

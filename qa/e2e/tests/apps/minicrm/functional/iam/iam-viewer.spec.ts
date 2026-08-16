@@ -23,7 +23,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
-import { loginAndVerify } from '@apps/minicrm/helpers.js';
+import { loginAndVerify, registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import { RestClient, RestClientError } from '@framework/clients/rest-client.js';
 import type { APIRequestContext } from '@playwright/test';
 
@@ -83,15 +84,16 @@ const TEST_PASSWORD = 'ViewerTest1!';
 
 /**
  * Creates an activated viewer user and returns a new RestClient authenticated as that viewer.
- * Caller is responsible for deactivating the user in teardown.
+ * Teardown is registered internally; callers need no cleanup of their own. (MINCRM-668)
  *
  * @param adminClient - Admin-authenticated RestClient.
  * @param newContext - playwright.request.newContext bound from the test fixture.
  */
 async function createActivatedViewer(
+  testData: TestDataManager,
   adminClient: RestClient,
   newContext: () => Promise<APIRequestContext>,
-): Promise<{ viewerUser: UserRow; viewerClient: RestClient; viewerContext: APIRequestContext }> {
+): Promise<{ viewerClient: RestClient; viewerContext: APIRequestContext }> {
   const uniqueSuffix = `${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const email = `viewer-${uniqueSuffix}@example.com`;
   const name = `Viewer ${uniqueSuffix}`;
@@ -103,6 +105,11 @@ async function createActivatedViewer(
     role: 'viewer',
   });
   const { user, inviteToken } = inviteRes.body;
+
+  // Register deactivation immediately: every step below can throw, and before
+  // MINCRM-668 a throw left this viewer behind with nothing to clean it up.
+  // adminClient is the fixture restClient, which outlives the test. (MINCRM-668)
+  registerUserDeactivation(testData, adminClient, user.id, 'viewer');
 
   // Activate via invite token (must_change_password stays false)
   await adminClient.post('/api/v1/users/set-password', {
@@ -124,16 +131,7 @@ async function createActivatedViewer(
   const viewerClient = new RestClient(viewerContext);
   await loginAndVerify(viewerClient, email, TEST_PASSWORD);
 
-  return { viewerUser: user, viewerClient, viewerContext };
-}
-
-/**
- * Deactivates a user, suppressing errors so teardown does not mask test failures.
- */
-async function deactivateUser(adminClient: RestClient, userId: string, tag: string): Promise<void> {
-  await adminClient.patch(`/api/v1/users/${userId}/deactivate`).catch((err: unknown) => {
-    console.error(`[${tag}] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-  });
+  return { viewerClient, viewerContext };
 }
 
 // ---------------------------------------------------------------------------
@@ -141,10 +139,11 @@ async function deactivateUser(adminClient: RestClient, userId: string, tag: stri
 // ---------------------------------------------------------------------------
 
 test('@functional F-VIEWER-R1: viewer can read contacts list', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -153,15 +152,15 @@ test('@functional F-VIEWER-R1: viewer can read contacts list', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-R1');
   }
 });
 
 test('@functional F-VIEWER-R2: viewer can read accounts list', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -170,12 +169,15 @@ test('@functional F-VIEWER-R2: viewer can read accounts list', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-R2');
   }
 });
 
-test('@functional F-VIEWER-R3: viewer can read deals list', async ({ playwright, restClient }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+test('@functional F-VIEWER-R3: viewer can read deals list', async ({
+  testData,
+  playwright,
+  restClient,
+}) => {
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -184,12 +186,15 @@ test('@functional F-VIEWER-R3: viewer can read deals list', async ({ playwright,
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-R3');
   }
 });
 
-test('@functional F-VIEWER-R4: viewer can read leads list', async ({ playwright, restClient }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+test('@functional F-VIEWER-R4: viewer can read leads list', async ({
+  testData,
+  playwright,
+  restClient,
+}) => {
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -198,15 +203,15 @@ test('@functional F-VIEWER-R4: viewer can read leads list', async ({ playwright,
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-R4');
   }
 });
 
 test('@functional F-VIEWER-R5: viewer can read activities list', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -215,7 +220,6 @@ test('@functional F-VIEWER-R5: viewer can read activities list', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-R5');
   }
 });
 
@@ -225,10 +229,11 @@ test('@functional F-VIEWER-R5: viewer can read activities list', async ({
 // ---------------------------------------------------------------------------
 
 test('@functional F-VIEWER-W1: viewer cannot create a contact', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -247,15 +252,15 @@ test('@functional F-VIEWER-W1: viewer cannot create a contact', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W1');
   }
 });
 
 test('@functional F-VIEWER-W2: viewer blocked response carries AUTH_FORBIDDEN code (MINCRM-542)', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -280,15 +285,15 @@ test('@functional F-VIEWER-W2: viewer blocked response carries AUTH_FORBIDDEN co
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W2');
   }
 });
 
 test('@functional F-VIEWER-W3: viewer cannot create an account', async ({
+  testData,
   playwright,
   restClient,
 }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -303,7 +308,6 @@ test('@functional F-VIEWER-W3: viewer cannot create an account', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W3');
   }
 });
 
@@ -323,7 +327,7 @@ test('@functional F-VIEWER-W4: viewer cannot create a deal', async ({
     await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
   });
 
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -342,12 +346,15 @@ test('@functional F-VIEWER-W4: viewer cannot create a deal', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W4');
   }
 });
 
-test('@functional F-VIEWER-W5: viewer cannot create a lead', async ({ playwright, restClient }) => {
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+test('@functional F-VIEWER-W5: viewer cannot create a lead', async ({
+  testData,
+  playwright,
+  restClient,
+}) => {
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -366,7 +373,6 @@ test('@functional F-VIEWER-W5: viewer cannot create a lead', async ({ playwright
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W5');
   }
 });
 
@@ -385,7 +391,7 @@ test('@functional F-VIEWER-W6: viewer cannot update a contact', async ({
     await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
   });
 
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -400,7 +406,6 @@ test('@functional F-VIEWER-W6: viewer cannot update a contact', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W6');
   }
 });
 
@@ -419,7 +424,7 @@ test('@functional F-VIEWER-W7: viewer cannot delete a contact', async ({
     await restClient.delete(`/api/v1/contacts/${contactId}`).catch(() => null);
   });
 
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -435,7 +440,6 @@ test('@functional F-VIEWER-W7: viewer cannot delete a contact', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W7');
   }
 });
 
@@ -452,7 +456,7 @@ test('@functional F-VIEWER-W8: viewer cannot update an account', async ({
     await restClient.delete(`/api/v1/accounts/${accountId}`).catch(() => null);
   });
 
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -467,7 +471,6 @@ test('@functional F-VIEWER-W8: viewer cannot update an account', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W8');
   }
 });
 
@@ -496,7 +499,7 @@ test('@functional F-VIEWER-W9: viewer cannot update a deal', async ({
     await restClient.delete(`/api/v1/deals/${dealId}`).catch(() => null);
   });
 
-  const { viewerUser, viewerClient, viewerContext } = await createActivatedViewer(restClient, () =>
+  const { viewerClient, viewerContext } = await createActivatedViewer(testData, restClient, () =>
     playwright.request.newContext(),
   );
   try {
@@ -511,6 +514,5 @@ test('@functional F-VIEWER-W9: viewer cannot update a deal', async ({
   } finally {
     await viewerContext.dispose().catch(() => null);
     await restClient.post('/api/v1/auth/login', { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
-    await deactivateUser(restClient, viewerUser.id, 'F-VIEWER-W9');
   }
 });

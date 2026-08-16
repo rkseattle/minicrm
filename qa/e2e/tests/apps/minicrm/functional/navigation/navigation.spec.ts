@@ -46,11 +46,7 @@ import { test, expect } from '@apps/minicrm/fixtures.js';
 import { loginAsAdmin, loginViaBrowser } from '@behaviors/minicrm/auth.behaviors.js';
 
 test.use({ storageState: { cookies: [], origins: [] } });
-import {
-  inviteUserViaApi,
-  setUserPassword,
-  deactivateUser,
-} from '@behaviors/minicrm/users.behaviors.js';
+import { inviteUserViaApi, setUserPassword } from '@behaviors/minicrm/users.behaviors.js';
 import {
   setNavLayoutViaAPI,
   setNavLayoutViaUI,
@@ -107,6 +103,7 @@ import {
   navigateToContact,
   navigateToDeal,
   createTestAdmin,
+  registerUserDeactivation,
 } from '@apps/minicrm/helpers.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
@@ -1005,6 +1002,7 @@ test.describe('Rep deep-link redirect', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test('@functional F8-DL4: deep link to admin-only route as rep redirects to dashboard', async ({
+    testData,
     page,
     restClient,
   }) => {
@@ -1019,6 +1017,7 @@ test.describe('Rep deep-link redirect', () => {
       role: 'rep',
     });
     const rep = inviteRes.user;
+    registerUserDeactivation(testData, restClient, rep.id, 'rep');
     await setUserPassword(restClient, inviteRes.inviteToken, repPassword);
 
     try {
@@ -1031,7 +1030,6 @@ test.describe('Rep deep-link redirect', () => {
       expect(finalPath, 'rep deep-linking to /admin/settings should be redirected to /').toBe('/');
     } finally {
       await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, rep.id).catch(() => null);
     }
   });
 });

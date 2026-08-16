@@ -27,6 +27,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import {
   loginAsAdmin,
   setPassword,
@@ -34,7 +36,7 @@ import {
   navigateToSetPasswordPage,
   isSetPasswordTokenInvalid,
 } from '@behaviors/minicrm/auth.behaviors.js';
-import { inviteUserViaApi, deactivateUser } from '@behaviors/minicrm/users.behaviors.js';
+import { inviteUserViaApi } from '@behaviors/minicrm/users.behaviors.js';
 import { navigateToUrlAndWait } from '@behaviors/minicrm/nav.behaviors.js';
 import type { RestClient } from '@framework/clients/rest-client.js';
 
@@ -53,6 +55,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
  * @param restClient - Admin-authenticated RestClient.
  */
 async function createInvitedUser(
+  testData: TestDataManager,
   restClient: RestClient,
 ): Promise<{ userId: string; email: string; inviteToken: string }> {
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -61,6 +64,8 @@ async function createInvitedUser(
     email: `f1-inv-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
+
   return { userId: user.id, email: user.email, inviteToken };
 }
 
@@ -69,28 +74,23 @@ async function createInvitedUser(
 // ---------------------------------------------------------------------------
 
 test('@functional F1-INV1: /set-password — renders form for unauthenticated user with invite token (no redirect to login)', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const { userId, inviteToken } = await createInvitedUser(restClient);
+  const { inviteToken } = await createInvitedUser(testData, restClient);
 
-  try {
-    await navigateToSetPasswordPage(inviteToken, { page });
+  await navigateToSetPasswordPage(inviteToken, { page });
 
-    const invalidToken = await isSetPasswordTokenInvalid({ page });
-    expect(invalidToken, 'set-password form should render, not show invalid-token error').toBe(
-      false,
-    );
+  const invalidToken = await isSetPasswordTokenInvalid({ page });
+  expect(invalidToken, 'set-password form should render, not show invalid-token error').toBe(false);
 
-    const finalUrl = page.url();
-    expect(
-      new URL(finalUrl).pathname,
-      'unauthenticated user should stay on /set-password, not be redirected to /login',
-    ).toBe('/set-password');
-  } finally {
-    await deactivateUser(restClient, userId);
-  }
+  const finalUrl = page.url();
+  expect(
+    new URL(finalUrl).pathname,
+    'unauthenticated user should stay on /set-password, not be redirected to /login',
+  ).toBe('/set-password');
 });
 
 test('@functional F1-INV2: /set-password — invalid token shows error on the page, not a redirect to login', async ({
@@ -125,23 +125,20 @@ test('@functional F1-INV3: /set-password — missing token shows invalid-token e
 // ---------------------------------------------------------------------------
 
 test('@functional F1-INV4: /set-password — mismatched passwords shows inline validation error', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const { userId, inviteToken } = await createInvitedUser(restClient);
+  const { inviteToken } = await createInvitedUser(testData, restClient);
 
-  try {
-    const result = await setPassword(inviteToken, 'NewPass1!', 'DifferentPass2!', { page });
+  const result = await setPassword(inviteToken, 'NewPass1!', 'DifferentPass2!', { page });
 
-    expect(result.success, 'mismatched passwords should not succeed').toBe(false);
-    expect(result.errorMessage, 'mismatch error should be shown').not.toBeNull();
-    expect(new URL(result.finalUrl).pathname, 'browser should stay on /set-password').toBe(
-      '/set-password',
-    );
-  } finally {
-    await deactivateUser(restClient, userId);
-  }
+  expect(result.success, 'mismatched passwords should not succeed').toBe(false);
+  expect(result.errorMessage, 'mismatch error should be shown').not.toBeNull();
+  expect(new URL(result.finalUrl).pathname, 'browser should stay on /set-password').toBe(
+    '/set-password',
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -149,26 +146,23 @@ test('@functional F1-INV4: /set-password — mismatched passwords shows inline v
 // ---------------------------------------------------------------------------
 
 test('@functional F1-INV5: /set-password — successful activation redirects to /login', async ({
+  testData,
   page,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
-  const { userId, inviteToken } = await createInvitedUser(restClient);
+  const { inviteToken } = await createInvitedUser(testData, restClient);
 
-  try {
-    const NEW_PASSWORD = 'InvitePass1!';
-    const result = await setPassword(inviteToken, NEW_PASSWORD, NEW_PASSWORD, { page });
+  const NEW_PASSWORD = 'InvitePass1!';
+  const result = await setPassword(inviteToken, NEW_PASSWORD, NEW_PASSWORD, { page });
 
-    expect(result.success, 'successful set-password should navigate away from /set-password').toBe(
-      true,
-    );
-    expect(
-      new URL(result.finalUrl).pathname,
-      'successful set-password should redirect to /login',
-    ).toBe('/login');
-  } finally {
-    await deactivateUser(restClient, userId);
-  }
+  expect(result.success, 'successful set-password should navigate away from /set-password').toBe(
+    true,
+  );
+  expect(
+    new URL(result.finalUrl).pathname,
+    'successful set-password should redirect to /login',
+  ).toBe('/login');
 });
 
 // ---------------------------------------------------------------------------

@@ -401,6 +401,26 @@ what covers the path where the test fails before reaching its own delete. Use
 DELETE 404s, and a plain `register()` entry records that as `success: false` and logs
 "teardown failed" to stderr on every green run.
 
+**Users need `registerUserDeactivation()`, not `register()`.** Users cannot be
+hard-deleted, so cleanup is `PATCH /api/v1/users/:id/deactivate` rather than the DELETE a
+plain entry issues. The helper re-authenticates as admin inside the teardown callback,
+because tests routinely leave `restClient` authenticated as the user they just created
+and deactivation is admin-only:
+
+```ts
+const { user } = await inviteUserViaApi(restClient, { name, email, role: 'rep' });
+registerUserDeactivation(testData, restClient, user.id, 'rep');
+```
+
+`createTestUser`, `createTestRep`, and `createTestAdmin` call it for you — prefer those.
+Reach for `registerUserDeactivation` directly only when you need a role or a response
+field those helpers do not expose, as the `iam/` specs do for `viewer` and
+`service_account`. Register immediately after the invite returns an id, before
+set-password and onboarding: the row exists from that moment, and every later step can
+throw. Pass the **fixture** `restClient`, never a client the test disposes in a
+`finally` — the callback runs after the test body and would throw against a dead
+context. (MINCRM-668)
+
 A record that is deliberately left behind, or is already cleaned up by other means,
 opts out with a `// MINCRM-686-ok: <reason>` marker on the create line or in a comment
 directly above it. The reason is required — it is what makes a deliberate exception

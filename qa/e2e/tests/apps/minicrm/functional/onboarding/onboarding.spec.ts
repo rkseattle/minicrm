@@ -25,6 +25,7 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
 import { login, loginAsAdmin, loginAs } from '@behaviors/minicrm/auth.behaviors.js';
 import {
   setOnboardingCompleted,
@@ -45,7 +46,6 @@ import {
 import {
   inviteUserViaApi,
   setUserPassword,
-  deactivateUser,
   resetOnboardingViaUI,
 } from '@behaviors/minicrm/users.behaviors.js';
 import { ensureSystemDefaults } from '@behaviors/minicrm/settings.behaviors.js';
@@ -204,7 +204,8 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   });
   // ---------------------------------------------------------------------------
   // Per-user onboarding tests (MINCRM-410)
-  // These tests create ephemeral rep users and clean up in finally blocks.
+  // These tests create ephemeral rep users, registered for deactivation via
+  // registerUserDeactivation (MINCRM-668).
   // Kept inside the same describe.serial as the setup-checklist widget tests
   // to prevent cross-block races on the shared admin onboarding_completed flag.
   // ---------------------------------------------------------------------------
@@ -212,6 +213,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
   test.setTimeout(90_000);
 
   test('@functional @serial F-OB7: rep user sees four-task checklist when onboarding is incomplete', async ({
+    testData,
     page,
     restClient,
   }) => {
@@ -226,27 +228,25 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       email: repEmail,
       role: 'rep',
     });
+    registerUserDeactivation(testData, restClient, user.id, 'rep');
 
-    try {
-      await setUserPassword(restClient, inviteToken, repPassword);
+    await setUserPassword(restClient, inviteToken, repPassword);
 
-      // Rep's onboarding_completed starts false by default — no API reset needed.
-      await login({ email: repEmail, password: repPassword }, { page });
+    // Rep's onboarding_completed starts false by default — no API reset needed.
+    await login({ email: repEmail, password: repPassword }, { page });
 
-      await expectSetupChecklistWidgetVisible({ page }, 10_000);
+    await expectSetupChecklistWidgetVisible({ page }, 10_000);
 
-      await expectSetupChecklistTaskListVisible({ page }, 10_000);
+    await expectSetupChecklistTaskListVisible({ page }, 10_000);
 
-      // Count li elements via innerHTML — SafeLocator.locator() is forbidden
-      const html = await getSetupChecklistTaskListHtml({ page });
-      const liCount = (html.match(/<li/g) ?? []).length;
-      expect(liCount, 'rep checklist should show exactly four tasks').toBe(4);
-    } finally {
-      await deactivateUser(restClient, user.id);
-    }
+    // Count li elements via innerHTML — SafeLocator.locator() is forbidden
+    const html = await getSetupChecklistTaskListHtml({ page });
+    const liCount = (html.match(/<li/g) ?? []).length;
+    expect(liCount, 'rep checklist should show exactly four tasks').toBe(4);
   });
 
   test("@functional @serial F-OB8: admin resets another user's onboarding from the Users page", async ({
+    testData,
     page,
     restClient,
   }) => {
@@ -262,6 +262,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       email: repEmail,
       role: 'rep',
     });
+    registerUserDeactivation(testData, restClient, user.id, 'rep');
 
     try {
       await setUserPassword(restClient, inviteToken, repPassword);
@@ -292,11 +293,11 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       );
     } finally {
       await loginAsAdmin(restClient);
-      await deactivateUser(restClient, user.id);
     }
   });
 
   test('@functional @serial F-OB9: admin reset via API clears the onboarding flag', async ({
+    testData,
     restClient,
   }) => {
     await loginAsAdmin(restClient);
@@ -310,6 +311,7 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       email: repEmail,
       role: 'rep',
     });
+    registerUserDeactivation(testData, restClient, user.id, 'rep');
 
     try {
       await setUserPassword(restClient, inviteToken, repPassword);
@@ -330,7 +332,6 @@ test.describe.serial('Onboarding (MINCRM-379, MINCRM-410)', () => {
       expect(after.onboarding_completed, 'flag should be false after admin API reset').toBe(false);
     } finally {
       await loginAsAdmin(restClient);
-      await deactivateUser(restClient, user.id);
     }
   });
 }); // end describe.serial — onboarding (MINCRM-379, MINCRM-410)

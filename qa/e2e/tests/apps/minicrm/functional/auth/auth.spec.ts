@@ -44,6 +44,8 @@
  */
 
 import { test, expect } from '@apps/minicrm/fixtures.js';
+import { registerUserDeactivation } from '@apps/minicrm/helpers.js';
+import type { TestDataManager } from '@apps/minicrm/test-data-manager.js';
 import {
   login,
   loginFromCurrentPage,
@@ -60,7 +62,6 @@ import {
   inviteUserViaApi,
   setUserPassword,
   adminSetUserPassword,
-  deactivateUser,
   suppressUserOnboarding,
 } from '@behaviors/minicrm/users.behaviors.js';
 import { RestClientError } from '@framework/clients/rest-client.js';
@@ -99,6 +100,7 @@ const PROTECTED_PATH = '/contacts';
  * @returns Created user id, email, and temp password.
  */
 async function createUserWithForcedPasswordChange(
+  testData: TestDataManager,
   restClient: Parameters<typeof inviteUserViaApi>[0],
   tempPassword: string,
 ): Promise<{ userId: string; email: string; tempPassword: string }> {
@@ -108,6 +110,7 @@ async function createUserWithForcedPasswordChange(
     email: `f1-auth-${uniqueSuffix}@example.com`,
     role: 'rep',
   });
+  registerUserDeactivation(testData, restClient, user.id, 'rep');
 
   // Use set-password with the invite token to activate the account first
   // (required before admin-set-password will accept the user id).
@@ -365,6 +368,7 @@ test('@functional F1-O2: navigating to protected route after logout → redirect
 // ---------------------------------------------------------------------------
 
 test('@functional F1-P1: invited user forced to change password → old temp password rejected after change', async ({
+  testData,
   page,
   restClient,
 }) => {
@@ -374,10 +378,8 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
   // Authenticate restClient as admin to create the test user.
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   try {
-    const created = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-    userId = created.userId;
+    const created = await createUserWithForcedPasswordChange(testData, restClient, TEMP_PASSWORD);
 
     // ── 1. Login as the forced-change user — should land on /change-password ──
     const loginResult = await login({ email: created.email, password: TEMP_PASSWORD }, { page });
@@ -420,17 +422,14 @@ test('@functional F1-P1: invited user forced to change password → old temp pas
       'error message should indicate invalid credentials',
     ).not.toBeNull();
   } finally {
-    // Deactivate the test user. Re-auth as admin in case restClient cookie changed.
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-P1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });
 
 test('@functional F1-P2: password change with mismatched confirmation → inline validation error, no change submitted', async ({
+  testData,
   page,
   restClient,
 }) => {
@@ -439,10 +438,8 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
   // Authenticate restClient as admin to create the test user.
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   try {
-    const created = await createUserWithForcedPasswordChange(restClient, TEMP_PASSWORD);
-    userId = created.userId;
+    const created = await createUserWithForcedPasswordChange(testData, restClient, TEMP_PASSWORD);
 
     // Login — should land on /change-password.
     await login({ email: created.email, password: TEMP_PASSWORD }, { page });
@@ -468,12 +465,9 @@ test('@functional F1-P2: password change with mismatched confirmation → inline
       'browser should stay on /change-password after mismatch error',
     ).toBe('/change-password');
   } finally {
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-P2] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });
 
@@ -500,11 +494,11 @@ async function attemptLogin(
 }
 
 test('@functional F1-LO1: 10 consecutive failed logins → 11th attempt returns 429 ACCOUNT_TEMPORARILY_LOCKED (MINCRM-391)', async ({
+  testData,
   restClient,
 }) => {
   await loginAsAdmin(restClient);
 
-  let userId: string | null = null;
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const email = `f1-lockout-${uniqueSuffix}@example.com`;
   const correctPassword = 'L0ckoutT3st!';
@@ -516,7 +510,7 @@ test('@functional F1-LO1: 10 consecutive failed logins → 11th attempt returns 
       email,
       role: 'rep',
     });
-    userId = user.id;
+    registerUserDeactivation(testData, restClient, user.id, 'rep');
     await setUserPassword(restClient, inviteToken, correctPassword);
 
     // Submit 10 consecutive failures to trigger the lockout.
@@ -529,11 +523,8 @@ test('@functional F1-LO1: 10 consecutive failed logins → 11th attempt returns 
     const lockedStatus = await attemptLogin(restClient, email, 'WrongP@ss!999');
     expect(lockedStatus, 'account must be locked after 10 failures').toBe(429);
   } finally {
-    if (userId) {
-      await loginAsAdmin(restClient).catch(() => null);
-      await deactivateUser(restClient, userId).catch((err: unknown) => {
-        console.error(`[F1-LO1] teardown: failed to deactivate user ${userId}: ${String(err)}`);
-      });
-    }
+    // Restore the admin session; the user is deactivated by its registered
+    // teardown. (MINCRM-668)
+    await loginAsAdmin(restClient).catch(() => null);
   }
 });
