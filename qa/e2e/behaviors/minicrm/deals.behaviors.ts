@@ -12,6 +12,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
+import { navigateAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { PipelineBoardPage } from '@pages/minicrm/PipelineBoardPage.js';
 import type { PipelineStage } from '@pages/minicrm/PipelineBoardPage.js';
@@ -659,7 +660,9 @@ export async function navigateToDealDetail(
   context: DealsBehaviorContext,
 ): Promise<void> {
   const detail = new DealDetailPage(context);
-  await detail.navigate(id);
+  // Settles the feature-flag query first — see navigateToAccountDetail in
+  // accounts.behaviors.ts for the full rationale. (MINCRM-700, MINCRM-703)
+  await navigateAndSettle(context.page, () => detail.navigate(id));
 }
 
 /**
@@ -1248,6 +1251,10 @@ export async function clickDealsExportPdfAndAwaitResponse(
  * Clicks the deal detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
  * and content-type. (MINCRM-650)
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS for the reason documented on
+ * clickAccountExportPdfAndAwaitResponse — the button is gated on `csv_export`,
+ * so a 2s probe can expire before the flags query resolves. (MINCRM-703)
  */
 export async function clickDealExportPdfAndAwaitResponse(
   id: string,
@@ -1259,7 +1266,7 @@ export async function clickDealExportPdfAndAwaitResponse(
       response.url().includes(`/api/v1/deals/${id}/export.pdf`) &&
       response.request().method() === 'GET',
   );
-  const button = await detail.exportPdfButtonLocator();
+  const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();
   const response = await responsePromise;
   return {

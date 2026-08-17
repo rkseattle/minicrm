@@ -12,7 +12,11 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  navigateAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { AccountsPage } from '@pages/minicrm/AccountsPage.js';
 import { AccountDetailPage } from '@pages/minicrm/AccountDetailPage.js';
@@ -678,7 +682,14 @@ export async function navigateToAccountDetail(
   context: AccountsBehaviorContext,
 ): Promise<void> {
   const detailPage = new AccountDetailPage(context);
-  await detailPage.navigate(accountId);
+  // Settle the feature-flag query before returning. The page object's navigate()
+  // is a raw goto, so without this the caller resumes while
+  // GET /api/v1/feature-flags/me is still in flight — and useFeatureFlag fails
+  // closed, leaving every flag-gated control absent from the DOM rather than
+  // merely hidden. navigateToAccount() in helpers.ts has always settled; these
+  // *Detail behaviors did not, which is why only the export tests raced.
+  // (MINCRM-700, MINCRM-703)
+  await navigateAndSettle(context.page, () => detailPage.navigate(accountId));
 }
 
 /**
@@ -756,6 +767,14 @@ export async function isAccountHealthBadgeVisible(
  * Clicks the account detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
  * and content-type. (MINCRM-650)
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS, not the healing locator's 2s
+ * default: the button renders only under `csvExportEnabled`, and useFeatureFlag
+ * fails closed, so until GET /api/v1/feature-flags/me resolves the control is
+ * genuinely absent from the DOM. That query has been measured at ~3s under CI's
+ * four concurrent workers, so a 2s probe gives up before the button can exist
+ * and reports StrategyExhaustedError — indistinguishable from selector drift.
+ * (MINCRM-703)
  */
 export async function clickAccountExportPdfAndAwaitResponse(
   id: string,
@@ -767,7 +786,7 @@ export async function clickAccountExportPdfAndAwaitResponse(
       response.url().includes(`/api/v1/accounts/${id}/export.pdf`) &&
       response.request().method() === 'GET',
   );
-  const button = await detail.exportPdfButtonLocator();
+  const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();
   const response = await responsePromise;
   return {

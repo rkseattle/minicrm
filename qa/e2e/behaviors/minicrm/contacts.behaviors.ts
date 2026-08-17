@@ -12,7 +12,11 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
+import {
+  gotoAndSettle,
+  navigateAndSettle,
+  FIRST_INTERACTION_TIMEOUT_MS,
+} from '@apps/minicrm/helpers.js';
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
 import { ContactsPage } from '@pages/minicrm/ContactsPage.js';
 import { ContactDetailPage } from '@pages/minicrm/ContactDetailPage.js';
@@ -1352,7 +1356,9 @@ export async function navigateToContactDetail(
   context: ContactsBehaviorContext,
 ): Promise<void> {
   const detailPage = new ContactDetailPage(context);
-  await detailPage.navigate(contactId);
+  // Settles the feature-flag query first — see navigateToAccountDetail for the
+  // full rationale. (MINCRM-700, MINCRM-703)
+  await navigateAndSettle(context.page, () => detailPage.navigate(contactId));
 }
 
 /**
@@ -1880,6 +1886,13 @@ export async function getContactDuplicateExplanationText(
  * Clicks the contact detail page's "Export PDF" button and waits for the
  * underlying single-record export.pdf HTTP response, returning its status
  * and content-type. (MINCRM-650)
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS for the reason documented on
+ * clickAccountExportPdfAndAwaitResponse: the button is gated on `csv_export`,
+ * so a 2s probe can expire before the flags query resolves. Here the 2s budget
+ * did not hard-fail but AI-healed to a `text: "Export PDF"` match, which is
+ * worse than a clean failure — it spends judge tokens and can bind a different
+ * element while hiding the race. (MINCRM-703)
  */
 export async function clickContactExportPdfAndAwaitResponse(
   id: string,
@@ -1891,7 +1904,7 @@ export async function clickContactExportPdfAndAwaitResponse(
       response.url().includes(`/api/v1/contacts/${id}/export.pdf`) &&
       response.request().method() === 'GET',
   );
-  const button = await detail.exportPdfButtonLocator();
+  const button = await detail.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();
   const response = await responsePromise;
   return {
