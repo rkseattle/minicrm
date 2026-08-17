@@ -91,6 +91,22 @@ CASE
   cat > "${FRAMEWORK_TESTS}/bad-describe.spec.ts" <<'CASE'
 test.describe('@functional a describe title', () => {});
 CASE
+  # Contrived but reachable: a stray comment or blank line between the call and
+  # its title must not let the title escape. Greptile spotted this on PR #385.
+  cat > "${FRAMEWORK_TESTS}/bad-multiline-stray-comment.spec.ts" <<'CASE'
+test(
+  // a stray comment
+  '@functional title after a comment',
+  () => {},
+);
+CASE
+  cat > "${FRAMEWORK_TESTS}/bad-multiline-blank-line.spec.ts" <<'CASE'
+test(
+
+  '@functional title after a blank line',
+  () => {},
+);
+CASE
 
   cat > "${FRAMEWORK_TESTS}/ok-fixture-data.spec.ts" <<'CASE'
 const SPEC = `
@@ -161,6 +177,12 @@ done < <(
         line = $0
         sub(/\/\/.*$/, "", line)                     # strip line comments
 
+        # A line left blank by that strip — a comment-only line — or a genuinely
+        # blank one must NOT clear pending_call. Otherwise a stray comment or
+        # blank line between a multiline call and its title lets the title escape
+        # the scan entirely. Consume the line and keep waiting for the title.
+        if (pending_call && line !~ /[^[:space:]]/) next
+
         if (in_block) { if (line ~ /\*\//) in_block = 0; next }
         if (line ~ /\/\*/ && line !~ /\*\//) { in_block = 1; next }
 
@@ -196,12 +218,13 @@ done < <(
 # passes just as happily when the scanner flags the wrong lines, or flags one bad
 # case and misses five — which is the failure this self-test exists to catch.
 if [[ "$SELF_TEST" -eq 1 ]]; then
-  expected=6
+  expected=8
   if [[ "$findings" -ne "$expected" ]]; then
     echo
     echo "SELF-TEST FAILED: expected ${expected} finding(s), got ${findings}."
-    echo "  6 bad cases must be flagged: single-quote, double-quote, backtick,"
-    echo "  interpolated backtick, multiline, and describe."
+    echo "  8 bad cases must be flagged: single-quote, double-quote, backtick,"
+    echo "  interpolated backtick, multiline, describe, and multiline with a"
+    echo "  stray comment or blank line before the title."
     echo "  5 ok cases must NOT be: fixture data in a template literal, a line"
     echo "  comment, a block comment, a bare @serial, and an assertion argument."
     exit 1
