@@ -8,6 +8,7 @@
 
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { WinLossInsightsPage } from '@pages/minicrm/WinLossInsightsPage.js';
+import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 
 export interface WinLossInsightsBehaviorContext {
   page: PageFacade;
@@ -68,6 +69,12 @@ export async function isWinLossExportCsvEnabled(
  * Clicks the win/loss insights "Export PDF" button and waits for the
  * underlying export.pdf HTTP response, returning its status and content-type
  * so the spec can assert a real download was triggered. (MINCRM-601)
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS like the four single-record export
+ * helpers. This one has no spec caller today and the page early-returns on
+ * `!featureEnabled`, so it is latent rather than live — but it is the identical
+ * shape, and leaving the one unfixed instance of a defect class is how this bug
+ * survived MINCRM-703's first pass. (MINCRM-703)
  */
 export async function clickWinLossExportPdfAndAwaitResponse(
   context: WinLossInsightsBehaviorContext,
@@ -79,7 +86,7 @@ export async function clickWinLossExportPdfAndAwaitResponse(
       response.url().includes('/api/v1/insights/win-loss/export.pdf') &&
       response.request().method() === 'GET',
   );
-  const button = await insightsPage.exportPdfButtonLocator();
+  const button = await insightsPage.exportPdfButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
   await button.click();
   const response = await responsePromise;
   return {
