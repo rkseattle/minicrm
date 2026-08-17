@@ -1087,6 +1087,9 @@ jobs:
       - name: Check the non-serial --grep-invert has not drifted (MINCRM-706)
         run: bash qa/scripts/check-grep-invert-parity.sh
 
+      - name: Check no framework spec title carries a functional tag (MINCRM-706)
+        run: bash qa/scripts/check-framework-spec-titles.sh
+
       - name: Check the locator-timeout guard itself is correct (MINCRM-703)
         run: node qa/scripts/check-locator-timeout-forwarding.mjs --self-test
 

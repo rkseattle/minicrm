@@ -189,7 +189,21 @@ test.describe('planTargetedInvocations', () => {
     );
   });
 
-  test('no real @functional title in the suite falls between the two halves', () => {
+  // NOTE: this title deliberately spells the tag as "functional-tagged" rather
+  // than writing it literally. Playwright greps the title, so a literal tag makes
+  // this framework spec selectable by the functional suite — measured, three
+  // titles in this file leaked that way:
+  //
+  //   --grep "@functional" --grep-invert "visual-regression|serial"
+  //     (the non-serial half, both projects):  1004/80 files → 1002/79
+  //   --grep "@functional" --project=desktop:  661/97 files  → 658/96
+  //
+  // Same reason for the two isSerialTitle titles below.
+  //
+  // A bare `@serial` in a title is SAFE and two remain above deliberately:
+  // SERIAL_GREP requires BOTH tags, so `@serial` alone matches neither half.
+  // Only `@functional` needs avoiding. (MINCRM-706)
+  test('no real functional-tagged title in the suite falls between the two halves', () => {
     // The inversion is BROADER than SERIAL_GREP (it also drops anything matching
     // visual-regression), so the halves are no longer exact complements — a
     // title can match neither and would then run in NO invocation at all.
@@ -268,14 +282,14 @@ test.describe('isSerialTitle', () => {
     expect(isSerialTitle('F3: thing @functional @serial')).toBe(true);
   });
 
-  test('treats a @serial title without @functional as NON-serial', () => {
+  test('treats a serial-tagged title without the functional tag as NON-serial', () => {
     // Deliberate: SERIAL_GREP does not match it either, so calling it serial
     // would plan an invocation that finds nothing. The classifier and the grep
     // must agree.
     expect(isSerialTitle('every @serial-tagged spec file has an entry')).toBe(false);
   });
 
-  test('treats a plain @functional title as non-serial', () => {
+  test('treats a plain functional-tagged title as non-serial', () => {
     expect(isSerialTitle('@functional F4: thing')).toBe(false);
   });
 });
