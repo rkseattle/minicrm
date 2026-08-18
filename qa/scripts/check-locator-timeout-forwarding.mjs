@@ -226,8 +226,62 @@ if (process.argv[2] === '--self-test') {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Behavior-layer scan — a different shape, and the one the page-object scan is
+// structurally blind to.
+//
+// The check above finds a method that ACCEPTS a timeout and drops it. A behavior
+// can be racy without ever accepting one: it resolves at the 2s default and then
+// waits generously, so the wait never runs because resolution already threw.
+//
+//     const locator = await new NotesPage(context).sectionLocator();  // 2s
+//     await locator.waitFor({ state: 'visible' });                    // never reached
+//
+// That is exactly how F14-D1 failed on mobile-web while desktop and the sibling
+// shard passed: notes-section is ABSENT from the DOM until the entity detail
+// query settles and the notes feature flag resolves, and navigateAndSettle waits
+// on neither.
+//
+// Only flagged when the resolution is followed by a `waitFor({ state: 'visible' })`
+// with no timeout — that pairing is what marks it as "wait for this to appear"
+// rather than a presence probe, which legitimately wants the fast 2s negative.
+// ---------------------------------------------------------------------------
+
+/** Findings for behaviors that resolve a locator with no timeout, then wait for it. */
+export function scanBehaviorFile(source, label) {
+  const out = [];
+  const lines = source.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    // `.resolve();` or `.someLocator();` with no argument
+    const bare = /\.(resolve|\w*[Ll]ocator)\(\s*\)\s*;/.exec(line);
+    if (!bare) continue;
+    // The next few lines must contain a visible-wait with no timeout of its own.
+    const lookahead = lines.slice(i + 1, i + 4).join(' ');
+    if (!/waitFor\(\s*\{[^}]*state:\s*'visible'/.test(lookahead)) continue;
+    if (/timeout/.test(lookahead)) continue;
+    // Benign: a resolve that follows a click in the same function is waiting on
+    // something that click mounted, so the element's gate is already closed and
+    // the 2s default is the intended fast negative. Only a resolve reached
+    // straight after navigation is racy.
+    const preceding = lines.slice(Math.max(0, i - 8), i).join(' ');
+    if (/\.click|clickMenuToggle|await .*[Cc]lick\(/.test(preceding)) continue;
+    // Benign: a presence probe that swallows the failure wants the fast negative.
+    if (/\.catch\(/.test(lookahead)) continue;
+    out.push(`${label}:${i + 1}: resolves at the 2s default, then waits for visible`);
+  }
+  return out;
+}
+
 const pagesDir = join(SCRIPT_DIR, '..', 'e2e', 'pages');
-const findings = scanDir(pagesDir);
+const behaviorsDir = join(SCRIPT_DIR, '..', 'e2e', 'behaviors');
+const findings = [
+  ...scanDir(pagesDir),
+  ...collectTsFiles(behaviorsDir).flatMap((f) =>
+    scanBehaviorFile(readFileSync(f, 'utf8'), relative(behaviorsDir, f)),
+  ),
+];
 
 if (findings.length > 0) {
   findings.forEach((f) => console.log(f));
@@ -241,4 +295,5 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log('PASS: every page-object method with a timeout forwards it to resolution.');
+console.log('PASS: page objects forward their timeout, and no behavior resolves at the');
+console.log('2s default before waiting for an element to appear.');

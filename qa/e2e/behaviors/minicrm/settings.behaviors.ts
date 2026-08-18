@@ -4,7 +4,7 @@
  */
 
 import type { RestClient } from '@framework/clients/rest-client.js';
-import { gotoAndSettle } from '@apps/minicrm/helpers.js';
+import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { AdminSettingsPage } from '@pages/minicrm/AdminSettingsPage.js';
 import type { AdminSettingsTab } from '@pages/minicrm/AdminSettingsPage.js';
@@ -2034,8 +2034,10 @@ export async function selectPipelineBoardPipeline(
       ],
       { intent: 'pipeline selector dropdown above the deals board' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    // Page-ready anchor: the selector renders only after the pipelines query
+    // settles, so the 2s default can expire before it exists.
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
   await locator.selectOption(pipelineId);
 }
 

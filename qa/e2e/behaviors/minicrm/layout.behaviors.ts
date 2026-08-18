@@ -11,7 +11,7 @@
  */
 
 import type { PageFacade, SafeLocator } from '@framework/fixtures/index.js';
-import { gotoAndSettle } from '@apps/minicrm/helpers.js';
+import { gotoAndSettle, FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 import type { PageFacadeShape } from '@framework/fixtures/heal-methods.js';
 import { StrategyExhaustedError } from '@framework/healing/index.js';
 
@@ -199,8 +199,8 @@ export async function waitForDashboardStatCards(context: LayoutBehaviorContext):
       ],
       { intent: 'dashboard KPI stat cards grid' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Waits for the "my tasks" page heading to become visible — page-ready anchor. */
@@ -213,8 +213,8 @@ export async function waitForMyTasksHeading(context: LayoutBehaviorContext): Pro
       ],
       { intent: 'my tasks page heading confirming the tasks list is ready' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Waits for the "new contact" button to become visible — page-ready anchor. */
@@ -227,8 +227,8 @@ export async function waitForNewContactButton(context: LayoutBehaviorContext): P
       ],
       { intent: 'new contact button confirming the contacts list is ready' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Waits for the "new account" button to become visible — page-ready anchor. */
@@ -241,8 +241,8 @@ export async function waitForNewAccountButton(context: LayoutBehaviorContext): P
       ],
       { intent: 'new account button confirming the accounts list is ready' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Waits for the "new lead" button to become visible — page-ready anchor. */
@@ -255,8 +255,8 @@ export async function waitForNewLeadButton(context: LayoutBehaviorContext): Prom
       ],
       { intent: 'new lead button confirming the leads list is ready' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Waits for the account name heading to become visible — page-ready anchor on account detail. */
@@ -269,8 +269,8 @@ export async function waitForAccountNameHeading(context: LayoutBehaviorContext):
       ],
       { intent: 'account name heading confirming the account detail page has loaded' },
     )
-    .resolve();
-  await locator.waitFor({ state: 'visible' });
+    .resolve(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 // ---------------------------------------------------------------------------

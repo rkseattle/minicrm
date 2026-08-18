@@ -61,8 +61,11 @@ export async function navigateToAiPage(context: AiBehaviorContext): Promise<void
  */
 export async function waitForAiConversationPanel(context: AiBehaviorContext): Promise<void> {
   const aiPage = new AiPage(context);
-  const panel = await aiPage.conversationPanelLocator();
-  await panel.waitFor({ state: 'visible' });
+  // Page-ready anchor resolved straight after navigation: the panel is absent
+  // from the DOM until the session query settles, so the healing locator's 2s
+  // default can expire before it exists and report StrategyExhaustedError.
+  const panel = await aiPage.conversationPanelLocator(FIRST_INTERACTION_TIMEOUT_MS);
+  await panel.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 // ---------------------------------------------------------------------------
@@ -364,10 +367,12 @@ export async function getAssistantMessageText(context: AiBehaviorContext): Promi
 export async function clickNewSessionButton(context: AiBehaviorContext): Promise<string> {
   const aiPage = new AiPage(context);
   const isMobile = (context.page.viewportSize()?.width ?? 1280) < 768;
+  // First interaction after navigation: the button is absent until the sessions
+  // query settles, so the healing locator's 2s default can expire before it exists.
   const btn = isMobile
-    ? await aiPage.newSessionButtonMobileLocator()
-    : await aiPage.newSessionButtonLocator();
-  await btn.waitFor({ state: 'visible' });
+    ? await aiPage.newSessionButtonMobileLocator(FIRST_INTERACTION_TIMEOUT_MS)
+    : await aiPage.newSessionButtonLocator(FIRST_INTERACTION_TIMEOUT_MS);
+  await btn.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 
   const responsePromise = context.page.waitForResponse(
     (res) =>
