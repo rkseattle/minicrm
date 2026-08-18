@@ -1204,7 +1204,7 @@
     "triggerContactCreated": "[ä ĉöñtäĉt ïŝ ĉrëätëd~~~~~~]",
     "actionCreateTask": "[ĉrëätë täŝk \"{{subject}}\"~~~~~~~~]",
     "actionSendNotification": "[ŝëñd ä ñötïfïĉätïöñ (ŝërvër lög öñly)~~~~~~~~~~~~]",
-    "sendNotificationHint": "[Ĉürrëñtly lögŝ thë ñötïfïĉätïöñ tö thë ŝërvër. Ëmäïl äñd ïñ-äpp dëlïvëry wïll bë ëñäblëd ïñ ä fütürë üpdätë (MÏÑĈRM-5).~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
+    "sendNotificationHint": "[Ĉürrëñtly lögŝ thë ñötïfïĉätïöñ tö thë ŝërvër. Ëmäïl äñd ïñ-äpp dëlïvëry wïll bë ëñäblëd ïñ ä fütürë üpdätë.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~]",
     "when": "[Whëñ~~]",
     "then": "[Thëñ~~]",
     "enableRule": "[Ëñäblë rülë {{name}}~~~~~~]",

@@ -1239,7 +1239,7 @@
     "triggerContactCreated": "创建联系人",
     "actionCreateTask": "创建任务「{{subject}}」",
     "actionSendNotification": "发送通知（仅记录到服务器日志）",
-    "sendNotificationHint": "当前仅将通知记录到服务器。邮件和应用内通知将在未来版本中启用（MINCRM-5）。",
+    "sendNotificationHint": "当前仅将通知记录到服务器。邮件和应用内通知将在未来版本中启用。",
     "when": "当",
     "then": "则",
     "enableRule": "启用规则 {{name}}",

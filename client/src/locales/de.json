@@ -1239,7 +1239,7 @@
     "triggerContactCreated": "ein Kontakt erstellt wird",
     "actionCreateTask": "Aufgabe \"{{subject}}\" erstellen",
     "actionSendNotification": "eine Benachrichtigung senden (nur Serverprotokoll)",
-    "sendNotificationHint": "Schreibt die Benachrichtigung derzeit nur ins Serverprotokoll. E-Mail- und In-App-Zustellung wird in einem zukünftigen Update aktiviert (MINCRM-5).",
+    "sendNotificationHint": "Schreibt die Benachrichtigung derzeit nur ins Serverprotokoll. E-Mail- und In-App-Zustellung wird in einem zukünftigen Update aktiviert.",
     "when": "Wenn",
     "then": "Dann",
     "enableRule": "Regel {{name}} aktivieren",

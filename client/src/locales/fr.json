@@ -1239,7 +1239,7 @@
     "triggerContactCreated": "un contact est créé",
     "actionCreateTask": "créer la tâche « {{subject}} »",
     "actionSendNotification": "envoyer une notification (journal serveur uniquement)",
-    "sendNotificationHint": "Enregistre actuellement la notification dans le journal serveur. La livraison par e-mail et dans l'application sera activée dans une prochaine mise à jour (MINCRM-5).",
+    "sendNotificationHint": "Enregistre actuellement la notification dans le journal serveur. La livraison par e-mail et dans l'application sera activée dans une prochaine mise à jour.",
     "when": "Quand",
     "then": "Alors",
     "enableRule": "Activer la règle {{name}}",
