@@ -149,7 +149,7 @@ export function stripFile(file: string, source: string): string {
     return source;
   }
 
-  const edits: Array<{ start: number; end: number; text: string }> = [];
+  const edits: Array<{ start: number; end: number; text: string; original: string }> = [];
   for (const comment of ast.comments ?? []) {
     if (isExempt(comment.value)) continue;
     if (workItemIds(comment.value).length === 0) continue;
@@ -184,7 +184,7 @@ export function stripFile(file: string, source: string): string {
       }
       stripped = '';
     }
-    edits.push({ start, end, text: stripped });
+    edits.push({ start, end, text: stripped, original });
   }
 
   if (edits.length === 0) return source;
@@ -195,29 +195,32 @@ export function stripFile(file: string, source: string): string {
   // multi-line docblocks: 1,569 of them across the tree, merging paragraphs into a
   // wall of text. A bare `*` or empty `//` that the strip did not create is
   // someone's spacing and is left alone.
-  const husks = new Set<number>();
-  for (const edit of edits) {
-    const firstLine = source.slice(0, edit.start).split('\n').length;
-    const beforeLines = source.slice(edit.start, edit.end).split('\n');
+  // Mark husk lines with a sentinel inside the replacement text rather than by
+  // line number. An earlier version collected source line numbers and applied them
+  // to the edited output, where deletions had already shifted every index — which
+  // deleted a function declaration eight lines further down. The sentinel travels
+  // with its own line, so no index can drift.
+  const HUSK = '\u0000HUSK\u0000';
+  const marked = edits.map((edit) => {
+    const beforeLines = edit.original.split('\n');
     const afterLines = edit.text.split('\n');
-    for (let offset = 0; offset < beforeLines.length; offset += 1) {
+    const rewritten = afterLines.map((after, offset) => {
       const before = beforeLines[offset];
-      const after = afterLines[offset];
-      // Only a line this edit rewrote, and only if the rewrite emptied it.
-      if (after === undefined || before === after) continue;
-      if (isHusk(after) && !isHusk(before)) husks.add(firstLine + offset);
-    }
-  }
+      if (before === undefined || before === after) return after;
+      return isHusk(after) && !isHusk(before) ? HUSK : after;
+    });
+    return { ...edit, text: rewritten.join('\n') };
+  });
 
   let out = source;
   // Apply back-to-front so earlier offsets stay valid.
-  for (const edit of [...edits].reverse()) {
+  for (const edit of [...marked].reverse()) {
     out = out.slice(0, edit.start) + edit.text + out.slice(edit.end);
   }
 
   return out
     .split('\n')
-    .filter((_line, index) => !husks.has(index + 1))
+    .filter((line) => line !== HUSK)
     .join('\n');
 }
 
@@ -289,6 +292,13 @@ function selfTest(): void {
       file: 'a.ts',
       input: 'const a = 1; // (MINCRM-1)',
       expected: 'const a = 1;',
+    },
+    {
+      name: 'husk removal does not shift and delete a later line',
+      file: 'a.ts',
+      input: `// first (${'MINCRM'}-1)\n// second (${'MINCRM'}-2)\n/**\n * doc\n * (${'MINCRM'}-3)\n */\nexport function keepMe(\n  id: string,\n) {}`,
+      expected:
+        '// first\n// second\n/**\n * doc\n */\nexport function keepMe(\n  id: string,\n) {}',
     },
     {
       name: 'leading label prefix dropped, description kept',
