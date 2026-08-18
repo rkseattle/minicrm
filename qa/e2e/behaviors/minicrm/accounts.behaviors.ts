@@ -600,12 +600,23 @@ export async function expectAccountLinkedContactsEmptyVisible(
   await expect(locator).toBeVisible();
 }
 
-/** Waits for the attachments section to become visible on the account detail page. */
+/**
+ * Waits for the attachments section to become visible on the account detail page.
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS: the detail page early-returns a
+ * loading stub while its entity query is in flight, so the container is absent
+ * from the DOM rather than merely hidden, and navigateAndSettle does not wait on
+ * that query. Unlike the notes section this is not additionally flag-gated —
+ * AttachmentsSection renders under a plain prop check — so the detail query is
+ * the only gate here.
+ */
 export async function waitForAccountAttachmentsSection(
   context: AccountsBehaviorContext,
 ): Promise<void> {
-  const locator = await new AccountDetailPage(context).attachmentsSectionLocator();
-  await locator?.waitFor({ state: 'visible' });
+  const locator = await new AccountDetailPage(context).attachmentsSectionLocator(
+    FIRST_INTERACTION_TIMEOUT_MS,
+  );
+  await locator?.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /**

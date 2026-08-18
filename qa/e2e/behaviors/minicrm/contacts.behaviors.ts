@@ -1187,12 +1187,23 @@ export async function waitForContactDetailReadMode(
   );
 }
 
-/** Waits for the attachments section to appear on the contact detail page. */
+/**
+ * Waits for the attachments section to appear on the contact detail page.
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS: the detail page early-returns a
+ * loading stub while its entity query is in flight, so the container is absent
+ * from the DOM rather than merely hidden, and navigateAndSettle does not wait on
+ * that query. Unlike the notes section this is not additionally flag-gated —
+ * AttachmentsSection renders under a plain prop check — so the detail query is
+ * the only gate here.
+ */
 export async function waitForContactAttachmentsSection(
   context: ContactsBehaviorContext,
 ): Promise<void> {
-  const locator = await new ContactDetailPage(context).attachmentsSectionLocator();
-  await locator?.waitFor({ state: 'visible' });
+  const locator = await new ContactDetailPage(context).attachmentsSectionLocator(
+    FIRST_INTERACTION_TIMEOUT_MS,
+  );
+  await locator?.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /** Uploads a file via the contact detail page attachments file input. */

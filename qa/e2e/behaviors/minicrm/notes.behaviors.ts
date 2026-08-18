@@ -12,6 +12,7 @@
 import type { RestClient } from '@framework/clients/rest-client.js';
 import type { PageFacade } from '@framework/fixtures/index.js';
 import { NotesPage } from '@pages/minicrm/NotesPage.js';
+import { FIRST_INTERACTION_TIMEOUT_MS } from '@apps/minicrm/helpers.js';
 
 // ---------------------------------------------------------------------------
 // Fixture context
@@ -362,10 +363,23 @@ export async function getRecordAuditLog(
 // so spec files never import @pages/* directly.
 // ---------------------------------------------------------------------------
 
-/** Waits for the notes section container to become visible on an entity detail page. */
+/**
+ * Waits for the notes section container to become visible on an entity detail page.
+ *
+ * Resolves at FIRST_INTERACTION_TIMEOUT_MS, not the healing locator's 2s default.
+ * The container is ABSENT from the DOM until two independent async gates close,
+ * and navigateAndSettle waits on neither: the detail page early-returns a loading
+ * stub while getContact is in flight, and EntityDetailSidebar additionally gates
+ * NotesSection on useFeatureFlag('notes'), which fails closed by design. On a
+ * loaded runner both together exceed 2s, so the probe gives up and reports
+ * StrategyExhaustedError — indistinguishable from selector drift.
+ *
+ * The timeout goes to sectionLocator() as well as waitFor(): passing it only to
+ * waitFor leaves resolve() on the 2s budget, so the generous wait never runs.
+ */
 export async function waitForNotesSection(context: NotesBehaviorContext): Promise<void> {
-  const locator = await new NotesPage(context).sectionLocator();
-  await locator.waitFor({ state: 'visible' });
+  const locator = await new NotesPage(context).sectionLocator(FIRST_INTERACTION_TIMEOUT_MS);
+  await locator.waitFor({ state: 'visible', timeout: FIRST_INTERACTION_TIMEOUT_MS });
 }
 
 /**
