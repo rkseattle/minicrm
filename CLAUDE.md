@@ -178,6 +178,15 @@ Reference docs: [schema](docs/dev/schema.md) · [migrations](docs/dev/migrations
 - **`async/await` only.** No `.then()` chains.
 - **`no-explicit-any` enforced.** Fix the type; never suppress.
 - **Non-null `!` and `as` casts** require an inline comment explaining why it's safe.
+- **No work-item IDs in source comments.** `MINCRM-N`, `LAR-N`, `MININT-N` belong in
+  commit messages, PR titles, and branch names — never in a comment. State the _reason_
+  inline without the ID; `git blame` → commit → PR is the authoritative provenance and
+  never goes stale. Enforced by `local-comments/no-work-item-id-in-comment`. Two
+  exemptions: the `-ok` suppression markers (`MINCRM-686-ok`, `MINCRM-368-ok`), whose
+  spelling is matched by `qa/scripts/check-e2e-cleanup.sh` and
+  `check-e2e-beforeall.sh`, and `@openapi` blocks, which are served API contract text.
+  Prose in Markdown — this file, gates, ADRs, dev docs — may cite a ticket as a decision
+  record; that is a different use than annotating a line of code.
 - **Service functions must declare explicit return types.**
 - **No `console.log` in `server/src/`** outside tests. Use `logger.info/warn/error`.
 - **No magic numbers or strings.** Use named constants.

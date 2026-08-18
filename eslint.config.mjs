@@ -18,6 +18,7 @@ import noPageDirectInSpec from './eslint-plugins/no-page-direct-in-spec.mjs';
 import noPlaywrightImports from './eslint-plugins/no-playwright-imports.mjs';
 import requireLocatorIntent from './eslint-plugins/require-locator-intent.mjs';
 import requireLocatorFallback from './eslint-plugins/require-locator-fallback.mjs';
+import noWorkItemIdInComment from './eslint-plugins/no-work-item-id-in-comment.mjs';
 import i18nextPlugin from 'eslint-plugin-i18next';
 
 /** Files covered by TypeScript rules */
@@ -321,9 +322,32 @@ const scriptsConfig = {
   },
 };
 
+// ── Work-item IDs in comments — every linted file type ───────────────────────
+// Registered under its own plugin key, not `local`. ESLint 9 flat config forbids
+// two config objects with overlapping globs both declaring the same key, and
+// `local` is already claimed by e2eSpecConfig and e2ePageObjectConfig, whose globs
+// this one must overlap.
+//
+// The glob list is deliberately wider than every other entry here: this is the only
+// rule that must reach .mjs/.cjs/.js, because eslint-plugins/, qa/scripts/, the
+// workspace vite/vitest configs, and tailwind.config.cjs all carry comments and are
+// otherwise unlinted. db/migrations/** stays excluded via IGNORED — its catalog
+// comments are live database metadata, covered by strip-work-item-ids.ts --verify.
+const commentConventionConfig = {
+  files: ['**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.cjs', '**/*.js'],
+  ignores: IGNORED,
+  plugins: {
+    'local-comments': { rules: { 'no-work-item-id-in-comment': noWorkItemIdInComment } },
+  },
+  rules: {
+    'local-comments/no-work-item-id-in-comment': 'error',
+  },
+};
+
 export default [
   { ignores: IGNORED },
   baseConfig,
+  commentConventionConfig,
   clientConfig,
   clientTestConfig,
   coverageDashboardConfig,

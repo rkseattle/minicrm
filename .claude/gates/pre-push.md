@@ -156,6 +156,9 @@ stale and run again.
 - [ ] Roles and capabilities scoped for least privilege
 - [ ] AI tool schemas reviewed if `server/src/services/` or `server/src/ai/` changed
 - [ ] Eval tests added or updated in `qa/evals/` if NLI behavior changed
+- [ ] No work-item ID added to a source comment — they belong in the commit message and
+      PR title only (see PR conventions below, which are unchanged). Exempt: the `-ok`
+      suppression markers and `@openapi` blocks
 - [ ] Would pass a Greptile review
 
 ## PR conventions

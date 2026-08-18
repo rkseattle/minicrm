@@ -91,7 +91,10 @@ how four call sites leaked a user on every failing run (MINCRM-668).
 - A record the test deletes itself through the UI still gets registered — registration
   covers the path where the test fails before reaching its own delete. The follow-up 404
   is treated as successful cleanup, so this costs nothing on the happy path.
-- Deliberate exception? `// MINCRM-686-ok: <reason>`. The reason is required.
+- Deliberate exception? `// MINCRM-686-ok: <reason>`. The reason is required. This is a
+  named exemption from CLAUDE.md's no-work-item-IDs-in-comments rule, not a
+  counter-example to it: the marker is an opt-out token whose exact spelling
+  `check-e2e-cleanup.sh` matches, so it is an API, not a ticket reference for the reader.
 
 A failed teardown annotates the test `teardown-failed` and appears in CI's **Cleanup
 Failures** summary section, including for tests that passed. If you see one, a record
